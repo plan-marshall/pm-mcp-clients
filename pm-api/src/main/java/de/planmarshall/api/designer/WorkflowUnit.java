@@ -78,6 +78,7 @@ public record WorkflowUnit(
      * @param displayName the display name from {@code name:}
      * @param description the description line
      * @param type        the type that a replacing unit keeps (e.g. {@code subworkflow})
+     * @param icon        the stable icon id that the web app's visual language resolves
      * @param entries     the entries with their descriptions
      * @param exits       the exits
      * @param author      the author
@@ -88,6 +89,7 @@ public record WorkflowUnit(
             String displayName,
             String description,
             String type,
+            String icon,
             List<String> entries,
             List<String> exits,
             String author,
@@ -101,6 +103,7 @@ public record WorkflowUnit(
             displayName = displayName != null ? displayName : "";
             description = description != null ? description : "";
             type = type != null ? type : "";
+            icon = icon != null ? icon : "";
             entries = entries != null ? List.copyOf(entries) : List.of();
             exits = exits != null ? List.copyOf(exits) : List.of();
             author = author != null ? author : "";
@@ -112,6 +115,7 @@ public record WorkflowUnit(
             map.put("display_name", displayName);
             map.put("description", description);
             map.put("type", type);
+            map.put("icon", icon);
             map.put("entries", entries);
             map.put("exits", exits);
             map.put("author", author);
@@ -128,6 +132,7 @@ public record WorkflowUnit(
                     DesignerJson.string(map, "display_name", "displayName"),
                     JsonTree.string(map, "description"),
                     JsonTree.string(map, "type"),
+                    JsonTree.string(map, "icon"),
                     DesignerJson.stringList(map, "entries"),
                     DesignerJson.stringList(map, "exits"),
                     JsonTree.string(map, "author"),

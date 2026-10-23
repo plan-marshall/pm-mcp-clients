@@ -521,8 +521,8 @@ final class DesignerRegistry {
             return null;
         }
         return new WorkflowUnit.Frontmatter(frontmatter.displayName(), frontmatter.description(),
-                frontmatter.type(), frontmatter.entries(), frontmatter.exits(), frontmatter.author(),
-                frontmatter.release(), false);
+                frontmatter.type(), frontmatter.icon(), frontmatter.entries(), frontmatter.exits(),
+                frontmatter.author(), frontmatter.release(), false);
     }
 
     private static FrontmatterBlock parseFrontmatterBlock(String text) {
@@ -537,6 +537,7 @@ final class DesignerRegistry {
                 firstValue(block, "name:"),
                 firstValue(block, "description:"),
                 firstValue(block, "type:"),
+                firstValue(block, "icon:"),
                 firstValue(block, "author:"),
                 firstValue(block, "release:"),
                 keywordValues(block, KEYWORD_ENTRY),
@@ -612,12 +613,13 @@ final class DesignerRegistry {
     String displayName,
     String description,
     String type,
+    String icon,
     String author,
     String release,
     List<String> entries,
     List<String> exits) {
 
         static final FrontmatterBlock ABSENT =
-                new FrontmatterBlock(false, "", "", "", "", "", List.of(), List.of());
+                new FrontmatterBlock(false, "", "", "", "", "", "", List.of(), List.of());
     }
 }

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import EpicView from './EpicView.svelte';
 import { apiClient, type EpicProcess, type EpicResource, type ReviewResource } from '../api/client';
+import { workflowIconUrl } from '../icons/workflowIcons';
 import { runtimeStore, navigateTo, openPlanView, openEpicView } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
@@ -103,6 +104,9 @@ describe('EpicView component', () => {
     expect(runningPlan).toHaveTextContent('fix-relay');
     expect(runningPlan).toHaveTextContent('execute');
     expect(runningPlan).toHaveTextContent('4 of 10 tasks');
+    expect(
+      runningPlan.querySelector('.badge--phase .workflow-icon')?.getAttribute('style'),
+    ).toContain(workflowIconUrl('phase.execute'));
 
     const stagedPlan = await screen.findByTestId('staged-plan-relay-metrics');
     expect(stagedPlan).toBeInTheDocument();

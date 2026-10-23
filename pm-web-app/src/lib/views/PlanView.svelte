@@ -4,6 +4,8 @@
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
+  import WorkflowIcon from '../components/WorkflowIcon.svelte';
+  import { phaseIconId } from '../icons/workflowIcons';
   import {
     apiClient,
     type ProcessTree,
@@ -521,7 +523,10 @@
       <div class="plan-headline">
         <h1 class="plan-title" data-testid="plan-title">{plan.title}</h1>
         <div class="plan-status-tags">
-          <span class="badge badge--phase" data-testid="plan-phase">{plan.current_phase}</span>
+          <span class="badge badge--phase" data-testid="plan-phase">
+            <WorkflowIcon id={phaseIconId(plan.current_phase)} size={16} />
+            {plan.current_phase}
+          </span>
           <span class="badge badge--state badge--state-{plan.phase_state}" data-testid="plan-state">
             {plan.phase_state}
           </span>
@@ -696,6 +701,9 @@
                 </button>
 
                 <div class="node-info">
+                  {#if node.kind === 'phase'}
+                    <WorkflowIcon id={phaseIconId(node.node_id)} size={16} />
+                  {/if}
                   <span class="node-kind-badge">{node.kind}</span>
                   <span class="node-title font-semibold">{node.title}</span>
                   <span class="node-state-text">{getNodeStateText(node)}</span>
@@ -1031,6 +1039,12 @@
     display: flex;
     align-items: center;
     gap: var(--space-2);
+  }
+
+  .badge--phase {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
   }
 
   .plan-tokens {

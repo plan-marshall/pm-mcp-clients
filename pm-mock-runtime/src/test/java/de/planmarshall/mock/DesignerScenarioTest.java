@@ -95,6 +95,7 @@ class DesignerScenarioTest {
             assertEquals(3, finalize.levels().size());
             assertNotNull(finalize.frontmatter());
             assertEquals("Finalize", finalize.frontmatter().displayName());
+            assertEquals("phase.finalize", finalize.frontmatter().icon());
         }
     }
 

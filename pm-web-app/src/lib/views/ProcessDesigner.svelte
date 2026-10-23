@@ -3,6 +3,7 @@
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import BlockPalette from '../components/BlockPalette.svelte';
+  import WorkflowIcon from '../components/WorkflowIcon.svelte';
   import WorkflowValidationResults from '../components/WorkflowValidationResults.svelte';
   import {
     apiClient,
@@ -117,6 +118,8 @@
   /** The frontmatter as the text currently has it. */
   let frontmatter = $derived<FrontmatterFields>(parseUnit(text).fields);
   let hasFrontmatter = $derived(parseUnit(text).hasFrontmatter);
+  /** The selected unit's icon; an empty draft shows the neutral fallback until validation refuses it. */
+  let currentIcon = $derived(frontmatter.icon || 'workflow.default');
 
   /** The unit the target level already has, where it has one. */
   let targetUnit = $derived<WorkflowUnit | null>(
@@ -514,6 +517,7 @@
       if (key === 'displayName') fields.displayName = value;
       else if (key === 'description') fields.description = value;
       else if (key === 'type') fields.type = value;
+      else if (key === 'icon') fields.icon = value;
       else if (key === 'author') fields.author = value;
       else if (key === 'modified') fields.modified = value;
       else if (key === 'release') fields.release = value;
@@ -630,6 +634,7 @@
       `name: ${name}`,
       'description:',
       'type: subworkflow',
+      'icon: workflow.default',
       `author: ${savedAuthor}`,
       `modified: ${modified}`,
       `release: ${release}`,
@@ -924,6 +929,9 @@
   <header class="designer__head">
     <div class="designer__head-left">
       <h1 class="designer__title" data-testid="designer-title">{$t('designer.view.title')}</h1>
+      <span class="designer__unit-icon" data-testid="designer-unit-icon">
+        <WorkflowIcon id={currentIcon} size={20} />
+      </span>
       <span class="designer__unit" data-testid="designer-unit">{unitName || '—'}</span>
       <span class="designer__checked" data-testid="designer-checked">{checkedAgainst}</span>
     </div>
@@ -1093,6 +1101,9 @@
               class="designer__unit-row"
               class:designer__unit-row--active={unit.name === unitName}
             >
+              <span class="designer__unit-icon" data-testid={`unit-icon-${unit.name}`}>
+                <WorkflowIcon id={unit.frontmatter?.icon || 'workflow.default'} size={16} />
+              </span>
               <button
                 type="button"
                 class="designer__unit-open"
@@ -1235,6 +1246,19 @@
               {$t('designer.frontmatter.interface_kept')}
             </p>
           {/if}
+          <div class="frontmatter__row">
+            <span class="frontmatter__label">{$t('designer.frontmatter.icon')}</span>
+            <span class="frontmatter__icon">
+              <WorkflowIcon id={currentIcon} size={20} />
+              <input
+                class="frontmatter__input"
+                value={frontmatter.icon}
+                readonly={isPhone || isCompiledOnly}
+                oninput={(event) => setField('icon', event.currentTarget.value)}
+                data-testid="frontmatter-icon"
+              />
+            </span>
+          </div>
           <label class="frontmatter__row">
             <span class="frontmatter__label">{$t('designer.frontmatter.entries')}</span>
             <input
@@ -1579,6 +1603,12 @@
   .designer__title {
     font-size: var(--text-lg);
     font-weight: 700;
+  }
+
+  .designer__unit-icon {
+    display: inline-flex;
+    align-items: center;
+    align-self: center;
   }
 
   .designer__unit {
@@ -1935,6 +1965,13 @@
     font-size: var(--text-xs);
     color: var(--color-text-secondary);
     font-weight: 600;
+  }
+
+  .frontmatter__icon {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-width: 0;
   }
 
   .frontmatter__input {

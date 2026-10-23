@@ -62,6 +62,7 @@ class DesignerCatalogueTest {
                 "designer.frontmatter.author",
                 "designer.frontmatter.signature_dropped",
                 "designer.frontmatter.interface_kept",
+                "designer.frontmatter.icon",
                 "designer.leave.stay",
                 "designer.leave.discard",
                 "designer.checked_against",

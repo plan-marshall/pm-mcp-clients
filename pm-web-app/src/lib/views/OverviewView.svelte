@@ -5,6 +5,8 @@
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
+  import WorkflowIcon from '../components/WorkflowIcon.svelte';
+  import { phaseIconId } from '../icons/workflowIcons';
   import {
     apiClient,
     type ProjectSummary,
@@ -736,7 +738,10 @@
                           </span>
                         {/if}
                         {#if getPlanPhase(plan)}
-                          <span class="badge badge--phase">{getPlanPhase(plan)}</span>
+                          <span class="badge badge--phase">
+                            <WorkflowIcon id={phaseIconId(getPlanPhase(plan))} size={16} />
+                            {getPlanPhase(plan)}
+                          </span>
                         {/if}
                         <span class="badge badge--state badge--state-{getPlanState(plan)}">
                           {$t('overview.state.' + getPlanState(plan))}
@@ -853,7 +858,10 @@
                             >
                             <span class="nested-plan-title">{childPlan.title}</span>
                             {#if getPlanPhase(childPlan)}
-                              <span class="badge badge--phase">{getPlanPhase(childPlan)}</span>
+                              <span class="badge badge--phase">
+                                <WorkflowIcon id={phaseIconId(getPlanPhase(childPlan))} size={16} />
+                                {getPlanPhase(childPlan)}
+                              </span>
                             {/if}
                             <span class="badge badge--state badge--state-{getPlanState(childPlan)}">
                               {$t('overview.state.' + getPlanState(childPlan))}
@@ -907,7 +915,10 @@
                               </span>
                             {/if}
                             {#if getPlanPhase(plan)}
-                              <span class="badge badge--phase">{getPlanPhase(plan)}</span>
+                              <span class="badge badge--phase">
+                                <WorkflowIcon id={phaseIconId(getPlanPhase(plan))} size={16} />
+                                {getPlanPhase(plan)}
+                              </span>
                             {/if}
                             <span class="badge badge--state badge--state-{getPlanState(plan)}">
                               {$t('overview.state.' + getPlanState(plan))}
@@ -1335,6 +1346,7 @@
   .badge {
     display: inline-flex;
     align-items: center;
+    gap: 0.35em;
     padding: 0.125rem 0.5rem;
     font-size: var(--text-xs);
     font-weight: 500;

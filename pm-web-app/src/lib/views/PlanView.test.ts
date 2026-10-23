@@ -7,6 +7,7 @@ import {
   type ProcessTree,
   type TaskActivity,
 } from '../api/client';
+import { workflowIconUrl } from '../icons/workflowIcons';
 import { runtimeStore, navigateTo, openPlanView } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
@@ -178,6 +179,24 @@ describe('PlanView component', () => {
     expect(screen.getByTestId('pr-link')).toHaveTextContent('#214');
 
     expect(screen.getByTestId('plan-tokens')).toHaveTextContent(/412 k/);
+  });
+
+  it('shows the phase icon on the badge and the process-tree phase header', async () => {
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
+      ...mockPlan,
+      current_phase: 'phase-5-execute',
+    });
+
+    render(PlanView);
+
+    const badge = await screen.findByTestId('plan-phase');
+    expect(badge).toHaveTextContent('phase-5-execute');
+    expect(badge.querySelector('.workflow-icon')?.getAttribute('style')).toContain(
+      workflowIconUrl('phase.execute'),
+    );
+    expect(
+      screen.getByTestId('node-execute').querySelector('.workflow-icon')?.getAttribute('style'),
+    ).toContain(workflowIconUrl('phase.execute'));
   });
 
   it('renders process tree nodes with glyphs, state, and task rows', async () => {

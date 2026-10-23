@@ -425,6 +425,10 @@ Keys of the area `designer`, which only the web app loads (link:../shared/texts-
 |Type
 |Typ
 
+|`designer.frontmatter.icon`
+|Icon
+|Icon
+
 |`designer.frontmatter.entries`
 |Entries
 |Eingänge

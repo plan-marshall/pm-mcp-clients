@@ -13,6 +13,7 @@ const unit = [
   'name: Finalize',
   'description: Settles the plan.',
   'type: subworkflow',
+  'icon: phase.finalize',
   'entry start',
   '  The execute phase ended.',
   'exit merged',
@@ -34,6 +35,7 @@ describe('frontmatter', () => {
     expect(parsed.hasFrontmatter).toBe(true);
     expect(parsed.fields.displayName).toBe('Finalize');
     expect(parsed.fields.type).toBe('subworkflow');
+    expect(parsed.fields.icon).toBe('phase.finalize');
     expect(parsed.fields.entries).toEqual([
       { id: 'start', description: 'The execute phase ended.' },
     ]);
@@ -115,5 +117,34 @@ describe('frontmatter', () => {
     expect(fields.release).toBe('0.10.0');
     expect(fields.signature).toBe('');
     expect(touched).not.toContain('signature:');
+  });
+
+  it('keeps an unknown icon id as the icon value, not as an extra field', () => {
+    const unknown = unit.replace('icon: phase.finalize', 'icon: future.unknown');
+    const parsed = parseUnit(unknown);
+
+    expect(parsed.fields.icon).toBe('future.unknown');
+    expect(parsed.fields.extras).toEqual([['custom', 'kept']]);
+  });
+
+  it('writes an empty icon back as empty so validation can refuse it', () => {
+    const emptied = editFrontmatter(unit, (fields) => {
+      fields.icon = '';
+    });
+
+    expect(parseUnit(emptied).fields.icon).toBe('');
+    expect(emptied).toContain('icon:');
+  });
+
+  it('adds the required icon when a frontmatter that lacks one is edited', () => {
+    const withoutIcon = unit.replace('icon: phase.finalize\n', '');
+    expect(parseUnit(withoutIcon).fields.icon).toBe('workflow.default');
+
+    const edited = editFrontmatter(withoutIcon, (fields) => {
+      fields.release = '0.10.0';
+    });
+
+    expect(parseUnit(edited).fields.icon).toBe('workflow.default');
+    expect(edited).toContain('icon: workflow.default');
   });
 });

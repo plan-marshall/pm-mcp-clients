@@ -80,6 +80,7 @@ class DesignerRecordsTest {
                 "Finalize",
                 "Settles and reviews the plan's change, lands it",
                 "subworkflow",
+                "phase.finalize",
                 List.of("start", "adopt"),
                 List.of("merged", "no_change"),
                 "Oliver Wolff",
@@ -99,6 +100,8 @@ class DesignerRecordsTest {
 
         assertEquals(unit, parsed);
         assertEquals("Finalize", parsed.frontmatter().displayName());
+        assertEquals("phase.finalize", parsed.frontmatter().icon());
+        assertTrue(unit.toJson().contains("\"icon\":\"phase.finalize\""));
         assertEquals(3, parsed.levels().size());
         assertEquals(WorkflowUnit.LEVEL_PROJECT, parsed.levelInForce());
 

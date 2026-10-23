@@ -1,0 +1,699 @@
+= Design: Web App, Workflow Visual Language
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:README.adoc[Web App] » Workflow Visual Language
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3] (a workflow unit is designed and read), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1] (a plan's process down to its parts), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3] (a language and a catalogue)_
+
+_Relies on: link:../../../../pm-mcp-core/doc/specification/workflow-dsl/01-grammar.adoc#unit-frontmatter[Workflow DSL, Unit Frontmatter] (the required `icon` key), link:../../../../pm-mcp-core/doc/specification/workflow-dsl/09-plan-instance.adoc#plan-axes[Workflow DSL, Plan Behaviour Axes], link:process-designer.adoc[Process Designer], link:harness-icons.adoc[Harness Icons] (the unrelated harness artwork and its legal research)_
+
+Status: `DRAFT`. This document is the single visual authority for the icons that stand for workflow units, sub-workflows, phases, plan axes, and recipes in the web app. It is a visual contract, not a schema: the wire field is owned by `pm-workflow`, the id set and the delivered assets by `pm-web-app`.
+
+[#purpose]
+== What This Is
+
+A workflow unit carries a stable `icon` id in its frontmatter. The runtime serves that id with the unit; the client resolves it to one delivered SVG and shows it beside the unit's name or phase badge. The text stays the accessible source of truth, and the icon is data of the unit rather than a client-side table keyed by unit name.
+
+The visual language exists so that a person can tell an init phase from a remediation policy, or a review from a landing, without reading every label. It is deliberately small: workflows and phases, not plans, tasks, workers, projects, or arbitrary headings.
+
+[#grammar]
+== Visual Grammar
+
+Every icon is one drawing on the same grid, so the set reads as a family even where the metaphors differ.
+
+* *Grid*: a `24 × 24` coordinate space, with the drawing inside roughly `2..22` on both axes. No icon relies on the file's rendered size.
+* *Stroke*: `2` px, monochrome, `currentColor`. Caps and joins are round.
+* *Fill*: none by default. A deliberate accent may be a filled dot no larger than a `1` unit radius, always `fill="currentColor"` and never a literal colour.
+* *Silhouette first*: one clear silhouette, legible at `16`, `20`, and `24` px. Shapes are told apart by outline, not by colour or by a caption.
+* *No text*: no glyph, letter, number, or word inside the drawing. A question is a speech bubble, not a `?`.
+* *No decoration*: no gradients, shadows, duplicate strokes, or ornamental detail that disappears at `16` px.
+* *Light and dark*: one drawing serves both themes; `currentColor` makes it follow the surrounding text.
+
+[#families]
+== Semantic Families
+
+The metaphors are grouped so that a new icon extends a family instead of inventing a new visual dialect.
+
+[cols="1,2,3",options="header"]
+|===
+|Family |Metaphor |Icons
+
+|Phases
+|The lifecycle of a plan: a seed, a lens, an outline, a checklist, a play mark, a flag, a merge arrow
+|`phase.init`, `phase.refine`, `phase.outline`, `phase.plan`, `phase.execute`, `phase.finalize`, `flow.land`
+
+|Flow and control
+|A U-turn that reroutes a plan, and balanced scales for an adjudicated decision
+|`flow.replan`, `flow.adjudicate`
+
+|Git
+|Our own branch-and-commit metaphor: a trunk, commit nodes, a short branch. It is deliberately *not* the Git logo
+|`git.commit`
+
+|Remediation
+|A retry loop, an eye, an analysis lens, a wrench, converging branches with a repair bolt, and a quality-gate shield
+|`remediation.ci`, `remediation.review`, `remediation.analysis`, `remediation.build`, `remediation.merge`, `remediation.qgate`
+
+|Axes
+|What a plan lands (a document, a pull request, a branch), when tests are written (a test tube, a clock), and how a plan asks (a full bubble, a key, two bubbles)
+|`axis.landing.files`, `axis.landing.pr`, `axis.landing.main`, `axis.method.test-first`, `axis.method.tests-after`, `axis.ask.every`, `axis.ask.key`, `axis.ask.questions`
+
+|Compiled units
+|The structural units a plan is built from: a page, a stack, a decomposition tree, an eye with a check, a decision diamond, a chat bubble, a door, a gear, a play circle, an inbox, a checkbox, a cube, a landing arrow, a bookmarked lesson
+|`unit.plan`, `unit.epic`, `unit.decomposition`, `unit.review`, `unit.decision`, `unit.chat`, `unit.onboarding`, `unit.setup`, `unit.start`, `unit.source`, `unit.task`, `unit.entity`, `unit.landing`, `unit.lesson`
+
+|Recipes and fallback
+|A recipe card, and a neutral connected-node workflow used whenever an id is unknown
+|`recipe.default`, `workflow.default`
+|===
+
+[#contract]
+== Technical Contract
+
+Every delivered file satisfies all of the following. The registry test enforces the list, so a drawn icon that breaks it fails the build rather than reaching the app.
+
+* *SVG 1.1*, a single root `<svg>` with `xmlns="http://www.w3.org/2000/svg"` and `viewBox="0 0 24 24"`.
+* *Monochrome*: `fill="none"`, `stroke="currentColor"`, `stroke-width="2"`, `stroke-linecap="round"`, `stroke-linejoin="round"` on the root.
+* *No* `<text>`, `<script>`, `<image>`, `<foreignObject>`, `<style>`, or `<use>` element.
+* *No external reference*: no `href`, `xlink:href`, `<image>`, data URI, or remote URL, and no embedded raster.
+* *No hard-coded colour*: the only colour values are `none` and `currentColor`.
+* *No CSS*: no `style` attribute, no class-driven presentation, no media query. The consumer supplies colour through `currentColor`.
+* *One icon per file*, no comments or editor metadata. The file name is the id with dots replaced by hyphens: `phase.init` → `phase-init.svg`, `axis.method.test-first` → `axis-method-test-first.svg`.
+* *Optimised* with SVGO before it is committed: paths collapsed and decimals reduced, without changing the silhouette.
+* *Consumed as a mask*: the web app paints the SVG through `mask-image`, so only its alpha silhouette is used. The drawing must not depend on stroke colour inside the file.
+
+[#naming]
+== Naming and Stability
+
+* The icon *id* is the contract. The delivered drawing may be refined without renaming the id, and a client never learns the file name.
+* Ids follow the schema grammar `[a-z][a-z0-9._-]{0,63}`. They are stable across releases.
+* The *unit name* and the *icon id* are different concepts. A unit id may be `phase-6-finalize` while its icon id is `phase.finalize`; the frontmatter states the icon explicitly, so no client derives one from the other.
+* A rename or removal is a deprecation, not a silent swap: keep the old id as an alias in the registry and in the catalogue for one release, then retire it with a migration note. An unknown id always falls back to `workflow.default`, so a partially rolled-out rename renders rather than breaks.
+* The family prefix is meaningful (`phase.`, `axis.`, `remediation.`, `unit.`, `flow.`, `git.`, `recipe.`). A new id joins an existing family unless the visual specification adds one.
+
+[#licensing]
+== Licensing and Provenance
+
+The delivered set is *standalone original line art* drawn for this project. No icon-font glyph, brand logo, stock icon, or remote asset is copied, traced, or referenced.
+
+A *blend* (any icon derived from a third-party source) is allowed only after every gate below is answered in writing in the provenance table:
+
+. The source permits commercial use.
+. The source permits modification and redistribution in this repository.
+. Any required attribution can be satisfied in this document and in the app's notices.
+. The drawing creates no trademark or logo confusion and is not a brand mark.
+. The provenance row records author, source URL, licence, commercial-use conclusion, attribution, and approval.
+
+The Git icon is our own trunk-commit-branch metaphor, not the Git logo. Harness artwork is unrelated and keeps its own design and legal research in link:harness-icons.adoc[Harness Icons].
+
+[#provenance]
+=== Provenance Table
+
+[cols="2,2,2,2,2,3",options="header"]
+|===
+|Icon(s) |Author |Source |Licence |Commercial use |Attribution / approval
+
+|All ids in <<catalogue>>
+|Oliver Wolff / plan-marshall
+|Original line art, no source file
+|Project licence (see `LICENSE.md`)
+|Permitted; original work
+|None required; approved for this delivery. No third-party row exists.
+|===
+
+A future blend appends a row here before its SVG is committed. An icon without a completed row stays out of the delivered set.
+
+[#accessibility]
+== Accessibility and Usage
+
+* *Decorative by default*: an icon beside a visible label is `aria-hidden="true"`. The label carries the meaning.
+* *Named when standalone*: where an icon is not beside text, it gets an accessible name (`role="img"` with an accessible label) or a visible label. It is never the only way to identify an action.
+* *No icon-only actions*: a button keeps its text or accessible name; the icon only reinforces it.
+* *No colour-only meaning*: every distinction is carried by silhouette and by the text. Colour is inherited and may change with the theme.
+* *Sizes*: `16` px in dense rows and badges, `20` px beside a selected unit or a heading, `24` px where the icon stands as a small illustration. Other sizes are not part of the contract.
+* *Spacing*: the icon sits on the text baseline and keeps a small gap from its label; it never changes the line box enough to shift the row.
+* *Focus and keyboard*: the icon is presentational and adds no focus stop or key handling.
+
+[#catalogue]
+== Icon Catalogue
+
+This table is the authoritative id set. The registry's `WORKFLOW_ICON_IDS` and this table must agree; the drift test fails when either side gains or loses an id.
+
+// icon-catalogue:start
+[cols="2,3,1,3,1",options="header"]
+|===
+|Icon id |Meaning |Family |Asset |Status
+
+|`phase.init`
+|A seed sprouting: the plan is opened and its premises are collected
+|Phase
+|`workflows/phase-init.svg`
+|Delivered
+
+|`phase.refine`
+|A lens with a plus: the request is clarified and sharpened
+|Phase
+|`workflows/phase-refine.svg`
+|Delivered
+
+|`phase.outline`
+|An indented outline: the solution's shape is laid out
+|Phase
+|`workflows/phase-outline.svg`
+|Delivered
+
+|`phase.plan`
+|A checklist: tasks are planned from the deliverables
+|Phase
+|`workflows/phase-plan.svg`
+|Delivered
+
+|`phase.execute`
+|A play mark in a rounded frame: the plan's tasks run
+|Phase
+|`workflows/phase-execute.svg`
+|Delivered
+
+|`phase.finalize`
+|A flag: the change is settled, reviewed, and landed
+|Phase
+|`workflows/phase-finalize.svg`
+|Delivered
+
+|`flow.land`
+|Two branches merging into a downward arrow: the change lands
+|Phase
+|`workflows/flow-land.svg`
+|Delivered
+
+|`flow.replan`
+|A U-turn arrow: a failure reroutes the plan
+|Flow
+|`workflows/flow-replan.svg`
+|Delivered
+
+|`flow.adjudicate`
+|Balanced scales: a decision is adjudicated
+|Flow
+|`workflows/flow-adjudicate.svg`
+|Delivered
+
+|`git.commit`
+|A trunk with commit nodes and a short branch: our own git metaphor, not the Git logo
+|Git
+|`workflows/git-commit.svg`
+|Delivered
+
+|`remediation.ci`
+|A retry loop around a dot: a CI failure is remediated
+|Remediation
+|`workflows/remediation-ci.svg`
+|Delivered
+
+|`remediation.review`
+|An eye: review findings are examined
+|Remediation
+|`workflows/remediation-review.svg`
+|Delivered
+
+|`remediation.analysis`
+|A lens over bars: static analysis findings are examined
+|Remediation
+|`workflows/remediation-analysis.svg`
+|Delivered
+
+|`remediation.build`
+|A wrench: a build failure is repaired
+|Remediation
+|`workflows/remediation-build.svg`
+|Delivered
+
+|`remediation.merge`
+|Converging branches with a repair bolt: a merge conflict is resolved
+|Remediation
+|`workflows/remediation-merge.svg`
+|Delivered
+
+|`remediation.qgate`
+|A shield with a check: a quality gate is cleared
+|Remediation
+|`workflows/remediation-qgate.svg`
+|Delivered
+
+|`axis.landing.files`
+|A document: the change stays in the working tree
+|Axis
+|`workflows/axis-landing-files.svg`
+|Delivered
+
+|`axis.landing.pr`
+|Two branches with an arrow into the base: the change lands as a pull request
+|Axis
+|`workflows/axis-landing-pr.svg`
+|Delivered
+
+|`axis.landing.main`
+|A trunk with one branch: the change is pushed to the base branch
+|Axis
+|`workflows/axis-landing-main.svg`
+|Delivered
+
+|`axis.method.test-first`
+|A test tube: tests are written before the implementation
+|Axis
+|`workflows/axis-method-test-first.svg`
+|Delivered
+
+|`axis.method.tests-after`
+|A clock: tests are written after the implementation
+|Axis
+|`workflows/axis-method-tests-after.svg`
+|Delivered
+
+|`axis.ask.every`
+|A speech bubble with three dots: the plan waits at every phase
+|Axis
+|`workflows/axis-ask-every.svg`
+|Delivered
+
+|`axis.ask.key`
+|A key: the plan waits only at key points
+|Axis
+|`workflows/axis-ask-key.svg`
+|Delivered
+
+|`axis.ask.questions`
+|Two speech bubbles: the plan asks questions only
+|Axis
+|`workflows/axis-ask-questions.svg`
+|Delivered
+
+|`unit.plan`
+|A page with a checklist: the plan unit
+|Compiled
+|`workflows/unit-plan.svg`
+|Delivered
+
+|`unit.epic`
+|A layered stack: the epic unit
+|Compiled
+|`workflows/unit-epic.svg`
+|Delivered
+
+|`unit.decomposition`
+|One node branching into three: the decomposition unit
+|Compiled
+|`workflows/unit-decomposition.svg`
+|Delivered
+
+|`unit.review`
+|An eye with a check: the review unit
+|Compiled
+|`workflows/unit-review.svg`
+|Delivered
+
+|`unit.decision`
+|A diamond on a stem: the decision unit
+|Compiled
+|`workflows/unit-decision.svg`
+|Delivered
+
+|`unit.chat`
+|A speech bubble with lines: the chat unit
+|Compiled
+|`workflows/unit-chat.svg`
+|Delivered
+
+|`unit.onboarding`
+|A door with an arrow: the onboarding unit
+|Compiled
+|`workflows/unit-onboarding.svg`
+|Delivered
+
+|`unit.setup`
+|A gear: the project setup unit
+|Compiled
+|`workflows/unit-setup.svg`
+|Delivered
+
+|`unit.start`
+|A play mark in a circle: the bootstrap and start units
+|Compiled
+|`workflows/unit-start.svg`
+|Delivered
+
+|`unit.source`
+|An inbox: a source is taken in
+|Compiled
+|`workflows/unit-source.svg`
+|Delivered
+
+|`unit.task`
+|A checkbox: the worker task unit
+|Compiled
+|`workflows/unit-task.svg`
+|Delivered
+
+|`unit.entity`
+|A cube: the entity units
+|Compiled
+|`workflows/unit-entity.svg`
+|Delivered
+
+|`unit.landing`
+|A downward arrow to a base line: a short landing
+|Compiled
+|`workflows/unit-landing.svg`
+|Delivered
+
+|`unit.lesson`
+|A book with a bookmark: the lessons unit
+|Compiled
+|`workflows/unit-lesson.svg`
+|Delivered
+
+|`recipe.default`
+|A recipe card with a star: a recipe without an icon of its own
+|Recipe
+|`workflows/recipe-default.svg`
+|Delivered
+
+|`workflow.default`
+|A neutral connected-node workflow: the fallback for an unknown id
+|Fallback
+|`workflows/workflow-default.svg`
+|Delivered
+|===
+// icon-catalogue:end
+
+[#mapping]
+== Unit and Phase Map
+
+The map states which icon a known unit or phase resolves to. It is the authority for the process designer's catalogue and for phase badges; a unit's own frontmatter remains the authority for the icon shown beside that unit.
+
+Resolution rules:
+
+* A unit's `frontmatter.icon` wins wherever the unit is shown. The map below fills the gaps for phases (which are served as bare phase tokens or as phase-unit ids) and for compiled units that carry no frontmatter.
+* `phaseIconId` accepts a bare phase token (`execute`) and a phase-unit id (`phase-5-execute`).
+* `unitIconId` accepts the unit id. A `remediation.` unit that is not listed resolves by its category word (`ci`, `review`, `analysis`, `build`, `merge`, `qgate`).
+* Any id the registry does not know resolves to `workflow.default`. An empty frontmatter value is a schema error, not an unknown id.
+
+// unit-icon-map:start
+[cols="2,2,1,3",options="header"]
+|===
+|Unit or phase |Icon id |Resolved by |Where it is shown
+
+|`phase-1-init`
+|`phase.init`
+|`phaseIconId`
+|Phase badge and process-tree phase header
+
+|`phase-2-refine`
+|`phase.refine`
+|`phaseIconId`
+|Phase badge and process-tree phase header
+
+|`phase-3-outline`
+|`phase.outline`
+|`phaseIconId`
+|Phase badge and process-tree phase header
+
+|`phase-4-plan`
+|`phase.plan`
+|`phaseIconId`
+|Phase badge and process-tree phase header
+
+|`phase-5-execute`
+|`phase.execute`
+|`phaseIconId`
+|Phase badge and process-tree phase header
+
+|`phase-6-finalize`
+|`phase.finalize`
+|`phaseIconId`
+|Phase badge and process-tree phase header
+
+|`init`
+|`phase.init`
+|`phaseIconId`
+|Phase badge carrying the bare runtime token
+
+|`refine`
+|`phase.refine`
+|`phaseIconId`
+|Phase badge carrying the bare runtime token
+
+|`outline`
+|`phase.outline`
+|`phaseIconId`
+|Phase badge carrying the bare runtime token
+
+|`plan`
+|`phase.plan`
+|`phaseIconId`
+|Phase badge carrying the bare runtime token
+
+|`execute`
+|`phase.execute`
+|`phaseIconId`
+|Phase badge carrying the bare runtime token
+
+|`finalize`
+|`phase.finalize`
+|`phaseIconId`
+|Phase badge carrying the bare runtime token
+
+|`land`
+|`flow.land`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`git.commit_and_push`
+|`git.commit`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`git-commit-and-push`
+|`git.commit`
+|`unitIconId`
+|Catalogue alias
+
+|`remediation.ci-failure`
+|`remediation.ci`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`remediation.review`
+|`remediation.review`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`remediation.analysis`
+|`remediation.analysis`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`remediation.build-failure`
+|`remediation.build`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`remediation.merge-conflict`
+|`remediation.merge`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`remediation.quality-gate`
+|`remediation.qgate`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`replan`
+|`flow.replan`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`adjudicate.decisions`
+|`flow.adjudicate`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`adjudicate-decisions`
+|`flow.adjudicate`
+|`unitIconId`
+|Catalogue alias
+
+|`landing.files`
+|`axis.landing.files`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`landing.pull-request`
+|`axis.landing.pr`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`landing.main`
+|`axis.landing.main`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`method.test-first`
+|`axis.method.test-first`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`method.tests-after`
+|`axis.method.tests-after`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`ask.every-phase`
+|`axis.ask.every`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`ask.key-points`
+|`axis.ask.key`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`ask.questions-only`
+|`axis.ask.questions`
+|`unitIconId`
+|Designer unit list and unit header
+
+|`plan`
+|`unit.plan`
+|`unitIconId`
+|Compiled unit row
+
+|`epic`
+|`unit.epic`
+|`unitIconId`
+|Compiled unit row
+
+|`decomposition`
+|`unit.decomposition`
+|`unitIconId`
+|Compiled unit row
+
+|`review`
+|`unit.review`
+|`unitIconId`
+|Compiled unit row
+
+|`decision`
+|`unit.decision`
+|`unitIconId`
+|Compiled unit row
+
+|`chat`
+|`unit.chat`
+|`unitIconId`
+|Compiled unit row
+
+|`onboarding`
+|`unit.onboarding`
+|`unitIconId`
+|Compiled unit row
+
+|`project-setup`
+|`unit.setup`
+|`unitIconId`
+|Compiled unit row
+
+|`start`
+|`unit.start`
+|`unitIconId`
+|Compiled unit row
+
+|`bootstrap`
+|`unit.start`
+|`unitIconId`
+|Compiled unit row
+
+|`source`
+|`unit.source`
+|`unitIconId`
+|Compiled unit row
+
+|`worker-task`
+|`unit.task`
+|`unitIconId`
+|Compiled unit row
+
+|`entity`
+|`unit.entity`
+|`unitIconId`
+|Compiled unit row
+
+|`lessons`
+|`unit.lesson`
+|`unitIconId`
+|Compiled unit row
+
+|`landing`
+|`unit.landing`
+|`unitIconId`
+|Compiled unit row
+
+|`git.land-unit`
+|`unit.landing`
+|`unitIconId`
+|Compiled unit row
+
+|`git.land-removal`
+|`unit.landing`
+|`unitIconId`
+|Compiled unit row
+
+|`recipe.default`
+|`recipe.default`
+|`unitIconId`
+|A recipe without an icon of its own
+|===
+// unit-icon-map:end
+
+A recipe normally carries its own icon in its frontmatter. `recipe.default` is the fallback for a recipe that has none, and `workflow.default` is the last resort for any unknown id.
+
+[#update]
+== Adding and Maintaining an Icon
+
+A new icon is a four-file change. No view code changes, because every view resolves an id through the registry.
+
+. *Add the SVG* under `pm-web-app/src/lib/icons/workflows/`, named by the id with dots replaced by hyphens, and satisfying <<contract>>.
+. *Add the registry entry*: import the asset with Vite's `?url`, add the id to `WORKFLOW_ICON_IDS`, and add its URL to the registry map.
+. *Add the catalogue row and the unit/phase map row* in this document, plus a provenance row if the drawing is not original.
+. *Add `icon: <id>` to the unit's frontmatter* in the repository that owns the unit.
+. *Run the checks*: `npm test`, `npm run check`, `npm run lint`, and Prettier on the changed files. The registry test fails on an orphan asset, a missing catalogue row, a duplicate id, or an unknown mapping.
+
+Renaming an id is a deprecation: keep the old id as an alias for one release, add the new row, and note the migration in this document. Removing an icon follows the same alias rule until no shipped unit names it.
+
+[#sources-of-truth]
+== Sources of Truth
+
+[cols="2,3",options="header"]
+|===
+|Question |Authority
+
+|May a unit carry an icon, and what is a valid value?
+|`pm-workflow`'s unit frontmatter schema and its ADR; this document does not restate the grammar as a schema
+
+|Which ids exist and what does each mean?
+|<<catalogue>> in this document, mirrored by `WORKFLOW_ICON_IDS` in `pm-web-app/src/lib/icons/workflowIcons.ts`
+
+|Which icon does a phase or compiled unit resolve to?
+|<<mapping>> in this document, mirrored by `PHASE_ICON_IDS` and `UNIT_ICON_IDS` in the registry
+
+|Which file is delivered for an id?
+|`pm-web-app/src/lib/icons/workflows/`, named by the id
+
+|How is an icon shown and named?
+|<<accessibility>>, and the `WorkflowIcon` component
+
+|May an icon be blended from another source?
+|<<licensing>> and <<provenance>>
+|===

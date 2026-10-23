@@ -134,6 +134,7 @@ The frontmatter at the top of the text (link:../../../../pm-mcp-core/doc/specifi
   Name          [Finalize                                  ]
   Description   [Settles and reviews the plan's change, lands it…      ]
   Type          subworkflow        kept: it replaces a unit of this type
+  Icon          phase.finalize     [flag] the catalogue icon of this unit
   Entries       start     [The execute phase ended, or a fix was made. ]
                 adopt     [A plan of source pr: its head is adopted.   ]
                 hand_back [The plan is handed back.                    ]
@@ -145,6 +146,7 @@ The frontmatter at the top of the text (link:../../../../pm-mcp-core/doc/specifi
 ----
 
 * *Edited as text or in the panel*: a field changed in the panel writes its line; a line changed in the text fills the panel. An entry or exit is added with its description line directly below it, as the frontmatter requires.
+* *The icon*: the required `icon` field (link:../../../../pm-mcp-core/doc/specification/workflow-dsl/01-grammar.adoc#unit-frontmatter[Unit Frontmatter]) names one icon of link:workflow-visual-language.adoc[Workflow Visual Language]; the panel shows the resolved icon beside the editable id and the installed-unit rows and the header carry the same icon. The text stays the source of truth: an unknown id stays visible and renders as `workflow.default`, while an empty value is the schema finding, not a silent fallback.
 * *Set on an edit*: the first change of the text sets the modification date to the day and the release to the runtime's version, and drops a signature, since it would no longer cover the content; one line says so (`designer.frontmatter.signature_dropped`).
 * *The author*: the operator's name, asked once on this device and offered from then on (`designer.frontmatter.author`); `plan-marshall` is the author of the delivered units only, and a draft that still names it is a finding until the operator's name replaces it.
 * *The interface of a replacing unit*: a unit that replaces another (a project-owned unit, an axis variant) keeps its type, entries, and exits; the panel shows them read only with the reason (`designer.frontmatter.interface_kept`), and a change made in the text is a finding at its line (`INV-GEN-1`). A new recipe chooses its own.
