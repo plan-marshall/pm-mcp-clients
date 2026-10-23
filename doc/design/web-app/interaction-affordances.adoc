@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.
 
 _Relies on: link:README.adoc#frame[Web App, The Frame] (where a control sits), link:../shared/texts-and-languages.adoc[Texts and Languages] (the catalogue is the only source of copy)_
 
-Status: `AGREED`. This document is the authority for the hover advisory of a control: when a control carries one, which catalogue key it reads, what it may say, and how the convention is checked.
+Status: `FINAL`. This document is the authority for the hover advisory of a control: when a control carries one, which catalogue key it reads, what it may say, and how the convention is checked.
 
 [#purpose]
 == What a Hover Advisory Is

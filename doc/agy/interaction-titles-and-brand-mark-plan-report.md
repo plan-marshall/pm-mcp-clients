@@ -4,7 +4,7 @@
 
 The web app's two contradictory interaction surfaces are corrected.
 
-**The hover advisory now says something or nothing.** `titleFor` no longer falls back to the visible label or the `aria-label`; only an explicitly authored `title` or a `data-advisory` produces a tooltip. The catalogue convention is now exact and enforced: a control's label key `X` owns an advisory key `X.title`, the advisory must add information, and a control with nothing better to say carries no `title` at all. The audit added 48 advisory keys across the header, plan view, reports, decisions, overview/epic, project explorer, designer, and work controls; it deliberately left the text buttons whose labels already name their effect without one.
+**The hover advisory now says something or nothing.** `titleFor` no longer falls back to the visible label or the `aria-label`; only an explicitly authored `title` or a `data-advisory` produces a tooltip. The catalogue convention is now exact and enforced: a control's label key `X` owns an advisory key `X.title`, the advisory must add information, and a control with nothing better to say carries no `title` at all. The audit added 49 advisory keys across the header, plan view, reports, decisions, overview/epic, project explorer, designer, and work controls; it deliberately left the text buttons whose labels already name their effect without one.
 
 **The header now carries the project's own mark.** The `✦` character is gone from both brand branches. In its place is `plan-marshall-mark.svg`, an original 24 × 24 vector drawn for this project: three ascending plan sheets, a diagonal baton across them, and a node at the leading edge. It is delivered through `BrandMark.svelte` as a `currentColor` CSS mask, is decorative beside the visible `plan-marshall` text, and also serves as the browser-tab icon.
 
@@ -76,7 +76,7 @@ An element's label key `X` identifies it; its advisory is a separate key `X.titl
 | Plan, task row | task data | `plan.view.select_task.title` | Added |
 | Plan, breadcrumb project/epic, retry, token toggle | their labels | — | None |
 | Reports, mark all shown read | `report.action.mark_all_read` | `report.action.mark_all_read.title` | Added (scope) |
-| Reports, details (enabled) | `report.action.details` | `report.action.details.title` | Added |
+| Reports, details (enabled) | `report.action.details` | `report.action.details.title` | Added (destination-generic: the detail or the view it leads to) |
 | Reports, details (deleted subject) | `report.action.details` | `report.action.details.deleted.title` | Added (migrated authored title) |
 | Reports, mark read | `report.action.mark_read` | `report.action.mark_read.title` | Added (scope) |
 | Reports, show older | `report.list.show_older` | `report.list.show_older.title` | Added (scope/pagination) |
@@ -92,7 +92,7 @@ An element's label key `X` identifies it; its advisory is a separate key `X.titl
 | Decisions, readback correct | `decision.readback.confirm` | `decision.readback.confirm.title` | Added |
 | Decisions, decide | `decision.confirm.action` | `decision.confirm.action.title` | Added |
 | Decisions, chat first | `decision.answer.chat` | `decision.answer.chat.title` | Added |
-| Decisions, none fits | `decision.answer.none_fits` | `decision.answer.none_fits.title` | Added (destructive) |
+| Decisions, none fits | `decision.answer.none_fits` | `decision.answer.none_fits.title` | Added (destructive, scope-aware) |
 | Decisions, later | `decision.answer.later` | `decision.answer.later.title` | Added |
 | Decisions, option cards | option text | — | None: the option text is the content |
 | Overview, by plan / by epic | `overview.view.by_plan` / `.by_epic` | `.title` on both | Added (segmented control) |
@@ -111,6 +111,7 @@ An element's label key `X` identifies it; its advisory is a separate key `X.titl
 | Project explorer, running work / setup / continue | their labels | — | None |
 | Designer, discard the draft | `designer.leave.discard` | `designer.leave.discard.title` | Added (destructive) |
 | Work control, chat | `control.plan.chat` | `control.plan.chat.title` | Added |
+| Work control, chat about ended work | `control.plan.chat` | `control.plan.chat_ended.title` | Added (ended branch reads read-only) |
 
 ## Test and Verification Results
 

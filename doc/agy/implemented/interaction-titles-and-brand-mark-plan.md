@@ -118,12 +118,12 @@ Both changes are front-end plus catalogue work in `pm-mcp-clients`. No server, A
 - [x] 3. Incremental implementation with tests following the phased technical recipe.
 - [x] 4. Completion report written (`doc/agy/interaction-titles-and-brand-mark-plan-report.md`), plan moved to `doc/agy/implemented/`, links rebased, dashboard updated.
 - [x] 5. Pre-commit passed: `./mvnw verify -Ppre-commit`.
-- [ ] 6. PR opened (never `skip-bot-review` on worker PRs); review windows and all bot/Sonar findings resolved.
+- [x] 6. PR opened (never `skip-bot-review` on worker PRs); review windows and all bot/Sonar findings resolved.
 - [ ] 7. Enqueued in the merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and the report moved to `doc/agy/verified/` by the orchestrator.
 
 > [!IMPORTANT]
-> **Plan archival link rule**: this plan is written at `doc/agy/`; its links use `../../design`, `../../../pm-web-app`, `../../../pm-api`, `../../../pm-web-e2e`, `../../../../plan-marshall-documentation`, and `<name>.md`. When Step 4 moves it, rebase every link and re-run the internal-link check.
+> **Archived plan link rule**: this plan now lives at `doc/agy/implemented/`, and its links are already rebased to the archive depth (`../../design`, `../../../pm-web-app`, `../../../pm-api`, `../../../pm-web-e2e`, `../../../../plan-marshall-documentation`, and sibling `<name>.md`). If it is moved again, rebase every link and re-run the internal-link check.
 
 ---
 
@@ -169,7 +169,7 @@ Both changes are front-end plus catalogue work in `pm-mcp-clients`. No server, A
     - `plan.path.jump` / `plan.path.jump.title=Jump to the position that runs now and expand its path`;
     - `designer.plan.open` (already has `designer.plan.hint`) → rename the advisory to `designer.plan.open.title` and point the button at it;
     - `report.action.mark_all_read` / `report.action.mark_all_read.title=Mark every loaded report as read; older reports stay unread`;
-    - `report.action.details` / `report.action.details.title=Open the completion report`;
+    - `report.action.details` / `report.action.details.title=Open the report's detail, or the view it leads to`;
     - `report.action.details.deleted.title=The subject was deleted by cleanup on {date}; the report body stays readable`;
     - `decision.notify.allow` / `decision.notify.allow.title=Allow desktop notifications for decisions in this browser`;
     - `decision.notify.deny` / `decision.notify.deny.title=Keep decisions in the app without desktop notifications`;

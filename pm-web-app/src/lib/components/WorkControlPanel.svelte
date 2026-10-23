@@ -406,7 +406,7 @@
       type="button"
       class="work-control__chat"
       data-testid="action-chat"
-      data-advisory={$t('control.plan.chat.title')}
+      data-advisory={$t('control.plan.chat_ended.title')}
       onclick={openChat}
     >
       {$t('control.plan.chat')}

@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.
 
 _Relies on: link:README.adoc#frame[Web App, The Frame] (where the mark sits), link:workflow-visual-language.adoc[Workflow Visual Language] (the visual grammar and the SVG contract the mark also follows), link:interaction-affordances.adoc[Interaction Affordances] (the brand's advisory)_
 
-Status: `AGREED`. This document is the authority for the project's own mark: what it is drawn from, what its parts mean, how it is delivered, and how it is used beside the brand text.
+Status: `FINAL`. This document is the authority for the project's own mark: how it is drawn, what its parts mean, how it is delivered, and how it is used beside the brand text.
 
 image::../../resources/diagrams/plan-marshall-brand-mark.svg[The plan-marshall brand mark,240,align=center]
 

@@ -69,14 +69,37 @@ function advisoryExpressions(source: string): string[] {
 
 /**
  * @param expression an advisory expression
- * @returns the catalogue keys it passes, including both arms of a ternary
+ * @returns the catalogue key of every `$t(...)` call, including both arms of a ternary
  */
 function keysIn(expression: string): string[] {
-  // A catalogue key carries a dot; a literal placeholder value (a name, a date) does not, and is
-  // not a key the convention governs.
-  return [...expression.matchAll(/'([a-z0-9_.]+)'/gi)]
-    .map((match) => match[1])
-    .filter((value) => value.includes('.'));
+  const found: string[] = [];
+  let index = expression.indexOf('$t(');
+  while (index !== -1) {
+    let depth = 1;
+    let cursor = index + '$t('.length;
+    for (; cursor < expression.length && depth > 0; cursor++) {
+      if (expression[cursor] === '(') depth++;
+      else if (expression[cursor] === ')') depth--;
+    }
+    // The key is the first argument; a placeholder map starts at the first top-level comma.
+    const call = expression.slice(index + '$t('.length, cursor - 1);
+    let comma = -1;
+    let nesting = 0;
+    for (let position = 0; position < call.length; position++) {
+      if (call[position] === '{' || call[position] === '(') nesting++;
+      else if (call[position] === '}' || call[position] === ')') nesting--;
+      else if (call[position] === ',' && nesting === 0) {
+        comma = position;
+        break;
+      }
+    }
+    const keyArgument = comma === -1 ? call : call.slice(0, comma);
+    for (const match of keyArgument.matchAll(/'([^']+)'/g)) {
+      found.push(match[1]);
+    }
+    index = expression.indexOf('$t(', cursor);
+  }
+  return found;
 }
 
 interface Advisory {
@@ -110,6 +133,13 @@ describe('the advisory key convention', () => {
       (entry) => `${entry.file}: ${entry.expression.replace(/\s+/g, ' ').slice(0, 80)}`,
     );
     expect(literal).toEqual([]);
+
+    // A dynamic key (`$t(key)`, or a call whose first argument names no literal) cannot be checked
+    // against the catalogue, so it is refused here rather than passing silently.
+    const withoutKey = ADVISORY_EXPRESSIONS.filter(
+      (entry) => keysIn(entry.expression).length === 0,
+    ).map((entry) => `${entry.file}: ${entry.expression.replace(/\s+/g, ' ').slice(0, 80)}`);
+    expect(withoutKey).toEqual([]);
 
     const offenders = ADVISORIES.filter((entry) => !entry.key.endsWith('.title')).map(
       (entry) => `${entry.file}: ${entry.key}`,

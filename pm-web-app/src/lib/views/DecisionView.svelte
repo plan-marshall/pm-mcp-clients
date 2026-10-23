@@ -1064,7 +1064,9 @@
                     variant="secondary"
                     disabled={isSubmittingDecision(dec) || isChatting(dec)}
                     onclick={() => submitWithdraw(dec)}
-                    data-advisory={$t('decision.answer.none_fits.title')}
+                    data-advisory={$t('decision.answer.none_fits.title', {
+                      subject: dec.scope || 'plan',
+                    })}
                   >
                     {$t('decision.answer.none_fits', { subject: dec.scope || 'plan' })}
                   </Button>
