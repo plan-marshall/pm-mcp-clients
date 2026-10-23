@@ -182,7 +182,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktrees created **after pulling `main` in each repository**: the clients worktree is the primary plan record, the schema worktree is allocated at the start of its workstream, and the default-units worktree stays gated. Each Step 1 is committed and pushed in its repository.
+- [x] 1. Clients worktree created **after pulling `main`**; the schema worktree is allocated at the start of its own workstream and the default-units worktree stays gated. Step 1 committed and pushed in the primary repository.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-java:java-core` for the `pm-workflow` schema? Use the sibling's Java standards and tests.
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the registry, component, parser, and views.
