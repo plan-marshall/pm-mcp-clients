@@ -14,14 +14,14 @@ The work is confined to `pm-mcp-clients`. The runtime contract is unchanged: no 
 
 | Dimension | Reference |
 |---|---|
-| **Use Cases** | [`UC-PLN-1`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1) (Follow a Plan Down to Its Parts), [`UC-PLN-4`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4) (See What Runs, Across Projects), [`UC-PLN-5`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5) (Follow an Epic) |
+| **Use Cases** | [`UC-PLN-1`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1) (Follow a Plan Down to Its Parts), [`UC-PLN-4`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4) (See What Runs, Across Projects), [`UC-PLN-5`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5) (Follow an Epic) |
 | **Requirements** | `PM-ARCH-11` (the plan's process as a structure), `PM-WORK-7` (worker activity and off-track signals), `PM-SEC-1` (activity as untrusted text), `PM-SEC-7` (both clients as dependable views) |
-| **Process view today** | [`PlanView.svelte`](../../pm-web-app/src/lib/views/PlanView.svelte) — `selectTask`, `loadTaskActivity`, the two-panel template, and the tree rows |
-| **Current tests** | [`PlanView.test.ts`](../../pm-web-app/src/lib/views/PlanView.test.ts), [`pm-web-e2e/tests/plan-view.spec.js`](../../pm-web-e2e/tests/plan-view.spec.js) |
-| **Mock scenarios** | [`running-work.json`](../../pm-mock-runtime/src/main/resources/scenarios/running-work.json), [`fully-onboarded.json`](../../pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json) |
-| **Catalogue** | [`plan_view.en.properties`](../../pm-api/src/main/resources/messages/plan_view.en.properties), [`plan_view.de.properties`](../../pm-api/src/main/resources/messages/plan_view.de.properties) |
-| **Process contract** | [`ProcessTree.java`](../../pm-api/src/main/java/de/planmarshall/api/process/ProcessTree.java), [`ProcessNode.java`](../../pm-api/src/main/java/de/planmarshall/api/process/ProcessNode.java), [`LeafTask.java`](../../pm-api/src/main/java/de/planmarshall/api/process/LeafTask.java) |
-| **Operational SOP** | [`runbook.md`](runbook.md) |
+| **Process view today** | [`PlanView.svelte`](../../../pm-web-app/src/lib/views/PlanView.svelte) — `selectTask`, `loadTaskActivity`, the two-panel template, and the tree rows |
+| **Current tests** | [`PlanView.test.ts`](../../../pm-web-app/src/lib/views/PlanView.test.ts), [`pm-web-e2e/tests/plan-view.spec.js`](../../../pm-web-e2e/tests/plan-view.spec.js) |
+| **Mock scenarios** | [`running-work.json`](../../../pm-mock-runtime/src/main/resources/scenarios/running-work.json), [`fully-onboarded.json`](../../../pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json) |
+| **Catalogue** | [`plan_view.en.properties`](../../../pm-api/src/main/resources/messages/plan_view.en.properties), [`plan_view.de.properties`](../../../pm-api/src/main/resources/messages/plan_view.de.properties) |
+| **Process contract** | [`ProcessTree.java`](../../../pm-api/src/main/java/de/planmarshall/api/process/ProcessTree.java), [`ProcessNode.java`](../../../pm-api/src/main/java/de/planmarshall/api/process/ProcessNode.java), [`LeafTask.java`](../../../pm-api/src/main/java/de/planmarshall/api/process/LeafTask.java) |
+| **Operational SOP** | [`runbook.md`](../runbook.md) |
 
 ### 1.1 Finding Analysis
 
@@ -83,22 +83,22 @@ The work is confined to `pm-mcp-clients`. The runtime contract is unchanged: no 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-session-log-narrative` on branch `feat/session-log-narrative` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the selection model and node narrative;
   - `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing` for unit and component tests;
   - `plan-marshall-persona-integration-tester` for the scenario-contract and Playwright path;
   - `plan-marshall-persona-security-expert` for untrusted activity text and safe rendering;
   - `plan-marshall-persona-documenter` for the interaction note and report;
   - `plan-marshall-persona-code-reviewer` for review triage.
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Completion report written (`doc/agy/session-log-narrative-everywhere-plan-report.md`), plan moved to `doc/agy/implemented/`, links rebased, dashboard updated.
-- [ ] 5. Pre-commit passed: `./mvnw verify -Ppre-commit` (covers the web-app and scenario tests).
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Completion report written (`doc/agy/session-log-narrative-everywhere-plan-report.md`), plan moved to `doc/agy/implemented/`, links rebased, dashboard updated.
+- [x] 5. Pre-commit passed: `./mvnw verify -Ppre-commit` (covers the web-app and scenario tests).
 - [ ] 6. PR opened (never `skip-bot-review` on worker PRs); review windows and all bot/Sonar findings resolved.
 - [ ] 7. Enqueued in the merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and the report moved to `doc/agy/verified/` by the orchestrator.
 
 > [!IMPORTANT]
-> **Plan archival link rule**: this plan is written at `doc/agy/`; its links use `../design`, `../../pm-web-app`, `../../pm-mock-runtime`, `../../pm-api`, `../../../plan-marshall-documentation`, and `implemented/<name>.md`. When Step 4 moves it, rebase every link (`../../design`, `../../../pm-web-app`, `../../../pm-mock-runtime`, `../../../pm-api`, `../../../../plan-marshall-documentation`, `../runbook.md`, sibling `<name>.md`) and re-run the internal-link check.
+> **Plan archival link rule**: this plan moved from `doc/agy/` to `doc/agy/implemented/`. Its links are rebased (`../../../pm-web-app`, `../../../pm-mock-runtime`, `../../../pm-api`, `../../../../plan-marshall-documentation`, `../runbook.md`); a sibling link inside `implemented/` is plain. The internal-link check was run after the move.
 
 ---
 
@@ -118,46 +118,46 @@ The work is confined to `pm-mcp-clients`. The runtime contract is unchanged: no 
 
 ### Phase 1: Selection Model and Node Selection (`pm-web-app`)
 
-- [ ] **1.1 Introduce the selection union**
+- [x] **1.1 Introduce the selection union**
   - Add `type TreeSelection = { kind: 'task'; taskId: string } | { kind: 'node'; nodeId: string }`.
   - Replace `selectedTaskId` with `selection = $state<TreeSelection | null>(null)`; derive `selectedTaskId = $derived(selection?.kind === 'task' ? selection.taskId : null)` so the existing activity `$effect` keeps working unchanged.
   - Derive `selectedNode = $derived(findNode(plan?.nodes ?? [], selection?.kind === 'node' ? selection.nodeId : null))`.
-- [ ] **1.2 Make the row body selectable**
+- [x] **1.2 Make the row body selectable**
   - Keep the current `.toggle-btn` as the expand/collapse control.
   - Wrap the `.node-info` content of top-level nodes and sub-nodes in a `<button type="button" class="node-select" data-testid="select-node-{node.node_id}">`.
   - Add `aria-pressed={isSelected}` and `aria-current={isSelected ? 'true' : undefined}`; keep the visible row styling by resetting button appearance in CSS.
   - `onclick={() => selectNode(node.node_id)}` selects; it never toggles.
   - Keep `.task-row` selection as `selectTask(task.task_id)`.
-- [ ] **1.3 Default and refresh behavior**
+- [x] **1.3 Default and refresh behavior**
   - On initial load: running task → running node → first visible node.
   - On refresh (`loadPlanProcess(false)`): keep the selection when the task/node still exists; otherwise fall back by the same order.
   - When a node is selected, unsubscribe from task activity and clear `taskActivity`.
-- [ ] **1.4 Keyboard and focus**
+- [x] **1.4 Keyboard and focus**
   - The row body is a native button: `Enter`/`Space` select, `Tab` moves between toggle and body.
   - The selected row keeps a visible focus ring and the existing selected-state background.
   - Do not add `tabindex` to non-interactive rows or nest buttons.
 
 ### Phase 2: Node Narrative (`pm-web-app`)
 
-- [ ] **2.1 Add `NodeNarrative.svelte`**
+- [x] **2.1 Add `NodeNarrative.svelte`**
   - Props: `node: ProcessNode`, `plan: ProcessTree`, `onSelectTask(taskId: string)`.
   - Header: title, kind badge, localized state (reuse the same state-text mapping as the tree; extract `getNodeStateText` into a small shared helper so the tree and the panel cannot drift), run count, duration, `waits_for`, `prune_reason`.
   - Child-task section: one row per leaf task with `task_id`, role, harness/model, attempt, status, duration, tokens, and an activity-availability marker. Selecting a row calls `onSelectTask`.
   - Empty section: when the node has no leaf tasks, render `plan.node.no_activity` with the node's state and duration, e.g. “This phase completed without task-level activity; its duration is recorded above.” Do not render an empty feed.
   - Sub-nodes: list their titles and states as a compact outline, with the same select-node affordance.
   - Every free-text value passes through `stripControlSequences`; no `{@html}`.
-- [ ] **2.2 Render the inspector**
+- [x] **2.2 Render the inspector**
   - `{#if selection?.kind === 'task'}` keeps the existing `taskActivity` feed and off-track banner.
   - `{:else if selectedNode}` renders `<NodeNarrative … />`.
   - `{:else}` renders `plan.activity.select_item` (replacing the task-only wording).
   - Keep `data-testid="task-inspector"` on the section, and add `data-testid="node-narrative"` and `data-selected-kind={selection?.kind ?? 'none'}` so tests can assert the state without relying on copy.
-- [ ] **2.3 Selection affordance in the tree**
+- [x] **2.3 Selection affordance in the tree**
   - Selected node rows get `node-row--selected`, mirroring `task-row--selected`.
   - The currently auto-selected item is scrolled into view only by the existing `jumpToCurrentPosition`; no automatic scroll on ordinary selection.
 
 ### Phase 3: Catalogue (`pm-api`)
 
-- [ ] **3.1 Add English keys** to `plan_view.en.properties`:
+- [x] **3.1 Add English keys** to `plan_view.en.properties`:
   - `plan.node.select=Inspect this part`
   - `plan.node.narrative=Part narrative`
   - `plan.node.child_tasks=Tasks in this part`
@@ -166,25 +166,25 @@ The work is confined to `pm-mcp-clients`. The runtime contract is unchanged: no 
   - `plan.node.no_activity_link=No activity recorded`
   - `plan.node.run={count, plural, =1 {1 run} other {{count} runs}}`
   - `plan.activity.select_item=Select a part or a task on the left to inspect it.`
-- [ ] **3.2 Add the German equivalents** in `plan_view.de.properties`; keep every key in both files.
-- [ ] **3.3 Update `catalogue.test.ts`** only if it enumerates the changed keys; otherwise verify the existing catalogue parity test covers the new keys.
+- [x] **3.2 Add the German equivalents** in `plan_view.de.properties`; keep every key in both files.
+- [x] **3.3 Update `catalogue.test.ts`** only if it enumerates the changed keys; otherwise verify the existing catalogue parity test covers the new keys.
 
 ### Phase 4: Mock Scenarios (`pm-mock-runtime`)
 
-- [ ] **4.1 Add the `session-log` process route** to `running-work.json`:
+- [x] **4.1 Add the `session-log` process route** to `running-work.json`:
   - `GET /api/v1/plans/session-log/process` with a realistic tree: `init`, `refine`, `outline`, `plan` all `done` with no leaf tasks; `execute` `running` with one `done` leaf task (`TASK-001`), one `done` leaf task without activity (`TASK-002`), and one `running` leaf task (`TASK-003`); `finalize` `planned`;
   - a `current_position_path` ending at the running task;
   - project `pm-mcp-core`, matching the overview entry.
-- [ ] **4.2 Add task-activity routes** for `session-log` `TASK-001` and `TASK-003` with text, tool, file-changed, link, and question entries; deliberately omit `TASK-002` so the “no activity recorded” branch is real.
-- [ ] **4.3 Mirror the route in `fully-onboarded.json`** so the showroom scenario can open the same plan and the tree/narrative structure appears there as well.
-- [ ] **4.4 Keep `fix-relay` honest**:
+- [x] **4.2 Add task-activity routes** for `session-log` `TASK-001` and `TASK-003` with text, tool, file-changed, link, and question entries; deliberately omit `TASK-002` so the “no activity recorded” branch is real.
+- [x] **4.3 Mirror the route in `fully-onboarded.json`** so the showroom scenario can open the same plan and the tree/narrative structure appears there as well.
+- [x] **4.4 Keep `fix-relay` honest**:
   - leave `TASK-002` without activity (done, no route) or add a route and update the test expectation deliberately; document which choice was made.
   - ensure `TASK-001` activity still proves a done task narrates.
-- [ ] **4.5 Scenario validation**: run the existing scenario contract/validation tests; every state and route must still validate.
+- [x] **4.5 Scenario validation**: run the existing scenario contract/validation tests; every state and route must still validate.
 
 ### Phase 5: Tests
 
-- [ ] **5.1 `PlanView.test.ts`**
+- [x] **5.1 `PlanView.test.ts`**
   - clicking a done phase (`node-init`) renders `node-narrative` with its title, state, and duration, and does **not** call `getTaskActivity`;
   - clicking a done leaf task renders its activity entries;
   - clicking a done task without activity renders the node- or task-level empty state without an error;
@@ -192,40 +192,40 @@ The work is confined to `pm-mcp-clients`. The runtime contract is unchanged: no 
   - refresh keeps a valid node selection and falls back when the node disappears;
   - the default selection is the running task, and a plan with no running task selects the first node;
   - the selected row carries `aria-current`/`node-row--selected`.
-- [ ] **5.2 `NodeNarrative.test.ts`**
+- [x] **5.2 `NodeNarrative.test.ts`**
   - header fields, run counts (`1 run` / `N runs`), waits-for and prune reason;
   - child task rows and their selection callback;
   - no-activity copy for a done node with no leaf tasks;
   - control-sequence stripping in any free-text field.
-- [ ] **5.3 Scenario contract**
+- [x] **5.3 Scenario contract**
   - assert `GET /api/v1/plans/session-log/process` exists in both scenarios and resolves through the scenario loader;
   - assert every leaf task with an `activity_link` has a matching route, except the deliberately-activity-less `TASK-002` (allowlist it in the test with a comment).
-- [ ] **5.4 Playwright (`pm-web-e2e/tests/plan-view.spec.js`)**
+- [x] **5.4 Playwright (`pm-web-e2e/tests/plan-view.spec.js`)**
   - open `session-log` from the overview (`[data-testid="plan-card"]` matching the title);
   - assert the tree and the right inspector are both visible (the positive structure);
   - click `select-node-init`; assert `node-narrative` contains `init` and its state, and that the panel is not the “select” empty state;
   - click the done `TASK-001`; assert `activity-entry` content;
   - click the toggle of `execute`; assert the selection and the right panel do not change;
   - keep the existing `fix-relay` assertions green.
-- [ ] **5.5 Accessibility**
+- [x] **5.5 Accessibility**
   - assert the row body is a button with an accessible name and `aria-current` when selected;
   - assert the toggle remains separately announced (`plan.view.toggle_node`);
   - assert no nested interactive elements in a row.
 
 ### Phase 6: Documentation, Verification, Report
 
-- [ ] **6.1 Design note** `doc/design/web-app/plan-view-interaction.adoc`:
+- [x] **6.1 Design note** `doc/design/web-app/plan-view-interaction.adoc`:
   - the two-panel rule (tree left, narrative right);
   - node selection vs. task selection vs. expand/collapse;
   - what a node narrative contains and what it deliberately does not invent;
   - the empty states.
-- [ ] **6.2 Verification**
+- [x] **6.2 Verification**
   - `cd pm-web-app && npm test -- PlanView NodeNarrative` (or the repository's Vitest invocation);
   - `npm run check`, `npm run lint`;
   - scenario tests and the Playwright `plan-view` spec;
   - `./mvnw verify -Ppre-commit`.
 - [ ] **6.3 Report** `doc/agy/session-log-narrative-everywhere-plan-report.md`: the root-cause proof (UI + mock), screenshots or test output for a done phase and a done task, the `session-log` route, the exact commands run, and the result of each acceptance criterion.
-- [ ] **6.4 Archive**: move the plan to `doc/agy/implemented/`, rebase links, update the dashboard, keep the report for Step 8.
+- [x] **6.4 Archive**: move the plan to `doc/agy/implemented/`, rebase links, update the dashboard, keep the report for Step 8.
 
 ---
 

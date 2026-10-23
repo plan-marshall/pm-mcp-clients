@@ -558,4 +558,206 @@ describe('PlanView component', () => {
     await screen.findByTestId('plan-title');
     expect(apiClient.getTaskActivity).toHaveBeenCalledWith('fix-relay', 'TASK-002');
   });
+
+  it('narrates a done phase without fetching task activity', async () => {
+    render(PlanView);
+
+    await screen.findByTestId('plan-title');
+    await waitFor(() =>
+      expect(apiClient.getTaskActivity).toHaveBeenCalledWith('fix-relay', 'TASK-003'),
+    );
+    vi.mocked(apiClient.getTaskActivity).mockClear();
+
+    await fireEvent.click(screen.getByTestId('select-node-init'));
+
+    const narrative = await screen.findByTestId('node-narrative');
+    expect(narrative).toHaveTextContent('init');
+    expect(screen.getByTestId('node-narrative-state')).toHaveTextContent('done');
+    expect(screen.getByTestId('node-narrative-duration')).toHaveTextContent('2 min');
+    expect(screen.getByTestId('task-inspector')).toHaveAttribute('data-selected-kind', 'node');
+    expect(apiClient.getTaskActivity).not.toHaveBeenCalled();
+  });
+
+  it('renders the activity entries of a done leaf task', async () => {
+    const planWithDoneTask: ProcessTree = {
+      ...mockPlan,
+      nodes: [
+        mockPlan.nodes[0],
+        {
+          ...mockPlan.nodes[1],
+          leaf_tasks: [
+            {
+              task_id: 'TASK-001',
+              role: 'implement',
+              harness: 'claude',
+              model: 'sonnet',
+              attempt: 1,
+              status: 'done',
+              duration_seconds: 240,
+              tokens_so_far: 22000,
+              activity_link: '/api/v1/plans/fix-relay/tasks/TASK-001/activity',
+            },
+            mockPlan.nodes[1].leaf_tasks[0],
+          ],
+        },
+        mockPlan.nodes[2],
+      ],
+    };
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(planWithDoneTask);
+    vi.spyOn(apiClient, 'getTaskActivity').mockImplementation(async (_planId, taskId) => ({
+      ...mockActivity,
+      task_id: taskId,
+      entries:
+        taskId === 'TASK-001'
+          ? [
+              {
+                timestamp: '13:40:02',
+                kind: 'text',
+                content: 'The transport now reconnects with backoff.',
+              },
+            ]
+          : mockActivity.entries,
+    }));
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    await fireEvent.click(screen.getByTestId('task-TASK-001'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('activity-feed')).toHaveTextContent(
+        'The transport now reconnects with backoff.',
+      ),
+    );
+    expect(screen.getByTestId('activity-feed')).toHaveTextContent('TASK-001');
+    expect(screen.getByTestId('activity-feed')).not.toHaveTextContent('TASK-003');
+  });
+
+  it('shows the explicit task empty state for a done task without activity', async () => {
+    const planWithQuietTask: ProcessTree = {
+      ...mockPlan,
+      nodes: [
+        mockPlan.nodes[0],
+        {
+          ...mockPlan.nodes[1],
+          leaf_tasks: [
+            {
+              task_id: 'TASK-002',
+              role: 'module-tester',
+              harness: 'claude',
+              model: 'sonnet',
+              attempt: 1,
+              status: 'done',
+              duration_seconds: 180,
+              tokens_so_far: 15000,
+            },
+          ],
+        },
+        mockPlan.nodes[2],
+      ],
+    };
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(planWithQuietTask);
+    vi.spyOn(apiClient, 'getTaskActivity').mockImplementation(async (_planId, taskId) => {
+      if (taskId === 'TASK-002') {
+        throw new Error('no activity route');
+      }
+      return mockActivity;
+    });
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    await fireEvent.click(screen.getByTestId('task-TASK-002'));
+
+    const empty = await screen.findByTestId('task-no-activity');
+    expect(empty).toHaveTextContent('No activity entries yet.');
+    expect(screen.queryByTestId('plan-error')).not.toBeInTheDocument();
+  });
+
+  it('keeps the selection when the expand toggle collapses a node', async () => {
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    await screen.findByTestId('activity-feed');
+
+    const toggle = screen.getByTestId('toggle-node-execute');
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const panelBefore = screen.getByTestId('task-inspector').textContent;
+
+    await fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByTestId('task-inspector')).toHaveAttribute('data-selected-kind', 'task');
+    expect(screen.getByTestId('task-inspector').textContent).toBe(panelBefore);
+    expect(screen.queryByTestId('node-narrative')).not.toBeInTheDocument();
+  });
+
+  it('keeps a node selection across a refresh and falls back when it disappears', async () => {
+    let onEvent: ((event: string, data?: unknown) => void) | undefined;
+    vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
+      onEvent = callback;
+      return () => {};
+    });
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    await fireEvent.click(screen.getByTestId('select-node-init'));
+    expect(await screen.findByTestId('node-narrative-title')).toHaveTextContent('init');
+
+    onEvent?.('plan.changed');
+    await waitFor(() =>
+      expect(screen.getByTestId('node-narrative-title')).toHaveTextContent('init'),
+    );
+
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
+      ...mockPlan,
+      nodes: mockPlan.nodes.filter((node) => node.node_id !== 'init'),
+    });
+    onEvent?.('plan.changed');
+
+    await waitFor(() =>
+      expect(screen.getByTestId('task-inspector')).toHaveAttribute('data-selected-kind', 'task'),
+    );
+    expect(screen.queryByTestId('node-narrative')).not.toBeInTheDocument();
+    expect(screen.getByTestId('task-TASK-003')).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('selects the first visible node when no task is running', async () => {
+    runtimeStore.update((state) => ({ ...state, selectedTaskId: null }));
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue({
+      ...mockPlan,
+      nodes: [
+        mockPlan.nodes[0],
+        {
+          ...mockPlan.nodes[1],
+          state: 'planned',
+          leaf_tasks: [],
+        },
+        mockPlan.nodes[2],
+      ],
+    });
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(screen.getByTestId('task-inspector')).toHaveAttribute('data-selected-kind', 'node');
+    expect(screen.getByTestId('node-narrative-title')).toHaveTextContent('init');
+    expect(apiClient.getTaskActivity).not.toHaveBeenCalled();
+  });
+
+  it('makes the row body a separately announced selection control', async () => {
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    const select = screen.getByTestId('select-node-init');
+    const toggle = screen.getByTestId('toggle-node-init');
+
+    expect(select.tagName).toBe('BUTTON');
+    expect(select).toHaveAccessibleName(/init/);
+    expect(select.querySelector('button')).toBeNull();
+    expect(toggle).toHaveAccessibleName('Toggle node');
+
+    await fireEvent.click(select);
+
+    expect(select).toHaveAttribute('aria-current', 'true');
+    expect(select).toHaveAttribute('aria-pressed', 'true');
+    expect(select.closest('.node-row')).toHaveClass('node-row--selected');
+  });
 });

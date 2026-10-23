@@ -63,7 +63,7 @@ How the app is organised and how one moves from one part to another and back. Un
 |link:../shared/plan-overview.adoc[Plan Overview] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]), with the ended plans and epics (link:../shared/plan-overview.adoc#ended[Ended Work]) and their read-only chat (link:../shared/work-actions.adoc#chat-ended[A Chat About Ended Work])
 
 |A plan
-|link:../shared/plan-view.adoc[Plan View] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]); a plan's reference to its epic is a link
+|link:../shared/plan-view.adoc[Plan View] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]) with link:plan-view-interaction.adoc[Plan View Interaction] for the tree/narrative selection semantics; a plan's reference to its epic is a link
 
 |An epic
 |link:../shared/epic-view.adoc[Epic View] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5])

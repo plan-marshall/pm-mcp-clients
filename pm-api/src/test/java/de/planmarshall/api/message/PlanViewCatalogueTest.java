@@ -71,6 +71,17 @@ class PlanViewCatalogueTest {
                 "plan.node.kind.job",
                 "plan.node.kind.tasks",
                 "plan.node.kind.waits",
+                "plan.node.select",
+                "plan.node.narrative",
+                "plan.node.child_tasks",
+                "plan.node.child_nodes",
+                "plan.node.waits_for",
+                "plan.node.prune_reason",
+                "plan.node.attempt",
+                "plan.node.no_activity",
+                "plan.node.has_activity",
+                "plan.node.no_activity_link",
+                "plan.node.run",
                 "plan.not_in_plan.group",
                 "plan.not_in_plan.reason",
                 "plan.leaf.tasks_done",
@@ -98,7 +109,8 @@ class PlanViewCatalogueTest {
                 "plan.activity.kind.answer_ack",
                 "plan.activity.server_only",
                 "plan.activity.gap",
-                "plan.activity.off_track"
+                "plan.activity.off_track",
+                "plan.activity.select_item"
         };
 
         for (String key : requiredKeys) {

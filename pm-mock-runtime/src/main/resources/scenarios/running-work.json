@@ -520,7 +520,6 @@
                     "status": "done",
                     "duration_seconds": 180,
                     "tokens_so_far": 18000,
-                    "activity_link": "/api/v1/plans/fix-relay/tasks/TASK-002/activity",
                     "outcome": "success"
                   },
                   {
@@ -1134,6 +1133,247 @@
             "flagged_tasks": 4
           }
         ]
+      }
+    },
+    "GET /api/v1/plans/session-log/process": {
+      "representation": {
+        "plan_id": "session-log",
+        "title": "Session log and generations",
+        "project": {
+          "project_id": "pm-mcp-core",
+          "display_name": "pm-mcp-core",
+          "link": "/api/v1/projects/pm-mcp-core"
+        },
+        "current_phase": "execute",
+        "phase_state": "running",
+        "activity": "execute.session-log · TASK-003",
+        "needs_operator": false,
+        "instance_version": 1,
+        "tokens_so_far": {
+          "total": 76000,
+          "input": 68000,
+          "output": 8000,
+          "floor": false,
+          "tasks_total": 3,
+          "tasks_measured": 3,
+          "none_yet": false,
+          "not_measured": false
+        },
+        "nodes": [
+          {
+            "node_id": "init",
+            "title": "phase init",
+            "kind": "phase",
+            "state": "done",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 90,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "refine",
+            "title": "phase refine",
+            "kind": "phase",
+            "state": "done",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 600,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "outline",
+            "title": "phase outline",
+            "kind": "phase",
+            "state": "done",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 1200,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "plan",
+            "title": "phase plan",
+            "kind": "phase",
+            "state": "done",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 420,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "execute",
+            "title": "phase execute",
+            "kind": "phase",
+            "state": "running",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 1800,
+            "sub_nodes": [
+              {
+                "node_id": "execute.session-log",
+                "title": "execute.session-log",
+                "kind": "tasks",
+                "state": "running",
+                "run_count": 1,
+                "current_run": 1,
+                "duration_seconds": 900,
+                "sub_nodes": [],
+                "leaf_tasks": [
+                  {
+                    "task_id": "TASK-001",
+                    "role": "implement",
+                    "harness": "claude",
+                    "model": "sonnet",
+                    "attempt": 1,
+                    "status": "done",
+                    "duration_seconds": 240,
+                    "tokens_so_far": 22000,
+                    "activity_link": "/api/v1/plans/session-log/tasks/TASK-001/activity",
+                    "outcome": "success"
+                  },
+                  {
+                    "task_id": "TASK-002",
+                    "role": "module-tester",
+                    "harness": "claude",
+                    "model": "sonnet",
+                    "attempt": 1,
+                    "status": "done",
+                    "duration_seconds": 180,
+                    "tokens_so_far": 15000,
+                    "outcome": "success"
+                  },
+                  {
+                    "task_id": "TASK-003",
+                    "role": "implement",
+                    "harness": "claude",
+                    "model": "sonnet",
+                    "attempt": 1,
+                    "status": "running",
+                    "duration_seconds": 420,
+                    "tokens_so_far": 39000,
+                    "activity_link": "/api/v1/plans/session-log/tasks/TASK-003/activity"
+                  }
+                ]
+              }
+            ],
+            "leaf_tasks": []
+          },
+          {
+            "node_id": "finalize",
+            "title": "phase finalize",
+            "kind": "phase",
+            "state": "planned",
+            "run_count": 0,
+            "current_run": 0,
+            "duration_seconds": 0,
+            "sub_nodes": [],
+            "leaf_tasks": []
+          }
+        ],
+        "current_position_path": [
+          "execute",
+          "execute.session-log",
+          "TASK-003"
+        ],
+        "duration_seconds": 5400
+      }
+    },
+    "GET /api/v1/plans/session-log/tasks/TASK-001/activity": {
+      "representation": {
+        "task_id": "TASK-001",
+        "role": "implement",
+        "harness": "claude",
+        "model": "sonnet",
+        "attempt": 1,
+        "duration_seconds": 240,
+        "tokens_so_far": 22000,
+        "entries": [
+          {
+            "timestamp": "12:10:02",
+            "kind": "text",
+            "content": "The session log now keeps its narrative per generation."
+          },
+          {
+            "timestamp": "12:10:18",
+            "kind": "tool_call",
+            "tool_name": "read",
+            "tool_target": "pm-mcp-core/src/main/java/…/SessionLog.java",
+            "tool_failed": false
+          },
+          {
+            "timestamp": "12:11:04",
+            "kind": "file_changed",
+            "files": [
+              "pm-mcp-core/src/main/java/…/SessionLog.java"
+            ]
+          },
+          {
+            "timestamp": "12:11:20",
+            "kind": "link",
+            "tool_target": "submit:TASK-001"
+          },
+          {
+            "timestamp": "12:11:32",
+            "kind": "question",
+            "content": "Should the narrative keep the previous generation inline?",
+            "questions": [
+              "Keep the previous generation inline?"
+            ]
+          }
+        ],
+        "server_only": false,
+        "gap_count": 0
+      }
+    },
+    "GET /api/v1/plans/session-log/tasks/TASK-003/activity": {
+      "representation": {
+        "task_id": "TASK-003",
+        "role": "implement",
+        "harness": "claude",
+        "model": "sonnet",
+        "attempt": 1,
+        "duration_seconds": 420,
+        "tokens_so_far": 39000,
+        "entries": [
+          {
+            "timestamp": "12:20:11",
+            "kind": "text",
+            "content": "Reading the generation store before changing the narrative."
+          },
+          {
+            "timestamp": "12:20:15",
+            "kind": "tool_call",
+            "tool_name": "read",
+            "tool_target": "pm-mcp-core/src/main/java/…/GenerationStore.java",
+            "tool_failed": false
+          },
+          {
+            "timestamp": "12:20:42",
+            "kind": "file_changed",
+            "files": [
+              "pm-mcp-core/src/main/java/…/GenerationStore.java"
+            ]
+          },
+          {
+            "timestamp": "12:21:03",
+            "kind": "link",
+            "tool_target": "submit:TASK-003"
+          },
+          {
+            "timestamp": "12:21:09",
+            "kind": "question",
+            "content": "Should a generation without activity still appear in the log?",
+            "questions": [
+              "Show generations without activity?"
+            ]
+          }
+        ],
+        "server_only": false,
+        "gap_count": 0
       }
     }
   },
