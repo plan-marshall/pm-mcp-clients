@@ -9,7 +9,7 @@ import { loadMessages } from '../../test/catalogue-fixture';
  *
  * The check reads every source of the package and asserts that
  *
- * 1. every `data-advisory` expression passes only `.title` keys,
+ * 1. every `data-advisory` expression reads a catalogue key through `$t`, and only `.title` keys,
  * 2. every referenced `.title` key exists in English and in German, and
  * 3. for an advisory key whose base key `X` exists, the English advisory differs from `X`.
  *
@@ -72,7 +72,11 @@ function advisoryExpressions(source: string): string[] {
  * @returns the catalogue keys it passes, including both arms of a ternary
  */
 function keysIn(expression: string): string[] {
-  return [...expression.matchAll(/'([^']+)'/g)].map((match) => match[1]);
+  // A catalogue key carries a dot; a literal placeholder value (a name, a date) does not, and is
+  // not a key the convention governs.
+  return [...expression.matchAll(/'([a-z0-9_.]+)'/gi)]
+    .map((match) => match[1])
+    .filter((value) => value.includes('.'));
 }
 
 interface Advisory {
@@ -80,9 +84,11 @@ interface Advisory {
   key: string;
 }
 
+const ADVISORY_EXPRESSIONS: Array<{ file: string; expression: string }> = [];
 const ADVISORIES: Advisory[] = [];
 for (const source of SOURCES) {
   for (const expression of advisoryExpressions(source.text)) {
+    ADVISORY_EXPRESSIONS.push({ file: source.relative, expression });
     for (const key of keysIn(expression)) {
       ADVISORIES.push({ file: source.relative, key });
     }
@@ -97,8 +103,14 @@ for (const source of SOURCES) {
 }
 
 describe('the advisory key convention', () => {
-  it('passes only .title keys to data-advisory', () => {
+  it('passes a catalogue .title key to every data-advisory', () => {
     expect(ADVISORIES.length).toBeGreaterThan(0);
+
+    const literal = ADVISORY_EXPRESSIONS.filter((entry) => !entry.expression.includes('$t(')).map(
+      (entry) => `${entry.file}: ${entry.expression.replace(/\s+/g, ' ').slice(0, 80)}`,
+    );
+    expect(literal).toEqual([]);
+
     const offenders = ADVISORIES.filter((entry) => !entry.key.endsWith('.title')).map(
       (entry) => `${entry.file}: ${entry.key}`,
     );
