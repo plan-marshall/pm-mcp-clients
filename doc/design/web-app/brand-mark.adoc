@@ -1,0 +1,109 @@
+= Design: Web App, Brand Mark
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:README.adoc[Web App] » Brand Mark
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1] (enter and connect), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1] (follow a plan down to its parts)_
+
+_Relies on: link:README.adoc#frame[Web App, The Frame] (where the mark sits), link:workflow-visual-language.adoc[Workflow Visual Language] (the visual grammar and the SVG contract the mark also follows), link:interaction-affordances.adoc[Interaction Affordances] (the brand's advisory)_
+
+Status: `AGREED`. This document is the authority for the project's own mark: what it is drawn from, what its parts mean, how it is delivered, and how it is used beside the brand text.
+
+image::../../resources/diagrams/plan-marshall-brand-mark.svg[The plan-marshall brand mark,240,align=center]
+
+[#purpose]
+== What the Mark Is
+
+The mark is the web app's own sign: three ascending plan sheets, a baton across them, and a node at the leading edge. It sits in the header beside the visible word `plan-marshall`, and it is the same drawing in the browser tab.
+
+It replaces the character `✦`, which read as a generic sparkle rather than as this project. The mark is original artwork, drawn for this project; it is not a licensed icon, a stock glyph, or a copy of another product's logo.
+
+[#construction]
+== Construction
+
+[cols="1,2",options="header"]
+|===
+|Rule |Drawing
+
+|Grid
+|`24 × 24` coordinate space, drawing inside `2..22` on both axes. No part relies on the rendered size.
+
+|Colour
+|One colour, `currentColor`, in both the fills and the stroke. No gradient, no baked-in hex, no shadow.
+
+|Sheets
+|Three filled plan sheets rising left to right, each with a slanted top edge and a vertical outer edge. Their heights step up: the first ends above the baseline, the second higher, the third highest.
+
+|Baton
+|One round-capped diagonal rod from the lower left to the upper right, resting across the first two sheets and pointing at the third.
+
+|Node
+|One small filled dot at the leading edge of the third sheet, where the baton points.
+
+|Silhouette
+|One readable outline at `20` and `24` px. The shapes are told apart by the silhouette, not by colour; there is no text, no letter, and no four-point sparkle in the drawing.
+|===
+
+[#meaning]
+== Meaning of the Parts
+
+[cols="1,3",options="header"]
+|===
+|Part |Reading
+
+|The three ascending sheets
+|The plan's stages, in order: a plan is read as a sequence that moves upward and forward, never as a single document.
+
+|The baton
+|The marshal's direction: the plan is led, not merely filed. The rod crosses the sheets and points at the leading one.
+
+|The node
+|The runtime at the leading edge: the point that is running now, the one the plan view jumps to.
+
+|The whole
+|Upright, forward-moving, and plan-led; the same character the mascot carries, abstracted into geometry rather than copied from its illustration.
+|===
+
+[#provenance]
+== Provenance
+
+* *Original.* The geometry was drawn from this brief. It is not traced, auto-vectorised, resampled, embedded, or otherwise derived from `planmarshall.png`, and the PNG is never shipped with the app.
+* *No third-party mark.* No vendor logo, icon-font glyph, stock icon, or remote asset is copied or referenced. The baton is a plan document's rod, not a brand's device; the mark deliberately avoids the four-point sparkle that reads as another assistant's logo.
+* *Licence.* The drawing is the project's own, under the repository's licence, like the generated workflow icons (link:workflow-visual-language.adoc#provenance[Workflow Visual Language, Provenance]).
+* *Recorded source.* The delivered vector is `pm-web-app/src/lib/icons/brand/plan-marshall-mark.svg`. The browser-tab copy is `pm-web-app/static/brand-mark.svg`.
+
+[#implementation]
+== Implementation
+
+`pm-web-app/src/lib/components/BrandMark.svelte` renders the delivered file as a CSS mask, the same pattern as `WorkflowIcon`:
+
+* `background-color: currentColor`, so the mark follows the surrounding text colour.
+* `inline-size` and `block-size` from the `size` prop: `24` in the header, `20` on a compact surface.
+* `aria-hidden="true"` by default; a `label` turns it into `role="img"` with that accessible name.
+* `data-testid="brand-mark"`.
+
+The header keeps its `app-header__logo` wrapper (spacing, `color: var(--color-primary)`) and the brand text beside the mark. The linked and the inert brand both carry the mark; only the wrapper differs.
+
+[#theme]
+== Theme and Contrast
+
+`currentColor` inherits `--color-primary` in the header, so the mark is the primary blue in both themes and the theme switch needs no separate asset. The mark is a solid silhouette of a saturated colour, so its contrast against the surface is well above the `3:1` a graphical object needs; the check is visual in both themes, and the mark is never the only carrier of a meaning.
+
+The browser-tab copy bakes in the light-theme primary (`#2563eb`) because a standalone SVG has no page context for `currentColor`. That makes the tab legible on a light and a dark tab strip; the in-app mark keeps `currentColor`.
+
+[#accessibility]
+== Accessibility
+
+* The mark is decorative beside the visible word `plan-marshall`: `aria-hidden="true"`, no focus stop, no name of its own.
+* The brand's accessible name is the visible text, with the header button's `aria-label` (`web.frame.home`) where the brand is a link.
+* The mark adds no animation, no colour-only state, and no meaning that the text does not also carry.
+
+[#usage]
+== Usage Rules
+
+* Use the delivered file; do not redraw, recolour, rotate, or add a background plate to it.
+* Keep the `24` px size in the header and do not scale the mark above `24` px in the interface; a larger use needs a reviewed asset.
+* Keep the visible brand text beside the mark. The mark never stands alone as the only identifier of the project.
+* Record a new size or a new surface in this document before shipping it.

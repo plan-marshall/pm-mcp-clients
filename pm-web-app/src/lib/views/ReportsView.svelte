@@ -623,7 +623,7 @@
             <button
               class="action-btn action-btn--detail"
               disabled
-              title={$t('report.detail.deleted_by_cleanup', {
+              data-advisory={$t('report.action.details.deleted.title', {
                 item: subjectLabelOf(item),
                 date: item.created || item.created_at,
               })}
@@ -637,12 +637,20 @@
               })}
             </span>
           {:else}
-            <button class="action-btn action-btn--detail" onclick={() => openDetail(item)}>
+            <button
+              class="action-btn action-btn--detail"
+              data-advisory={$t('report.action.details.title')}
+              onclick={() => openDetail(item)}
+            >
               {$t('report.action.details')}
             </button>
           {/if}
         {/if}
-        <button class="action-btn action-btn--read" onclick={() => markRead(item)}>
+        <button
+          class="action-btn action-btn--read"
+          data-advisory={$t('report.action.mark_read.title')}
+          onclick={() => markRead(item)}
+        >
           {$t('report.action.mark_read')}
         </button>
       </div>
@@ -677,7 +685,12 @@
               onchange={(mode) => layout.set(mode)}
             />
             {#if items.length > 0}
-              <Button variant="secondary" size="small" onclick={markAllShownRead}>
+              <Button
+                variant="secondary"
+                size="small"
+                onclick={markAllShownRead}
+                data-advisory={$t('report.action.mark_all_read.title')}
+              >
                 {$t('report.action.mark_all_read')}
               </Button>
             {/if}
@@ -792,7 +805,12 @@
             </p>
           {/if}
           <div class="pagination-bar">
-            <Button variant="secondary" disabled={isLoadingOlder} onclick={loadOlder}>
+            <Button
+              variant="secondary"
+              disabled={isLoadingOlder}
+              onclick={loadOlder}
+              data-advisory={$t('report.list.show_older.title')}
+            >
               {#if isLoadingOlder}
                 {$t('report.list.loading_older')}
               {:else if olderCount > 0}

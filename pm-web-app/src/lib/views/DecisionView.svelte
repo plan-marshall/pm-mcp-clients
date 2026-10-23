@@ -728,13 +728,18 @@
                 </div>
 
                 <footer class="card-actions">
-                  <Button variant="secondary" onclick={() => handleLater(dec.id)}>
+                  <Button
+                    variant="secondary"
+                    onclick={() => handleLater(dec.id)}
+                    data-advisory={$t('decision.waiver.later.title')}
+                  >
                     {$t('decision.waiver.later')}
                   </Button>
                   <Button
                     variant="danger"
                     disabled={!waiverReasons[dec.id]?.trim() || isSubmitting[dec.id]}
                     onclick={() => handleWaiver(dec.id, 'decline')}
+                    data-advisory={$t('decision.waiver.decline.title')}
                   >
                     {$t('decision.waiver.decline')}
                   </Button>
@@ -742,6 +747,7 @@
                     variant="primary"
                     disabled={!waiverReasons[dec.id]?.trim() || isSubmitting[dec.id]}
                     onclick={() => handleWaiver(dec.id, 'waive')}
+                    data-advisory={$t('decision.waiver.waive.title')}
                   >
                     {$t('decision.waiver.waive')}
                   </Button>
@@ -777,6 +783,11 @@
                     <button
                       type="button"
                       class="evidence-toggle"
+                      data-advisory={$t(
+                        showEvidence[dec.id]
+                          ? 'decision.evidence.hide.title'
+                          : 'decision.evidence.show.title',
+                      )}
                       onclick={() => toggleEvidence(dec.id)}
                     >
                       {$t(
@@ -928,6 +939,7 @@
                             type="button"
                             class="btn-toggle-own-words"
                             disabled={isChatting(dec)}
+                            data-advisory={$t('decision.answer.own_words.title')}
                             onclick={() => {
                               const key = keyOf(dec, part, pIdx);
                               ownWordsMode[key] = !ownWordsMode[key];
@@ -976,6 +988,7 @@
                                     <Button
                                       size="small"
                                       variant="primary"
+                                      data-advisory={$t('decision.readback.confirm.title')}
                                       onclick={() => submitOwnWordsAnswer(dec, part, pIdx)}
                                     >
                                       {$t('decision.readback.confirm')}
@@ -1033,6 +1046,7 @@
                       isSubmittingDecision(dec) ||
                       isChatting(dec)}
                     onclick={() => submitDecision(dec)}
+                    data-advisory={$t('decision.confirm.action.title')}
                   >
                     {$t('decision.confirm.action')}
                   </Button>
@@ -1041,6 +1055,7 @@
                       variant="secondary"
                       disabled={isChatting(dec) || isSubmittingDecision(dec)}
                       onclick={() => openChat(dec)}
+                      data-advisory={$t('decision.answer.chat.title')}
                     >
                       {$t('decision.answer.chat')}
                     </Button>
@@ -1049,10 +1064,15 @@
                     variant="secondary"
                     disabled={isSubmittingDecision(dec) || isChatting(dec)}
                     onclick={() => submitWithdraw(dec)}
+                    data-advisory={$t('decision.answer.none_fits.title')}
                   >
                     {$t('decision.answer.none_fits', { subject: dec.scope || 'plan' })}
                   </Button>
-                  <Button variant="secondary" onclick={() => handleLater(dec.id)}>
+                  <Button
+                    variant="secondary"
+                    onclick={() => handleLater(dec.id)}
+                    data-advisory={$t('decision.answer.later.title')}
+                  >
                     {$t('decision.answer.later')}
                   </Button>
                 </footer>
@@ -1118,10 +1138,18 @@
       <div class="notify-banner" data-testid="notify-banner" role="region">
         <p class="notify-banner__text">{$t('decision.notify.ask')}</p>
         <div class="notify-banner__actions">
-          <Button variant="secondary" onclick={denyNotifications}>
+          <Button
+            variant="secondary"
+            onclick={denyNotifications}
+            data-advisory={$t('decision.notify.deny.title')}
+          >
             {$t('decision.notify.deny')}
           </Button>
-          <Button variant="primary" onclick={allowNotifications}>
+          <Button
+            variant="primary"
+            onclick={allowNotifications}
+            data-advisory={$t('decision.notify.allow.title')}
+          >
             {$t('decision.notify.allow')}
           </Button>
         </div>
@@ -1140,6 +1168,7 @@
               type="button"
               class="notice-dismiss"
               aria-label={$t('common.close')}
+              data-advisory={$t('decision.notice.dismiss.title')}
               onclick={() => (notices = notices.filter((entry) => entry.id !== notice.id))}
             >
               ×

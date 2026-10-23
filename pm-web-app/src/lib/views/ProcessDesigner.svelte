@@ -1405,7 +1405,11 @@
       <h2 id="leave-title" class="designer__modal-title">{$t('designer.leave.question')}</h2>
       <div class="designer__modal-actions">
         <Button variant="secondary" onclick={stayInDesigner}>{$t('designer.leave.stay')}</Button>
-        <Button variant="danger" onclick={discardDraft}>{$t('designer.leave.discard')}</Button>
+        <Button
+          variant="danger"
+          onclick={discardDraft}
+          data-advisory={$t('designer.leave.discard.title')}>{$t('designer.leave.discard')}</Button
+        >
       </div>
     </div>
   </div>

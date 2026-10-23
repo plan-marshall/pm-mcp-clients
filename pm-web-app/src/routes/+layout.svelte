@@ -22,6 +22,7 @@
   import RevokedView from '../lib/views/RevokedView.svelte';
   import LessonSourceModal from '../lib/components/LessonSourceModal.svelte';
   import GitSourceIntakeModal from '../lib/components/GitSourceIntakeModal.svelte';
+  import BrandMark from '../lib/components/BrandMark.svelte';
   import { lessonSourceModalStore, closeLessonSource } from '../lib/stores/lessonSource';
   import { gitSourceModalStore, closeGitSource } from '../lib/stores/gitSource';
 
@@ -226,6 +227,7 @@
       <div class="draining-actions">
         <button
           class="draining-btn draining-btn--stop"
+          data-advisory={$t('system.stopping.stop_now.title')}
           onclick={async () => {
             await apiClient.stopRuntime('now');
           }}
@@ -252,16 +254,16 @@
           type="button"
           class="app-header__home"
           aria-label={$t('web.frame.home')}
-          title={$t('web.frame.home.hint')}
+          data-advisory={$t('web.frame.home.title')}
           data-testid="brand-home"
           onclick={() => void openStartPage()}
         >
-          <span class="app-header__logo" aria-hidden="true">✦</span>
+          <span class="app-header__logo"><BrandMark size={24} /></span>
           <span class="app-header__title">{$t('web.frame.brand')}</span>
         </button>
       {:else}
         <span class="app-header__home app-header__home--inert" data-testid="brand-inert">
-          <span class="app-header__logo" aria-hidden="true">✦</span>
+          <span class="app-header__logo"><BrandMark size={24} /></span>
           <span class="app-header__title">{$t('web.frame.brand')}</span>
         </span>
       {/if}
@@ -331,7 +333,6 @@
         <button
           class="header-action-btn"
           aria-label={$t('web.frame.nav.designer')}
-          data-advisory={$t('web.frame.nav.designer')}
           onclick={() => navigateTo('designer')}
           data-testid="nav-designer-btn"
         >
@@ -347,6 +348,7 @@
         <button
           class="header-action-btn"
           aria-label={$t('web.frame.settings')}
+          data-advisory={$t('web.frame.settings.title')}
           onclick={() => navigateTo('settings')}
         >
           ⚙ <span class="header-action-btn__text">{$t('web.frame.settings')}</span>
@@ -357,7 +359,7 @@
         class="header-action-btn"
         onclick={toggleLocale}
         aria-label={$t('web.frame.toggle_language')}
-        data-advisory={$t('web.frame.toggle_language')}
+        data-advisory={$t('web.frame.toggle_language.title')}
       >
         {$currentLocale === 'en' ? 'DE' : 'EN'}
       </button>
@@ -366,7 +368,7 @@
         class="header-action-btn"
         onclick={toggleTheme}
         aria-label={$t('web.frame.toggle_theme')}
-        data-advisory={$t('web.frame.toggle_theme')}
+        data-advisory={$t('web.frame.toggle_theme.title')}
       >
         {theme === 'light' ? '🌙' : '☀️'}
       </button>
@@ -476,7 +478,8 @@
   }
 
   .app-header__logo {
-    font-size: var(--text-lg);
+    display: inline-flex;
+    align-items: center;
     color: var(--color-primary);
   }
 

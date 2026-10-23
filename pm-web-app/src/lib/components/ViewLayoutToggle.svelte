@@ -20,6 +20,11 @@
       class="layout-toggle__option"
       class:layout-toggle__option--active={layout === mode}
       aria-pressed={layout === mode}
+      data-advisory={mode === 'comfortable'
+        ? $t('common.layout.comfortable.title')
+        : mode === 'compact'
+          ? $t('common.layout.compact.title')
+          : $t('common.layout.split.title')}
       data-testid="layout-{mode}"
       onclick={() => onchange(mode)}
     >

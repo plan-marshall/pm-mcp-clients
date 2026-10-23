@@ -46,46 +46,49 @@ describe('the advisory title layer', () => {
     document.body.innerHTML = '';
   });
 
-  it('uses an explicit advisory first', () => {
+  it('gives a button that only carries a visible label no title', () => {
+    const button = document.createElement('button');
+    button.textContent = 'Open the report';
+    advisory(button);
+    expect(button.hasAttribute('title')).toBe(false);
+  });
+
+  it('gives a button that only carries an aria-label no title', () => {
+    const button = document.createElement('button');
+    button.textContent = '🌙';
+    button.setAttribute('aria-label', 'Toggle light/dark theme');
+    advisory(button);
+    expect(button.hasAttribute('title')).toBe(false);
+  });
+
+  it('uses the explicit advisory, which adds to the label', () => {
     const button = document.createElement('button');
     button.textContent = 'Save';
-    advisory(button, 'Save the plan');
-    expect(button.getAttribute('title')).toBe('Save the plan');
+    advisory(button, 'Save the plan and keep its tasks');
+    expect(button.getAttribute('title')).toBe('Save the plan and keep its tasks');
   });
 
-  it('falls back to the aria-label, then the visible label', () => {
-    const iconOnly = document.createElement('button');
-    iconOnly.textContent = '🌙';
-    iconOnly.setAttribute('aria-label', 'Toggle light/dark theme');
-    advisory(iconOnly);
-    expect(iconOnly.getAttribute('title')).toBe('Toggle light/dark theme');
-
-    const labelled = document.createElement('button');
-    labelled.textContent = '  Open   the report ';
-    advisory(labelled);
-    expect(labelled.getAttribute('title')).toBe('Open the report');
+  it('uses a data-advisory attribute when the view passes none explicitly', () => {
+    const button = document.createElement('button');
+    button.textContent = 'Save';
+    button.setAttribute('data-advisory', 'Save the plan and keep its tasks');
+    advisory(button);
+    expect(button.getAttribute('title')).toBe('Save the plan and keep its tasks');
   });
 
-  it('keeps an explicit title it did not write', () => {
+  it('keeps an explicit title it did not write, even when the label changes', () => {
     const button = document.createElement('button');
     button.textContent = 'Save';
     button.setAttribute('title', 'Keep my words');
     advisory(button, 'Save the plan');
     expect(button.getAttribute('title')).toBe('Keep my words');
+
+    button.textContent = 'Save now';
+    advisory(button, 'Save the plan');
+    expect(button.getAttribute('title')).toBe('Keep my words');
   });
 
-  it('removes a title it wrote when the label disappears', () => {
-    const button = document.createElement('button');
-    button.textContent = 'Save';
-    advisory(button);
-    expect(button.getAttribute('title')).toBe('Save');
-
-    button.textContent = '';
-    advisory(button);
-    expect(button.hasAttribute('title')).toBe(false);
-  });
-
-  it('follows a changed advisory and aria-label', () => {
+  it('follows a changed advisory', () => {
     const button = document.createElement('button');
     button.textContent = 'Save';
     button.setAttribute('data-advisory', 'Save the plan');
@@ -95,28 +98,37 @@ describe('the advisory title layer', () => {
     button.setAttribute('data-advisory', 'Save the draft');
     advisory(button);
     expect(button.getAttribute('title')).toBe('Save the draft');
-
-    button.removeAttribute('data-advisory');
-    button.setAttribute('aria-label', 'Save now');
-    advisory(button);
-    expect(button.getAttribute('title')).toBe('Save now');
   });
 
-  it('follows a changed visible label', async () => {
+  it('removes the title it wrote when the advisory disappears', () => {
+    const button = document.createElement('button');
+    button.textContent = 'Save';
+    button.setAttribute('data-advisory', 'Save the plan');
+    advisory(button);
+    expect(button.getAttribute('title')).toBe('Save the plan');
+
+    button.removeAttribute('data-advisory');
+    advisory(button);
+    expect(button.hasAttribute('title')).toBe(false);
+  });
+
+  it('follows a changed advisory of a button rendered before it was installed', async () => {
     const root = document.createElement('main');
     document.body.appendChild(root);
-    stop = installAdvisoryTitles(root);
-
     const button = document.createElement('button');
-    button.textContent = 'Delete';
+    button.textContent = 'Save';
+    button.setAttribute('data-advisory', 'Save the plan');
     root.appendChild(button);
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(button.getAttribute('title')).toBe('Delete');
+    stop = installAdvisoryTitles(root);
+    expect(button.getAttribute('title')).toBe('Save the plan');
 
-    // A text node that changes in place is followed through characterData.
-    (button.firstChild as CharacterData).data = 'Archive';
+    button.setAttribute('data-advisory', 'Save the draft');
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(button.getAttribute('title')).toBe('Archive');
+    expect(button.getAttribute('title')).toBe('Save the draft');
+
+    button.removeAttribute('data-advisory');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(button.hasAttribute('title')).toBe(false);
   });
 
   it('applies the rule to buttons rendered after it was installed', async () => {
@@ -124,12 +136,18 @@ describe('the advisory title layer', () => {
     document.body.appendChild(root);
     stop = installAdvisoryTitles(root);
 
-    const button = document.createElement('button');
-    button.textContent = 'Delete';
-    root.appendChild(button);
+    const labelled = document.createElement('button');
+    labelled.textContent = 'Delete';
+    root.appendChild(labelled);
+
+    const advised = document.createElement('button');
+    advised.textContent = 'Delete';
+    advised.setAttribute('data-advisory', 'Delete the plan and its worktree');
+    root.appendChild(advised);
 
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(button.getAttribute('title')).toBe('Delete');
+    expect(labelled.hasAttribute('title')).toBe(false);
+    expect(advised.getAttribute('title')).toBe('Delete the plan and its worktree');
   });
 });
 

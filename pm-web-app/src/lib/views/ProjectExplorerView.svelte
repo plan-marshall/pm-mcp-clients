@@ -466,6 +466,7 @@
           <button
             class="search-clear-btn"
             aria-label={$t('project.explorer.clear_filter')}
+            data-advisory={$t('project.explorer.clear_filter.title')}
             onclick={() => {
               filter = '';
             }}
@@ -538,6 +539,9 @@
                     aria-label={project.is_favourite
                       ? $t('project.action.unfavourite')
                       : $t('project.action.favourite')}
+                    data-advisory={project.is_favourite
+                      ? $t('project.action.unfavourite.title')
+                      : $t('project.action.favourite.title')}
                     onclick={() => handleToggleFavourite(project)}
                     data-testid="star-btn-{project.project_id}"
                   >
@@ -632,6 +636,7 @@
                         releaseError = null;
                       }}
                       data-testid="release-btn-{project.project_id}"
+                      data-advisory={$t('project.action.release.title')}
                     >
                       {$t('project.action.release')}
                     </button>
@@ -643,6 +648,7 @@
                       unenrolError = null;
                     }}
                     data-testid="unenrol-btn-{project.project_id}"
+                    data-advisory={$t('project.action.unenrol.title')}
                   >
                     {$t('project.action.unenrol')}
                   </button>
@@ -737,6 +743,7 @@
                   <button
                     class="fav-toggle-btn fav-toggle-btn--active"
                     aria-label={$t('project.action.unfavourite')}
+                    data-advisory={$t('project.action.unfavourite.title')}
                     onclick={() => handleToggleFavourite(project)}
                     data-testid="star-btn-{project.project_id}"
                   >
@@ -831,6 +838,7 @@
                         releaseError = null;
                       }}
                       data-testid="release-btn-{project.project_id}"
+                      data-advisory={$t('project.action.release.title')}
                     >
                       {$t('project.action.release')}
                     </button>
@@ -842,6 +850,7 @@
                       unenrolError = null;
                     }}
                     data-testid="unenrol-btn-{project.project_id}"
+                    data-advisory={$t('project.action.unenrol.title')}
                   >
                     {$t('project.action.unenrol')}
                   </button>
@@ -863,6 +872,7 @@
                   <button
                     class="fav-toggle-btn"
                     aria-label={$t('project.action.favourite')}
+                    data-advisory={$t('project.action.favourite.title')}
                     onclick={() => handleToggleFavourite(project)}
                     data-testid="star-btn-{project.project_id}"
                   >
@@ -957,6 +967,7 @@
                         releaseError = null;
                       }}
                       data-testid="release-btn-{project.project_id}"
+                      data-advisory={$t('project.action.release.title')}
                     >
                       {$t('project.action.release')}
                     </button>
@@ -968,6 +979,7 @@
                       unenrolError = null;
                     }}
                     data-testid="unenrol-btn-{project.project_id}"
+                    data-advisory={$t('project.action.unenrol.title')}
                   >
                     {$t('project.action.unenrol')}
                   </button>
@@ -997,6 +1009,9 @@
                     aria-label={project.is_favourite
                       ? $t('project.action.unfavourite')
                       : $t('project.action.favourite')}
+                    data-advisory={project.is_favourite
+                      ? $t('project.action.unfavourite.title')
+                      : $t('project.action.favourite.title')}
                     onclick={() => handleToggleFavourite(project)}
                     data-testid="star-btn-{project.project_id}"
                   >
@@ -1091,6 +1106,7 @@
                         releaseError = null;
                       }}
                       data-testid="release-btn-{project.project_id}"
+                      data-advisory={$t('project.action.release.title')}
                     >
                       {$t('project.action.release')}
                     </button>
@@ -1102,6 +1118,7 @@
                       unenrolError = null;
                     }}
                     data-testid="unenrol-btn-{project.project_id}"
+                    data-advisory={$t('project.action.unenrol.title')}
                   >
                     {$t('project.action.unenrol')}
                   </button>

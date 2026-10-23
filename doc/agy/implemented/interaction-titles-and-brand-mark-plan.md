@@ -14,16 +14,16 @@ Both changes are front-end plus catalogue work in `pm-mcp-clients`. No server, A
 
 | Dimension | Reference |
 |---|---|
-| **Use Cases** | [`UC-ENT-1`](../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1) (Enter and Connect), [`UC-PLN-1`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1) (Follow a Plan Down to Its Parts), [`UC-PLN-4`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4) (See What Runs), [`UC-PLN-6`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6) (Catch Up on What Happened) |
+| **Use Cases** | [`UC-ENT-1`](../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1) (Enter and Connect), [`UC-PLN-1`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1) (Follow a Plan Down to Its Parts), [`UC-PLN-4`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4) (See What Runs), [`UC-PLN-6`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6) (Catch Up on What Happened) |
 | **Requirements** | `PM-SEC-7` (both clients as dependable views) |
-| **Advisory layer today** | [`advisoryTitle.ts`](../../pm-web-app/src/lib/utils/advisoryTitle.ts) — `titleFor` falls back to `data-advisory`, `aria-label`, then `textContent` |
-| **Shared button** | [`Button.svelte`](../../pm-web-app/src/lib/components/Button.svelte) |
-| **Header today** | [`+layout.svelte`](../../pm-web-app/src/routes/+layout.svelte) — two `✦` spans (`brand-home`, `brand-inert`) |
-| **Existing icon pattern** | [`WorkflowIcon.svelte`](../../pm-web-app/src/lib/components/WorkflowIcon.svelte), [`workflowIcons.ts`](../../pm-web-app/src/lib/icons/workflowIcons.ts) — delivered SVGs, CSS mask, `currentColor` |
-| **Visual authority** | [`workflow-visual-language.adoc`](../design/web-app/workflow-visual-language.adoc) (grid, provenance, accessibility rules this mark must also satisfy) |
+| **Advisory layer today** | [`advisoryTitle.ts`](../../../pm-web-app/src/lib/utils/advisoryTitle.ts) — `titleFor` falls back to `data-advisory`, `aria-label`, then `textContent` |
+| **Shared button** | [`Button.svelte`](../../../pm-web-app/src/lib/components/Button.svelte) |
+| **Header today** | [`+layout.svelte`](../../../pm-web-app/src/routes/+layout.svelte) — two `✦` spans (`brand-home`, `brand-inert`) |
+| **Existing icon pattern** | [`WorkflowIcon.svelte`](../../../pm-web-app/src/lib/components/WorkflowIcon.svelte), [`workflowIcons.ts`](../../../pm-web-app/src/lib/icons/workflowIcons.ts) — delivered SVGs, CSS mask, `currentColor` |
+| **Visual authority** | [`workflow-visual-language.adoc`](../../design/web-app/workflow-visual-language.adoc) (grid, provenance, accessibility rules this mark must also satisfy) |
 | **Mascot (inspiration only)** | `/Users/oliver/git/plan-marshall-documentation/doc/resources/planmarshall.png` |
-| **Existing tests** | [`layout.test.ts`](../../pm-web-app/src/routes/layout.test.ts), [`catalogue.test.ts`](../../pm-web-app/src/lib/i18n/catalogue.test.ts), [`chrome.spec.js`](../../pm-web-e2e/tests/chrome.spec.js) |
-| **Operational SOP** | [`runbook.md`](runbook.md) |
+| **Existing tests** | [`layout.test.ts`](../../../pm-web-app/src/routes/layout.test.ts), [`catalogue.test.ts`](../../../pm-web-app/src/lib/i18n/catalogue.test.ts), [`chrome.spec.js`](../../../pm-web-e2e/tests/chrome.spec.js) |
+| **Operational SOP** | [`runbook.md`](../runbook.md) |
 
 ### 1.1 Finding Analysis
 
@@ -108,22 +108,22 @@ Both changes are front-end plus catalogue work in `pm-mcp-clients`. No server, A
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-titles-and-brand-mark` on branch `feat/titles-and-brand-mark` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the advisory behavior and component;
   - `pm-dev-frontend:css` for the mask sizing, header alignment, and theme contrast;
   - `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing` for the behavior and source-contract tests;
   - `plan-marshall-persona-security-expert` for the tooltip/text trust surface (no HTML injection);
   - `plan-marshall-persona-documenter` for the convention, provenance, and report;
   - `plan-marshall-persona-code-reviewer` for review triage.
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Completion report written (`doc/agy/interaction-titles-and-brand-mark-plan-report.md`), plan moved to `doc/agy/implemented/`, links rebased, dashboard updated.
-- [ ] 5. Pre-commit passed: `./mvnw verify -Ppre-commit`.
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Completion report written (`doc/agy/interaction-titles-and-brand-mark-plan-report.md`), plan moved to `doc/agy/implemented/`, links rebased, dashboard updated.
+- [x] 5. Pre-commit passed: `./mvnw verify -Ppre-commit`.
 - [ ] 6. PR opened (never `skip-bot-review` on worker PRs); review windows and all bot/Sonar findings resolved.
 - [ ] 7. Enqueued in the merge queue, landed on `main`, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and the report moved to `doc/agy/verified/` by the orchestrator.
 
 > [!IMPORTANT]
-> **Plan archival link rule**: this plan is written at `doc/agy/`; its links use `../design`, `../../pm-web-app`, `../../pm-api`, `../../pm-web-e2e`, `../../../plan-marshall-documentation`, and `implemented/<name>.md`. When Step 4 moves it, rebase every link and re-run the internal-link check.
+> **Plan archival link rule**: this plan is written at `doc/agy/`; its links use `../../design`, `../../../pm-web-app`, `../../../pm-api`, `../../../pm-web-e2e`, `../../../../plan-marshall-documentation`, and `<name>.md`. When Step 4 moves it, rebase every link and re-run the internal-link check.
 
 ---
 
@@ -143,17 +143,17 @@ Both changes are front-end plus catalogue work in `pm-mcp-clients`. No server, A
 
 ### Phase 1: Advisory Behavior (`pm-web-app`)
 
-- [ ] **1.1 Change `titleFor`**
+- [x] **1.1 Change `titleFor`**
   - Candidates: explicit `title` (already protected), then `data-advisory`. Stop there.
   - Remove `visibleLabelOf` from the candidate path (keep it only if a test needs it, otherwise delete the helper).
   - If neither candidate is non-empty, return `''`; `applyAdvisory` then removes a generated `title` and does not add one.
-- [ ] **1.2 Keep authored titles**
+- [x] **1.2 Keep authored titles**
   - A view-authored `title` (current value ≠ the value in `generatedTitles`) is never overwritten.
   - A changed `data-advisory` updates the generated title, as today.
-- [ ] **1.3 Update `Button.svelte` only if needed**
+- [x] **1.3 Update `Button.svelte` only if needed**
   - It already spreads `data-advisory` through `$$restProps` and applies `use:advisory`; confirm the prop is not swallowed.
   - Native `<button>` and `<a>` controls rely on `installAdvisoryTitles`; the observer's attribute filter already includes `data-advisory` and `title`.
-- [ ] **1.4 Tests for the behavior**
+- [x] **1.4 Tests for the behavior**
   - a button with only visible text gets **no** `title`;
   - a button with `aria-label` and no advisory gets **no** `title`;
   - a button with `data-advisory` gets exactly that `title`;
@@ -163,7 +163,7 @@ Both changes are front-end plus catalogue work in `pm-mcp-clients`. No server, A
 
 ### Phase 2: Key Convention and Audit (`pm-api`, `pm-web-app`)
 
-- [ ] **2.1 Add `.title` keys next to their label keys**
+- [x] **2.1 Add `.title` keys next to their label keys**
   - Use the label key as the identifier; append `.title`.
   - Example pairs:
     - `plan.path.jump` / `plan.path.jump.title=Jump to the position that runs now and expand its path`;
@@ -176,83 +176,83 @@ Both changes are front-end plus catalogue work in `pm-mcp-clients`. No server, A
     - `common.layout.split` / `common.layout.split.title=Show the list and the selected item side by side`;
     - `plan.view.toggle_node` / `plan.view.toggle_node.title=Expand or collapse this part without changing the narrative`.
   - All values in `common`, `plan_view`, `designer`, `reports`, `decisions`, `overview`, and `epic_view` English and German files.
-- [ ] **2.2 Audit every interaction element**
+- [x] **2.2 Audit every interaction element**
   - Use a source sweep for `<Button`, `<button`, `data-advisory`, and `title=` in `pm-web-app/src`.
   - For each control, choose one of: (a) no tooltip (label is sufficient), (b) `.title` key with new information.
   - Required categories: icon-only controls, destructive/irreversible actions, actions with a scope beyond the visible item (mark all read, load older), toggles/segmented controls, filter clear, pagination, tree toggle, back/navigation.
   - Remove any `title` whose text is identical to the visible label; do not leave a duplicate behind.
-- [ ] **2.3 Migrate the existing authored titles**
+- [x] **2.3 Migrate the existing authored titles**
   - `web.frame.home.hint` → `web.frame.home.title`; apply it as `data-advisory`.
   - `report.detail.deleted_by_cleanup` → `report.action.details.deleted.title` (parameterized).
   - Any other `title=` on an interactive element: rename to `X.title` or delete if duplicate.
-- [ ] **2.4 Add the deterministic convention check**
+- [x] **2.4 Add the deterministic convention check**
   - New `advisoryTitle.convention.test.ts` (or a case in `catalogue.test.ts`):
     - scan `pm-web-app/src` for `data-advisory={$t('…')}`; every key ends in `.title`;
     - every referenced key exists in both catalogues;
     - for every `.title` key with a base key, `en[base] !== en[title]`;
     - fail with the offending file/key.
-- [ ] **2.5 Catalogue parity**
+- [x] **2.5 Catalogue parity**
   - `./mvnw -pl pm-api test` (or the focused catalogue tests) proves both locales carry every key.
 
 ### Phase 3: Brand Mark (`pm-web-app`)
 
-- [ ] **3.1 Draw the mark**
+- [x] **3.1 Draw the mark**
   - File: `pm-web-app/src/lib/icons/brand/plan-marshall-mark.svg`.
   - Grid `24 × 24`, drawing `2..22`, `fill`/`stroke` = `currentColor` only, no `<text>`, no `<style>`, no metadata, no raster.
   - Construction: three offset plan sheets rising left-to-right (the plan stages), a diagonal baton/chevron crossing them (the marshal's direction), and one small dot/node at the leading edge (the runtime). The silhouette must remain legible at 20 px and must not resemble a four-point sparkle.
   - Original artwork; the mascot informs character (upright, forward-moving, plan-led), not geometry. Record in the provenance table that the PNG was not traced, embedded, or resampled.
-- [ ] **3.2 Add `BrandMark.svelte`**
+- [x] **3.2 Add `BrandMark.svelte`**
   - `import markUrl from '../icons/brand/plan-marshall-mark.svg?url';`
   - CSS mask with `background-color: currentColor`, `inline-size`/`block-size` from a `size` prop (20 or 24), `aria-hidden={label ? undefined : 'true'}`, `role={label ? 'img' : undefined}`, `aria-label={label}`, `data-testid="brand-mark"`.
-- [ ] **3.3 Replace the header glyph**
+- [x] **3.3 Replace the header glyph**
   - In `+layout.svelte`, replace both `<span class="app-header__logo" aria-hidden="true">✦</span>` occurrences with `<BrandMark size={24} />`.
   - Keep the `app-header__logo` wrapper class for spacing and `color: var(--color-primary)`; adjust the CSS to `display: inline-flex` if the mask needs a box.
   - Keep `brand-home`'s `aria-label`, its `title` (now `data-advisory` / `.title`), and the inert branch unchanged.
-- [ ] **3.4 Optional favicon**
+- [x] **3.4 Optional favicon**
   - Add `pm-web-app/static/brand-mark.svg` (copy of the mark) and `<link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/brand-mark.svg" />` in `src/app.html`.
   - Verify the static adapter copies it; if not, record it as a follow-up.
-- [ ] **3.5 Contrast and sizing**
+- [x] **3.5 Contrast and sizing**
   - Light and dark theme: `currentColor` follows `--color-primary`; no hard-coded fill.
   - 24 px in the header, aligned with the brand text baseline; no layout shift versus `✦`.
 
 ### Phase 4: Tests
 
-- [ ] **4.1 `advisoryTitle` tests** (Phase 1 list).
-- [ ] **4.2 Convention test** (Phase 2.4).
-- [ ] **4.3 `BrandMark.test.ts`**
+- [x] **4.1 `advisoryTitle` tests** (Phase 1 list).
+- [x] **4.2 Convention test** (Phase 2.4).
+- [x] **4.3 `BrandMark.test.ts`**
   - renders `[data-testid="brand-mark"]` with `aria-hidden="true"` by default;
   - `label` gives `role="img"` and the accessible name;
   - the SVG file parses, has `viewBox="0 0 24 24"`, contains `currentColor`, and contains no `<text>`, `<image>`, `<style>`, or `data:image`;
   - source sweep: no `✦` remains in `pm-web-app/src`.
-- [ ] **4.4 `layout.test.ts`**
+- [x] **4.4 `layout.test.ts`**
   - `brand-home` and `brand-inert` each contain one brand mark;
   - the header still shows the brand text and the click still calls `openStartPage`;
   - the brand link's advisory is the `.title` value, not the visible label.
-- [ ] **4.5 Playwright (`chrome.spec.js`, `entry.spec.js`)**
+- [x] **4.5 Playwright (`chrome.spec.js`, `entry.spec.js`)**
   - the mark is visible in the header at desktop and mobile widths;
   - clicking the brand still navigates home;
   - a representative button (plan jump, report details, or mark-all-read) has a `title` that differs from its visible text;
   - a button with no advisory has no `title`.
-- [ ] **4.6 Accessibility**
+- [x] **4.6 Accessibility**
   - the mark is decorative beside the text and adds no focus stop;
   - no tooltip is the only name of a control;
   - the brand's accessible name remains the visible `plan-marshall` text plus the `aria-label`.
 
 ### Phase 5: Documentation, Verification, Report
 
-- [ ] **5.1 `doc/design/web-app/interaction-affordances.adoc`**
+- [x] **5.1 `doc/design/web-app/interaction-affordances.adoc`**
   - the `X` → `X.title` rule, the “add information, never restate” rule, and the “no useful sentence → no tooltip” rule;
   - the audit categories and the convention test as the enforcement.
-- [ ] **5.2 `doc/design/web-app/brand-mark.adoc`**
+- [x] **5.2 `doc/design/web-app/brand-mark.adoc`**
   - grid, construction, meaning, provenance (original, mascot not traced), sizing, theme, accessibility, and the favicon decision.
-- [ ] **5.3 Verification**
+- [x] **5.3 Verification**
   - `cd pm-web-app && npm test -- advisoryTitle BrandMark layout catalogue`;
   - `npm run check`, `npm run lint`;
   - `./mvnw -pl pm-api test` for catalogue parity;
   - the Playwright chrome/entry specs;
   - `./mvnw verify -Ppre-commit`.
-- [ ] **5.4 Report** `doc/agy/interaction-titles-and-brand-mark-plan-report.md`: the before/after of a duplicate title and a distinct one, the audit table (control → key → decision), the brand mark at 20/24 px in both themes, the provenance statement, and the exact commands/results.
-- [ ] **5.5 Archive**: move the plan to `doc/agy/implemented/`, rebase links, update the dashboard, keep the report for Step 8.
+- [x] **5.4 Report** `doc/agy/interaction-titles-and-brand-mark-plan-report.md`: the before/after of a duplicate title and a distinct one, the audit table (control → key → decision), the brand mark at 20/24 px in both themes, the provenance statement, and the exact commands/results.
+- [x] **5.5 Archive**: move the plan to `doc/agy/implemented/`, rebase links, update the dashboard, keep the report for Step 8.
 
 ---
 

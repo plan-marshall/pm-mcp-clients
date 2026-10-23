@@ -1,10 +1,11 @@
 /**
- * The hover advisory of an action: every button explains itself, without repeating copy in every
- * view.
+ * The hover advisory of an action: a control says something the visible label does not, or it says
+ * nothing at all.
  *
- * The title comes from an explicit advisory, an existing `title`, an `aria-label`, or the visible
- * label, in that order. An explicit `title` is never overwritten: a control that already explains
- * itself keeps its own words.
+ * The title comes from an explicit advisory only: the words a view authored as its `title`, or the
+ * `data-advisory` a view passes from an `X.title` catalogue key. The visible label and the
+ * `aria-label` never become a title, so a button no longer repeats itself on hover. An explicit
+ * `title` is never overwritten: a control that already explains itself keeps its own words.
  */
 
 /** The attribute a view uses to give a control words that differ from its visible label. */
@@ -14,44 +15,25 @@ const ADVISORY_ATTRIBUTE = 'data-advisory';
  * The title this layer wrote on each button.
  *
  * A title that differs from this value was authored by the view and is never overwritten. Keeping
- * the value also lets a changed `data-advisory`, `aria-label`, or visible label update the hover
- * text instead of freezing the first title.
+ * the value also lets a changed `data-advisory` update the hover text instead of freezing the first
+ * title.
  */
 const generatedTitles = new WeakMap<HTMLElement, string>();
 
 /**
  * @param node the button
- * @returns the trimmed visible label, or an empty string for an icon-only control
- */
-function visibleLabelOf(node: HTMLElement): string {
-  return (node.textContent ?? '').replace(/\s+/g, ' ').trim();
-}
-
-/**
- * @param node the button
- * @returns the first non-empty candidate for its title
+ * @param explicit the words the view chose for it
+ * @returns the explicit advisory, or an empty string when the control has none
  */
 function titleFor(node: HTMLElement, explicit?: string): string {
-  const candidates = [
-    explicit,
-    node.getAttribute(ADVISORY_ATTRIBUTE) ?? undefined,
-    node.getAttribute('aria-label') ?? undefined,
-    visibleLabelOf(node),
-  ];
-  for (const candidate of candidates) {
-    const text = candidate?.trim();
-    if (text) {
-      return text;
-    }
-  }
-  return '';
+  return (explicit ?? node.getAttribute(ADVISORY_ATTRIBUTE) ?? '').trim();
 }
 
 /**
  * Sets the title of a button unless the view authored one.
  *
  * @param node the button
- * @param explicit the words the view chose for it, e.g. a catalogue hint
+ * @param explicit the words the view chose for it, e.g. a catalogue advisory
  */
 function applyAdvisory(node: HTMLElement, explicit?: string): void {
   const current = node.getAttribute('title')?.trim() ?? '';
@@ -96,7 +78,8 @@ export function advisory(
  * Applies the advisory rule to every native button, now and as views render later.
  *
  * This is the safety net for the buttons the shared `Button` component does not render. It never
- * overwrites an explicit `title`, so a view keeps the words it chose.
+ * overwrites an explicit `title`, so a view keeps the words it chose. A button with neither an
+ * authored `title` nor a `data-advisory` keeps no `title` at all.
  *
  * @param root the subtree to watch, the document by default
  * @returns the cleanup that stops the observer
@@ -116,14 +99,6 @@ export function installAdvisoryTitles(root: ParentNode = document): () => void {
 
   const observer = new MutationObserver((records) => {
     for (const record of records) {
-      if (record.type === 'characterData') {
-        // A label whose text changed keeps its advisory in step with it.
-        const button = record.target.parentElement?.closest('button');
-        if (button) {
-          visit(button);
-        }
-        continue;
-      }
       if (record.type === 'attributes') {
         visit(record.target as Element);
         continue;
@@ -131,11 +106,6 @@ export function installAdvisoryTitles(root: ParentNode = document): () => void {
       record.addedNodes.forEach((added) => {
         if (added.nodeType === Node.ELEMENT_NODE) {
           visitTree(added as Element);
-        } else if (added.nodeType === Node.TEXT_NODE) {
-          const button = added.parentElement?.closest('button');
-          if (button) {
-            visit(button);
-          }
         }
       });
     }
@@ -143,9 +113,8 @@ export function installAdvisoryTitles(root: ParentNode = document): () => void {
   observer.observe(root as Node, {
     childList: true,
     subtree: true,
-    characterData: true,
     attributes: true,
-    attributeFilter: ['aria-label', ADVISORY_ATTRIBUTE, 'title'],
+    attributeFilter: [ADVISORY_ATTRIBUTE, 'title'],
   });
 
   return () => observer.disconnect();
