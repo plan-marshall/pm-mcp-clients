@@ -12,9 +12,15 @@ package de.planmarshall.mock;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 
 import org.junit.jupiter.api.DisplayName;
@@ -214,6 +220,30 @@ class PlanViewScenarioTest {
                     var data = JsonTree.asObject(JsonTree.parse(event.data()));
                     assertEquals("assistant_text", JsonTree.string(data, "kind"));
                     assertTrue(JsonTree.string(data, "text").contains("Analyzing"));
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("does not seed an explicitly empty task activity route")
+        void emptyActivityDoesNotSeed() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                try (var exchange = client.open(HttpRequest
+                             .get("/api/v1/plans/session-log/tasks/TASK-002/activity/events")
+                             .withHeader(AUTH_HEADER, auth))) {
+                    assertTrue(exchange.isEventStream());
+                    var future = CompletableFuture.supplyAsync(() -> {
+                        try {
+                            return exchange.events().next();
+                        } catch (IOException e) {
+                            throw new UncheckedIOException(e);
+                        }
+                    });
+                    assertThrows(TimeoutException.class,
+                                        () -> future.get(400, TimeUnit.MILLISECONDS));
                 }
             }
         }
