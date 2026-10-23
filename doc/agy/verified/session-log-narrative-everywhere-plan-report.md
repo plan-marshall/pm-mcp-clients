@@ -197,13 +197,14 @@ The gate completed with a clean working tree: no uncommitted OpenRewrite reforma
 | **C2** | The dashboard still linked the moved plan at the old path, called it “Staged”, and contained duplicate rows for the later streams. `implemented/README.md` still said “PR pending”. | `doc/agy/README.md`, `doc/agy/implemented/README.md`. | Dashboard rows and Stream G/H now name the implemented plan, PR #192/#191/#194/#195, and the report; the duplicate session-log and stream rows were removed. |
 | **C3** | A nested `not_in_plan` sub-node was rendered and offered as selectable, while `findNode`/`findTask` deliberately skip it. Selecting it left the inspector without a subject; its tasks could also appear in the parent narrative. | Recursive tree snippet and `NodeNarrative` `subNodes`/`collectLeafTasks`. | The tree, the pruned group (now collected at every depth), and the narrative all skip `not_in_plan` parts and their tasks consistently. A unit test covers the nested case. |
 | **C4** | The new node selection copied the old hard-coded `rgba(59, 130, 246, 0.1)` instead of the theme token. | `.node-row--selected` and `.task-row--selected`. | Both use `var(--color-primary-subtle)`, so light and dark themes follow the token. |
-| **C5** | The mock runtime seeded every task-activity stream with a synthetic “Analyzing module dependencies…” event, so an explicit empty route was immediately repopulated when the inspector subscribed. | `MockRuntimeEngine.sendActivitySeed`; the Playwright empty-feed check failed against the live mock. | `sendActivitySeed` now skips a task whose explicit activity route has an empty `entries` list; the live Playwright check passes. |
+| **C5** | The mock runtime seeded every task-activity stream with a synthetic “Analyzing module dependencies…” event, so an explicit empty route was immediately repopulated when the inspector subscribed. | `MockRuntimeEngine.sendActivitySeed`; the Playwright empty-feed check failed against the live mock. | `sendActivitySeed` now skips a task whose explicit activity route has an empty `entries` list; `MockRuntimeEngineActivitySeedTest` covers the route decision and the live Playwright check passes. |
 
 ### 7.2 Files touched by the cleanup
 
 - `pm-mock-runtime/src/main/resources/scenarios/running-work.json`
 - `pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json`
 - `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java`
+- `pm-mock-runtime/src/test/java/de/planmarshall/mock/runtime/MockRuntimeEngineActivitySeedTest.java`
 - `pm-web-app/src/lib/api/scenarioContracts.test.ts`
 - `pm-web-app/src/lib/views/PlanView.svelte`
 - `pm-web-app/src/lib/views/PlanView.test.ts`
@@ -262,7 +263,7 @@ Executed on the cleanup branch:
 - `npx playwright test tests/plan-view.spec.js` passed all 5 tests, including the live empty-feed check.
 - `./mvnw verify -Ppre-commit` completed with `BUILD SUCCESS` across the reactor; the working tree stayed clean.
 
-The live check also exposed C5: the mock runtime's synthetic activity seed repopulated the empty feed. `MockRuntimeEngine.sendActivitySeed` now skips a task whose explicit activity route has an empty `entries` list, and the Playwright check passes against the live runtime.
+The live check also exposed C5: the mock runtime's synthetic activity seed repopulated the empty feed. `MockRuntimeEngine.sendActivitySeed` now skips a task whose explicit activity route has an empty `entries` list; `MockRuntimeEngineActivitySeedTest` covers the true/false route decision and the Playwright check passes against the live runtime.
 
 ### 8.4 Pillar 4 — Independent Diff & Attribution
 

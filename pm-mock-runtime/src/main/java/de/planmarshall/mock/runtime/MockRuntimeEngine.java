@@ -5566,7 +5566,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param taskId the task named by the activity scope
      * @return {@code true} when the scenario declares an explicit activity route with no entries
      */
-    private boolean hasEmptyActivityRoute(String planId, String taskId) {
+    boolean hasEmptyActivityRoute(String planId, String taskId) {
         var route = activeRoute("GET", "/api/v1/plans/" + planId + "/tasks/" + taskId + "/activity");
         return route != null
                 && route.representation() instanceof Map<?, ?> representation
