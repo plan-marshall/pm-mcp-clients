@@ -102,8 +102,8 @@ while [ $# -gt 0 ]; do
             shift 2
             ;;
         -d|--device-secret)
-            if [ $# -lt 2 ]; then
-                echo "Error: $1 requires a secret." >&2
+            if [ $# -lt 2 ] || [ -z "$2" ]; then
+                echo "Error: $1 requires a non-empty secret." >&2
                 exit 1
             fi
             HAS_DEVICE_SECRET=true
