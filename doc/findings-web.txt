@@ -6,9 +6,11 @@ doc/agy/implemented/web-session-pairing-and-dev-host-plan.md.
 Post-landing follow-ups from the verified report are planned in
 doc/agy/implemented/web-session-follow-up-fixes-plan.md.
 
-Two live dev-loop findings (Vite rejecting the printed `mac-mini.local` host,
-and the session secret changing with the checkout/build) are planned in
-doc/agy/web-dev-host-and-session-persistence-plan.md.
+The dev-host and session-persistence findings (Vite rejecting the printed
+`mac-mini.local` host, and the session secret changing with the
+checkout/build) were resolved in PR #180; the plan is archived at
+doc/agy/implemented/web-dev-host-and-session-persistence-plan.md and the
+report at doc/agy/verified/web-dev-host-and-session-persistence-plan-report.md.
 
 The workflow visual-language work (the `pmwf` `icon` field, the visual
 specification, the icon set, and the web usage) is planned in
