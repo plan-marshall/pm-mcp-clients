@@ -632,7 +632,49 @@ describe('PlanView component', () => {
     expect(screen.getByTestId('activity-feed')).not.toHaveTextContent('TASK-003');
   });
 
-  it('shows the explicit task empty state for a done task without activity', async () => {
+  it('shows the empty feed for a done task whose explicit activity route is empty', async () => {
+    const planWithQuietTask: ProcessTree = {
+      ...mockPlan,
+      nodes: [
+        mockPlan.nodes[0],
+        {
+          ...mockPlan.nodes[1],
+          leaf_tasks: [
+            {
+              task_id: 'TASK-002',
+              role: 'module-tester',
+              harness: 'claude',
+              model: 'sonnet',
+              attempt: 1,
+              status: 'done',
+              duration_seconds: 180,
+              tokens_so_far: 15000,
+            },
+          ],
+        },
+        mockPlan.nodes[2],
+      ],
+    };
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(planWithQuietTask);
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      ...mockActivity,
+      task_id: 'TASK-002',
+      role: 'module-tester',
+      entries: [],
+    });
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+    await fireEvent.click(screen.getByTestId('task-TASK-002'));
+
+    const feed = await screen.findByTestId('activity-feed');
+    expect(feed).toHaveTextContent('TASK-002');
+    expect(screen.getByText('No activity entries yet.')).toBeInTheDocument();
+    expect(screen.queryAllByTestId('activity-entry')).toHaveLength(0);
+    expect(screen.queryByTestId('task-no-activity')).not.toBeInTheDocument();
+  });
+
+  it('shows the fallback empty state when a task activity request fails', async () => {
     const planWithQuietTask: ProcessTree = {
       ...mockPlan,
       nodes: [
@@ -670,6 +712,57 @@ describe('PlanView component', () => {
     const empty = await screen.findByTestId('task-no-activity');
     expect(empty).toHaveTextContent('No activity entries yet.');
     expect(screen.queryByTestId('plan-error')).not.toBeInTheDocument();
+  });
+
+  it('keeps a nested not_in_plan node out of the tree and the narrative', async () => {
+    const prunedTask = {
+      task_id: 'TASK-900',
+      role: 'implement',
+      harness: 'claude',
+      model: 'sonnet',
+      attempt: 1,
+      status: 'done',
+      duration_seconds: 60,
+      tokens_so_far: 1000,
+    };
+    const planWithNestedPruned: ProcessTree = {
+      ...mockPlan,
+      nodes: [
+        mockPlan.nodes[0],
+        {
+          ...mockPlan.nodes[1],
+          leaf_tasks: [],
+          sub_nodes: [
+            {
+              node_id: 'execute.pruned',
+              title: 'removed step',
+              kind: 'sub_workflow',
+              state: 'not_in_plan',
+              run_count: 0,
+              current_run: 0,
+              duration_seconds: 0,
+              prune_reason: 'not needed',
+              sub_nodes: [],
+              leaf_tasks: [prunedTask],
+            },
+          ],
+        },
+        mockPlan.nodes[2],
+      ],
+    };
+    vi.spyOn(apiClient, 'getPlanProcess').mockResolvedValue(planWithNestedPruned);
+
+    render(PlanView);
+    await screen.findByTestId('plan-title');
+
+    expect(screen.queryByTestId('select-node-execute.pruned')).not.toBeInTheDocument();
+    expect(screen.getByTestId('not-in-plan-box')).toHaveTextContent('removed step');
+    expect(screen.getByTestId('not-in-plan-box')).toHaveTextContent('not needed');
+
+    const narrative = await screen.findByTestId('node-narrative');
+    expect(narrative).not.toHaveTextContent('removed step');
+    expect(screen.queryByTestId('node-child-task-TASK-900')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('node-child-node-execute.pruned')).not.toBeInTheDocument();
   });
 
   it('keeps the selection when the expand toggle collapses a node', async () => {

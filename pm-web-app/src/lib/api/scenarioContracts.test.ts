@@ -30,7 +30,7 @@ interface ProcessTreeShape {
   current_position_path?: string[];
 }
 
-/** The tasks with neither an `activity_link` nor an activity route, on purpose. */
+/** The tasks with no link but an explicit, empty activity route, on purpose. */
 const ACTIVITY_LESS_TASKS = new Set(['fix-relay/TASK-002', 'session-log/TASK-002']);
 
 /**
@@ -96,8 +96,18 @@ describe('canonical scenario process contracts', () => {
       expect(file.routes['GET /api/v1/plans/session-log/process']).toBeDefined();
       expect(file.routes['GET /api/v1/plans/session-log/tasks/TASK-001/activity']).toBeDefined();
       expect(file.routes['GET /api/v1/plans/session-log/tasks/TASK-003/activity']).toBeDefined();
-      // TASK-002 is done without a worker activity route on purpose.
-      expect(file.routes['GET /api/v1/plans/session-log/tasks/TASK-002/activity']).toBeUndefined();
+      // TASK-002 is done with no activity. Its explicit route must answer an empty feed; a
+      // missing route would be filled by the mock runtime's generic dynamic fallback.
+      const quietRoute = file.routes['GET /api/v1/plans/session-log/tasks/TASK-002/activity'];
+      expect(quietRoute).toBeDefined();
+      if (!quietRoute) throw new Error('session-log TASK-002 activity route is missing');
+      expect((quietRoute.representation as { entries?: unknown[] }).entries).toEqual([]);
+
+      const quietResponse = await scenarioFetch(name).fetch(
+        'http://localhost/api/v1/plans/session-log/tasks/TASK-002/activity',
+      );
+      expect(quietResponse.status).toBe(200);
+      expect(((await quietResponse.json()) as { entries?: unknown[] }).entries).toEqual([]);
 
       const response = await scenarioFetch(name).fetch(
         'http://localhost/api/v1/plans/session-log/process',
@@ -145,25 +155,32 @@ describe('canonical scenario process contracts', () => {
             expect(file.routes[`GET ${task.activityLink}`], route).toBeDefined();
           } else {
             activityLess++;
-            expect(file.routes[route], route).toBeUndefined();
+            const quietRoute = file.routes[route];
+            expect(quietRoute, route).toBeDefined();
+            if (!quietRoute) throw new Error(route + ' is missing');
+            expect((quietRoute.representation as { entries?: unknown[] }).entries, route).toEqual(
+              [],
+            );
           }
         }
       }
 
-      // A done task without activity proves the explicit empty state in the plan view.
+      // A done task with an explicit empty route proves the empty feed state in the plan view.
       expect(activityLess).toBeGreaterThan(0);
-      // The fixture that carries the empty-state case is named, so a fixture edit cannot quietly
-      // turn the branch back into an ordinary link.
+      // The fixture that carries the empty-feed case is named, so a fixture edit cannot quietly
+      // turn the branch back into an ordinary link or a missing route.
       for (const identity of ACTIVITY_LESS_TASKS) {
         const [planId, taskId] = identity.split('/');
         const task = leafTasksOf(processes.get(planId) ?? {}).find(
           (candidate) => candidate.taskId === taskId,
         );
         expect(task?.activityLink, identity).toBeNull();
-        expect(
-          file.routes[`GET /api/v1/plans/${planId}/tasks/${taskId}/activity`],
-          identity,
-        ).toBeUndefined();
+        const quietRoute = file.routes[`GET /api/v1/plans/${planId}/tasks/${taskId}/activity`];
+        expect(quietRoute, identity).toBeDefined();
+        if (!quietRoute) throw new Error(identity + ' activity route is missing');
+        expect((quietRoute.representation as { entries?: unknown[] }).entries, identity).toEqual(
+          [],
+        );
       }
     });
   }

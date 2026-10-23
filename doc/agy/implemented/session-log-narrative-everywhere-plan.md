@@ -94,7 +94,7 @@ The work is confined to `pm-mcp-clients`. The runtime contract is unchanged: no 
 - [x] 4. Completion report written (`doc/agy/session-log-narrative-everywhere-plan-report.md`), plan moved to `doc/agy/implemented/`, links rebased, dashboard updated.
 - [x] 5. Pre-commit passed: `./mvnw verify -Ppre-commit` (covers the web-app and scenario tests).
 - [x] 6. PR #192 opened (never `skip-bot-review`); review windows observed; all CodeRabbit findings resolved; SonarCloud quality gate passed; Sourcery was rate-limited by its own budget and CodeRabbit re-review was rate-limited, both with no findings.
-- [ ] 7. Enqueued in the merge queue, landed on `main`, worktree and branch cleaned up.
+- [x] 7. Enqueued in the merge queue, landed on `main` as PR #192, worktree and branch cleaned up.
 - [ ] 8. Post-landing verification performed and the report moved to `doc/agy/verified/` by the orchestrator.
 
 > [!IMPORTANT]

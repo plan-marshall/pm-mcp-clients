@@ -79,6 +79,20 @@
 
   let expandedNodes = $state<Record<string, boolean>>({});
 
+  /** Every node the process omitted from the tree, at any depth. */
+  let prunedNodes = $derived(collectNotInPlan(plan?.nodes ?? []));
+
+  /** The distinct reasons of the omitted nodes, shown once in the pruned group. */
+  let prunedReason = $derived(
+    [
+      ...new Set(
+        prunedNodes
+          .map((node) => node.prune_reason)
+          .filter((reason): reason is string => Boolean(reason)),
+      ),
+    ].join(' · '),
+  );
+
   let unsubscribeEvents: (() => void) | null = null;
   let unsubscribeActivity: (() => void) | null = null;
   /**
@@ -508,8 +522,32 @@
     return selection?.kind === 'node' && selection.nodeId === nodeId;
   }
 
+  /**
+   * @param nodes the process tree
+   * @returns every omitted node at any depth, without descending into an omitted node
+   */
+  function collectNotInPlan(nodes: ProcessNode[]): ProcessNode[] {
+    const pruned: ProcessNode[] = [];
+    for (const node of nodes) {
+      if (node.state === 'not_in_plan') {
+        pruned.push(node);
+        continue;
+      }
+      pruned.push(...collectNotInPlan(node.sub_nodes ?? []));
+    }
+    return pruned;
+  }
+
+  /**
+   * @param node a process node
+   * @returns its sub-nodes that the tree shows
+   */
+  function visibleSubNodes(node: ProcessNode): ProcessNode[] {
+    return (node.sub_nodes ?? []).filter((child) => child.state !== 'not_in_plan');
+  }
+
   function hasChildren(node: ProcessNode): boolean {
-    return (node.sub_nodes?.length ?? 0) > 0 || (node.leaf_tasks?.length ?? 0) > 0;
+    return visibleSubNodes(node).length > 0 || (node.leaf_tasks?.length ?? 0) > 0;
   }
 </script>
 
@@ -822,7 +860,7 @@
             {#if expandedNodes[node.node_id]}
               <div class="node-children">
                 {#if node.sub_nodes && node.sub_nodes.length > 0}
-                  {#each node.sub_nodes as child (child.node_id)}
+                  {#each visibleSubNodes(node) as child (child.node_id)}
                     {@render processNode(child, 'sub')}
                   {/each}
                 {/if}
@@ -866,14 +904,15 @@
           {/each}
 
           <!-- Pruned / Not in plan section -->
-          {#if plan.nodes.some((n) => n.state === 'not_in_plan')}
-            {@const pruned = plan.nodes.filter((n) => n.state === 'not_in_plan')}
+          {#if prunedNodes.length > 0}
             <div class="not-in-plan-box" data-testid="not-in-plan-box">
               <span class="not-in-plan-glyph">·</span>
               <span class="not-in-plan-text">
-                {$t('plan.not_in_plan.group')}: {pruned.map((n) => n.title).join(', ')}
-                {#if pruned[0]?.prune_reason}
-                  ({pruned[0].prune_reason})
+                {$t('plan.not_in_plan.group')}: {prunedNodes
+                  .map((node) => stripControlSequences(node.title))
+                  .join(', ')}
+                {#if prunedReason}
+                  ({stripControlSequences(prunedReason)})
                 {/if}
               </span>
             </div>
@@ -1270,7 +1309,7 @@
   }
 
   .node-row--selected {
-    background-color: rgba(59, 130, 246, 0.1);
+    background-color: var(--color-primary-subtle);
   }
 
   .node-select {
@@ -1379,7 +1418,7 @@
   }
 
   .task-row--selected {
-    background-color: rgba(59, 130, 246, 0.1);
+    background-color: var(--color-primary-subtle);
     border-color: var(--color-accent, #3b82f6);
   }
 

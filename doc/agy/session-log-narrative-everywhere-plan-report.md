@@ -3,6 +3,7 @@
 **Plan:** [`session-log-narrative-everywhere-plan.md`](implemented/session-log-narrative-everywhere-plan.md)
 **Branch:** `feat/session-log-narrative`
 **Worktree:** `/Users/oliver/git/worktrees/pm-mcp-clients-session-log-narrative`
+**Status:** Landed (PR #192); Step 8 pending; post-landing cleanup applied (see §7).
 
 ---
 
@@ -41,10 +42,10 @@ No server, endpoint, `pm-api` process record, or live-event format changed. A no
 
 | File | Change |
 |---|---|
-| `src/main/resources/scenarios/running-work.json` | `GET /api/v1/plans/session-log/process`; `TASK-001` and `TASK-003` activity routes; done phases with no leaf tasks; `TASK-002` done without activity. |
+| `src/main/resources/scenarios/running-work.json` | `GET /api/v1/plans/session-log/process`; `TASK-001` and `TASK-003` activity routes; an explicit empty activity route for `TASK-002`; done phases with no leaf tasks. |
 | `src/main/resources/scenarios/fully-onboarded.json` | The same `session-log` route and activity routes, so the showroom scenario exercises the same structure. |
 
-`fix-relay` `TASK-002` decision: it stays a **done task without worker activity**. The stale `activity_link` was removed (no route existed for it), so the “No activity recorded” marker and the task's empty feed are both truthful. The contract test asserts every remaining `activity_link` has a matching route and that the named activity-less tasks have neither.
+`fix-relay` `TASK-002` decision: it stays a **done task without worker activity**. The stale `activity_link` was removed, and both it and `session-log` `TASK-002` carry an explicit empty activity route (`entries: []`). The “No activity recorded” marker is therefore truthful, and clicking the task shows an empty feed rather than the mock runtime's generic dynamic fallback. The contract test asserts every remaining `activity_link` has a matching route and that the named activity-less tasks answer an empty feed.
 
 ### Documentation
 
@@ -57,7 +58,7 @@ No server, endpoint, `pm-api` process record, or live-event format changed. A no
 
 | File | Change |
 |---|---|
-| `pm-web-e2e/tests/plan-view.spec.js` | Opens `session-log` from the overview, asserts the positive two-panel structure, narrates a done phase, opens a done task's feed, and proves the expand toggle leaves the selection and inspector unchanged. Existing `fix-relay` assertions remain. |
+| `pm-web-e2e/tests/plan-view.spec.js` | Opens `session-log` from the overview, asserts the positive two-panel structure, narrates a done phase, opens a done task's feed, proves the explicit empty route, and proves the expand toggle leaves the selection and inspector unchanged. Existing `fix-relay` assertions remain. |
 
 ---
 
@@ -142,6 +143,8 @@ $ ./mvnw verify -Ppre-commit
 
 The gate completed with a clean working tree: no uncommitted OpenRewrite reformatting and no untracked build artifacts.
 
+> **Cleanup note:** the post-landing cleanup (§7) adds an explicit empty activity route for `TASK-002`, the matching contract/component/Playwright assertions, and the nested-`not_in_plan` filtering. The counts above are from the original implementation run and predate those additions; Step 8 owns the re-run.
+
 ---
 
 ## 4. Acceptance Criteria
@@ -150,7 +153,7 @@ The gate completed with a clean working tree: no uncommitted OpenRewrite reforma
 |---|---|---|
 | **F1** | Any visible phase, sub-workflow, task group, or task opens a right-hand narrative; no tree item leaves the panel at “select a task”. | **Met.** Row bodies are native buttons; `data-selected-kind` is `node` or `task`; default selection always names a visible item. Unit and Playwright evidence above. |
 | **F2** | `GET /api/v1/plans/session-log/process` exists in both canonical scenarios and the plan opens from the overview. | **Met.** Route added to `running-work.json` and `fully-onboarded.json`; contract test and Playwright open `session-log` from the overview. |
-| **F2** | A done leaf task with activity shows entries; a done leaf task without activity shows the explicit empty state. | **Met.** `TASK-001` (session-log, fix-relay) shows entries; `TASK-002` (both) shows the explicit task empty state. |
+| **F2** | A done leaf task with activity shows entries; a done leaf task without activity shows the explicit empty state. | **Met.** `TASK-001` (session-log, fix-relay) shows entries; `TASK-002` (both) has no `activity_link` and an explicit empty activity route, so its feed is empty and the node narrative marks it “No activity recorded”. |
 | **F3** | The panel distinguishes nothing selected, node with no task-level activity, and task with no entries. | **Met.** Three distinct keys: `plan.activity.select_item`, `plan.node.no_activity`, `plan.activity.empty`. |
 | **F4** | A refresh keeps a still-existing selection; a vanished subject falls back deterministically. | **Met.** `PlanView.test.ts` keeps `init` across `plan.changed` and falls back to the running task when `init` disappears. |
 | **F5** | The left tree and right narrative remain side by side, with the existing order, toggles, glyphs, and leaf feed. | **Met.** Layout, order, expand/collapse, glyphs, and the existing task feed are unchanged; Playwright asserts both panels visible. |
@@ -178,4 +181,36 @@ The gate completed with a clean working tree: no uncommitted OpenRewrite reforma
 
 - This report remains in `doc/agy/` for the orchestrator's post-landing verification; it is **not** moved to `doc/agy/verified/` by this session.
 - The plan is moved to [`doc/agy/implemented/`](implemented/) with its internal links rebased.
-- The only deliberate fixture adjustment beyond the plan text is the removal of the stale `fix-relay` `TASK-002` `activity_link`; the task remains done and activity-less, matching finding F2 and the plan's “done task without activity” requirement.
+- The fixture adjustments beyond the plan text are the removal of the stale `fix-relay` `TASK-002` `activity_link` and the explicit empty activity routes for `fix-relay` and `session-log` `TASK-002`. The tasks remain done and activity-less; the explicit empty route keeps the empty feed truthful instead of letting the mock runtime's generic fallback answer.
+
+---
+
+## 7. Post-Landing Static Analysis & Cleanup (Orchestrator)
+
+**Status:** cleanup applied locally; no build or test run was part of this analysis pass. Step 8 still owns the executable gates.
+
+### 7.1 Findings
+
+| # | Finding | Evidence | Correction |
+|---|---|---|---|
+| **C1** | The first report claimed `TASK-002` had no activity route, but the mock runtime answers an unknown task-activity path with a copy of `fix-relay/TASK-003` (`task_id` replaced). The empty feed would therefore never appear in the running showroom. | `MockRuntimeEngine.handleProcessRoutes` dynamic fallback; the scenario route table had no `TASK-002` route. | Added an **explicit empty** activity route for `fix-relay/TASK-002` and `session-log/TASK-002` in both canonical scenarios; explicit routes win over the fallback. Strengthened the scenario contract to assert `200` with `entries: []`, added a component test for the empty response, and added the Playwright check. |
+| **C2** | The dashboard still linked the moved plan at the old path, called it “Staged”, and contained duplicate rows for the later streams. `implemented/README.md` still said “PR pending”. | `doc/agy/README.md`, `doc/agy/implemented/README.md`. | Dashboard rows and Stream G/H now name the implemented plan, PR #192/#191/#194/#195, and the pending Step 8 report; the duplicate session-log and stream rows were removed. |
+| **C3** | A nested `not_in_plan` sub-node was rendered and offered as selectable, while `findNode`/`findTask` deliberately skip it. Selecting it left the inspector without a subject; its tasks could also appear in the parent narrative. | Recursive tree snippet and `NodeNarrative` `subNodes`/`collectLeafTasks`. | The tree, the pruned group (now collected at every depth), and the narrative all skip `not_in_plan` parts and their tasks consistently. A unit test covers the nested case. |
+| **C4** | The new node selection copied the old hard-coded `rgba(59, 130, 246, 0.1)` instead of the theme token. | `.node-row--selected` and `.task-row--selected`. | Both use `var(--color-primary-subtle)`, so light and dark themes follow the token. |
+
+### 7.2 Files touched by the cleanup
+
+- `pm-mock-runtime/src/main/resources/scenarios/running-work.json`
+- `pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json`
+- `pm-web-app/src/lib/api/scenarioContracts.test.ts`
+- `pm-web-app/src/lib/views/PlanView.svelte`
+- `pm-web-app/src/lib/views/PlanView.test.ts`
+- `pm-web-app/src/lib/components/NodeNarrative.svelte`
+- `pm-web-app/src/lib/components/NodeNarrative.test.ts`
+- `pm-web-e2e/tests/plan-view.spec.js`
+- `doc/agy/README.md`
+- `doc/agy/implemented/README.md`
+- `doc/agy/implemented/session-log-narrative-everywhere-plan.md`
+- this report
+
+The runtime contract and the server are unchanged; the cleanup corrects the fixture, the tests, the nested pruned-part behavior, and the selection theme token so the report's claims match the code.
