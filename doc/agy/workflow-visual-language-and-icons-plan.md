@@ -2,7 +2,7 @@
 
 This implementation plan introduces a small visual language for workflow units. The web UI is text-driven today: a phase, a sub-workflow, a remediation policy, and a recipe are distinguished only by their names. The plan adds a stable `icon` field to the `pmwf` frontmatter, delivers one original icon per known workflow unit, documents how to make and maintain those icons, and uses them in the web app wherever a unit or phase is shown.
 
-The icon is **data, not decoration**: every unit's frontmatter carries a stable icon id, and the client resolves that id to a delivered SVG. There is no unreleased compatibility layer: the field is required, the DSL format moves to 2, and every existing unit fixture is migrated in the same change. A future/unknown id still has a readable client fallback, but a missing field is a schema refusal.
+The icon is **data, not decoration**: every unit's frontmatter carries a stable icon id, and the client resolves that id to a delivered SVG. There is no unreleased compatibility layer: the field is required and every existing unit fixture is migrated in the same change, but the DSL format stays at **1** — the format version changes only after a release. A future/unknown id still has a readable client fallback, but a missing field is a schema refusal.
 
 The work is deliberately split across the repositories that own each part:
 
@@ -37,7 +37,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 | # | Finding / decision | Consequence | Correction in this plan |
 |---|---|---|---|
 | **V1** | Workflow surfaces are text-only. `ProcessDesigner` lists unit names and descriptions; phase badges in `PlanView`, `OverviewView`, and `EpicView` are text. | A person must read every label to tell an init phase from a remediation policy. | Introduce one icon per known unit/phase and use it beside the existing text; text remains the accessible source of truth. |
-| **V2** | The `pmwf` frontmatter has no carrier for a visual identity. `UnitFrontmatterReader` accepts a closed key set. | Any client-side mapping by unit name would be a second, drifting registry. | Add a **required** `icon` field to the schema, validated as an icon id; bump the DSL format to 2 and migrate every existing unit fixture. The value travels with the unit through the API. |
+| **V2** | The `pmwf` frontmatter has no carrier for a visual identity. `UnitFrontmatterReader` accepts a closed key set. | Any client-side mapping by unit name would be a second, drifting registry. | Add a **required** `icon` field to the schema, validated as an icon id; keep the DSL format at 1 and migrate every existing unit fixture. The value travels with the unit through the API. |
 | **V3** | There is no delivery or maintenance mechanism for icons. | Assets, API names, and CSS would drift. | Add a visual specification, an asset directory, a typed registry, one `WorkflowIcon` component, and drift tests. Adding an icon becomes an SVG + registry + spec row; no view edits. |
 | **V4** | The default `.pmwf` resources are not available on `main`. | The `icon:` lines cannot be added to shipped descriptions today. | Prepare the exact unit-to-icon map and a sibling follow-up. The worker must not fabricate default units; the phase stays gated until the default-units package lands. |
 | **V5** | Blending third-party icons is a commercial-software licensing risk. | An attractive shortcut could impose attribution, trademark, or redistribution obligations. | Standalone original icons are the default. A blend is allowed only after the provenance gate in the visual specification: commercial-use permission, modification/redistribution permission, attribution satisfiable, no trademark/logo confusion, and written provenance. The Git icon is our own branch/commit metaphor, not the Git logo. |
@@ -53,20 +53,19 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
    - `icon: phase.init` (the value is an icon id, not a file path).
    - Grammar: `[a-z][a-z0-9._-]{0,63}`; no slash, backslash, whitespace, colon, or `..`.
    - Required in the schema. A unit without the key is refused.
-2. Bump the DSL format to **2**:
-   - `ProjectUnitLoader.COMPILED_FORMAT_VERSION` becomes `2`.
-   - Every `.pmwf` unit header (fixtures, generated units, and default units when they exist) uses `format 2`.
-   - There is no format-1 compatibility path: a unit that still declares `format 1` is `format_outdated`; a unit that declares `format 2` without `icon` is refused by the frontmatter reader.
+2. Keep the DSL format at **1**:
+   - `ProjectUnitLoader.COMPILED_FORMAT_VERSION` stays `1`; no unit header changes.
+   - The format version is changed only after a release, not for this pre-release field addition.
 3. Extend `UnitFrontmatter`, `UnitFrontmatterReader`, and `WorkflowPrinter`:
    - Read once, at most once; add `icon` to `REQUIRED_KEYS`.
    - Print it after `type` and before the interface lines; always print it for a valid unit.
-   - Round-trip tests, missing-icon refusal, invalid-value refusal, and format-1 refusal.
+   - Round-trip tests, missing-icon refusal, and invalid-value refusal.
 4. Extend the schema docs and add an ADR:
    - `workflow-dsl/01-grammar.adoc` field table and frontmatter example.
    - `pm-workflow/doc/developer/workflow-dsl.adoc` fields.
-   - ADR `workflow-dsl/008-required-icon-field-format-2.adoc`: required field, format 2, no backward compatibility, every existing unit migrated before the first release.
+   - ADR `workflow-dsl/008-required-icon-field.adoc`: required field within format 1, no backward compatibility, every existing unit migrated before the first release, and no format bump before a release.
 5. Migrate the existing fixtures:
-   - Audit every `pm-workflow/src/test/resources/**/*.pmwf` and every inline unit text in `pm-workflow` tests; add `icon:` and move the valid units to `format 2`.
+   - Audit every `pm-workflow/src/test/resources/**/*.pmwf` and every inline unit text in `pm-workflow` tests; add `icon:` and keep `format 1`.
    - Preserve the intended first refusal in each refused fixture: a fixture that tests a different rule gets an icon; add a dedicated `icon-missing.pmwf` and `icon-invalid.pmwf` for the new rule.
    - Update diagram, fuzz, unit-fixture, and passing fixtures; no test may be waived for the new required field.
 6. The parser is the gate; the client model and default units follow the same required contract.
@@ -149,7 +148,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 - Adding a full design system, illustration set, or color palette beyond the icon language.
 - Replacing text labels with icons; text stays.
 - Icons for plans, tasks, workers, or projects (only workflows/phases and their unit families).
-- Changing the DSL format version or making `icon` mandatory in the schema.
+- Changing the DSL format version; the required field stays within format 1 until after a release.
 - Copying third-party brand logos or icon-font glyphs.
 - Unblocking the `plan-marshall-mcp` default-units package.
 
@@ -164,7 +163,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 | **3** | `plan-marshall-mcp` | `/Users/oliver/git/worktrees/plan-marshall-mcp-workflow-default-icons` | `feat/workflow-default-icons` | `icon:` lines in default units/recipes, sibling drift test. **Blocked** until `default-units-and-drift-tests` is available. |
 
 **Landing rules**:
-- The schema workstream lands first; the clients model can be developed in parallel, but the clients PR should not claim runtime delivery until the schema is in. Both use the required field and format 2; there is no optional-path fallback.
+- The schema workstream lands first; the clients model can be developed in parallel, but the clients PR should not claim runtime delivery until the schema is in. Both use the required field within format 1; there is no optional-path fallback.
 - The clients workstream is the primary plan record; its completion report links the schema PR and the default-units follow-up.
 - The default-units workstream runs only after the default-unit resources exist; it must not create placeholder `.pmwf` files.
 - Each repository uses its own pre-commit and review rules; worker PRs never use `skip-bot-review`.
@@ -204,7 +203,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 | Phase / Task | Primary Persona Skill | Supporting Domain Skills | Focus |
 |---|---|---|---|
-| **Phase 1: Schema** | `plan-marshall-persona-implementer` (sibling Java standards) | `pm-dev-java:junit-core` | Required frontmatter field, format 2, reader/printer, docs/ADR, fixture migration. |
+| **Phase 1: Schema** | `plan-marshall-persona-implementer` (sibling Java standards) | `pm-dev-java:junit-core` | Required frontmatter field within format 1, reader/printer, docs/ADR, fixture migration. |
 | **Phase 2: Visual language** | `plan-marshall-persona-documenter` | `pm-dev-frontend:css`<br>`plan-marshall-persona-security-expert` | Visual grammar, SVG contract, accessibility, license/provenance gate. |
 | **Phase 3: Icons & registry** | `plan-marshall-persona-implementer` | `pm-dev-frontend:javascript`<br>`plan-marshall-persona-module-tester` | SVG set, typed registry, CSS-mask component, drift tests. |
 | **Phase 4: Web usage** | `plan-marshall-persona-implementer` | `pm-dev-frontend:javascript`<br>`plan-marshall-persona-module-tester` | Process designer, phase badges, frontmatter parsing, fallback. |
@@ -221,16 +220,16 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
   - In `UnitFrontmatter`, add a required `String icon` after `type`. Update the Javadoc.
   - In `UnitFrontmatterReader`, add `KEY_ICON` to `KEYS`, `SINGLE_KEYS`, and `REQUIRED_KEYS`; read it once; validate the icon-id grammar; put the value into `Complete`.
   - In `WorkflowPrinter`, always print `icon` after `type`; keep the documented field order.
-  - Bump `ProjectUnitLoader.COMPILED_FORMAT_VERSION` to `2`; every `.pmwf` header moves to `format 2`.
+  - Keep `ProjectUnitLoader.COMPILED_FORMAT_VERSION` at `1`; no `.pmwf` header changes.
 - [ ] **1.2 Migrate the fixtures and tests**:
-  - Audit every `pm-workflow/src/test/resources/**/*.pmwf` and every inline unit text in `pm-workflow` tests; add `icon:` and move valid units to `format 2`.
+  - Audit every `pm-workflow/src/test/resources/**/*.pmwf` and every inline unit text in `pm-workflow` tests; add `icon:` and keep `format 1`.
   - Preserve the intended first refusal in refused fixtures: add an icon where the fixture tests another rule; add dedicated `icon-missing.pmwf` and `icon-invalid.pmwf`; keep format-refusal fixtures at their tested format.
   - A valid unit with `icon: phase.init` round-trips through parser and printer.
-  - A missing `icon` is refused; a `format 1` unit is `format_outdated`; invalid values (`../x`, `Phase.Init`, `a/b`, 65+ chars) are refused; a repeated `icon` is refused.
+  - A missing `icon` is refused; invalid values (`../x`, `Phase.Init`, `a/b`, 65+ chars) are refused; a repeated `icon` is refused.
   - The JSON/API model tests in `pm-api` mirror the required wire key.
 - [ ] **1.3 Documentation**:
   - Update the grammar field table, the developer guide's field list, and the frontmatter example.
-  - Add the required-field ADR: format 2, no backward compatibility, every existing unit fixture migrated, and all components ship together before the first release.
+  - Add the required-field ADR: field required within format 1, no backward compatibility, every existing unit fixture migrated, and the format version changes only after a release.
 
 ### Phase 2: Visual Specification (`pm-mcp-clients`)
 
@@ -320,7 +319,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 | Finding | Acceptance criterion | Evidence |
 |---|---|---|
 | **V1** | Every designable workflow unit and phase has a distinct icon in the catalogue; icons are used in the Process Designer and phase badges. | Registry test + designer/plan/overview/epic tests + manual visual check. |
-| **V2** | `icon` is a required frontmatter field with the icon-id grammar; a missing or invalid id is refused; a valid unit round-trips; a `format 1` unit is refused. | `pm-mcp-core` reader/printer tests; schema docs; fixture migration. |
+| **V2** | `icon` is a required frontmatter field with the icon-id grammar within **format 1**; a missing or invalid id is refused; a valid unit round-trips; the format version is unchanged. | `pm-mcp-core` reader/printer tests; schema docs; fixture migration. |
 | **V2** | The client `WorkflowUnit.Frontmatter`/web `WorkflowFrontmatter` carries `icon` and round-trips it. | `pm-api` + web parser tests. |
 | **V3** | The visual specification covers visual grammar, SVG contract, accessibility, license/provenance, naming, catalogue, and update process. | `doc/design/web-app/workflow-visual-language.adoc`. |
 | **V3** | Adding a new icon requires only an SVG, a registry entry, a catalogue row, and the unit `icon:` line; no view edits. | Registry/component design + update checklist. |
@@ -334,9 +333,9 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 ## 8. Risk & Rollback Notes
 
 - **Sibling blockage**: the default-units package is blocked; do not create placeholder `.pmwf` files or claim the descriptions are updated. The schema/client/visual layer is useful immediately; the sibling phase is a tracked gate.
-- **Schema compatibility**: there is none. `icon` is required, the DSL format moves to `2`, and every existing `.pmwf` fixture and shipped unit is migrated before the first release. A `format 1` unit or a unit without `icon` is refused; the ADR records the clean cut.
+- **Schema compatibility**: there is no backward compatibility: `icon` is required and every existing `.pmwf` fixture and shipped unit is migrated before the first release. The DSL format stays at **1**; the format version changes only after a release, as the project is still in development. A unit without `icon` is refused.
 - **License risk**: standalone icons are the default. A blend is allowed only after the provenance gate; the Git icon is our own branch/commit metaphor. No third-party paths, fonts, or remote references.
 - **Visual ambiguity**: icons are decorative beside text; no icon-only action, no color-only meaning, test at 16 px, light/dark.
 - **Maintenance**: the registry is the single id source; the SVG lint and catalogue test prevent orphan assets/unknown ids. A new icon is a four-step change, not a view edit.
 - **Cross-repo drift**: the schema, client model, and default units are three repositories. The clients report links both sibling PRs; the default-unit drift script is the final gate.
-- **Rollback**: revert the relevant PR in each repository and restore the format-1 units. There is no released compatibility obligation; the pre-release migration is a clean cut, and an unknown icon id still falls back to `workflow.default` after a partial client rollback.
+- **Rollback**: revert the relevant PR in each repository and restore the pre-icon units; the format stays 1 throughout. There is no released compatibility obligation; the pre-release migration is a clean cut, and an unknown icon id still falls back to `workflow.default` after a partial client rollback.
