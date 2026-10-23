@@ -30,14 +30,12 @@ Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_re
 | **Web Dev Host & Session Persistence** | [`web-dev-host-and-session-persistence-plan.md`](implemented/web-dev-host-and-session-persistence-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-dev-host-and-session-persistence` | `fix/web-dev-host-and-session-persistence` | Landed & Verified (PR #180); [report](verified/web-dev-host-and-session-persistence-plan-report.md) |
 | **Workflow Visual Language & Icons** | [`workflow-visual-language-and-icons-plan.md`](implemented/workflow-visual-language-and-icons-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-workflow-visual-language` | `feat/workflow-visual-language` | Clients landed & verified (PR #187); [report](verified/workflow-visual-language-and-icons-plan-report.md); schema PR #150; default-units sibling blocked |
 | **Web App Static Export & Server Import** | [`web-app-static-export-and-server-import-plan.md`](web-app-static-export-and-server-import-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-app-static-export` | `feat/web-app-static-export` | Staged; server sibling `plan-marshall-mcp`; server-level `WebAppIT` |
-| **Session-Log Narrative Everywhere** | [`session-log-narrative-everywhere-plan.md`](session-log-narrative-everywhere-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-session-log-narrative` | `feat/session-log-narrative` | Staged; every tree item narrates on the right |
-| **Reports/Decisions Density & Filter** | [`reports-decisions-density-and-filter-plan.md`](implemented/reports-decisions-density-and-filter-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-reports-decisions-density-filter` | `feat/reports-decisions-density-filter` | Implemented; PR pending — layout modes and client-only filter; [report](reports-decisions-density-and-filter-plan-report.md) |
-| **Interaction Titles & Brand Mark** | [`interaction-titles-and-brand-mark-plan.md`](interaction-titles-and-brand-mark-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-titles-and-brand-mark` | `feat/titles-and-brand-mark` | Staged; separate `.title` keys and original vector mark |
-| **Reports/Decisions Density & Filter** | [`reports-decisions-density-and-filter-plan.md`](reports-decisions-density-and-filter-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-reports-decisions-density-filter` | `feat/reports-decisions-density-filter` | Staged; layout modes and client-only filter |
-| **Interaction Titles & Brand Mark** | [`interaction-titles-and-brand-mark-plan.md`](implemented/interaction-titles-and-brand-mark-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-titles-and-brand-mark` | `feat/titles-and-brand-mark` | PR [#194](https://github.com/plan-marshall/pm-mcp-clients/pull/194) open; [report](interaction-titles-and-brand-mark-plan-report.md) awaits Step 8 |
-| **Operator TUI PTY & Console Hand-Off** | [`operator-tui-pty-and-console-handoff-plan.md`](operator-tui-pty-and-console-handoff-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-operator-tui-pty-handoff` | `fix/operator-tui-pty-handoff` | Staged; real-PTY harness plus the console `plans`/`tui` hand-off fix |
+| **Session-Log Narrative Everywhere** | [`session-log-narrative-everywhere-plan.md`](implemented/session-log-narrative-everywhere-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-session-log-narrative` | `feat/session-log-narrative` | Landed & Verified (PR #192); [report](verified/session-log-narrative-everywhere-plan-report.md) |
+| **Reports/Decisions Density & Filter** | [`reports-decisions-density-and-filter-plan.md`](implemented/reports-decisions-density-and-filter-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-reports-decisions-density-filter` | `feat/reports-decisions-density-filter` | Landed (PR #191); report pending Step 8 |
+| **Interaction Titles & Brand Mark** | [`interaction-titles-and-brand-mark-plan.md`](implemented/interaction-titles-and-brand-mark-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-titles-and-brand-mark` | `feat/titles-and-brand-mark` | Landed (PR #194); report pending Step 8 |
+| **Operator TUI PTY & Console Hand-Off** | [`operator-tui-pty-and-console-handoff-plan.md`](implemented/operator-tui-pty-and-console-handoff-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-operator-tui-pty-handoff` | `fix/operator-tui-pty-handoff` | Landed (PR #195); report pending Step 8 |
 
-*(Note: the workflow visual language plan (default-units phase), the web-app static export plan, the three web-app findings remediation plans, and the operator TUI hand-off plan are the open work packages. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete. PR #176 separately aligned the stale Playwright specs and landed the onboarding-step, start-choice, and decomposition fixes; it has no separate `doc/agy` plan/report.)*
+*(Note: the workflow visual language plan (default-units phase), the web-app static export plan, and the three landed plans awaiting Step 8 verification (reports/decisions density and filter, interaction titles and brand mark, operator TUI hand-off) are the open work packages. The session-log narrative plan is landed and verified. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete. PR #176 separately aligned the stale Playwright specs and landed the onboarding-step, start-choice, and decomposition fixes; it has no separate `doc/agy` plan/report.)*
 
 ---
 
@@ -108,15 +106,15 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Build the `pm-web-app` resource JAR, import it into `pm-mcp-server`, serve `META-INF/resources` with SPA fallback and native resources, and prove it with a packaged-daemon `WebAppIT`)*
 
 ### Stream G: Web App Findings Remediation (`pm-web-app` / `pm-mock-runtime`)
-1. **Staged**: [`session-log-narrative-everywhere-plan.md`](session-log-narrative-everywhere-plan.md)
+1. **Landed & verified (PR #192)**: [`session-log-narrative-everywhere-plan.md`](implemented/session-log-narrative-everywhere-plan.md) ([report](verified/session-log-narrative-everywhere-plan-report.md))
    *(Every process-tree item — phase, sub-workflow, task group, leaf task — becomes selectable and narrates on the right; adds the missing `session-log` scenario routes; keeps the tree/narrative structure)*
-2. **Staged**: [`reports-decisions-density-and-filter-plan.md`](reports-decisions-density-and-filter-plan.md)
+2. **Landed, verification pending (PR #191)**: [`reports-decisions-density-and-filter-plan.md`](implemented/reports-decisions-density-and-filter-plan.md)
    *(Comfortable/compact/split layouts for `/reports` and `/decisions`, a shared filter-as-you-type over all visible fields, and adoption in the overview and epic lists)*
-3. **Staged**: [`interaction-titles-and-brand-mark-plan.md`](interaction-titles-and-brand-mark-plan.md)
+3. **Landed, verification pending (PR #194)**: [`interaction-titles-and-brand-mark-plan.md`](implemented/interaction-titles-and-brand-mark-plan.md)
    *(Separate `.title` keys with no label fallback for hover advisories, plus an original stylized vector brand mark replacing the `✦` glyph)*
 
 ### Stream H: Terminal TUI Capability & Console Hand-Off (`pm-operator`)
-1. **Staged**: [`operator-tui-pty-and-console-handoff-plan.md`](operator-tui-pty-and-console-handoff-plan.md)
+1. **Landed, verification pending (PR #195)**: [`operator-tui-pty-and-console-handoff-plan.md`](implemented/operator-tui-pty-and-console-handoff-plan.md)
    *(Add a real-PTY TUI test harness with key injection and screen assertions, then fix the console `plans`/`tui` hand-off that currently opens a second dumb terminal and falls back to the status tree)*
 
 ---

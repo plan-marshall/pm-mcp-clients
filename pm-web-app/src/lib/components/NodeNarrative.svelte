@@ -18,21 +18,23 @@
    * Every task the node already carries, including the tasks of its sub-nodes.
    *
    * A phase whose work sits in a sub-workflow still narrates that work; the tree keeps the
-   * level-by-level structure, and the narrative says what ran inside the selected part.
+   * level-by-level structure, and the narrative says what ran inside the selected part. A part
+   * the process omitted from the tree is skipped, like the tree and the selection helpers do.
    *
    * @param current the node whose tasks are collected
-   * @returns the node's own tasks, then its sub-nodes' tasks in tree order
+   * @returns the node's own tasks, then its visible sub-nodes' tasks in tree order
    */
   function collectLeafTasks(current: ProcessNode): LeafTask[] {
     const tasks = [...(current.leaf_tasks ?? [])];
     for (const subNode of current.sub_nodes ?? []) {
+      if (subNode.state === 'not_in_plan') continue;
       tasks.push(...collectLeafTasks(subNode));
     }
     return tasks;
   }
 
   let childTasks = $derived(collectLeafTasks(node));
-  let subNodes = $derived(node.sub_nodes ?? []);
+  let subNodes = $derived((node.sub_nodes ?? []).filter((child) => child.state !== 'not_in_plan'));
 </script>
 
 <div class="node-narrative" data-testid="node-narrative" data-plan-id={plan.plan_id}>

@@ -153,6 +153,45 @@ describe('NodeNarrative component', () => {
     expect(onSelectNode).toHaveBeenCalledWith('execute.session-log');
   });
 
+  it('skips a sub-node the process omitted from the tree', () => {
+    const prunedChild: ProcessNode = {
+      node_id: 'execute.pruned',
+      title: 'removed step',
+      kind: 'sub_workflow',
+      state: 'not_in_plan',
+      run_count: 0,
+      current_run: 0,
+      duration_seconds: 0,
+      prune_reason: 'not needed',
+      sub_nodes: [],
+      leaf_tasks: [
+        {
+          task_id: 'TASK-900',
+          role: 'implement',
+          harness: 'claude',
+          model: 'sonnet',
+          attempt: 1,
+          status: 'done',
+          duration_seconds: 60,
+          tokens_so_far: 1000,
+        },
+      ],
+    };
+    render(NodeNarrative, {
+      props: {
+        node: { ...execute, sub_nodes: [prunedChild] },
+        plan,
+        onSelectTask: vi.fn(),
+        onSelectNode: vi.fn(),
+      },
+    });
+
+    expect(screen.queryByTestId('node-child-node-execute.pruned')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('node-child-task-TASK-900')).not.toBeInTheDocument();
+    expect(screen.getByTestId('node-narrative')).not.toHaveTextContent('removed step');
+    expect(screen.getByTestId('node-child-task-TASK-001')).toBeInTheDocument();
+  });
+
   it('says a done node without tasks completed without task-level activity', () => {
     render(NodeNarrative, {
       props: { node: donePhase, plan, onSelectTask: vi.fn(), onSelectNode: vi.fn() },

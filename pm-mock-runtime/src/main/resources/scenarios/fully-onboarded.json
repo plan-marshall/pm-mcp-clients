@@ -787,6 +787,20 @@
         "gap_count": 0
       }
     },
+    "GET /api/v1/plans/fix-relay/tasks/TASK-002/activity": {
+      "representation": {
+        "task_id": "TASK-002",
+        "role": "module-tester",
+        "harness": "claude",
+        "model": "sonnet",
+        "attempt": 1,
+        "duration_seconds": 180,
+        "tokens_so_far": 18000,
+        "entries": [],
+        "server_only": false,
+        "gap_count": 0
+      }
+    },
     "GET /api/v1/epics/relay-hardening/process": {
       "representation": {
         "epic_id": "relay-hardening",
@@ -1655,6 +1669,20 @@
             ]
           }
         ],
+        "server_only": false,
+        "gap_count": 0
+      }
+    },
+    "GET /api/v1/plans/session-log/tasks/TASK-002/activity": {
+      "representation": {
+        "task_id": "TASK-002",
+        "role": "module-tester",
+        "harness": "claude",
+        "model": "sonnet",
+        "attempt": 1,
+        "duration_seconds": 180,
+        "tokens_so_far": 15000,
+        "entries": [],
         "server_only": false,
         "gap_count": 0
       }

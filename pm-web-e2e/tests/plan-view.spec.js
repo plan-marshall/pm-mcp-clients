@@ -139,6 +139,15 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     await expect(inspector.locator('.task-inspector__head')).toHaveText(headBefore);
     await expect(inspector).toContainText('TASK-001');
     await expect(page.locator('[data-testid="node-narrative"]')).toHaveCount(0);
+
+    // Re-open the tasks, then prove the explicit empty route shows an empty feed, not a stale one.
+    await executeToggle.click();
+    await expect(executeToggle).toHaveAttribute('aria-expanded', 'true');
+    await page.locator('[data-testid="task-TASK-002"]').click();
+    const quietFeed = page.locator('[data-testid="activity-feed"]');
+    await expect(quietFeed).toContainText('TASK-002');
+    await expect(quietFeed).toContainText('No activity entries yet.');
+    await expect(page.locator('[data-testid="activity-entry"]')).toHaveCount(0);
   });
 
   test('navigates to epic view, verifies running and staged plans, and returns', async ({
