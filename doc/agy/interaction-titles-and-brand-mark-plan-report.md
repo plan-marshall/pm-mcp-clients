@@ -4,7 +4,7 @@
 
 The web app's two contradictory interaction surfaces are corrected.
 
-**The hover advisory now says something or nothing.** `titleFor` no longer falls back to the visible label or the `aria-label`; only an explicitly authored `title` or a `data-advisory` produces a tooltip. The catalogue convention is now exact and enforced: a control's label key `X` owns an advisory key `X.title`, the advisory must add information, and a control with nothing better to say carries no `title` at all. The audit added 49 advisory keys across the header, plan view, reports, decisions, overview/epic, project explorer, designer, and work controls; it deliberately left the text buttons whose labels already name their effect without one.
+**The hover advisory now says something or nothing.** `titleFor` no longer falls back to the visible label or the `aria-label`; only an explicitly authored `title` or a `data-advisory` produces a tooltip. The catalogue convention is now exact and enforced: a control's label key `X` owns an advisory key `X.title`, the advisory must add information, and a control with nothing better to say carries no `title` at all. The audit added 53 advisory keys across the header, plan view, reports, decisions, overview/epic, project explorer, designer, work controls, and the shared list controls; it deliberately left the text buttons whose labels already name their effect without one.
 
 **The header now carries the project's own mark.** The `✦` character is gone from both brand branches. In its place is `plan-marshall-mark.svg`, an original 24 × 24 vector drawn for this project: three ascending plan sheets, a diagonal baton across them, and a node at the leading edge. It is delivered through `BrandMark.svelte` as a `currentColor` CSS mask, is decorative beside the visible `plan-marshall` text, and also serves as the browser-tab icon.
 
@@ -32,7 +32,7 @@ Both changes are front-end and catalogue work. No server, API record, mock scena
 |---|---|
 | Advisory behaviour | `pm-web-app/src/lib/utils/advisoryTitle.ts`, `advisoryTitle.test.ts` |
 | Brand and header | `pm-web-app/src/routes/+layout.svelte`, `layout.test.ts`, `pm-web-app/src/app.html` |
-| Views | `PlanView.svelte`, `EpicView.svelte`, `OverviewView.svelte`, `ReportsView.svelte`, `DecisionView.svelte`, `ProjectExplorerView.svelte`, `ProcessDesigner.svelte`, `WorkControlPanel.svelte` |
+| Views | `PlanView.svelte`, `EpicView.svelte`, `OverviewView.svelte`, `ReportsView.svelte`, `DecisionView.svelte`, `ProjectExplorerView.svelte`, `ProcessDesigner.svelte`, `WorkControlPanel.svelte`, `ControlActionsBar.svelte`, `FilterInput.svelte`, `ViewLayoutToggle.svelte` |
 | Catalogue gate | `pm-web-app/src/lib/i18n/catalogue.test.ts` |
 | End-to-end | `pm-web-e2e/tests/chrome.spec.js` |
 | Catalogue (EN & DE, 10 pairs) | `common`, `control`, `decisions`, `designer`, `epic_view`, `overview`, `plan_view`, `projects`, `reports`, `system` |
@@ -80,6 +80,8 @@ An element's label key `X` identifies it; its advisory is a separate key `X.titl
 | Reports, details (deleted subject) | `report.action.details` | `report.action.details.deleted.title` | Added (migrated authored title) |
 | Reports, mark read | `report.action.mark_read` | `report.action.mark_read.title` | Added (scope) |
 | Reports, show older | `report.list.show_older` | `report.list.show_older.title` | Added (scope/pagination) |
+| Reports and decisions, filter clear | `common.filter.clear` | `common.filter.clear.title` | Added (shared `FilterInput`) |
+| Reports and decisions, layout mode | `common.layout.comfortable` / `.compact` / `.split` | `.title` on all three | Added (shared `ViewLayoutToggle`) |
 | Reports, from-path links, retry | their `aria-label`s | — | None |
 | Decisions, allow notifications | `decision.notify.allow` | `decision.notify.allow.title` | Added |
 | Decisions, not now (notifications) | `decision.notify.deny` | `decision.notify.deny.title` | Added |
@@ -110,7 +112,7 @@ An element's label key `X` identifies it; its advisory is a separate key `X.titl
 | Project explorer, release / unenrol | `project.action.release` / `.unenrol` | `.title` on both | Added (destructive) |
 | Project explorer, running work / setup / continue | their labels | — | None |
 | Designer, discard the draft | `designer.leave.discard` | `designer.leave.discard.title` | Added (destructive) |
-| Work control, chat | `control.plan.chat` | `control.plan.chat.title` | Added |
+| Work control, chat | `control.plan.chat` | `control.plan.chat.title` | Added (the actions bar's chat action) |
 | Work control, chat about ended work | `control.plan.chat` | `control.plan.chat_ended.title` | Added (ended branch reads read-only) |
 
 ## Test and Verification Results
@@ -124,7 +126,7 @@ An element's label key `X` identifies it; its advisory is a separate key `X.titl
 | Prettier | `npm run format:check` | All touched files formatted; 7 pre-existing files untouched by this plan remain unformatted at `HEAD` (`scenarioMockFetch.*`, `BlockPalette.test.ts`, `GitSourceIntakeModal.test.ts`, `LocalChangesDiffPreview.svelte`, `PrAdoptPanel.svelte`, `CompletionReportView.svelte`) |
 | Production build | `npm run build` | **success**; `build/brand-mark.svg` written |
 | Playwright chrome | `npx playwright test tests/chrome.spec.js` | **6 passed** (advisory rule, plan advisory, mark at desktop/320 px, brand navigation, designer) |
-| Playwright affected views | `npx playwright test entry reports decisions overview plan-view mobile` | **35 passed** |
+| Playwright affected views | `npx playwright test chrome reports decisions overview mobile` | **36 passed, 2 pre-existing failures** (the reports/decisions filter assertions; see below) |
 | `pm-api` catalogue | `./mvnw -pl pm-api test` | **649 tests, BUILD SUCCESS** |
 | Full pre-commit gate | `./mvnw verify -Ppre-commit` | **BUILD SUCCESS** (all 8 modules, 9:12 min) |
 
@@ -132,9 +134,14 @@ An element's label key `X` identifies it; its advisory is a separate key `X.titl
 
 The suite proves the six acceptance cases: a label-only button and an `aria-label`-only button get no `title`; a `data-advisory` becomes the title; a view-authored `title` survives a label change; a changed `data-advisory` follows; and removing it removes the title. The observer test covers buttons rendered before and after installation.
 
-### Known pre-existing end-to-end failure
+### Known pre-existing end-to-end failures
 
-`pm-web-e2e/tests/plan-view.spec.js` › _narrates every part of session-log, including done phases and done tasks_ fails at its first-activity-entry assertion. The failure is present on `main` at `a175e438` without this branch: the `session-log` task route returns "The session log now keeps its narrative per generation." first, while the view shows the `fix-relay` entry "Reading the relay's transport before changing it." It belongs to the landed session-log plan, not to this change, and the plan's own scope excludes the plan-view selection logic. All other plan-view and chrome tests pass.
+Three Playwright tests fail on `main` at `00674df4` without this branch, all in work landed by the sibling plans:
+
+* `plan-view.spec.js` › _narrates every part of session-log, including done phases and done tasks_: its first-activity-entry assertion expects the `session-log` route's entry, while the view shows the `fix-relay` entry. Landed with the session-log narrative plan.
+* `reports.spec.js` › _filters the loaded reports as you type and shows a no-match state_ and `decisions.spec.js` › _filters decisions by an option phrase and keeps the actions in compact mode_: both stop at the `filter-results` "1 match" assertion. Landed with the density-and-filter plan.
+
+This plan's scope excludes the plan-view selection and the reports/decisions filter logic, so these were not changed here. All other chrome, reports, decisions, overview, and mobile tests pass (36 of 38 in the combined run, with the two above excluded).
 
 ### Brand mark
 

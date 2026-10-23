@@ -664,451 +664,442 @@
 </script>
 
 {#snippet decisionCard(dec: DecisionEnvelope)}
-          <article class="decision-card" data-decision-id={dec.id}>
-            {#if dec.is_waiver || dec.id.startsWith('WR-')}
-              <!-- Waiver Request View -->
-              <div class="waiver-card">
-                <header class="card-header">
-                  <h2 class="decision-title">
-                    {$t('decision.waiver.title', {
-                      plan: dec.subject || $t('decision.waiver.plan_fallback'),
-                    })}
-                  </h2>
-                  <span class="waiting-time">
-                    {$t('decision.waiting', {
-                      subject: dec.scope || 'plan',
-                      time: dec.delivered_at || 'now',
-                    })}
-                  </span>
-                </header>
+  <article class="decision-card" data-decision-id={dec.id}>
+    {#if dec.is_waiver || dec.id.startsWith('WR-')}
+      <!-- Waiver Request View -->
+      <div class="waiver-card">
+        <header class="card-header">
+          <h2 class="decision-title">
+            {$t('decision.waiver.title', {
+              plan: dec.subject || $t('decision.waiver.plan_fallback'),
+            })}
+          </h2>
+          <span class="waiting-time">
+            {$t('decision.waiting', {
+              subject: dec.scope || 'plan',
+              time: dec.delivered_at || 'now',
+            })}
+          </span>
+        </header>
 
-                <div class="waiver-details">
-                  <div class="detail-row">
-                    <span class="detail-label">{$t('decision.waiver.gate')}:</span>
-                    <span class="detail-value mono"
-                      >{dec.waiver_gate ||
-                        (dec.evidence?.gate as string) ||
-                        $t('decision.waiver.gate_fallback')}</span
-                    >
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">{$t('decision.waiver.result')}:</span>
-                    <span class="detail-value"
-                      >{dec.waiver_result ||
-                        (dec.evidence?.result as string) ||
-                        $t('decision.waiver.result_failed')}</span
-                    >
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">{$t('decision.waiver.asked_by')}:</span>
-                    <span class="detail-value"
-                      >{dec.asking_phase || 'execute'} · {dec.asking_role || 'implement'}</span
-                    >
-                  </div>
-                  <div class="detail-row">
-                    <span class="detail-label">{$t('decision.waiver.its_reason')}:</span>
-                    <span class="detail-value">{dec.waiver_reason || dec.description || ''}</span>
-                  </div>
-                </div>
+        <div class="waiver-details">
+          <div class="detail-row">
+            <span class="detail-label">{$t('decision.waiver.gate')}:</span>
+            <span class="detail-value mono"
+              >{dec.waiver_gate ||
+                (dec.evidence?.gate as string) ||
+                $t('decision.waiver.gate_fallback')}</span
+            >
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">{$t('decision.waiver.result')}:</span>
+            <span class="detail-value"
+              >{dec.waiver_result ||
+                (dec.evidence?.result as string) ||
+                $t('decision.waiver.result_failed')}</span
+            >
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">{$t('decision.waiver.asked_by')}:</span>
+            <span class="detail-value"
+              >{dec.asking_phase || 'execute'} · {dec.asking_role || 'implement'}</span
+            >
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">{$t('decision.waiver.its_reason')}:</span>
+            <span class="detail-value">{dec.waiver_reason || dec.description || ''}</span>
+          </div>
+        </div>
 
-                <div class="waiver-form">
-                  <label for="waiver-reason-{dec.id}" class="form-label">
-                    {$t('decision.waiver.reason')}
-                  </label>
-                  <textarea
-                    id="waiver-reason-{dec.id}"
-                    class="form-textarea"
-                    rows="2"
-                    placeholder={$t('decision.waiver.reason_required')}
-                    bind:value={waiverReasons[dec.id]}
-                  ></textarea>
-                  {#if !waiverReasons[dec.id]?.trim()}
-                    <span class="form-hint">{$t('decision.waiver.reason_required')}</span>
-                  {/if}
-                </div>
+        <div class="waiver-form">
+          <label for="waiver-reason-{dec.id}" class="form-label">
+            {$t('decision.waiver.reason')}
+          </label>
+          <textarea
+            id="waiver-reason-{dec.id}"
+            class="form-textarea"
+            rows="2"
+            placeholder={$t('decision.waiver.reason_required')}
+            bind:value={waiverReasons[dec.id]}
+          ></textarea>
+          {#if !waiverReasons[dec.id]?.trim()}
+            <span class="form-hint">{$t('decision.waiver.reason_required')}</span>
+          {/if}
+        </div>
 
-                <footer class="card-actions">
-                  <Button
-                    variant="secondary"
-                    onclick={() => handleLater(dec.id)}
-                    data-advisory={$t('decision.waiver.later.title')}
-                  >
-                    {$t('decision.waiver.later')}
-                  </Button>
-                  <Button
-                    variant="danger"
-                    disabled={!waiverReasons[dec.id]?.trim() || isSubmitting[dec.id]}
-                    onclick={() => handleWaiver(dec.id, 'decline')}
-                    data-advisory={$t('decision.waiver.decline.title')}
-                  >
-                    {$t('decision.waiver.decline')}
-                  </Button>
-                  <Button
-                    variant="primary"
-                    disabled={!waiverReasons[dec.id]?.trim() || isSubmitting[dec.id]}
-                    onclick={() => handleWaiver(dec.id, 'waive')}
-                    data-advisory={$t('decision.waiver.waive.title')}
-                  >
-                    {$t('decision.waiver.waive')}
-                  </Button>
-                </footer>
+        <footer class="card-actions">
+          <Button
+            variant="secondary"
+            onclick={() => handleLater(dec.id)}
+            data-advisory={$t('decision.waiver.later.title')}
+          >
+            {$t('decision.waiver.later')}
+          </Button>
+          <Button
+            variant="danger"
+            disabled={!waiverReasons[dec.id]?.trim() || isSubmitting[dec.id]}
+            onclick={() => handleWaiver(dec.id, 'decline')}
+            data-advisory={$t('decision.waiver.decline.title')}
+          >
+            {$t('decision.waiver.decline')}
+          </Button>
+          <Button
+            variant="primary"
+            disabled={!waiverReasons[dec.id]?.trim() || isSubmitting[dec.id]}
+            onclick={() => handleWaiver(dec.id, 'waive')}
+            data-advisory={$t('decision.waiver.waive.title')}
+          >
+            {$t('decision.waiver.waive')}
+          </Button>
+        </footer>
+      </div>
+    {:else}
+      <!-- Standard Decision View -->
+      <div class="standard-decision-card">
+        <header class="card-header">
+          <h2 class="decision-title">{dec.title}</h2>
+          <div class="badges-row">
+            <span class="badge badge-subject">{dec.subject}</span>
+            <span class="badge badge-phase">{dec.asking_phase} · {dec.asking_role}</span>
+            <span class="badge badge-blocks">{$t(`decision.blocks.${dec.blocks}`)}</span>
+            <span class="badge badge-reversibility badge-{dec.reversibility}">
+              {$t(`decision.reversibility.${dec.reversibility}`)}
+            </span>
+          </div>
+        </header>
+
+        {#if dec.description}
+          <p class="decision-description">{dec.description}</p>
+        {/if}
+
+        {#if revisedNotices[dec.id]}
+          <p class="decision-revised" data-testid="decision-revised-{dec.id}" role="status">
+            {revisedNotices[dec.id]}
+          </p>
+        {/if}
+
+        {#if dec.evidence}
+          <div class="evidence-section">
+            <button
+              type="button"
+              class="evidence-toggle"
+              data-advisory={$t(
+                showEvidence[dec.id]
+                  ? 'decision.evidence.hide.title'
+                  : 'decision.evidence.show.title',
+              )}
+              onclick={() => toggleEvidence(dec.id)}
+            >
+              {$t(showEvidence[dec.id] ? 'decision.evidence.hide' : 'decision.evidence.show')}
+            </button>
+            {#if showEvidence[dec.id]}
+              <div class="evidence-box">
+                <pre class="evidence-json">{JSON.stringify(dec.evidence, null, 2)}</pre>
               </div>
-            {:else}
-              <!-- Standard Decision View -->
-              <div class="standard-decision-card">
-                <header class="card-header">
-                  <h2 class="decision-title">{dec.title}</h2>
-                  <div class="badges-row">
-                    <span class="badge badge-subject">{dec.subject}</span>
-                    <span class="badge badge-phase">{dec.asking_phase} · {dec.asking_role}</span>
-                    <span class="badge badge-blocks">{$t(`decision.blocks.${dec.blocks}`)}</span>
-                    <span class="badge badge-reversibility badge-{dec.reversibility}">
-                      {$t(`decision.reversibility.${dec.reversibility}`)}
-                    </span>
-                  </div>
-                </header>
+            {/if}
+          </div>
+        {/if}
 
-                {#if dec.description}
-                  <p class="decision-description">{dec.description}</p>
-                {/if}
+        <!-- Parts -->
+        {#each dec.parts as part, pIdx (part.part_id || pIdx)}
+          <div class="decision-part">
+            {#if dec.parts.length > 1}
+              <div class="part-position">
+                {$t('decision.part.position', { n: pIdx + 1, total: dec.parts.length })}
+              </div>
+            {/if}
 
-                {#if revisedNotices[dec.id]}
-                  <p class="decision-revised" data-testid="decision-revised-{dec.id}" role="status">
-                    {revisedNotices[dec.id]}
+            <p class="part-question">{part.question}</p>
+
+            {#if part.dependency}
+              {#if partAvailable(dec, part, pIdx)}
+                <p class="part-dependency" data-testid="part-dependency-{dec.id}">
+                  {$t('decision.part.depends_on', {
+                    n: dependencyIndex(dec, part) ?? 0,
+                    answer: dependencyAnswer(dec, part),
+                  })}
+                </p>
+              {:else}
+                <p class="part-dependency part-dependency--waiting">
+                  {$t('decision.part.waiting', {
+                    n: dependencyIndex(dec, part) ?? 0,
+                  })}
+                </p>
+              {/if}
+            {/if}
+
+            {#if reopened[dec.id]?.n === pIdx + 1}
+              <p class="part-reopened" data-testid="part-reopened-{dec.id}" role="status">
+                {$t('decision.part.reopened', {
+                  n: reopened[dec.id].n,
+                  m: reopened[dec.id].m,
+                })}
+              </p>
+            {/if}
+
+            {#if part.recommendation}
+              {#if recommendationVisible(dec)}
+                <div class="recommendation-banner" data-testid="recommendation-{dec.id}">
+                  {$t('decision.recommendation.by', {
+                    role: part.recommending_role || dec.asking_role || 'reviewer',
+                    option: part.recommendation,
+                  })}
+                </div>
+                {#if part.recommendation_rationale}
+                  <p class="recommendation-rationale">
+                    {$t('decision.recommendation.rationale', {
+                      rationale: part.recommendation_rationale,
+                    })}
                   </p>
                 {/if}
+              {:else}
+                <div class="recommendation-on-request" data-testid="recommendation-hidden-{dec.id}">
+                  <p class="recommendation-request-text">
+                    {$t('decision.recommendation.on_request')}
+                  </p>
+                  <Button
+                    size="small"
+                    variant="secondary"
+                    onclick={() => (revealed[dec.id] = true)}
+                  >
+                    {$t('decision.recommendation.show')}
+                  </Button>
+                </div>
+              {/if}
+            {/if}
 
-                {#if dec.evidence}
-                  <div class="evidence-section">
-                    <button
-                      type="button"
-                      class="evidence-toggle"
-                      data-advisory={$t(
-                        showEvidence[dec.id]
-                          ? 'decision.evidence.hide.title'
-                          : 'decision.evidence.show.title',
-                      )}
-                      onclick={() => toggleEvidence(dec.id)}
-                    >
-                      {$t(
-                        showEvidence[dec.id] ? 'decision.evidence.hide' : 'decision.evidence.show',
-                      )}
-                    </button>
-                    {#if showEvidence[dec.id]}
-                      <div class="evidence-box">
-                        <pre class="evidence-json">{JSON.stringify(dec.evidence, null, 2)}</pre>
-                      </div>
-                    {/if}
-                  </div>
-                {/if}
-
-                <!-- Parts -->
-                {#each dec.parts as part, pIdx (part.part_id || pIdx)}
-                  <div class="decision-part">
-                    {#if dec.parts.length > 1}
-                      <div class="part-position">
-                        {$t('decision.part.position', { n: pIdx + 1, total: dec.parts.length })}
-                      </div>
-                    {/if}
-
-                    <p class="part-question">{part.question}</p>
-
-                    {#if part.dependency}
-                      {#if partAvailable(dec, part, pIdx)}
-                        <p class="part-dependency" data-testid="part-dependency-{dec.id}">
-                          {$t('decision.part.depends_on', {
-                            n: dependencyIndex(dec, part) ?? 0,
-                            answer: dependencyAnswer(dec, part),
-                          })}
-                        </p>
-                      {:else}
-                        <p class="part-dependency part-dependency--waiting">
-                          {$t('decision.part.waiting', {
-                            n: dependencyIndex(dec, part) ?? 0,
-                          })}
-                        </p>
-                      {/if}
-                    {/if}
-
-                    {#if reopened[dec.id]?.n === pIdx + 1}
-                      <p class="part-reopened" data-testid="part-reopened-{dec.id}" role="status">
-                        {$t('decision.part.reopened', {
-                          n: reopened[dec.id].n,
-                          m: reopened[dec.id].m,
-                        })}
-                      </p>
-                    {/if}
-
-                    {#if part.recommendation}
-                      {#if recommendationVisible(dec)}
-                        <div class="recommendation-banner" data-testid="recommendation-{dec.id}">
-                          {$t('decision.recommendation.by', {
-                            role: part.recommending_role || dec.asking_role || 'reviewer',
-                            option: part.recommendation,
-                          })}
-                        </div>
-                        {#if part.recommendation_rationale}
-                          <p class="recommendation-rationale">
-                            {$t('decision.recommendation.rationale', {
-                              rationale: part.recommendation_rationale,
-                            })}
-                          </p>
+            <!-- Options list -->
+            {#if partAvailable(dec, part, pIdx)}
+              <div class="options-list" role="radiogroup" aria-label={part.question}>
+                {#each part.options as opt}
+                  {@const chosen =
+                    answerOf(dec, part, pIdx) === opt.key && !ownWordsMode[keyOf(dec, part, pIdx)]}
+                  <label
+                    class="option-card"
+                    class:selected={chosen}
+                    class:recommended={recommendationVisible(dec) &&
+                      part.recommendation === opt.key}
+                  >
+                    <input
+                      type="radio"
+                      name="opt-{dec.id}-{pIdx}"
+                      value={opt.key}
+                      checked={chosen}
+                      disabled={isChatting(dec)}
+                      onchange={() => selectOption(dec, part, pIdx, opt.key)}
+                    />
+                    <div class="option-content">
+                      <div class="option-label-row">
+                        <span class="option-label">{opt.label}</span>
+                        {#if recommendationVisible(dec) && part.recommendation === opt.key}
+                          <span class="recommended-tag"
+                            >← {$t('decision.recommendation.marker')}</span
+                          >
                         {/if}
-                      {:else}
-                        <div
-                          class="recommendation-on-request"
-                          data-testid="recommendation-hidden-{dec.id}"
-                        >
-                          <p class="recommendation-request-text">
-                            {$t('decision.recommendation.on_request')}
-                          </p>
+                        {#if opt.quorum_support}
+                          <span class="support-badge">
+                            {$t('decision.support.votes', {
+                              votes: opt.quorum_support.votes_count,
+                              total: opt.quorum_support.total_votes,
+                              models: opt.quorum_support.models_count,
+                            })}
+                            · {$t(`decision.support.band.${opt.quorum_support.band}`)}
+                          </span>
+                        {/if}
+                      </div>
+                      {#if opt.tradeoff_description}
+                        <p class="option-tradeoff">{opt.tradeoff_description}</p>
+                      {/if}
+                      {#if opt.consequences}
+                        <p class="option-consequences">{opt.consequences}</p>
+                      {/if}
+                      {#if opt.quorum_support?.dissent_summary}
+                        <blockquote class="option-dissent">
+                          {$t('decision.dissent', {
+                            role: part.recommending_role || 'reviewer',
+                            reason: opt.quorum_support.dissent_summary,
+                          })}
+                        </blockquote>
+                      {/if}
+                    </div>
+                  </label>
+                {/each}
+              </div>
+
+              <!-- Own words section -->
+              {#if part.allow_own_words !== false}
+                <div class="own-words-section">
+                  <button
+                    type="button"
+                    class="btn-toggle-own-words"
+                    disabled={isChatting(dec)}
+                    data-advisory={$t('decision.answer.own_words.title')}
+                    onclick={() => {
+                      const key = keyOf(dec, part, pIdx);
+                      ownWordsMode[key] = !ownWordsMode[key];
+                      if (ownWordsMode[key]) {
+                        setAnswer(dec, part, pIdx, '');
+                      }
+                    }}
+                  >
+                    ✎ {$t('decision.answer.own_words')}
+                  </button>
+
+                  {#if ownWordsMode[keyOf(dec, part, pIdx)]}
+                    <div class="own-words-box">
+                      {#if !interpretations[keyOf(dec, part, pIdx)]}
+                        <textarea
+                          class="form-textarea"
+                          rows="3"
+                          placeholder={$t('decision.answer.own_words_placeholder')}
+                          bind:value={ownWordsTexts[keyOf(dec, part, pIdx)]}
+                        ></textarea>
+                        <div class="own-words-actions">
                           <Button
                             size="small"
                             variant="secondary"
-                            onclick={() => (revealed[dec.id] = true)}
+                            disabled={!ownWordsTexts[keyOf(dec, part, pIdx)]?.trim() ||
+                              isInterpreting[keyOf(dec, part, pIdx)]}
+                            onclick={() => interpretOwnWords(dec, part, pIdx)}
                           >
-                            {$t('decision.recommendation.show')}
+                            {isInterpreting[keyOf(dec, part, pIdx)]
+                              ? $t('decision.interpret.working', {
+                                  role: part.recommending_role || 'interpret',
+                                })
+                              : $t('decision.readback.action')}
                           </Button>
                         </div>
-                      {/if}
-                    {/if}
-
-                    <!-- Options list -->
-                    {#if partAvailable(dec, part, pIdx)}
-                      <div class="options-list" role="radiogroup" aria-label={part.question}>
-                        {#each part.options as opt}
-                          {@const chosen =
-                            answerOf(dec, part, pIdx) === opt.key &&
-                            !ownWordsMode[keyOf(dec, part, pIdx)]}
-                          <label
-                            class="option-card"
-                            class:selected={chosen}
-                            class:recommended={recommendationVisible(dec) &&
-                              part.recommendation === opt.key}
-                          >
-                            <input
-                              type="radio"
-                              name="opt-{dec.id}-{pIdx}"
-                              value={opt.key}
-                              checked={chosen}
-                              disabled={isChatting(dec)}
-                              onchange={() => selectOption(dec, part, pIdx, opt.key)}
-                            />
-                            <div class="option-content">
-                              <div class="option-label-row">
-                                <span class="option-label">{opt.label}</span>
-                                {#if recommendationVisible(dec) && part.recommendation === opt.key}
-                                  <span class="recommended-tag"
-                                    >← {$t('decision.recommendation.marker')}</span
-                                  >
-                                {/if}
-                                {#if opt.quorum_support}
-                                  <span class="support-badge">
-                                    {$t('decision.support.votes', {
-                                      votes: opt.quorum_support.votes_count,
-                                      total: opt.quorum_support.total_votes,
-                                      models: opt.quorum_support.models_count,
-                                    })}
-                                    · {$t(`decision.support.band.${opt.quorum_support.band}`)}
-                                  </span>
-                                {/if}
-                              </div>
-                              {#if opt.tradeoff_description}
-                                <p class="option-tradeoff">{opt.tradeoff_description}</p>
-                              {/if}
-                              {#if opt.consequences}
-                                <p class="option-consequences">{opt.consequences}</p>
-                              {/if}
-                              {#if opt.quorum_support?.dissent_summary}
-                                <blockquote class="option-dissent">
-                                  {$t('decision.dissent', {
-                                    role: part.recommending_role || 'reviewer',
-                                    reason: opt.quorum_support.dissent_summary,
-                                  })}
-                                </blockquote>
-                              {/if}
-                            </div>
-                          </label>
-                        {/each}
-                      </div>
-
-                      <!-- Own words section -->
-                      {#if part.allow_own_words !== false}
-                        <div class="own-words-section">
-                          <button
-                            type="button"
-                            class="btn-toggle-own-words"
-                            disabled={isChatting(dec)}
-                            data-advisory={$t('decision.answer.own_words.title')}
-                            onclick={() => {
-                              const key = keyOf(dec, part, pIdx);
-                              ownWordsMode[key] = !ownWordsMode[key];
-                              if (ownWordsMode[key]) {
-                                setAnswer(dec, part, pIdx, '');
-                              }
-                            }}
-                          >
-                            ✎ {$t('decision.answer.own_words')}
-                          </button>
-
-                          {#if ownWordsMode[keyOf(dec, part, pIdx)]}
-                            <div class="own-words-box">
-                              {#if !interpretations[keyOf(dec, part, pIdx)]}
-                                <textarea
-                                  class="form-textarea"
-                                  rows="3"
-                                  placeholder={$t('decision.answer.own_words_placeholder')}
-                                  bind:value={ownWordsTexts[keyOf(dec, part, pIdx)]}
-                                ></textarea>
-                                <div class="own-words-actions">
-                                  <Button
-                                    size="small"
-                                    variant="secondary"
-                                    disabled={!ownWordsTexts[keyOf(dec, part, pIdx)]?.trim() ||
-                                      isInterpreting[keyOf(dec, part, pIdx)]}
-                                    onclick={() => interpretOwnWords(dec, part, pIdx)}
-                                  >
-                                    {isInterpreting[keyOf(dec, part, pIdx)]
-                                      ? $t('decision.interpret.working', {
-                                          role: part.recommending_role || 'interpret',
-                                        })
-                                      : $t('decision.readback.action')}
-                                  </Button>
-                                </div>
-                              {:else}
-                                <div class="readback-box">
-                                  <p class="readback-text">
-                                    {$t('decision.readback.understood', {
-                                      reading:
-                                        interpretations[keyOf(dec, part, pIdx)]?.read_back_text ||
-                                        '',
-                                    })}
-                                  </p>
-                                  <div class="readback-actions">
-                                    <Button
-                                      size="small"
-                                      variant="primary"
-                                      data-advisory={$t('decision.readback.confirm.title')}
-                                      onclick={() => submitOwnWordsAnswer(dec, part, pIdx)}
-                                    >
-                                      {$t('decision.readback.confirm')}
-                                    </Button>
-                                    <Button
-                                      size="small"
-                                      variant="secondary"
-                                      onclick={() => {
-                                        interpretations[keyOf(dec, part, pIdx)] = null;
-                                      }}
-                                    >
-                                      {$t('decision.readback.edit')}
-                                    </Button>
-                                    <Button
-                                      size="small"
-                                      variant="secondary"
-                                      onclick={() => {
-                                        ownWordsMode[keyOf(dec, part, pIdx)] = false;
-                                        interpretations[keyOf(dec, part, pIdx)] = null;
-                                      }}
-                                    >
-                                      {$t('decision.readback.choose')}
-                                    </Button>
-                                  </div>
-                                </div>
-                              {/if}
-                            </div>
-                          {/if}
+                      {:else}
+                        <div class="readback-box">
+                          <p class="readback-text">
+                            {$t('decision.readback.understood', {
+                              reading:
+                                interpretations[keyOf(dec, part, pIdx)]?.read_back_text || '',
+                            })}
+                          </p>
+                          <div class="readback-actions">
+                            <Button
+                              size="small"
+                              variant="primary"
+                              data-advisory={$t('decision.readback.confirm.title')}
+                              onclick={() => submitOwnWordsAnswer(dec, part, pIdx)}
+                            >
+                              {$t('decision.readback.confirm')}
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="secondary"
+                              onclick={() => {
+                                interpretations[keyOf(dec, part, pIdx)] = null;
+                              }}
+                            >
+                              {$t('decision.readback.edit')}
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="secondary"
+                              onclick={() => {
+                                ownWordsMode[keyOf(dec, part, pIdx)] = false;
+                                interpretations[keyOf(dec, part, pIdx)] = null;
+                              }}
+                            >
+                              {$t('decision.readback.choose')}
+                            </Button>
+                          </div>
                         </div>
                       {/if}
-
-                      <!-- Optional note -->
-                      {#if part.allow_note}
-                        <div class="note-section">
-                          <label for="note-{dec.id}-{pIdx}" class="form-label">
-                            {$t('decision.answer.note')}
-                          </label>
-                          <input
-                            id="note-{dec.id}-{pIdx}"
-                            type="text"
-                            class="form-input"
-                            placeholder={$t('decision.answer.note_placeholder')}
-                            bind:value={partNotes[keyOf(dec, part, pIdx)]}
-                          />
-                        </div>
-                      {/if}
-                    {/if}
-                  </div>
-                {/each}
-
-                <footer class="card-actions">
-                  <Button
-                    variant="primary"
-                    disabled={!allPartsAnswered(dec) ||
-                      isSubmittingDecision(dec) ||
-                      isChatting(dec)}
-                    onclick={() => submitDecision(dec)}
-                    data-advisory={$t('decision.confirm.action.title')}
-                  >
-                    {$t('decision.confirm.action')}
-                  </Button>
-                  {#if !dec.is_waiver}
-                    <Button
-                      variant="secondary"
-                      disabled={isChatting(dec) || isSubmittingDecision(dec)}
-                      onclick={() => openChat(dec)}
-                      data-advisory={$t('decision.answer.chat.title')}
-                    >
-                      {$t('decision.answer.chat')}
-                    </Button>
+                    </div>
                   {/if}
-                  <Button
-                    variant="secondary"
-                    disabled={isSubmittingDecision(dec) || isChatting(dec)}
-                    onclick={() => submitWithdraw(dec)}
-                    data-advisory={$t('decision.answer.none_fits.title', {
-                      subject: dec.scope || 'plan',
-                    })}
-                  >
-                    {$t('decision.answer.none_fits', { subject: dec.scope || 'plan' })}
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onclick={() => handleLater(dec.id)}
-                    data-advisory={$t('decision.answer.later.title')}
-                  >
-                    {$t('decision.answer.later')}
-                  </Button>
-                </footer>
+                </div>
+              {/if}
 
-                {#if isChatting(dec)}
-                  <div class="decision-chat" data-testid="decision-chat-{dec.id}">
-                    <ChatPanel
-                      open={true}
-                      role={chat?.role ?? ''}
-                      subject={chat?.subject_id ?? dec.id}
-                      turns={chat?.turns ?? []}
-                      proposal={chat?.proposal ?? null}
-                      available={chat !== null}
-                      busy={chatBusy}
-                      onSend={sendChat}
-                      onEnd={endTheChat}
-                      onAccept={() => answerChatProposal(true)}
-                      onReject={() => answerChatProposal(false)}
-                      onToggle={() => openChat(dec)}
-                      acceptLabel={$t('decision.chat.answer_proposed')}
-                    />
-                    <p class="decision-chat__open" role="status">
-                      {$t('decision.chat.stays_open', { id: dec.id })}
-                    </p>
-                  </div>
-                {/if}
-                {#if chatNotice && chatDecisionId === dec.id}
-                  <p class="decision-chat__notice" role="alert" data-testid="decision-chat-notice">
-                    {chatNotice}
-                  </p>
-                {/if}
-              </div>
+              <!-- Optional note -->
+              {#if part.allow_note}
+                <div class="note-section">
+                  <label for="note-{dec.id}-{pIdx}" class="form-label">
+                    {$t('decision.answer.note')}
+                  </label>
+                  <input
+                    id="note-{dec.id}-{pIdx}"
+                    type="text"
+                    class="form-input"
+                    placeholder={$t('decision.answer.note_placeholder')}
+                    bind:value={partNotes[keyOf(dec, part, pIdx)]}
+                  />
+                </div>
+              {/if}
             {/if}
-          </article>
+          </div>
+        {/each}
+
+        <footer class="card-actions">
+          <Button
+            variant="primary"
+            disabled={!allPartsAnswered(dec) || isSubmittingDecision(dec) || isChatting(dec)}
+            onclick={() => submitDecision(dec)}
+            data-advisory={$t('decision.confirm.action.title')}
+          >
+            {$t('decision.confirm.action')}
+          </Button>
+          {#if !dec.is_waiver}
+            <Button
+              variant="secondary"
+              disabled={isChatting(dec) || isSubmittingDecision(dec)}
+              onclick={() => openChat(dec)}
+              data-advisory={$t('decision.answer.chat.title')}
+            >
+              {$t('decision.answer.chat')}
+            </Button>
+          {/if}
+          <Button
+            variant="secondary"
+            disabled={isSubmittingDecision(dec) || isChatting(dec)}
+            onclick={() => submitWithdraw(dec)}
+            data-advisory={$t('decision.answer.none_fits.title', {
+              subject: dec.scope || 'plan',
+            })}
+          >
+            {$t('decision.answer.none_fits', { subject: dec.scope || 'plan' })}
+          </Button>
+          <Button
+            variant="secondary"
+            onclick={() => handleLater(dec.id)}
+            data-advisory={$t('decision.answer.later.title')}
+          >
+            {$t('decision.answer.later')}
+          </Button>
+        </footer>
+
+        {#if isChatting(dec)}
+          <div class="decision-chat" data-testid="decision-chat-{dec.id}">
+            <ChatPanel
+              open={true}
+              role={chat?.role ?? ''}
+              subject={chat?.subject_id ?? dec.id}
+              turns={chat?.turns ?? []}
+              proposal={chat?.proposal ?? null}
+              available={chat !== null}
+              busy={chatBusy}
+              onSend={sendChat}
+              onEnd={endTheChat}
+              onAccept={() => answerChatProposal(true)}
+              onReject={() => answerChatProposal(false)}
+              onToggle={() => openChat(dec)}
+              acceptLabel={$t('decision.chat.answer_proposed')}
+            />
+            <p class="decision-chat__open" role="status">
+              {$t('decision.chat.stays_open', { id: dec.id })}
+            </p>
+          </div>
+        {/if}
+        {#if chatNotice && chatDecisionId === dec.id}
+          <p class="decision-chat__notice" role="alert" data-testid="decision-chat-notice">
+            {chatNotice}
+          </p>
+        {/if}
+      </div>
+    {/if}
+  </article>
 {/snippet}
 
 <div
@@ -1123,8 +1114,7 @@
         <h1 class="decisions-heading">
           {$t('decisions.list.title')}
           {#if decisions.length > 0}
-            <span class="unread-pill"
-              >{$t('decisions.list.open', { count: decisions.length })}</span
+            <span class="unread-pill">{$t('decisions.list.open', { count: decisions.length })}</span
             >
           {/if}
         </h1>
@@ -1213,10 +1203,7 @@
           <p class="empty-title">{$t('decisions.filter.no_matches')}</p>
         </div>
       {:else if $layout === 'split'}
-        <div
-          class="decisions-split"
-          class:decisions-split--has-detail={selectedDecision !== null}
-        >
+        <div class="decisions-split" class:decisions-split--has-detail={selectedDecision !== null}>
           <div class="decisions-split__list">
             {#each matchingDecisions as dec (dec.id)}
               <button

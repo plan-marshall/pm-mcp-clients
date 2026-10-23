@@ -62,7 +62,9 @@
     for (const item of items) {
       haystacks.set(
         item.id,
-        buildHaystack(reportVisibleFields(item, retainedReadIds[item.id] ? readLabel : unreadLabel)),
+        buildHaystack(
+          reportVisibleFields(item, retainedReadIds[item.id] ? readLabel : unreadLabel),
+        ),
       );
     }
     return haystacks;
@@ -71,9 +73,7 @@
   /** The loaded reports that match the filter, in the served order. */
   const matchingItems = $derived.by(() => {
     if (queryTokens.length === 0) return items;
-    return items.filter((item) =>
-      matchesHaystack(queryTokens, reportHaystacks.get(item.id) ?? ''),
-    );
+    return items.filter((item) => matchesHaystack(queryTokens, reportHaystacks.get(item.id) ?? ''));
   });
 
   let groupedReports = $derived.by<ProjectGroup[]>(() => {
@@ -117,7 +117,10 @@
    * @param readState the localized unread or read state the list shows
    * @returns every visible value, for the shared haystack
    */
-  function reportVisibleFields(item: ReportItem, readState: string): Array<string | null | undefined> {
+  function reportVisibleFields(
+    item: ReportItem,
+    readState: string,
+  ): Array<string | null | undefined> {
     return [
       item.from?.project,
       item.from?.project_title,
@@ -742,7 +745,8 @@
                       type="button"
                       class="group-link"
                       aria-label={$t('report.from.open_project', { project: pGroup.project })}
-                      onclick={() => navigateTo('projects', { explorerProjectId: pGroup.projectId })}
+                      onclick={() =>
+                        navigateTo('projects', { explorerProjectId: pGroup.projectId })}
                     >
                       {pGroup.project}
                     </button>
