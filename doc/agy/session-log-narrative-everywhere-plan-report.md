@@ -3,7 +3,7 @@
 **Plan:** [`session-log-narrative-everywhere-plan.md`](implemented/session-log-narrative-everywhere-plan.md)
 **Branch:** `feat/session-log-narrative`
 **Worktree:** `/Users/oliver/git/worktrees/pm-mcp-clients-session-log-narrative`
-**Status:** Landed (PR #192); Step 8 pending; post-landing cleanup applied (see §7).
+**Status:** Landed (PR #192); cleanup applied; static Step 8 audit passed; live gate pending (see §7–§8).
 
 ---
 
@@ -214,3 +214,61 @@ The gate completed with a clean working tree: no uncommitted OpenRewrite reforma
 - this report
 
 The runtime contract and the server are unchanged; the cleanup corrects the fixture, the tests, the nested pruned-part behavior, and the selection theme token so the report's claims match the code.
+
+---
+
+## 8. Step 8 Static Audit (Verification Protocol)
+
+This audit applies `doc/meta/verification-protocol.adoc` without executing a build, test suite, or live subprocess. It is a static audit; it does not move the report to `verified/`.
+
+### 8.1 Pillar 1 — Traceability & Contract Conformance
+
+| Criterion | Evidence | Result |
+|---|---|---|
+| **UC-PLN-1** (follow a plan down to its parts) | The tree selects phases, sub-workflows, task groups, and leaf tasks; the right panel narrates the selected part. | Pass |
+| **UC-PLN-4** (see what runs) | The plan view remains the destination from the overview; the caller-aware back path is unchanged. | Pass |
+| **UC-PLN-5** (follow an epic) | The breadcrumb and epic route are untouched; the plan view still opens from an epic. | Pass |
+| **PM-ARCH-11** (the plan's process as a structure) | Node selection derives only from `ProcessTree`/`ProcessNode`; no process record changed. | Pass |
+| **PM-WORK-7** (worker activity and off-track) | Task selection still loads `TaskActivity` and the live stream; off-track rendering is unchanged. | Pass |
+| **PM-SEC-1** (activity as untrusted text) | `stripControlSequences` on titles, waits-for, prune reasons, sub-node titles, task labels, and values; no `{@html}`. | Pass |
+| **PM-SEC-7** (dependable views) | Three explicit empty states; default/refresh fallback always names a visible item. | Pass |
+| **Zero stubs** | No `TODO`, `FIXME`, `STUB`, `placeholder`, or `UnsupportedOperationException` in the landed or cleanup diff. | Pass |
+| **Closed enums / wire contract** | No new enum or record; `processNode.ts` handles the known process states with a neutral fallback; `TaskActivity` accepts an empty `entries` list. | Pass |
+
+### 8.2 Pillar 2 — Architectural & Code Hygiene
+
+| Scan | Evidence | Result |
+|---|---|---|
+| **Fallback dictionaries** | `fallbackMessages` appears only in `catalogue.test.ts` as the assertion that the runtime dictionary is absent. | Pass |
+| **Catalogue purity** | New narration, empty-state, activity, and selection texts resolve through `$t`; the new catalogue keys exist in EN and DE. | Pass |
+| **Readable-label shield** | No raw dot-separated key is rendered; every new key is present in both property files. | Pass |
+| **Responsive layout** | No grid or breakpoint change; the existing two-column/stack rule and tokens are used. | Pass |
+| **URL routing** | The plan route and caller navigation are unchanged. | Pass |
+| **Mock closed schema / canonical scenarios** | The additions are routes inside `running-work.json` and `fully-onboarded.json`; their representations use the same `TaskActivity` shape as the existing activity routes. | Pass |
+| **Request dispatch precedence** | `MockRuntimeEngine.handleProcessRoutes` checks the exact static route first; the explicit empty `TASK-002` routes therefore win over the generic dynamic fallback. | Pass |
+| **`pm-api` wire** | No `pm-api` record or codec changed; no `jackson-databind` dependency. | Pass |
+
+### 8.3 Pillar 3 — Subprocess Lifecycle & Cross-Module Handshake
+
+**Not executed in this pass by operator instruction.** Static pre-flight:
+
+- No lifecycle script (`start.sh`, `stop.sh`) changed.
+- The scenario files are still canonical and closed-schema validated by `ScenarioLoader`; the two added routes carry the full `TaskActivity` shape.
+- Exact route precedence is present in the engine, so the explicit empty routes are reachable.
+- No server, listener, port, or client-runtime code changed.
+
+Deferred executable checks: `start.sh`/`stop.sh`, PID cleanup, port binding, HTTP handshake, and a browser fetch of the empty feed.
+
+### 8.4 Pillar 4 — Independent Diff & Attribution
+
+| Check | Evidence | Result |
+|---|---|---|
+| **Attribution** | PR #192 commit and the local cleanup commit both carry `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. | Pass |
+| **Boundary discipline** | Landed files are the plan's declared `pm-web-app`, `pm-api` catalogue/test, `pm-mock-runtime` scenarios, `pm-web-e2e`, and docs; the cleanup adds only the same boundary plus its report. | Pass |
+| **No test weakening** | The changes add assertions; no test, skip, or configuration is weakened or removed to force green. | Pass |
+| **No unintended reverts** | The cleanup sits on top of later PRs and touches no unrelated view, operator, or server code. | Pass |
+| **Report vs diff** | The `TASK-002`, dashboard, duplicate-row, nested-pruned, and colour-token claims now match the code and fixtures. | Pass |
+
+### 8.5 Verdict
+
+**Static verdict: PASS on Pillars 1, 2, and 4. Pillar 3 is deliberately deferred.** The report therefore remains in `doc/agy/`, Step 8 stays unchecked, and the dashboard/implemented index record the static pass and the pending live gate. The report moves to `doc/agy/verified/` only after the executable gates run.
