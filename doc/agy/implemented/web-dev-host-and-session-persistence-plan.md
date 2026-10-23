@@ -232,7 +232,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../../meta/implement_us
 - [x] **4.4 Report and archive**:
   - Write `doc/agy/web-dev-host-and-session-persistence-plan-report.md` with the two curl matrices, the restart proof, the secret-file mode/path, the test counts, and the link-rebase result.
   - Move the plan to `doc/agy/implemented/web-dev-host-and-session-persistence-plan.md` and **rebase all relative links**; run the internal-link check.
-  - Update `doc/agy/implemented/README.md` and the dashboard; mark Steps 1–7 as executed, leaving Step 8 for the orchestrator.
+  - Update `doc/agy/implemented/README.md` and the dashboard; mark Steps 1–6 as executed and leave Steps 7–8 (merge queue, cleanup, and post-landing verification) for the orchestrator session.
 
 ---
 

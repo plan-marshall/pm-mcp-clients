@@ -33,7 +33,7 @@ was modified.
 | `pm-web-app/src/routes/+layout.svelte` | Modified | The heartbeat's effect depends on an `isInitialized && isPaired` derived value, so an unrelated store update no longer tears down and re-opens the event subscription. |
 | `pm-web-app/src/routes/layout.test.ts` | Modified | Fake-interval case: first probe, a second probe after 30 s, and the stale offline banner cleared by the successful probe. |
 | `pm-mock-runtime/scripts/mock-device-secret.sh` | New | `mock_secret_file`, `new_mock_device_secret`, `ensure_mock_device_secret`; atomic same-directory publication, `0600`, value only on stdout. |
-| `pm-mock-runtime/scripts/mock-device-secret.test.sh` | New | Eight cases: default path, override, creation, mode, silent stderr, reuse, empty-file regeneration, tightening an existing file. |
+| `pm-mock-runtime/scripts/mock-device-secret.test.sh` | New | Nine cases: default path, override, creation, mode, silent stderr, reuse, empty-file regeneration, tightening an existing file, and two concurrent calls agreeing on one secret. |
 | `pm-mock-runtime/start.sh` | Modified | Parses `-d`/`--device-secret`/`--device-secret=*`; supplies the machine-wide secret only when the operator did not; base comment corrected. |
 | `README.md`, `pm-mock-runtime/README.adoc`, `pm-web-app/README.md` | Modified | Document the global secret path, the reset action, the canonical host, and the new check. |
 
@@ -90,7 +90,10 @@ verify-dev-host: all cases passed
 ```
 
 The unknown host is still refused and the allowed list remains finite — no `true`, no wildcard,
-and `PM_WEB_ALLOWED_HOSTS` still adds rather than replaces the machine's names.
+and `PM_WEB_ALLOWED_HOSTS` still adds rather than replaces the machine's names. The script derives
+its host from `reachable_host` — the same resolver `start.sh` prints — unless `PM_WEB_HOST`
+overrides it, and every `curl` passes `--noproxy '*'` so a configured proxy cannot answer for the
+loopback server.
 
 ### 4.2 Session restart proof
 
@@ -116,15 +119,15 @@ for the explicit value and `401` for the global value, so the explicit option st
 
 | Gate | Result |
 |---|---|
-| `bash pm-web-app/scripts/connection-urls.test.sh` | 10 cases passed |
-| `bash pm-mock-runtime/scripts/mock-device-secret.test.sh` | 8 cases passed |
+| `bash pm-web-app/scripts/connection-urls.test.sh` | 11 cases passed |
+| `bash pm-mock-runtime/scripts/mock-device-secret.test.sh` | 9 cases passed, including two concurrent calls that must agree on one secret |
 | `cd pm-web-app && npm run test:urls` | Passed |
 | `cd pm-web-app && npm run test:dev-host` | 4/4 status codes as expected |
 | `cd pm-web-app && npm test` | 52 files, 454 tests passed |
 | `cd pm-web-app && npm run check` | 0 errors, 0 warnings |
 | `cd pm-web-app && npm run lint` | Passed |
 | `npx vitest run src/routes/layout.test.ts` | 6 tests passed |
-| Prettier on changed TypeScript/Svelte/JSON | Passed |
+| Prettier | `vite.config.ts`, `src/routes/layout.test.ts`, `src/routes/+layout.svelte`, and `package.json` pass. `README.md` and `pm-web-app/README.md` are non-conforming at `HEAD` as well (verified with `git show HEAD:<path>`), so that pre-existing drift is recorded and not rewritten. Shell scripts are not supported by Prettier. |
 
 The two READMEs were already non-conforming at `HEAD` (Prettier reports the `HEAD` copies as
 well); that pre-existing drift was recorded and the untouched formatting was not rewritten.
