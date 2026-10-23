@@ -33,8 +33,9 @@ Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_re
 | **Session-Log Narrative Everywhere** | [`session-log-narrative-everywhere-plan.md`](session-log-narrative-everywhere-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-session-log-narrative` | `feat/session-log-narrative` | Staged; every tree item narrates on the right |
 | **Reports/Decisions Density & Filter** | [`reports-decisions-density-and-filter-plan.md`](reports-decisions-density-and-filter-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-reports-decisions-density-filter` | `feat/reports-decisions-density-filter` | Staged; layout modes and client-only filter |
 | **Interaction Titles & Brand Mark** | [`interaction-titles-and-brand-mark-plan.md`](interaction-titles-and-brand-mark-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-titles-and-brand-mark` | `feat/titles-and-brand-mark` | Staged; separate `.title` keys and original vector mark |
+| **Operator TUI PTY & Console Hand-Off** | [`operator-tui-pty-and-console-handoff-plan.md`](operator-tui-pty-and-console-handoff-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-operator-tui-pty-handoff` | `fix/operator-tui-pty-handoff` | Staged; real-PTY harness plus the console `plans`/`tui` hand-off fix |
 
-*(Note: the workflow visual language plan (default-units phase), the web-app static export plan, and the three web-app findings remediation plans are the open work packages. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete. PR #176 separately aligned the stale Playwright specs and landed the onboarding-step, start-choice, and decomposition fixes; it has no separate `doc/agy` plan/report.)*
+*(Note: the workflow visual language plan (default-units phase), the web-app static export plan, the three web-app findings remediation plans, and the operator TUI hand-off plan are the open work packages. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete. PR #176 separately aligned the stale Playwright specs and landed the onboarding-step, start-choice, and decomposition fixes; it has no separate `doc/agy` plan/report.)*
 
 ---
 
@@ -111,6 +112,10 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Comfortable/compact/split layouts for `/reports` and `/decisions`, a shared filter-as-you-type over all visible fields, and adoption in the overview and epic lists)*
 3. **Staged**: [`interaction-titles-and-brand-mark-plan.md`](interaction-titles-and-brand-mark-plan.md)
    *(Separate `.title` keys with no label fallback for hover advisories, plus an original stylized vector brand mark replacing the `✦` glyph)*
+
+### Stream H: Terminal TUI Capability & Console Hand-Off (`pm-operator`)
+1. **Staged**: [`operator-tui-pty-and-console-handoff-plan.md`](operator-tui-pty-and-console-handoff-plan.md)
+   *(Add a real-PTY TUI test harness with key injection and screen assertions, then fix the console `plans`/`tui` hand-off that currently opens a second dumb terminal and falls back to the status tree)*
 
 ---
 
