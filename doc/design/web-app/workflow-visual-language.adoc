@@ -485,7 +485,7 @@ Resolution rules:
 |`unitIconId`
 |Designer unit list and unit header
 
-|`remediation.review`
+|`remediation.review-findings`
 |`remediation.review`
 |`unitIconId`
 |Designer unit list and unit header
@@ -505,7 +505,7 @@ Resolution rules:
 |`unitIconId`
 |Designer unit list and unit header
 
-|`remediation.quality-gate`
+|`remediation.qgate-findings`
 |`remediation.qgate`
 |`unitIconId`
 |Designer unit list and unit header
