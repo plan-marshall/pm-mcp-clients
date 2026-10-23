@@ -30,29 +30,64 @@ new_mock_device_secret() {
 
 # Prints the machine-wide device secret, creating it on first use.
 #
-# The caller receives the value on stdout only. A same-directory temporary file published by an
-# atomic move means a concurrent reader sees either no file or a complete one, never a partial
-# secret. After the move the file itself is read back, so two simultaneous starts agree on the
-# secret that won instead of each using the value it generated.
+# The caller receives the value on stdout only. Creation runs under an exclusive `mkdir` lock, so
+# two simultaneous starts cannot each publish a different secret: the first creates it, and the
+# other reads the file once it is complete (or takes the lock after it has gone and finds the file
+# already in place). The value is written to a same-directory temporary file with mode 0600 and
+# moved into place atomically, so a reader never sees a partial secret.
 ensure_mock_device_secret() {
     local secret_file
     secret_file="$(mock_secret_file)"
+    local secret_dir
+    secret_dir="$(dirname "$secret_file")"
+    mkdir -p "$secret_dir"
 
-    if [ ! -s "$secret_file" ]; then
-        local secret_dir
-        secret_dir="$(dirname "$secret_file")"
-        mkdir -p "$secret_dir"
-        local tmp_file="$secret_file.tmp.$$"
-        if ! (umask 077 && new_mock_device_secret >"$tmp_file") || ! chmod 600 "$tmp_file"; then
-            rm -f "$tmp_file"
-            echo "Error: cannot write the device secret at $secret_file" >&2
-            return 1
+    local lock_dir="$secret_file.lock"
+    local lock_held=false
+    local attempts=0
+    local recovered=false
+    while [ "$lock_held" = false ]; do
+        if mkdir "$lock_dir" 2>/dev/null; then
+            lock_held=true
+            break
         fi
-        if ! mv "$tmp_file" "$secret_file"; then
-            rm -f "$tmp_file"
-            echo "Error: cannot publish the device secret at $secret_file" >&2
-            return 1
+        # A complete secret published by another start is authoritative; reading needs no lock.
+        # The lock serializes only the absent/empty regeneration.
+        if [ -s "$secret_file" ]; then
+            break
         fi
+        attempts=$((attempts + 1))
+        if [ "$attempts" -ge 100 ]; then
+            if [ "$recovered" = true ]; then
+                echo "Error: timed out waiting for the device-secret lock at $lock_dir" >&2
+                return 1
+            fi
+            # The critical section is a few file operations; a lock this old has no live holder.
+            rmdir "$lock_dir" 2>/dev/null || true
+            recovered=true
+            attempts=0
+            continue
+        fi
+        sleep 0.1
+    done
+
+    if [ "$lock_held" = true ]; then
+        if [ ! -s "$secret_file" ]; then
+            local tmp_file="$secret_file.tmp.$$"
+            if ! (umask 077 && new_mock_device_secret >"$tmp_file") || ! chmod 600 "$tmp_file"; then
+                rm -f "$tmp_file"
+                rmdir "$lock_dir" 2>/dev/null || true
+                echo "Error: cannot write the device secret at $secret_file" >&2
+                return 1
+            fi
+            if ! mv "$tmp_file" "$secret_file"; then
+                rm -f "$tmp_file"
+                rmdir "$lock_dir" 2>/dev/null || true
+                echo "Error: cannot publish the device secret at $secret_file" >&2
+                return 1
+            fi
+        fi
+        rmdir "$lock_dir" 2>/dev/null || true
     fi
 
     # An operator-created file keeps the same guarantee: the secret is never group/world readable.

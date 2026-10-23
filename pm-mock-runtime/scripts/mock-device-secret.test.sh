@@ -107,6 +107,23 @@ FIFTH="$(PM_MOCK_DEVICE_SECRET_FILE="$SECRET_FILE" ensure_mock_device_secret)"
 assert_equal "$FIFTH" "$FOURTH"
 assert_equal "$(file_mode "$SECRET_FILE")" '600'
 
+CURRENT_CASE='concurrent calls agree on one secret'
+rm -f "$SECRET_FILE"
+CONCURRENT_A="$TEST_DIR/concurrent-a"
+CONCURRENT_B="$TEST_DIR/concurrent-b"
+PM_MOCK_DEVICE_SECRET_FILE="$SECRET_FILE" ensure_mock_device_secret >"$CONCURRENT_A" &
+CONCURRENT_PID_A=$!
+PM_MOCK_DEVICE_SECRET_FILE="$SECRET_FILE" ensure_mock_device_secret >"$CONCURRENT_B" &
+CONCURRENT_PID_B=$!
+wait "$CONCURRENT_PID_A"
+wait "$CONCURRENT_PID_B"
+assert_non_empty "$(cat "$CONCURRENT_A")"
+assert_equal "$(cat "$CONCURRENT_A")" "$(cat "$CONCURRENT_B")"
+assert_equal "$(cat "$CONCURRENT_A")" "$(cat "$SECRET_FILE")"
+if [ -d "$SECRET_FILE.lock" ]; then
+    fail 'the device-secret lock directory was left behind'
+fi
+
 if [ "$FAILURES" -ne 0 ]; then
     printf 'mock-device-secret: %s case(s) failed\n' "$FAILURES" >&2
     exit 1
