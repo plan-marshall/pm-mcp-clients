@@ -112,7 +112,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-dev-host-and-session-persistence` on branch `fix/web-dev-host-and-session-persistence` off latest `main`; Step 1 committed and pushed.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-web-dev-host-and-session-persistence` on branch `fix/web-dev-host-and-session-persistence` off latest `main`; Step 1 committed and pushed.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the Vite host canonicalization and the shell secret helper.
   - `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing` for the curl matrix, Bash test, and heartbeat test.
