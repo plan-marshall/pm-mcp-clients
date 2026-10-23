@@ -5,3 +5,7 @@ doc/agy/implemented/web-session-pairing-and-dev-host-plan.md.
 
 Post-landing follow-ups from the verified report are planned in
 doc/agy/implemented/web-session-follow-up-fixes-plan.md.
+
+Two live dev-loop findings (Vite rejecting the printed `mac-mini.local` host,
+and the session secret changing with the checkout/build) are planned in
+doc/agy/web-dev-host-and-session-persistence-plan.md.

@@ -20,15 +20,16 @@ Every work package in `doc/agy/` is governed by coordinated architectural layers
 
 ## 2. Active Wave: Post-Run Remediation & Web Remediation
 
-Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_review.adoc) identified four cross-cutting findings (CLI signal restoration, interactive entry flag, dynamic route codec validation closure, and mobile viewport E2E coverage) unified into one remediation plan, which has landed on `main` and passed Step 8 verification (PR #168). A second remediation plan for the web-client findings in [`doc/findings-web.txt`](../findings-web.txt) has landed and passed Step 8 verification (PR #173); its report is archived in `verified/`. Its follow-up fixes plan has landed and passed Step 8 verification (PR #175); its report is archived in `verified/`.
+Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_review.adoc) identified four cross-cutting findings (CLI signal restoration, interactive entry flag, dynamic route codec validation closure, and mobile viewport E2E coverage) unified into one remediation plan, which has landed on `main` and passed Step 8 verification (PR #168). A second remediation plan for the web-client findings in [`doc/findings-web.txt`](../findings-web.txt) has landed and passed Step 8 verification (PR #173); its report is archived in `verified/`. Its follow-up fixes plan has landed and passed Step 8 verification (PR #175); its report is archived in `verified/`. A new plan addresses the live Vite host-allowlist rejection and the dev session secret that changes with the checkout.
 
 | Stream | Active / Last Completed Plan | Isolated Worktree Directory | Topic Branch | State |
 |---|---|---|---|---|
 | **Post-Run Remediation** | [`post-run-remediation-plan.md`](implemented/post-run-remediation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-post-run-remediation` | `feat/post-run-remediation` | Landed & Verified (PR #168) |
 | **Web Remediation (Stream D)** | [`web-session-pairing-and-dev-host-plan.md`](implemented/web-session-pairing-and-dev-host-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-pairing-dev-host` | `fix/web-session-pairing-and-dev-host` | Landed & Verified (PR #173); [report](verified/web-session-pairing-and-dev-host-plan-report.md) |
 | **Web Session Follow-Up Fixes** | [`web-session-follow-up-fixes-plan.md`](implemented/web-session-follow-up-fixes-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-follow-up-fixes` | `fix/web-session-follow-up-fixes` | Landed & Verified (PR #175); [report](verified/web-session-follow-up-fixes-plan-report.md) |
+| **Web Dev Host & Session Persistence** | [`web-dev-host-and-session-persistence-plan.md`](web-dev-host-and-session-persistence-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-dev-host-and-session-persistence` | `fix/web-dev-host-and-session-persistence` | Staged; Step 1 pending |
 
-*(Note: No plan-marshall work package is open. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete. PR #176 separately aligned the stale Playwright specs and landed the onboarding-step, start-choice, and decomposition fixes; it has no separate `doc/agy` plan/report.)*
+*(Note: The web dev host and session persistence plan is the only open work package. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete. PR #176 separately aligned the stale Playwright specs and landed the onboarding-step, start-choice, and decomposition fixes; it has no separate `doc/agy` plan/report.)*
 
 ---
 
@@ -87,6 +88,8 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Session persistence across mock restarts; authenticated-only `401` handling; system-name Vite/start-script host for phone access; already-paired code probe; fresh-code control endpoint and second-device pairing; single-use pairing copy; redundant-banner removal, clickable brand, action hover advisories, and discoverable process designer)*
 2. **Follow-up fixes (Landed & Verified, PR #175)**: [`web-session-follow-up-fixes-plan.md`](implemented/web-session-follow-up-fixes-plan.md) ([Report](verified/web-session-follow-up-fixes-plan-report.md) — Step 8 complete)
    *(Loopback dev-host output, designer route/dirty-draft reconciliation, and removal of the unreachable pre-pairing status probe)*
+3. **Dev host & session persistence (Staged)**: [`web-dev-host-and-session-persistence-plan.md`](web-dev-host-and-session-persistence-plan.md)
+   *(Lower-case Vite allowed-host matching with curl proof, and one machine-wide dev device secret that survives `mvn clean` and worktree switches)*
 
 ---
 
