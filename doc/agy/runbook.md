@@ -79,6 +79,7 @@ Never implement directly on `main` within the repository root workspace.
    ```bash
    git checkout main && git pull origin main
    ```
+   **Cross-repository plans**: repeat this synchronization in **every** repository involved before creating any worktree or branch in it. Never create a worktree from a stale `main`; do not assume a sibling checkout is current.
 2. Create a dedicated worktree and topic branch:
    ```bash
    git worktree add -b <branch-type>/<topic-name> /Users/oliver/git/worktrees/<worktree-name> main

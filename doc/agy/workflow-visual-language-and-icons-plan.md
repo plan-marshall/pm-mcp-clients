@@ -156,6 +156,9 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ## 3. Cross-Repository Isolation & Landing Order
 
+> [!IMPORTANT]
+> **Pre-flight — pull `main` in every repository before branching**: before creating any worktree or branch in `pm-mcp-core`, `pm-mcp-clients`, or `plan-marshall-mcp`, run `git checkout main && git pull --rebase origin main` in that repository. Repeat it for each repository in the landing order; never create a worktree from a stale `main`.
+
 | Order | Repository | Worktree | Branch | Scope |
 |---|---|---|---|---|
 | **1** | `pm-mcp-core` | `/Users/oliver/git/worktrees/pm-mcp-core-workflow-icon-field` | `feat/workflow-icon-field` | Frontmatter field, reader, printer, docs, ADR, schema tests. |
@@ -179,7 +182,7 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktrees created for the three workstreams above; the clients worktree is the primary plan record. Each Step 1 is committed and pushed in its repository.
+- [ ] 1. Isolated worktrees created **after pulling `main` in each repository**: the clients worktree is the primary plan record, the schema worktree is allocated at the start of its workstream, and the default-units worktree stays gated. Each Step 1 is committed and pushed in its repository.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-java:java-core` for the `pm-workflow` schema? Use the sibling's Java standards and tests.
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the registry, component, parser, and views.
