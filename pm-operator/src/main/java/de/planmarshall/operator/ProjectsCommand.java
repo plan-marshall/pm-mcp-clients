@@ -67,30 +67,48 @@ public final class ProjectsCommand implements Callable<Integer> {
     public Integer call() throws IOException {
         context.gate().verify();
         if (!list && (filter == null || filter.isBlank())) {
-            Terminal terminal = null;
-            try {
-                terminal = context.createTerminal();
-            } catch (IOException _) {
-                // Without a terminal the scrollback list is the whole view.
-            }
-            try {
-                if (terminal != null
-                                    && TuiScreenDriver.canOpenFullScreen(context, terminal, TuiLayout.MIN_COLUMNS)) {
-                    var app = new OverviewFullScreenApp(context, terminal, InitialSelection.explorerRoot(),
-                                        Clock.systemUTC(), new OverviewStateStore(context.stateDirectory()),
-                                        context.noticeBuffer());
-                    var result = app.run(spec.commandLine().getOut());
-                    if (result != TuiScreenDriver.Result.TOO_NARROW) {
+            var terminal = openTerminal();
+            if (terminal != null) {
+                try {
+                    if (openExplorer(terminal)) {
                         return 0;
                     }
-                }
-            } finally {
-                if (terminal != null) {
-                    terminal.close();
+                } finally {
+                    if (context.ownsTerminal(terminal)) {
+                        terminal.close();
+                    }
                 }
             }
         }
         return printList();
+    }
+
+    private @Nullable Terminal openTerminal() {
+        try {
+            return context.createTerminal();
+        } catch (IOException _) {
+            // Without a terminal the scrollback list is the whole view.
+            return null;
+        }
+    }
+
+    /**
+     * Opens the explorer when the terminal can draw it, or names why it cannot.
+     *
+     * @param terminal the terminal the console owns, or one this command created
+     * @return {@code true} when the view ran to a normal end
+     * @throws IOException when the view cannot be drawn
+     */
+    private boolean openExplorer(Terminal terminal) throws IOException {
+        var availability = TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS);
+        if (!availability.available()) {
+            TuiScreenDriver.printUnavailable(context, spec.commandLine().getErr(), availability);
+            return false;
+        }
+        var app = new OverviewFullScreenApp(context, terminal, InitialSelection.explorerRoot(),
+                            Clock.systemUTC(), new OverviewStateStore(context.stateDirectory()),
+                            context.noticeBuffer());
+        return app.run(spec.commandLine().getOut()) != TuiScreenDriver.Result.TOO_NARROW;
     }
 
     private int printList() throws IOException {

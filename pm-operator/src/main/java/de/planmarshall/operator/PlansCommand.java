@@ -17,6 +17,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.operator.overview.OverviewFullScreenApp;
+import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiScreenDriver;
 
 import picocli.CommandLine.Command;
@@ -72,8 +73,9 @@ public final class PlansCommand implements Callable<Integer> {
         }
 
         try {
-            boolean canOpen = !json && terminal != null
-                                && TuiScreenDriver.canOpenFullScreen(context, terminal, 1);
+            var availability = terminal == null ? null
+                                : TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS);
+            boolean canOpen = !json && availability != null && availability.available();
 
             if (canOpen) {
                 String effectiveBy = by;
@@ -91,9 +93,12 @@ public final class PlansCommand implements Callable<Integer> {
                 return runStatusFallback(terminal);
             }
 
+            if (!json && availability != null) {
+                TuiScreenDriver.printUnavailable(context, spec.commandLine().getErr(), availability);
+            }
             return delegateToStatus();
         } finally {
-            if (terminal != null) {
+            if (context.ownsTerminal(terminal)) {
                 terminal.close();
             }
         }

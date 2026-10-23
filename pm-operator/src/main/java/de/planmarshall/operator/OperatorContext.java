@@ -18,6 +18,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import org.jspecify.annotations.Nullable;
@@ -66,6 +67,7 @@ public final class OperatorContext {
     private final BrowserOpener browserOpener;
     private final ConsoleNoticeBuffer noticeBuffer = new ConsoleNoticeBuffer();
     private final AtomicBoolean consoleActive = new AtomicBoolean(false);
+    private final AtomicReference<@Nullable Terminal> scopedTerminal = new AtomicReference<>();
 
     /**
      * Creates an operator context assuming an interactive terminal and capturing client environment.
@@ -207,11 +209,44 @@ public final class OperatorContext {
     /**
      * Creates or returns the JLine terminal.
      *
+     * <p>While a scoped terminal is set, this is that terminal: the console lends its own terminal
+     * to a full-screen verb it dispatches, so the nested verb draws on the terminal that already
+     * owns the process instead of opening a second one (which JLine falls back to a dumb terminal
+     * for). Every direct CLI run has no scope and gets the provider's terminal as before.
+     *
      * @return the terminal instance
      * @throws IOException on creation failure
      */
     public Terminal createTerminal() throws IOException {
-        return terminalProvider.createTerminal();
+        var scoped = scopedTerminal.get();
+        return scoped != null ? scoped : terminalProvider.createTerminal();
+    }
+
+    /**
+     * Lends a terminal to the commands dispatched until {@link #clearTerminal()}: the caller keeps
+     * ownership and closes it, the commands only draw on it.
+     *
+     * @param terminal the terminal the nested commands use
+     */
+    public void useTerminal(Terminal terminal) {
+        scopedTerminal.set(Objects.requireNonNull(terminal, "terminal"));
+    }
+
+    /** Withdraws the scoped terminal; {@link #createTerminal()} uses the provider again. */
+    public void clearTerminal() {
+        scopedTerminal.set(null);
+    }
+
+    /**
+     * Tells whether this context created the terminal and must close it, as opposed to one lent by
+     * {@link #useTerminal(Terminal)}. Every {@code finally} that closes a terminal consults this
+     * predicate, so a nested verb never closes the console's terminal.
+     *
+     * @param terminal the terminal a command obtained from {@link #createTerminal()}
+     * @return {@code true} when the caller owns the terminal and must close it
+     */
+    public boolean ownsTerminal(@Nullable Terminal terminal) {
+        return terminal != null && terminal != scopedTerminal.get();
     }
 
     /**

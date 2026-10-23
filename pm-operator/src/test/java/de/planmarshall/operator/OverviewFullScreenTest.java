@@ -533,18 +533,18 @@ class OverviewFullScreenTest {
             join(thread);
         }
 
-        // 2. 50x20: too narrow! Returns TOO_NARROW and prints too-narrow text and status tree
+        // 2. 50x20: too narrow! Names the reason on stderr and prints the status tree
         try (var virtual = VirtualScreenTerminal.create(50, 20)) {
             var context = createContext(virtual);
             var out = new StringWriter();
-            int exitCode = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()), "plans");
+            var err = new StringWriter();
+            int exitCode = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "plans");
 
             assertEquals(0, exitCode);
-            var raw = virtual.rawOutput();
-            assertTrue(raw.contains("too narrow") || out.toString().contains("too narrow"),
-                                "expected too-narrow warning; raw=" + raw + ", out=" + out);
-            assertTrue(raw.contains("pm-mcp-clients") || out.toString().contains("pm-mcp-clients"),
-                                "expected status tree output; raw=" + raw + ", out=" + out);
+            assertTrue(err.toString().contains("too narrow"),
+                                "expected the too-narrow reason; err=" + err);
+            assertTrue(out.toString().contains("pm-mcp-clients"),
+                                "expected status tree output; out=" + out);
         }
     }
 

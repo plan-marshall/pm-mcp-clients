@@ -23,7 +23,6 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
-import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.runtime.RuntimeRecord;
 import de.planmarshall.api.runtime.RuntimeUnavailableException;
 import de.planmarshall.api.system.CleanupSummary;
@@ -135,7 +134,6 @@ public final class SystemCommand implements Callable<Integer> {
      * @return the exit code when the view ran, or {@code null} to print the snapshot
      */
     private @Nullable Integer openFullScreen(PrintWriter out) {
-        var locale = context.clientEnvironment().locale();
         Terminal terminal = null;
         try {
             terminal = context.createTerminal();
@@ -143,13 +141,9 @@ public final class SystemCommand implements Callable<Integer> {
             return null;
         }
         try {
-            if (terminal.getColumns() < TuiLayout.MIN_COLUMNS) {
-                out.println(MessageCatalogue.format(locale, "operator.system.too_narrow",
-                                    Map.of("columns", TuiLayout.MIN_COLUMNS)));
-                out.flush();
-                return null;
-            }
-            if (!TuiScreenDriver.canOpenFullScreen(context, terminal, TuiLayout.MIN_COLUMNS)) {
+            var availability = TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS);
+            if (!availability.available()) {
+                TuiScreenDriver.printUnavailable(context, spec.commandLine().getErr(), availability);
                 return null;
             }
             var app = new OverviewFullScreenApp(context, terminal,
@@ -161,10 +155,12 @@ public final class SystemCommand implements Callable<Integer> {
         } catch (IOException _) {
             return null;
         } finally {
-            try {
-                terminal.close();
-            } catch (IOException _) {
-                // The terminal is gone; the snapshot is printed all the same.
+            if (context.ownsTerminal(terminal)) {
+                try {
+                    terminal.close();
+                } catch (IOException _) {
+                    // The terminal is gone; the snapshot is printed all the same.
+                }
             }
         }
     }

@@ -292,8 +292,8 @@ The same thresholds hold in every view of the terminal:
 |row line only, truncated to the width; the footer keeps the keys that apply
 
 |`< 60` columns
-|the view does not open: the command prints `operator.overview.too_narrow` and then the tree as
- `status` does (<<status-tree>>)
+|the view does not open: the command names the reason (`operator.tui.unavailable.too_narrow`) and
+ then prints the tree as `status` does (<<status-tree>>)
 |===
 
 * Every cell is truncated to the terminal's column width without splitting a surrogate pair or a
@@ -303,6 +303,61 @@ The same thresholds hold in every view of the terminal:
   would show on a wide terminal.
 * A window resize (`WINCH`) redraws at the new width; crossing a threshold changes the shape of the
   screen as the table says, without leaving the level.
+
+[#full-screen-console-handoff]
+=== The Hand-Off from the Console
+
+`plans` and its alias `tui` typed at the console's prompt open the same view as the direct command,
+on the terminal the console already owns
+(xref:04-console.adoc#full-screen-handoff[The Console, The Full-Screen Hand-Off]).
+
+* *One process has one terminal.* The console creates it on entry; a full-screen verb it dispatches
+  draws on that terminal and never opens a second one. JLine's first system terminal owns the
+  process terminal, so a second `TerminalBuilder` would fall back to a dumb terminal with no size,
+  and the view would refuse without saying why.
+* The console brackets the dispatch: notices are held while the view is open, and one meanwhile line
+  is printed after `q` (<<full-screen-live>>). A notice never corrupts the alternate screen.
+* `--json` runs without the view and without the notice hold; stdout stays JSON.
+* After `q` the console redraws its prompt and remains usable; `exit` then leaves with code `0`.
+* A full-screen verb the console cannot open prints the refusal line
+  (<<full-screen-not-available>>) and its scrollback output, and the prompt returns.
+
+[#full-screen-not-available]
+=== Why the View Does Not Open
+
+The same verdict decides the greeting's hint, the console hand-off, and the refusal. The reasons are
+checked in this order, and the first applicable one is named (`FullScreenAvailability.Reason`):
+
+[cols="2,3,3",options="header"]
+|===
+|Reason |When |Text key
+
+|`NON_INTERACTIVE`
+|The process is not attached to an interactive terminal
+|`operator.tui.unavailable.non_interactive`
+
+|`DUMB_TERMINAL`
+|The terminal's type is `dumb` or `dumb-color`
+|`operator.tui.unavailable.dumb_terminal`
+
+|`CONFIGURED_OFF`
+|`console.full_screen` of `machine-config.json` is `false`
+|`operator.tui.unavailable.configured_off`
+
+|`TOO_NARROW`
+|The terminal is narrower than the view's minimum (60 columns)
+|`operator.tui.unavailable.too_narrow`
+|===
+
+* A requested `plans`, `plan`, `projects`, or `system` prints one catalogue line naming the reason
+  to stderr, then the scrollback it would otherwise print, and exits `0`. Under `--json` it prints no
+  reason; stdout stays the JSON.
+* The greeting's hint (`operator.console.hint.tui`) is printed only when the verdict is available,
+  so it never names a verb that falls back.
+* `plans` below 60 columns refuses before it draws: no alternate screen is entered, the reason is
+  named, and the tree is printed as `status` does.
+* A `dumb` terminal or `console.full_screen=false` is a verdict of the terminal or the machine
+  configuration, not a broken view; the tree is complete.
 
 [#full-screen-connection]
 === The Header's Connection State

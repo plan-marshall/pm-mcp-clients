@@ -143,6 +143,30 @@ The first valid answer wins, from the web app or the console (the channels `web`
 * After a reconnect it always reads the state again (the open questions, a running dialogue's state), because a restarted runtime holds no events to replay, and prints one line: `✓ Reconnected: pm-mcpd 0.9.1, restarted at 14:41. 1 question open, 2 plans running.`
 * While a full-screen view is open, the same state is shown in its header instead of at the prompt: `● connected` while the stream is open and `○ reconnecting` (the text `operator.console.badge.reconnecting`) while it is not; on reconnect the view reads its whole snapshot again and redraws, as xref:15-overview.adoc#full-screen-connection[The Overview, The Header's Connection State] says.
 
+[#full-screen-handoff]
+=== The Full-Screen Hand-Off
+
+The console and a full-screen view do not own a second terminal; they share the one the console
+created on entry.
+
+* `plans` and its alias `tui` open the overview of running work
+  (xref:15-overview.adoc#full-screen[The Overview, The Full-Screen View]). `plan <id>`, `projects`,
+  and `system` hand off the same way. The verb keeps its trailing arguments, so `tui --by epic` is
+  `plans --by epic`.
+* The console lends its terminal to the nested command for the dispatch, runs the command, and takes
+  the terminal back in a `finally`. A nested command never closes the console's terminal.
+* While the view is open, the notices the runtime pushes are held rather than printed above the
+  prompt; when the view leaves, the console prints one coalesced meanwhile line
+  (xref:15-overview.adoc#full-screen-live[The Overview, Live, and Leaving]).
+* `--json` runs the verb normally: no view, no notice hold, and JSON on stdout.
+* A verb that cannot open the view on this terminal prints one catalogue line naming the reason,
+  prints its scrollback instead, and returns the prompt
+  (xref:15-overview.adoc#full-screen-not-available[The Overview, Why the View Does Not Open]). The
+  greeting's hint is printed only when the view can open.
+* After `q` the console redraws its prompt and stays usable; `exit` at the prompt then leaves with
+  code `0`. The restoration is asserted on a real pseudo-terminal
+  (xref:27-tui-testing.adoc[The TUI's Tests]).
+
 [#console-dialogue-handoff]
 === A Dialogue out of the Full-Screen View
 

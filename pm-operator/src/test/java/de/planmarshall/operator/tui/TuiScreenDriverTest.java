@@ -479,6 +479,51 @@ class TuiScreenDriverTest {
                                     virtual.terminal(), TuiLayout.MIN_COLUMNS));
             }
         }
+
+        @Test
+        @DisplayName("names the first applicable reason for every refusal")
+        void namesTheReason() throws Exception {
+            try (var wide = VirtualScreenTerminal.create(120, 30);
+                 var narrow = VirtualScreenTerminal.create(50, 20);
+                 var dumb = new DumbTerminal(new ByteArrayInputStream(new byte[0]),
+                                     new ByteArrayOutputStream())) {
+                writeMachineConfig("{\"format_version\":1,\"console\":{\"full_screen\":true}}");
+                assertAll(
+                                    () -> assertEquals(FullScreenAvailability.open(),
+                                                        TuiScreenDriver.availability(context(true, Map.of()),
+                                                                            wide.terminal(), TuiLayout.MIN_COLUMNS)),
+                                    () -> assertEquals(FullScreenAvailability.Reason.NON_INTERACTIVE,
+                                                        TuiScreenDriver.availability(context(false, Map.of()),
+                                                                            wide.terminal(), TuiLayout.MIN_COLUMNS)
+                                                                            .reason()),
+                                    () -> assertEquals(FullScreenAvailability.Reason.NON_INTERACTIVE,
+                                                        TuiScreenDriver.availability(context(false, Map.of()),
+                                                                            narrow.terminal(), TuiLayout.MIN_COLUMNS)
+                                                                            .reason(),
+                                                        "the terminal attachment is checked first"),
+                                    () -> assertEquals(FullScreenAvailability.Reason.DUMB_TERMINAL,
+                                                        TuiScreenDriver.availability(context(true, Map.of()),
+                                                                            dumb, TuiLayout.MIN_COLUMNS).reason()),
+                                    () -> assertEquals(FullScreenAvailability.Reason.TOO_NARROW,
+                                                        TuiScreenDriver.availability(context(true, Map.of()),
+                                                                            narrow.terminal(), TuiLayout.MIN_COLUMNS)
+                                                                            .reason())
+                );
+
+                writeMachineConfig("{\"format_version\":1,\"console\":{\"full_screen\":false}}");
+                assertAll(
+                                    () -> assertEquals(FullScreenAvailability.Reason.CONFIGURED_OFF,
+                                                        TuiScreenDriver.availability(context(true, Map.of()),
+                                                                            wide.terminal(), TuiLayout.MIN_COLUMNS)
+                                                                            .reason()),
+                                    () -> assertEquals(FullScreenAvailability.Reason.CONFIGURED_OFF,
+                                                        TuiScreenDriver.availability(context(true, Map.of()),
+                                                                            narrow.terminal(), TuiLayout.MIN_COLUMNS)
+                                                                            .reason(),
+                                                        "the configuration is checked before the width")
+                );
+            }
+        }
     }
 
     private static int indexOf(List<String> lines, String needle) {

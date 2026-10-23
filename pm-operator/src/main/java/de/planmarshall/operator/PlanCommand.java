@@ -224,8 +224,9 @@ public final class PlanCommand implements Callable<Integer> {
             return null;
         }
         try {
-            if (!TuiScreenDriver.canOpenFullScreen(
-                                context, terminal, TuiLayout.MIN_COLUMNS)) {
+            var availability = TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS);
+            if (!availability.available()) {
+                TuiScreenDriver.printUnavailable(context, spec.commandLine().getErr(), availability);
                 return null;
             }
             var app = new OverviewFullScreenApp(
@@ -236,7 +237,9 @@ public final class PlanCommand implements Callable<Integer> {
                                 context.noticeBuffer());
             return app.run(out) == TuiScreenDriver.Result.LEFT ? 0 : null;
         } finally {
-            terminal.close();
+            if (context.ownsTerminal(terminal)) {
+                terminal.close();
+            }
         }
     }
 

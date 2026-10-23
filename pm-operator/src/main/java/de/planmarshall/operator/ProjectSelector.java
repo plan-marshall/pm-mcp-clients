@@ -20,6 +20,7 @@ import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
+import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
@@ -265,12 +266,25 @@ public final class ProjectSelector {
         if (reader != null) {
             return choose(reader, err, locale, projects);
         }
-        try (var terminal = context.createTerminal()) {
-            return choose(LineReaderBuilder.builder().terminal(terminal).build(), err, locale, projects);
+        Terminal terminal;
+        try {
+            terminal = context.createTerminal();
         } catch (IOException _) {
             err.println(MessageCatalogue.format(locale, "operator.projects.select.no_input", Map.of()));
             err.flush();
             return Decision.noInput();
+        }
+        try {
+            return choose(LineReaderBuilder.builder().terminal(terminal).build(), err, locale, projects);
+        } finally {
+            // A terminal lent by the console is not this selector's to close.
+            if (context.ownsTerminal(terminal)) {
+                try {
+                    terminal.close();
+                } catch (IOException _) {
+                    // The dialogue is over; a terminal that cannot be closed changes no answer.
+                }
+            }
         }
     }
 

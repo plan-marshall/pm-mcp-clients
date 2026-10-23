@@ -117,6 +117,39 @@ pm › questions
 pm › exit
 ```
 
+### Manual Check: The Full-Screen Overview from the Console
+
+A copy-paste check of the hand-off (it opens the same view as the direct `plans` command):
+
+1. Start the mock runtime with the showroom scenario:
+   ```bash
+   ./mvnw -pl pm-mock-runtime exec:java -Dexec.args="--scenario fully-onboarded --web-port 7420"
+   ```
+2. In another terminal, point `pm-operator` at the base the mock printed
+   (`Base (PM_MCP_BASE): /tmp/pm-mock-xyz/b`):
+   ```bash
+   export PM_MCP_BASE=/tmp/pm-mock-xyz/b
+   ```
+3. Start the console:
+   ```bash
+   ./pm-operator/start.sh
+   ```
+4. At `pm ›` type `plans` (or its alias `tui`). The terminal enters the alternate screen and draws
+   `Running work · projects`.
+5. Move with the arrow keys, open a row with `Enter`, and leave with `q`.
+6. The prompt returns and the console stays usable; `exit` leaves with code `0`.
+
+The same view opens directly with `./pm-operator/start.sh plans` or `./pm-operator/start.sh --tui`.
+
+Notes:
+
+- The VS Code integrated terminal is a real TTY and is supported (`TERM=xterm-256color`,
+  `TERM_PROGRAM=vscode`).
+- The IDE's "Run" button or output panel is not a TTY: there the view cannot open, and the command
+  prints one line naming the reason before the status tree.
+- A terminal narrower than 60 columns, `TERM=dumb`, and `console.full_screen=false` in
+  `machine-config.json` are the other documented fallbacks; each names its reason.
+
 ---
 
 ## Troubleshooting & Operator Gate Notes

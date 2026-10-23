@@ -16,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +25,10 @@ import java.util.Map;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.ProjectExplorer;
 import de.planmarshall.api.project.ProjectReadiness;
+import de.planmarshall.mock.MockRuntime;
+import de.planmarshall.mock.MockRuntimeConfig;
+import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -83,6 +89,35 @@ class ProjectSelectorTest {
             assertFalse(outcome.proceed(), String.join(" ", args));
             assertEquals(3, outcome.exitCode());
             assertTrue(err.toString().contains("interactive terminal"), err.toString());
+        }
+    }
+
+    @Test
+    @DisplayName("a selector that runs on a borrowed terminal leaves it open")
+    void borrowedTerminalStaysOpen() throws Exception {
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                                 .scenario(StandardScenarios.FULLY_ONBOARDED).build());
+             var borrowed = VirtualScreenTerminal.create(120, 30)) {
+            var self = ProcessHandle.current();
+            Files.writeString(runtime.paths().runtimeRecord(), "{\"pid\":" + self.pid()
+                                + ",\"start_instant\":\"" + self.info().startInstant().orElseThrow() + "\"}",
+                                StandardCharsets.UTF_8);
+            var environment = runtime.environment();
+            var context = new OperatorContext(environment, runtime.base().getParent(), true,
+                                ClientEnvironment.capture(environment), () -> {
+                                    throw new IllegalStateException("a scoped terminal must be used");
+                                }, null);
+            context.useTerminal(borrowed.terminal());
+            borrowed.type("1\n");
+
+            var out = new StringWriter();
+            var outcome = ProjectSelector.rewrite(context, new PrintWriter(out), new PrintWriter(out),
+                                new String[]{"plans", "--project", "?"});
+
+            assertTrue(outcome.proceed(), out.toString());
+            assertFalse(borrowed.isClosed(), "the borrowed console terminal must stay open");
+            assertEquals("plans", outcome.args().get(0));
+            assertEquals("--project", outcome.args().get(1));
         }
     }
 
