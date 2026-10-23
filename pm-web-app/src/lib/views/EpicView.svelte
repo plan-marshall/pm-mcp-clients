@@ -6,6 +6,8 @@
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
   import FindingsReviewModal from '../components/FindingsReviewModal.svelte';
   import ChatPanel from '../components/ChatPanel.svelte';
+  import WorkflowIcon from '../components/WorkflowIcon.svelte';
+  import { phaseIconId } from '../icons/workflowIcons';
   import {
     apiClient,
     type ChatReadBack,
@@ -789,7 +791,10 @@
                   <div class="plan-card__head">
                     <span class="plan-glyph">▶</span>
                     <span class="plan-title font-semibold">{plan.title}</span>
-                    <span class="badge badge--phase">{plan.current_phase}</span>
+                    <span class="badge badge--phase">
+                      <WorkflowIcon id={phaseIconId(plan.current_phase)} size={16} />
+                      {plan.current_phase}
+                    </span>
                     <span class="badge badge--state badge--state-{plan.phase_state}"
                       >{plan.phase_state}</span
                     >
@@ -1270,6 +1275,12 @@
     align-items: center;
     gap: var(--space-2);
     flex-wrap: wrap;
+  }
+
+  .badge--phase {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35em;
   }
 
   .plan-glyph {

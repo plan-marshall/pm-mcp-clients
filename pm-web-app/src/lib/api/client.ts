@@ -1261,6 +1261,7 @@ export interface WorkflowFrontmatter {
   display_name: string;
   description: string;
   type: string;
+  icon: string;
   entries: string[];
   exits: string[];
   author: string;

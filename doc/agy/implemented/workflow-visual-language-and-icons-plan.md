@@ -15,7 +15,7 @@ The work is deliberately split across the repositories that own each part:
 > [!IMPORTANT]
 > **Current sibling dependency**: `plan-marshall-mcp`'s `default-units-and-drift-tests` package is **blocked** and the default `pm-mcp-server/src/main/resources/workflows/*.pmwf` resources do not exist on its `main` branch. This plan prepares the schema, visual language, icons, and web usage now. The `icon:` lines in the shipped unit descriptions are a gated final phase: the worker must not invent default units. The plan records that dependency explicitly and cannot claim that phase complete until the sibling package lands.
 
-It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
+It operationalizes [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](../runbook.md).
 
 ---
 
@@ -23,14 +23,14 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 | Dimension | Reference |
 |---|---|
-| **Use Cases** | [`UC-PLN-3`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3) (Design a Plan's Process), [`UC-PLN-1`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1) (Follow a Plan Down to Its Parts), [`UC-ONB-3`](../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3) (Languages and Message Catalogue) |
-| **Schema** | [`workflow-dsl/01-grammar.adoc#unit-frontmatter`](../../../pm-mcp-core/doc/specification/workflow-dsl/01-grammar.adoc#unit-frontmatter); [`pm-workflow/doc/developer/workflow-dsl.adoc#unit-frontmatter`](../../../pm-mcp-core/pm-workflow/doc/developer/workflow-dsl.adoc#unit-frontmatter); [`workflow-dsl/04-ast-node-model.adoc#process-designer`](../../../pm-mcp-core/doc/specification/workflow-dsl/04-ast-node-model.adoc#process-designer) |
-| **Default units** | [`plan-marshall-mcp/doc/plans/default-units-and-drift-tests.adoc`](../../../plan-marshall-mcp/doc/plans/default-units-and-drift-tests.adoc) (**blocked**); [`state-catalogue.adoc`](../../../pm-mcp-core/doc/specification/state-catalogue.adoc) |
-| **Local client design** | [`doc/design/web-app/README.adoc`](../design/web-app/README.adoc), [`doc/design/web-app/entry.adoc`](../design/web-app/entry.adoc) |
-| **Current model** | [`WorkflowUnit.java`](../../pm-api/src/main/java/de/planmarshall/api/designer/WorkflowUnit.java), [`WorkflowFrontmatter`](../../pm-web-app/src/lib/api/client.ts), [`frontmatter.ts`](../../pm-web-app/src/lib/utils/frontmatter.ts) |
-| **Predecessor plans** | [`implemented/web-reports-system-and-designer-plan.md`](implemented/web-reports-system-and-designer-plan.md), [`implemented/web-session-pairing-and-dev-host-plan.md`](implemented/web-session-pairing-and-dev-host-plan.md) |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
-| **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
+| **Use Cases** | [`UC-PLN-3`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3) (Design a Plan's Process), [`UC-PLN-1`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1) (Follow a Plan Down to Its Parts), [`UC-ONB-3`](../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3) (Languages and Message Catalogue) |
+| **Schema** | [`workflow-dsl/01-grammar.adoc#unit-frontmatter`](../../../../pm-mcp-core/doc/specification/workflow-dsl/01-grammar.adoc#unit-frontmatter); [`pm-workflow/doc/developer/workflow-dsl.adoc#unit-frontmatter`](../../../../pm-mcp-core/pm-workflow/doc/developer/workflow-dsl.adoc#unit-frontmatter); [`workflow-dsl/04-ast-node-model.adoc#process-designer`](../../../../pm-mcp-core/doc/specification/workflow-dsl/04-ast-node-model.adoc#process-designer) |
+| **Default units** | [`plan-marshall-mcp/doc/plans/default-units-and-drift-tests.adoc`](../../../../plan-marshall-mcp/doc/plans/default-units-and-drift-tests.adoc) (**blocked**); [`state-catalogue.adoc`](../../../../pm-mcp-core/doc/specification/state-catalogue.adoc) |
+| **Local client design** | [`doc/design/web-app/README.adoc`](../../design/web-app/README.adoc), [`doc/design/web-app/entry.adoc`](../../design/web-app/entry.adoc) |
+| **Current model** | [`WorkflowUnit.java`](../../../pm-api/src/main/java/de/planmarshall/api/designer/WorkflowUnit.java), [`WorkflowFrontmatter`](../../../pm-web-app/src/lib/api/client.ts), [`frontmatter.ts`](../../../pm-web-app/src/lib/utils/frontmatter.ts) |
+| **Predecessor plans** | [`implemented/web-reports-system-and-designer-plan.md`](web-reports-system-and-designer-plan.md), [`implemented/web-session-pairing-and-dev-host-plan.md`](web-session-pairing-and-dev-host-plan.md) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) |
+| **Operational SOP** | [`doc/agy/runbook.md`](../runbook.md) |
 
 ### 1.1 Finding Analysis and Decisions
 
@@ -183,16 +183,16 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Clients worktree created **after pulling `main`**; the schema worktree is allocated at the start of its own workstream and the default-units worktree stays gated. Step 1 committed and pushed in the primary repository.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-java:java-core` for the `pm-workflow` schema? Use the sibling's Java standards and tests.
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the registry, component, parser, and views.
   - `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing` for registry, SVG, frontmatter, and view tests.
   - `plan-marshall-persona-security-expert` for SVG trust (no external refs, no raw HTML) and licensing/provenance review.
   - `plan-marshall-persona-documenter` for the visual specification and schema docs.
   - `plan-marshall-persona-code-reviewer` for review-bot triage.
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Completion report written for the clients plan (`doc/agy/workflow-visual-language-and-icons-plan-report.md`), plan moved to `doc/agy/implemented/`, **all relative links rebased**, and dashboard/index updated. Record the sibling PRs and the default-units gate. (Do NOT move the report to `verified/` — Step 8 is reserved for the orchestrator.)
-- [ ] 5. Pre-commit passed in each changed repository: `./mvnw verify -Ppre-commit` for `pm-mcp-core` and `pm-mcp-clients`; the sibling's own gate for `plan-marshall-mcp`.
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 4. Completion report written for the clients plan (`doc/agy/workflow-visual-language-and-icons-plan-report.md`), plan moved to `doc/agy/implemented/`, **all relative links rebased**, and dashboard/index updated. Record the sibling PRs and the default-units gate. (Do NOT move the report to `verified/` — Step 8 is reserved for the orchestrator.)
+- [x] 5. Pre-commit passed in each changed repository: `./mvnw verify -Ppre-commit` for `pm-mcp-core` and `pm-mcp-clients`; the sibling's own gate for `plan-marshall-mcp`.
 - [ ] 6. PRs opened in the landing order (no `skip-bot-review`); review windows and 100% findings resolution via `persona-code-reviewer`.
 - [ ] 7. Enqueued and landed in the landing order; worktrees and branches cleaned up.
 - [ ] 8. Post-landing verification performed; the clients report moved to `doc/agy/verified/`. The default-units phase remains a tracked gate until its sibling PR lands.
@@ -238,55 +238,55 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ### Phase 2: Visual Specification (`pm-mcp-clients`)
 
-- [ ] **2.1 Write `doc/design/web-app/workflow-visual-language.adoc`** with the sections in Part B. Include the icon catalogue table (Part C) and the provenance table.
-- [ ] **2.2 Define the visual grammar**:
+- [x] **2.1 Write `doc/design/web-app/workflow-visual-language.adoc`** with the sections in Part B. Include the icon catalogue table (Part C) and the provenance table.
+- [x] **2.2 Define the visual grammar**:
   - 24×24 grid, 2 px stroke, round caps/joins, no fills/text, currentColor, legible at 16 px, distinct silhouettes per family.
   - Phase lifecycle metaphors: init (seed/spark), refine (lens/polish), outline (outline tree), plan (checklist/calendar), execute (play/gear), finalize (flag/check), land (merge arrow).
   - Sub-workflow metaphors: git (branch/commit), remediation (wrench/loop), replan (reroute), adjudication (scales).
   - Axis metaphors: files (document), pull request (PR arrow), main (branch), test-first (test tube first), tests-after (clock/test), ask variants (speech/question/key).
   - Compiled family metaphors: plan/epic/decomposition/review/decision/chat/onboarding/setup/start/source/task/entity/landing.
-- [ ] **2.3 Define the technical contract and license gate** exactly as in Part B. State explicitly: **standalone original icons only** for this delivery; blends require a completed provenance row and a commercial-use conclusion. The Git icon is not the Git logo.
-- [ ] **2.4 Define accessibility/usage**:
+- [x] **2.3 Define the technical contract and license gate** exactly as in Part B. State explicitly: **standalone original icons only** for this delivery; blends require a completed provenance row and a commercial-use conclusion. The Git icon is not the Git logo.
+- [x] **2.4 Define accessibility/usage**:
   - Icons are decorative beside text (`aria-hidden`), or carry a title/accessible name when standalone.
   - No icon-only actions; no color-only meaning; 16/20/24 px; currentColor; high contrast.
-- [ ] **2.5 Define the update workflow**:
+- [x] **2.5 Define the update workflow**:
   - Add SVG → add registry entry → add/update the catalogue row → add `icon:` to the unit → run tests. No view code change.
 
 ### Phase 3: Icons and Registry (`pm-mcp-clients`)
 
-- [ ] **3.1 Create the SVG set** from the Part C catalogue, using the visual spec. Use the file naming convention (dots → hyphens). Keep every icon monochrome and self-contained.
-- [ ] **3.2 Add `workflowIcons.ts`**:
+- [x] **3.1 Create the SVG set** from the Part C catalogue, using the visual spec. Use the file naming convention (dots → hyphens). Keep every icon monochrome and self-contained.
+- [x] **3.2 Add `workflowIcons.ts`**:
   - Import every SVG with `?url`; export a frozen `WORKFLOW_ICON_IDS` and `workflowIconUrl(id)`.
   - Unknown id → `workflow.default`; an empty value is a schema error.
   - Add a typed `WorkflowIconId`.
-- [ ] **3.3 Add `WorkflowIcon.svelte`**:
+- [x] **3.3 Add `WorkflowIcon.svelte`**:
   - CSS mask with `currentColor`; `aria-hidden` by default; optional label; size prop.
   - No `{@html}`, no remote URLs, no inline server content.
-- [ ] **3.4 Add `workflowIcons.test.ts` / SVG lint**:
+- [x] **3.4 Add `workflowIcons.test.ts` / SVG lint**:
   - Asset exists for every id; known unit/phase mapping resolves; no duplicates; fallback works.
   - Parse each SVG: `viewBox="0 0 24 24"`, `currentColor`, no `<text>/<script>/<image>/<use href=...>`, no external `href`, no hard-coded color.
   - Every id has a row in the visual catalogue (a small parser over the table or a checked-in JSON companion; choose one source of truth and state it).
-- [ ] **3.5 Keep the structure simple**:
+- [x] **3.5 Keep the structure simple**:
   - Adding a new unit icon requires only a new SVG + registry entry + catalogue row + `icon:` line. Do not add per-view conditionals; resolve by id.
 
 ### Phase 4: Client Model and Web Usage (`pm-mcp-clients`)
 
-- [ ] **4.1 Extend the client contract**:
+- [x] **4.1 Extend the client contract**:
   - `pm-api` `WorkflowUnit.Frontmatter`: add required `icon`, `toMap`/`fromMap`, and tests.
   - Web `WorkflowFrontmatter`: add required `icon: string`.
   - `frontmatter.ts`: add `icon` to `FrontmatterFields`, `SCALAR_FIELDS`, `emptyFrontmatter` (`workflow.default`), read/write logic; update the designer panel.
-- [ ] **4.2 ProcessDesigner**:
+- [x] **4.2 ProcessDesigner**:
   - Unit list rows: `WorkflowIcon` before the unit name.
   - Selected unit header: icon + name.
   - Frontmatter panel: icon preview and (if cheap) a select of delivered ids; editing writes `icon:`; an unknown id stays visible and falls back visually; an empty draft shows the fallback until validation refuses it.
   - Resolve `unit.frontmatter.icon`; do not keep a name-to-icon compatibility map.
-- [ ] **4.3 PlanView**:
+- [x] **4.3 PlanView**:
   - Phase badge icon via `phase.<current_phase>`; phase headers in the process tree when present.
-- [ ] **4.4 OverviewView / EpicView**:
+- [x] **4.4 OverviewView / EpicView**:
   - Phase badge icons; same phase map.
-- [ ] **4.5 Optional recipe surface**:
+- [x] **4.5 Optional recipe surface** (evaluated and left as a follow-up: `RecipeRef`/the catalogue expose no workflow frontmatter icon, so no redundant API field was added):
   - Only if `RecipeRef`/catalogue already exposes the workflow frontmatter icon; otherwise leave it as a follow-up. Do not add a redundant API field just for an icon.
-- [ ] **4.6 Tests**:
+- [x] **4.6 Tests**:
   - A rendered designer test asserts the icon for a known unit and the fallback for an unknown id; an empty draft is a validation error, not a valid unit.
   - A phase badge test asserts `phase-5-execute` shows `phase.execute`.
   - A frontmatter parser round-trip preserves `icon` and unknown extras.
@@ -294,26 +294,26 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 ### Phase 5: Shipped Unit Descriptions (`plan-marshall-mcp`, gated)
 
-- [ ] **5.1 Verify the precondition**: `plan-marshall-mcp/pm-mcp-server/src/main/resources/workflows/*.pmwf` exists. If not, stop this phase; record the blocked `default-units-and-drift-tests` package in the report; do not create stubs.
-- [ ] **5.2 Apply the map**:
+- [x] **5.1 Verify the precondition**: `plan-marshall-mcp/pm-mcp-server/src/main/resources/workflows/*.pmwf` exists. If not, stop this phase; record the blocked `default-units-and-drift-tests` package in the report; do not create stubs.
+- [ ] **5.2 Apply the map** (blocked: `plan-marshall-mcp/pm-mcp-server/src/main/resources/workflows/*.pmwf` is absent; no stub units created):
   - Add `icon: <id>` to each default unit frontmatter (after `type`).
   - Add `icon: <recipe id>` or `recipe.default` to each shipped recipe workflow.
   - Use the Part C mapping; no duplicate ids within the same family unless the visual spec says the family intentionally shares one.
-- [ ] **5.3 Add the sibling drift check**:
+- [ ] **5.3 Add the sibling drift check** (blocked with 5.2; the clients registry and catalogue already expose the id set the sibling check will consume):
   - Every default `.pmwf` has an icon; every icon resolves in the clients registry (script reads the clients checkout or a checked-in icon-id manifest).
   - The check fails on a missing/unknown/duplicate icon.
-- [ ] **5.4 If blocked**: the clients/schema workstreams still land; the plan report records Part E as blocked and the exact follow-up branch/PR condition.
+- [x] **5.4 If blocked**: the clients/schema workstreams still land; the plan report records Part E as blocked and the exact follow-up branch/PR condition.
 
 ### Phase 6: Verification & Report
 
-- [ ] **6.1 Tests**:
+- [x] **6.1 Tests**:
   - `pm-mcp-core`: `./mvnw verify -Ppre-commit` (or the module’s gate).
   - `pm-mcp-clients`: `npm test`, `npm run check`, `npm run lint`, Prettier on changed files, the icon registry/SVG tests, and `./mvnw verify -Ppre-commit`.
   - `plan-marshall-mcp`: its own gate plus the default-unit drift check (when unblocked).
-- [ ] **6.2 Manual visual check**:
+- [x] **6.2 Manual visual check**:
   - Designer list/header and plan/overview/epic phase badges show distinct icons at 16 and 24 px in light/dark; text remains; unknown id shows the fallback.
   - No icon-only action without a name.
-- [ ] **6.3 Report**:
+- [x] **6.3 Report**:
   - Write `doc/agy/workflow-visual-language-and-icons-plan-report.md` with the schema PR, clients PR, icon catalogue, license/provenance statement, view evidence, test results, and the default-units gate.
   - Move the plan to `doc/agy/implemented/`, rebase links, update the implemented index and dashboard.
 

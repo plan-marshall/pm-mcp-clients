@@ -17,6 +17,8 @@ export interface FrontmatterFields {
   displayName: string;
   description: string;
   type: string;
+  /** The stable icon id the visual language resolves; the schema requires it. */
+  icon: string;
   entries: InterfaceItem[];
   exits: InterfaceItem[];
   author: string;
@@ -42,12 +44,13 @@ export interface ParsedUnit {
 
 const OPEN = '---';
 type ScalarField =
-  'displayName' | 'description' | 'type' | 'author' | 'modified' | 'release' | 'signature';
+  'displayName' | 'description' | 'type' | 'icon' | 'author' | 'modified' | 'release' | 'signature';
 
 const SCALAR_FIELDS: Array<[ScalarField, string]> = [
   ['displayName', 'name'],
   ['description', 'description'],
   ['type', 'type'],
+  ['icon', 'icon'],
   ['author', 'author'],
   ['modified', 'modified'],
   ['release', 'release'],
@@ -60,6 +63,7 @@ export function emptyFrontmatter(): FrontmatterFields {
     displayName: '',
     description: '',
     type: 'subworkflow',
+    icon: 'workflow.default',
     entries: [],
     exits: [],
     author: '',
@@ -140,6 +144,7 @@ function readScalar(key: string, value: string, fields: FrontmatterFields): void
   if (key === 'name') fields.displayName = value;
   else if (key === 'description') fields.description = value;
   else if (key === 'type') fields.type = value;
+  else if (key === 'icon') fields.icon = value;
   else if (key === 'author') fields.author = value;
   else if (key === 'modified') fields.modified = value;
   else if (key === 'release') fields.release = value;
@@ -207,6 +212,7 @@ function serialiseFrontmatter(fields: FrontmatterFields): string[] {
     `name: ${fields.displayName}`.trimEnd(),
     `description: ${fields.description}`.trimEnd(),
     `type: ${fields.type}`.trimEnd(),
+    `icon: ${fields.icon}`.trimEnd(),
   );
   for (const entry of fields.entries) {
     block.push(

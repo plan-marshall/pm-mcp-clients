@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import OverviewView from './OverviewView.svelte';
+import { workflowIconUrl } from '../icons/workflowIcons';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
@@ -271,6 +272,25 @@ describe('OverviewView component', () => {
     await waitFor(() => {
       expect(screen.getAllByTestId('plan-card').length).toBe(3);
     });
+  });
+
+  it('puts a phase icon in every phase badge', async () => {
+    const { container } = render(OverviewView);
+
+    await waitFor(() => expect(screen.getAllByTestId('plan-card').length).toBeGreaterThan(0));
+
+    const badgeIcons = ['init', 'refine', 'outline', 'plan', 'execute', 'finalize'].map((phase) =>
+      workflowIconUrl(`phase.${phase}`),
+    );
+    const badges = container.querySelectorAll('.badge--phase');
+    expect(badges.length).toBeGreaterThan(0);
+    for (const badge of badges) {
+      const style = badge.querySelector('.workflow-icon')?.getAttribute('style') ?? '';
+      expect(
+        badgeIcons.some((url) => style.includes(url)),
+        badge.textContent ?? '',
+      ).toBe(true);
+    }
   });
 
   it('switches selected project when clicking on sidebar project item', async () => {

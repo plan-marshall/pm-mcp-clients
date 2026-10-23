@@ -4,6 +4,7 @@ import { get } from 'svelte/store';
 import ProcessDesigner from './ProcessDesigner.svelte';
 import { apiClient } from '../api/client';
 import type { WorkflowCatalogue, WorkflowUnit, WorkflowValidationResult } from '../api/client';
+import { workflowIconUrl } from '../icons/workflowIcons';
 import { runtimeStore } from '../stores/runtime';
 
 const finalizeText = [
@@ -11,6 +12,7 @@ const finalizeText = [
   '---',
   'name: Finalize',
   'type: subworkflow',
+  'icon: phase.finalize',
   'entry start',
   'exit merged',
   '---',
@@ -28,6 +30,7 @@ const units: WorkflowUnit[] = [
       display_name: 'Finalize',
       description: 'Settles the plan.',
       type: 'subworkflow',
+      icon: 'phase.finalize',
       entries: ['start'],
       exits: ['merged'],
       author: 'Oliver Wolff',
@@ -180,6 +183,70 @@ describe('ProcessDesigner view', () => {
     expect(screen.getByTestId('designer-checked')).toHaveTextContent(
       "checked against this machine's projects",
     );
+  });
+
+  it('shows the unit icon in the installed list and the selected header', async () => {
+    render(ProcessDesigner);
+
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    const rowIcon = screen.getByTestId('unit-icon-phase-6-finalize');
+    expect(rowIcon.querySelector('.workflow-icon')?.getAttribute('style')).toContain(
+      workflowIconUrl('phase.finalize'),
+    );
+    expect(
+      screen
+        .getByTestId('designer-unit-icon')
+        .querySelector('.workflow-icon')
+        ?.getAttribute('style'),
+    ).toContain(workflowIconUrl('phase.finalize'));
+  });
+
+  it('shows the frontmatter icon and writes an edited id into the text', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    const iconInput = screen.getByTestId('frontmatter-icon') as HTMLInputElement;
+    expect(iconInput.value).toBe('phase.finalize');
+
+    await fireEvent.input(iconInput, { target: { value: 'unit.epic' } });
+
+    await waitFor(() =>
+      expect((screen.getByTestId('workflow-text') as HTMLTextAreaElement).value).toContain(
+        'icon: unit.epic',
+      ),
+    );
+    expect(
+      screen
+        .getByTestId('designer-unit-icon')
+        .querySelector('.workflow-icon')
+        ?.getAttribute('style'),
+    ).toContain(workflowIconUrl('unit.epic'));
+  });
+
+  it('keeps an unknown icon id visible but renders the fallback, and an empty id falls back too', async () => {
+    render(ProcessDesigner);
+    await waitFor(() => expect(screen.getByTestId('workflow-text')).toHaveValue(finalizeText));
+
+    const iconInput = screen.getByTestId('frontmatter-icon') as HTMLInputElement;
+
+    await fireEvent.input(iconInput, { target: { value: 'future.unknown' } });
+    await waitFor(() => expect(iconInput.value).toBe('future.unknown'));
+    expect(
+      screen
+        .getByTestId('designer-unit-icon')
+        .querySelector('.workflow-icon')
+        ?.getAttribute('style'),
+    ).toContain(workflowIconUrl('workflow.default'));
+
+    await fireEvent.input(iconInput, { target: { value: '' } });
+    await waitFor(() => expect(iconInput.value).toBe(''));
+    expect(
+      screen
+        .getByTestId('designer-unit-icon')
+        .querySelector('.workflow-icon')
+        ?.getAttribute('style'),
+    ).toContain(workflowIconUrl('workflow.default'));
   });
 
   it('opens with the project the route named', async () => {
