@@ -9,3 +9,7 @@ doc/agy/implemented/web-session-follow-up-fixes-plan.md.
 Two live dev-loop findings (Vite rejecting the printed `mac-mini.local` host,
 and the session secret changing with the checkout/build) are planned in
 doc/agy/web-dev-host-and-session-persistence-plan.md.
+
+The workflow visual-language work (the `pmwf` `icon` field, the visual
+specification, the icon set, and the web usage) is planned in
+doc/agy/workflow-visual-language-and-icons-plan.md.

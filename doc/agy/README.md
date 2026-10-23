@@ -28,8 +28,9 @@ Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_re
 | **Web Remediation (Stream D)** | [`web-session-pairing-and-dev-host-plan.md`](implemented/web-session-pairing-and-dev-host-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-pairing-dev-host` | `fix/web-session-pairing-and-dev-host` | Landed & Verified (PR #173); [report](verified/web-session-pairing-and-dev-host-plan-report.md) |
 | **Web Session Follow-Up Fixes** | [`web-session-follow-up-fixes-plan.md`](implemented/web-session-follow-up-fixes-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-follow-up-fixes` | `fix/web-session-follow-up-fixes` | Landed & Verified (PR #175); [report](verified/web-session-follow-up-fixes-plan-report.md) |
 | **Web Dev Host & Session Persistence** | [`web-dev-host-and-session-persistence-plan.md`](web-dev-host-and-session-persistence-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-dev-host-and-session-persistence` | `fix/web-dev-host-and-session-persistence` | Staged; Step 1 pending |
+| **Workflow Visual Language & Icons** | [`workflow-visual-language-and-icons-plan.md`](workflow-visual-language-and-icons-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-workflow-visual-language` | `feat/workflow-visual-language` | Staged; schema sibling `pm-mcp-core`; default-units sibling blocked |
 
-*(Note: The web dev host and session persistence plan is the only open work package. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete. PR #176 separately aligned the stale Playwright specs and landed the onboarding-step, start-choice, and decomposition fixes; it has no separate `doc/agy` plan/report.)*
+*(Note: The web dev host and session persistence plan and the workflow visual language plan are the open work packages. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete. PR #176 separately aligned the stale Playwright specs and landed the onboarding-step, start-choice, and decomposition fixes; it has no separate `doc/agy` plan/report.)*
 
 ---
 
@@ -90,6 +91,10 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
    *(Loopback dev-host output, designer route/dirty-draft reconciliation, and removal of the unreachable pre-pairing status probe)*
 3. **Dev host & session persistence (Staged)**: [`web-dev-host-and-session-persistence-plan.md`](web-dev-host-and-session-persistence-plan.md)
    *(Lower-case Vite allowed-host matching with curl proof, and one machine-wide dev device secret that survives `mvn clean` and worktree switches)*
+
+### Stream E: Workflow Visual Language & Icons (`pm-mcp-core` / `pm-mcp-clients` / `plan-marshall-mcp`)
+1. **Staged**: [`workflow-visual-language-and-icons-plan.md`](workflow-visual-language-and-icons-plan.md)
+   *(Optional `icon` frontmatter field in the schema; visual specification; one distinct delivered icon per known workflow/phase; designer and phase-badge usage; shipped-unit `icon:` lines gated by the blocked `plan-marshall-mcp` default-units package)*
 
 ---
 
