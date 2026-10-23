@@ -29,8 +29,9 @@ Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_re
 | **Web Session Follow-Up Fixes** | [`web-session-follow-up-fixes-plan.md`](implemented/web-session-follow-up-fixes-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-session-follow-up-fixes` | `fix/web-session-follow-up-fixes` | Landed & Verified (PR #175); [report](verified/web-session-follow-up-fixes-plan-report.md) |
 | **Web Dev Host & Session Persistence** | [`web-dev-host-and-session-persistence-plan.md`](implemented/web-dev-host-and-session-persistence-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-dev-host-and-session-persistence` | `fix/web-dev-host-and-session-persistence` | Landed & Verified (PR #180); [report](verified/web-dev-host-and-session-persistence-plan-report.md) |
 | **Workflow Visual Language & Icons** | [`workflow-visual-language-and-icons-plan.md`](implemented/workflow-visual-language-and-icons-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-workflow-visual-language` | `feat/workflow-visual-language` | Clients landed & verified (PR #187); [report](verified/workflow-visual-language-and-icons-plan-report.md); schema PR #150; default-units sibling blocked |
+| **Web App Static Export & Server Import** | [`web-app-static-export-and-server-import-plan.md`](web-app-static-export-and-server-import-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-web-app-static-export` | `feat/web-app-static-export` | Staged; server sibling `plan-marshall-mcp`; server-level `WebAppIT` |
 
-*(Note: The workflow visual language plan is the only open work package; its clients workstream is verified and its default-units phase stays gated. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete. PR #176 separately aligned the stale Playwright specs and landed the onboarding-step, start-choice, and decomposition fixes; it has no separate `doc/agy` plan/report.)*
+*(Note: The workflow visual language plan (default-units phase) and the web-app static export plan are the open work packages. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete. PR #176 separately aligned the stale Playwright specs and landed the onboarding-step, start-choice, and decomposition fixes; it has no separate `doc/agy` plan/report.)*
 
 ---
 
@@ -95,6 +96,10 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
 ### Stream E: Workflow Visual Language & Icons (`pm-mcp-core` / `pm-mcp-clients` / `plan-marshall-mcp`)
 1. **Schema and clients landed & verified (PR #187)**: [`workflow-visual-language-and-icons-plan.md`](implemented/workflow-visual-language-and-icons-plan.md) ([report](verified/workflow-visual-language-and-icons-plan-report.md) — Step 8 complete for the clients workstream; default units gated)
    *(Required `icon` id in the `pmwf` frontmatter within format 1, landed as `pm-mcp-core` PR #150; visual specification; 40 original delivered icons; typed registry and CSS-mask component; designer and phase-badge usage; the shipped-unit `icon:` lines remain gated by the blocked `plan-marshall-mcp` default-units package)*
+
+### Stream F: Web App Static Export & Server Import (`pm-mcp-clients` / `plan-marshall-mcp`)
+1. **Staged**: [`web-app-static-export-and-server-import-plan.md`](web-app-static-export-and-server-import-plan.md)
+   *(Build the `pm-web-app` resource JAR, import it into `pm-mcp-server`, serve `META-INF/resources` with SPA fallback and native resources, and prove it with a packaged-daemon `WebAppIT`)*
 
 ---
 
