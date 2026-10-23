@@ -5536,6 +5536,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var separator = rest.indexOf(':');
         var planId = separator > 0 ? rest.substring(0, separator) : rest;
         var taskId = separator > 0 ? rest.substring(separator + 1) : null;
+        if (taskId != null && hasEmptyActivityRoute(planId, taskId)) {
+            return;
+        }
         var payload = new LinkedHashMap<String, Object>();
         payload.put("kind", "assistant_text");
         payload.put("text", "Analyzing module dependencies...");
@@ -5556,6 +5559,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
         } catch (IOException _) {
             dropStream(stream);
         }
+    }
+
+    /**
+     * @param planId the plan named by the activity scope
+     * @param taskId the task named by the activity scope
+     * @return {@code true} when the scenario declares an explicit activity route with no entries
+     */
+    private boolean hasEmptyActivityRoute(String planId, String taskId) {
+        var route = activeRoute("GET", "/api/v1/plans/" + planId + "/tasks/" + taskId + "/activity");
+        return route != null
+                && route.representation() instanceof Map<?, ?> representation
+                && representation.get("entries") instanceof List<?> entries
+                && entries.isEmpty();
     }
 
     /**

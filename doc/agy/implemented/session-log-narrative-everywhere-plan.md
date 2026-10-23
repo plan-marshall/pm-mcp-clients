@@ -95,7 +95,7 @@ The work is confined to `pm-mcp-clients`. The runtime contract is unchanged: no 
 - [x] 5. Pre-commit passed: `./mvnw verify -Ppre-commit` (covers the web-app and scenario tests).
 - [x] 6. PR #192 opened (never `skip-bot-review`); review windows observed; all CodeRabbit findings resolved; SonarCloud quality gate passed; Sourcery was rate-limited by its own budget and CodeRabbit re-review was rate-limited, both with no findings.
 - [x] 7. Enqueued in the merge queue, landed on `main` as PR #192, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and the report moved to `doc/agy/verified/` by the orchestrator.
+- [x] 8. Post-landing verification performed (four-pillar audit, live lifecycle/IT/Playwright evidence) and the report moved to `doc/agy/verified/session-log-narrative-everywhere-plan-report.md`.
 
 > [!IMPORTANT]
 > **Plan archival link rule**: this plan moved from `doc/agy/` to `doc/agy/implemented/`. Its links are rebased (`../../../pm-web-app`, `../../../pm-mock-runtime`, `../../../pm-api`, `../../../../plan-marshall-documentation`, `../runbook.md`); a sibling link inside `implemented/` is plain. The internal-link check was run after the move.

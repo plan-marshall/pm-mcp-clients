@@ -1,9 +1,9 @@
 # Completion Report: `session-log-narrative-everywhere`
 
-**Plan:** [`session-log-narrative-everywhere-plan.md`](implemented/session-log-narrative-everywhere-plan.md)
+**Plan:** [`session-log-narrative-everywhere-plan.md`](../implemented/session-log-narrative-everywhere-plan.md)
 **Branch:** `feat/session-log-narrative`
 **Worktree:** `/Users/oliver/git/worktrees/pm-mcp-clients-session-log-narrative`
-**Status:** Landed (PR #192); cleanup applied; static Step 8 audit passed; live gate pending (see §7–§8).
+**Status:** Landed (PR #192); cleanup applied; Step 8 passed (see §7–§8).
 
 ---
 
@@ -179,8 +179,8 @@ The gate completed with a clean working tree: no uncommitted OpenRewrite reforma
 
 ## 6. Notes for Step 8 (Orchestrator)
 
-- This report remains in `doc/agy/` for the orchestrator's post-landing verification; it is **not** moved to `doc/agy/verified/` by this session.
-- The plan is moved to [`doc/agy/implemented/`](implemented/) with its internal links rebased.
+- This report was moved to `doc/agy/verified/` after the four-pillar audit in §8; it is the archived completion report for this plan.
+- The plan is moved to [`doc/agy/implemented/`](../implemented/) with its internal links rebased.
 - The fixture adjustments beyond the plan text are the removal of the stale `fix-relay` `TASK-002` `activity_link` and the explicit empty activity routes for `fix-relay` and `session-log` `TASK-002`. The tasks remain done and activity-less; the explicit empty route keeps the empty feed truthful instead of letting the mock runtime's generic fallback answer.
 
 ---
@@ -194,14 +194,16 @@ The gate completed with a clean working tree: no uncommitted OpenRewrite reforma
 | # | Finding | Evidence | Correction |
 |---|---|---|---|
 | **C1** | The first report claimed `TASK-002` had no activity route, but the mock runtime answers an unknown task-activity path with a copy of `fix-relay/TASK-003` (`task_id` replaced). The empty feed would therefore never appear in the running showroom. | `MockRuntimeEngine.handleProcessRoutes` dynamic fallback; the scenario route table had no `TASK-002` route. | Added an **explicit empty** activity route for `fix-relay/TASK-002` and `session-log/TASK-002` in both canonical scenarios; explicit routes win over the fallback. Strengthened the scenario contract to assert `200` with `entries: []`, added a component test for the empty response, and added the Playwright check. |
-| **C2** | The dashboard still linked the moved plan at the old path, called it “Staged”, and contained duplicate rows for the later streams. `implemented/README.md` still said “PR pending”. | `doc/agy/README.md`, `doc/agy/implemented/README.md`. | Dashboard rows and Stream G/H now name the implemented plan, PR #192/#191/#194/#195, and the pending Step 8 report; the duplicate session-log and stream rows were removed. |
+| **C2** | The dashboard still linked the moved plan at the old path, called it “Staged”, and contained duplicate rows for the later streams. `implemented/README.md` still said “PR pending”. | `doc/agy/README.md`, `doc/agy/implemented/README.md`. | Dashboard rows and Stream G/H now name the implemented plan, PR #192/#191/#194/#195, and the report; the duplicate session-log and stream rows were removed. |
 | **C3** | A nested `not_in_plan` sub-node was rendered and offered as selectable, while `findNode`/`findTask` deliberately skip it. Selecting it left the inspector without a subject; its tasks could also appear in the parent narrative. | Recursive tree snippet and `NodeNarrative` `subNodes`/`collectLeafTasks`. | The tree, the pruned group (now collected at every depth), and the narrative all skip `not_in_plan` parts and their tasks consistently. A unit test covers the nested case. |
 | **C4** | The new node selection copied the old hard-coded `rgba(59, 130, 246, 0.1)` instead of the theme token. | `.node-row--selected` and `.task-row--selected`. | Both use `var(--color-primary-subtle)`, so light and dark themes follow the token. |
+| **C5** | The mock runtime seeded every task-activity stream with a synthetic “Analyzing module dependencies…” event, so an explicit empty route was immediately repopulated when the inspector subscribed. | `MockRuntimeEngine.sendActivitySeed`; the Playwright empty-feed check failed against the live mock. | `sendActivitySeed` now skips a task whose explicit activity route has an empty `entries` list; the live Playwright check passes. |
 
 ### 7.2 Files touched by the cleanup
 
 - `pm-mock-runtime/src/main/resources/scenarios/running-work.json`
 - `pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json`
+- `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java`
 - `pm-web-app/src/lib/api/scenarioContracts.test.ts`
 - `pm-web-app/src/lib/views/PlanView.svelte`
 - `pm-web-app/src/lib/views/PlanView.test.ts`
@@ -217,9 +219,9 @@ The runtime contract and the server are unchanged; the cleanup corrects the fixt
 
 ---
 
-## 8. Step 8 Static Audit (Verification Protocol)
+## 8. Step 8 Audit (Verification Protocol)
 
-This audit applies `doc/meta/verification-protocol.adoc` without executing a build, test suite, or live subprocess. It is a static audit; it does not move the report to `verified/`.
+This audit applies `doc/meta/verification-protocol.adoc` across the four pillars. The static review is paired with the live lifecycle, IT, and Playwright evidence in §8.3.
 
 ### 8.1 Pillar 1 — Traceability & Contract Conformance
 
@@ -250,25 +252,28 @@ This audit applies `doc/meta/verification-protocol.adoc` without executing a bui
 
 ### 8.3 Pillar 3 — Subprocess Lifecycle & Cross-Module Handshake
 
-**Not executed in this pass by operator instruction.** Static pre-flight:
+Executed on the cleanup branch:
 
-- No lifecycle script (`start.sh`, `stop.sh`) changed.
-- The scenario files are still canonical and closed-schema validated by `ScenarioLoader`; the two added routes carry the full `TaskActivity` shape.
-- Exact route precedence is present in the engine, so the explicit empty routes are reachable.
-- No server, listener, port, or client-runtime code changed.
+- `./pm-mock-runtime/start.sh --web-port 7431 --scenario running-work` created `target/pm-mock-runtime.pid`, selected `running-work`, and bound `127.0.0.1:7431`.
+- `GET /api/v1/status`, `GET /api/v1/plans`, and `GET /api/v1/plans/session-log/process` returned `200` with `Content-Type: application/json`.
+- `GET /api/v1/plans/session-log/tasks/TASK-002/activity` and the `fix-relay` equivalent returned `200` with `entries: []`.
+- `./pm-mock-runtime/stop.sh` stopped the process and removed the PID file.
+- `./mvnw -q -pl pm-mock-runtime -Pintegration-tests verify` completed 2 ITs with 0 failures and 0 errors.
+- `npx playwright test tests/plan-view.spec.js` passed all 5 tests, including the live empty-feed check.
+- `./mvnw verify -Ppre-commit` completed with `BUILD SUCCESS` across the reactor; the working tree stayed clean.
 
-Deferred executable checks: `start.sh`/`stop.sh`, PID cleanup, port binding, HTTP handshake, and a browser fetch of the empty feed.
+The live check also exposed C5: the mock runtime's synthetic activity seed repopulated the empty feed. `MockRuntimeEngine.sendActivitySeed` now skips a task whose explicit activity route has an empty `entries` list, and the Playwright check passes against the live runtime.
 
 ### 8.4 Pillar 4 — Independent Diff & Attribution
 
 | Check | Evidence | Result |
 |---|---|---|
-| **Attribution** | PR #192 commit and the local cleanup commit both carry `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. | Pass |
-| **Boundary discipline** | Landed files are the plan's declared `pm-web-app`, `pm-api` catalogue/test, `pm-mock-runtime` scenarios, `pm-web-e2e`, and docs; the cleanup adds only the same boundary plus its report. | Pass |
-| **No test weakening** | The changes add assertions; no test, skip, or configuration is weakened or removed to force green. | Pass |
+| **Attribution** | PR #192 commit and the cleanup commits carry `Co-Authored-By: plan-marshall <noreply@cuioss.de>`. | Pass |
+| **Boundary discipline** | Landed files are the plan's declared `pm-web-app`, `pm-api` catalogue/test, `pm-mock-runtime` scenarios/engine, `pm-web-e2e`, and docs; no server, operator, relay, or unrelated view changed. | Pass |
+| **No test weakening** | The changes add assertions; the cleanup replaces weaker route expectations with stronger empty-feed checks. No test, skip, or configuration is weakened. | Pass |
 | **No unintended reverts** | The cleanup sits on top of later PRs and touches no unrelated view, operator, or server code. | Pass |
-| **Report vs diff** | The `TASK-002`, dashboard, duplicate-row, nested-pruned, and colour-token claims now match the code and fixtures. | Pass |
+| **Report vs diff** | The `TASK-002`, dashboard, duplicate-row, nested-pruned, colour-token, and activity-seed claims now match the code and fixtures. | Pass |
 
 ### 8.5 Verdict
 
-**Static verdict: PASS on Pillars 1, 2, and 4. Pillar 3 is deliberately deferred.** The report therefore remains in `doc/agy/`, Step 8 stays unchecked, and the dashboard/implemented index record the static pass and the pending live gate. The report moves to `doc/agy/verified/` only after the executable gates run.
+**PASSED on all four pillars.** Static and live evidence are recorded above; the report moves to `doc/agy/verified/`, Step 8 is checked off, and the dashboard/implemented/verified indices are updated in the same housekeeping change.
