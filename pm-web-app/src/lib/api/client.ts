@@ -679,6 +679,14 @@ export interface ReportFrom {
   project_title?: string;
   epic_title?: string;
   plan_title?: string;
+  /** The phase the report names, where the wire carries it. */
+  phase?: string;
+  /** The role the report names, where the wire carries it. */
+  role?: string;
+  /** The harness the report names, where the wire carries it. */
+  harness?: string;
+  /** The model the report names, where the wire carries it. */
+  model?: string;
 }
 
 export interface ReportItem {
@@ -702,6 +710,10 @@ export interface ReportItem {
   subject_kind?: string;
   /** Whether the cleanup has deleted the report's subject since it was written. */
   subject_deleted?: boolean;
+  /** The report's own headline, where the wire carries one beside the subject. */
+  title?: string;
+  /** The state the report names, where the wire carries one. */
+  status?: string;
 }
 
 /**
@@ -726,6 +738,10 @@ function normaliseReportFrom(raw: unknown): ReportFrom {
     project_title: text('project_title'),
     epic_title: text('epic_title'),
     plan_title: text('plan_title'),
+    phase: text('phase'),
+    role: text('role'),
+    harness: text('harness'),
+    model: text('model'),
   };
 }
 

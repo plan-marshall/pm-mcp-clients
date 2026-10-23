@@ -4,9 +4,11 @@
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
+  import FilterInput from '../components/FilterInput.svelte';
   import WorkControlPanel from '../components/WorkControlPanel.svelte';
   import WorkflowIcon from '../components/WorkflowIcon.svelte';
   import { phaseIconId } from '../icons/workflowIcons';
+  import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import {
     apiClient,
     type ProjectSummary,
@@ -48,6 +50,140 @@
   let unsubscribeEvents: (() => void) | null = null;
   /** The plan or epic whose actions the operator opened from its row. */
   let controlSubject: { kind: 'plan' | 'epic'; id: string } | null = null;
+
+  /** The filter of the running-work lists; the project tiles are navigation, not list items. */
+  let runningQuery = '';
+  /** The filter of the ended-work page. */
+  let endedQuery = '';
+
+  /**
+   * @param plan a running plan
+   * @returns the identifier the list and the filter use
+   */
+  function planKeyOf(plan: ActivePlanSummary): string {
+    return plan.plan_id || (plan as ActivePlanSummary & { planId?: string }).planId || '';
+  }
+
+  /**
+   * @param epic a running epic
+   * @returns the identifier the list and the filter use
+   */
+  function epicKeyOf(epic: ActiveEpicSummary): string {
+    return epic.epic_id || (epic as ActiveEpicSummary & { epicId?: string }).epicId || '';
+  }
+
+  /**
+   * @param item an ended-work row
+   * @returns the identifier the table and the filter use
+   */
+  function endedKeyOf(item: EndedWorkPage['items'][number]): string {
+    return item.id ?? item.item_id ?? item.title;
+  }
+
+  /**
+   * The fields a running plan shows, for the shared filter.
+   *
+   * @param plan the running plan
+   * @returns every visible value
+   */
+  function planFilterFields(plan: ActivePlanSummary): Array<string | null | undefined> {
+    return [
+      plan.plan_id,
+      plan.title,
+      selectedProject?.display_name,
+      selectedProject?.project_id,
+      plan.epic_id,
+      plan.epic_title,
+      getPlanPhase(plan),
+      getPlanState(plan),
+      plan.off_track_signal,
+    ];
+  }
+
+  /**
+   * The fields a running epic shows, for the shared filter.
+   *
+   * @param epic the running epic
+   * @returns every visible value
+   */
+  function epicFilterFields(epic: ActiveEpicSummary): Array<string | null | undefined> {
+    return [
+      epic.epic_id,
+      epic.title,
+      selectedProject?.display_name,
+      selectedProject?.project_id,
+      epic.needs_operator_kind,
+      ...(epic.plans ?? []).flatMap((plan) => [plan.title, plan.plan_id]),
+    ];
+  }
+
+  /**
+   * The fields an ended-work row shows, for the shared filter.
+   *
+   * @param item the ended-work row
+   * @returns every visible value
+   */
+  function endedFilterFields(item: EndedWorkPage['items'][number]): Array<string | null | undefined> {
+    return [
+      item.id,
+      item.item_id,
+      item.kind,
+      item.title,
+      item.outcome,
+      item.terminal_reason,
+      item.reason,
+      item.ended_at,
+      formatRelative(item.ended_at),
+    ];
+  }
+
+  /**
+   * Builds one normalized haystack per item, so filtering does not re-normalize on each keystroke.
+   *
+   * @param items the list
+   * @param keyOf the identifier of an item
+   * @param fieldsOf the values the item shows
+   * @returns the haystacks by identifier
+   */
+  function indexItems<T>(
+    items: T[],
+    keyOf: (item: T) => string,
+    fieldsOf: (item: T) => Array<string | null | undefined>,
+  ): Map<string, string> {
+    const index = new Map<string, string>();
+    for (const item of items) index.set(keyOf(item), buildHaystack(fieldsOf(item)));
+    return index;
+  }
+
+  /**
+   * @param items the list
+   * @param query the operator's query
+   * @param keyOf the identifier of an item
+   * @param index the item haystacks
+   * @returns the items that match, in the served order
+   */
+  function applyFilter<T>(
+    items: T[],
+    query: string,
+    keyOf: (item: T) => string,
+    index: Map<string, string>,
+  ): T[] {
+    const tokens = tokenize(query);
+    if (tokens.length === 0) return items;
+    return items.filter((item) => matchesHaystack(tokens, index.get(keyOf(item)) ?? ''));
+  }
+
+  $: planHaystacks = indexItems(detail?.plans ?? [], planKeyOf, planFilterFields);
+  $: epicHaystacks = indexItems(detail?.epics ?? [], epicKeyOf, epicFilterFields);
+  $: endedHaystacks = indexItems(endedPage?.items ?? [], endedKeyOf, endedFilterFields);
+  $: filteredPlans = applyFilter(detail?.plans ?? [], runningQuery, planKeyOf, planHaystacks);
+  $: filteredEpics = applyFilter(detail?.epics ?? [], runningQuery, epicKeyOf, epicHaystacks);
+  $: filteredEndedItems = applyFilter(
+    endedPage?.items ?? [],
+    endedQuery,
+    endedKeyOf,
+    endedHaystacks,
+  );
 
   $: selectedProject = projects.find((p) => p.project_id === selectedProjectId) || null;
 
@@ -511,7 +647,17 @@
             {$t('overview.ended.empty', { project: selectedProject.display_name })}
           </p>
         {:else}
-          <div class="ended-table-wrap">
+          <FilterInput
+            value={endedQuery}
+            label={$t('common.filter.label')}
+            placeholder={$t('common.filter.placeholder')}
+            resultCount={filteredEndedItems.length}
+            onchange={(value) => (endedQuery = value)}
+          />
+          {#if filteredEndedItems.length === 0}
+            <p class="empty-text" data-testid="ended-filter-empty">{$t('common.filter.empty')}</p>
+          {:else}
+            <div class="ended-table-wrap">
             <table class="data-table">
               <thead>
                 <tr>
@@ -524,7 +670,7 @@
                 </tr>
               </thead>
               <tbody>
-                {#each endedPage.items as item}
+                {#each filteredEndedItems as item}
                   <tr class="ended-row" data-testid="ended-item">
                     <td>
                       <span class="badge badge--kind badge--{item.kind}">
@@ -606,6 +752,7 @@
               {$t('overview.ended.older')}
             </Button>
           </div>
+          {/if}
         {/if}
       </section>
     {:else}
@@ -700,10 +847,24 @@
         {:else}
           <!-- Cards Container -->
           <div class="cards-container">
+            {#if (viewMode === 'plan' ? detail.plans.length : detail.epics.length) > 0}
+              <FilterInput
+                value={runningQuery}
+                label={$t('common.filter.label')}
+                placeholder={$t('common.filter.placeholder')}
+                resultCount={viewMode === 'plan' ? filteredPlans.length : filteredEpics.length}
+                onchange={(value) => (runningQuery = value)}
+              />
+            {/if}
             {#if viewMode === 'plan'}
               <!-- Plans List -->
-              <div class="plan-cards">
-                {#each detail.plans as plan}
+              {#if filteredPlans.length === 0}
+                <p class="empty-text" data-testid="running-filter-empty">
+                  {$t('common.filter.empty')}
+                </p>
+              {:else}
+                <div class="plan-cards">
+                {#each filteredPlans as plan}
                   <div
                     class="work-card work-card--plan plan-card"
                     data-testid="plan-card"
@@ -792,10 +953,16 @@
                   </div>
                 {/each}
               </div>
+              {/if}
             {:else}
               <!-- By Epic List -->
-              <div class="epic-cards">
-                {#each detail.epics as epic}
+              {#if filteredEpics.length === 0}
+                <p class="empty-text" data-testid="running-filter-empty">
+                  {$t('common.filter.empty')}
+                </p>
+              {:else}
+                <div class="epic-cards">
+                {#each filteredEpics as epic}
                   <div
                     class="work-card work-card--epic epic-card"
                     data-testid="epic-card"
@@ -887,10 +1054,10 @@
                 {/each}
 
                 <!-- Without Epic Section -->
-                {#if detail.plans.some((p) => !p.epic_id && !(p as any).epicId)}
+                {#if filteredPlans.some((p) => !p.epic_id && !(p as any).epicId)}
                   <div class="without-epic-section">
                     <h4 class="section-subtitle">{$t('overview.group.without_epic')}</h4>
-                    {#each detail.plans.filter((p) => !p.epic_id && !(p as any).epicId) as plan}
+                    {#each filteredPlans.filter((p) => !p.epic_id && !(p as any).epicId) as plan}
                       <div
                         class="work-card work-card--plan"
                         role="button"
@@ -930,6 +1097,7 @@
                   </div>
                 {/if}
               </div>
+              {/if}
             {/if}
 
             <!-- Alongside Section -->

@@ -377,4 +377,176 @@ describe('ReportsView component', () => {
     expect(notice).toHaveTextContent('2 new reports · relay-hardening');
     expect(document.title).toBe(originalTitle);
   });
+
+  /** @param value the filter text @returns the filter input */
+  async function typeFilter(value: string): Promise<HTMLElement> {
+    const input = await screen.findByTestId('filter-input');
+    await fireEvent.input(input, { target: { value } });
+    return input;
+  }
+
+  it('filters the loaded reports by project, epic, plan, body, and created date', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    await typeFilter('pm-mcp-core');
+    expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
+    expect(screen.getByText('Onboarded')).toBeInTheDocument();
+
+    await typeFilter('relay-hardening');
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+    expect(screen.queryByText('Onboarded')).toBeNull();
+
+    await typeFilter('docs-typo');
+    expect(screen.getByText('Ended: no change')).toBeInTheDocument();
+    expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
+
+    await typeFilter('deliverables');
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+    expect(screen.queryByText('Ended: no change')).toBeNull();
+
+    await typeFilter('yesterday');
+    expect(screen.getByText('Onboarded')).toBeInTheDocument();
+    expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
+  });
+
+  it('matches a report on a status the wire carries', async () => {
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: [
+        {
+          id: 'rep-0300',
+          from: { project: 'pm-mcp-clients', plan: 'fix-relay' },
+          kind: 'plan.ended',
+          subject: 'fix-relay ended: merged',
+          status: 'superseded',
+          created_at: '2026-10-16T11:20:00Z',
+          created: 'today 11:20',
+        },
+      ],
+      unread_count: 1,
+      has_older: false,
+      older_count: 0,
+    });
+
+    render(ReportsView);
+    await typeFilter('superseded');
+    expect(screen.getByText('fix-relay ended: merged')).toBeInTheDocument();
+  });
+
+  it('matches a multi-token query across the origin and the body', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    await typeFilter('relay deliverables');
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+    expect(screen.queryByText('Ended: no change')).toBeNull();
+    expect(screen.queryByText('Onboarded')).toBeNull();
+  });
+
+  it('drops an empty group and brings it back when the filter is cleared', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    expect(screen.getAllByText('pm-mcp-core').length).toBeGreaterThan(0);
+
+    await typeFilter('relay');
+    expect(screen.queryAllByText('pm-mcp-core')).toHaveLength(0);
+    expect(screen.getAllByText('relay-hardening').length).toBeGreaterThan(0);
+
+    await fireEvent.click(screen.getByTestId('filter-clear'));
+    expect(screen.getAllByText('pm-mcp-core').length).toBeGreaterThan(0);
+    expect(screen.getByText('Ended: no change')).toBeInTheDocument();
+  });
+
+  it('shows an explicit no-match state', async () => {
+    render(ReportsView);
+    await typeFilter('nothing-matches-this');
+
+    expect(await screen.findByTestId('report-filter-empty')).toHaveTextContent(
+      'No loaded report matches the filter.',
+    );
+    expect(screen.getByTestId('filter-results')).toHaveTextContent('No matches');
+  });
+
+  it('keeps the unread count and makes no request while typing', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    const requestsBefore = (apiClient.getReports as ReturnType<typeof vi.fn>).mock.calls.length;
+
+    await typeFilter('relay');
+
+    expect(screen.getByText(/3 unread/)).toBeInTheDocument();
+    expect(apiClient.getReports).toHaveBeenCalledTimes(requestsBefore);
+  });
+
+  it('labels the loaded-only set while older reports exist and keeps the query when loading them', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const input = await typeFilter('relay');
+    expect(screen.getByTestId('loaded-only-hint')).toHaveTextContent(
+      'Only the reports loaded so far are searched.',
+    );
+
+    await fireEvent.click(screen.getByRole('button', { name: /Show 5 older/i }));
+    expect(apiClient.getReports).toHaveBeenCalledWith(true);
+    expect((input as HTMLInputElement).value).toBe('relay');
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+  });
+
+  it('switches layouts and remembers the choice across a remount', async () => {
+    const { unmount } = render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    expect(document.querySelector('.reports-view')).toHaveAttribute('data-layout', 'comfortable');
+
+    await fireEvent.click(screen.getByTestId('layout-compact'));
+    expect(document.querySelector('.reports-view')).toHaveAttribute('data-layout', 'compact');
+    expect(localStorage.getItem('pm_view_layout_reports')).toBe('compact');
+
+    unmount();
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    expect(document.querySelector('.reports-view')).toHaveAttribute('data-layout', 'compact');
+    expect(screen.getByTestId('layout-compact')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('keeps the list beside the detail in split mode and marks the active card', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue({
+      plan_id: 'fix-relay',
+      title: 'fix-relay',
+      from: { project: 'pm-mcp-clients', plan: 'fix-relay' },
+      outcome: 'merged',
+      started_at: '2026-10-16T08:40:00Z',
+      ended_at: '2026-10-16T11:20:00Z',
+      duration_seconds: 9600,
+      paused_seconds: 0,
+      deliverables: [],
+      replanning_records: [],
+      decision_records: [],
+    } as unknown as PlanCompletionReport);
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    await fireEvent.click(screen.getByTestId('layout-split'));
+    const details = screen.getAllByRole('button', { name: /Show the details/i });
+    await fireEvent.click(details[0]);
+
+    await waitFor(() => {
+      expect(document.querySelector('.completion-report')).not.toBeNull();
+    });
+    expect(document.querySelector('.reports-tree')).not.toBeNull();
+    const active = document.querySelector('.report-card--active');
+    expect(active).not.toBeNull();
+    expect(active).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('clears the filter on Escape', async () => {
+    render(ReportsView);
+    const input = await typeFilter('relay');
+
+    await fireEvent.keyDown(input, { key: 'Escape' });
+
+    expect((input as HTMLInputElement).value).toBe('');
+    expect(screen.getByText('Ended: no change')).toBeInTheDocument();
+  });
 });

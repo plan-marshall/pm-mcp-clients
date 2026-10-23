@@ -175,4 +175,39 @@ test.describe('Reports: paths, details, and the quiet notice (UC-PLN-6)', () => 
     await expect(notice).toContainText('new-plan started by relay-hardening');
     expect(await page.title()).toBe(title);
   });
+
+  test('filters the loaded reports as you type and shows a no-match state', async ({ page }) => {
+    const filter = page.getByTestId('filter-input');
+    await expect(filter).toBeVisible();
+
+    await filter.fill('overlap with relay-auth-v2');
+
+    await expect(page.locator('.report-card', { hasText: 'relay-docs waits' })).toBeVisible();
+    await expect(page.locator('.report-card')).toHaveCount(1);
+    await expect(page.getByTestId('filter-results')).toContainText('1 match');
+    await expect(page.getByTestId('loaded-only-hint')).toBeVisible();
+
+    await filter.fill('nothing-matches-this');
+
+    await expect(page.getByTestId('report-filter-empty')).toBeVisible();
+    await expect(page.getByTestId('filter-results')).toContainText('No matches');
+    await expect(page.getByTestId('loaded-only-hint')).toBeVisible();
+  });
+
+  test('keeps the list beside the detail in split mode and remembers the layout', async ({
+    page,
+  }) => {
+    await page.getByTestId('layout-split').click();
+    await expect(page.locator('.reports-view')).toHaveAttribute('data-layout', 'split');
+
+    const card = page.locator('.report-card', { hasText: 'Ended: merged (#214)' });
+    await card.getByRole('button', { name: /Show the details/i }).click();
+
+    await expect(page.locator('.completion-report')).toBeVisible();
+    await expect(page.locator('.reports-tree')).toBeVisible();
+    await expect(page.locator('.report-card--active')).toBeVisible();
+
+    await page.reload();
+    await expect(page.locator('.reports-view')).toHaveAttribute('data-layout', 'split');
+  });
 });
