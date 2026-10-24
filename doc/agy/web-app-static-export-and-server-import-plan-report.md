@@ -1,5 +1,7 @@
 # Completion Report: `web-app-static-export-and-server-import`
 
+**Step 8 status:** **FAILED** — the CSP blocks the SvelteKit inline bootstrap; the served app does not start in a browser. Remediation: [`web-app-static-export-csp-remediation-plan.md`](web-app-static-export-csp-remediation-plan.md).
+
 ## Executive Summary
 
 `pm-web-app` already built a SvelteKit SPA and packaged it as a resource JAR, but `pm-mcpd` answered every
@@ -231,15 +233,18 @@ committed with this change, as the runbook requires. No other file outside the f
 | **F6** | The native build carries `META-INF/resources`, or the native path is recorded as unsupported on the host. | See **Native image**. |
 | **F7** | Clients and server gates pass; the clients SNAPSHOT is published before the server consumes it. | See **Build & Quality Evidence** and the landing order below. |
 
-## Known Limitation: CSP and the SvelteKit Shell (F5 follow-up)
+## Step 8 Blocker: CSP and the SvelteKit Shell (F5 follow-up)
 
 The web listener sends `default-src 'self'; script-src 'self'; ...` on every response. The current
 SvelteKit `index.html` boots through an inline `<script>` (the `__sveltekit_*` bootstrap) and carries an
 inline `style="display: contents"` attribute, both of which that policy blocks in a browser. `WebAppIT`
-proves that the daemon serves the shell and the assets with the headers; it does not (and cannot) prove
-browser rendering. This is the pre-existing CSP finding F5 in the plan and is deliberately **not** fixed
-here: the plan requires a focused follow-up (a hash/nonce on the shell or a shell without inline
-script/style) instead of silently loosening the policy. The server README states the limitation.
+proves that the daemon serves the shell and the assets with the headers; it does not prove browser
+rendering. The served app therefore does not start.
+
+This is the pre-existing CSP finding F5 in the plan. It is not an accepted limitation: Step 8 fails on it.
+[`web-app-static-export-csp-remediation-plan.md`](web-app-static-export-csp-remediation-plan.md) specifies
+the hash/nonce fix, the inline-style removal, and the browser-level proof. The policy must not be loosened
+to `'unsafe-inline'`.
 
 ## Review Findings Resolution
 
@@ -266,3 +271,20 @@ refuted.
    [plan-marshall/plan-marshall-mcp#104](https://github.com/plan-marshall/plan-marshall-mcp/pull/104)).
 
 No store, protocol, pairing, session, UI, or TLS behaviour changed.
+
+---
+
+## Step 8 Verification (Orchestrator)
+
+**Verdict: FAILED — the CSP blocks the SvelteKit bootstrap.** The report stays in `doc/agy/`; the split static-export plan’s Step 7 is checked, Step 8 remains open.
+
+| Pillar | Result | Evidence |
+|---|---|---|
+| **1 — Traceability** | Pass for packaging/import, fail for F5 | The resource JAR, server dependency, static handler, SPA fallback, API/MCP boundary, native resources, and `WebAppIT` match the plan. The served app does not boot in a browser because the CSP has no script hash/nonce and no inline-style allowance. |
+| **2 — Anti-patterns** | Pass on hygiene, fail on the functional CSP | No fallback dictionary; no uncatalogued UI text; path confinement, content types, cache rules, and security headers are present; `require-trusted-types-for 'script'` is retained. The policy is secure but incompatible with the shell it serves. |
+| **3 — Subprocess lifecycle** | Fail at browser handshake | Clients and server pre-commit gates, `WebAppIT` (JVM and native), and the HTTP matrix pass. No browser loaded the daemon-served `/`; the inline `__sveltekit_*` script is blocked by `script-src 'self'`, and the inline `display: contents` style is blocked by the missing `style-src` allowance. |
+| **4 — Independent diff** | Pass | Boundaries are the two declared repositories; the `PlanViewScenarioTest` reformat is documented; no test weakening; no unrelated revert; commit trailers present. |
+
+### Remediation
+
+[`web-app-static-export-csp-remediation-plan.md`](web-app-static-export-csp-remediation-plan.md) removes the inline-style wrapper, admits the exact bootstrap script by hash or nonce without `'unsafe-inline'`, and adds a real browser smoke against the packaged daemon. The parent report moves only after that browser proof and the security review pass.
