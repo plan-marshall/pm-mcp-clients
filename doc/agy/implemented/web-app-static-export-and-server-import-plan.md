@@ -11,7 +11,7 @@ The work spans two repositories:
 | Static export proof and packaging | `pm-mcp-clients` (`pm-web-app`) | The SvelteKit static build and `META-INF/resources` packaging are owned here. |
 | Dependency import, static handler, native resources, server IT | `plan-marshall-mcp` (`pm-mcp-server`) | The daemon assembly and web listener are owned here. |
 
-It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](runbook.md).
+It operationalizes [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) under the execution discipline of [`doc/agy/runbook.md`](../runbook.md).
 
 ---
 
@@ -19,13 +19,13 @@ It operationalizes [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-c
 
 | Dimension | Reference |
 |---|---|
-| **Use Cases** | [`UC-ENT-1`](../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1) (Enter and Connect), [`UC-ONB-1`](../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1) (Machine Onboarding), [`UC-PLN-4`](../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4) (See What Runs) |
-| **Web server specification** | [`03-web-server.adoc#web-app`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app), [`#web-proxy`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-proxy), [`#web-security-headers`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-security-headers) |
-| **Current export** | [`pm-web-app/pom.xml`](../../pm-web-app/pom.xml) (`frontend-maven-plugin`, `copy-spa-resources`), [`pm-web-app/vite.config.ts`](../../pm-web-app/vite.config.ts), [`pm-web-app/build/index.html`](../../pm-web-app/build/index.html) |
-| **Current server gap** | [`WebRequestHandler.java`](../../../plan-marshall-mcp/pm-mcp-server/src/main/java/de/planmarshall/mcp/server/web/WebRequestHandler.java) (`APP_PLACEHOLDER`), [`WebListener.java`](../../../plan-marshall-mcp/pm-mcp-server/src/main/java/de/planmarshall/mcp/server/web/WebListener.java), [`pm-mcp-server/pom.xml`](../../../plan-marshall-mcp/pm-mcp-server/pom.xml) |
-| **Existing IT infrastructure** | [`DaemonProcess.java`](../../../plan-marshall-mcp/pm-mcp-server/src/test/java/de/planmarshall/mcp/server/test/DaemonProcess.java), [`TestRuntime.java`](../../../plan-marshall-mcp/pm-mcp-server/src/test/java/de/planmarshall/mcp/server/test/TestRuntime.java), [`UdsHttp.java`](../../../plan-marshall-mcp/pm-mcp-server/src/test/java/de/planmarshall/mcp/server/test/UdsHttp.java), [`WebListenerIT.java`](../../../plan-marshall-mcp/pm-mcp-server/src/test/java/de/planmarshall/mcp/server/web/WebListenerIT.java) |
-| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../meta/implement_use-cases.adoc) |
-| **Operational SOP** | [`doc/agy/runbook.md`](runbook.md) |
+| **Use Cases** | [`UC-ENT-1`](../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1) (Enter and Connect), [`UC-ONB-1`](../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1) (Machine Onboarding), [`UC-PLN-4`](../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4) (See What Runs) |
+| **Web server specification** | [`03-web-server.adoc#web-app`](../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app), [`#web-proxy`](../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-proxy), [`#web-security-headers`](../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-security-headers) |
+| **Current export** | [`pm-web-app/pom.xml`](../../../pm-web-app/pom.xml) (`frontend-maven-plugin`, `copy-spa-resources`), [`pm-web-app/vite.config.ts`](../../../pm-web-app/vite.config.ts), [`pm-web-app/build/index.html`](../../../pm-web-app/build/index.html) |
+| **Current server gap** | [`WebRequestHandler.java`](../../../../plan-marshall-mcp/pm-mcp-server/src/main/java/de/planmarshall/mcp/server/web/WebRequestHandler.java) (`APP_PLACEHOLDER`), [`WebListener.java`](../../../../plan-marshall-mcp/pm-mcp-server/src/main/java/de/planmarshall/mcp/server/web/WebListener.java), [`pm-mcp-server/pom.xml`](../../../../plan-marshall-mcp/pm-mcp-server/pom.xml) |
+| **Existing IT infrastructure** | [`DaemonProcess.java`](../../../../plan-marshall-mcp/pm-mcp-server/src/test/java/de/planmarshall/mcp/server/test/DaemonProcess.java), [`TestRuntime.java`](../../../../plan-marshall-mcp/pm-mcp-server/src/test/java/de/planmarshall/mcp/server/test/TestRuntime.java), [`UdsHttp.java`](../../../../plan-marshall-mcp/pm-mcp-server/src/test/java/de/planmarshall/mcp/server/test/UdsHttp.java), [`WebListenerIT.java`](../../../../plan-marshall-mcp/pm-mcp-server/src/test/java/de/planmarshall/mcp/server/web/WebListenerIT.java) |
+| **Implementation Recipe** | [`doc/meta/implement_use-cases.adoc`](../../meta/implement_use-cases.adoc) |
+| **Operational SOP** | [`doc/agy/runbook.md`](../runbook.md) |
 
 ### 1.1 Finding Analysis
 
@@ -158,13 +158,13 @@ The test must fail on the current `APP_PLACEHOLDER` and pass only when the real 
 - [x] 1. Isolated worktrees created in both repositories after pulling `main`:
   - `/Users/oliver/git/worktrees/pm-mcp-clients-web-app-static-export` on `feat/web-app-static-export`
   - `/Users/oliver/git/worktrees/plan-marshall-mcp-web-app-static-export` on `feat/web-app-static-export`
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-java:java-core` for the server handler and dependency.
   - `plan-marshall-persona-integration-tester` for the packaged-daemon IT.
   - `plan-marshall-persona-security-expert` for static path confinement, content types, CSP, and cache headers.
   - `plan-marshall-persona-documenter` for the export/import docs.
   - `plan-marshall-persona-code-reviewer` for review triage.
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
+- [x] 3. Incremental implementation with tests following the phased technical recipe.
 - [ ] 4. Completion report written (`doc/agy/web-app-static-export-and-server-import-plan-report.md`), plan moved to `doc/agy/implemented/`, links rebased, and dashboard/index updated.
 - [ ] 5. Pre-commit passed: clients `./mvnw verify -Ppre-commit`; server `./mvnw verify -Ppre-commit` plus `-Pintegration-tests` for the IT.
 - [ ] 6. PRs opened in the landing order (no `skip-bot-review`); review windows and findings resolved.
@@ -192,7 +192,7 @@ The test must fail on the current `APP_PLACEHOLDER` and pass only when the real 
 
 ### Phase 1: Export and Verify the Static Artifact (`pm-mcp-clients`)
 
-- [ ] **1.1 Build and inspect**:
+- [x] **1.1 Build and inspect**:
   - `cd pm-web-app && npm ci && npm run build` (or `./mvnw -pl pm-web-app package -DskipTests`).
   - Confirm `build/index.html` and `build/_app/immutable/**`.
   - Build the JAR and assert:
@@ -201,62 +201,62 @@ The test must fail on the current `APP_PLACEHOLDER` and pass only when the real 
       | grep -E 'META-INF/resources/(index.html|_app/immutable/)'
     ```
   - If the resource copy is missing, fix `pm-web-app/pom.xml` before proceeding.
-- [ ] **1.2 Keep the app same-origin**:
+- [x] **1.2 Keep the app same-origin**:
   - Confirm no `base`/`origin` change is needed: the built app calls `/api/v1` on its own origin.
   - Do not add CORS or a server URL setting.
-- [ ] **1.3 Install/publish**:
+- [x] **1.3 Install/publish**:
   - Local: `./mvnw -pl pm-web-app install -DskipTests`.
   - CI: the `pm-mcp-clients` SNAPSHOT publication must complete before the server build resolves `pm-web-app`.
 
 ### Phase 2: Import the Artifact (`plan-marshall-mcp`)
 
-- [ ] **2.1 Dependency management**:
+- [x] **2.1 Dependency management**:
   - In `plan-marshall-mcp/pom.xml`, add `de.planmarshall:pm-web-app` at `${version.pm-mcp-clients}` beside the other clients modules.
-- [ ] **2.2 Server dependency**:
+- [x] **2.2 Server dependency**:
   - In `pm-mcp-server/pom.xml`, add the `pm-web-app` dependency.
   - Verify `mvn dependency:tree` includes the resource JAR and that `target/classes` / the runner sees `META-INF/resources/index.html`.
-- [ ] **2.3 Native resource inclusion**:
+- [x] **2.3 Native resource inclusion**:
   - Add `quarkus.native.resources.includes=META-INF/resources/**` (or the Quarkus resource-config equivalent) to `application.properties`/native metadata.
   - Build the native runner where the host supports it and verify the resource is present.
-- [ ] **2.4 Build order**:
+- [x] **2.4 Build order**:
   - Document that clients publish `pm-web-app` first; the server consumes the SNAPSHOT. Do not duplicate the web-app source in the server.
 
 ### Phase 3: Static Handler and Wiring (`pm-mcp-server`)
 
-- [ ] **3.1 Add `StaticWebApp`**:
+- [x] **3.1 Add `StaticWebApp`**:
   - Resolve `META-INF/resources` via the runtime classloader (`Thread.currentThread().getContextClassLoader()` or `WebRequestHandler`'s loader).
   - `GET /` and extensionless navigation → `index.html`.
   - Existing asset → stream bytes with the correct content type.
   - Missing asset with a file extension → `404`; do not fall back to HTML.
   - `Cache-Control`: `no-cache` for `index.html`, immutable for `_app/immutable/`, a short/no-cache default otherwise.
   - Reject traversal and encoded separators; reuse the existing `NOT_NORMALIZED` guard and never list directories.
-- [ ] **3.2 Wire `WebRequestHandler`**:
+- [x] **3.2 Wire `WebRequestHandler`**:
   - Add a `StaticWebApp` field/constructor parameter.
   - Replace the unconditional `APP_PLACEHOLDER` branch with the static handler.
   - Keep `APP_PLACEHOLDER` only for a build without the resource JAR.
   - Keep `/api/v1/**`, `/mcp`, other `/api/**`, `OPTIONS`, `Host` and `Origin` behavior unchanged.
-- [ ] **3.3 Wire `WebListener`**:
+- [x] **3.3 Wire `WebListener`**:
   - Construct the handler with the static app; no other listener/TLS change.
-- [ ] **3.4 Tests**:
+- [x] **3.4 Tests**:
   - `StaticWebAppTest` / `WebRequestHandlerTest`: index, asset, SPA fallback, missing asset, traversal, API/MCP boundary, security headers.
   - Use a small test classpath fixture or a test resource tree; the packaged IT remains the real proof.
 
 ### Phase 4: Server-Level Integration Test
 
-- [ ] **4.1 Add `WebAppIT`** under `pm-mcp-server/src/test/java/de/planmarshall/mcp/server/web/`.
-- [ ] **4.2 Reuse the IT infrastructure**:
+- [x] **4.1 Add `WebAppIT`** under `pm-mcp-server/src/test/java/de/planmarshall/mcp/server/web/`.
+- [x] **4.2 Reuse the IT infrastructure**:
   - `DaemonProcess.startReady(base)`; `TestRuntime.bearer(daemon.token())`; `UdsHttp` for the socket API and loopback web requests.
   - Enable the listener with `PUT /api/v1/web {"enabled":true,"lan":false,"port":0}` and close it in cleanup.
-- [ ] **4.3 Assertions**:
+- [x] **4.3 Assertions**:
   - `/` → `200`, `text/html`, real app shell (`plan-marshall`, `_app/`), not `APP_PLACEHOLDER`.
   - An immutable asset extracted from the index → `200`, JS content type, non-empty.
   - `/designer` → `200`, app shell (SPA fallback).
   - `/missing.js` → `404`; `/api/v1/status` without secret → `401`; `/mcp` → `404`; `/api/unknown` → `404`; wrong `Host` → `403`.
   - Security headers present on `/` and the asset.
-- [ ] **4.4 Mode**:
+- [x] **4.4 Mode**:
   - Run under `-Pintegration-tests` against the packaged JVM runner.
   - Run the same test against the native runner when the build host supports it; record the result.
-- [ ] **4.5 No new IT infra**: the existing `DaemonProcess`, `TestRuntime`, and `UdsHttp` are sufficient. If a new harness is genuinely needed, add a focused helper under `pm-mcp-server/src/test/java/.../test/`, not a second framework.
+- [x] **4.5 No new IT infra**: the existing `DaemonProcess`, `TestRuntime`, and `UdsHttp` are sufficient. If a new harness is genuinely needed, add a focused helper under `pm-mcp-server/src/test/java/.../test/`, not a second framework.
 
 ### Phase 5: Verification, Docs, Report
 
@@ -266,7 +266,7 @@ The test must fail on the current `APP_PLACEHOLDER` and pass only when the real 
 - [ ] **5.2 Server**:
   - `./mvnw -pl pm-mcp-server -Pintegration-tests verify` (the `WebAppIT` must pass).
   - `./mvnw verify -Ppre-commit` and, where supported, the native build/test.
-- [ ] **5.3 Docs**:
+- [x] **5.3 Docs**:
   - Server README: dependency, serving path, native resource requirement.
   - `pm-web-app/README.md`: export/import commands and same-origin API.
 - [ ] **5.4 Report**:

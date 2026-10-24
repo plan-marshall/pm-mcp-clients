@@ -134,6 +134,48 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Prove that the SPA build reached the published resource JAR. The copy above and the jar plugin
+                 would both succeed on an empty build directory, so the artifact alone is not the evidence:
+                 pm-mcp-server serves exactly META-INF/resources, and a regression here would ship a daemon that
+                 answers with the placeholder. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>verify-spa-resources</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <resourcecount property="spa.index.count">
+                                    <zipfileset src="${project.build.directory}/${project.build.finalName}.jar"
+                                                includes="META-INF/resources/index.html"/>
+                                </resourcecount>
+                                <fail message="pm-web-app: ${project.build.finalName}.jar carries no META-INF/resources/index.html; the SPA build did not reach the resource JAR.">
+                                    <condition>
+                                        <equals arg1="${spa.index.count}" arg2="0"/>
+                                    </condition>
+                                </fail>
+                                <resourcecount property="spa.immutable.count">
+                                    <zipfileset src="${project.build.directory}/${project.build.finalName}.jar"
+                                                includes="META-INF/resources/_app/immutable/**"/>
+                                </resourcecount>
+                                <fail message="pm-web-app: ${project.build.finalName}.jar carries no META-INF/resources/_app/immutable asset; the SPA build did not reach the resource JAR.">
+                                    <condition>
+                                        <equals arg1="${spa.immutable.count}" arg2="0"/>
+                                    </condition>
+                                </fail>
+                                <echo message="pm-web-app: packaged ${spa.index.count} index.html and ${spa.immutable.count} immutable asset(s) under META-INF/resources."/>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 </project>
