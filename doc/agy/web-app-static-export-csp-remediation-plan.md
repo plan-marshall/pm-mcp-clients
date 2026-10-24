@@ -78,7 +78,9 @@ A static SvelteKit export needs one inline script to import and start the app. T
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktrees created in both repositories off latest `main`.
+- [x] 1. Isolated worktrees created in both repositories off latest `main`:
+  - `/Users/oliver/git/worktrees/pm-mcp-clients-web-app-csp` on `fix/web-app-csp`
+  - `/Users/oliver/git/worktrees/plan-marshall-mcp-web-app-csp` on `fix/web-app-csp`
 - [ ] 2. Personas loaded: `plan-marshall-persona-implementer`, `plan-marshall-persona-integration-tester`, `plan-marshall-persona-security-expert`, `plan-marshall-persona-documenter`, `plan-marshall-persona-code-reviewer`.
 - [ ] 3. Implement and test §5.
 - [ ] 4. Report written; plan moved to `implemented/`; dashboard/index updated.
