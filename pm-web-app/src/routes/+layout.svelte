@@ -541,8 +541,8 @@
     flex-wrap: wrap;
     gap: var(--space-3);
     padding: var(--space-2) var(--space-4);
-    background-color: var(--color-warning-subtle, #fef3c7);
-    color: var(--color-warning-text, #92400e);
+    background-color: var(--color-warning-subtle);
+    color: var(--color-warning-text);
     font-size: var(--text-sm);
     font-weight: 500;
     border-bottom: 1px solid var(--color-border);
@@ -565,8 +565,8 @@
   }
 
   .draining-btn--stop {
-    background-color: var(--color-danger, #ef4444);
-    color: #ffffff;
+    background-color: var(--color-danger);
+    color: var(--color-danger-contrast);
     border-color: transparent;
   }
 

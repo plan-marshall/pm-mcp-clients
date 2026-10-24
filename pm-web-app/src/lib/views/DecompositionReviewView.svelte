@@ -313,9 +313,9 @@
   }
 
   .decomposition-review__count {
-    margin-left: var(--space-2, 0.5rem);
-    color: var(--color-text-muted, #6b7280);
-    font-size: var(--text-sm, 0.875rem);
+    margin-left: var(--space-2);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
   }
 
   .decomposition-review__rows {
@@ -324,16 +324,16 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--space-1, 0.25rem);
+    gap: var(--space-1);
   }
 
   .decomposition-review__row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
-    padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
-    border-bottom: 1px solid var(--color-border, #d1d5db);
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-1) var(--space-2);
+    border-bottom: 1px solid var(--color-border);
   }
 
   .decomposition-review__mark {
@@ -349,13 +349,13 @@
   .decomposition-review__surface,
   .decomposition-review__checks,
   .decomposition-review__empty {
-    color: var(--color-text-muted, #6b7280);
-    font-size: var(--text-sm, 0.875rem);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
     overflow-wrap: anywhere;
   }
 
   .decomposition-review__conflict {
-    color: var(--color-danger, #b3261e);
+    color: var(--color-danger-text);
     flex-basis: 100%;
   }
 
@@ -365,24 +365,24 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2, 0.5rem);
+    gap: var(--space-2);
   }
 
   .decomposition-review textarea {
     width: 100%;
     min-height: 44px;
-    padding: var(--space-1, 0.25rem);
+    padding: var(--space-1);
   }
 
   .decomposition-review button {
     min-height: 44px;
-    padding: var(--space-1, 0.25rem) var(--space-3, 0.75rem);
+    padding: var(--space-1) var(--space-3);
     cursor: pointer;
   }
 
   .decomposition-review__old {
     text-decoration: line-through;
-    color: var(--color-text-muted, #6b7280);
+    color: var(--color-text-muted);
   }
 
   .decomposition-review dl {

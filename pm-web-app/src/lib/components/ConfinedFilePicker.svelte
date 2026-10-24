@@ -221,8 +221,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--space-3, 0.75rem);
-    background-color: rgb(0 0 0 / 0.4);
+    padding: var(--space-3);
+    background-color: var(--color-overlay);
   }
 
   .file-picker__panel {
@@ -232,22 +232,22 @@
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: var(--space-2, 0.5rem);
-    padding: var(--space-4, 1rem);
-    background-color: var(--color-bg-surface, #fff);
-    border-radius: var(--radius-lg, 0.75rem);
+    gap: var(--space-2);
+    padding: var(--space-4);
+    background-color: var(--color-bg-surface);
+    border-radius: var(--radius-lg);
   }
 
   .file-picker__title {
     margin: 0;
-    font-size: var(--text-lg, 1.125rem);
+    font-size: var(--text-lg);
   }
 
   .file-picker__roots,
   .file-picker__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2, 0.5rem);
+    gap: var(--space-2);
   }
 
   .file-picker__roots button.active {
@@ -261,7 +261,7 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--space-1, 0.25rem);
+    gap: var(--space-1);
     max-height: 24rem;
     overflow-y: auto;
   }
@@ -269,7 +269,7 @@
   .file-picker__row {
     display: flex;
     align-items: center;
-    gap: var(--space-2, 0.5rem);
+    gap: var(--space-2);
     min-height: 44px;
   }
 
@@ -287,20 +287,20 @@
   .file-picker__summary,
   .file-picker__status {
     margin: 0;
-    color: var(--color-text-muted, #6b7280);
-    font-size: var(--text-sm, 0.875rem);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
   }
 
   .file-picker__error {
     margin: 0;
-    color: var(--color-danger, #b3261e);
+    color: var(--color-danger-text);
   }
 
   .file-picker__actions button,
   .file-picker__roots button,
   .file-picker__up {
     min-height: 44px;
-    padding: var(--space-1, 0.25rem) var(--space-3, 0.75rem);
+    padding: var(--space-1) var(--space-3);
     cursor: pointer;
   }
 

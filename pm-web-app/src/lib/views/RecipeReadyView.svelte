@@ -169,33 +169,33 @@
   .recipe-ready__hint,
   .recipe-ready__auto {
     margin: 0;
-    color: var(--color-text-muted, #6b7280);
-    font-size: var(--text-sm, 0.875rem);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
   }
 
   .recipe-ready__parameters,
   .recipe-ready__chosen {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2, 0.5rem);
+    gap: var(--space-2);
     margin: 0;
   }
 
   .recipe-ready__field {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1, 0.25rem);
+    gap: var(--space-1);
   }
 
   .recipe-ready__field input,
   .recipe-ready__field select {
     min-height: 44px;
-    padding: var(--space-1, 0.25rem);
+    padding: var(--space-1);
   }
 
   .recipe-ready__no-option {
-    color: var(--color-danger, #b3261e);
-    font-size: var(--text-sm, 0.875rem);
+    color: var(--color-danger-text);
+    font-size: var(--text-sm);
   }
 
   .recipe-ready__chosen dt {

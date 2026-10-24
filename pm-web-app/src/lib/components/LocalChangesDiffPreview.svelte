@@ -121,16 +121,16 @@
   }
 
   .local-changes__add {
-    color: var(--color-success, #1f7a3d);
+    color: var(--color-success-text);
   }
 
   .local-changes__del {
-    color: var(--color-danger, #b3261e);
+    color: var(--color-danger-text);
   }
 
   .local-changes__ineligible,
   .local-changes__error {
-    color: var(--color-danger, #b3261e);
+    color: var(--color-danger-text);
   }
 
   .local-changes__confirm {

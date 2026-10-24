@@ -78,16 +78,16 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-2, 0.5rem);
-    padding: var(--space-2, 0.5rem);
-    border: 1px solid var(--color-border, #d1d5db);
-    border-radius: var(--radius-md, 0.5rem);
+    gap: var(--space-2);
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
   }
 
   .lesson-picker__body {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1, 0.25rem);
+    gap: var(--space-1);
     min-width: 0;
   }
 
@@ -96,20 +96,20 @@
   }
 
   .lesson-picker__meta {
-    color: var(--color-text-muted, #6b7280);
-    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
   }
 
   .lesson-picker__select {
     min-height: 44px;
-    padding: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
+    padding: var(--space-1) var(--space-2);
     cursor: pointer;
   }
 
   .lesson-picker__status,
   .lesson-picker__empty {
     margin: 0;
-    color: var(--color-text-muted, #6b7280);
+    color: var(--color-text-muted);
   }
 
   @media (max-width: 480px) {

@@ -17,13 +17,13 @@ This plan adds a real light/dark readability gate, fixes the token foundation an
 
 | Dimension | Reference |
 |---|---|
-| **Design authority** | [`doc/design/web-app/README.adoc`](../design/web-app/README.adoc) — [Visual Language](../design/web-app/README.adoc#visual-language), [Themes](../design/web-app/README.adoc#themes) (`4.5:1` for text, no view hard-codes a hex value) |
-| **Tokens** | [`tokens.css`](../../pm-web-app/src/styles/tokens.css), [`base.css`](../../pm-web-app/src/styles/base.css) |
-| **Reported surfaces** | [`OverviewView.svelte`](../../pm-web-app/src/lib/views/OverviewView.svelte), [`EpicView.svelte`](../../pm-web-app/src/lib/views/EpicView.svelte), [`ControlActionsBar.svelte`](../../pm-web-app/src/lib/components/ControlActionsBar.svelte), [`FindingsReviewModal.svelte`](../../pm-web-app/src/lib/components/FindingsReviewModal.svelte) |
+| **Design authority** | [`doc/design/web-app/README.adoc`](../../design/web-app/README.adoc) — [Visual Language](../../design/web-app/README.adoc#visual-language), [Themes](../../design/web-app/README.adoc#themes) (`4.5:1` for text, no view hard-codes a hex value) |
+| **Tokens** | [`tokens.css`](../../../pm-web-app/src/styles/tokens.css), [`base.css`](../../../pm-web-app/src/styles/base.css) |
+| **Reported surfaces** | [`OverviewView.svelte`](../../../pm-web-app/src/lib/views/OverviewView.svelte), [`EpicView.svelte`](../../../pm-web-app/src/lib/views/EpicView.svelte), [`ControlActionsBar.svelte`](../../../pm-web-app/src/lib/components/ControlActionsBar.svelte), [`FindingsReviewModal.svelte`](../../../pm-web-app/src/lib/components/FindingsReviewModal.svelte) |
 | **Other views in scope** | `PlanView`, `ReportsView`, `DecisionView`, `ProjectExplorerView`, `SettingsView`, `MachineSettingsView`, `SystemView`, `CleanupView`, `StartView`, `OnboardingView`, `ProjectOnboardingView`, `ProcessDesigner`, `CompletionReportView`, `EpicDecompositionView`, `DecompositionReviewView`, `PairingView`, `RevokedView`, `ListenerOffView` |
-| **Existing theme coverage** | [`chrome.spec.js`](../../pm-web-e2e/tests/chrome.spec.js), [`workspace.spec.js`](../../pm-web-e2e/tests/workspace.spec.js), [`onboarding.spec.js`](../../pm-web-e2e/tests/onboarding.spec.js), [`layout.test.ts`](../../pm-web-app/src/routes/layout.test.ts) |
+| **Existing theme coverage** | [`chrome.spec.js`](../../../pm-web-e2e/tests/chrome.spec.js), [`workspace.spec.js`](../../../pm-web-e2e/tests/workspace.spec.js), [`onboarding.spec.js`](../../../pm-web-e2e/tests/onboarding.spec.js), [`layout.test.ts`](../../../pm-web-app/src/routes/layout.test.ts) |
 | **Use cases** | UC-PLN-1/2/4/5/6 (running work, plan, epic, decisions, reports), UC-CTL-3 (findings/watches review), UC-ENT-1, UC-PRJ-1..4, UC-SYS-1..3, UC-ONB-1..10, UC-STA-1..9 |
-| **Operational SOP** | [`runbook.md`](runbook.md) |
+| **Operational SOP** | [`runbook.md`](../runbook.md) |
 
 ### 1.1 Finding Analysis
 
@@ -84,7 +84,7 @@ This plan adds a real light/dark readability gate, fixes the token foundation an
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-theme-readability` on branch `fix/theme-readability` off latest `main`.
-- [ ] 2. Domain skills & engineering personas loaded where applicable:
+- [x] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the token/component fixes;
   - `pm-dev-frontend:css` for the theme roles, contrast, and token architecture;
   - `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing` for the token/component tests;
@@ -123,7 +123,7 @@ This plan adds a real light/dark readability gate, fixes the token foundation an
 - [ ] **1.1 Inventory the theme surface**
   - Enumerate every route/view and its modal/dialogue states: overview (running/ended/epic), plan, epic + findings/watches, reports + completion, decisions, projects + settings, machine settings, system + cleanup, start, onboarding, project onboarding, designer, pairing/entry/revoked/listener-off, decomposition review.
   - Record the initial contrast failures in a short baseline section of the report, including the reported `Prüfen` element.
-- [ ] **1.2 Build the contrast helper**
+- [x] **1.2 Build the contrast helper**
   - In `pm-web-e2e/tests/helpers/` add `contrast.js`:
     - parse `rgb()`/`rgba()` and hex from computed styles;
     - composite translucent backgrounds over ancestors;
@@ -132,14 +132,14 @@ This plan adds a real light/dark readability gate, fixes the token foundation an
     - skip `display:none`, `visibility:hidden`, `aria-hidden="true"`, and zero-size elements;
     - return `{text, selector, color, background, ratio, threshold}`.
   - Add a Playwright helper that sets `data-theme` explicitly (`light`/`dark`) instead of relying on OS preference.
-- [ ] **1.3 Add the failing theme spec**
+- [x] **1.3 Add the failing theme spec**
   - `pm-web-e2e/tests/theme-readability.spec.js` walks the view matrix in both themes and fails on the first element below the threshold.
   - Keep a bounded allowlist for intentionally hidden/large/decorative elements, with a reason per entry.
   - Store a screenshot per view/theme on failure.
 
 ### Phase 2: Token Foundation
 
-- [ ] **2.1 Define the missing tokens**
+- [x] **2.1 Define the missing tokens**
   - Add to `:root`, `[data-theme='light']`, and `[data-theme='dark']`:
     - `--color-accent` and `--color-accent-hover` (map to primary/primary-hover, or the design's chosen semantic equivalent);
     - `--color-bg-base` (map to `--color-bg-app` or the intended base);
@@ -148,10 +148,10 @@ This plan adds a real light/dark readability gate, fixes the token foundation an
     - success/danger foreground tokens if the current `--color-success`/`--color-danger` values fail on their subtle backgrounds;
     - `--color-overlay` for modal backdrops.
   - Keep the light and dark key sets identical.
-- [ ] **2.2 Button and link reset**
+- [x] **2.2 Button and link reset**
   - Add `color: inherit` to the global `button` reset (or to the specific review/action buttons); ensure controls with an explicit role colour keep it.
   - Check `input`, `select`, and `textarea` colour/background too.
-- [ ] **2.3 Token completeness test**
+- [x] **2.3 Token completeness test**
   - Add `pm-web-app/src/styles/tokens.test.ts` (or a Vitest source test) that:
     - parses `tokens.css` definitions;
     - scans `src/**/*.{svelte,css}` for `var(--…)`;
@@ -161,50 +161,50 @@ This plan adds a real light/dark readability gate, fixes the token foundation an
 
 ### Phase 3: View and Component Remediation
 
-- [ ] **3.1 The reported surfaces**
+- [x] **3.1 The reported surfaces**
   - `EpicView.svelte`: `.review-open`, action/register headings, counts, badges, and the findings/watches entry.
   - `ControlActionsBar.svelte`: action buttons, disabled reasons, dialogue panels, hints.
   - `OverviewView.svelte`: epic/plan cards, attention bands, action menus, selected/ended states.
-- [ ] **3.2 Core views**
+- [x] **3.2 Core views**
   - `PlanView.svelte`: badges, selected rows, off-track banner, node/task states, token tables.
   - `ReportsView.svelte` / `DecisionView.svelte`: badges, unread/read states, split selection, forms, notices.
   - `CompletionReportView.svelte`: diff/added/removed roles, token tables, success/danger text.
-- [ ] **3.3 Projects, settings, system**
+- [x] **3.3 Projects, settings, system**
   - `ProjectExplorerView.svelte`: favourite star, cards, modal overlays, filters, destructive actions.
   - `SettingsView.svelte`, `MachineSettingsView.svelte`: forms, consents, credential states, overlays.
   - `SystemView.svelte`, `CleanupView.svelte`: figures, drain/upgrade banners, cleanup states, destructive confirmations.
-- [ ] **3.4 Start, onboarding, designer**
+- [x] **3.4 Start, onboarding, designer**
   - `StartView.svelte`, `OnboardingView.svelte`, `ProjectOnboardingView.svelte`, `RecipeReadyView.svelte`: steps, consent cards, warnings/errors, source states.
   - `ProcessDesigner.svelte`, `EpicDecompositionView.svelte`, `DecompositionReviewView.svelte`: diff/conflict roles, validation states, side-by-side rows.
-- [ ] **3.5 Entry and edge views**
+- [x] **3.5 Entry and edge views**
   - `PairingView.svelte`, `RevokedView.svelte`, `ListenerOffView.svelte`: QR surface, notices, buttons.
-- [ ] **3.6 Hard-coded literal sweep**
+- [x] **3.6 Hard-coded literal sweep**
   - Replace foreground/background/border/overlay literals with tokens; remove `var(--token, #hex)` fallbacks where the token is now guaranteed.
   - Keep any remaining literal in a short documented allowlist (e.g. data-only diagram assets, `PairingQr` black/white QR modules if required for scanning).
   - Do not change layout, spacing, or copy.
 
 ### Phase 4: Readability Tests
 
-- [ ] **4.1 Token and source tests** (Phase 2.3) plus a static literal scan.
-- [ ] **4.2 Component tests**
+- [x] **4.1 Token and source tests** (Phase 2.3) plus a static literal scan.
+- [x] **4.2 Component tests**
   - Add a `theme.test.ts` that renders representative components with `data-theme="light"`/`"dark"` and asserts the computed colour tokens or classes for review/action buttons, badges, warnings, and overlays.
   - Cover the `Prüfen` button explicitly.
-- [ ] **4.3 Playwright matrix**
+- [x] **4.3 Playwright matrix**
   - Light and dark, desktop (1280×800) and phone (375×667; 320×568 where the existing mobile spec covers it).
   - Each view loaded in a real state from the mock scenarios; every visible text element checked by the contrast helper.
   - Exact flow: `/overview` → epic tab → epic card → actions → findings review entry; assert the computed ratio and no console errors.
   - On failure, attach the view, theme, selector, colour pair, ratio, and screenshot.
-- [ ] **4.4 Manual browser verification**
+- [x] **4.4 Manual browser verification**
   - After the automated gate, run the app against the mock runtime and repeat the reported flow in both themes, with screenshots in the report.
 
 ### Phase 5: Verification, Docs, Report
 
-- [ ] **5.1** `npm test`, `npm run check`, `npm run lint`.
-- [ ] **5.2** `npx playwright test tests/theme-readability.spec.js` plus the affected existing specs.
-- [ ] **5.3** `./mvnw verify -Ppre-commit`.
-- [ ] **5.4** `doc/design/web-app/theme-readability.adoc`: the token contract, the contrast thresholds, the audit allowlist, and the light/dark test matrix.
-- [ ] **5.5** Report `doc/agy/theme-readability-light-dark-plan-report.md`: baseline failures, token changes, view-by-view evidence, the reported `Prüfen` flow in both themes, and the commands/results.
-- [ ] **5.6** Move the plan to `doc/agy/implemented/`, rebase links, update the dashboard.
+- [x] **5.1** `npm test`, `npm run check`, `npm run lint`.
+- [x] **5.2** `npx playwright test tests/theme-readability.spec.js` plus the affected existing specs.
+- [x] **5.3** `./mvnw verify -Ppre-commit`.
+- [x] **5.4** `doc/design/web-app/theme-readability.adoc`: the token contract, the contrast thresholds, the audit allowlist, and the light/dark test matrix.
+- [x] **5.5** Report `doc/agy/theme-readability-light-dark-plan-report.md`: baseline failures, token changes, view-by-view evidence, the reported `Prüfen` flow in both themes, and the commands/results.
+- [x] **5.6** Move the plan to `doc/agy/implemented/`, rebase links, update the dashboard.
 
 ---
 

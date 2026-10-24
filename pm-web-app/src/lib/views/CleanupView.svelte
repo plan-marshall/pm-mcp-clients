@@ -862,7 +862,7 @@
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: var(--color-overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -876,7 +876,7 @@
     max-width: 500px;
     width: 100%;
     padding: var(--space-6);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-md);
   }
 
   .modal-title {

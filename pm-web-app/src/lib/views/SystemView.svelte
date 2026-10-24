@@ -1360,7 +1360,7 @@
 
   .btn-toggle--active {
     background-color: var(--color-primary);
-    color: #ffffff;
+    color: var(--color-primary-text);
     font-weight: 600;
   }
 
@@ -1381,8 +1381,8 @@
     flex-wrap: wrap;
     gap: var(--space-4);
     padding: var(--space-4) var(--space-6);
-    background-color: var(--color-primary-subtle, #eff6ff);
-    border: 1px solid var(--color-primary, #2563eb);
+    background-color: var(--color-primary-subtle);
+    border: 1px solid var(--color-primary);
     border-radius: var(--radius-lg);
     margin-bottom: var(--space-6);
   }
@@ -1558,12 +1558,12 @@
 
   .badge--warning {
     background-color: var(--color-warning-subtle);
-    color: var(--color-warning);
+    color: var(--color-warning-text);
   }
 
   .badge--danger {
     background-color: var(--color-danger-subtle);
-    color: var(--color-danger);
+    color: var(--color-danger-text);
   }
 
   .btn-inline {
@@ -1746,7 +1746,7 @@
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: var(--color-overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1760,7 +1760,7 @@
     max-width: 500px;
     width: 100%;
     padding: var(--space-6);
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-md);
   }
 
   .modal-title {

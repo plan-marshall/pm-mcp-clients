@@ -1040,7 +1040,7 @@
   }
 
   .breadcrumb-link:hover {
-    color: var(--color-accent-hover, #2563eb);
+    color: var(--color-accent-hover);
   }
 
   .breadcrumb-sep {
@@ -1283,6 +1283,11 @@
     min-height: 44px;
     padding: var(--space-2) var(--space-3);
     cursor: pointer;
+    color: var(--color-primary);
+  }
+
+  .review-open:hover {
+    color: var(--color-primary-hover);
   }
 
   .token-facts {
@@ -1344,7 +1349,7 @@
 
   .plan-card:hover {
     transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    box-shadow: var(--shadow-sm);
     border-color: var(--color-accent);
   }
 

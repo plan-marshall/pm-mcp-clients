@@ -115,10 +115,10 @@
     flex-direction: column;
     gap: var(--space-2, 0.5rem);
     min-width: 0;
-    padding: var(--space-3, 0.75rem);
-    border: 1px solid var(--color-border, #d1d5db);
-    border-radius: var(--radius-md, 0.5rem);
-    background-color: var(--color-bg-surface, #fff);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-surface);
     max-height: 32rem;
   }
 
@@ -127,7 +127,7 @@
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: var(--space-2, 0.5rem);
+    gap: var(--space-2);
   }
 
   .chat-panel__subject {
@@ -143,8 +143,8 @@
   }
 
   .chat-panel__role {
-    color: var(--color-text-muted, #6b7280);
-    font-size: var(--text-sm, 0.875rem);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
   }
 
   .chat-panel__turns {
@@ -153,7 +153,7 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--space-2, 0.5rem);
+    gap: var(--space-2);
     overflow-y: auto;
     min-height: 6rem;
   }
@@ -162,18 +162,18 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: var(--space-2, 0.5rem);
-    border-radius: var(--radius-md, 0.5rem);
-    background-color: var(--color-bg-subtle, #f9fafb);
+    padding: var(--space-2);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-subtle);
   }
 
   .chat-panel__turn.untrusted {
-    border-left: 3px solid var(--color-warning, #92400e);
+    border-left: 3px solid var(--color-warning-border);
   }
 
   .chat-panel__turn-role {
     font-weight: 600;
-    font-size: var(--text-sm, 0.875rem);
+    font-size: var(--text-sm);
   }
 
   .chat-panel__turn-text {
@@ -184,21 +184,21 @@
   .chat-panel__proposal {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1, 0.25rem);
-    padding: var(--space-2, 0.5rem);
-    border: 1px solid var(--color-primary, #2563eb);
-    border-radius: var(--radius-md, 0.5rem);
+    gap: var(--space-1);
+    padding: var(--space-2);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-md);
   }
 
   .chat-panel__proposal-title {
     margin: 0;
-    font-size: var(--text-base, 1rem);
+    font-size: var(--text-base);
   }
 
   .chat-panel__before {
     margin: 0;
     text-decoration: line-through;
-    color: var(--color-text-muted, #6b7280);
+    color: var(--color-text-muted);
   }
 
   .chat-panel__after {
@@ -211,23 +211,23 @@
   .chat-panel__compose {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2, 0.5rem);
+    gap: var(--space-2);
   }
 
   .chat-panel__compose input {
     flex: 1 1 10rem;
     min-height: 44px;
-    padding: var(--space-1, 0.25rem);
+    padding: var(--space-1);
   }
 
   .chat-panel__disabled {
     margin: 0;
-    color: var(--color-text-muted, #6b7280);
+    color: var(--color-text-muted);
   }
 
   .chat-panel button {
     min-height: 44px;
-    padding: var(--space-1, 0.25rem) var(--space-3, 0.75rem);
+    padding: var(--space-1) var(--space-3);
     cursor: pointer;
   }
 
