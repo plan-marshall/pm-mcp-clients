@@ -58,7 +58,7 @@ This plan makes one read produce exactly one decrement, in both the event-first 
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-reports-unread-count` on branch `fix/reports-unread-count` off latest `main`.
 - [ ] 2. Personas loaded: `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript`; `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing`; `plan-marshall-persona-integration-tester`.
 - [ ] 3. Implement and test §5.
 - [ ] 4. Report written; plan moved to `implemented/`; dashboard updated.
