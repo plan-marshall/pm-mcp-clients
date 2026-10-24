@@ -63,8 +63,8 @@ This plan makes one read produce exactly one decrement, in both the event-first 
 - [x] 3. Implement and test §5.
 - [x] 4. Report written; plan moved to `implemented/`; dashboard updated.
 - [x] 5. `npm test -- ReportsView`, `npm run check`, `npm run lint`, `npx playwright test tests/reports.spec.js`, and `./mvnw verify -Ppre-commit` pass.
-- [ ] 6. PR opened without `skip-bot-review`; findings resolved.
-- [ ] 7. Landed on `main`; worktree and branch cleaned up.
+- [x] 6. PR opened without `skip-bot-review`; findings resolved (PR #203; CodeRabbit's two findings fixed and both threads resolved).
+- [x] 7. Landed on `main` as PR #203; worktree and branch cleaned up.
 - [ ] 8. Post-landing verification and report archival by the orchestrator.
 
 ---
