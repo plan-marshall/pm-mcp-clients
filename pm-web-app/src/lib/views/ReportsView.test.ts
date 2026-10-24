@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
+import { tick } from 'svelte';
 import ReportsView from './ReportsView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
@@ -552,9 +553,11 @@ describe('ReportsView component', () => {
     if (!resolveRead) throw new Error('the pending read request was never created');
     resolveRead();
 
-    await waitFor(() => {
-      expect(document.querySelector('.report-card--active')).not.toBeNull();
-    });
+    // Let the request continuation and the Svelte update run before the final assertions, so a
+    // row removed after the response cannot slip through.
+    await tick();
+    await tick();
+    expect(document.querySelector('.report-card--active')).not.toBeNull();
     expect(screen.getByTestId('report-read-state')).toBeInTheDocument();
   });
 
@@ -574,6 +577,67 @@ describe('ReportsView component', () => {
     expect(document.querySelector('.report-card--active')).not.toBeNull();
     expect(screen.queryByTestId('report-read-state')).toBeNull();
     expect(screen.getByText(/3 unread/)).toBeInTheDocument();
+  });
+
+  it('keeps the row until a read that outlived its detail fails', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    let rejectRead: ((reason: Error) => void) | undefined;
+    vi.spyOn(apiClient, 'markReportRead').mockImplementation(
+      () =>
+        new Promise<void>((_resolve, reject) => {
+          rejectRead = reject;
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await fireEvent.click(screen.getByTestId('layout-split'));
+    await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
+    await waitFor(() => {
+      expect(document.querySelector('.completion-report')).not.toBeNull();
+    });
+
+    // The operator closes the detail before the read request settles.
+    await fireEvent.click(screen.getByRole('button', { name: /Back to reports/i }));
+    expect(document.querySelector('.completion-report')).toBeNull();
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+
+    if (!rejectRead) throw new Error('the pending read request was never created');
+    rejectRead(new Error('read failed'));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('read failed');
+    });
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+    expect(screen.queryByTestId('report-read-state')).toBeNull();
+  });
+
+  it('drops the row once a read that outlived its detail succeeds', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    let resolveRead: (() => void) | undefined;
+    vi.spyOn(apiClient, 'markReportRead').mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRead = resolve;
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await fireEvent.click(screen.getByTestId('layout-split'));
+    await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
+    await waitFor(() => {
+      expect(document.querySelector('.completion-report')).not.toBeNull();
+    });
+    await fireEvent.click(screen.getByRole('button', { name: /Back to reports/i }));
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+
+    if (!resolveRead) throw new Error('the pending read request was never created');
+    resolveRead();
+
+    await waitFor(() => {
+      expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
+    });
   });
 
   it('clears the filter on Escape', async () => {
