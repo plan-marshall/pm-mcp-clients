@@ -1,0 +1,34 @@
+= Validating a workflow unit in the terminal
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `cli-unit-validate`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3] (variation _A unit written in the repository_); link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 11
+Where:: `pm-operator`
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+A workflow unit is written in the language of the workflow DSL, which no model has seen in its training. The author most likely to write one in a project's repository is a coding agent working for the operator; without the runtime's validation it learns about an invented keyword or a wrong parameter only when a plan fails at its next phase handshake with `config_invalid`. This package gives that author the runtime's own check in the terminal.
+
+* *Design first*: the package designs the verbs and their texts in link:../design/terminal-client/01-commands.adoc[Terminal Client, Commands] (the bullet _No designer_ changes: the terminal still has no designer, but validates and lists the catalogue) and has the operator accept it before building it.
+* A verb that validates a unit file the operator or an agent names, for the machine or a project, through the validation endpoint of `designer-contract`: every stage (frontmatter, parse, static rules, compiled invariants, dry run against the project or every project it would reach), each finding with its rule or invariant, its line, and its column; a valid unit with the composed process as a short summary.
+* A verb that lists the catalogue of the machine or a project: the building blocks with the template each inserts, filterable by kind and name, so that an author takes the vocabulary from the runtime instead of guessing it.
+* Both print for a person and, on request, machine-readable (one stable form, its fields named in the design), and exit non-zero when a unit has findings, so that a coding agent or a pre-commit hook can use them; both change nothing and write no audit record. Placing and removing stay in the web app.
+* Texts from the message catalogue only.
+
+== Trace
+
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` (those of the engine in `pm-mcp-core`) and are only referenced here.
+
+* Requirement: link:../../../plan-marshall-documentation/doc/requirements/02-workflow.adoc#PM-WF-22[PM-WF-22]
+* Specification: link:../../../pm-mcp-core/doc/specification/workflow-dsl/04-ast-node-model.adoc#process-designer[Workflow DSL § Designing a Process] (items 1 to 3 and 8)
+* Use case: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3]
+* Contract: link:implemented/designer-contract.adoc[`designer-contract`]
+* Reason: link:../../../plan-marshall-documentation/doc/articles/typed-domain-grounding.adoc[Typed Domain Grounding] (the validator as the oracle for an author that has not seen the language)
+
+== Done When
+
+The operator accepted the design; both verbs run against the mock runtime in the terminal's tests with a valid unit, a unit with findings (exit code and machine-readable form included), and an unreachable runtime.
