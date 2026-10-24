@@ -241,6 +241,20 @@ browser rendering. This is the pre-existing CSP finding F5 in the plan and is de
 here: the plan requires a focused follow-up (a hash/nonce on the shell or a shell without inline
 script/style) instead of silently loosening the policy. The server README states the limitation.
 
+## Review Findings Resolution
+
+Triaged with `plan-marshall-persona-code-reviewer`; every candidate was confirmed and fixed rather than
+refuted.
+
+| Source | Finding | Disposition |
+|---|---|---|
+| CodeRabbit (clients) | Checklist item 4 was checked while 5.4 (report/archival/index) stayed open although both describe the same completed work. | **Confirmed (minor):** 5.4 checked in `f41e03e1`; thread answered. |
+| CodeRabbit (clients) | The report attributed the `verify-spa-resources` echo to `package`, which does not run the `verify` phase. | **Confirmed (minor):** `f41e03e1` splits the transcripts — `package` shows the copy/jar output, the `verify` run shows the resource-count echo, and the full `-Ppre-commit` gate is cited separately; thread answered. |
+| CodeRabbit (server) | A resolved `jar:` URL need not keep the trailing separator of a directory entry, so a directory could be streamed as an empty resource. | **Confirmed (minor):** `448617b` asks the `JarURLConnection` for the entry and rejects a directory; `StaticWebAppTest` adds a JAR fixture with explicit directory entries asserting `/_app`, `/_app/`, `/_app/immutable` and `/_app/immutable/` return the shell. |
+| SonarCloud (both) | Quality Gate and new-code issues. | **Passed:** 0 new issues, 0 accepted issues, 0 security hotspots, 0.0% new duplication on the clients PR; the server analysis passed. |
+| Sourcery | Review. | Skipped by the repository configuration (not enabled for this PR). |
+| CodeRabbit (re-review) | Rate limited after the fix commits. | No unresolved finding remained; both prior threads were acknowledged as addressed. |
+
 ## Landing Order & Publication
 
 1. `pm-mcp-clients`: `./mvnw verify -Ppre-commit`, merge of PR
