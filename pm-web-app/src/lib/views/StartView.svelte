@@ -1171,24 +1171,24 @@
 
   .start-view__step {
     margin: 0;
-    color: var(--color-text-muted, #6b7280);
-    font-size: var(--text-sm, 0.875rem);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
   }
 
   .start-view__title {
     margin: 0;
-    font-size: var(--text-xl, 1.25rem);
+    font-size: var(--text-xl);
   }
 
   .start-view__subtitle {
     margin: 0;
-    font-size: var(--text-lg, 1.125rem);
+    font-size: var(--text-lg);
   }
 
   .start-view__sources {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-4, 1rem);
+    gap: var(--space-4);
   }
 
   .start-view__sources.with-chat {
@@ -1199,24 +1199,24 @@
   .start-view__chat {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3, 0.75rem);
+    gap: var(--space-3);
     min-width: 0;
   }
 
   .start-view__panel {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2, 0.5rem);
-    padding: var(--space-3, 0.75rem);
-    border: 1px solid var(--color-border, #d1d5db);
-    border-radius: var(--radius-md, 0.5rem);
-    background-color: var(--color-bg-surface, #fff);
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-surface);
   }
 
   .start-view__field {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1, 0.25rem);
+    gap: var(--space-1);
   }
 
   .start-view__field textarea,
@@ -1224,35 +1224,35 @@
   .start-view__panel textarea,
   .start-view__panel input[type='text'] {
     min-height: 44px;
-    padding: var(--space-1, 0.25rem);
+    padding: var(--space-1);
     font: inherit;
   }
 
   .start-view__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2, 0.5rem);
+    gap: var(--space-2);
   }
 
   .start-view__actions button,
   .start-view__abandon button,
   .start-view__panel button {
     min-height: 44px;
-    padding: var(--space-1, 0.25rem) var(--space-3, 0.75rem);
+    padding: var(--space-1) var(--space-3);
     cursor: pointer;
   }
 
   .start-view__hint,
   .start-view__status {
     margin: 0;
-    color: var(--color-text-muted, #6b7280);
-    font-size: var(--text-sm, 0.875rem);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
     overflow-wrap: anywhere;
   }
 
   .start-view__error {
     margin: 0;
-    color: var(--color-danger, #b3261e);
+    color: var(--color-danger-text);
     overflow-wrap: anywhere;
   }
 
@@ -1265,7 +1265,7 @@
     padding: 0;
     display: flex;
     flex-direction: column;
-    gap: var(--space-2, 0.5rem);
+    gap: var(--space-2);
   }
 
   .start-view__recipe,
@@ -1273,10 +1273,10 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2, 0.5rem);
-    padding: var(--space-2, 0.5rem);
-    border: 1px solid var(--color-border, #d1d5db);
-    border-radius: var(--radius-md, 0.5rem);
+    gap: var(--space-2);
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
   }
 
   .start-view__recipe-name {
@@ -1285,8 +1285,8 @@
 
   .start-view__recipe-description,
   .start-view__recipe-origin {
-    color: var(--color-text-muted, #6b7280);
-    font-size: var(--text-sm, 0.875rem);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
   }
 
   .start-view__radio,

@@ -1456,17 +1456,17 @@
 
   .badge-reversibility.badge-reversible {
     background-color: var(--color-success-subtle);
-    color: var(--color-success);
+    color: var(--color-success-text);
   }
 
   .badge-reversibility.badge-costly {
     background-color: var(--color-warning-subtle);
-    color: var(--color-warning);
+    color: var(--color-warning-text);
   }
 
   .badge-reversibility.badge-irreversible {
     background-color: var(--color-danger-subtle);
-    color: var(--color-danger);
+    color: var(--color-danger-text);
   }
 
   .decision-description {

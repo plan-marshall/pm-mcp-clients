@@ -489,9 +489,9 @@
   }
 
   .conflict-banner {
-    background-color: var(--color-warning-subtle, #fef3c7);
-    border: 1px solid var(--color-warning-border, #f59e0b);
-    border-radius: var(--radius-md, 6px);
+    background-color: var(--color-warning-subtle);
+    border: 1px solid var(--color-warning-border);
+    border-radius: var(--radius-md);
     padding: var(--space-3) var(--space-4);
     font-size: var(--text-sm);
   }
@@ -502,8 +502,8 @@
   }
 
   .committed {
-    background-color: var(--color-success-subtle, #dcfce7);
-    border-radius: var(--radius-md, 6px);
+    background-color: var(--color-success-subtle);
+    border-radius: var(--radius-md);
     padding: var(--space-3) var(--space-4);
     display: flex;
     flex-direction: column;
@@ -544,7 +544,7 @@
   }
 
   .plan--error {
-    border-color: var(--color-danger, #ef4444);
+    border-color: var(--color-danger);
   }
 
   .plan--dropped {
@@ -566,12 +566,12 @@
   .plan__tag {
     font-size: var(--text-xs);
     padding: 1px 6px;
-    border-radius: var(--radius-sm, 4px);
+    border-radius: var(--radius-sm);
     background-color: var(--color-bg-subtle);
   }
 
   .plan__tag--dropped {
-    background-color: var(--color-danger-subtle, #fee2e2);
+    background-color: var(--color-danger-subtle);
   }
 
   .plan__label {
@@ -581,7 +581,7 @@
   }
 
   .plan__conflict {
-    color: var(--color-danger, #b3261e);
+    color: var(--color-danger-text);
     font-size: var(--text-xs);
   }
 
@@ -599,7 +599,7 @@
   .read-back {
     background-color: var(--color-bg-surface);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-md, 6px);
+    border-radius: var(--radius-md);
     padding: var(--space-3) var(--space-4);
   }
 
@@ -625,11 +625,11 @@
   }
 
   .read-back__before {
-    color: var(--color-danger, #b3261e);
+    color: var(--color-danger-text);
   }
 
   .read-back__after {
-    color: var(--color-success, #15803d);
+    color: var(--color-success-text);
   }
 
   .read-back__actions {
@@ -664,7 +664,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: rgb(0 0 0 / 0.4);
+    background-color: var(--color-overlay);
     z-index: 50;
   }
 
@@ -673,8 +673,8 @@
     max-width: 32rem;
     margin: var(--space-3);
     padding: var(--space-4);
-    border-radius: var(--radius-lg, 0.75rem);
-    background-color: var(--color-bg-surface, #fff);
+    border-radius: var(--radius-lg);
+    background-color: var(--color-bg-surface);
     display: flex;
     flex-direction: column;
     gap: var(--space-2);

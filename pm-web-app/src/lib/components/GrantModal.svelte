@@ -40,8 +40,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--space-3, 0.75rem);
-    background-color: rgb(0 0 0 / 0.4);
+    padding: var(--space-3);
+    background-color: var(--color-overlay);
     z-index: 60;
   }
 
@@ -50,10 +50,10 @@
     max-width: 28rem;
     display: flex;
     flex-direction: column;
-    gap: var(--space-3, 0.75rem);
-    padding: var(--space-4, 1rem);
-    background-color: var(--color-bg-surface, #fff);
-    border-radius: var(--radius-lg, 0.75rem);
+    gap: var(--space-3);
+    padding: var(--space-4);
+    background-color: var(--color-bg-surface);
+    border-radius: var(--radius-lg);
   }
 
   .grant-modal__title {

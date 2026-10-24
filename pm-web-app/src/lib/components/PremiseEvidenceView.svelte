@@ -77,7 +77,7 @@
 
   .premise-evidence__title {
     margin: 0;
-    color: var(--color-danger, #b3261e);
+    color: var(--color-danger-text);
   }
 
   .premise-evidence__list {

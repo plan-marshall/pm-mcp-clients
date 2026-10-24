@@ -462,6 +462,8 @@
     padding: var(--space-1) var(--space-2);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
+    background-color: var(--color-bg-surface);
+    color: var(--color-text-primary);
   }
 
   .control-actions__line {
@@ -473,7 +475,7 @@
   .control-actions__hint {
     margin: 0;
     font-size: var(--text-xs);
-    color: var(--color-warning);
+    color: var(--color-warning-text);
   }
 
   .control-actions__checks {

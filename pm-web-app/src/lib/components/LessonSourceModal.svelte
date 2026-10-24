@@ -176,7 +176,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: rgb(0 0 0 / 0.4);
+    background-color: var(--color-overlay);
     z-index: 50;
   }
 
@@ -185,34 +185,34 @@
     width: 100%;
     max-height: 90vh;
     overflow-y: auto;
-    margin: var(--space-3, 0.75rem);
-    padding: var(--space-4, 1rem);
-    border-radius: var(--radius-lg, 0.75rem);
-    background-color: var(--color-bg-surface, #fff);
+    margin: var(--space-3);
+    padding: var(--space-4);
+    border-radius: var(--radius-lg);
+    background-color: var(--color-bg-surface);
     display: flex;
     flex-direction: column;
-    gap: var(--space-2, 0.5rem);
+    gap: var(--space-2);
   }
 
   .lesson-modal__title {
     margin: 0;
-    font-size: 1.125rem;
+    font-size: var(--text-lg);
   }
 
   .lesson-modal__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-2, 0.5rem);
+    gap: var(--space-2);
   }
 
   .lesson-modal__actions button {
     min-height: 44px;
-    padding: var(--space-2, 0.5rem) var(--space-3, 0.75rem);
+    padding: var(--space-2) var(--space-3);
     cursor: pointer;
   }
 
   .lesson-modal__error {
-    color: var(--color-danger, #b3261e);
+    color: var(--color-danger-text);
   }
 
   @media (max-width: 480px) {

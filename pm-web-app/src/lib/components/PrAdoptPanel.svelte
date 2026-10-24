@@ -154,22 +154,22 @@
   .pr-adopt__card {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1, 0.25rem);
-    border: 1px solid var(--color-border, #d1d5db);
-    border-radius: var(--radius-md, 0.5rem);
-    padding: var(--space-3, 0.75rem);
+    gap: var(--space-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: var(--space-3);
   }
 
   .pr-adopt__warning {
-    color: var(--color-warning, #92640b);
+    color: var(--color-warning-text);
   }
 
   .pr-adopt__flagged {
-    color: var(--color-warning, #92640b);
+    color: var(--color-warning-text);
   }
 
   .pr-adopt__error {
-    color: var(--color-danger, #b3261e);
+    color: var(--color-danger-text);
   }
 
   .pr-adopt__accept {

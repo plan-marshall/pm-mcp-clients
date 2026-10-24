@@ -1536,7 +1536,7 @@
 
   .project-card:hover {
     border-color: var(--color-primary);
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    box-shadow: var(--shadow-md);
   }
 
   .project-card__header {
@@ -1563,7 +1563,7 @@
   }
 
   .fav-toggle-btn--active {
-    color: #eab308;
+    color: var(--color-star);
   }
 
   .project-card__identity {
@@ -1615,13 +1615,13 @@
 
   .badge--ready {
     background-color: var(--color-success-subtle);
-    color: var(--color-success);
+    color: var(--color-success-text);
     border: 1px solid var(--color-success-border);
   }
 
   .badge--needs {
     background-color: var(--color-warning-subtle);
-    color: var(--color-warning);
+    color: var(--color-warning-text);
     border: 1px solid var(--color-warning-border);
   }
 
@@ -1633,7 +1633,7 @@
 
   .badge--warning {
     background-color: var(--color-warning-subtle);
-    color: var(--color-warning);
+    color: var(--color-warning-text);
     border: 1px solid var(--color-warning-border);
     font-weight: 700;
   }
@@ -1726,7 +1726,7 @@
     left: 0;
     width: 100vw;
     height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: var(--color-overlay);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1740,7 +1740,7 @@
     padding: var(--space-6);
     max-width: 500px;
     width: 90%;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-md);
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
@@ -1848,7 +1848,7 @@
   .drawer-backdrop {
     position: fixed;
     inset: 0;
-    background-color: rgb(0 0 0 / 0.5);
+    background-color: var(--color-overlay);
     display: flex;
     justify-content: flex-end;
     z-index: 100;

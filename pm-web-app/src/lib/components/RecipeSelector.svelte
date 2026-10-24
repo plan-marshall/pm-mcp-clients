@@ -135,7 +135,7 @@
 
   .recipe-selector__no-option,
   .recipe-selector__error {
-    color: var(--color-danger, #b3261e);
+    color: var(--color-danger-text);
   }
 
   @media (max-width: 480px) {

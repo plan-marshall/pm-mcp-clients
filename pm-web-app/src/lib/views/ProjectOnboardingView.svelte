@@ -982,7 +982,7 @@
   .drawer-backdrop {
     position: fixed;
     inset: 0;
-    background-color: rgb(0 0 0 / 0.5);
+    background-color: var(--color-overlay);
     display: flex;
     justify-content: flex-end;
     z-index: 100;
@@ -991,7 +991,7 @@
   .modal-backdrop {
     position: fixed;
     inset: 0;
-    background-color: rgb(0 0 0 / 0.5);
+    background-color: var(--color-overlay);
     display: flex;
     align-items: center;
     justify-content: center;

@@ -41,12 +41,14 @@ input,
 select,
 textarea {
   font: inherit;
+  color: inherit;
 }
 
 button {
   cursor: pointer;
   border: none;
   background: none;
+  color: inherit;
 }
 
 button:focus-visible,

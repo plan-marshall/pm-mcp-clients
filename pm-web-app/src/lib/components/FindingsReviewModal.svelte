@@ -444,7 +444,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: rgb(0 0 0 / 0.4);
+    background-color: var(--color-overlay);
     z-index: 50;
   }
 

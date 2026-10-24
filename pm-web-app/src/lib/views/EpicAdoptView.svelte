@@ -92,8 +92,8 @@
     justify-content: space-between;
     gap: var(--space-2, 0.5rem);
     padding: var(--space-2, 0.5rem);
-    border: 1px solid var(--color-border, #d1d5db);
-    border-radius: var(--radius-md, 0.5rem);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
   }
 
   .epic-adopt__offer,
@@ -103,7 +103,7 @@
   }
 
   .epic-adopt__failure {
-    color: var(--color-danger, #b3261e);
+    color: var(--color-danger-text);
   }
 
   .epic-adopt__actions,

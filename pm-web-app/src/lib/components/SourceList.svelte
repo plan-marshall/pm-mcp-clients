@@ -265,11 +265,11 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-1, 0.25rem) var(--space-2, 0.5rem);
-    padding: var(--space-2, 0.5rem);
-    border: 1px solid var(--color-border, #d1d5db);
-    border-radius: var(--radius-md, 0.5rem);
-    background-color: var(--color-bg-surface, #fff);
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-surface);
   }
 
   .source-line__mark {
@@ -288,26 +288,26 @@
   }
 
   .source-line__state {
-    color: var(--color-text-muted, #6b7280);
+    color: var(--color-text-muted);
   }
 
   .source-line__rate {
     font-variant-numeric: tabular-nums;
-    color: var(--color-warning, #92400e);
+    color: var(--color-warning-text);
   }
 
   .source-line__badge {
     padding: 1px 6px;
-    border-radius: var(--radius-sm, 0.25rem);
-    background-color: var(--color-warning-subtle, #fef3c7);
-    color: var(--color-warning, #92400e);
-    font-size: var(--text-xs, 0.75rem);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-warning-subtle);
+    color: var(--color-warning-text);
+    font-size: var(--text-xs);
   }
 
   .source-line__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-1, 0.25rem);
+    gap: var(--space-1);
   }
 
   .source-line__actions button,
@@ -315,7 +315,7 @@
   .source-list__add button,
   .source-line__accept button {
     min-height: 44px;
-    padding: var(--space-1, 0.25rem) var(--space-3, 0.75rem);
+    padding: var(--space-1) var(--space-3);
     cursor: pointer;
   }
 
@@ -325,7 +325,7 @@
     flex-basis: 100%;
     display: flex;
     flex-direction: column;
-    gap: var(--space-1, 0.25rem);
+    gap: var(--space-1);
   }
 
   .source-line__flagged-title {
@@ -338,26 +338,26 @@
   .source-list__waits,
   .source-list__offer-reason {
     margin: 0;
-    color: var(--color-text-muted, #6b7280);
-    font-size: var(--text-sm, 0.875rem);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
   }
 
   .source-line__span mark {
-    background-color: var(--color-warning-subtle, #fef3c7);
+    background-color: var(--color-warning-subtle);
     color: inherit;
   }
 
   .source-line__span-reason {
-    margin-left: var(--space-1, 0.25rem);
+    margin-left: var(--space-1);
   }
 
   .source-line__files ul {
     margin: 0;
-    padding-left: var(--space-4, 1rem);
+    padding-left: var(--space-4);
   }
 
   .source-line__files li.untrusted {
-    color: var(--color-warning, #92400e);
+    color: var(--color-warning-text);
   }
 
   .source-list__add,

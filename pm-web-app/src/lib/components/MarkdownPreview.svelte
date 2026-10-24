@@ -64,11 +64,11 @@
   .markdown-preview {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1, 0.25rem);
-    padding: var(--space-2, 0.5rem);
-    border: 1px solid var(--color-border, #d1d5db);
-    border-radius: var(--radius-md, 0.5rem);
-    background-color: var(--color-bg-subtle, #f9fafb);
+    gap: var(--space-1);
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-subtle);
     max-height: 16rem;
     overflow-y: auto;
   }

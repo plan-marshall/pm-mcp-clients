@@ -1371,7 +1371,7 @@
   }
 
   .work-card--epic .work-card__glyph {
-    color: #9333ea;
+    color: var(--color-epic);
   }
 
   .work-card__title {
@@ -1539,7 +1539,7 @@
 
   .badge--attention {
     background-color: var(--color-danger-subtle);
-    color: var(--color-danger);
+    color: var(--color-danger-text);
     font-weight: 600;
   }
 
@@ -1549,8 +1549,8 @@
   }
 
   .badge--epic {
-    background-color: #f3e8ff;
-    color: #7e22ce;
+    background-color: var(--color-epic-subtle);
+    color: var(--color-epic-text);
   }
 
   .badge--phase {
@@ -1566,24 +1566,24 @@
 
   .badge--state-running {
     background-color: var(--color-success-subtle);
-    color: var(--color-success);
+    color: var(--color-success-text);
   }
 
   .badge--state-waiting,
   .badge--state-waiting_for_you {
     background-color: var(--color-warning-subtle);
-    color: var(--color-warning);
+    color: var(--color-warning-text);
   }
 
   .badge--state-paused,
   .badge--state-pausing {
     background-color: var(--color-bg-inset);
-    color: var(--color-text-muted);
+    color: var(--color-text-secondary);
   }
 
   .badge--warning {
     background-color: var(--color-warning-subtle);
-    color: var(--color-warning);
+    color: var(--color-warning-text);
     font-weight: 600;
   }
 
@@ -1594,13 +1594,13 @@
   .badge--merged,
   .badge--completed {
     background-color: var(--color-success-subtle);
-    color: var(--color-success);
+    color: var(--color-success-text);
   }
 
   .badge--cancelled,
   .badge--aborted {
     background-color: var(--color-danger-subtle);
-    color: var(--color-danger);
+    color: var(--color-danger-text);
   }
 
   .pr-link {
@@ -1638,6 +1638,8 @@
     .project-header__actions {
       width: 100%;
       justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--space-2);
     }
 
     .work-card__header {

@@ -1697,7 +1697,7 @@
   .intake-mode--active {
     background-color: var(--color-primary);
     border-color: var(--color-primary);
-    color: #ffffff;
+    color: var(--color-primary-text);
   }
 
   .intake-panel {
@@ -2056,7 +2056,7 @@
   .designer__modal {
     position: fixed;
     inset: 0;
-    background-color: rgba(0, 0, 0, 0.5);
+    background-color: var(--color-overlay);
     display: flex;
     align-items: center;
     justify-content: center;
