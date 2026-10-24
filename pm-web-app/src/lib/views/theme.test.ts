@@ -1,5 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
+import fs from 'node:fs';
+import path from 'node:path';
 import EpicView from './EpicView.svelte';
 import OverviewView from './OverviewView.svelte';
 import FindingsReviewModal from '../components/FindingsReviewModal.svelte';
@@ -181,6 +183,18 @@ describe('Theme Component Readability Tests (Light & Dark)', () => {
     });
   });
 
+  beforeAll(() => {
+    const tokensCss = fs.readFileSync(path.resolve(__dirname, '../../styles/tokens.css'), 'utf8');
+    const baseCss = fs.readFileSync(path.resolve(__dirname, '../../styles/base.css'), 'utf8');
+    const epicView = fs.readFileSync(path.resolve(__dirname, './EpicView.svelte'), 'utf8');
+    const epicStyleMatch = epicView.match(/<style>([\s\S]*?)<\/style>/);
+    const epicStyle = epicStyleMatch ? epicStyleMatch[1] : '';
+
+    const styleEl = document.createElement('style');
+    styleEl.textContent = `${tokensCss}\n${baseCss.replace(/@import[^;]+;/g, '')}\n${epicStyle}`;
+    document.head.appendChild(styleEl);
+  });
+
   for (const theme of ['light', 'dark'] as const) {
     describe(`under data-theme="${theme}"`, () => {
       beforeEach(() => {
@@ -199,6 +213,26 @@ describe('Theme Component Readability Tests (Light & Dark)', () => {
         const style = window.getComputedStyle(reviewBtn);
         expect(style.display).not.toBe('none');
         expect(style.visibility).not.toBe('hidden');
+
+        // Verify computed foreground uses the primary action token rather than un-themed black buttontext
+        expect(style.color).toBe('var(--color-primary)');
+
+        // Contrast verification: calculate relative luminance and contrast ratio against card surface
+        const themeTokens = theme === 'dark'
+          ? { primary: { r: 96, g: 165, b: 250 }, surface: { r: 19, g: 27, b: 46 } }
+          : { primary: { r: 37, g: 99, b: 235 }, surface: { r: 255, g: 255, b: 255 } };
+
+        const lum = (c: { r: number; g: number; b: number }) => {
+          const sRGB = [c.r / 255, c.g / 255, c.b / 255].map((v) =>
+            v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4),
+          );
+          return 0.2126 * sRGB[0] + 0.7152 * sRGB[1] + 0.0722 * sRGB[2];
+        };
+
+        const l1 = lum(themeTokens.primary);
+        const l2 = lum(themeTokens.surface);
+        const contrast = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+        expect(contrast).toBeGreaterThanOrEqual(4.5);
 
         // Verify the watches review button as well
         const watchesBtn = screen.getByTestId('open-watches-review');

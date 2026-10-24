@@ -45,7 +45,7 @@ The design token system is declared in `pm-web-app/src/styles/tokens.css`. It es
 
 |Primary & Accent
 |`--color-primary: #2563eb`, `--color-primary-hover: #1d4ed8`, `--color-primary-subtle: #eff6ff`, `--color-primary-text: #ffffff`, `--color-accent: #2563eb`, `--color-accent-hover: #1d4ed8`
-|`--color-primary: #3b82f6`, `--color-primary-hover: #60a5fa`, `--color-primary-subtle: #172554`, `--color-primary-text: #ffffff`, `--color-accent: #3b82f6`, `--color-accent-hover: #60a5fa`
+|`--color-primary: #60a5fa`, `--color-primary-hover: #93c5fd`, `--color-primary-subtle: #172554`, `--color-primary-text: #0b0f19`, `--color-accent: #60a5fa`, `--color-accent-hover: #93c5fd`
 
 |Semantic Feedback Text
 |`--color-success-text: #166534`, `--color-warning-text: #92400e`, `--color-danger-text: #991b1b`, `--color-epic-text: #6b21a8`
@@ -57,7 +57,7 @@ The design token system is declared in `pm-web-app/src/styles/tokens.css`. It es
 
 |Specialty Roles
 |`--color-epic: #7e22ce`, `--color-star: #ca8a04`, `--color-overlay: rgba(15, 23, 42, 0.5)`, `--color-danger-contrast: #ffffff`
-|`--color-epic: #c084fc`, `--color-star: #eab308`, `--color-overlay: rgba(0, 0, 0, 0.7)`, `--color-danger-contrast: #ffffff`
+|`--color-epic: #c084fc`, `--color-star: #eab308`, `--color-overlay: rgba(0, 0, 0, 0.7)`, `--color-danger-contrast: #0b0f19`
 |===
 
 === Base Reset Invariant
