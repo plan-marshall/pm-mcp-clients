@@ -25,6 +25,32 @@ Every string is loaded from the message catalogue (English and German); no user-
 
 ---
 
+## Static Export and Daemon Serving
+
+`npm run build` writes the static site to `build/` (`index.html` and `_app/immutable/**`). The Maven build
+copies that tree to `META-INF/resources` and packages it, so `pm-web-app-<version>.jar` is the deployable
+artifact. A `verify` execution fails the build when the JAR carries either no
+`META-INF/resources/index.html` or no `META-INF/resources/_app/immutable/...` asset.
+
+```bash
+# Build the SPA and its resource JAR
+./mvnw -pl pm-web-app package
+
+# Inspect what the artifact ships
+jar tf pm-web-app/target/pm-web-app-*.jar | grep -E 'META-INF/resources/(index.html|_app/immutable/)'
+
+# Install it for the server build: plan-marshall-mcp resolves this SNAPSHOT
+./mvnw -pl pm-web-app install -DskipTests
+```
+
+The app is same-origin: it calls `/api/v1` on the origin it was loaded from, so `pm-mcp-server` (in
+[plan-marshall-mcp](https://github.com/plan-marshall/plan-marshall-mcp)) serves the app and the API on the same
+web listener. There is no API base URL, no CORS configuration, and no separate static web server. The server
+depends on this JAR and serves its `META-INF/resources` tree; its README describes the routing, caching, and
+native-resource requirement.
+
+---
+
 ## Manual Testing & Local Development
 
 ### Step 1: Start the Mock Runtime Server
