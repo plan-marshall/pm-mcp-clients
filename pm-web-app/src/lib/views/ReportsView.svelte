@@ -306,20 +306,30 @@
    * In split mode the row stays in the list, marked read, so the detail keeps its selected row
    * beside it; {@link flushRetainedReads} drops it once the detail closes.
    *
+   * The retained marker is set before the request rather than after it: the runtime can emit
+   * `report.read` while the mark-read request is still in flight, and a marker set afterwards
+   * would let that event filter out the row the detail is showing. A failed request removes the
+   * marker again, so the row returns to unread.
+   *
    * @param item the report to read
    * @param retain whether the row stays in the list until the detail closes
    */
   async function markRead(item: ReportItem, retain = false) {
+    if (retain) {
+      retainedReadIds[item.id] = true;
+    }
     try {
       await apiClient.markReportRead(item.id);
-      if (retain) {
-        retainedReadIds[item.id] = true;
-      } else {
+      if (!retain) {
         items = items.filter((i) => i.id !== item.id);
       }
       unreadCount = Math.max(0, unreadCount - 1);
       void refreshReportsCount();
     } catch (err: unknown) {
+      if (retain) {
+        delete retainedReadIds[item.id];
+        retainedReadIds = { ...retainedReadIds };
+      }
       errorMessage = (err as Error)?.message || $t('report.list.mark_read_failed');
     }
   }

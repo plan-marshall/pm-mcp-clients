@@ -243,7 +243,7 @@ class PlanViewScenarioTest {
                         }
                     });
                     assertThrows(TimeoutException.class,
-                                        () -> future.get(400, TimeUnit.MILLISECONDS));
+                            () -> future.get(400, TimeUnit.MILLISECONDS));
                 }
             }
         }

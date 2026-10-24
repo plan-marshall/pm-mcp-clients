@@ -83,6 +83,23 @@ describe('ReportsView component', () => {
     });
   });
 
+  /** @returns the completion report the split detail fetches for `fix-relay` */
+  function fixRelayCompletion(): PlanCompletionReport {
+    return {
+      plan_id: 'fix-relay',
+      title: 'fix-relay',
+      from: { project: 'pm-mcp-clients', plan: 'fix-relay' },
+      outcome: 'merged',
+      started_at: '2026-10-16T08:40:00Z',
+      ended_at: '2026-10-16T11:20:00Z',
+      duration_seconds: 9600,
+      paused_seconds: 0,
+      deliverables: [],
+      replanning_records: [],
+      decision_records: [],
+    } as unknown as PlanCompletionReport;
+  }
+
   it('renders unread reports grouped by project, epic, and plan', async () => {
     render(ReportsView);
 
@@ -110,20 +127,7 @@ describe('ReportsView component', () => {
   });
 
   it('follows the route report plan while the reports route stays mounted', async () => {
-    const completion = {
-      plan_id: 'fix-relay',
-      title: 'fix-relay',
-      from: { project: 'pm-mcp-clients', plan: 'fix-relay' },
-      outcome: 'merged',
-      started_at: '2026-10-16T08:40:00Z',
-      ended_at: '2026-10-16T11:20:00Z',
-      duration_seconds: 9600,
-      paused_seconds: 0,
-      deliverables: [],
-      replanning_records: [],
-      decision_records: [],
-    } as unknown as PlanCompletionReport;
-    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(completion);
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
 
     runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: 'fix-relay' }));
 
@@ -148,19 +152,7 @@ describe('ReportsView component', () => {
   });
 
   it('closes a detail opened from the list on a plain reports visit', async () => {
-    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue({
-      plan_id: 'fix-relay',
-      title: 'fix-relay',
-      from: { project: 'pm-mcp-clients', plan: 'fix-relay' },
-      outcome: 'merged',
-      started_at: '2026-10-16T08:40:00Z',
-      ended_at: '2026-10-16T11:20:00Z',
-      duration_seconds: 9600,
-      paused_seconds: 0,
-      deliverables: [],
-      replanning_records: [],
-      decision_records: [],
-    } as unknown as PlanCompletionReport);
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
 
     render(ReportsView);
 
@@ -510,19 +502,7 @@ describe('ReportsView component', () => {
   });
 
   it('keeps the list beside the detail in split mode and marks the active card', async () => {
-    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue({
-      plan_id: 'fix-relay',
-      title: 'fix-relay',
-      from: { project: 'pm-mcp-clients', plan: 'fix-relay' },
-      outcome: 'merged',
-      started_at: '2026-10-16T08:40:00Z',
-      ended_at: '2026-10-16T11:20:00Z',
-      duration_seconds: 9600,
-      paused_seconds: 0,
-      deliverables: [],
-      replanning_records: [],
-      decision_records: [],
-    } as unknown as PlanCompletionReport);
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
 
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
@@ -538,6 +518,62 @@ describe('ReportsView component', () => {
     const active = document.querySelector('.report-card--active');
     expect(active).not.toBeNull();
     expect(active).toHaveAttribute('aria-current', 'true');
+  });
+
+  it('keeps the active card when the read event arrives before the read request resolves', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    let resolveRead: (() => void) | undefined;
+    vi.spyOn(apiClient, 'markReportRead').mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRead = resolve;
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await fireEvent.click(screen.getByTestId('layout-split'));
+    await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
+
+    await waitFor(() => {
+      expect(document.querySelector('.completion-report')).not.toBeNull();
+    });
+
+    // The runtime answers the request with an event that can overtake the HTTP response.
+    expect(apiClient.markReportRead).toHaveBeenCalledWith('rep-0142');
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+
+    // The row stays, marked read, even though the event was handled before the request resolved.
+    await waitFor(() => {
+      expect(screen.getByTestId('report-read-state')).toBeInTheDocument();
+    });
+    expect(document.querySelector('.report-card--active')).not.toBeNull();
+
+    if (!resolveRead) throw new Error('the pending read request was never created');
+    resolveRead();
+
+    await waitFor(() => {
+      expect(document.querySelector('.report-card--active')).not.toBeNull();
+    });
+    expect(screen.getByTestId('report-read-state')).toBeInTheDocument();
+  });
+
+  it('restores a retained row to unread when the read request fails', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    vi.spyOn(apiClient, 'markReportRead').mockRejectedValue(new Error('read failed'));
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await fireEvent.click(screen.getByTestId('layout-split'));
+    await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('read failed');
+    });
+
+    expect(document.querySelector('.report-card--active')).not.toBeNull();
+    expect(screen.queryByTestId('report-read-state')).toBeNull();
+    expect(screen.getByText(/3 unread/)).toBeInTheDocument();
   });
 
   it('clears the filter on Escape', async () => {
