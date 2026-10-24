@@ -1,10 +1,10 @@
 # Completion Report: `reports-decisions-density-and-filter` Split Retain Race
 
-**Plan**: [`implemented/reports-decisions-density-and-filter-remediation-plan.md`](implemented/reports-decisions-density-and-filter-remediation-plan.md)
+**Plan**: [`implemented/reports-decisions-density-and-filter-remediation-plan.md`](../implemented/reports-decisions-density-and-filter-remediation-plan.md)
 **Branch**: `fix/reports-split-retain-race`
 **Worktree**: `/Users/oliver/git/worktrees/pm-mcp-clients-reports-split-retain-race`
 **Date**: 2026-10-24
-**Step 8 status**: remediation complete — awaiting the orchestrator's post-landing re-verification.
+**Step 8 status**: **PASSED** for the retain-race scope; the adjacent unread-count double-decrement is handed to a follow-up reconciliation plan.
 
 ---
 
@@ -80,3 +80,20 @@ Live probing of the split flow shows the local unread pill drops by two for one 
   2. _Scope statement omitted the gate's `pm-mock-runtime` reformat_ — the invariant now records it as a documented exception; the archived plan's no-touch boundary is left unchanged.
   3. _A detail closed before a failing read settles lost the row_ — `pendingReadIds` defers the flush, success drops a row no longer beside an open detail, and failure restores it as unread; the two close-before-settle tests cover both arms.
   4. _The post-resolution assertion could pass before the continuation ran_ — the test now awaits the request continuation and the Svelte update (`tick()` twice) before asserting.
+
+---
+
+## 6. Step 8 Verification (Orchestrator)
+
+**Verdict: PASSED for the retain-race scope.** The report moves to `doc/agy/verified/` and Step 8 is checked off in the remediation plan.
+
+| Pillar | Result | Evidence |
+|---|---|---|
+| **1 — Traceability** | Pass | The fix matches the remediation plan: marker before the request, rollback on failure, close-before-settle handling, event-before-resolution test, live split Playwright case. |
+| **2 — Anti-patterns** | Pass | No new user-facing string; no API/record/server/layout/filter change; `pendingReadIds` is used only by the flush and the success/failure arms; the failure path reassigns the retained record for Svelte reactivity. |
+| **3 — Subprocess lifecycle** | Pass | The report records `npx playwright test tests/reports.spec.js` — 10 passed, including the split case — and a green `./mvnw verify -Ppre-commit`. No new subprocess or runtime path. |
+| **4 — Independent diff** | Pass | One view, its test, one baseline OpenRewrite reformat in `PlanViewScenarioTest` (documented), and records; no test weakening; no unrelated revert; commit trailer present. |
+
+### Out-of-scope follow-up
+
+The adjacent local unread pill double-decrement (7 → 5 for one read) is real but predates this remediation and is outside its stated scope. It is recorded in §4 and handed to `reports-unread-count-reconciliation-plan.md`; it does not reopen the retain-race verdict.
