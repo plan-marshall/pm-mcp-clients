@@ -269,7 +269,7 @@ The test must fail on the current `APP_PLACEHOLDER` and pass only when the real 
 - [x] **5.3 Docs**:
   - Server README: dependency, serving path, native resource requirement.
   - `pm-web-app/README.md`: export/import commands and same-origin API.
-- [ ] **5.4 Report**:
+- [x] **5.4 Report**:
   - Write `doc/agy/web-app-static-export-and-server-import-plan-report.md` with the JAR entries, server IT output, headers, asset/SPA evidence, and native status.
   - Move the plan to `implemented/`, rebase links, update the dashboard/index.
 

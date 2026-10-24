@@ -76,6 +76,14 @@ placeholder only when the resource JAR is absent from the build.
 $ ./mvnw -pl pm-web-app package -DskipTests
 [INFO] Copying 40 resources from build to target/classes/META-INF/resources
 [INFO] Building jar: .../pm-web-app/target/pm-web-app-0.1.0-SNAPSHOT.jar
+[INFO] BUILD SUCCESS
+```
+
+The `verify-spa-resources` check is bound to `verify`, so it reports its counts there (the full
+`./mvnw verify -Ppre-commit` below runs the same execution):
+
+```text
+$ ./mvnw -pl pm-web-app verify -Dmaven.test.skip=true -Dskip.lint=true -Dskip.typecheck=true
 [WARNING]      [echo] pm-web-app: packaged 1 index.html and 37 immutable asset(s) under META-INF/resources.
 [INFO] BUILD SUCCESS
 ```
