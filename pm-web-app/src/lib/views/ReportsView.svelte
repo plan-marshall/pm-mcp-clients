@@ -44,6 +44,11 @@
    * drop such a row yet: a failed request has to put it back as unread.
    */
   const pendingReadIds = new Set<string>();
+  /**
+   * The reports whose read event already decremented the unread count. The mark-read response for
+   * the same report must not count the read a second time; a repeated event is a no-op.
+   */
+  const eventReadIds = new Set<string>();
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
@@ -161,13 +166,30 @@
   }
 
   /**
-   * Drops one retained row and its marker.
+   * Whether a read event still owes the unread count a decrement.
+   *
+   * A report the loaded list no longer holds was already accounted for, by the response that
+   * removed it or by an earlier event. A retained row stays in the list beside its open detail:
+   * it counts until its own read settles, and not afterwards.
+   *
+   * @param id the report id a read event names
+   * @returns whether this is the first accounting for that read
+   */
+  function isStillUnread(id: string): boolean {
+    if (eventReadIds.has(id)) return false;
+    if (!items.some((item) => item.id === id)) return false;
+    return !retainedReadIds[id] || pendingReadIds.has(id);
+  }
+
+  /**
+   * Drops one retained row and its markers.
    *
    * @param id the report id to remove from the list
    */
   function dropRetainedRow(id: string): void {
     delete retainedReadIds[id];
     retainedReadIds = { ...retainedReadIds };
+    eventReadIds.delete(id);
     items = items.filter((item) => item.id !== id);
   }
 
@@ -249,8 +271,14 @@
       const readData = data as { report_id?: string; report_ids?: string[] };
       const ids = readData?.report_ids || (readData?.report_id ? [readData.report_id] : []);
       if (ids.length > 0) {
+        // One read decrements once: only the ids this event is the first accounting for count, and
+        // the mark-read response for them must not subtract a second time. The ids are taken
+        // before the list drops them, because a row that leaves here is still one the operator
+        // had not read yet.
+        const newlyRead = [...new Set(ids)].filter(isStillUnread);
         items = items.filter((i) => !ids.includes(i.id) || retainedReadIds[i.id]);
-        unreadCount = Math.max(0, unreadCount - ids.length);
+        for (const id of newlyRead) eventReadIds.add(id);
+        unreadCount = Math.max(0, unreadCount - newlyRead.length);
       } else {
         void loadReports();
       }
@@ -292,6 +320,8 @@
     try {
       const page: ReportsPage = await apiClient.getReports();
       items = page.items || [];
+      // The reloaded list replaced the tracked reads; a later event for any of them counts again.
+      eventReadIds.clear();
       unreadCount = page.unread_count ?? items.length;
       hasOlder = page.has_older;
       olderCount = page.older_count;
@@ -341,6 +371,10 @@
     }
     try {
       await apiClient.markReportRead(item.id);
+      // The read event and this response report the same read. Whichever arrives first decrements,
+      // and the other finds the read already counted and leaves the unread count alone.
+      const alreadyCounted = eventReadIds.delete(item.id);
+      if (!alreadyCounted) unreadCount = Math.max(0, unreadCount - 1);
       if (retain) {
         pendingReadIds.delete(item.id);
         // The detail may have closed while the request was in flight; a row no longer beside an
@@ -350,7 +384,6 @@
       } else {
         items = items.filter((i) => i.id !== item.id);
       }
-      unreadCount = Math.max(0, unreadCount - 1);
       void refreshReportsCount();
     } catch (err: unknown) {
       if (retain) {
@@ -369,6 +402,7 @@
       await apiClient.markAllReportsRead(ids);
       items = [];
       retainedReadIds = {};
+      eventReadIds.clear();
       unreadCount = 0;
       void refreshReportsCount();
     } catch (err: unknown) {

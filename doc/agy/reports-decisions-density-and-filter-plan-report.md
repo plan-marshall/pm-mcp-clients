@@ -4,7 +4,7 @@
 **Branch**: `feat/reports-decisions-density-filter`
 **Worktree**: `/Users/oliver/git/worktrees/pm-mcp-clients-reports-decisions-density-filter`
 **Date**: 2026-10-23
-**Step 8 status**: **FAILED — the split-view race is remediated and verified, but the unread-count double-decrement remains**; see §10 and `reports-unread-count-reconciliation-plan.md`.
+**Step 8 status**: **FAILED on the first pass — both the split-view race and the unread-count double-decrement are now delivered; re-verification is pending**; see §10 and [`implemented/reports-unread-count-reconciliation-plan.md`](implemented/reports-unread-count-reconciliation-plan.md).
 
 ---
 
@@ -181,4 +181,6 @@ The same live flow now shows the remaining count defect: the local unread pill d
 
 **Outcome (2026-10-24, branch `fix/reports-split-retain-race`).** `markRead` records the retained marker before `apiClient.markReportRead` and removes it in the catch path. The new component test holds the request open, emits `report.read` for the id, and asserts the card and its read state survive the event and the resolution; it fails against the previous ordering and passes against the fix. The failed-read test asserts the error banner, the still-active card, the restored unread state, and an unchanged count. The live `reports.spec.js` suite is **10 passed**, including the split case that failed this verdict, and `./mvnw verify -Ppre-commit` is green. Evidence: [`verified/reports-decisions-density-and-filter-remediation-plan-report.md`](verified/reports-decisions-density-and-filter-remediation-plan-report.md).
 
-The retain-race remediation is verified and archived. This parent report remains open because the adjacent unread-count double-decrement is still real: `handleEvent` decrements and `markRead` decrements again for the same read. [`reports-unread-count-reconciliation-plan.md`](reports-unread-count-reconciliation-plan.md) records the remaining fix; Step 8 is re-run after it lands.
+The retain-race remediation is verified and archived. This parent report remains open because the adjacent unread-count double-decrement is still real: `handleEvent` decrements and `markRead` decrements again for the same read. [`implemented/reports-unread-count-reconciliation-plan.md`](implemented/reports-unread-count-reconciliation-plan.md) records the remaining fix; Step 8 is re-run after it lands.
+
+**Outcome (2026-10-24, branch `fix/reports-unread-count`).** The count is reconciled per report id: `eventReadIds` records the reads the `report.read` event has already counted, `markRead` consumes that marker instead of decrementing again, and an event only counts an id the view still shows as unread. The live split case now asserts the pill: **7 unread reports** before the read and **6 unread reports** after it, where the previous revision reported **5**. Five component tests cover the event-first, response-first, no-event, replayed-event, and reload-then-event orderings; the retained failure path keeps its unchanged-count test. `./mvnw verify -Ppre-commit` is green and `reports.spec.js` is **10 passed**. Evidence: [`reports-unread-count-reconciliation-plan-report.md`](reports-unread-count-reconciliation-plan-report.md). Step 8 for this parent report is re-run after that fix lands.

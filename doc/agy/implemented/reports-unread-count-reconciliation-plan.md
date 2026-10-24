@@ -10,12 +10,12 @@ This plan makes one read produce exactly one decrement, in both the event-first 
 
 | Dimension | Reference |
 |---|---|
-| **Parent plan** | [`implemented/reports-decisions-density-and-filter-plan.md`](implemented/reports-decisions-density-and-filter-plan.md) — Step 8 still failed on this count |
-| **Retain-race report** | [`verified/reports-decisions-density-and-filter-remediation-plan-report.md`](verified/reports-decisions-density-and-filter-remediation-plan-report.md) — §4 records the double decrement |
-| **View** | [`ReportsView.svelte`](../../pm-web-app/src/lib/views/ReportsView.svelte) — `handleEvent`, `markRead`, `markAllShownRead`, `unreadCount` |
-| **Tests** | [`ReportsView.test.ts`](../../pm-web-app/src/lib/views/ReportsView.test.ts), [`reports.spec.js`](../../pm-web-e2e/tests/reports.spec.js) |
+| **Parent plan** | [`reports-decisions-density-and-filter-plan.md`](reports-decisions-density-and-filter-plan.md) — Step 8 still failed on this count |
+| **Retain-race report** | [`../verified/reports-decisions-density-and-filter-remediation-plan-report.md`](../verified/reports-decisions-density-and-filter-remediation-plan-report.md) — §4 records the double decrement |
+| **View** | [`ReportsView.svelte`](../../../pm-web-app/src/lib/views/ReportsView.svelte) — `handleEvent`, `markRead`, `markAllShownRead`, `unreadCount` |
+| **Tests** | [`ReportsView.test.ts`](../../../pm-web-app/src/lib/views/ReportsView.test.ts), [`reports.spec.js`](../../../pm-web-e2e/tests/reports.spec.js) |
 | **Use case** | UC-PLN-6 (catch up on what happened) |
-| **Operational SOP** | [`runbook.md`](runbook.md) |
+| **Operational SOP** | [`runbook.md`](../runbook.md) |
 
 ### 1.1 Root cause
 
@@ -59,10 +59,10 @@ This plan makes one read produce exactly one decrement, in both the event-first 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
 - [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-reports-unread-count` on branch `fix/reports-unread-count` off latest `main`.
-- [ ] 2. Personas loaded: `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript`; `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing`; `plan-marshall-persona-integration-tester`.
-- [ ] 3. Implement and test §5.
-- [ ] 4. Report written; plan moved to `implemented/`; dashboard updated.
-- [ ] 5. `npm test -- ReportsView`, `npm run check`, `npm run lint`, `npx playwright test tests/reports.spec.js`, and `./mvnw verify -Ppre-commit` pass.
+- [x] 2. Personas loaded: `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript`; `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing`; `plan-marshall-persona-integration-tester`.
+- [x] 3. Implement and test §5.
+- [x] 4. Report written; plan moved to `implemented/`; dashboard updated.
+- [x] 5. `npm test -- ReportsView`, `npm run check`, `npm run lint`, `npx playwright test tests/reports.spec.js`, and `./mvnw verify -Ppre-commit` pass.
 - [ ] 6. PR opened without `skip-bot-review`; findings resolved.
 - [ ] 7. Landed on `main`; worktree and branch cleaned up.
 - [ ] 8. Post-landing verification and report archival by the orchestrator.
@@ -71,17 +71,17 @@ This plan makes one read produce exactly one decrement, in both the event-first 
 
 ## 5. Technical Recipe
 
-- [ ] **5.1** Add an `eventReadIds = new Set<string>()` beside the other report state.
-- [ ] **5.2** In `handleEvent('report.read')`, after filtering, record each applied id in `eventReadIds` and decrement by the count that was actually still unread.
-- [ ] **5.3** In `markRead` success:
+- [x] **5.1** Add an `eventReadIds = new Set<string>()` beside the other report state.
+- [x] **5.2** In `handleEvent('report.read')`, after filtering, record each applied id in `eventReadIds` and decrement by the count that was actually still unread.
+- [x] **5.3** In `markRead` success:
   ```ts
   const alreadyCounted = eventReadIds.delete(item.id);
   if (!alreadyCounted) unreadCount = Math.max(0, unreadCount - 1);
   ```
   Keep the retained/row-removal behavior unchanged.
-- [ ] **5.4** On `loadReports`, `markAllShownRead`, and when an id leaves both the list and the retained set, clear the matching `eventReadIds` entries.
-- [ ] **5.5** Tests: the four orderings in §2, each asserting the exact unread count and the visible pill.
-- [ ] **5.6** The live split Playwright case remains green; optionally assert the pill after one read.
+- [x] **5.4** On `loadReports`, `markAllShownRead`, and when an id leaves both the list and the retained set, clear the matching `eventReadIds` entries.
+- [x] **5.5** Tests: the four orderings in §2, each asserting the exact unread count and the visible pill.
+- [x] **5.6** The live split Playwright case remains green; optionally assert the pill after one read.
 
 ---
 

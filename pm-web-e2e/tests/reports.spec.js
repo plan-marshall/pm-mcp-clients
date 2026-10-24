@@ -199,6 +199,7 @@ test.describe('Reports: paths, details, and the quiet notice (UC-PLN-6)', () => 
   }) => {
     await page.getByTestId('layout-split').click();
     await expect(page.locator('.reports-view')).toHaveAttribute('data-layout', 'split');
+    await expect(page.locator('.unread-pill')).toContainText('7 unread reports');
 
     const card = page.locator('.report-card', { hasText: 'Ended: merged (#214)' });
     await card.getByRole('button', { name: /Show the details/i }).click();
@@ -206,6 +207,8 @@ test.describe('Reports: paths, details, and the quiet notice (UC-PLN-6)', () => 
     await expect(page.locator('.completion-report')).toBeVisible();
     await expect(page.locator('.reports-tree')).toBeVisible();
     await expect(page.locator('.report-card--active')).toBeVisible();
+    // One read decrements the pill once, whichever of the event and the response arrives first.
+    await expect(page.locator('.unread-pill')).toContainText('6 unread reports');
 
     await page.reload();
     await expect(page.locator('.reports-view')).toHaveAttribute('data-layout', 'split');
