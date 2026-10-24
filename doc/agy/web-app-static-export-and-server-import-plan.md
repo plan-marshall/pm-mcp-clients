@@ -155,7 +155,9 @@ The test must fail on the current `APP_PLACEHOLDER` and pass only when the real 
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktrees created in both repositories after pulling `main`; Step 1 committed and pushed in each.
+- [x] 1. Isolated worktrees created in both repositories after pulling `main`:
+  - `/Users/oliver/git/worktrees/pm-mcp-clients-web-app-static-export` on `feat/web-app-static-export`
+  - `/Users/oliver/git/worktrees/plan-marshall-mcp-web-app-static-export` on `feat/web-app-static-export`
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-java:java-core` for the server handler and dependency.
   - `plan-marshall-persona-integration-tester` for the packaged-daemon IT.
