@@ -78,6 +78,31 @@ function isLoopbackRequest(request: { socket: { remoteAddress?: string | null } 
 
 export default defineConfig({
   plugins: [
+    {
+      name: 'strip-announcer-inline-style',
+      enforce: 'post',
+      transform(code, id) {
+        if (id.includes('root.svelte')) {
+          return code.replace(
+            /style="position:\s*absolute;[^"]*"/g,
+            'class="svelte-announcer"',
+          );
+        }
+      },
+      renderChunk(code) {
+        if (code.includes('svelte-announcer')) {
+          return code
+            .replace(
+              /style=\\"position:\s*absolute;[^\\"]*\\"/g,
+              'class=\\"svelte-announcer\\"',
+            )
+            .replace(
+              /style="position:\s*absolute;[^"]*"/g,
+              'class="svelte-announcer"',
+            );
+        }
+      },
+    },
     sveltekit({
       adapter: adapter({
         pages: 'build',
