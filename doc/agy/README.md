@@ -37,8 +37,9 @@ Post-run wave review under [`doc/meta/post_run_review.adoc`](../meta/post_run_re
 | **Reports Unread Count Reconciliation** | [`reports-unread-count-reconciliation-plan.md`](implemented/reports-unread-count-reconciliation-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-reports-unread-count` | `fix/reports-unread-count` | Landed & Verified (PR #203); [report](verified/reports-unread-count-reconciliation-plan-report.md) |
 | **Interaction Titles & Brand Mark** | [`interaction-titles-and-brand-mark-plan.md`](implemented/interaction-titles-and-brand-mark-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-titles-and-brand-mark` | `feat/titles-and-brand-mark` | Landed & Verified (PR #194); [report](verified/interaction-titles-and-brand-mark-plan-report.md) |
 | **Operator TUI PTY & Console Hand-Off** | [`operator-tui-pty-and-console-handoff-plan.md`](implemented/operator-tui-pty-and-console-handoff-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-operator-tui-pty-handoff` | `fix/operator-tui-pty-handoff` | Landed & Verified (PR #195); [report](verified/operator-tui-pty-and-console-handoff-plan-report.md) |
+| **Theme Readability (Light/Dark)** | [`theme-readability-light-dark-plan.md`](theme-readability-light-dark-plan.md) | `/Users/oliver/git/worktrees/pm-mcp-clients-theme-readability` | `fix/theme-readability` | Staged; every view contrast audit plus the reported epic/review flow |
 
-*(Note: the workflow visual language plan (default-units phase) is the only open work package; its clients workstream is verified and the default-units phase remains gated. The session-log narrative, interaction titles/brand mark, operator TUI hand-off, reports/decisions parent plan (with both remediations), reports split retain-race, reports unread-count, web-app static export, and its CSP remediation are landed and verified. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete. PR #176 separately aligned the stale Playwright specs and landed the onboarding-step, start-choice, and decomposition fixes; it has no separate `doc/agy` plan/report.)*
+*(Note: the workflow visual language plan (default-units phase, gated) and the theme-readability plan are the open work packages. The session-log narrative, interaction titles/brand mark, operator TUI hand-off, reports/decisions parent plan (with both remediations), reports split retain-race, reports unread-count, web-app static export, and its CSP remediation are landed and verified. All previously planned client deliverables, full-screen TUI levels, and roadmap packages are complete. PR #176 separately aligned the stale Playwright specs and landed the onboarding-step, start-choice, and decomposition fixes; it has no separate `doc/agy` plan/report.)*
 
 ---
 
@@ -123,6 +124,10 @@ As each active plan lands on `main` and passes Step 8 verification, subsequent p
 ### Stream H: Terminal TUI Capability & Console Hand-Off (`pm-operator`)
 1. **Landed & verified (PR #195)**: [`operator-tui-pty-and-console-handoff-plan.md`](implemented/operator-tui-pty-and-console-handoff-plan.md) ([report](verified/operator-tui-pty-and-console-handoff-plan-report.md))
    *(Add a real-PTY TUI test harness with key injection and screen assertions, then fix the console `plans`/`tui` hand-off that currently opens a second dumb terminal and falls back to the status tree)*
+
+### Stream I: Web App Theme Readability (`pm-web-app`)
+1. **Staged**: [`theme-readability-light-dark-plan.md`](theme-readability-light-dark-plan.md)
+   *(Audit every view in light and dark with computed contrast checks, fix the missing semantic tokens and hard-coded palettes, and verify the reported Overview → epic → findings action flow in a browser)*
 
 ---
 
