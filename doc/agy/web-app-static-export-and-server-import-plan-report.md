@@ -33,6 +33,8 @@ placeholder only when the resource JAR is absent from the build.
 - The plan archived at `doc/agy/implemented/web-app-static-export-and-server-import-plan.md` with every
   relative link rebased; the dashboard (`doc/agy/README.md`) and the archive index
   (`doc/agy/implemented/README.md`) updated.
+- Pull request [#200](https://github.com/plan-marshall/pm-mcp-clients/pull/200), branch
+  `feat/web-app-static-export`.
 
 ### `plan-marshall-mcp` — `pm-mcp-server`
 
@@ -63,6 +65,8 @@ placeholder only when the resource JAR is absent from the build.
   `OPTIONS` guard.
 - `pm-mcp-server/src/test/java/de/planmarshall/mcp/server/web/WebAppIT.java` **(new)** — the packaged-daemon
   proof (two tests).
+- Pull request [plan-marshall/plan-marshall-mcp#104](https://github.com/plan-marshall/plan-marshall-mcp/pull/104),
+  branch `feat/web-app-static-export`.
 
 ## Test & Verification Results
 
@@ -178,7 +182,34 @@ The JVM runner and the native runner therefore both serve the real packaged app.
 
 ## Build & Quality Evidence
 
-<!-- GATES -->
+```text
+# clients
+$ ./mvnw verify -Ppre-commit
+[INFO] pm-mcp-clients ..................................... SUCCESS [ 10.645 s]
+[INFO] pm-api ............................................. SUCCESS [01:49 min]
+[INFO] pm-exec ............................................ SUCCESS [ 15.177 s]
+[INFO] pm-mock-runtime .................................... SUCCESS [01:03 min]
+[INFO] pm-relay ........................................... SUCCESS [ 13.775 s]
+[INFO] pm-operator ........................................ SUCCESS [04:29 min]
+[INFO] pm-web-app ......................................... SUCCESS [ 50.589 s]
+[INFO] pm-web-e2e ......................................... SUCCESS [ 12.130 s]
+[INFO] BUILD SUCCESS   (9:04 min)
+
+# server
+$ ./mvnw verify -Ppre-commit
+[INFO] pm-mcp-server ...................................... SUCCESS [02:11 min]
+[INFO] pm-e2e ............................................. SUCCESS [ 16.189 s]
+[INFO] BUILD SUCCESS   (2:48 min; 143 unit tests)
+
+# server integration tests, packaged daemon
+$ ./mvnw -pl pm-mcp-server -Pintegration-tests failsafe:integration-test failsafe:verify -Dit.test=WebAppIT
+[INFO] Tests run: 2, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+```
+
+The clients pre-commit gate reformatted one pre-existing line in
+`pm-mock-runtime/src/test/java/de/planmarshall/mock/PlanViewScenarioTest.java` (indentation only); it is
+committed with this change, as the runbook requires. No other file outside the footprint changed.
 
 ## Finding-by-Finding Acceptance
 
@@ -204,10 +235,12 @@ script/style) instead of silently loosening the policy. The server README states
 
 ## Landing Order & Publication
 
-1. `pm-mcp-clients`: `./mvnw verify -Ppre-commit`, merge of the clients PR, and the snapshot deployment of
+1. `pm-mcp-clients`: `./mvnw verify -Ppre-commit`, merge of PR
+   [#200](https://github.com/plan-marshall/pm-mcp-clients/pull/200), and the snapshot deployment of
    `pm-web-app` on `main`.
 2. `plan-marshall-mcp`: the server build resolves `de.planmarshall:pm-web-app:0.1.0-SNAPSHOT` from the
    organisation registry; its own `./mvnw verify -Ppre-commit` and `-Pintegration-tests` gates pass after
-   the clients deployment.
+   the clients deployment (PR
+   [plan-marshall/plan-marshall-mcp#104](https://github.com/plan-marshall/plan-marshall-mcp/pull/104)).
 
 No store, protocol, pairing, session, UI, or TLS behaviour changed.

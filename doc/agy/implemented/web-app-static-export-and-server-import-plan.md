@@ -165,8 +165,8 @@ The test must fail on the current `APP_PLACEHOLDER` and pass only when the real 
   - `plan-marshall-persona-documenter` for the export/import docs.
   - `plan-marshall-persona-code-reviewer` for review triage.
 - [x] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Completion report written (`doc/agy/web-app-static-export-and-server-import-plan-report.md`), plan moved to `doc/agy/implemented/`, links rebased, and dashboard/index updated.
-- [ ] 5. Pre-commit passed: clients `./mvnw verify -Ppre-commit`; server `./mvnw verify -Ppre-commit` plus `-Pintegration-tests` for the IT.
+- [x] 4. Completion report written (`doc/agy/web-app-static-export-and-server-import-plan-report.md`), plan moved to `doc/agy/implemented/`, links rebased, and dashboard/index updated.
+- [x] 5. Pre-commit passed: clients `./mvnw verify -Ppre-commit`; server `./mvnw verify -Ppre-commit` plus `-Pintegration-tests` for the IT.
 - [ ] 6. PRs opened in the landing order (no `skip-bot-review`); review windows and findings resolved.
 - [ ] 7. Artifact published/installed first; server PR merged; worktrees and branches cleaned up.
 - [ ] 8. Post-landing verification performed; clients report moved to `doc/agy/verified/`.
