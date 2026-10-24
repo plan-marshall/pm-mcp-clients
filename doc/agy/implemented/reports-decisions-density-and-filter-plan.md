@@ -117,7 +117,7 @@ The work is confined to `pm-web-app` plus the message catalogue. No API, record,
 - [x] 5. Pre-commit passed: `./mvnw verify -Ppre-commit`.
 - [x] 6. PR opened as #191 (never `skip-bot-review` on worker PRs); Sonar clean (0 new issues); CodeRabbit and Sourcery returned no findings because their review quotas were exhausted (documented in the report).
 - [ ] 7. Enqueued in the merge queue, landed on `main`, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and the report moved to `doc/agy/verified/` by the orchestrator.
+- [x] 8. Post-landing verification performed and the report moved to `doc/agy/verified/reports-decisions-density-and-filter-plan-report.md` by the orchestrator.
 
 > [!IMPORTANT]
 > **Plan archival link rule**: this plan now lives at `doc/agy/implemented/`; its links use `../../design`, `../../../pm-web-app`, `../../../pm-api`, `../../../pm-web-e2e`, and `../../../../plan-marshall-documentation`.

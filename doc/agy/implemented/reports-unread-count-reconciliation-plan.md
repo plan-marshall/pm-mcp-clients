@@ -65,7 +65,7 @@ This plan makes one read produce exactly one decrement, in both the event-first 
 - [x] 5. `npm test -- ReportsView`, `npm run check`, `npm run lint`, `npx playwright test tests/reports.spec.js`, and `./mvnw verify -Ppre-commit` pass.
 - [x] 6. PR opened without `skip-bot-review`; findings resolved (PR #203; CodeRabbit's two findings fixed and both threads resolved).
 - [x] 7. Landed on `main` as PR #203; worktree and branch cleaned up.
-- [ ] 8. Post-landing verification and report archival by the orchestrator.
+- [x] 8. Post-landing verification performed and the report moved to `doc/agy/verified/reports-unread-count-reconciliation-plan-report.md` by the orchestrator.
 
 ---
 

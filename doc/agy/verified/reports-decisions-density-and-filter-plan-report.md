@@ -1,10 +1,10 @@
 # Completion Report: `reports-decisions-density-and-filter`
 
-**Plan**: [`doc/agy/reports-decisions-density-and-filter-plan.md`](implemented/reports-decisions-density-and-filter-plan.md)
+**Plan**: [`doc/agy/reports-decisions-density-and-filter-plan.md`](../implemented/reports-decisions-density-and-filter-plan.md)
 **Branch**: `feat/reports-decisions-density-filter`
 **Worktree**: `/Users/oliver/git/worktrees/pm-mcp-clients-reports-decisions-density-filter`
 **Date**: 2026-10-23
-**Step 8 status**: **FAILED on the first pass — both the split-view race and the unread-count double-decrement are now delivered; re-verification is pending**; see §10 and [`implemented/reports-unread-count-reconciliation-plan.md`](implemented/reports-unread-count-reconciliation-plan.md).
+**Step 8 status**: **PASSED** — both the split-view race and the unread-count double-decrement are remediated and verified.
 
 ---
 
@@ -159,7 +159,7 @@ Remove the layout toggle and filter slots, restore the single-column CSS, and de
 
 ## 10. Post-Landing Verification (Step 8)
 
-**Verdict: FAILED.** The original split-view race is remediated and verified, but the same live flow exposed a remaining unread-count double-decrement (7 → 5 for one read). The report stays in `doc/agy/`; Step 8 remains open for the count reconciliation.
+**Verdict: PASSED.** Both failures found on the first pass are remediated and verified: the split-view active-card race (PR #198) and the unread-count double-decrement (PR #203). The report moves to `doc/agy/verified/`.
 
 ### Pillars 1, 2, and 4
 
@@ -173,14 +173,14 @@ Remove the layout toggle and filter slots, restore the single-column CSS, and de
 
 On the first pass, the live `reports.spec.js` split-layout case failed on `.report-card--active`: `markRead` set the retain marker after the request, so a `report.read` event that arrived first filtered the row out. That race is fixed and verified by the retained-race remediation.
 
-The same live flow now shows the remaining count defect: the local unread pill drops by two for one read (7 → 5). `handleEvent('report.read')` decrements `unreadCount` and `markRead` decrements it again on success. The split Playwright case and the other reports/decisions/mobile cases pass; the count is the Step 8 blocker.
+On the first pass, the same live flow showed a second defect: the local unread pill dropped by two for one read (7 → 5). `handleEvent('report.read')` decremented `unreadCount` and `markRead` decremented it again on success.
 
 ### Remediation
 
-[`implemented/reports-decisions-density-and-filter-remediation-plan.md`](implemented/reports-decisions-density-and-filter-remediation-plan.md) targets the exact race: set the retain marker before the request, roll it back on failure, and cover the event-before-resolution ordering in a component test plus the split Playwright case.
+[`implemented/reports-decisions-density-and-filter-remediation-plan.md`](../implemented/reports-decisions-density-and-filter-remediation-plan.md) targets the exact race: set the retain marker before the request, roll it back on failure, and cover the event-before-resolution ordering in a component test plus the split Playwright case.
 
-**Outcome (2026-10-24, branch `fix/reports-split-retain-race`).** `markRead` records the retained marker before `apiClient.markReportRead` and removes it in the catch path. The new component test holds the request open, emits `report.read` for the id, and asserts the card and its read state survive the event and the resolution; it fails against the previous ordering and passes against the fix. The failed-read test asserts the error banner, the still-active card, the restored unread state, and an unchanged count. The live `reports.spec.js` suite is **10 passed**, including the split case that failed this verdict, and `./mvnw verify -Ppre-commit` is green. Evidence: [`verified/reports-decisions-density-and-filter-remediation-plan-report.md`](verified/reports-decisions-density-and-filter-remediation-plan-report.md).
+**Outcome (2026-10-24, branch `fix/reports-split-retain-race`).** `markRead` records the retained marker before `apiClient.markReportRead` and removes it in the catch path. The new component test holds the request open, emits `report.read` for the id, and asserts the card and its read state survive the event and the resolution; it fails against the previous ordering and passes against the fix. The failed-read test asserts the error banner, the still-active card, the restored unread state, and an unchanged count. The live `reports.spec.js` suite is **10 passed**, including the split case that failed this verdict, and `./mvnw verify -Ppre-commit` is green. Evidence: [`reports-decisions-density-and-filter-remediation-plan-report.md`](reports-decisions-density-and-filter-remediation-plan-report.md).
 
-The retain-race remediation is verified and archived. This parent report remains open because the adjacent unread-count double-decrement is still real: `handleEvent` decrements and `markRead` decrements again for the same read. [`implemented/reports-unread-count-reconciliation-plan.md`](implemented/reports-unread-count-reconciliation-plan.md) records the remaining fix; Step 8 is re-run after it lands.
+**Outcome (2026-10-24, branch `fix/reports-unread-count`).** The count is reconciled per report id: `countedReadIds` records every read the view has counted, whichever of the `report.read` event and the mark-read response arrives first, and a later event for a recorded id is a no-op. The live split case now asserts the pill: **7 unread reports** before the read and **6 unread reports** after it, where the previous revision reported **5**. Seven component tests cover the event-first, response-first, no-event, replayed-event, reload-then-event, off-page-read, and reload-overtakes-a-pending-read orderings; the retained failure path keeps its unchanged-count test. `./mvnw verify -Ppre-commit` is green and `reports.spec.js` is **10 passed**. Evidence: [`reports-unread-count-reconciliation-plan-report.md`](reports-unread-count-reconciliation-plan-report.md).
 
-**Outcome (2026-10-24, branch `fix/reports-unread-count`).** The count is reconciled per report id: `countedReadIds` records every read the view has counted, whichever of the `report.read` event and the mark-read response arrives first, and a later event for a recorded id is a no-op. The live split case now asserts the pill: **7 unread reports** before the read and **6 unread reports** after it, where the previous revision reported **5**. Seven component tests cover the event-first, response-first, no-event, replayed-event, reload-then-event, off-page-read, and reload-overtakes-a-pending-read orderings; the retained failure path keeps its unchanged-count test. `./mvnw verify -Ppre-commit` is green and `reports.spec.js` is **10 passed**. Evidence: [`reports-unread-count-reconciliation-plan-report.md`](reports-unread-count-reconciliation-plan-report.md). Step 8 for this parent report is re-run after that fix lands.
+Both remediations are verified and archived. The parent plan now passes Step 8; the report moves to `doc/agy/verified/`.
