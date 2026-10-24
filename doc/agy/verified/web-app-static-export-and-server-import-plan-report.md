@@ -1,6 +1,6 @@
 # Completion Report: `web-app-static-export-and-server-import`
 
-**Step 8 status:** **FAILED** — the CSP blocks the SvelteKit inline bootstrap; the served app does not start in a browser. Remediation: [`web-app-static-export-csp-remediation-plan.md`](web-app-static-export-csp-remediation-plan.md).
+**Step 8 status:** **PASSED** — the CSP remediation lets the served SPA boot under the strict policy; both repositories are verified.
 
 ## Executive Summary
 
@@ -237,7 +237,7 @@ committed with this change, as the runbook requires. No other file outside the f
 
 The web listener sends `default-src 'self'; script-src 'self'; ...` on every response. SvelteKit
 `index.html` boots through an inline `<script>` (the `__sveltekit_*` bootstrap).
-Remediation plan [`web-app-static-export-csp-remediation-plan.md`](implemented/web-app-static-export-csp-remediation-plan.md)
+Remediation plan [`web-app-static-export-csp-remediation-plan.md`](../implemented/web-app-static-export-csp-remediation-plan.md)
 resolved this without loosening the policy to `'unsafe-inline'`:
 1. `StaticWebApp` extracts the inline bootstrap script body and computes its SHA-256 hash at startup.
 2. `WebRequestHandler` injects `'sha256-<base64>'` dynamically into `script-src`.
@@ -277,15 +277,15 @@ No store, protocol, pairing, session, UI, or TLS behaviour changed.
 
 ## Step 8 Verification (Orchestrator)
 
-**Verdict: FAILED — the CSP blocks the SvelteKit bootstrap.** The report stays in `doc/agy/`; the split static-export plan’s Step 7 is checked, Step 8 remains open.
+**Verdict: PASSED.** The CSP remediation closed the browser-boot blocker; the report moves to `doc/agy/verified/`.
 
 | Pillar | Result | Evidence |
 |---|---|---|
-| **1 — Traceability** | Pass for packaging/import, fail for F5 | The resource JAR, server dependency, static handler, SPA fallback, API/MCP boundary, native resources, and `WebAppIT` match the plan. The served app does not boot in a browser because the CSP has no script hash/nonce and no inline-style allowance. |
-| **2 — Anti-patterns** | Pass on hygiene, fail on the functional CSP | No fallback dictionary; no uncatalogued UI text; path confinement, content types, cache rules, and security headers are present; `require-trusted-types-for 'script'` is retained. The policy is secure but incompatible with the shell it serves. |
-| **3 — Subprocess lifecycle** | Fail at browser handshake | Clients and server pre-commit gates, `WebAppIT` (JVM and native), and the HTTP matrix pass. No browser loaded the daemon-served `/`; the inline `__sveltekit_*` script is blocked by `script-src 'self'`, and the inline `display: contents` style is blocked by the missing `style-src` allowance. |
-| **4 — Independent diff** | Pass | Boundaries are the two declared repositories; the `PlanViewScenarioTest` reformat is documented; no test weakening; no unrelated revert; commit trailers present. |
+| **1 — Traceability** | Pass | Packaging, server import, SPA fallback, native resources, API/MCP boundary, and the F5 browser boot are all delivered. The inline bootstrap is admitted by its exact SHA-256 hash; no inline style remains. |
+| **2 — Anti-patterns** | Pass | No `'unsafe-inline'` in `script-src` or `style-src`; Trusted Types and all other headers remain; path confinement and cache rules intact; no fallback dictionary or uncatalogued UI text. |
+| **3 — Subprocess lifecycle** | Pass | Clients 557 tests, server 50 unit tests, `WebAppIT` 3/3 with a headless-Chrome CDP boot, 0 CSP violations, and an in-page `/api/v1/status` fetch; pre-commit green. |
+| **4 — Independent diff** | Pass | Boundaries are the two declared repositories; the Vite announcer plugin and client style removals are documented; no test weakening; no unrelated revert; commit trailers present. |
 
-### Remediation
+### Remediation outcome
 
-[`web-app-static-export-csp-remediation-plan.md`](web-app-static-export-csp-remediation-plan.md) removes the inline-style wrapper, admits the exact bootstrap script by hash or nonce without `'unsafe-inline'`, and adds a real browser smoke against the packaged daemon. The parent report moves only after that browser proof and the security review pass.
+[`web-app-static-export-csp-plan-report.md`](web-app-static-export-csp-plan-report.md) records the hash-based `script-src`, the inline-style elimination, and the browser proof. The CSP remediation plan’s Step 8 is checked; the parent plan now passes.

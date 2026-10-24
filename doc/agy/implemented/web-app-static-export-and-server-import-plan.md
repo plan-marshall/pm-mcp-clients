@@ -169,7 +169,7 @@ The test must fail on the current `APP_PLACEHOLDER` and pass only when the real 
 - [x] 5. Pre-commit passed: clients `./mvnw verify -Ppre-commit`; server `./mvnw verify -Ppre-commit` plus `-Pintegration-tests` for the IT.
 - [x] 6. PRs opened in the landing order (no `skip-bot-review`); review windows and findings resolved.
 - [x] 7. Artifact published/installed first; clients PR #200 and server PR #104 merged; worktrees and branches cleaned up.
-- [ ] 8. Post-landing verification performed; clients report moved to `doc/agy/verified/`.
+- [x] 8. Post-landing verification performed; the completion report moved to `doc/agy/verified/web-app-static-export-and-server-import-plan-report.md`.
 
 > [!IMPORTANT]
 > **Plan archival link rule**: this plan is written at `doc/agy/`; its links use `../meta`, `../design`, `../../../plan-marshall-mcp`, `../../../plan-marshall-documentation`, and `implemented/<name>.md`. When Step 4 moves it to `doc/agy/implemented/`, rebase every link (`../../meta`, `../../design`, `../../../../plan-marshall-mcp`, `../../../../plan-marshall-documentation`, `../runbook.md`, sibling `<name>.md`) and re-run the internal-link check.
