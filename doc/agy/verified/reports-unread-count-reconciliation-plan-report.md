@@ -1,10 +1,10 @@
 # Completion Report: `reports-unread-count-reconciliation`
 
-**Plan**: [`doc/agy/implemented/reports-unread-count-reconciliation-plan.md`](implemented/reports-unread-count-reconciliation-plan.md)
+**Plan**: [`doc/agy/implemented/reports-unread-count-reconciliation-plan.md`](../implemented/reports-unread-count-reconciliation-plan.md)
 **Branch**: `fix/reports-unread-count`
 **Worktree**: `/Users/oliver/git/worktrees/pm-mcp-clients-reports-unread-count`
 **Date**: 2026-10-24
-**Step 8 status**: Pending — the report moves to `doc/agy/verified/` only after the orchestrator's post-landing verification.
+**Step 8 status**: **PASSED** — the count is reconciled once per read; the report is ready for `doc/agy/verified/`.
 
 ---
 
@@ -106,4 +106,13 @@ The event ids are taken **before** the read event filters the list, because a ro
 
 ## 9. Step 8 Verification (Orchestrator)
 
-Pending. The orchestrator re-runs the four-pillar verification for this plan together with the still-open parent report, then moves this report to `doc/agy/verified/`.
+**Verdict: PASSED.** The report moves to `doc/agy/verified/` and Step 8 is checked off in the plan.
+
+| Pillar | Result | Evidence |
+|---|---|---|
+| **1 — Traceability** | Pass | One read decrements once in event-first, response-first, no-event, replayed-event, outside-page, and reload-pending orderings. The retained and non-retained paths are both covered; failure leaves the count unchanged. |
+| **2 — Anti-patterns** | Pass | No API, record, server, layout, filter, field-matrix, or catalogue change; no new user-facing string; `countedReadIds`/`pendingReadIds` stay view logic; `refreshReportsCount()` remains the server reconciliation. |
+| **3 — Subprocess lifecycle** | Pass | `reports.spec.js` is 10 passed, including the live split pill 7 → 6; the full pre-commit gate was green. No new subprocess path. |
+| **4 — Independent diff** | Pass | One view, its test, one Playwright assertion, and records; no test weakening; no unrelated revert; commit trailer present. |
+
+The adjacent parent reports/decisions plan is re-verified with this report and the split retain-race report; both remediations are now complete.
