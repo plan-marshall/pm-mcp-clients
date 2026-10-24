@@ -81,9 +81,9 @@ A static SvelteKit export needs one inline script to import and start the app. T
 - [x] 1. Isolated worktrees created in both repositories off latest `main`:
   - `/Users/oliver/git/worktrees/pm-mcp-clients-web-app-csp` on `fix/web-app-csp`
   - `/Users/oliver/git/worktrees/plan-marshall-mcp-web-app-csp` on `fix/web-app-csp`
-- [ ] 2. Personas loaded: `plan-marshall-persona-implementer`, `plan-marshall-persona-integration-tester`, `plan-marshall-persona-security-expert`, `plan-marshall-persona-documenter`, `plan-marshall-persona-code-reviewer`.
-- [ ] 3. Implement and test §5.
-- [ ] 4. Report written; plan moved to `implemented/`; dashboard/index updated.
+- [x] 2. Personas loaded: `plan-marshall-persona-implementer`, `plan-marshall-persona-integration-tester`, `plan-marshall-persona-security-expert`, `plan-marshall-persona-documenter`, `plan-marshall-persona-code-reviewer`.
+- [x] 3. Implement and test §5.
+- [x] 4. Report written; plan moved to `implemented/`; dashboard/index updated.
 - [ ] 5. Clients `./mvnw verify -Ppre-commit`; server `./mvnw verify -Ppre-commit` and `-Pintegration-tests`.
 - [ ] 6. PRs in the landing order (clients first, then server), no `skip-bot-review`.
 - [ ] 7. Clients artifact published/installed before the server build; both PRs merged; worktrees cleaned.
@@ -93,21 +93,21 @@ A static SvelteKit export needs one inline script to import and start the app. T
 
 ## 5. Technical Recipe
 
-- [ ] **5.1 Client shell**
+- [x] **5.1 Client shell**
   - Replace the inline-style wrapper in `app.html`; keep the generated SvelteKit head and bootstrap.
   - Build and inspect `build/index.html`: one inline bootstrap script, no inline `style` attribute.
-- [ ] **5.2 Server CSP**
+- [x] **5.2 Server CSP**
   - Read the served `index.html` once at startup; extract the exact inline script body; compute SHA-256; append `'sha256-<base64>'` to `script-src`.
   - If the shell changes at runtime, cache the header per loaded shell or compute a nonce per response.
   - Add a unit test for the hash extraction and the resulting header.
-- [ ] **5.3 Browser proof**
+- [x] **5.3 Browser proof**
   - Start the packaged daemon and load `/` in Chromium; assert a visible app element and no CSP console error.
   - Fetch an API endpoint from the page to prove `connect-src 'self'`.
   - Repeat against the native runner when built.
-- [ ] **5.4 Security review**
+- [x] **5.4 Security review**
   - Confirm no `'unsafe-inline'` was added; `object-src`, `base-uri`, `frame-ancestors`, and the other headers are unchanged.
   - Record the Trusted Types decision in the design note/README.
-- [ ] **5.5 Records**
+- [x] **5.5 Records**
   - Update the parent report’s F5/Step 8 section; move both reports only after the browser proof is green.
 
 ---

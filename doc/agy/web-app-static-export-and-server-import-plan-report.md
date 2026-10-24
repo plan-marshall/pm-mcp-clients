@@ -233,18 +233,19 @@ committed with this change, as the runbook requires. No other file outside the f
 | **F6** | The native build carries `META-INF/resources`, or the native path is recorded as unsupported on the host. | See **Native image**. |
 | **F7** | Clients and server gates pass; the clients SNAPSHOT is published before the server consumes it. | See **Build & Quality Evidence** and the landing order below. |
 
-## Step 8 Blocker: CSP and the SvelteKit Shell (F5 follow-up)
+## Step 8 Blocker Resolved: CSP and the SvelteKit Shell (F5 follow-up)
 
-The web listener sends `default-src 'self'; script-src 'self'; ...` on every response. The current
-SvelteKit `index.html` boots through an inline `<script>` (the `__sveltekit_*` bootstrap) and carries an
-inline `style="display: contents"` attribute, both of which that policy blocks in a browser. `WebAppIT`
-proves that the daemon serves the shell and the assets with the headers; it does not prove browser
-rendering. The served app therefore does not start.
+The web listener sends `default-src 'self'; script-src 'self'; ...` on every response. SvelteKit
+`index.html` boots through an inline `<script>` (the `__sveltekit_*` bootstrap).
+Remediation plan [`web-app-static-export-csp-remediation-plan.md`](implemented/web-app-static-export-csp-remediation-plan.md)
+resolved this without loosening the policy to `'unsafe-inline'`:
+1. `StaticWebApp` extracts the inline bootstrap script body and computes its SHA-256 hash at startup.
+2. `WebRequestHandler` injects `'sha256-<base64>'` dynamically into `script-src`.
+3. All inline `style` attributes (`app.html`, `Spinner.svelte`, `BrandMark.svelte`, `CleanupView.svelte`, and SvelteKit's `svelte-announcer`) were replaced with CSS classes.
+4. `BrandMark.svelte` renders an inline SVG with `currentColor` instead of a Vite-inlined `data:` URI mask image.
+5. `WebAppIT.shouldBootInHeadlessBrowserUnderCsp` verifies that a real headless browser loads `/`, boots the SvelteKit runtime under the strict CSP, renders the DOM, and executes API fetches with zero CSP console violations.
 
-This is the pre-existing CSP finding F5 in the plan. It is not an accepted limitation: Step 8 fails on it.
-[`web-app-static-export-csp-remediation-plan.md`](web-app-static-export-csp-remediation-plan.md) specifies
-the hash/nonce fix, the inline-style removal, and the browser-level proof. The policy must not be loosened
-to `'unsafe-inline'`.
+See the remediation completion report at [`web-app-static-export-csp-plan-report.md`](web-app-static-export-csp-plan-report.md).
 
 ## Review Findings Resolution
 

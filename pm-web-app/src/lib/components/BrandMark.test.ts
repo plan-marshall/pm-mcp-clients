@@ -28,15 +28,16 @@ function walk(directory: string): string[] {
 }
 
 describe('BrandMark component', () => {
-  it('renders a decorative masked mark by default', () => {
+  it('renders a decorative mark by default', () => {
     const { getByTestId } = render(BrandMark, { props: { size: 24 } });
     const mark = getByTestId('brand-mark');
 
     expect(mark.getAttribute('aria-hidden')).toBe('true');
     expect(mark.getAttribute('role')).toBeNull();
     expect(mark.hasAttribute('aria-label')).toBe(false);
-    expect(mark.getAttribute('style')).toContain('--brand-mark-size: 24px');
-    expect(mark.getAttribute('style')).toContain('--brand-mark-url: url(');
+    expect(mark.getAttribute('width')).toBe('24');
+    expect(mark.getAttribute('height')).toBe('24');
+    expect(mark.getAttribute('data-size')).toBe('24');
   });
 
   it('carries an accessible name when it is not decorative', () => {
@@ -48,6 +49,9 @@ describe('BrandMark component', () => {
     expect(mark.getAttribute('role')).toBe('img');
     expect(mark.getAttribute('aria-label')).toBe('plan-marshall');
     expect(mark.hasAttribute('aria-hidden')).toBe(false);
+    expect(mark.getAttribute('width')).toBe('20');
+    expect(mark.getAttribute('height')).toBe('20');
+    expect(mark.getAttribute('data-size')).toBe('20');
   });
 });
 

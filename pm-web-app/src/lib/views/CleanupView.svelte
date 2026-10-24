@@ -520,7 +520,7 @@
       </div>
 
       {#if keptItems.length === 0}
-        <p class="text-muted text-center" style="padding: var(--space-4);">
+        <p class="text-muted text-center cleanup-kept-empty">
           {$t('system.cleanup.kept.none')}
         </p>
       {:else}
@@ -891,6 +891,10 @@
     justify-content: flex-end;
     gap: var(--space-3);
     margin-top: var(--space-6);
+  }
+
+  .cleanup-kept-empty {
+    padding: var(--space-4);
   }
 
   @media (max-width: 640px) {
