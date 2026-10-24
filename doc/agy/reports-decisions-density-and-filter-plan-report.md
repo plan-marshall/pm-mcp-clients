@@ -4,7 +4,7 @@
 **Branch**: `feat/reports-decisions-density-filter`
 **Worktree**: `/Users/oliver/git/worktrees/pm-mcp-clients-reports-decisions-density-filter`
 **Date**: 2026-10-23
-**Step 8 status**: **REMEDIATED, awaiting re-verification** — the split-view active-card race found on 2026-10-23 is fixed on `fix/reports-split-retain-race`; see §10.
+**Step 8 status**: **FAILED — the split-view race is remediated and verified, but the unread-count double-decrement remains**; see §10 and `reports-unread-count-reconciliation-plan.md`.
 
 ---
 
@@ -159,7 +159,7 @@ Remove the layout toggle and filter slots, restore the single-column CSS, and de
 
 ## 10. Post-Landing Verification (Step 8)
 
-**Verdict: FAILED on the first pass — one split-view race; remediated and awaiting the orchestrator's re-verification.** The report stays in `doc/agy/`; Step 8 re-verification is the orchestrator's.
+**Verdict: FAILED.** The original split-view race is remediated and verified, but the same live flow exposed a remaining unread-count double-decrement (7 → 5 for one read). The report stays in `doc/agy/`; Step 8 remains open for the count reconciliation.
 
 ### Pillars 1, 2, and 4
 
@@ -171,22 +171,14 @@ Remove the layout toggle and filter slots, restore the single-column CSS, and de
 
 ### Pillar 3 — the failure
 
-The live `reports.spec.js` split-layout case fails:
+On the first pass, the live `reports.spec.js` split-layout case failed on `.report-card--active`: `markRead` set the retain marker after the request, so a `report.read` event that arrived first filtered the row out. That race is fixed and verified by the retained-race remediation.
 
-```text
-Locator: locator('.report-card--active')
-Expected: visible
-Error: element(s) not found
-```
-
-The race is in `ReportsView.markRead`: when a report is opened in `split` mode, the row is retained by setting `retainedReadIds[item.id]` **after** `await apiClient.markReportRead(item.id)`. The runtime's `report.read` event can arrive before that promise resolves; `handleEvent` then filters the row out because the retain marker is not set yet. The list keeps its detail, but loses the active card. The unit test missed it because its mocked read request does not emit the event.
-
-The other checks pass: reports `10 passed` (after the failure was isolated), decisions/mobile/chrome `22 passed`, reports unit tests `23 passed`, and the full pre-commit gate was green before the race was found.
+The same live flow now shows the remaining count defect: the local unread pill drops by two for one read (7 → 5). `handleEvent('report.read')` decrements `unreadCount` and `markRead` decrements it again on success. The split Playwright case and the other reports/decisions/mobile cases pass; the count is the Step 8 blocker.
 
 ### Remediation
 
 [`implemented/reports-decisions-density-and-filter-remediation-plan.md`](implemented/reports-decisions-density-and-filter-remediation-plan.md) targets the exact race: set the retain marker before the request, roll it back on failure, and cover the event-before-resolution ordering in a component test plus the split Playwright case.
 
-**Outcome (2026-10-24, branch `fix/reports-split-retain-race`).** `markRead` records the retained marker before `apiClient.markReportRead` and removes it in the catch path. The new component test holds the request open, emits `report.read` for the id, and asserts the card and its read state survive the event and the resolution; it fails against the previous ordering and passes against the fix. The failed-read test asserts the error banner, the still-active card, the restored unread state, and an unchanged count. The live `reports.spec.js` suite is **10 passed**, including the split case that failed this verdict, and `./mvnw verify -Ppre-commit` is green. Evidence: [`reports-decisions-density-and-filter-remediation-plan-report.md`](reports-decisions-density-and-filter-remediation-plan-report.md).
+**Outcome (2026-10-24, branch `fix/reports-split-retain-race`).** `markRead` records the retained marker before `apiClient.markReportRead` and removes it in the catch path. The new component test holds the request open, emits `report.read` for the id, and asserts the card and its read state survive the event and the resolution; it fails against the previous ordering and passes against the fix. The failed-read test asserts the error banner, the still-active card, the restored unread state, and an unchanged count. The live `reports.spec.js` suite is **10 passed**, including the split case that failed this verdict, and `./mvnw verify -Ppre-commit` is green. Evidence: [`verified/reports-decisions-density-and-filter-remediation-plan-report.md`](verified/reports-decisions-density-and-filter-remediation-plan-report.md).
 
-The re-verification remains open: the orchestrator re-runs the Pillar 3 check on this branch's landing and then archives both this report and the remediation report.
+The retain-race remediation is verified and archived. This parent report remains open because the adjacent unread-count double-decrement is still real: `handleEvent` decrements and `markRead` decrements again for the same read. [`reports-unread-count-reconciliation-plan.md`](reports-unread-count-reconciliation-plan.md) records the remaining fix; Step 8 is re-run after it lands.

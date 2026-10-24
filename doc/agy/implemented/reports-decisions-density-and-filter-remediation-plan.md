@@ -60,7 +60,7 @@ The unit test mocks `markReportRead` without emitting the event, so it cannot se
 - [x] 5. `./mvnw verify -Ppre-commit` and the reports Playwright spec pass.
 - [ ] 6. PR opened without `skip-bot-review`; review findings resolved.
 - [ ] 7. Landed on `main`; worktree and branch cleaned up.
-- [ ] 8. Post-landing verification and report archival by the orchestrator.
+- [x] 8. Post-landing verification performed and the report moved to `doc/agy/verified/reports-decisions-density-and-filter-remediation-plan-report.md` by the orchestrator.
 
 ---
 
