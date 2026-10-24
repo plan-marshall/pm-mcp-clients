@@ -53,7 +53,7 @@ The unit test mocks `markReportRead` without emitting the event, so it cannot se
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-reports-split-retain-race` on branch `fix/reports-split-retain-race` off latest `main`.
 - [ ] 2. Personas loaded: `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript`; `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing`; `plan-marshall-persona-integration-tester`; `plan-marshall-persona-code-reviewer`.
 - [ ] 3. Fix and tests per §5.
 - [ ] 4. Completion report updated; plan moved to `implemented/`; dashboard updated.
