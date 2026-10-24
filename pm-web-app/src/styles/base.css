@@ -44,6 +44,12 @@ textarea {
   color: inherit;
 }
 
+input,
+select,
+textarea {
+  background-color: var(--color-bg-surface);
+}
+
 button {
   cursor: pointer;
   border: none;

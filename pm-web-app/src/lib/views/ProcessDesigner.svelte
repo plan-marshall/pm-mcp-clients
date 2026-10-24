@@ -1654,13 +1654,13 @@
     margin: 0;
     padding: var(--space-2) var(--space-6);
     background-color: var(--color-success-subtle);
-    color: var(--color-success);
+    color: var(--color-success-text);
     font-size: var(--text-sm);
   }
 
   .designer__note {
     background-color: var(--color-warning-subtle);
-    color: var(--color-warning);
+    color: var(--color-warning-text);
   }
 
   .designer__intake {

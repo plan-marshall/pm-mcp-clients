@@ -58,6 +58,10 @@ describe('tokens.css completeness and theme parity', () => {
       tokensCss,
       /\[data-theme=['"]dark['"]\]\s*\{([^}]+)\}/,
     );
+    const mediaDarkTokens = extractTokensFromBlock(
+      tokensCss,
+      /@media\s*\(prefers-color-scheme:\s*dark\)\s*\{\s*:root\s*\{([^}]+)\}/,
+    );
 
     // Filter to theme-varying tokens (--color-*, --shadow-*, --focus-ring)
     const filterThemed = (tokens: Set<string>) =>
@@ -70,19 +74,27 @@ describe('tokens.css completeness and theme parity', () => {
     const rootThemed = filterThemed(rootTokens);
     const lightThemed = filterThemed(lightTokens);
     const darkThemed = filterThemed(darkTokens);
+    const mediaDarkThemed = filterThemed(mediaDarkTokens);
 
     expect(rootThemed.size).toBeGreaterThan(0);
     expect(lightThemed.size).toBeGreaterThan(0);
     expect(darkThemed.size).toBeGreaterThan(0);
+    expect(mediaDarkThemed.size).toBeGreaterThan(0);
 
     // Parity checks
     const missingInLight = Array.from(rootThemed).filter((t) => !lightThemed.has(t));
     const missingInDark = Array.from(rootThemed).filter((t) => !darkThemed.has(t));
+    const missingInMediaDark = Array.from(rootThemed).filter((t) => !mediaDarkThemed.has(t));
     const surplusInLight = Array.from(lightThemed).filter((t) => !rootThemed.has(t));
     const surplusInDark = Array.from(darkThemed).filter((t) => !rootThemed.has(t));
+    const surplusInMediaDark = Array.from(mediaDarkThemed).filter((t) => !rootThemed.has(t));
 
     expect(missingInLight).toEqual([]);
     expect(missingInDark).toEqual([]);
+    expect(missingInMediaDark).toEqual([]);
+    expect(surplusInLight).toEqual([]);
+    expect(surplusInDark).toEqual([]);
+    expect(surplusInMediaDark).toEqual([]);
     expect(surplusInLight).toEqual([]);
     expect(surplusInDark).toEqual([]);
     expect(Array.from(lightThemed).sort()).toEqual(Array.from(darkThemed).sort());
@@ -126,6 +138,7 @@ describe('tokens.css completeness and theme parity', () => {
 
     const hexRegex = /#([0-9a-fA-F]{3,8})\b/g;
     const rgbRegex = /rgba?\([^)]+\)/g;
+    const hslRegex = /hsla?\([^)]+\)/g;
     const violations: { file: string; line: number; literal: string; snippet: string }[] = [];
 
     for (const file of sourceFiles) {
@@ -154,6 +167,14 @@ describe('tokens.css completeness and theme parity', () => {
           });
         }
         while ((m = rgbRegex.exec(line)) !== null) {
+          violations.push({
+            file: relPath,
+            line: idx + 1,
+            literal: m[0],
+            snippet: trimmed,
+          });
+        }
+        while ((m = hslRegex.exec(line)) !== null) {
           violations.push({
             file: relPath,
             line: idx + 1,

@@ -29,6 +29,25 @@ export const IN_BROWSER_CONTRAST_ANALYZER = `
     if (!colorStr) return null;
     const str = colorStr.trim();
     if (str === 'transparent') return { r: 0, g: 0, b: 0, a: 0 };
+    if (str.startsWith('#')) {
+      const hex = str.slice(1);
+      if (hex.length === 3 || hex.length === 4) {
+        return {
+          r: parseInt(hex[0] + hex[0], 16),
+          g: parseInt(hex[1] + hex[1], 16),
+          b: parseInt(hex[2] + hex[2], 16),
+          a: hex.length === 4 ? parseInt(hex[3] + hex[3], 16) / 255 : 1,
+        };
+      }
+      if (hex.length === 6 || hex.length === 8) {
+        return {
+          r: parseInt(hex.slice(0, 2), 16),
+          g: parseInt(hex.slice(2, 4), 16),
+          b: parseInt(hex.slice(4, 6), 16),
+          a: hex.length === 8 ? parseInt(hex.slice(6, 8), 16) / 255 : 1,
+        };
+      }
+    }
     const match = str.match(/^rgba?\\(\\s*([\\d.]+)[,\\s]+([\\d.]+)[,\\s]+([\\d.]+)(?:[,\\s/]+([\\d.%]+))?\\s*\\)$/i);
     if (!match) return null;
     let a = 1;
@@ -117,9 +136,20 @@ export const IN_BROWSER_CONTRAST_ANALYZER = `
   }
 
   return function analyzeElements(options = {}) {
-    const defaultBg = document.documentElement.getAttribute('data-theme') === 'dark'
-      ? { r: 11, g: 15, b: 25, a: 1 } // #0b0f19
-      : { r: 248, g: 250, b: 252, a: 1 }; // #f8fafc
+    // Dynamically derive root canvas background from active computed styles
+    const bodyComputed = window.getComputedStyle(document.body);
+    const rootComputed = window.getComputedStyle(document.documentElement);
+    const bodyBg = parseRgb(bodyComputed.backgroundColor);
+    const rootBg = parseRgb(rootComputed.backgroundColor);
+    const tokenBg = parseRgb(rootComputed.getPropertyValue('--color-bg-app'));
+
+    const defaultBg = (bodyBg && bodyBg.a > 0)
+      ? bodyBg
+      : ((rootBg && rootBg.a > 0)
+        ? rootBg
+        : ((tokenBg && tokenBg.a > 0)
+          ? tokenBg
+          : { r: 255, g: 255, b: 255, a: 1 }));
 
     const results = [];
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_ELEMENT);
@@ -174,7 +204,7 @@ export const IN_BROWSER_CONTRAST_ANALYZER = `
         fontWeight: style.fontWeight,
         ratio: roundedRatio,
         threshold,
-        passed: roundedRatio >= threshold,
+        passed: ratio >= threshold,
       });
     }
 
