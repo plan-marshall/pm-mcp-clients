@@ -83,7 +83,7 @@ This plan adds a real light/dark readability gate, fixes the token foundation an
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-theme-readability` on branch `fix/theme-readability` off latest `main`.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-theme-readability` on branch `fix/theme-readability` off latest `main`.
 - [ ] 2. Domain skills & engineering personas loaded where applicable:
   - `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript` for the token/component fixes;
   - `pm-dev-frontend:css` for the theme roles, contrast, and token architecture;
