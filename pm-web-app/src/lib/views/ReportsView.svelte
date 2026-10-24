@@ -39,6 +39,11 @@
    * read, until the detail closes, so the selected row does not vanish under the pointer.
    */
   let retainedReadIds = $state<Record<string, boolean>>({});
+  /**
+   * The retained reports whose mark-read request is still in flight. Closing the detail must not
+   * drop such a row yet: a failed request has to put it back as unread.
+   */
+  const pendingReadIds = new Set<string>();
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
@@ -144,12 +149,26 @@
     ];
   }
 
-  /** Drops the rows that opening a detail in split mode read in place. */
+  /**
+   * Drops the rows that opening a detail in split mode read in place.
+   *
+   * A row whose read request is still in flight stays: its outcome decides whether it goes as
+   * read or comes back as unread, and dropping it now would lose it if the request fails.
+   */
   function flushRetainedReads(): void {
-    const retained = Object.keys(retainedReadIds);
-    if (retained.length === 0) return;
-    items = items.filter((item) => !retainedReadIds[item.id]);
-    retainedReadIds = {};
+    const settled = Object.keys(retainedReadIds).filter((id) => !pendingReadIds.has(id));
+    for (const id of settled) dropRetainedRow(id);
+  }
+
+  /**
+   * Drops one retained row and its marker.
+   *
+   * @param id the report id to remove from the list
+   */
+  function dropRetainedRow(id: string): void {
+    delete retainedReadIds[id];
+    retainedReadIds = { ...retainedReadIds };
+    items = items.filter((item) => item.id !== id);
   }
 
   /**
@@ -306,20 +325,39 @@
    * In split mode the row stays in the list, marked read, so the detail keeps its selected row
    * beside it; {@link flushRetainedReads} drops it once the detail closes.
    *
+   * The retained marker is set before the request rather than after it: the runtime can emit
+   * `report.read` while the mark-read request is still in flight, and a marker set afterwards
+   * would let that event filter out the row the detail is showing. A failed request removes the
+   * marker again, so the row returns to unread; closing the detail before the request settles
+   * keeps the row until the outcome is known.
+   *
    * @param item the report to read
    * @param retain whether the row stays in the list until the detail closes
    */
   async function markRead(item: ReportItem, retain = false) {
+    if (retain) {
+      retainedReadIds[item.id] = true;
+      pendingReadIds.add(item.id);
+    }
     try {
       await apiClient.markReportRead(item.id);
       if (retain) {
-        retainedReadIds[item.id] = true;
+        pendingReadIds.delete(item.id);
+        // The detail may have closed while the request was in flight; a row no longer beside an
+        // open detail goes as read now.
+        const stillSelected = activeDetailPlanId !== null && planIdOf(item) === activeDetailPlanId;
+        if (!stillSelected) dropRetainedRow(item.id);
       } else {
         items = items.filter((i) => i.id !== item.id);
       }
       unreadCount = Math.max(0, unreadCount - 1);
       void refreshReportsCount();
     } catch (err: unknown) {
+      if (retain) {
+        pendingReadIds.delete(item.id);
+        delete retainedReadIds[item.id];
+        retainedReadIds = { ...retainedReadIds };
+      }
       errorMessage = (err as Error)?.message || $t('report.list.mark_read_failed');
     }
   }

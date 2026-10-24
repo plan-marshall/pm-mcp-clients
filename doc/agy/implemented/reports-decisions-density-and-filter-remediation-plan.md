@@ -8,12 +8,12 @@ The reports/decisions density plan passed the static pillars but failed Step 8 o
 
 | Dimension | Reference |
 |---|---|
-| **Failed plan** | [`implemented/reports-decisions-density-and-filter-plan.md`](implemented/reports-decisions-density-and-filter-plan.md) |
-| **Completion report** | [`reports-decisions-density-and-filter-plan-report.md`](reports-decisions-density-and-filter-plan-report.md) — Step 8 FAILED |
+| **Failed plan** | [`reports-decisions-density-and-filter-plan.md`](reports-decisions-density-and-filter-plan.md) |
+| **Completion report** | [`reports-decisions-density-and-filter-plan-report.md`](../reports-decisions-density-and-filter-plan-report.md) — Step 8 FAILED |
 | **Evidence** | `pm-web-e2e/tests/reports.spec.js` › _keeps the list beside the detail in split mode and remembers the layout_: `.report-card--active` not found |
-| **View** | [`ReportsView.svelte`](../../pm-web-app/src/lib/views/ReportsView.svelte) — `markRead`, `handleEvent`, `retainedReadIds`, `reportCard` |
-| **Test surfaces** | [`ReportsView.test.ts`](../../pm-web-app/src/lib/views/ReportsView.test.ts), [`reports.spec.js`](../../pm-web-e2e/tests/reports.spec.js) |
-| **Operational SOP** | [`runbook.md`](runbook.md) |
+| **View** | [`ReportsView.svelte`](../../../pm-web-app/src/lib/views/ReportsView.svelte) — `markRead`, `handleEvent`, `retainedReadIds`, `reportCard` |
+| **Test surfaces** | [`ReportsView.test.ts`](../../../pm-web-app/src/lib/views/ReportsView.test.ts), [`reports.spec.js`](../../../pm-web-e2e/tests/reports.spec.js) |
+| **Operational SOP** | [`runbook.md`](../runbook.md) |
 
 ### 1.1 Root cause
 
@@ -53,11 +53,11 @@ The unit test mocks `markReportRead` without emitting the event, so it cannot se
 
 ## 4. Workflow Checklist (conforming to `doc/agy/runbook.md`)
 
-- [ ] 1. Isolated worktree created off latest `main`.
-- [ ] 2. Personas loaded: `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript`; `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing`; `plan-marshall-persona-integration-tester`; `plan-marshall-persona-code-reviewer`.
-- [ ] 3. Fix and tests per §5.
-- [ ] 4. Completion report updated; plan moved to `implemented/`; dashboard updated.
-- [ ] 5. `./mvnw verify -Ppre-commit` and the reports Playwright spec pass.
+- [x] 1. Isolated worktree created at `/Users/oliver/git/worktrees/pm-mcp-clients-reports-split-retain-race` on branch `fix/reports-split-retain-race` off latest `main`.
+- [x] 2. Personas loaded: `plan-marshall-persona-implementer` & `pm-dev-frontend:javascript`; `plan-marshall-persona-module-tester` & `pm-dev-frontend:jest-testing`; `plan-marshall-persona-integration-tester`; `plan-marshall-persona-code-reviewer`.
+- [x] 3. Fix and tests per §5.
+- [x] 4. Completion report updated; plan moved to `implemented/`; dashboard updated.
+- [x] 5. `./mvnw verify -Ppre-commit` and the reports Playwright spec pass.
 - [ ] 6. PR opened without `skip-bot-review`; review findings resolved.
 - [ ] 7. Landed on `main`; worktree and branch cleaned up.
 - [ ] 8. Post-landing verification and report archival by the orchestrator.
@@ -66,7 +66,7 @@ The unit test mocks `markReportRead` without emitting the event, so it cannot se
 
 ## 5. Technical Recipe
 
-- [ ] **5.1 Set the retain marker before the request**
+- [x] **5.1 Set the retain marker before the request**
   ```ts
   async function markRead(item: ReportItem, retain = false) {
     if (retain) retainedReadIds[item.id] = true;
@@ -84,13 +84,13 @@ The unit test mocks `markReportRead` without emitting the event, so it cannot se
     }
   }
   ```
-- [ ] **5.2 Component test**
+- [x] **5.2 Component test**
   - Mock `markReportRead` with a pending promise.
   - Open split, click the detail, emit `report.read` for the id **before** resolving.
   - Assert `.report-card--active` remains; resolve; assert it still remains.
-- [ ] **5.3 Live acceptance**
+- [x] **5.3 Live acceptance**
   - `npx playwright test tests/reports.spec.js` must pass all cases, especially the split case.
-- [ ] **5.4 Verification**
+- [x] **5.4 Verification**
   - `npm test -- ReportsView`, `npm run check`, `npm run lint`;
   - `./mvnw verify -Ppre-commit`.
 - [ ] **5.5 Records**

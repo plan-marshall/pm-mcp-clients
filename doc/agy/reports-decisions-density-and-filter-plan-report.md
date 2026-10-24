@@ -4,7 +4,7 @@
 **Branch**: `feat/reports-decisions-density-filter`
 **Worktree**: `/Users/oliver/git/worktrees/pm-mcp-clients-reports-decisions-density-filter`
 **Date**: 2026-10-23
-**Step 8 status**: **FAILED** — one split-view active-card race; remediation plan recorded.
+**Step 8 status**: **REMEDIATED, awaiting re-verification** — the split-view active-card race found on 2026-10-23 is fixed on `fix/reports-split-retain-race`; see §10.
 
 ---
 
@@ -159,7 +159,7 @@ Remove the layout toggle and filter slots, restore the single-column CSS, and de
 
 ## 10. Post-Landing Verification (Step 8)
 
-**Verdict: FAILED — one split-view race.** The report stays in `doc/agy/`; Step 8 remains unchecked.
+**Verdict: FAILED on the first pass — one split-view race; remediated and awaiting the orchestrator's re-verification.** The report stays in `doc/agy/`; Step 8 re-verification is the orchestrator's.
 
 ### Pillars 1, 2, and 4
 
@@ -185,4 +185,8 @@ The other checks pass: reports `10 passed` (after the failure was isolated), dec
 
 ### Remediation
 
-[`reports-decisions-density-and-filter-remediation-plan.md`](reports-decisions-density-and-filter-remediation-plan.md) targets the exact race: set the retain marker before the request, roll it back on failure, and cover the event-before-resolution ordering in a component test plus the split Playwright case.
+[`implemented/reports-decisions-density-and-filter-remediation-plan.md`](implemented/reports-decisions-density-and-filter-remediation-plan.md) targets the exact race: set the retain marker before the request, roll it back on failure, and cover the event-before-resolution ordering in a component test plus the split Playwright case.
+
+**Outcome (2026-10-24, branch `fix/reports-split-retain-race`).** `markRead` records the retained marker before `apiClient.markReportRead` and removes it in the catch path. The new component test holds the request open, emits `report.read` for the id, and asserts the card and its read state survive the event and the resolution; it fails against the previous ordering and passes against the fix. The failed-read test asserts the error banner, the still-active card, the restored unread state, and an unchanged count. The live `reports.spec.js` suite is **10 passed**, including the split case that failed this verdict, and `./mvnw verify -Ppre-commit` is green. Evidence: [`reports-decisions-density-and-filter-remediation-plan-report.md`](reports-decisions-density-and-filter-remediation-plan-report.md).
+
+The re-verification remains open: the orchestrator re-runs the Pillar 3 check on this branch's landing and then archives both this report and the remediation report.
