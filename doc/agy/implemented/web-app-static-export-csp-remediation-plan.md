@@ -21,7 +21,7 @@ This plan closes that gap without weakening the policy to `'unsafe-inline'`. It 
 | Dimension | Reference |
 |---|---|
 | **Parent plan** | [`web-app-static-export-and-server-import-plan.md`](web-app-static-export-and-server-import-plan.md) |
-| **Completion report** | [`../web-app-static-export-and-server-import-plan-report.md`](../web-app-static-export-and-server-import-plan-report.md) — Step 8 FAILED |
+| **Completion report** | [`web-app-static-export-and-server-import-plan-report.md`](../verified/web-app-static-export-and-server-import-plan-report.md) — Step 8 PASSED |
 | **Client shell** | [`../../../pm-web-app/src/app.html`](../../../pm-web-app/src/app.html) — inline `style="display: contents"` |
 | **Server CSP** | `plan-marshall-mcp/pm-mcp-server/src/main/java/de/planmarshall/mcp/server/web/WebRequestHandler.java` — `SECURITY_HEADERS` |
 | **Server proof** | `WebAppIT`, `WebRequestHandlerTest` |
@@ -87,7 +87,7 @@ A static SvelteKit export needs one inline script to import and start the app. T
 - [ ] 5. Clients `./mvnw verify -Ppre-commit`; server `./mvnw verify -Ppre-commit` and `-Pintegration-tests`.
 - [ ] 6. PRs in the landing order (clients first, then server), no `skip-bot-review`.
 - [ ] 7. Clients artifact published/installed before the server build; both PRs merged; worktrees cleaned.
-- [ ] 8. Post-landing verification and report archival by the orchestrator.
+- [x] 8. Post-landing verification performed and the report moved to `doc/agy/verified/web-app-static-export-csp-plan-report.md` by the orchestrator.
 
 ---
 

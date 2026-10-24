@@ -1,5 +1,8 @@
 # Completion Report: `web-app-static-export-csp` (SPA Boot Under Strict CSP)
 
+**Plan**: [`doc/agy/implemented/web-app-static-export-csp-remediation-plan.md`](../implemented/web-app-static-export-csp-remediation-plan.md)
+**Step 8 status**: **PASSED** — the served SPA boots under the strict CSP with zero violations.
+
 ## Executive Summary
 
 The static SvelteKit single-page application (`pm-web-app`) is served by the packaged daemon (`pm-mcp-server`) under its strict Content Security Policy without relaxing the policy to `'unsafe-inline'`.
@@ -96,3 +99,18 @@ $ ./mvnw -o -pl pm-mcp-server -Pintegration-tests verify -Dit.test=WebAppIT -Dsk
 [INFO] Tests run: 3, Failures: 0, Errors: 0, Skipped: 0
 [INFO] BUILD SUCCESS
 ```
+
+---
+
+## Step 8 Verification (Orchestrator)
+
+**Verdict: PASSED.** The report moves to `doc/agy/verified/` and Step 8 is checked off in the remediation plan.
+
+| Pillar | Result | Evidence |
+|---|---|---|
+| **1 — Traceability** | Pass | The inline bootstrap is admitted by its exact SHA-256 hash; all inline styles are removed; `BrandMark` renders inline SVG; the headless browser boots the daemon-served `/`, renders the DOM, calls `/api/v1/status`, and reports zero CSP violations. |
+| **2 — Anti-patterns** | Pass | No `'unsafe-inline'` in `script-src` or `style-src`; Trusted Types and the other headers remain; no API/record/schema change; no new user-facing string. |
+| **3 — Subprocess lifecycle** | Pass | `WebAppIT` 3/3 including the CDP browser proof; clients 557 tests, server 50 unit tests; pre-commit green. |
+| **4 — Independent diff** | Pass | Boundaries are the clients shell/runtime styles and the server CSP/IT; the Vite announcer plugin is documented; no test weakening; commit trailers present. |
+
+Remaining note: the native image inherits the same resource/hash code; the CSP report records the JVM browser proof. The parent static-export report is re-verified with this result.
