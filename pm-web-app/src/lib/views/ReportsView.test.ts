@@ -640,6 +640,176 @@ describe('ReportsView component', () => {
     });
   });
 
+  it('decrements the unread count once when the read event arrives before the response', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    let resolveRead: (() => void) | undefined;
+    vi.spyOn(apiClient, 'markReportRead').mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRead = resolve;
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await fireEvent.click(screen.getByTestId('layout-split'));
+    await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
+    await waitFor(() => {
+      expect(document.querySelector('.completion-report')).not.toBeNull();
+    });
+
+    // The event overtakes the HTTP response and counts the read.
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    await waitFor(() => {
+      expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+    });
+
+    if (!resolveRead) throw new Error('the pending read request was never created');
+    resolveRead();
+    await tick();
+    await tick();
+
+    // The response settles the same read; it must not count it again.
+    expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+  });
+
+  it('decrements the unread count once when the response arrives before the read event', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    let resolveRead: (() => void) | undefined;
+    vi.spyOn(apiClient, 'markReportRead').mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRead = resolve;
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await fireEvent.click(screen.getByTestId('layout-split'));
+    await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
+    await waitFor(() => {
+      expect(document.querySelector('.completion-report')).not.toBeNull();
+    });
+
+    // The response settles first and counts the read.
+    if (!resolveRead) throw new Error('the pending read request was never created');
+    resolveRead();
+    await waitFor(() => {
+      expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+    });
+
+    // The event for the same read arrives afterwards; it must not count it again.
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    await tick();
+    await tick();
+
+    expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+    expect(screen.getByTestId('report-read-state')).toBeInTheDocument();
+  });
+
+  it('decrements the unread count once for a read with no event', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    await fireEvent.click(screen.getAllByRole('button', { name: /Mark read/i })[0]);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
+    });
+    expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+  });
+
+  it('counts a read of a report outside the loaded page', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    // The runtime also announces reads of the older page this view has not loaded; the server's
+    // unread count includes them, so the pill has to move.
+    eventHandler?.('report.read', { report_id: 'rep-0120' });
+    await waitFor(() => {
+      expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+    });
+  });
+
+  it('keeps a pending read counted when a reload lands before its response', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    let resolveRead: (() => void) | undefined;
+    vi.spyOn(apiClient, 'markReportRead').mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveRead = resolve;
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await fireEvent.click(screen.getByTestId('layout-split'));
+    await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
+    await waitFor(() => {
+      expect(document.querySelector('.completion-report')).not.toBeNull();
+    });
+
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    await waitFor(() => {
+      expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+    });
+
+    // A read event that names no report reloads the list from the server, which already counts
+    // the read the pending request will answer.
+    eventHandler?.('report.read', {});
+    await waitFor(() => {
+      expect(screen.getByText(/3 unread/)).toBeInTheDocument();
+    });
+
+    if (!resolveRead) throw new Error('the pending read request was never created');
+    resolveRead();
+    await tick();
+    await tick();
+
+    // The response answers a read the reloaded count already includes.
+    expect(screen.getByText(/3 unread/)).toBeInTheDocument();
+  });
+
+  it('counts a repeated read event only once', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    await waitFor(() => {
+      expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+    });
+
+    // A replayed event names a read that is already accounted for.
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    await tick();
+    await tick();
+
+    expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+  });
+
+  it('counts a read event again after the view reloads the list', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    await waitFor(() => {
+      expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+    });
+
+    // A read event that names no report makes the view load the list from the server again, which
+    // forgets the reads it had tracked.
+    eventHandler?.('report.read', {});
+    await waitFor(() => {
+      expect(screen.getByText(/3 unread/)).toBeInTheDocument();
+    });
+    await screen.findByText('Ended: merged (#214)');
+
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    await waitFor(() => {
+      expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+    });
+  });
+
   it('clears the filter on Escape', async () => {
     render(ReportsView);
     const input = await typeFilter('relay');

@@ -40,10 +40,19 @@
    */
   let retainedReadIds = $state<Record<string, boolean>>({});
   /**
-   * The retained reports whose mark-read request is still in flight. Closing the detail must not
-   * drop such a row yet: a failed request has to put it back as unread.
+   * The reports whose mark-read request is still in flight. Closing the detail must not drop such a
+   * row yet: a failed request has to put it back as unread. A reload must also keep the read
+   * accounted for until the response settles.
    */
   const pendingReadIds = new Set<string>();
+  /**
+   * The reads this view has already counted against the unread count.
+   *
+   * The runtime's `report.read` event and the mark-read response report the same read; whichever
+   * arrives first counts it, and the other finds the marker and leaves the count alone. A repeated
+   * event is a no-op for the same reason.
+   */
+  const countedReadIds = new Set<string>();
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
@@ -161,7 +170,10 @@
   }
 
   /**
-   * Drops one retained row and its marker.
+   * Drops one retained row.
+   *
+   * The row's read stays counted: its event may still arrive after the detail closed, and a second
+   * decrement for the same read would be wrong.
    *
    * @param id the report id to remove from the list
    */
@@ -249,8 +261,13 @@
       const readData = data as { report_id?: string; report_ids?: string[] };
       const ids = readData?.report_ids || (readData?.report_id ? [readData.report_id] : []);
       if (ids.length > 0) {
+        // One read counts once, and the ids are taken before the list drops them. A report outside
+        // the loaded page still counts: the server's unread count includes it, and a read of an
+        // older report on another client must move the pill too.
+        const newlyRead = [...new Set(ids)].filter((id) => !countedReadIds.has(id));
+        for (const id of newlyRead) countedReadIds.add(id);
         items = items.filter((i) => !ids.includes(i.id) || retainedReadIds[i.id]);
-        unreadCount = Math.max(0, unreadCount - ids.length);
+        unreadCount = Math.max(0, unreadCount - newlyRead.length);
       } else {
         void loadReports();
       }
@@ -292,6 +309,12 @@
     try {
       const page: ReportsPage = await apiClient.getReports();
       items = page.items || [];
+      // The reloaded count already includes every read this view counted, so those markers go.
+      // A read whose response is still in flight keeps its marker: that response must not subtract
+      // a read the fresh count already reflects.
+      for (const id of [...countedReadIds]) {
+        if (!pendingReadIds.has(id)) countedReadIds.delete(id);
+      }
       unreadCount = page.unread_count ?? items.length;
       hasOlder = page.has_older;
       olderCount = page.older_count;
@@ -331,18 +354,25 @@
    * marker again, so the row returns to unread; closing the detail before the request settles
    * keeps the row until the outcome is known.
    *
+   * Every read is in flight until its response settles, retained or not, so a reload that lands
+   * before the response keeps the read accounted for instead of counting it twice.
+   *
    * @param item the report to read
    * @param retain whether the row stays in the list until the detail closes
    */
   async function markRead(item: ReportItem, retain = false) {
-    if (retain) {
-      retainedReadIds[item.id] = true;
-      pendingReadIds.add(item.id);
-    }
+    pendingReadIds.add(item.id);
+    if (retain) retainedReadIds[item.id] = true;
     try {
       await apiClient.markReportRead(item.id);
+      // The read event and this response report the same read. Whichever arrives first counts it,
+      // and the other finds the marker and leaves the unread count alone.
+      if (!countedReadIds.has(item.id)) {
+        countedReadIds.add(item.id);
+        unreadCount = Math.max(0, unreadCount - 1);
+      }
+      pendingReadIds.delete(item.id);
       if (retain) {
-        pendingReadIds.delete(item.id);
         // The detail may have closed while the request was in flight; a row no longer beside an
         // open detail goes as read now.
         const stillSelected = activeDetailPlanId !== null && planIdOf(item) === activeDetailPlanId;
@@ -350,11 +380,10 @@
       } else {
         items = items.filter((i) => i.id !== item.id);
       }
-      unreadCount = Math.max(0, unreadCount - 1);
       void refreshReportsCount();
     } catch (err: unknown) {
+      pendingReadIds.delete(item.id);
       if (retain) {
-        pendingReadIds.delete(item.id);
         delete retainedReadIds[item.id];
         retainedReadIds = { ...retainedReadIds };
       }
@@ -369,6 +398,7 @@
       await apiClient.markAllReportsRead(ids);
       items = [];
       retainedReadIds = {};
+      countedReadIds.clear();
       unreadCount = 0;
       void refreshReportsCount();
     } catch (err: unknown) {
