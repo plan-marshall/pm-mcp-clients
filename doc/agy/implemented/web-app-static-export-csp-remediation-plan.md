@@ -20,12 +20,12 @@ This plan closes that gap without weakening the policy to `'unsafe-inline'`. It 
 
 | Dimension | Reference |
 |---|---|
-| **Parent plan** | [`implemented/web-app-static-export-and-server-import-plan.md`](implemented/web-app-static-export-and-server-import-plan.md) |
-| **Completion report** | [`web-app-static-export-and-server-import-plan-report.md`](web-app-static-export-and-server-import-plan-report.md) — Step 8 FAILED |
-| **Client shell** | [`pm-web-app/src/app.html`](../../pm-web-app/src/app.html) — inline `style="display: contents"` |
+| **Parent plan** | [`web-app-static-export-and-server-import-plan.md`](web-app-static-export-and-server-import-plan.md) |
+| **Completion report** | [`../web-app-static-export-and-server-import-plan-report.md`](../web-app-static-export-and-server-import-plan-report.md) — Step 8 FAILED |
+| **Client shell** | [`../../../pm-web-app/src/app.html`](../../../pm-web-app/src/app.html) — inline `style="display: contents"` |
 | **Server CSP** | `plan-marshall-mcp/pm-mcp-server/src/main/java/de/planmarshall/mcp/server/web/WebRequestHandler.java` — `SECURITY_HEADERS` |
 | **Server proof** | `WebAppIT`, `WebRequestHandlerTest` |
-| **Web spec** | [`03-web-server.adoc#web-security-headers`](../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-security-headers) |
+| **Web spec** | [`../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-security-headers`](../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-security-headers) |
 | **Use cases** | UC-ENT-1, UC-ONB-1, UC-PLN-4 |
 
 ### 1.1 Root cause
