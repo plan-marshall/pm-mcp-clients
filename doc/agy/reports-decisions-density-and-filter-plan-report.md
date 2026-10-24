@@ -4,6 +4,7 @@
 **Branch**: `feat/reports-decisions-density-filter`
 **Worktree**: `/Users/oliver/git/worktrees/pm-mcp-clients-reports-decisions-density-filter`
 **Date**: 2026-10-23
+**Step 8 status**: **FAILED** — one split-view active-card race; remediation plan recorded.
 
 ---
 
@@ -13,7 +14,7 @@
 
 Both views now offer three layouts — `comfortable` (the earlier single column), `compact` (denser rows, one header line, body clamped to two lines), and `split` (list left, detail right) — and remember the choice per view in `localStorage`. A shared filter-as-you-type control and matching utility power reports and decisions, and were adopted by the overview's running/ended lists and the epic's workstream list. The filter runs over loaded items only: no endpoint, record, fetch, or pagination change was made.
 
-All acceptance criteria are met. `./mvnw verify -Ppre-commit` passed with `BUILD SUCCESS`; 513 unit/component tests and the reports/decisions/mobile Playwright specs pass.
+All acceptance criteria are met except the split view's active-card retention, which fails when the read event arrives before the request result (see §10). `./mvnw verify -Ppre-commit` passed with `BUILD SUCCESS`; the unit/component suites pass, while the live reports split Playwright case remains the Step 8 blocker.
 
 ---
 
@@ -95,7 +96,7 @@ The Playwright split test asserts that `.reports-tree` and `.report-card--active
 | Full `npm test` (pm-web-app) | **513 tests, 56 files, all passed** |
 | `npm run check` (`svelte-check`) | **0 errors, 0 warnings** |
 | `npm run lint` (ESLint) | **clean** |
-| Playwright `reports.spec.js`, `decisions.spec.js`, `mobile.spec.js` | **26 tests passed** |
+| Playwright `reports.spec.js`, `decisions.spec.js`, `mobile.spec.js` | **1 failed** — the reports split active-card case; the other reports, decisions, and mobile cases pass |
 | `./mvnw verify -Ppre-commit` | **BUILD SUCCESS** (8:48 min); clean `git status` after the gate |
 
 ### Accessibility evidence
@@ -153,3 +154,35 @@ Both bots were retried across more than an hour; their remaining quota is outsid
 ## 9. Rollback
 
 Remove the layout toggle and filter slots, restore the single-column CSS, and delete the new primitives. No stored record, endpoint, or payload changes; the `pm_view_layout_*` keys left in `localStorage` are harmless.
+
+---
+
+## 10. Post-Landing Verification (Step 8)
+
+**Verdict: FAILED — one split-view race.** The report stays in `doc/agy/`; Step 8 remains unchecked.
+
+### Pillars 1, 2, and 4
+
+| Pillar | Result | Evidence |
+|---|---|---|
+| **1 — Traceability** | Pass | The three layouts, shared filter, field matrices, loaded-only hint, overview and epic adoption, and the 960 px collapse match UC-PLN-2/4/6 and the plan. No API, record, server, or pagination change. |
+| **2 — Anti-patterns** | Pass | No fallback dictionary; all new text in EN/DE; no `{@html}`; layout/filter state is client-only; existing responsive and routing rules unchanged. |
+| **4 — Independent diff** | Pass | Changes stay in `pm-web-app`, `pm-api` catalogue, `pm-web-e2e`, and design docs; no test weakening; no unrelated reverts; the commit trailer is present. |
+
+### Pillar 3 — the failure
+
+The live `reports.spec.js` split-layout case fails:
+
+```text
+Locator: locator('.report-card--active')
+Expected: visible
+Error: element(s) not found
+```
+
+The race is in `ReportsView.markRead`: when a report is opened in `split` mode, the row is retained by setting `retainedReadIds[item.id]` **after** `await apiClient.markReportRead(item.id)`. The runtime's `report.read` event can arrive before that promise resolves; `handleEvent` then filters the row out because the retain marker is not set yet. The list keeps its detail, but loses the active card. The unit test missed it because its mocked read request does not emit the event.
+
+The other checks pass: reports `10 passed` (after the failure was isolated), decisions/mobile/chrome `22 passed`, reports unit tests `23 passed`, and the full pre-commit gate was green before the race was found.
+
+### Remediation
+
+[`reports-decisions-density-and-filter-remediation-plan.md`](reports-decisions-density-and-filter-remediation-plan.md) targets the exact race: set the retain marker before the request, roll it back on failure, and cover the event-before-resolution ordering in a component test plus the split Playwright case.

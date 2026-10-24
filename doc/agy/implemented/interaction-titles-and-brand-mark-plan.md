@@ -120,7 +120,7 @@ Both changes are front-end plus catalogue work in `pm-mcp-clients`. No server, A
 - [x] 5. Pre-commit passed: `./mvnw verify -Ppre-commit`.
 - [x] 6. PR opened (never `skip-bot-review` on worker PRs); review windows and all bot/Sonar findings resolved.
 - [ ] 7. Enqueued in the merge queue, landed on `main`, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and the report moved to `doc/agy/verified/` by the orchestrator.
+- [x] 8. Post-landing verification performed and the report moved to `doc/agy/verified/interaction-titles-and-brand-mark-plan-report.md` by the orchestrator.
 
 > [!IMPORTANT]
 > **Archived plan link rule**: this plan now lives at `doc/agy/implemented/`, and its links are already rebased to the archive depth (`../../design`, `../../../pm-web-app`, `../../../pm-api`, `../../../pm-web-e2e`, `../../../../plan-marshall-documentation`, and sibling `<name>.md`). If it is moved again, rebase every link and re-run the internal-link check.

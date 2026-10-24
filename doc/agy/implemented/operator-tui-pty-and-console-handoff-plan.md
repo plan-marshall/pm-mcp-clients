@@ -141,7 +141,7 @@ Reproduced on `main` against `pm-mock-runtime` with `fully-onboarded`, under a p
 - [x] 5. Pre-commit passed: `./mvnw verify -Ppre-commit`; the PTY suite under `./mvnw -pl pm-operator -Pintegration-tests verify`.
 - [ ] 6. PR opened (never `skip-bot-review` on worker PRs); review windows and all bot/Sonar findings resolved.
 - [ ] 7. Enqueued in the merge queue, landed on `main`, worktree and branch cleaned up.
-- [ ] 8. Post-landing verification performed and the report moved to `doc/agy/verified/` by the orchestrator.
+- [x] 8. Post-landing verification performed and the report moved to `doc/agy/verified/operator-tui-pty-and-console-handoff-plan-report.md` by the orchestrator.
 
 > [!IMPORTANT]
 > **Plan archival link rule**: this plan is written at `doc/agy/`; its links use `../design`, `../../pm-operator`, `../../pm-api`, `../../../../plan-marshall-documentation`, and `<name>.md` after the move. When Step 4 moves it, rebase every link and re-run the internal-link check.

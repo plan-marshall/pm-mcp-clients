@@ -1,5 +1,9 @@
 # Completion Report: `interaction-titles-and-brand-mark`
 
+**Plan:** [`interaction-titles-and-brand-mark-plan.md`](../implemented/interaction-titles-and-brand-mark-plan.md)
+
+**Step 8 status:** **PASSED** — static audit and live chrome/reports/decisions checks complete.
+
 ## Executive Summary
 
 The web app's two contradictory interaction surfaces are corrected.
@@ -136,18 +140,19 @@ The suite proves the six acceptance cases: a label-only button and an `aria-labe
 
 ### Known pre-existing end-to-end failures
 
-Three Playwright tests fail on `main` at `00674df4` without this branch, all in work landed by the sibling plans:
+At the time of authoring, three Playwright tests failed on `main` without this branch, all in work landed by the sibling plans. The current state is narrower:
 
-* `plan-view.spec.js` › _narrates every part of session-log, including done phases and done tasks_: its first-activity-entry assertion expects the `session-log` route's entry, while the view shows the `fix-relay` entry. Landed with the session-log narrative plan.
-* `reports.spec.js` › _filters the loaded reports as you type and shows a no-match state_ and `decisions.spec.js` › _filters decisions by an option phrase and keeps the actions in compact mode_: both stop at the `filter-results` "1 match" assertion. Landed with the density-and-filter plan.
+* The session-log plan-view case now passes after the session-log narrative Step 8 cleanup (PR #196).
+* The reports and decisions filter cases pass.
+* The reports split-layout case still fails on `.report-card--active`; that is a reports/decisions race outside this plan's scope and is tracked by `reports-decisions-density-and-filter-remediation-plan.md`.
 
-This plan's scope excludes the plan-view selection and the reports/decisions filter logic, so these were not changed here. All other chrome, reports, decisions, overview, and mobile tests pass (36 of 38 in the combined run, with the two above excluded).
+This plan's own chrome, reports, decisions, overview, and mobile checks pass (reports: 10; decisions/mobile/chrome: 22).
 
 ### Brand mark
 
 The SVG contract test parses the file, asserts `viewBox="0 0 24 24"`, asserts `currentColor`, and rejects `<text>`, `<image>`, `<style>`, `data:image`, and any hex colour. A source sweep asserts that no `✦` remains anywhere in `pm-web-app/src`.
 
-![The brand mark at 24 and 20 pixels in both themes](../resources/diagrams/plan-marshall-brand-mark-sizes.svg)
+![The brand mark at 24 and 20 pixels in both themes](../../resources/diagrams/plan-marshall-brand-mark-sizes.svg)
 
 The actual 20 px and 24 px rasterisations were inspected during authoring, on both a light and a dark background: the three sheets stay distinct, the baton reads as one rod, and the node stays visible at 20 px.
 
@@ -189,3 +194,18 @@ $ ./mvnw verify -Ppre-commit
 * **Heading keys are not advisories.** `start.recipe.parameters.title` is a terminal/heading key whose value equals its body text. The convention test scopes the divergence rule to `data-advisory` keys, so this legitimate heading does not force a pointless wording change in an unrelated client.
 * **Parallel plans.** The edits are line-local advisory attributes plus the header replacement. The tree/reports/decisions sibling plans touch other lines; a rebase on `main` before the PR resolves any conflict by keeping both.
 * **Rollback.** Restore the `✦` spans and the `titleFor` fallbacks; the `.title` keys can stay unused or be removed with the attributes.
+
+---
+
+## Step 8 Verification (Orchestrator)
+
+**Verdict: PASSED.**
+
+| Pillar | Result | Evidence |
+|---|---|---|
+| **1 — Traceability** | Pass | The `X` → `X.title` convention, the no-label/no-`aria-label` fallback, the 53-key bilingual audit, the header mark, the favicon, and the provenance/accessibility rules match UC-ENT-1, UC-PLN-1, UC-PLN-4, and UC-PLN-6. No server, API, mock, selection, layout, or filter change. |
+| **2 — Anti-patterns** | Pass | No fallback dictionary, no uncatalogued user-facing string, no `{@html}`; the convention test enforces `.title` keys in both locales and a different advisory text; the SVG test rejects text/raster/style/baked colour; the mark is decorative beside the visible brand text. |
+| **3 — Subprocess lifecycle** | Pass for this scope | Web-only change. `npx playwright test tests/chrome.spec.js` passed 6 cases; reports passed 10 and decisions/mobile/chrome 22. The full pre-commit gate was green. The remaining reports split failure is a sibling reports/decisions race, not an advisory/brand defect, and is tracked by its remediation plan. |
+| **4 — Independent diff** | Pass | Changes stay in `pm-web-app`, the `pm-api` catalogue, `pm-web-e2e`, and design docs; no test weakening; no unrelated reverts; commit trailer present. |
+
+The report moves to `doc/agy/verified/` and Step 8 is checked off in the plan.

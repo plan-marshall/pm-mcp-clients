@@ -1,10 +1,12 @@
 # Plan Completion Report: `operator-tui-pty-and-console-handoff`
 
-**Plan**: [`operator-tui-pty-and-console-handoff-plan.md`](implemented/operator-tui-pty-and-console-handoff-plan.md)
+**Step 8 status:** **PASSED** — four-pillar audit, 58 ITs, 13 PTY cases, and the pre-commit gate complete.
+
+**Plan**: [`operator-tui-pty-and-console-handoff-plan.md`](../implemented/operator-tui-pty-and-console-handoff-plan.md)
 **Branch**: `fix/operator-tui-pty-handoff`
 **Worktree**: `/Users/oliver/git/worktrees/pm-mcp-clients-operator-tui-pty-handoff`
 **Date**: 2026-10-23
-**Runbook**: [`runbook.md`](runbook.md)
+**Runbook**: [`runbook.md`](../runbook.md)
 
 ---
 
@@ -268,6 +270,20 @@ mode is `jvm`.
 ## 8. Archival
 
 The plan is moved to `doc/agy/implemented/operator-tui-pty-and-console-handoff-plan.md`, its links
-rebased for the deeper directory, and the archive index row added. Per the runbook, this executing
-session does **not** move the report to `doc/agy/verified/`; that is Step 8 of the orchestrator after
-the PR lands on `main`.
+rebased for the deeper directory, and the archive index row added. The Step 8 audit below moves this
+report to `doc/agy/verified/`.
+
+---
+
+## 9. Step 8 Verification (Orchestrator)
+
+**Verdict: PASSED.**
+
+| Pillar | Result | Evidence |
+|---|---|---|
+| **1 — Traceability** | Pass | The console hand-off, one-terminal ownership, notice hold, availability reasons, PTY capability matrix, and documentation match UC-PLN-1/4, UC-ENT-1, PM-SEC-3, PM-TEST-7, and PM-SEC-7. |
+| **2 — Anti-patterns** | Pass | Every new user-facing reason is catalogue text in EN/DE; no literal command output; the terminal trust boundary and `finally` restoration are unchanged; no production PTY dependency; the design-number deviation (`27-tui-testing.adoc`) is recorded. |
+| **3 — Subprocess lifecycle** | Pass | `./mvnw -pl pm-operator -Pintegration-tests verify`: 58 tests, 0 failures, 0 errors, 6 native-only skips. `TuiCapabilityIT` ran all 13 PTY cases, including console `plans`/`tui`, VS Code shape, narrow/dumb/config fallbacks, and restoration. `./mvnw verify -Ppre-commit` was green. |
+| **4 — Independent diff** | Pass | Changes stay in `pm-operator`, `pm-api` catalogue, terminal design docs, and the README; no test weakening; no unrelated reverts; commit trailer present. |
+
+The report moves to `doc/agy/verified/` and Step 8 is checked off in the plan.
