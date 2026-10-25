@@ -1,6 +1,12 @@
 # Completion Report: `theme-readability-light-dark`
 
-> **Remediation Status: COMPLETED (2026-10-25).** Following the initial Step 8 verification gap findings (V1–V5), the remediation plan [`theme-readability-light-dark-remediation-plan.md`](theme-readability-light-dark-remediation-plan.md) was executed in full:
+**Plan**: [`doc/agy/implemented/theme-readability-light-dark-plan.md`](../implemented/theme-readability-light-dark-plan.md)
+**Remediation plan**: [`doc/agy/implemented/theme-readability-light-dark-remediation-plan.md`](../implemented/theme-readability-light-dark-remediation-plan.md)
+**Branches**: `fix/theme-readability`, `fix/theme-readability-remediation`
+**Date**: 2026-10-25
+**Step 8 status**: **PASSED** — all 22 view targets audited in both themes at desktop, mobile, and narrow viewports.
+
+> **Remediation Status: COMPLETED (2026-10-25).** Following the initial Step 8 verification gap findings (V1–V5), the remediation plan [`theme-readability-light-dark-remediation-plan.md`](../implemented/theme-readability-light-dark-remediation-plan.md) was executed in full:
 > 1. Hardened the audit helper (`contrast.js`) to capture failure metadata and full-page screenshots via `testInfo.attach`.
 > 2. Removed all silent `if (await …isVisible())` guards, replacing them with deterministic navigation and hard assertions.
 > 3. Added the narrow viewport (`320×568`) across all tests.
@@ -8,11 +14,11 @@
 > 5. Fixed all real contrast defects surfaced by the expanded matrix in tokens and views.
 > 6. Reconciled all test counts and metrics: final Playwright matrix contains **109 tests (100% passing, 0 failures)**, and dark-mode `--color-primary` contrast is **6.75:1**.
 > 
-> Per the runbook, the report remains in `doc/agy/` for post-landing verification by the orchestrator in Step 8.
+> Per the runbook, the report is archived in `doc/agy/verified/` after the Step 8 verification passed.
 
 ## Executive Summary
 
-The implementation plan at `doc/agy/theme-readability-light-dark-plan.md` and remediation plan at `doc/agy/theme-readability-light-dark-remediation-plan.md` have been executed to completion, resolving the systemic readability defects across light and dark themes in `pm-web-app`. All acceptance criteria are fully met with comprehensive automated verification across unit, component, and end-to-end tiers.
+The implementation plan at [`doc/agy/implemented/theme-readability-light-dark-plan.md`](../implemented/theme-readability-light-dark-plan.md) and remediation plan at [`doc/agy/implemented/theme-readability-light-dark-remediation-plan.md`](../implemented/theme-readability-light-dark-remediation-plan.md) have been executed to completion, resolving the systemic readability defects across light and dark themes in `pm-web-app`. All acceptance criteria are fully met with comprehensive automated verification across unit, component, and end-to-end tiers.
 
 - **F1 — Findings review action ("Prüfen") readability in dark mode resolved:** In `pm-web-app/src/styles/base.css`, the global button reset was hardened with `color: inherit;`, and `.review-open` in `EpicView.svelte` was bound to `var(--color-primary)` with hover `var(--color-primary-hover)`. In dark mode, the computed contrast ratio against the card background (`rgb(19, 27, 46)`) improved from a failing **1.22:1** (user-agent default black text `rgb(0, 0, 0)`) to **6.75:1** (`#60a5fa` blue-400; intermediate was 4.67:1 on `#3b82f6`), substantially exceeding the WCAG 2.1 AA 4.5:1 threshold.
 - **F2 — Token foundation complete with 100% light/dark key parity:** All five previously undeclared tokens (`--color-accent`, `--color-accent-hover`, `--color-bg-base`, `--color-bg-subtle-hover`, `--color-warning-text`) were defined in `tokens.css`. Semantic role tokens (`--color-success-text`, `--color-warning-text`, `--color-danger-text`, `--color-epic`, `--color-epic-subtle`, `--color-epic-text`, `--color-star`, `--color-overlay`, `--color-danger-contrast`) were established and synchronized across `:root`, `[data-theme="light"]`, `@media (prefers-color-scheme: dark)`, and `[data-theme="dark"]`. `--color-star` in light mode was calibrated to `#a16207` (yellow-700) to ensure WCAG AA contrast (4.92:1) on white.
@@ -113,7 +119,7 @@ The implementation plan at `doc/agy/theme-readability-light-dark-plan.md` and re
 | 9 | `SettingsView` | `/settings` (`designer`) | PASS | PASS | PASS | PASS | PASS | PASS | 0 |
 | 10 | `MachineSettingsView` | `/settings/machine` (`designer`) | PASS | PASS | PASS | PASS | PASS | PASS | 0 |
 | 11 | `ProcessDesigner` | `/designer` (`designer`) | PASS | PASS | PASS | PASS | PASS | PASS | 0 |
-| 12 | `ProjectExplorerView` | `/projects` (`running-work`) | PASS | PASS | PASS | PASS | PASS | PASS | 0 |
+| 12 | `ProjectExplorerView` | `/projects` (`projects`) | PASS | PASS | PASS | PASS | PASS | PASS | 0 |
 | 13 | `StartView` | `/start` (`projects-and-start`) | PASS | PASS | PASS | PASS | PASS | PASS | 0 |
 | 14 | `OnboardingView` | `/onboarding` (`onboarding`) | PASS | PASS | PASS | PASS | PASS | PASS | 0 |
 | 15 | `ProjectOnboardingView` | `/projects/onboard` (`projects-and-start`) | PASS | PASS | PASS | PASS | PASS | PASS | 0 |
@@ -176,4 +182,4 @@ Following PR #210 creation and the 300-second review window, 10 findings from Co
 - Plan updated and moved from `doc/agy/theme-readability-light-dark-plan.md` to `doc/agy/implemented/theme-readability-light-dark-plan.md`.
 - Remediation plan authored at `doc/agy/theme-readability-light-dark-remediation-plan.md` and executed in full.
 - Relative links inside the implemented plan rebased for its location under `doc/agy/implemented/`.
-- Per the runbook contract, the completion report is authored in `doc/agy/theme-readability-light-dark-plan-report.md`. It remains in `doc/agy/` until the Step 8 verification boundary is executed by the orchestrator.
+- Per the runbook contract, the completion report was authored in `doc/agy/theme-readability-light-dark-plan-report.md` and archived in `doc/agy/verified/` once Step 8 verification passed.

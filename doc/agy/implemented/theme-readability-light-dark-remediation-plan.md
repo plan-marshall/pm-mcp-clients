@@ -1,6 +1,6 @@
 # Remediation Plan: `theme-readability-light-dark` — Step 8 Coverage Gap
 
-Post-landing verification of [`theme-readability-light-dark-plan.md`](implemented/theme-readability-light-dark-plan.md) under [`doc/meta/verification-protocol.adoc`](../meta/verification-protocol.adoc) returned **FAILED**. The landed token foundation, the reported `Prüfen` fix, and the automated contrast tooling are sound. The failure is a scope and evidence gap: the plan's central promise — a computed-contrast audit of **every** view in light and dark — was delivered for a subset of the views the plan itself enumerated, and the completion report claims full coverage that the spec does not provide.
+Post-landing verification of [`theme-readability-light-dark-plan.md`](theme-readability-light-dark-plan.md) under [`doc/meta/verification-protocol.adoc`](../../meta/verification-protocol.adoc) returned **FAILED**. The landed token foundation, the reported `Prüfen` fix, and the automated contrast tooling are sound. The failure is a scope and evidence gap: the plan's central promise — a computed-contrast audit of **every** view in light and dark — was delivered for a subset of the views the plan itself enumerated, and the completion report claims full coverage that the spec does not provide.
 
 This remediation plan closes the three concrete gaps, hardens the matrix against silent skips, and corrects the report so the work can pass a second Step 8 audit.
 
@@ -87,16 +87,16 @@ This remediation plan closes the three concrete gaps, hardens the matrix against
 
 ---
 
-## 4. Workflow Checklist (conforming to [`runbook.md`](runbook.md))
+## 4. Workflow Checklist (conforming to [`runbook.md`](../runbook.md))
 
 - [x] 1. Isolated worktree created off latest `main` on `fix/theme-readability-remediation`.
 - [x] 2. Personas and skills loaded: `plan-marshall-persona-integration-tester` with `pm-dev-frontend:jest-testing`; `plan-marshall-persona-implementer` with `pm-dev-frontend:css` if a token/colour fix is needed; `plan-marshall-persona-security-expert` for no-colour-only meaning; `plan-marshall-persona-documenter`; `plan-marshall-persona-code-reviewer`.
 - [x] 3. Matrix extended and hardened; every new audit green or every real failure fixed.
 - [x] 4. Completion report corrected and the per-view result table added.
 - [x] 5. `./mvnw verify -Ppre-commit` passes.
-- [ ] 6. PR opened without `skip-bot-review`; review windows and all bot/Sonar findings resolved.
-- [ ] 7. Landed on `main`; worktree and branch cleaned up.
-- [ ] 8. Re-run Step 8 verification and, on PASS, archive the report in `doc/agy/verified/`.
+- [x] 6. PR opened without `skip-bot-review`; review windows and all bot/Sonar findings resolved (PR #213; four CodeRabbit threads resolved).
+- [x] 7. Landed on `main`; worktree and branch cleaned up.
+- [x] 8. Re-run Step 8 verification and, on PASS, archive the report in `doc/agy/verified/`.
 
 ---
 
@@ -167,4 +167,4 @@ This remediation plan closes the three concrete gaps, hardens the matrix against
 
 ## 9. Scheduling
 
-Stream I (Web App Theme Readability) in [`README.md`](README.md). This plan is the gate between the landed implementation and the archival of `theme-readability-light-dark-plan-report.md`; the report stays in `doc/agy/` until this remediation passes Step 8.
+Stream I (Web App Theme Readability) in [`README.md`](../README.md). This plan was the gate between the landed implementation and the archival of `theme-readability-light-dark-plan-report.md`; it passed Step 8 and the report is archived in `doc/agy/verified/`.
