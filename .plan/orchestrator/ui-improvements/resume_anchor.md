@@ -1,1 +1,1 @@
-Specs adapted (browser + terminal checks, Sonar configured) and landed. Next: /plan-orchestrator next slug=ui-improvements to fill 3 slots; then await landings and analyze.
+PLAN-01, PLAN-02, PLAN-04 launched (runbook lane, opencode). Await their landing messages in the inbox, then /plan-orchestrator analyze slug=ui-improvements; PLAN-03 waits for PLAN-02 to land; refill freed slots with next.
