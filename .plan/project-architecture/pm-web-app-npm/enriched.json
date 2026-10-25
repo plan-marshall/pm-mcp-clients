@@ -1,0 +1,110 @@
+{
+  "best_practices": [],
+  "generation": {
+    "by": "architecture",
+    "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+  },
+  "insights": [],
+  "internal_dependencies": [],
+  "key_dependencies": [],
+  "key_dependencies_reasoning": "",
+  "key_packages": {
+    "pm-web-app/src/lib/api": {
+      "description": "Client of the daemon's loopback HTTP API and event stream."
+    },
+    "pm-web-app/src/lib/components": {
+      "description": "Reusable UI components."
+    },
+    "pm-web-app/src/lib/stores": {
+      "description": "Svelte stores holding session and runtime state."
+    },
+    "pm-web-app/src/lib/views": {
+      "description": "Top-level views of the operator UI (plans, decisions, reports, cleanup, devices) with co-located Vitest tests."
+    }
+  },
+  "purpose": "runtime",
+  "purpose_reasoning": "SPA application",
+  "responsibility": "Browser-based operator web interface (SvelteKit 3 + Svelte 5 + Vite) talking to the daemon's loopback HTTP API: views for plans, decisions, reports, devices and pairing, with Vitest unit tests.",
+  "responsibility_reasoning": "pm-web-app/README.md, package.json, src/lib layout",
+  "skills_by_profile": {
+    "implementation": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:persona-plan-marshall-agent"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:ref-code-quality"
+        },
+        {
+          "description": "marshalld build-server consumption client (submit/wait/ping/preflight) \u2014 build-dispatch routes builds through the daemon when the project is registered, else falls back in-process",
+          "skill": "plan-marshall:build-server-client"
+        },
+        {
+          "description": "Core JavaScript development standards covering ES modules, modern patterns, web component patterns, DOM trust boundaries / XSS prevention, and code quality",
+          "skill": "pm-dev-frontend:javascript"
+        }
+      ]
+    },
+    "module_testing": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:persona-plan-marshall-agent"
+        },
+        {
+          "description": "Language-agnostic code quality principles (SRP, CQS, complexity, error handling)",
+          "skill": "plan-marshall:ref-code-quality"
+        },
+        {
+          "description": "Language-agnostic testing methodology (AAA, coverage, reliability, determinism)",
+          "skill": "plan-marshall:persona-module-tester"
+        },
+        {
+          "description": "marshalld build-server consumption client (submit/wait/ping/preflight) \u2014 test-run dispatch routes through the daemon when the project is registered, else falls back in-process",
+          "skill": "plan-marshall:build-server-client"
+        },
+        {
+          "description": "Core JavaScript development standards covering ES modules, modern patterns, web component patterns, DOM trust boundaries / XSS prevention, and code quality",
+          "skill": "pm-dev-frontend:javascript"
+        },
+        {
+          "description": "JavaScript unit testing with Jest, DOM testing, mocking, async patterns",
+          "skill": "pm-dev-frontend:jest-testing"
+        }
+      ]
+    },
+    "quality": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:persona-plan-marshall-agent"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:ref-code-quality"
+        }
+      ]
+    },
+    "security": {
+      "defaults": [
+        {
+          "description": "Core JavaScript development standards covering ES modules, modern patterns, web component patterns, DOM trust boundaries / XSS prevention, and code quality",
+          "skill": "pm-dev-frontend:javascript"
+        },
+        {
+          "description": "Language-agnostic code quality principles (SRP, CQS, complexity, error handling)",
+          "skill": "plan-marshall:ref-code-quality"
+        },
+        {
+          "description": "JavaScript security \u2014 DOM trust boundaries, XSS sinks, sanitization, and Trusted Types",
+          "skill": "pm-dev-frontend:javascript-security"
+        }
+      ]
+    }
+  },
+  "skills_by_profile_reasoning": "operator confirmed detected domains: general-dev+java+java-cui on Maven modules, general-dev+javascript on npm modules, documentation on doc",
+  "tips": [],
+  "type": "module"
+}

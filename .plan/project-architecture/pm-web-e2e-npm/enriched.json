@@ -1,0 +1,104 @@
+{
+  "best_practices": [],
+  "generation": {
+    "by": "architecture",
+    "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+  },
+  "insights": [],
+  "internal_dependencies": [],
+  "key_dependencies": [],
+  "key_dependencies_reasoning": "",
+  "key_packages": {
+    "pm-web-e2e/playwright.config.js": {
+      "description": "Browser projects, base URL and web-server wiring of the suite."
+    },
+    "pm-web-e2e/tests": {
+      "description": "Playwright end-to-end specs of the web app."
+    }
+  },
+  "purpose": "integration-tests",
+  "purpose_reasoning": "only test files",
+  "responsibility": "End-to-end Playwright tests of pm-web-app, driving a real browser against the app served with the mock runtime.",
+  "responsibility_reasoning": "package.json and playwright.config.js",
+  "skills_by_profile": {
+    "implementation": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:persona-plan-marshall-agent"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:ref-code-quality"
+        },
+        {
+          "description": "marshalld build-server consumption client (submit/wait/ping/preflight) \u2014 build-dispatch routes builds through the daemon when the project is registered, else falls back in-process",
+          "skill": "plan-marshall:build-server-client"
+        },
+        {
+          "description": "Core JavaScript development standards covering ES modules, modern patterns, web component patterns, DOM trust boundaries / XSS prevention, and code quality",
+          "skill": "pm-dev-frontend:javascript"
+        }
+      ]
+    },
+    "module_testing": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:persona-plan-marshall-agent"
+        },
+        {
+          "description": "Language-agnostic code quality principles (SRP, CQS, complexity, error handling)",
+          "skill": "plan-marshall:ref-code-quality"
+        },
+        {
+          "description": "Language-agnostic testing methodology (AAA, coverage, reliability, determinism)",
+          "skill": "plan-marshall:persona-module-tester"
+        },
+        {
+          "description": "marshalld build-server consumption client (submit/wait/ping/preflight) \u2014 test-run dispatch routes through the daemon when the project is registered, else falls back in-process",
+          "skill": "plan-marshall:build-server-client"
+        },
+        {
+          "description": "Core JavaScript development standards covering ES modules, modern patterns, web component patterns, DOM trust boundaries / XSS prevention, and code quality",
+          "skill": "pm-dev-frontend:javascript"
+        },
+        {
+          "description": "JavaScript unit testing with Jest, DOM testing, mocking, async patterns",
+          "skill": "pm-dev-frontend:jest-testing"
+        }
+      ]
+    },
+    "quality": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:persona-plan-marshall-agent"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:ref-code-quality"
+        }
+      ]
+    },
+    "security": {
+      "defaults": [
+        {
+          "description": "Core JavaScript development standards covering ES modules, modern patterns, web component patterns, DOM trust boundaries / XSS prevention, and code quality",
+          "skill": "pm-dev-frontend:javascript"
+        },
+        {
+          "description": "Language-agnostic code quality principles (SRP, CQS, complexity, error handling)",
+          "skill": "plan-marshall:ref-code-quality"
+        },
+        {
+          "description": "JavaScript security \u2014 DOM trust boundaries, XSS sinks, sanitization, and Trusted Types",
+          "skill": "pm-dev-frontend:javascript-security"
+        }
+      ]
+    }
+  },
+  "skills_by_profile_reasoning": "operator confirmed detected domains: general-dev+java+java-cui on Maven modules, general-dev+javascript on npm modules, documentation on doc",
+  "tips": [],
+  "type": "module"
+}

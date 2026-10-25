@@ -1,0 +1,137 @@
+{
+  "best_practices": [],
+  "generation": {
+    "by": "architecture",
+    "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+  },
+  "insights": [],
+  "internal_dependencies": [
+    "pm-api"
+  ],
+  "key_dependencies": [
+    "info.picocli:picocli",
+    "org.jline:jline-terminal",
+    "org.jline:jline-reader",
+    "org.jline:jline-terminal-ffm",
+    "io.nayuki:qrcodegen"
+  ],
+  "key_dependencies_reasoning": "CLI, JLine terminal UI and pairing QR code plus the client contract; pm-mock-runtime is test scope only",
+  "key_packages": {
+    "pm-operator/src/main/java/de/planmarshall/operator": {
+      "description": "picocli entry point and the status, runtime and web commands."
+    },
+    "pm-operator/src/main/java/de/planmarshall/operator/epicview": {
+      "description": "Epic view of the terminal client."
+    },
+    "pm-operator/src/main/java/de/planmarshall/operator/planview": {
+      "description": "Plan view: process tree with phases, sub-workflows, tasks and live worker activity."
+    },
+    "pm-operator/src/main/java/de/planmarshall/operator/tui": {
+      "description": "Full-screen JLine TUI framework of the terminal client: levels, rows, key registry and rendering."
+    }
+  },
+  "purpose": "runtime",
+  "purpose_reasoning": "main class, native binary",
+  "responsibility": "Operator CLI pm-operator (native binary): status, runtime start/stop and web enable/disable commands plus the full-screen JLine terminal client with plan, epic, overview and report views, built on pm-api and picocli only.",
+  "responsibility_reasoning": "package-info of de.planmarshall.operator, README.md, doc/design/terminal-client",
+  "skills_by_profile": {
+    "implementation": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:persona-plan-marshall-agent"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:ref-code-quality"
+        },
+        {
+          "description": "marshalld build-server consumption client (submit/wait/ping/preflight) \u2014 build-dispatch routes builds through the daemon when the project is registered, else falls back in-process",
+          "skill": "plan-marshall:build-server-client"
+        },
+        {
+          "description": "Core Java patterns including modern features and performance optimization",
+          "skill": "pm-dev-java:java-core"
+        },
+        {
+          "description": "Lombok patterns including @Delegate, @Builder, @Value, @Data, @UtilityClass for reducing boilerplate",
+          "requires": "lombok",
+          "skill": "pm-dev-java:java-lombok"
+        },
+        "pm-dev-java-cui:cui-logging"
+      ]
+    },
+    "module_testing": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:persona-plan-marshall-agent"
+        },
+        {
+          "description": "Language-agnostic code quality principles (SRP, CQS, complexity, error handling)",
+          "skill": "plan-marshall:ref-code-quality"
+        },
+        {
+          "description": "Language-agnostic testing methodology (AAA, coverage, reliability, determinism)",
+          "skill": "plan-marshall:persona-module-tester"
+        },
+        {
+          "description": "marshalld build-server consumption client (submit/wait/ping/preflight) \u2014 test-run dispatch routes through the daemon when the project is registered, else falls back in-process",
+          "skill": "plan-marshall:build-server-client"
+        },
+        {
+          "description": "Core Java patterns including modern features and performance optimization",
+          "skill": "pm-dev-java:java-core"
+        },
+        {
+          "description": "JUnit 5 testing patterns with AAA structure, coverage analysis, and assertion standards",
+          "skill": "pm-dev-java:junit-core"
+        },
+        {
+          "description": "Lombok patterns including @Delegate, @Builder, @Value, @Data, @UtilityClass for reducing boilerplate",
+          "requires": "lombok",
+          "skill": "pm-dev-java:java-lombok"
+        },
+        "pm-dev-java-cui:cui-logging"
+      ]
+    },
+    "quality": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:persona-plan-marshall-agent"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:ref-code-quality"
+        },
+        {
+          "description": "Core Java patterns including modern features and performance optimization",
+          "skill": "pm-dev-java:java-core"
+        },
+        {
+          "description": "JavaDoc documentation standards including class, method, and code example patterns",
+          "skill": "pm-dev-java:javadoc"
+        },
+        {
+          "description": "Lombok patterns including @Delegate, @Builder, @Value, @Data, @UtilityClass for reducing boilerplate",
+          "requires": "lombok",
+          "skill": "pm-dev-java:java-lombok"
+        },
+        "pm-dev-java-cui:cui-logging"
+      ]
+    },
+    "security": {
+      "defaults": [
+        "pm-dev-java-cui:cui-logging",
+        {
+          "description": "CUI HTTP request-sanitization security surface",
+          "skill": "pm-dev-java-cui:cui-http"
+        }
+      ]
+    }
+  },
+  "skills_by_profile_reasoning": "operator confirmed detected domains: general-dev+java+java-cui on Maven modules, general-dev+javascript on npm modules, documentation on doc",
+  "tips": [],
+  "type": "module"
+}
