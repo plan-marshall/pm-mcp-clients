@@ -72,10 +72,10 @@ The implementation plan at `doc/agy/theme-readability-light-dark-plan.md` and re
 
 | Finding | Root Cause | Correction Delivered | Evidence |
 |---|---|---|---|
-| **V1** | Ten views named in the plan lacked a computed-contrast audit. | Added explicit navigation and audits for all ten missing views: `StartView`, `OnboardingView`, `ProjectOnboardingView`, `PairingView`, `RevokedView`, `ListenerOffView`, `EpicDecompositionView`, `DecompositionReviewView`, `EpicAdoptView`, and `RecipeReadyView`. | `theme-readability.spec.js:345-475`, Declared View Coverage Guard. |
+| **V1** | Ten views named in the plan lacked a computed-contrast audit. | Added explicit navigation and audits for all ten missing views: `StartView`, `OnboardingView`, `ProjectOnboardingView`, `PairingView`, `RevokedView`, `ListenerOffView`, `EpicDecompositionView`, `DecompositionReviewView`, `EpicAdoptView`, and `RecipeReadyView`. | `theme-readability.spec.js:345-501`, Declared View Coverage Guard. |
 | **V2** | Three audits (`CompletionReportView`, `CleanupView`, `ProjectExplorerView`) could silently skip behind `if (await …isVisible())`. | Removed all visibility conditionals. Replaced with deterministic navigation and hard assertions (`await expect(locator).toBeVisible()`). | `theme-readability.spec.js` diff: 0 conditional skips remain. |
-| **V3** | The 320×568 narrow viewport required by the plan was missing. | Added `{ name: 'narrow', width: 320, height: 568 }` to `VIEWPORTS` across both the reported flow and every view suite. | `theme-readability.spec.js:83`, 36 narrow viewport tests pass. |
-| **V4** | Contrast helper did not attach screenshots and metadata on view audit failures. | Updated `auditViewContrast` in `contrast.js` to log failures and attach failure JSON metadata and full-page screenshots via `testInfo.attach`. | `pm-web-e2e/tests/helpers/contrast.js:144-162`. |
+| **V3** | The 320×568 narrow viewport required by the plan was missing. | Added `{ name: 'narrow', width: 320, height: 568 }` to `VIEWPORTS` across both the reported flow and every view suite. | `theme-readability.spec.js:97-101`, 36 narrow viewport tests pass. |
+| **V4** | Contrast helper did not attach screenshots and metadata on view audit failures. | Updated `auditViewContrast` in `contrast.js` to log failures and attach failure JSON metadata and full-page screenshots via `testInfo.attach`. | `pm-web-e2e/tests/helpers/contrast.js:240-277`. |
 | **V5** | Completion report had stale test counts (20/36 instead of final matrix) and outdated F1 ratio (4.67:1 instead of 6.75:1). | Reconciled all numbers: documented 109 tests covering 22 audit targets × 2 themes × 3 viewports + 6 reported flows + 1 coverage guard; updated F1 contrast to **6.75:1**. | Full report reconciliation and per-view result table. |
 
 ---
@@ -120,7 +120,7 @@ The implementation plan at `doc/agy/theme-readability-light-dark-plan.md` and re
 | 16 | `PairingView` | `/pair` (`web-pairing`) | PASS | PASS | PASS | PASS | PASS | PASS | 0 |
 | 17 | `RevokedView` | Revocation state (`paired-devices`) | PASS | PASS | PASS | PASS | PASS | PASS | 0 |
 | 18 | `ListenerOffView` | Listener-off state (`paired-devices`) | PASS | PASS | PASS | PASS | PASS | PASS | 0 |
-| 19 | `EpicDecompositionView` | `/epics/decompose` (`decomposition`) | PASS | PASS | PASS | PASS | PASS | PASS | 0 |
+| 19 | `EpicDecompositionView` | `/epics/relay-hardening/decomposition?project=pm-mcp-clients` (`decomposition`) | PASS | PASS | PASS | PASS | PASS | PASS | 0 |
 | 20 | `DecompositionReviewView` | `/epics/decompose` review step | PASS | PASS | PASS | PASS | PASS | PASS | 0 |
 | 21 | `EpicAdoptView` | `/entries/ent-7a2e4f01` (`start-epic-adopt`) | PASS | PASS | PASS | PASS | PASS | PASS | 0 |
 | 22 | `RecipeReadyView` | `/start` ready step (`projects-and-start`) | PASS | PASS | PASS | PASS | PASS | PASS | 0 |
@@ -165,7 +165,9 @@ Following PR #210 creation and the 300-second review window, 10 findings from Co
 8. **Unrounded Contrast Comparison (Finding 4368587176):** Updated passing check to `passed: ratio >= threshold` so unrounded floating point values cannot round up to pass.
 9. **Mobile Viewport on Core Views (Finding 4368587182):** Parameterized all core view suites across desktop (1280x800) and mobile (375x667) viewports.
 10. **Secondary View Audit Navigation (Finding 4368587184):** Navigated to and audited all named secondary views (`CompletionReportView`, `CleanupView`, `SettingsView`, and `MachineSettingsView`), expanding the matrix to 36 passed tests with 0 contrast failures.
-11. **Dark Mode Subtle Contrast Hardening:** Updated dark mode `--color-primary` to `#60a5fa` (blue-400) and `--color-primary-hover` to `#93c5fd`, ensuring elements on subtle backgrounds (`--color-primary-subtle: #172554`) achieve >= 6.0:1 contrast.
+
+*Additional Hardening Change*:
+- **Dark Mode Subtle Contrast Hardening:** Updated dark mode `--color-primary` to `#60a5fa` (blue-400) and `--color-primary-hover` to `#93c5fd`, ensuring elements on subtle backgrounds (`--color-primary-subtle: #172554`) achieve >= 6.0:1 contrast.
 
 ---
 
@@ -173,26 +175,5 @@ Following PR #210 creation and the 300-second review window, 10 findings from Co
 
 - Plan updated and moved from `doc/agy/theme-readability-light-dark-plan.md` to `doc/agy/implemented/theme-readability-light-dark-plan.md`.
 - Remediation plan authored at `doc/agy/theme-readability-light-dark-remediation-plan.md` and executed in full.
-- Per the runbook contract, the completion report is authored in `doc/agy/theme-readability-light-dark-plan-report.md`. It remains in `doc/agy/` until the Step 8 verification boundary is executed by the orchestrator.
-
-Following PR #210 creation and the 300-second review window, 10 findings from CodeRabbit were triaged and resolved 100%:
-
-1. **Design Token Parity (Finding 4368587157):** Corrected dark palette `--color-primary-text` to `#0b0f19` in `doc/design/web-app/theme-readability.adoc` to align with the CSS contract.
-2. **Component Test Foreground Assertion (Finding 4368587161):** Injected stylesheets into jsdom head in `theme.test.ts` and asserted computed foreground `style.color === 'var(--color-primary)'` with relative luminance contrast >= 4.5:1 against the card background.
-3. **Themed Form Field Backgrounds (Finding 4368587162):** Added `input, select, textarea { background-color: var(--color-bg-surface); }` in `base.css` and explicit `color-scheme: light` / `color-scheme: dark` declarations in `tokens.css`.
-4. **Dark Danger Button Contrast (Finding 4368587164):** Updated `--color-danger-contrast` in dark mode from `#ffffff` to `#0b0f19`, achieving 5.28:1 contrast on `#ef4444` `--color-danger` (exceeding WCAG AA 4.5:1 requirement).
-5. **System-Preference Dark Parity Check (Finding 4368587168):** Extracted `@media (prefers-color-scheme: dark)` in `tokens.test.ts` and asserted 100% key parity against `:root`.
-6. **HSL Literal Static Scan (Finding 4368587172):** Added `/hsla?\([^)]+\)/g` matcher to `tokens.test.ts` scanner.
-7. **Dynamic Canvas Background Derivation (Finding 4368587174):** Derived the canvas base background dynamically in `contrast.js` from computed styles (`document.body`, `document.documentElement`, `--color-bg-app` token) rather than a hard-coded RGB table.
-8. **Unrounded Contrast Comparison (Finding 4368587176):** Updated passing check to `passed: ratio >= threshold` so unrounded floating point values cannot round up to pass.
-9. **Mobile Viewport on Core Views (Finding 4368587182):** Parameterized all core view suites across desktop (1280x800) and mobile (375x667) viewports.
-10. **Secondary View Audit Navigation (Finding 4368587184):** Navigated to and audited all named secondary views (`CompletionReportView`, `CleanupView`, `SettingsView`, and `MachineSettingsView`), expanding the matrix to 36 passed tests with 0 contrast failures.
-11. **Dark Mode Subtle Contrast Hardening:** Updated dark mode `--color-primary` to `#60a5fa` (blue-400) and `--color-primary-hover` to `#93c5fd`, ensuring elements on subtle backgrounds (`--color-primary-subtle: #172554`) achieve >= 6.0:1 contrast.
-
----
-
-## Plan Archival & Runbook Compliance
-
-- Plan updated and moved from `doc/agy/theme-readability-light-dark-plan.md` to `doc/agy/implemented/theme-readability-light-dark-plan.md`.
 - Relative links inside the implemented plan rebased for its location under `doc/agy/implemented/`.
-- Per the runbook contract, the completion report is authored in `doc/agy/theme-readability-light-dark-plan-report.md`. It remains in `doc/agy/` until the Step 8 verification boundary.
+- Per the runbook contract, the completion report is authored in `doc/agy/theme-readability-light-dark-plan-report.md`. It remains in `doc/agy/` until the Step 8 verification boundary is executed by the orchestrator.

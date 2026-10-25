@@ -68,22 +68,7 @@ async function auditView(page, testInfo, { view, theme, viewport }, options = {}
 }
 
 test.describe('Theme Readability and Contrast Audit Matrix', () => {
-  test.beforeAll(() => {
-    try {
-      fs.writeFileSync(AUDIT_CACHE_FILE, JSON.stringify([]));
-    } catch {
-      // Non-fatal cache init
-    }
-  });
-
   test.afterAll(async ({ request }) => {
-    try {
-      if (fs.existsSync(AUDIT_CACHE_FILE)) {
-        fs.unlinkSync(AUDIT_CACHE_FILE);
-      }
-    } catch {
-      // Best-effort cleanup
-    }
     try {
       await request.post('http://127.0.0.1:7420/mock/scenario', {
         data: { scenario: 'web-pairing' },

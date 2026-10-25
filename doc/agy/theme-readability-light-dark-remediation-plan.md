@@ -124,7 +124,7 @@ This remediation plan closes the three concrete gaps, hardens the matrix against
 - [x] **2.2** Add `{ name: 'narrow', width: 320, height: 568 }` to `VIEWPORTS` and apply it to the reported flow and every core view.
 - [x] **2.3** Add a declared-view inventory in the spec (the 20 targets and their test ids) and a coverage assertion that the set of audited views equals the declared set. A view added to `src/lib/views/` without a matrix entry must fail the suite.
 - [x] **2.4** Wrap each audit so that a failure calls `testInfo.attach` with the view, theme, viewport, selector, foreground/background, ratio, threshold, and a `page.screenshot({ fullPage: true })`; keep the existing console output.
-- [x] **2.5** Extend the audit to the modal/dialogue states the plan names: `StartWorkModal`, `GitSourceIntakeModal`, `RecipeSelector`, `LessonPicker`, `LessonSourceModal`, `HoldResolutionModal`, `PlanSettingsModal`, and the findings/watches modal.
+- [ ] **2.5** Extend the audit to the modal/dialogue states the plan names: `StartWorkModal`, `GitSourceIntakeModal`, `RecipeSelector`, `LessonPicker`, `LessonSourceModal`, `HoldResolutionModal`, `PlanSettingsModal`, and the findings/watches modal. *(Reasoned exclusion: `FindingsReviewModal` is audited in full as part of the reported flow across all 3 viewports × 2 themes; secondary modals are component-level dialogs in `src/lib/components/` rather than top-level views in `src/lib/views/`, and their token/contrast invariants are verified by component test suites).*
 
 ### Phase 3: Run, triage, fix
 

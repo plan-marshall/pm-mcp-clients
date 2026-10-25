@@ -7,6 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let mockProcess = null;
+const AUDIT_CACHE_FILE = path.resolve(__dirname, '.audited-views.json');
 
 async function isPortReachable(port) {
   try {
@@ -18,10 +19,26 @@ async function isPortReachable(port) {
 }
 
 export default async function globalSetup() {
+  try {
+    fs.writeFileSync(AUDIT_CACHE_FILE, JSON.stringify([]));
+  } catch {
+    // Non-fatal cache init
+  }
+
+  const cleanupAuditCache = () => {
+    try {
+      if (fs.existsSync(AUDIT_CACHE_FILE)) {
+        fs.unlinkSync(AUDIT_CACHE_FILE);
+      }
+    } catch {
+      // Best-effort cleanup
+    }
+  };
+
   const isUp = await isPortReachable(7420);
   if (isUp) {
     console.log('[pm-web-e2e] Mock runtime is already running on port 7420');
-    return () => {};
+    return cleanupAuditCache;
   }
 
   const rootDir = path.resolve(__dirname, '..');
@@ -99,6 +116,7 @@ export default async function globalSetup() {
 
   // Return teardown function
   return () => {
+    cleanupAuditCache();
     if (mockProcess) {
       console.log('[pm-web-e2e] Stopping pm-mock-runtime...');
       mockProcess.kill('SIGTERM');
