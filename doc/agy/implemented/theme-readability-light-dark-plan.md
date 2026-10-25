@@ -92,12 +92,12 @@ This plan adds a real light/dark readability gate, fixes the token foundation an
   - `plan-marshall-persona-security-expert` for untrusted/dynamic text rendering and no colour-only state;
   - `plan-marshall-persona-documenter` for the design note and report;
   - `plan-marshall-persona-code-reviewer` for review triage.
-- [ ] 3. Incremental implementation with tests following the phased technical recipe.
-- [ ] 4. Completion report written (`doc/agy/theme-readability-light-dark-plan-report.md`), plan moved to `doc/agy/implemented/`, links rebased, dashboard updated.
-- [ ] 5. Pre-commit passed: `./mvnw verify -Ppre-commit`.
-- [ ] 6. PR opened (never `skip-bot-review` on worker PRs); review windows and all bot/Sonar findings resolved.
-- [ ] 7. Landed on `main`; worktree and branch cleaned up.
-- [ ] 8. Post-landing verification and report archival by the orchestrator.
+- [x] 3. Incremental implementation with tests following the phased technical recipe (PR #210, review fixes in PR #211).
+- [x] 4. Completion report written (`doc/agy/theme-readability-light-dark-plan-report.md`), plan moved to `doc/agy/implemented/`, links rebased, dashboard updated; report archived in `doc/agy/verified/` after Step 8.
+- [x] 5. Pre-commit passed: `./mvnw verify -Ppre-commit`.
+- [x] 6. PR opened (never `skip-bot-review` on worker PRs); review windows and all bot/Sonar findings resolved.
+- [x] 7. Landed on `main`; worktree and branch cleaned up.
+- [x] 8. Post-landing verification and report archival by the orchestrator (PASSED after remediation PR #213).
 
 > [!IMPORTANT]
 > **Plan archival link rule**: this plan is written at `doc/agy/`; its links use `../design`, `../../pm-web-app`, `../../pm-web-e2e`, `../../../plan-marshall-documentation`, and `implemented/<name>.md`. When Step 4 moves it, rebase every link and re-run the internal-link check.
