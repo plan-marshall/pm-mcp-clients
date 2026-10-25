@@ -315,6 +315,12 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/api-contract.adoc[`api-contract`]
 |Milestones 8, 10, 11, and 12
 
+|link:diagrams.adoc[`diagrams`]
+|Diagrams in the web app: the server's positioned layouts of a workflow and the change map, Mermaid blocks of model text as images, the setting `diagrams.format`
+|`blocked`
+|the layout endpoints of the runtime (roadmap Milestone 11, no package yet); `web-plan-view`; `message-catalogue`
+|Milestones 11 and 14
+
 |link:../agy/implemented/cli-fullscreen-foundation-plan.md[`cli-fullscreen-foundation`]
 |The full-screen TUI framework (`de.planmarshall.operator.tui`), the virtual-terminal screen-test harness, the cross-view design and key registry, and the CLI/config hygiene the TUI review found
 |`done`

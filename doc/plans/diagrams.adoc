@@ -1,0 +1,32 @@
+= Diagrams in the web app
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `diagrams`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1] (variation _As a picture_); link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestones 11 and 14
+Where:: `pm-api`, `pm-web-app`, `pm-mock-runtime`; the setting also in `pm-operator`
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+The runtime lays out a phase's workflow and a plan's change map as positioned data; a model may write a diagram as a Mermaid block where the operator chose that format. This package shows both in the web app without weakening its security headers.
+
+* *Design first*: the package adds to link:../design/shared/plan-view.adoc[Plan View] how a workflow and the change map are shown as a diagram beside the tree, and how a Mermaid block in model text is shown, and has the operator accept it before building it.
+* *Contract*: the two layout endpoints and their answer (`too_large`, an `indeterminate` change map) in `pm-api`, with scenario files of `pm-mock-runtime` for a unit, a change map, and an oversized graph.
+* *Drawing a layout*: Svelte SVG elements at the given positions, styled by classes and the web app's theme tokens, the states joined from the process answer by `node_id`, the plan's position marked; labels in the diagram font (Arial, Liberation Sans) the server measured with. No received markup is inserted.
+* *Mermaid in model text*: `pele` (MIT, no runtime dependency; its licence notices kept in the bundle) renders the block with links, images, and icons off and its source bound; the SVG string becomes a Blob shown through an object URL, with the colours of both schemes written into it; a refused block shows its source and the error as text.
+* *The setting*: `diagrams.format` (`text`, `mermaid`) for the machine and for a project, in both clients, texts from the message catalogue.
+
+== Trace
+
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` (those of the engine in `pm-mcp-core`) and are only referenced here.
+
+* Requirements: link:../../../plan-marshall-documentation/doc/requirements/01-architecture.adoc#PM-ARCH-11[PM-ARCH-11], link:../../../plan-marshall-documentation/doc/requirements/03-skills.adoc#PM-SKILL-2[PM-SKILL-2]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-layout[Runtime & Interaction Model § Layout], link:../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-diagrams[CLI, Coordination & Security § Diagrams], link:../../../pm-mcp-core/doc/specification/workflow-dsl/07-loop-back-diagrams-verification.adoc#diagram-layout[Workflow DSL § Positioned Layout], link:../../../pm-mcp-core/doc/specification/store-schemas/08-project-configuration-local.adoc#project-levels[Store Schemas § Project Values over Machine Values]
+* Watch: link:../../../pm-mcp-core/doc/implementation-watch/workflow-dsl.adoc#PM-WATCH-DSL-38[PM-WATCH-DSL-38] (its browser test belongs here)
+* Reason: link:../../../plan-marshall-documentation/doc/articles/pele-mermaid-renderer-pele.adoc[Pele]
+
+== Done When
+
+The operator accepted the design; the web app's tests draw the fixture layouts with every label within its box, show a Mermaid block as an image and a refused block as its source, and pass with the security headers of the runtime unchanged; both clients set and show `diagrams.format`.
