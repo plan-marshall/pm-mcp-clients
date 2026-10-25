@@ -1,5 +1,7 @@
 # Completion Report: `theme-readability-light-dark`
 
+> **Step 8 verification status: FAILED (2026-10-25).** Independent audit under [`doc/meta/verification-protocol.adoc`](../meta/verification-protocol.adoc) confirmed the token foundation, the `Prüfen` fix, the literal sweep, and the reported flow. It also found that the delivered Playwright matrix audits 12 of the 22 view targets the plan names, three audits can silently skip, the 320×568 viewport is missing, and several quantitative claims below are stale (the matrix is 36 tests, not 20; the landed F1 ratio is 6.75:1, not 4.67:1). The report therefore remains in `doc/agy/` and is not archived. Remediation: [`theme-readability-light-dark-remediation-plan.md`](theme-readability-light-dark-remediation-plan.md).
+
 ## Executive Summary
 
 The implementation plan at `doc/agy/theme-readability-light-dark-plan.md` has been executed to completion, resolving the systemic readability defects across light and dark themes in `pm-web-app`. All acceptance criteria are fully met with comprehensive automated verification across unit, component, and end-to-end tiers.
