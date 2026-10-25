@@ -1,0 +1,34 @@
+= Review: Visual Design
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » Visual Design
+
+This folder reviews the visual design of `pm-web-app` against its design
+(link:../../design/web-app/README.adoc#visual-language[Web App, Visual Language]) and against the bar of a product
+that must sell. Layout of pages and flows is in link:../ux/README.adoc[UX].
+
+[cols="1,3",options="header"]
+|===
+|Document |What it holds
+
+|link:analysis.adoc[Analysis]
+|Where the design stands, where the build departs from it, and the direction.
+
+|link:findings.adoc[Findings]
+|The findings `VD-F-01` to `VD-F-12`, with evidence.
+
+|link:proposals.adoc[Proposals]
+|Design system v2: direction, tokens, typography, layout, components, iconography, data display, brand; the mapping to
+`tokens.css` and to the design documents.
+
+|link:plan.adoc[Plan]
+|The steps, in order.
+
+|link:verification.adoc[Verification]
+|Token audit, contrast, visual regression, and the review by eye.
+|===
+
+Picture beside the proposals: link:vd-design-system.svg[`vd-design-system.svg`] (palette, type scale, and the core
+components of v2).

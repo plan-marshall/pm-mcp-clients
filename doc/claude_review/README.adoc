@@ -1,0 +1,145 @@
+= Review of the Web App `pm-web-app`
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../design/README.adoc[Design] » Review of the Web App
+
+Date: 2026-10-25. Subject: the current prototype of `pm-web-app` (Svelte 5, SvelteKit, static SPA). Reviewer: Claude
+(Opus 5.5), on request of the operator.
+
+== Purpose
+
+The web app is a first prototype. It must become the main production client of plan-marshall, and it must sell as a
+product. This review answers three questions:
+
+. Does the app implement the use cases correctly? Do the use cases need changes?
+. Is the user experience fast and clear? Does the operator always know what to do next?
+. Is the visual design good enough to sell? How do we make it better?
+
+The review does not change code. It states findings, proposes changes, plans the work, and says how to verify it.
+
+[#verdict]
+== Verdict
+
+[cols="1,1,4",options="header"]
+|===
+|Aspect |Verdict |Summary
+
+|Use cases
+|`partial`
+|Of 39 use cases: 5 conform, 20 are partial, 3 deviate, 1 is missing, and 10 were not verifiable in the mock through
+Chrome. The main flows work. Many variations are absent, and several states show raw data. See
+link:use-cases/analysis.adoc[Use Cases, Analysis].
+
+|UX
+|`not ready`
+|The app shows the state of the server, but it does not lead the operator. There is no single place for "what needs
+me". Actions have equal weight. Destructive actions are dominant. Several paths end in raw error codes. See
+link:ux/analysis.adoc[UX, Analysis].
+
+|Visual design
+|`not ready`
+|The design is a consistent admin skin, not a product. It has no visual hierarchy, little brand, mixed control
+styles, too many small pills, and one view (Start) without styling. See
+link:visual-design/analysis.adoc[Visual Design, Analysis].
+
+|Cross-cutting
+|`not ready`
+|German and English mix on one screen. Raw enums, state ids, and placeholders reach the operator. Timestamps are raw
+ISO strings. The theme choice is lost on reload. See link:cross-cutting/analysis.adoc[Cross-Cutting, Analysis].
+|===
+
+What to keep:
+
+* the plan view with the tree on the left and the narrative on the right (finding of the operator in
+  `doc/findings-web.txt`);
+* the consent screens of the onboarding;
+* the button labels that name the action;
+* the completion report and the cleanup preview;
+* the inline pause choice.
+
+[#structure]
+== Structure
+
+One folder per aspect. Each folder has the same five documents, in this reading order:
+
+. *Analysis*: the high-level result.
+. *Findings*: the detailed findings with evidence. Ids: `UC-F-nn`, `UX-F-nn`, `VD-F-nn`, `CC-F-nn`.
+. *Proposals*: the changes to the design and the code, as engineering detail. Ids: `UC-P-nn`, `UX-P-nn`, `VD-P-nn`,
+  `CC-P-nn`. Each proposal names the findings it resolves.
+. *Plan*: the steps to implement the proposals. Ids: `UC-S-nn`, `UX-S-nn`, `VD-S-nn`, `CC-S-nn`. Each step names its
+  proposals.
+. *Verification*: the checks that prove the steps. Each check names its steps.
+
+[cols="1,3",options="header"]
+|===
+|Folder |What it covers
+
+|link:use-cases/README.adoc[Use Cases]
+|Conformance of the app to the 39 use cases in `plan-marshall-documentation/doc/use-cases/`, and the changes the use
+cases need.
+
+|link:ux/README.adoc[UX]
+|Information architecture, navigation, speed to information, clarity of the next action, flows, and states.
+
+|link:visual-design/README.adoc[Visual Design]
+|Visual language, tokens, typography, colour, layout, components, iconography, and brand.
+
+|link:cross-cutting/README.adoc[Cross-Cutting]
+|Language and texts, dates and numbers, raw data on screen, theme, accessibility, phone width, and consistency of
+data across views.
+|===
+
+The order of work across the folders is in <<order>>.
+
+[#method]
+== Method
+
+The review used Chrome against the running mock runtime. Code was read only to confirm a cause.
+
+* *Environment*: `pm-mock-runtime` on `127.0.0.1:7420`, Vite dev server on `http://mac-mini.local:5173`, one paired
+  Chrome tab. Viewports: 1566 × 1185 (desktop) and 390 × 844 (phone). Themes: dark and light. Languages: `de` and
+  `en`.
+* *Pass 1, showroom*: a walk through every view in the scenario `fully-onboarded`, as a new operator.
+* *Pass 2, use cases*: the scenarios `onboarding`, `running-work`, `projects-and-start`, `reports-and-system`, and
+  `designer`. States were reached with `POST /mock/goto/<state>` and a reload.
+* *Pass 3, UX*: five key tasks of the operator, measured in screens and clicks (link:ux/analysis.adoc#tasks[UX,
+  Key Tasks]).
+* *Pass 4, visual design*: the screens against `doc/design/web-app/` and `pm-web-app/src/styles/tokens.css`.
+
+Evidence: screenshots in link:resources/screenshots/[`resources/screenshots/`]. Proposed layouts: SVG wireframes beside
+the proposals.
+
+[#limits]
+=== Limits of the Mock
+
+Some states do not change what the app shows when the mock jumps to them. The reason is that the engine of the mock
+supplies most domain data, and only some views read the state of the scenario. The review marks such use cases as
+`not verified` and names the e2e spec that covers them. Data that contradicts itself across views (counts, sizes) is
+reported as a finding of the app when the app shows both numbers, and as a fixture defect of the mock otherwise
+(link:cross-cutting/findings.adoc#CC-F-09[CC-F-09]).
+
+The mock was set back to `fully-onboarded` at the end. No code was changed.
+
+[#order]
+== Order of Work
+
+The proposals depend on each other. The plan documents use this order:
+
+. *Foundation* (link:cross-cutting/plan.adoc[Cross-Cutting, Plan]): texts, raw data guard, time format, theme,
+  title placeholders. These are small and remove the worst defects at once.
+. *Design system v2* (link:visual-design/plan.adoc[Visual Design, Plan]): tokens, typography, components. Every
+  view needs them.
+. *Information architecture* (link:ux/plan.adoc[UX, Plan]): app shell, attention inbox, page templates, next-action
+  rule.
+. *Views by value to the operator*: inbox and overview, decisions, plan view, epic view, projects, start, reports,
+  system, settings, designer, onboarding.
+. *Use-case gaps and use-case documents* (link:use-cases/plan.adoc[Use Cases, Plan]).
+
+== Language of These Documents
+
+The documents follow the spirit of ASD-STE100
+(link:../../../plan-marshall-documentation/doc/articles/karpathy-ste100-output.adoc[ASD-STE100 Output]): short
+sentences, one action per step, one term per thing. The terms of the product glossary (_Plan_, _Epic_, _Decision_,
+_Harness_, _Role_, …) are used as they are.

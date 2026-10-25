@@ -1,0 +1,101 @@
+= Use Cases: Verification
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » link:README.adoc[Use Cases] » Verification
+
+== How to Verify
+
+Each step of link:plan.adoc[the plan] is verified in three ways:
+
+. *Unit tests* in `pm-web-app` (`npm test` through Maven: `./mvnw -pl pm-web-app verify`).
+. *E2E specs* in `pm-web-e2e` (`./mvnw -pl pm-web-e2e verify -Pintegration-tests`), against the mock.
+. *A walk in Chrome* against the mock:
+.. Start `pm-mock-runtime/start.sh --scenario <name> --web-port 7420` and the Vite dev server.
+.. Pair the browser.
+.. Jump with `curl -X POST http://127.0.0.1:7420/mock/goto/<state>`, then reload.
+.. Compare the screen with the check below.
+.. Repeat in `de` and `en`, dark and light, at 1440 px and 390 px.
+
+A step is done when all its checks pass and the matrix in link:analysis.adoc#matrix[Analysis] moves the use cases to
+`conforms`.
+
+== Checks
+
+[cols="1,1,3,2",options="header"]
+|===
+|Check |Step |What must be true |Where
+
+|UC-V-01
+|UC-S-01
+|For every state of `running-work`, `projects-and-start`, `reports-and-system`: after `goto`, the resource the state
+concerns differs from the start state, or the state is declared equal on purpose. `FixtureConsistencyTest` passes.
+|`./mvnw -pl pm-mock-runtime verify`
+
+|UC-V-02
+|UC-S-02
+|`screens.registry.test.ts` fails when a state is removed from the registry. No screen in any onboarding or entry state
+shows a text that matches a state id (`/[a-z]+\.[a-z-]+/` outside code blocks).
+|unit test; Chrome walk over all states of `onboarding`
+
+|UC-V-03
+|UC-S-02
+|`entry.lan-open` shows URL, QR code, and fingerprint inside the settings frame; no step bar.
+|`onboarding` → `entry.lan-open`
+
+|UC-V-04
+|UC-S-03
+|A running plan has no completion-report control. A waiting plan's primary act opens its decision. In
+`system.draining` the view offers stop now and withdraw only, lists what still runs, and counts down.
+|`running-work` → `control.ready`; `reports-and-system` → `system.draining`; `byState.test.ts`
+
+|UC-V-05
+|UC-S-04
+|Per screen of UC-P-03, the change in the table is visible. Before onboarding is done, the header has no navigation.
+After "Use Deutsch for both", the next screen is German.
+|`onboarding`, each state named in UC-P-03
+
+|UC-V-06
+|UC-S-05
+|A finished phase expands to its workflow with taken and not-taken steps. A node without children has no expander.
+The Intent tab shows goal, criteria, non-goals. `process.pruned-lane` shows "Not in this plan".
+|`running-work` → `process.phase.*`, `process.pruned-lane`, `intent.ready`
+
+|UC-V-07
+|UC-S-06
+|The recommendation names the option. Evidence shows fields. After deciding in the web app, the notice says "Decided:
+<option>". A `POST /mock/broadcast` of `decision.answered` from `cli` shows "answered in the terminal".
+|`running-work` → `decisions.open`, `decisions.answered-elsewhere`
+
+|UC-V-08
+|UC-S-07
+|By plan and by epic hold the same plans. Epic counts match the rows. Ended work offers a read-only chat. The epic
+Intent tab is filled. Waits show "since". The findings review opens on the first open item.
+|`running-work` → `overview.running`, `control.epic`, `control.review`
+
+|UC-V-09
+|UC-S-08
+|The new and changed use cases are in `plan-marshall-documentation`, linked from `UseCases.adoc`, pass the
+`doc-review` skill, and are agreed by the operator.
+|`doc-review` of the changed modules
+
+|UC-V-10
+|UC-S-09
+|The identity step shows id, name, pilot. The terminal step shows the command and "Check again". `/start` without a
+project shows the error pattern with "Choose a project". A gate check that does not answer shows its cause after
+20 s. Leaving the start without a source leaves no entry.
+|`projects-and-start` → `projects.being-added`, `start.sources`, `start.refused`
+
+|UC-V-11
+|UC-S-10
+|See link:../ux/verification.adoc[UX, Verification], checks UX-V-02 and UX-V-03.
+|—
+|===
+
+== Regression Guard
+
+The e2e spec `theme-readability.spec.js` already proves that every declared view is covered. Extend it with one
+assertion per view: the rendered text contains no raw enum (`/\b[a-z]+_[a-z_]+\b/`), no state id, no `{placeholder}`,
+and no ISO time string (`/\d{4}-\d{2}-\d{2}T/`). This guard is the cross-cutting check CC-V-01 and protects every step
+of this plan.

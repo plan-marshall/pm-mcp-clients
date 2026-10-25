@@ -1,0 +1,61 @@
+= Cross-Cutting: Plan
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » link:README.adoc[Cross-Cutting] » Plan
+
+These steps come first. They are small, they remove the most visible defects, and the guard of CC-S-01 protects every
+later step. Paths are relative to `pm-web-app/src/` unless stated.
+
+[cols="1,4,2,3",options="header"]
+|===
+|Step |What to do |Proposals |Files and tests
+
+|[[CC-S-01]]CC-S-01
+|Add the text guard to the e2e suite in report mode: it lists every violation per view without failing. Commit the
+list as the baseline.
+|CC-P-09
+|`pm-web-e2e/tests/helpers/textGuard.js`, `theme-readability.spec.js`; baseline file
+`pm-web-e2e/tests/text-guard-baseline.json`.
+
+|[[CC-S-02]]CC-S-02
+|Display layer and enum keys; catalogue fixes of CC-F-05; terminal key hints removed from web texts; loading keys.
+|CC-P-01, CC-P-02
+|new `lib/display/index.ts`, `lib/display/enumFields.ts` (+ tests); views that print enums (`SystemView.svelte`,
+`PlanView.svelte`, `OverviewView.svelte`, `CleanupView.svelte`, `ReportsView.svelte`, `CompletionReportView.svelte`,
+`EpicView.svelte`, `StartView.svelte`, `MachineSettingsView.svelte`); message catalogue of the runtime and of the mock.
+
+|[[CC-S-03]]CC-S-03
+|Theme remembered with "system"; titles with their arguments.
+|CC-P-06, CC-P-03
+|`routes/+layout.svelte`, `app.html`; title test; e2e `chrome.spec.js`.
+
+|[[CC-S-04]]CC-S-04
+|Formatting helpers; replace every raw time and inline number format; locale switch refresh; recorded language applied.
+|CC-P-04, CC-P-05
+|new `lib/display/format.ts` (+ tests), `lib/i18n/index.ts`, `lib/utils/tokenFormat.ts` (removed); all views with
+times.
+
+|[[CC-S-05]]CC-S-05
+|Accessibility baseline: Escape, focus return, disabled reasons, labels, sizes, touch targets.
+|CC-P-07
+|`lib/components/*`, panels in `WorkControlPanel.svelte`, `ChatPanel.svelte`; e2e keyboard checks in
+`workspace.spec.js`.
+
+|[[CC-S-06]]CC-S-06
+|One source per number in the views named in CC-F-09.
+|CC-P-08
+|`OverviewView.svelte`, `EpicView.svelte`, `FindingsReviewModal.svelte`, `SystemView.svelte`; mock fixtures through
+link:../use-cases/plan.adoc[UC-S-01].
+
+|[[CC-S-07]]CC-S-07
+|Switch the guard to failing mode; the baseline must be empty.
+|CC-P-09
+|`theme-readability.spec.js`; delete `text-guard-baseline.json`.
+|===
+
+== Order
+
+CC-S-01 → CC-S-02 → CC-S-03 and CC-S-04 in parallel → CC-S-05 and CC-S-06 → CC-S-07. CC-S-07 waits until the UX and
+visual-design view steps have landed, because they replace many of the affected screens.

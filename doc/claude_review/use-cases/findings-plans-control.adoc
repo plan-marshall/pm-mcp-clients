@@ -1,0 +1,220 @@
+= Use Cases: Findings for Plans and Control
+:toc: left
+:toclevels: 2
+:nofooter:
+:uc: ../../../../plan-marshall-documentation/doc/use-cases
+:shots: ../resources/screenshots
+
+link:../README.adoc[Review] » link:README.adoc[Use Cases] » Findings: Plans and Control
+
+Scenarios: `fully-onboarded` (language `de`) and `running-work` (language `en`), theme dark, 1566 px.
+
+== What Works
+
+* The plan view: phases with state and duration, the open path to the running task, the tasks with role, model,
+  attempt, and outcome, and the activity stream of the selected task. The tree on the left and the narrative on the
+  right is the strongest layout of the app (operator finding in `doc/findings-web.txt`).
+* The loop count: after `process.loopback` the refine phase reads "done ×2".
+* The off-track signal: a banner above the activity stream.
+* The decision card: what is asked, what it blocks, whether it can be undone, the recommendation with its reason,
+  votes per option, the dissent beside the option, parts that wait for earlier parts, and the acts _decide_, _chat_,
+  _none fits_, _later_.
+* The pause: "Pause fix-relay? Where it holds: Now / After the current task / After the current phase", with the
+  current task preselected.
+
+image::{shots}/ux-plan-view-showroom.jpg[The plan view: tree of phases and tasks on the left, activity of the task on the right,width=640]
+
+== Findings: Plans
+
+[#UC-F-15]
+=== UC-F-15: A phase has no workflow below it
+
+* Severity: `major`
+* Use case: link:{uc}/03-plans.adoc#UC-PLN-1[UC-PLN-1], step 2
+* Seen: a finished phase (outline, 31 min) has an expand button that shows nothing. Its narrative reads "Dieser Teil
+  hat keine Aktivität auf Task-Ebene."
+* Expected: the phase workflow with the branches taken and not taken, and the sub-workflows below.
+
+[#UC-F-16]
+=== UC-F-16: "Not in this plan" is not visible
+
+* Severity: `minor`
+* Use case: link:{uc}/03-plans.adoc#UC-PLN-1[UC-PLN-1], step 1
+* State: `process.pruned-lane`.
+* Seen: the same tree as before.
+* Expected: a separate list of phases not in this plan, with the reason.
+* Note: likely a mock gap (the plan view reads engine data); see link:proposals.adoc#UC-P-08[UC-P-08].
+
+[#UC-F-17]
+=== UC-F-17: The intent record is not reachable from the plan
+
+* Severity: `major`
+* Use case: link:{uc}/03-plans.adoc#UC-PLN-1[UC-PLN-1], variation "intent record"
+* Seen: no control on the plan view opens the goal, the criteria, the non-goals, or the decisions.
+* Expected: the intent one step away from the plan.
+
+[#UC-F-18]
+=== UC-F-18: "By phase and role" offers what is not reported, and the details control is wrong
+
+* Severity: `major`
+* Use cases: link:{uc}/03-plans.adoc#UC-PLN-1[UC-PLN-1], link:{uc}/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1]
+* Seen 1: "Zeige je Phase und Rolle" opens the line "Die Aufschlüsselung nach Phase und Rolle wird noch nicht
+  gemeldet."
+* Seen 2: "Zeige die Details" in the head of a running plan opens `/reports?plan=drop-legacy-api` and shows the raw
+  code `plan_not_found` with "Erneut versuchen".
+* Cause 2: `PlanView.svelte` always renders the completion-report button (`report.action.details`), also for a plan
+  that has not ended.
+* Expected: the completion report "one step away" only for an ended plan; a breakdown control only when the server
+  reports one.
+
+[#UC-F-19]
+=== UC-F-19: The recommendation names an index, not the option
+
+* Severity: `major`
+* Use case: link:{uc}/03-plans.adoc#UC-PLN-2[UC-PLN-2]
+* Seen: "Empfohlen von implement: 2". The operator has to count options.
+* Expected: the recommended option by its label, beside the role that recommends it.
+
+[#UC-F-20]
+=== UC-F-20: Evidence is raw JSON
+
+* Severity: `minor`
+* Use case: link:{uc}/03-plans.adoc#UC-PLN-2[UC-PLN-2]
+* Seen: "Belege anzeigen" opens `{ "lines": "42-58", "summary": …, "file": "RelayServer.java" }` as code.
+* Expected: evidence as readable fields: file, lines, summary, with a link to the file where possible.
+
+[#UC-F-21]
+=== UC-F-21: The answer is reported as given in another channel
+
+* Severity: `major`
+* Use case: link:{uc}/03-plans.adoc#UC-PLN-2[UC-PLN-2], variation "answered in another channel"
+* Seen: after "Entscheide" in the web app, the notice reads "beantwortet über die Konsole (—): 2".
+* Cause: `DecisionView.svelte` treats every `decision.answered` event as an answer from elsewhere, also the echo of
+  its own answer. The channel comes from the event; the device falls back to "—"; the answer is the option index.
+* Expected: the own answer confirmed as such ("Entschieden: Rebase onto main"), and the "answered elsewhere" notice
+  only for answers from another channel.
+
+image::{shots}/cc-decision-answered-banner.jpg[After answering in the web app, the notice says the console answered,width=640]
+
+[#UC-F-22]
+=== UC-F-22: Validation results sit below the fold
+
+* Severity: `minor`
+* Use case: link:{uc}/03-plans.adoc#UC-PLN-3[UC-PLN-3]
+* State: `designer.unit-invalid`, "Validate".
+* Seen: a thin strip at the bottom edge: "✓ parses ✓ static rules ✓ compiled invariants ✓ composed against". The
+  structure pane shows "—" until the first validation. The unit of the invalid state was not the one selected, so the
+  findings were not visible.
+* Expected: findings with rule, line, and column next to the text; the structure kept in step with the text.
+
+[#UC-F-23]
+=== UC-F-23: The grouping by epic contradicts the grouping by plan
+
+* Severity: `major`
+* Use case: link:{uc}/03-plans.adoc#UC-PLN-4[UC-PLN-4]
+* Seen: by plan, the epic Relay Hardening holds Fix Relay Transport and Relay metrics. By epic, it holds Fix Relay
+  Transport only, while its head says "3 laufen · 3 vorgesehen".
+* Expected: the same plans in both groupings; counts that match the rows.
+
+image::{shots}/ux-overview-by-epic.jpg[Running work by epic: one plan under the epic, while the head counts three,width=640]
+
+[#UC-F-24]
+=== UC-F-24: Ended work has no read-only chat
+
+* Severity: `minor`
+* Use case: link:{uc}/03-plans.adoc#UC-PLN-4[UC-PLN-4], variation "Ended Work"
+* Seen: the table offers "Abschlussbericht" only.
+* Expected: a read-only chat about ended work, and its follow-up plan.
+
+[#UC-F-25]
+=== UC-F-25: The epic shows no intent
+
+* Severity: `major`
+* Use case: link:{uc}/03-plans.adoc#UC-PLN-5[UC-PLN-5], variation "intent"
+* Seen: no destination, no done-when checks, no non-goals.
+
+[#UC-F-26]
+=== UC-F-26: Waits have no "since when", and lists contradict their counts
+
+* Severity: `minor`
+* Use case: link:{uc}/03-plans.adoc#UC-PLN-5[UC-PLN-5]
+* Seen: "relay-docs wartet: Überschneidung mit relay-auth-v2" with no time. "2 Landungen" above one landing. Token
+  rows for one plan only.
+* Expected: what each waits for and since when; lists that match their counts.
+
+image::{shots}/ux-epic-view-head.jpg[The epic view: nine equal actions and workstreams without times,width=640]
+
+== Findings: Control
+
+[#UC-F-27]
+=== UC-F-27: The plan's acts are fixed, not by state
+
+* Severity: `major`
+* Use case: link:{uc}/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1]
+* Seen: a plan that "wartet auf dich" in the epic opens with the same four acts as a running plan (Halte an, Brich
+  ab, Chat, Einstellungen), and no link to the decision it waits for. The pause confirm buttons are plain text.
+  Escape does not close the pause panel.
+* Note: the showroom returns the same plan for every id, so part of this is a fixture limit.
+* Expected: the acts of the state, plus the decision or hold that the plan waits for.
+
+[#UC-F-28]
+=== UC-F-28: The epic offers nine equal acts
+
+* Severity: `major`
+* Use case: link:{uc}/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2]
+* Seen: "Starte den nächsten Plan", "Automatischer Start: an", "Erlaubte gemeinsame Dateien: 0", "Zerlege neu", "Prüfe
+  die Findings", "Prüfe die Beobachtungen", "Chat", "Archiviere das Epic", "Brich das Epic ab", all the same style.
+  The cancel wraps to a second line.
+* Expected: the use case is met (all acts present). The form fails the next-action rule
+  (link:../ux/findings.adoc#UX-F-04[UX-F-04]).
+
+[#UC-F-29]
+=== UC-F-29: The findings review contradicts the epic card
+
+* Severity: `minor`
+* Use case: link:{uc}/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3]
+* State: `control.review`.
+* Seen: the card says "3 new · 4 open · 2 kept". The dialog lists three items, "2 of 3 decided". The right pane says
+  "Choose an item".
+* Expected: matching counts; the first open item selected.
+
+[#UC-F-30]
+=== UC-F-30: Plan settings show raw keys and one save per row
+
+* Severity: `major`
+* Use case: link:{uc}/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5]
+* Seen: rows `landing`, `method`, `asking`, `posture`, `base`, `role.implement`, `role.review`, `integration.git`,
+  `provider.issues`; values such as `landing.pull-request`; several empty selects; nine "Save" buttons; the origin
+  ("from the project") per row.
+* Expected: plain names and meanings, the current value preselected, "remove the override" to return to the
+  inherited value, refusals with their reason.
+
+image::{shots}/ux-plan-settings-modal.jpg[Plan settings: raw keys, empty selects, and a save per row,width=640]
+
+== Use-Case Document Defects in This Area
+
+[#UC-F-46]
+=== UC-F-46: No use case for "what needs me, across everything"
+
+* Severity: `major`
+* Use cases: link:{uc}/03-plans.adoc#UC-PLN-4[UC-PLN-4], link:{uc}/03-plans.adoc#UC-PLN-2[UC-PLN-2],
+  link:{uc}/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]
+* The operator's first question is "what needs me now?". The answer is spread over UC-PLN-4 (needs-operator first),
+  UC-PLN-2 (decisions), UC-CTL-4 (holds), UC-PLN-6 (reports), UC-PRJ-2 (setup needs), and UC-ONB-10 (expiring
+  credentials). No use case collects them. A client can therefore meet every use case and still have no place for
+  this question. See link:proposals.adoc#UC-P-09[UC-P-09].
+
+[#UC-F-47]
+=== UC-F-47: No use case for finding work by name
+
+* Severity: `minor`
+* A production operator often knows a plan id, a decision id, or a pull request number. No use case covers going
+  there directly. See link:proposals.adoc#UC-P-10[UC-P-10].
+
+[#UC-F-48]
+=== UC-F-48: The order of open decisions is not stated
+
+* Severity: `minor`
+* Use case: link:{uc}/03-plans.adoc#UC-PLN-2[UC-PLN-2]
+* With eight open decisions (`running-work`), the order decides what the operator answers first. The use case does
+  not say it. See link:proposals.adoc#UC-P-11[UC-P-11].

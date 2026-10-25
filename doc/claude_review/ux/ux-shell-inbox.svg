@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">App shell with the attention inbox as home</title>
+  <desc id="d">Left rail with the groups Work, Records, Machine; a top bar with path, search, live state and machine; the inbox lists items that wait for the operator, ordered by what they block; a side column summarises running work.</desc>
+  <rect width="1200" height="720" fill="#0E1116"/>
+  <!-- rail -->
+  <rect x="0" y="0" width="220" height="720" fill="#12161D"/>
+  <rect x="219" y="0" width="1" height="720" fill="#252C38"/>
+  <rect x="20" y="22" width="22" height="22" rx="5" fill="#7C6CF6"/>
+  <text x="52" y="38" fill="#E6EAF2" font-size="15" font-weight="600">plan-marshall</text>
+  <text x="20" y="86" fill="#6B7587" font-size="10" font-weight="600" letter-spacing="1">WORK</text>
+  <rect x="12" y="96" width="196" height="32" rx="7" fill="#1E2433"/>
+  <rect x="12" y="96" width="3" height="32" rx="1.5" fill="#7C6CF6"/>
+  <text x="32" y="117" fill="#E6EAF2" font-size="13" font-weight="600">Inbox</text>
+  <rect x="172" y="104" width="26" height="16" rx="8" fill="#F2A93B"/>
+  <text x="185" y="116" fill="#1A1406" font-size="10" font-weight="700" text-anchor="middle">5</text>
+  <text x="32" y="153" fill="#AEB6C4" font-size="13">Running work</text>
+  <text x="32" y="185" fill="#AEB6C4" font-size="13">Projects</text>
+  <text x="32" y="217" fill="#AEB6C4" font-size="13">Decisions</text>
+  <text x="190" y="217" fill="#AEB6C4" font-size="12" text-anchor="end">3</text>
+  <text x="20" y="260" fill="#6B7587" font-size="10" font-weight="600" letter-spacing="1">RECORDS</text>
+  <text x="32" y="289" fill="#AEB6C4" font-size="13">Reports</text>
+  <text x="190" y="289" fill="#AEB6C4" font-size="12" text-anchor="end">5</text>
+  <text x="20" y="332" fill="#6B7587" font-size="10" font-weight="600" letter-spacing="1">MACHINE</text>
+  <text x="32" y="361" fill="#AEB6C4" font-size="13">System</text>
+  <text x="32" y="393" fill="#AEB6C4" font-size="13">Process designer</text>
+  <text x="32" y="425" fill="#AEB6C4" font-size="13">Settings</text>
+  <text x="20" y="694" fill="#6B7587" font-size="12">◐ Theme · DE · Help</text>
+  <!-- top bar -->
+  <rect x="220" y="0" width="980" height="60" fill="#0E1116"/>
+  <rect x="220" y="59" width="980" height="1" fill="#252C38"/>
+  <text x="248" y="36" fill="#E6EAF2" font-size="15" font-weight="600">Inbox</text>
+  <rect x="640" y="16" width="300" height="30" rx="8" fill="#161B22" stroke="#2A3140"/>
+  <text x="656" y="36" fill="#6B7587" font-size="12">Search plans, epics, decisions…</text>
+  <text x="926" y="36" fill="#6B7587" font-size="11" text-anchor="end">⌘K</text>
+  <circle cx="966" cy="31" r="4" fill="#3FB37F"/>
+  <text x="976" y="35" fill="#AEB6C4" font-size="12">Live</text>
+  <rect x="1028" y="18" width="150" height="26" rx="13" fill="#161B22" stroke="#2A3140"/>
+  <text x="1103" y="35" fill="#AEB6C4" font-size="12" text-anchor="middle">mock-machine</text>
+  <!-- inbox header -->
+  <text x="248" y="104" fill="#E6EAF2" font-size="22" font-weight="600">5 things wait for you</text>
+  <text x="248" y="128" fill="#8B95A7" font-size="13">Blocking work first, then the oldest.</text>
+  <!-- inbox rows -->
+  <g font-size="13">
+    <rect x="248" y="148" width="640" height="64" rx="10" fill="#161B22" stroke="#2A3140"/>
+    <rect x="248" y="148" width="4" height="64" rx="2" fill="#F2A93B"/>
+    <text x="268" y="174" fill="#E6EAF2" font-weight="600">Decision · Resolve rebase conflict</text>
+    <text x="268" y="196" fill="#8B95A7" font-size="12">pm-mcp-clients › Relay Hardening › Fix Relay Transport · blocks the plan · 2 h</text>
+    <rect x="790" y="164" width="82" height="32" rx="8" fill="#7C6CF6"/>
+    <text x="831" y="185" fill="#FFFFFF" font-weight="600" text-anchor="middle">Decide</text>
+
+    <rect x="248" y="222" width="640" height="64" rx="10" fill="#161B22" stroke="#2A3140"/>
+    <rect x="248" y="222" width="4" height="64" rx="2" fill="#F25F5C"/>
+    <text x="268" y="248" fill="#E6EAF2" font-weight="600">Landing failed · remediation.ci-failure</text>
+    <text x="268" y="270" fill="#8B95A7" font-size="12">pm-mcp-clients › Fix Relay Transport · blocks the plan · 40 min</text>
+    <rect x="762" y="238" width="110" height="32" rx="8" fill="none" stroke="#3A4356"/>
+    <text x="817" y="259" fill="#E6EAF2" text-anchor="middle">Open the plan</text>
+
+    <rect x="248" y="296" width="640" height="64" rx="10" fill="#161B22" stroke="#2A3140"/>
+    <rect x="248" y="296" width="4" height="64" rx="2" fill="#F2A93B"/>
+    <text x="268" y="322" fill="#E6EAF2" font-weight="600">Decision · How should the new store be introduced? (3 parts)</text>
+    <text x="268" y="344" fill="#8B95A7" font-size="12">pm-mcp-core › storage-v2 · blocks the plan · 1 d</text>
+    <rect x="790" y="312" width="82" height="32" rx="8" fill="#7C6CF6"/>
+    <text x="831" y="333" fill="#FFFFFF" font-weight="600" text-anchor="middle">Decide</text>
+
+    <rect x="248" y="370" width="640" height="64" rx="10" fill="#161B22" stroke="#2A3140"/>
+    <rect x="248" y="370" width="4" height="64" rx="2" fill="#8B95A7"/>
+    <text x="268" y="396" fill="#E6EAF2" font-weight="600">Setup · plan-marshall needs one answer</text>
+    <text x="268" y="418" fill="#8B95A7" font-size="12">plan-marshall · project setup, step 4 of 10 · 8 d</text>
+    <rect x="742" y="386" width="130" height="32" rx="8" fill="none" stroke="#3A4356"/>
+    <text x="807" y="407" fill="#E6EAF2" text-anchor="middle">Continue setup</text>
+
+    <rect x="248" y="444" width="640" height="64" rx="10" fill="#161B22" stroke="#2A3140"/>
+    <rect x="248" y="444" width="4" height="64" rx="2" fill="#8B95A7"/>
+    <text x="268" y="470" fill="#E6EAF2" font-weight="600">Credential · GitHub token expires in 9 days</text>
+    <text x="268" y="492" fill="#8B95A7" font-size="12">Machine · Settings › Credentials</text>
+    <rect x="792" y="460" width="80" height="32" rx="8" fill="none" stroke="#3A4356"/>
+    <text x="832" y="481" fill="#E6EAF2" text-anchor="middle">Renew</text>
+  </g>
+  <!-- side summary -->
+  <rect x="912" y="148" width="264" height="360" rx="10" fill="#12161D" stroke="#2A3140"/>
+  <text x="932" y="176" fill="#E6EAF2" font-size="14" font-weight="600">Running now</text>
+  <g font-size="12">
+    <text x="932" y="208" fill="#AEB6C4">pm-mcp-clients</text>
+    <text x="1156" y="208" fill="#8B95A7" text-anchor="end">3 plans · 1 epic</text>
+    <rect x="932" y="216" width="224" height="6" rx="3" fill="#252C38"/>
+    <rect x="932" y="216" width="140" height="6" rx="3" fill="#4C9AFF"/>
+    <text x="932" y="252" fill="#AEB6C4">pm-mcp-core</text>
+    <text x="1156" y="252" fill="#8B95A7" text-anchor="end">2 plans</text>
+    <rect x="932" y="260" width="224" height="6" rx="3" fill="#252C38"/>
+    <rect x="932" y="260" width="90" height="6" rx="3" fill="#4C9AFF"/>
+    <text x="932" y="296" fill="#AEB6C4">plan-marshall</text>
+    <text x="1156" y="296" fill="#8B95A7" text-anchor="end">setup</text>
+    <text x="932" y="340" fill="#8B95A7">Background</text>
+    <text x="932" y="362" fill="#AEB6C4">removing 2 moved documents</text>
+    <text x="1156" y="362" fill="#4C9AFF" text-anchor="end">running</text>
+    <text x="932" y="400" fill="#8B95A7">Today</text>
+    <text x="932" y="422" fill="#AEB6C4">1 plan merged · 4 reports unread</text>
+  </g>
+  <text x="248" y="560" fill="#6B7587" font-size="12">Wireframe, not to scale. Colours follow the proposed tokens of Visual Design VD-P-02.</text>
+</svg>

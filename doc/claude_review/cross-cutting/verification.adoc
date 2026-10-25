@@ -1,0 +1,59 @@
+= Cross-Cutting: Verification
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » link:README.adoc[Cross-Cutting] » Verification
+
+[cols="1,1,3,2",options="header"]
+|===
+|Check |Step |What must be true |How
+
+|[[CC-V-01]]CC-V-01
+|CC-S-01, CC-S-07
+|The text guard runs for every declared view in `de` and `en`. In report mode it lists at least the findings
+CC-F-01 to CC-F-05 (proof that it sees them). In failing mode the baseline is empty and the suite passes.
+|`./mvnw -pl pm-web-e2e verify -Pintegration-tests`
+
+|CC-V-02
+|CC-S-02
+|In `de`, the system view shows "1 wartet auf dich", "3 laufen", "beschäftigt", "frei"; the cleanup shows plain kind
+names; the plan defaults show plain names. Every enum value in the six scenarios has a key in `de` and `en`.
+|Chrome on `fully-onboarded` → `/system`, `/system/cleanup`; unit test
+
+|CC-V-03
+|CC-S-02
+|Every string of the table in link:findings.adoc#CC-F-05[CC-F-05] reads as expected in `de` and `en`.
+|Chrome walk over the named views
+
+|CC-V-04
+|CC-S-03
+|Tab titles read "Fix Relay Transport", "Relay Hardening", "Einen Plan in pm-mcp-clients starten". Light theme survives a
+reload; "system" follows the OS; no flash of the wrong theme on load.
+|Chrome; title unit test; e2e
+
+|CC-V-05
+|CC-S-04
+|No ISO time on any view (guard). Reports show "vor 9 Tagen" with the full date on hover. Switching `de` ↔ `en` without a
+reload leaves no word of the other language in the interface (guard in both directions). After onboarding with
+"Deutsch for both", the app opens in German in a fresh browser.
+|e2e guard; `onboarding` → `language.choose`
+
+|CC-V-06
+|CC-S-05
+|Escape closes the pause panel, the chat, the overflow menu, and every dialog, and focus returns. Every disabled control
+has a reason in its advisory. Keyboard only: T2 of link:../ux/analysis.adoc#tasks[UX, Key Tasks] can be done without
+a mouse.
+|e2e keyboard checks; manual
+
+|[[CC-V-07]]CC-V-07
+|CC-S-05
+|An accessibility audit per view (axe-core in e2e if the operator agrees to the dependency; otherwise the manual
+checklist of WCAG 2.1 AA) finds no serious issue.
+|e2e or checklist in the pull request
+
+|CC-V-08
+|CC-S-06
+|For every pair of CC-F-09: the two numbers agree, or the view states "showing n of m".
+|Chrome on `fully-onboarded` and `running-work`; `FixtureConsistencyTest`
+|===

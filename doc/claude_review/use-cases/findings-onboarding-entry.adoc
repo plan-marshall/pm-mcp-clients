@@ -1,0 +1,182 @@
+= Use Cases: Findings for Onboarding and Entry
+:toc: left
+:toclevels: 2
+:nofooter:
+:uc: ../../../../plan-marshall-documentation/doc/use-cases
+:shots: ../resources/screenshots
+
+link:../README.adoc[Review] » link:README.adoc[Use Cases] » Findings: Onboarding and Entry
+
+Scenario: `onboarding`, language `en`, theme dark, 1566 px. Each finding names the state used.
+
+== What Works
+
+* `onboard.mode`: the seven steps are listed with one line each. The two buttons say what they do ("Decide everything
+  for me…", "Begin with step 1").
+* `language.choose`: both languages are preselected, the model language is separate, and the button says "Use
+  Deutsch for both".
+* `harness.consent`: the consent lists what is looked for, where, what runs, what never happens, and the tokens. The
+  answers are _Yes_, _Yes, and don't ask again_, and _Not now_. This is the best screen of the app.
+* `harness.blocked`: cause, fix, and the three acts (choose again, leave it out, check again).
+* `onboard.completed`: every aspect with a check mark, the next step named, two clear buttons.
+
+image::{shots}/uc-onboarding-consent.jpg[The harness consent: what is looked for, where, what runs, what never happens, and the three answers,width=640]
+
+== Findings
+
+[#UC-F-01]
+=== UC-F-01: The full navigation is open before the machine is onboarded
+
+* Severity: `major`
+* Use case: link:{uc}/01-onboarding.adoc#UC-ONB-1[UC-ONB-1]
+* State: `onboard.mode` and every onboarding state.
+* Seen: the header shows Running work, Projects, Decisions, Reports (with a count of 7), Process Designer, System,
+  and Machine settings. All of them open.
+* Expected: link:../../design/web-app/README.adoc#structure[Design, Web App, Structure]: "Until the machine is
+  onboarded, the app shows the onboarding only."
+* Also: the step bar marks step 1 as current on the mode screen, before the operator began.
+
+image::{shots}/uc-onboarding-mode.jpg[The onboarding mode screen with the full navigation in the header,width=640]
+
+[#UC-F-02]
+=== UC-F-02: The automatic result has no change link
+
+* Severity: `major`
+* Use case: link:{uc}/01-onboarding.adoc#UC-ONB-2[UC-ONB-2]
+* State: `auto.result`.
+* Seen: a table with Aspect, Value, Why, and one button "Continue". The step bar marks step 1 as current.
+* Expected: each step with its reason and a "change" link that opens that sub-workflow.
+
+[#UC-F-03]
+=== UC-F-03: The chosen interface language is not applied
+
+* Severity: `major`
+* Use case: link:{uc}/01-onboarding.adoc#UC-ONB-3[UC-ONB-3]
+* State: `language.choose`, answered with "Use Deutsch for both".
+* Seen: the next screen stays in English.
+* Cause: the header toggle keeps the locale of the browser (`setLocale` in `lib/i18n/index.ts`). The recorded
+  interface language does not set it.
+* Expected: the outcome of UC-ONB-3 is the language of plan-marshall. The web app follows it unless the operator
+  changes the language of this browser on purpose.
+
+[#UC-F-04]
+=== UC-F-04: Harness rows lack the monogram and show an empty token line
+
+* Severity: `minor`
+* Use case: link:{uc}/01-onboarding.adoc#UC-ONB-4[UC-ONB-4]
+* State: `harness.choose`.
+* Seen: no icon and no monogram. The token reporting reads "complete:" with nothing after the colon.
+* Expected: a monogram where no icon is fetched (link:../../design/web-app/harness-icons.adoc[Harness Icons]); the
+  token line says complete, partial, or not reported.
+
+image::{shots}/uc-onboarding-harness-choose.jpg[The harness choice: rows without icons and with an empty token line,width=640]
+
+[#UC-F-05]
+=== UC-F-05: "No harness can be used" shows the state id and no reason
+
+* Severity: `major`
+* Use case: link:{uc}/01-onboarding.adoc#UC-ONB-4[UC-ONB-4]
+* State: `harness.none`.
+* Seen: the title, then `Machine · harness.none`, then three buttons. No list of what was found and why each failed.
+* Expected: what failed and why, per harness, and the fix.
+
+[#UC-F-06]
+=== UC-F-06: The model choice shows no advice
+
+* Severity: `minor`
+* Use case: link:{uc}/01-onboarding.adoc#UC-ONB-5[UC-ONB-5]
+* State: `catalogue.select`.
+* Seen: three checked models and "Allow 3 models".
+* Expected: the recommendation of the advice preselected and marked; ids typed where a harness cannot list models.
+
+[#UC-F-07]
+=== UC-F-07: The role assignment is "defaults or nothing"
+
+* Severity: `major`
+* Use case: link:{uc}/01-onboarding.adoc#UC-ONB-6[UC-ONB-6]
+* State: `roles.review`.
+* Seen: two read-only rows and one button "Use the defaults".
+* Expected: the grouped overview, the departures from the default, an advisory per role, a change per role, "ask the
+  steward" with accept or reject per departure, and empty rows for a role that cannot be met.
+
+[#UC-F-08]
+=== UC-F-08: The credential store choice does not say what protects a secret
+
+* Severity: `minor`
+* Use case: link:{uc}/01-onboarding.adoc#UC-ONB-7[UC-ONB-7]
+* State: `store.choose`.
+* Seen: two options, "available", a recommendation pill, and a clear button.
+* Expected: for each option, what protects a secret and what does not.
+
+[#UC-F-09]
+=== UC-F-09: A failed provider has no fix action, and a label is wrong
+
+* Severity: `major`
+* Use case: link:{uc}/01-onboarding.adoc#UC-ONB-8[UC-ONB-8]
+* State: `providers.failed`.
+* Seen: the provider row is labelled "Choose what this machine works with" (the title of another screen). The fix
+  says "enter the token again", but the acts are only "Check again" and "Continue without".
+* Expected: three acts: fix the credential, check again, continue without.
+
+[#UC-F-10]
+=== UC-F-10: The plan defaults are raw unit ids that cannot be changed
+
+* Severity: `major`
+* Use case: link:{uc}/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]
+* State: `defaults.review`.
+* Seen: Landing `landing.pull-request`, Method `method.test-first`, Asking `ask.key-points`, Posture
+  `posture.standard`, and "Save these choices". No control to choose another value.
+* Expected: one line per axis with its meaning and a choice; variants that need a missing provider marked; posture
+  only on a later run.
+
+[#UC-F-11]
+=== UC-F-11: Two settings pages with almost the same name
+
+* Severity: `major`
+* Use cases: link:{uc}/01-onboarding.adoc#UC-ONB-10[UC-ONB-10], link:{uc}/02-entry.adoc#UC-ENT-2[UC-ENT-2]
+* Seen: `/settings/machine` is "Einstellungen der Maschine" (aspects, consents, documents mode, durations, tokens).
+  `/settings` is "Maschinen-Einstellungen" (devices, listener, credentials). Each links to the other. The header item
+  opens the first one.
+* Expected: one settings place with clear parts (link:../ux/proposals.adoc#UX-P-02[UX-P-02]).
+
+[#UC-F-12]
+=== UC-F-12: A settings conflict is not shown
+
+* Severity: `minor`
+* Use case: link:{uc}/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]
+* State: `settings.conflict`.
+* Seen: the machine settings page shows no notice.
+* Expected: the current value from the other client and "apply again".
+* Note: the mock may not feed this state to the settings page. Then this is a mock gap
+  (link:proposals.adoc#UC-P-08[UC-P-08]).
+
+[#UC-F-13]
+=== UC-F-13: The network listener state shows a fingerprint only
+
+* Severity: `major`
+* Use case: link:{uc}/02-entry.adoc#UC-ENT-1[UC-ENT-1]
+* State: `entry.lan-open`, opened on `/settings`.
+* Seen: the app switches to the onboarding frame (step bar with step 1 current), a card "Network listener open with
+  its fingerprint", `Machine · entry.lan-open`, the fingerprint, and "Listener off".
+* Expected: the LAN URL, the QR code, and the fingerprint, in the settings frame.
+
+[#UC-F-14]
+=== UC-F-14: The device list can hang, and "this device" is not set apart
+
+* Severity: `minor`
+* Use case: link:{uc}/02-entry.adoc#UC-ENT-2[UC-ENT-2]
+* Scenario: `fully-onboarded`, `/settings` opened from the header.
+* Seen: "Die gekoppelten Geräte werden geladen …" for more than 9 s on the first open; a reload shows the list. All
+  three revoke buttons are the same red, also the one for "dieses Gerät". "Terminal Companion" is listed, while the
+  page says the terminal client is never listed (fixture).
+* Expected: the list within a second; revoking this device looks different and asks first.
+
+== Use-Case Document Defects in This Area
+
+[#UC-F-45]
+=== UC-F-45: UC-ONB-1 does not say that the app shows the onboarding only
+
+* Severity: `minor`
+* Use case: link:{uc}/01-onboarding.adoc#UC-ONB-1[UC-ONB-1]
+* The design states the rule; the use case does not. A client-neutral statement belongs in the use case: "Until the
+  machine is onboarded, a client offers the onboarding and nothing that needs an onboarded machine."

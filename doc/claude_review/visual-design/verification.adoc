@@ -1,0 +1,69 @@
+= Visual Design: Verification
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » link:README.adoc[Visual Design] » Verification
+
+== Checks
+
+[cols="1,1,3,2",options="header"]
+|===
+|Check |Step |What must be true |How
+
+|[[VD-V-01]]VD-V-01
+|VD-S-00
+|The two decisions are recorded in `doc/design/web-app/README.adoc` with the date.
+|read the design
+
+|[[VD-V-02]]VD-V-02
+|VD-S-01, VD-S-07
+|Every text and state colour pair passes WCAG 2.1 AA (4.5:1 for text, 3:1 for dots, borders of inputs, and focus) in
+both themes. The audit allowlist is empty or every entry has its reason.
+|`styles/tokens.test.ts`; e2e `theme-readability.spec.js`
+
+|VD-V-03
+|VD-S-01
+|The theme choice survives a reload; "system" follows `prefers-color-scheme`.
+|Chrome: choose light, reload, check; e2e `chrome.spec.js`
+
+|VD-V-04
+|VD-S-02
+|No emoji in the rendered text of any view (`/\p{Extended_Pictographic}/u` finds nothing). Every harness without an icon
+shows a monogram.
+|e2e guard in `theme-readability.spec.js`; `onboarding` → `harness.choose`
+
+|VD-V-05
+|VD-S-03, VD-S-04
+|Each component has a unit test for its variants and states, and appears on `/dev/components` in both themes.
+|`./mvnw -pl pm-web-app verify`; Chrome on `/dev/components`
+
+|VD-V-06
+|VD-S-06
+|On every view: no element with the danger background at rest; no `button` without the `Button` or `IconButton` class;
+no element styled uppercase by `text-transform`; at most one primary button visible.
+|e2e guard over all declared views
+
+|VD-V-07
+|VD-S-06
+|Visual regression: one screenshot per view and theme at 1440 px and 390 px, taken with Playwright against the mock;
+a change of more than 0.5 % of pixels fails until approved.
+|new `pm-web-e2e/tests/visual.spec.js` (uses Playwright's built-in screenshot comparison; no new dependency)
+
+|VD-V-08
+|VD-S-06
+|No horizontal page scroll on any route at 320, 390, 768, 1280, 1920 px.
+|e2e `mobile.spec.js` extended
+
+|VD-V-09
+|VD-S-08
+|The lint rule fails on a raw hex value or an old token in a `.svelte` file.
+|unit test with a fixture file
+
+|VD-V-10
+|all
+|Review by eye: the operator and one person who has not seen the app compare the old and the new screenshots of the
+inbox, the plan page, the decisions, and the pairing page, and answer "Would you pay for this tool?" with reasons.
+Record the answers in the pull request of VD-S-09.
+|session with screenshots of VD-V-07
+|===

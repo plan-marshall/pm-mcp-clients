@@ -1,0 +1,49 @@
+= Cross-Cutting: Analysis
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » link:README.adoc[Cross-Cutting] » Analysis
+
+== Result in Short
+
+The design promises that "web and terminal say the same", from one catalogue, in the operator's language
+(link:../../design/web-app/README.adoc#principles[Web App, Principles];
+link:../../design/shared/texts-and-languages.adoc[Texts and Languages]). The app keeps this promise for its own
+labels. It breaks it wherever a value from the server reaches the screen:
+
+* *State words* arrive as enums and are printed as they are: `running`, `done`, `failed`, `busy`, `idle`,
+  `waiting for_you`.
+* *Ids and codes* stand in for text: `plan_not_found`, `Machine · harness.none`, `READ_REPORTS`, `landing.pull-request`.
+* *Times* are ISO strings: `2026-10-16T11:25:00Z`, `2026-10-25T10:38:07.423556Z`.
+* *Placeholders* stay unfilled: tab titles `{plan}`, `{epic}`, `Einen Plan in {project} starten`.
+* *Phrases* stay in the old language after a switch: "3 plans · 1 epic" in a German view.
+
+On a German screen, a typical row mixes three languages: German labels, English states, and machine ids. For a
+product sold to teams in Germany this is the most visible defect after the missing hierarchy.
+
+Two smaller defects cut across views: the theme is not remembered, and counts disagree between views.
+
+[#causes]
+== Causes
+
+. *No display layer for server values.* Views put API fields into the markup. There is no single function that turns an
+  enum, a code, or a time into text.
+. *Title keys without arguments.* `routes/+layout.svelte` resolves `ROUTE_TITLE_KEYS[route]` with `$t(key)` and no
+  arguments, so `{plan}` remains.
+. *A cache per locale that is not refreshed.* `lib/i18n/index.ts` caches catalogues in `localStorage`
+  (`pm_i18n_messages_<locale>`); some summaries come from a stale cache or from server text in the other language.
+. *Theme state in memory only.* `toggleTheme()` sets the attribute and nothing else.
+. *No test that looks at the rendered text.* The e2e guard `theme-readability.spec.js` checks contrast, not words.
+
+[#direction]
+== Direction
+
+* A display layer: `displayState`, `displayError`, `formatTime`, `formatDuration`, `formatTokens`; every server value
+  passes through it.
+* A guard in unit and e2e tests that fails on raw enums, state ids, placeholders, ISO times, emoji, and words of the
+  other language for a sample of the glossary.
+* Catalogue fixes for the broken strings found.
+* Theme persisted; locale switch refreshes all texts.
+
+Details: link:proposals.adoc[Proposals].

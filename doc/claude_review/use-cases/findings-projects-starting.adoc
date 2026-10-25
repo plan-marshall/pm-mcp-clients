@@ -1,0 +1,121 @@
+= Use Cases: Findings for Projects and Starting Work
+:toc: left
+:toclevels: 2
+:nofooter:
+:uc: ../../../../plan-marshall-documentation/doc/use-cases
+:shots: ../resources/screenshots
+
+link:../README.adoc[Review] » link:README.adoc[Use Cases] » Findings: Projects and Starting Work
+
+Scenarios: `fully-onboarded` (language `de`) and `projects-and-start` (language `en`), theme dark, 1566 px.
+
+== What Works
+
+* The project explorer: "being added" with continue and abandon, favourites with order, recent, all, filter, and
+  sort. Each card shows ready or what it needs, the needs-operator count, plans and epics, and last activity.
+* Starting a plan from a description: choose "a plan from sources", type the work, add it, continue, check title
+  and id, start. The plan starts and the view offers "follow the progress" and "back to the project".
+
+== Findings: Projects
+
+[#UC-F-31]
+=== UC-F-31: The identity step of a project has no fields
+
+* Severity: `blocker`
+* Use case: link:{uc}/04-projects.adoc#UC-PRJ-1[UC-PRJ-1]
+* State: `projects.being-added`, "Setze fort" on `~/git/cui-parent`, step 2 of 10.
+* Seen: the card "Identität", the subtitle "Identity", the path, and a note "Noch keine Build-Umgebung erfasst: führe
+  pm-operator project add in einem Terminal dieser Maschine aus." No id, no name, no pilot. "Verwirf es" is a filled
+  red button; "Setze fort" is a secondary button.
+* Expected: id, name, and pilot, proposed and editable. A step that needs the terminal names the command and says what
+  the web app will do once it is done.
+* Also: the step bar of ten steps scrolls sideways, and every step repeats "wartet".
+
+image::{shots}/uc-project-onboarding-identity.jpg[Project onboarding, step 2: no identity fields, a terminal command, and a red abandon button,width=640]
+
+[#UC-F-32]
+=== UC-F-32: Release and unenrol are red on every card
+
+* Severity: `minor`
+* Use case: link:{uc}/04-projects.adoc#UC-PRJ-2[UC-PRJ-2]
+* Seen: each card ends with "Laufende Arbeit · Einrichtung · Freigeben… · Austragen…"; the last two in red.
+* Expected: the use case is met. Rare and destructive acts belong in an overflow menu
+  (link:../ux/findings.adoc#UX-F-05[UX-F-05]).
+
+[#UC-F-33]
+=== UC-F-33: No view for upstream MCP servers
+
+* Severity: `minor` (the use case is `DRAFT`)
+* Use case: link:{uc}/04-projects.adoc#UC-PRJ-4[UC-PRJ-4]
+* Seen: nothing in the project actions, the setup, or the settings.
+* Expected: once the use case is `AGREED`, a list per project with allow, change, and deny.
+
+== Findings: Starting Work
+
+[#UC-F-34]
+=== UC-F-34: The start view has no styling and ambiguous buttons
+
+* Severity: `major`
+* Use case: link:{uc}/05-starting-work.adoc#UC-STA-1[UC-STA-1]
+* Seen:
+** The choice "Was soll der Plan sein?" offers two plain text buttons and no explanation of "sources" and "recipe".
+** Under the description field, two buttons: "Beschreibung" and "+ Beschreibung". It is not clear which one adds.
+** "Chat" appears twice: as a button and as an orphan heading at the bottom.
+** "Weiter" looks the same while it waits for a source ("wartet auf 1 Quelle").
+** No step indicator, and no way back from the ready step.
+* Expected: the use case is met in function. The form fails the design (link:../visual-design/findings.adoc#VD-F-02[VD-F-02]).
+
+image::{shots}/vd-start-sources.jpg[The start view: plain text buttons, two "Beschreibung" buttons, an orphan "Chat" heading,width=640]
+
+[#UC-F-35]
+=== UC-F-35: Broken texts in the start flow
+
+* Severity: `major`
+* Use case: link:{uc}/05-starting-work.adoc#UC-STA-1[UC-STA-1]
+* Seen: the source row act reads "r) entfernen" (a key hint of the terminal client leaks). The started screen reads
+  "Add retry metrics to the relay reconnect. ist gestartet" (two sentence ends). The tab title reads "Einen Plan in
+  {project} starten".
+* See link:../cross-cutting/findings.adoc#CC-F-05[CC-F-05] and link:../cross-cutting/findings.adoc#CC-F-03[CC-F-03].
+
+[#UC-F-36]
+=== UC-F-36: The start view hangs on "checking"
+
+* Severity: `major`
+* Use cases: link:{uc}/05-starting-work.adoc#UC-STA-1[UC-STA-1] to link:{uc}/05-starting-work.adoc#UC-STA-9[UC-STA-9]
+* Seen 1: `/start` without a project shows the word "checking" and nothing else, for good.
+* Seen 2: `/projects/pm-mcp-clients/start` in state `start.rate-limited` creates an entry and shows "checking" for
+  good.
+* Seen 3: "Start the plan" on the overview, with API-Sheriff selected, opens `/projects/API-Sheriff/start` and shows
+  the red raw code `project_not_found`.
+* Expected: the setup gate shows progress, a time limit, and an outcome. A missing project names the cause and offers
+  a way back.
+
+[#UC-F-37]
+=== UC-F-37: An entry is created by the first click
+
+* Severity: `minor`
+* Use case: link:{uc}/05-starting-work.adoc#UC-STA-1[UC-STA-1], variation "entry kept or abandoned, never expires"
+* Seen: "Starte den Plan" on the overview creates `/entries/ent-…` before the operator chose anything. A curious click
+  leaves an entry that never expires.
+* Expected: the entry is created with the first source, or the entry list makes such empty entries easy to see and
+  drop.
+
+[#UC-F-38]
+=== UC-F-38: The start states of the mock are not reachable
+
+* Severity: `minor` (test bed)
+* Use cases: link:{uc}/05-starting-work.adoc#UC-STA-2[UC-STA-2] to link:{uc}/05-starting-work.adoc#UC-STA-9[UC-STA-9]
+* Seen: a jump to `start.rate-limited`, `start.recipe`, or `start.epic-adopt` does not lead the start view to that
+  state. Conformance of these use cases rests on the e2e specs.
+* See link:proposals.adoc#UC-P-08[UC-P-08].
+
+== Use-Case Document Defects in This Area
+
+[#UC-F-49]
+=== UC-F-49: UC-PRJ-1 does not say which steps need the terminal
+
+* Severity: `minor`
+* Use case: link:{uc}/04-projects.adoc#UC-PRJ-1[UC-PRJ-1]
+* The app sends the operator to the terminal for the build environment. The use case does not mention that a step can
+  need the machine's terminal, nor what a remote client shows then. UC-ONB-10 has such a rule for secrets ("on LAN the
+  form names the terminal command"). UC-PRJ-1 needs the same. See link:proposals.adoc#UC-P-12[UC-P-12].

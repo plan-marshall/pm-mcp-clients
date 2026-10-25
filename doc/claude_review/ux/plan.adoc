@@ -1,0 +1,100 @@
+= UX: Plan
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » link:README.adoc[UX] » Plan
+
+The steps run after the cross-cutting foundation (link:../cross-cutting/plan.adoc[CC-S-01 to CC-S-04]) and the
+components of the design system (link:../visual-design/plan.adoc[VD-S-01 to VD-S-03]). Each step is one pull request
+with its unit tests, its e2e specs, and the update of the design document it changes in `doc/design/web-app/` or
+`doc/design/shared/`. Paths are relative to `pm-web-app/src/`.
+
+[cols="1,4,2,3",options="header"]
+|===
+|Step |What to do |Proposals |Files and tests
+
+|UX-S-01
+|Build the app shell: rail, top bar, bottom bar for phone, live indicator. Move language and theme to the rail foot.
+Keep all routes working.
+|UX-P-02, UX-P-12
+|`routes/+layout.svelte` → `lib/shell/AppShell.svelte`, `NavRail.svelte`, `TopBar.svelte`, `BottomBar.svelte`;
+e2e `chrome.spec.js`, `workspace.spec.js`, `mobile.spec.js`.
+
+|UX-S-02
+|Attention inbox as home, derived on the client.
+|UX-P-01
+|new `lib/stores/attention.ts` (+ test), `lib/views/InboxView.svelte`, `lib/routes.ts`; new e2e `inbox.spec.js` on
+`fully-onboarded`.
+
+|UX-S-03
+|Command palette with the client index.
+|UX-P-02
+|new `lib/shell/CommandPalette.svelte`, `lib/stores/searchIndex.ts` (+ test); e2e `chrome.spec.js`.
+
+|UX-S-04
+|Four page templates; move one view per template as reference (Decisions, Plan, Start, System).
+|UX-P-03
+|new `lib/templates/*.svelte`; `DecisionView.svelte`, `PlanView.svelte`, `StartView.svelte`, `SystemView.svelte`.
+
+|UX-S-05
+|`ActionBar` and acts by state on plan, epic, project, device, runtime. Destructive acts into the overflow with
+confirmation dialogs.
+|UX-P-04
+|`lib/components/ActionBar.svelte`, `lib/actions/byState.ts`, `ConfirmDialog.svelte`; views as in
+link:../use-cases/plan.adoc[UC-S-03]; e2e `control.spec.js`, `projects.spec.js`, `devices.spec.js`.
+
+|UX-S-06
+|Error and loading patterns; request time limits; catalogue keys for every API error code.
+|UX-P-08
+|`lib/components/ErrorState.svelte`, `Skeleton.svelte`, `lib/api/client.ts`; catalogue in the runtime; a unit test that
+every error code of the API contract has its three keys.
+
+|UX-S-07
+|Plan page on the object template: head, attention strip, tabs, tree rework, phase narrative, activity rows.
+|UX-P-05
+|`PlanView.svelte`, `NodeNarrative.svelte`, `PlanSettingsModal.svelte` → Settings tab; e2e `plan-view.spec.js`.
+
+|UX-S-08
+|Decisions as triage, keyboard, auto-advance, toast.
+|UX-P-06
+|`DecisionView.svelte`, `lib/stores/viewLayout.ts` (layout toggle removed for decisions); e2e `decisions.spec.js`.
+
+|UX-S-09
+|Running work rework and ended work table.
+|UX-P-09
+|`OverviewView.svelte`; e2e `overview.spec.js`, `mobile.spec.js`.
+
+|UX-S-10
+|Start as a wizard.
+|UX-P-07
+|`StartView.svelte`, `SourceList.svelte`, `SourceIntakePanel.svelte`, `RecipeSelector.svelte`; e2e `start.spec.js`,
+`git-sources.spec.js`, `lesson-source.spec.js`.
+
+|UX-S-11
+|Epic page, projects grid, reports triage, designer panes.
+|UX-P-10
+|`EpicView.svelte`, `ProjectExplorerView.svelte`, `ReportsView.svelte`, `ProcessDesigner.svelte`,
+`WorkflowValidationResults.svelte`; e2e `epic-view.spec.js`, `projects.spec.js`, `reports.spec.js`, `designer.spec.js`.
+
+|UX-S-12
+|One settings place with tabs; forms with one save and "reset to inherited".
+|UX-P-02, UX-P-11
+|`SettingsView.svelte` + `MachineSettingsView.svelte` merged; `lib/routes.ts` redirect; e2e `onboarding.spec.js`
+(machine settings route), `devices.spec.js`.
+
+|UX-S-13
+|Update the designs: `doc/design/web-app/README.adoc` (structure, principles: add the next-action rule),
+`view-density-and-filtering.adoc` (layout modes replaced by templates), `interaction-affordances.adoc` (overflow menu,
+keyboard), and the shared designs whose screens changed.
+|all
+|`doc/design/**`; `doc-review` skill.
+|===
+
+== Order and Parallel Work
+
+* UX-S-01 first; it changes the frame every view sits in.
+* UX-S-02, UX-S-03, UX-S-04, UX-S-06 can run in parallel after UX-S-01.
+* UX-S-05 needs `ActionBar` styles from VD-S-03.
+* UX-S-07 to UX-S-12 follow UX-S-04, in the order of value: plan, decisions, running work, start, the rest.
+* UX-S-13 travels with each step; the last pull request closes it.

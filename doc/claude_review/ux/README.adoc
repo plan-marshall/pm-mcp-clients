@@ -1,0 +1,37 @@
+= Review: UX
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » UX
+
+This folder reviews how fast the operator finds information in `pm-web-app`, and whether they always know what to do
+next. The visual form (colour, type, components) is in link:../visual-design/README.adoc[Visual Design]; texts, time,
+and raw data are in link:../cross-cutting/README.adoc[Cross-Cutting].
+
+[cols="1,3",options="header"]
+|===
+|Document |What it holds
+
+|link:analysis.adoc[Analysis]
+|The information architecture today, five key tasks measured, and the main problems.
+
+|link:findings.adoc[Findings]
+|The findings `UX-F-01` to `UX-F-17` with evidence, and the patterns to keep.
+
+|link:proposals.adoc[Proposals]
+|The new information architecture, the attention inbox, the page templates, the next-action rule, and the rework per
+view, with wireframes.
+
+|link:plan.adoc[Plan]
+|The steps, in order.
+
+|link:verification.adoc[Verification]
+|Task-time targets and the checks per step.
+|===
+
+Wireframes (SVG, beside the proposals):
+
+* link:ux-shell-inbox.svg[`ux-shell-inbox.svg`]: the app shell with the attention inbox as home.
+* link:ux-plan-page.svg[`ux-plan-page.svg`]: the plan page template.
+* link:ux-decision-triage.svg[`ux-decision-triage.svg`]: decisions as a triage list with a detail pane.

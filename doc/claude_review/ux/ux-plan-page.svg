@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">Plan page template</title>
+  <desc id="d">The plan page: a head with kind, path, title, id chip, state sentence and acts; an attention strip for what the state asks; tabs; the process tab keeps the tree on the left and the narrative on the right.</desc>
+  <rect width="1200" height="720" fill="#0E1116"/>
+  <!-- head -->
+  <text x="32" y="40" fill="#8B95A7" font-size="12">PLAN · <tspan fill="#9DB4FF">pm-mcp-clients</tspan> › <tspan fill="#9DB4FF">Relay Hardening</tspan></text>
+  <text x="32" y="76" fill="#E6EAF2" font-size="26" font-weight="600">Fix Relay Transport</text>
+  <rect x="290" y="58" width="74" height="22" rx="6" fill="#161B22" stroke="#2A3140"/>
+  <text x="327" y="73" fill="#8B95A7" font-size="11" text-anchor="middle" font-family="ui-monospace, Menlo, monospace">fix-relay</text>
+  <rect x="372" y="58" width="48" height="22" rx="6" fill="#161B22" stroke="#2A3140"/>
+  <text x="396" y="73" fill="#9DB4FF" font-size="11" text-anchor="middle">PR 214</text>
+  <circle cx="38" cy="104" r="5" fill="#F2A93B"/>
+  <text x="50" y="108" fill="#E6EAF2" font-size="14">Waits for you · execute · for 2 h 10 min · task 3 of 5</text>
+  <!-- acts -->
+  <rect x="868" y="56" width="150" height="34" rx="8" fill="#7C6CF6"/>
+  <text x="943" y="78" fill="#FFFFFF" font-size="13" font-weight="600" text-anchor="middle">Open the decision</text>
+  <rect x="1026" y="56" width="64" height="34" rx="8" fill="none" stroke="#3A4356"/>
+  <text x="1058" y="78" fill="#E6EAF2" font-size="13" text-anchor="middle">Chat</text>
+  <rect x="1098" y="56" width="64" height="34" rx="8" fill="none" stroke="#3A4356"/>
+  <text x="1130" y="78" fill="#E6EAF2" font-size="13" text-anchor="middle">Pause</text>
+  <rect x="1166" y="56" width="22" height="34" rx="6" fill="none"/>
+  <text x="1177" y="78" fill="#AEB6C4" font-size="16" text-anchor="middle">⋯</text>
+  <!-- attention strip -->
+  <rect x="32" y="128" width="1136" height="44" rx="10" fill="#2A2112" stroke="#5A4317"/>
+  <text x="52" y="155" fill="#F6C46B" font-size="13" font-weight="600">Waits for your decision:</text>
+  <text x="222" y="155" fill="#E6EAF2" font-size="13">Resolve rebase conflict · recommended: Rebase onto main</text>
+  <text x="1148" y="155" fill="#F6C46B" font-size="13" text-anchor="end" font-weight="600">Open the decision →</text>
+  <!-- tabs -->
+  <g font-size="13">
+    <text x="32" y="210" fill="#E6EAF2" font-weight="600">Process</text>
+    <rect x="32" y="218" width="58" height="2" fill="#7C6CF6"/>
+    <text x="118" y="210" fill="#8B95A7">Intent</text>
+    <text x="186" y="210" fill="#8B95A7">Activity</text>
+    <text x="264" y="210" fill="#8B95A7">Tokens</text>
+    <text x="334" y="210" fill="#8B95A7">Settings</text>
+  </g>
+  <rect x="32" y="221" width="1136" height="1" fill="#252C38"/>
+  <!-- tree -->
+  <rect x="32" y="238" width="440" height="450" rx="10" fill="#12161D" stroke="#2A3140"/>
+  <text x="52" y="264" fill="#8B95A7" font-size="11" font-weight="600" letter-spacing="1">PROCESS</text>
+  <text x="452" y="264" fill="#9DB4FF" font-size="12" text-anchor="end">⌖ Jump to now</text>
+  <g font-size="13">
+    <text x="52" y="298" fill="#3FB37F">✓</text><text x="74" y="298" fill="#E6EAF2">Init</text><text x="452" y="298" fill="#6B7587" text-anchor="end">2 min</text>
+    <text x="52" y="330" fill="#3FB37F">✓</text><text x="74" y="330" fill="#E6EAF2">Refine</text><text x="128" y="330" fill="#8B95A7" font-size="11">2 runs</text><text x="452" y="330" fill="#6B7587" text-anchor="end">25 min</text>
+    <rect x="44" y="346" width="420" height="28" rx="6" fill="#1E2433"/>
+    <text x="52" y="365" fill="#3FB37F">✓</text><text x="74" y="365" fill="#E6EAF2" font-weight="600">Outline</text><text x="452" y="365" fill="#6B7587" text-anchor="end">31 min</text>
+    <text x="52" y="398" fill="#3FB37F">✓</text><text x="74" y="398" fill="#E6EAF2">Plan</text><text x="452" y="398" fill="#6B7587" text-anchor="end">9 min</text>
+    <text x="52" y="430" fill="#4C9AFF">▾</text><text x="74" y="430" fill="#E6EAF2">Execute</text><text x="136" y="430" fill="#4C9AFF" font-size="11">running</text><text x="452" y="430" fill="#6B7587" text-anchor="end">25 min</text>
+    <text x="92" y="460" fill="#3FB37F">✓</text><text x="112" y="460" fill="#AEB6C4">TASK-001 implement</text>
+    <text x="92" y="488" fill="#3FB37F">✓</text><text x="112" y="488" fill="#AEB6C4">TASK-002 module test</text>
+    <text x="92" y="516" fill="#F2A93B">●</text><text x="112" y="516" fill="#E6EAF2">TASK-003 implement</text><text x="270" y="516" fill="#F2A93B" font-size="11">off track</text>
+    <text x="92" y="544" fill="#6B7587">○</text><text x="112" y="544" fill="#6B7587">remediation · ci failure</text>
+    <text x="52" y="576" fill="#6B7587">○</text><text x="74" y="576" fill="#8B95A7">Finalize</text>
+    <text x="52" y="616" fill="#6B7587" font-size="11">NOT IN THIS PLAN</text>
+    <text x="52" y="638" fill="#6B7587" font-size="12">none</text>
+  </g>
+  <!-- narrative -->
+  <rect x="488" y="238" width="680" height="450" rx="10" fill="#161B22" stroke="#2A3140"/>
+  <text x="512" y="270" fill="#8B95A7" font-size="11" font-weight="600" letter-spacing="1">OUTLINE · DONE · 31 MIN</text>
+  <text x="512" y="300" fill="#E6EAF2" font-size="17" font-weight="600">The outline names 4 deliverables and 7 criteria.</text>
+  <g font-size="13" fill="#AEB6C4">
+    <text x="512" y="336">Steps taken</text>
+    <text x="532" y="362" fill="#E6EAF2">outline.draft → outline.self-review → outline.builder-check</text>
+    <text x="512" y="396">Steps not taken</text>
+    <text x="532" y="422" fill="#6B7587">outline.re-scope (the builder check found no over-size)</text>
+    <text x="512" y="456">Decisions in this phase</text>
+    <text x="532" y="482" fill="#E6EAF2">Q-005 Pick transport · delegated</text>
+    <text x="512" y="520" fill="#9DB4FF">Open the intent and outline →</text>
+  </g>
+  <text x="512" y="668" fill="#6B7587" font-size="12">Wireframe, not to scale.</text>
+</svg>
