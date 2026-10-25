@@ -1,0 +1,24 @@
+relay-hardening · epic · running · automatic · 3 of 3 at once · needs you: 3
+  in pm-mcp-clients                            status --project pm-mcp-clients
+  WS-1 Reconnect   1 shipped · 1 running · 1 paused · 1 staged
+    shipped           relay-reconnect-backoff   #211
+    running           relay-cursor-order
+    paused by you     relay-reconnect-docs
+    staged            relay-reconnect-metrics   can start
+  WS-2 Authentication   1 waiting for you · 2 staged
+    waiting for you   relay-auth-v2
+    staged            relay-token-rotation   after relay-auth-v2
+    staged            relay-docs   waits: overlap with relay-auth-v2
+  WS-3 Observability   1 paused · 1 staged
+    paused by you     relay-metrics
+    staged            relay-metrics-docs   can start
+  Sources        2 documents, 1 issue
+  Landings       2
+    relay-reconnect-backoff   #211
+  Findings       3 new · 4 open · 2 kept   epic findings relay-hardening
+  Watches        4 open · 0 kept   epic watches relay-hardening
+  Tokens         ≥ 3.86 M (≥ 3.52 M in · ≥ 340 k out) · 9 plans and the epic's own tasks
+  Events         newest first
+    14:40  relay-auth-v2 asks a decision
+    14:05  relay-reconnect-backoff landed; relay-reconnect-metrics re-ordered
+    13:55  you paused relay-reconnect-docs

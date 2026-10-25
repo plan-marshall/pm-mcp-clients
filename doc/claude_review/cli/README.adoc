@@ -1,0 +1,161 @@
+= Review of the Terminal Client `pm-operator`
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » CLI Review
+
+Date: 2026-10-25. Subject: the terminal client `pm-operator`: its verbs, its console (`pm ›`), its full-screen views
+and its dialogues. Reviewer: Claude (Opus 5.5), on request of the operator. The review of the web app is in
+link:../README.adoc[the parent folder]; this review uses the same method and the same structure.
+
+== Purpose
+
+The terminal client is the second client of the operator (`PM-ARCH-11`). It must serve the same use cases as the web
+app, and it is the only client for some acts. This review answers three questions:
+
+. Does the client implement the use cases correctly? Do the use cases need changes?
+. Is the user experience fast and clear? Does the operator always know what to do next?
+. Is the terminal presentation good enough to sell? How do we make it better?
+
+The operator added one question: is the operator gate (`PM-SEC-3`) a bug? The answer is in
+link:cross-cutting/findings.adoc#CLI-CC-F-07[CLI-CC-F-07].
+
+The review does not change code. It states findings, proposes changes, plans the work, and says how to verify it.
+
+[#verdict]
+== Verdict
+
+[cols="1,1,4",options="header"]
+|===
+|Aspect |Verdict |Summary
+
+|Use cases
+|`not ready`
+|Of 37 use cases of the terminal client: 2 conform, 8 are partial, 7 deviate, 7 are missing, and 13 were not
+verifiable against the mock. The views that read are good. Most dialogues that act are absent or unsafe: the guided
+onboarding cannot begin, a decision cannot be answered, the pause dialogue pauses on any input, and `runtime stop`
+stops without a question. See link:use-cases/analysis.adoc[Use Cases, Analysis].
+
+|UX
+|`not ready`
+|The printed views (`status`, `epic`, `reports`, `system`) are fast and complete. The interactive parts are not
+reliable: the help key breaks the screen, footers keep text of the previous level, dialogues have no way out, and
+errors are raw HTTP codes and JSON. See link:ux/analysis.adoc[UX, Analysis].
+
+|Visual design
+|`not ready`
+|The layout follows the design: header, separators, footer, a consistent glyph set. But the product prints no colour
+at all, has no ASCII fallback, and its columns do not align between row kinds. It looks like a debug tool, not a
+product. See link:visual-design/analysis.adoc[Visual Design, Analysis].
+
+|Cross-cutting
+|`not ready`
+|Hard-coded English strings, raw ids and values, three formats for relative time, ids and titles mixed for the same
+plan. The pushed notices of the console never show. The operator gate is applied to read-only verbs. No PTY test
+covers a dialogue that acts. See link:cross-cutting/analysis.adoc[Cross-Cutting, Analysis].
+|===
+
+What to keep:
+
+* the printed `status` tree and the printed epic view: dense, complete, one screen;
+* the full-screen frame (header with connection state, separators, a footer from the key registry);
+* the projects explorer, which matches its design closely;
+* the start dialogue (`plan add`): five inputs from an issue to a started plan;
+* the worker activity level of the plan view, which reads like a narrative;
+* the fallbacks for narrow and dumb terminals, with a one-line reason;
+* the onboarding introduction text, which says what happens and what does not.
+
+[#structure]
+== Structure
+
+The structure is the one of the web review. One folder per aspect, each with the same five documents: Analysis,
+Findings, Proposals, Plan, Verification. The ids carry the prefix `CLI-`, so they never clash with the web review:
+`CLI-UC-F-nn`, `CLI-UX-P-nn`, `CLI-VD-S-nn`, `CLI-CC-V-nn`.
+
+[cols="1,3",options="header"]
+|===
+|Folder |What it covers
+
+|link:use-cases/README.adoc[Use Cases]
+|Conformance of the client to the 37 use cases it serves, and the changes the use cases need.
+
+|link:ux/README.adoc[UX]
+|Commands, console, keys, dialogues, speed to information, the next action, errors, scripting.
+
+|link:visual-design/README.adoc[Visual Design]
+|Terminal presentation: layout grid, colour, glyphs, density, truncation, brand.
+
+|link:cross-cutting/README.adoc[Cross-Cutting]
+|Language and texts, raw data, time, errors, fallbacks, the operator gate (`PM-SEC-3`), tests, the mock.
+|===
+
+Evidence: captured screens in link:resources/screens/[`resources/screens/`], as text (`.txt`) and, for some, as
+coloured SVG (dark and light background).
+
+[#method]
+== Method
+
+The client ran against the running mock runtime. Code was read only to confirm a cause.
+
+* *Environment*: `pm-mock-runtime` on `127.0.0.1:7420`, base `pm-mock-runtime/target/machine`. The client ran through
+  `pm-operator/start.sh` with `PM_MCP_BASE` set to the mock base on every run. Sizes: 120 × 30, 80 × 24, 70, 66, 50
+  columns. Languages: `en_US.UTF-8`, `de_DE.UTF-8`, `C`. Terminals: `xterm-256color`, `dumb`, `NO_COLOR`.
+* *Pass 1, showroom*: every verb, the console, and every full-screen view in the scenario `fully-onboarded`.
+* *Pass 2, use cases*: the scenarios `running-work`, `onboarding`, `projects-and-start`, and `reports-and-system`.
+  States were reached with `POST /mock/goto/<state>`.
+* *Pass 3, UX*: the five key tasks of the web review, measured in commands and inputs.
+* *Pass 4, visual design*: the screens against `doc/design/terminal-client/` and the shared design.
+
+[#access]
+=== Access to the Client
+
+`pm-operator` refuses to start in a coding-agent environment (`OperatorGate`, `PM-SEC-3`). With the operator's
+consent, the review ran the client the way the PTY tests do (`PtySession`):
+
+* a cleared environment (`env -i`), with only `HOME`, `PATH`, `JAVA_HOME`, `TERM`, the locale and `PM_MCP_BASE`;
+* a pseudo-terminal from `script(1)`, driven by `expect`;
+* a stdlib-only renderer in the scratch folder that turns the terminal output into the screen text and an SVG.
+
+The first runs used the real `HOME`. They added three lines to the console history in `~/.local/state/pm-operator/`
+(removed again) and changed `overview.json` there (the stored selection). All later runs used a scratch `HOME`.
+
+[#limits]
+=== Limits of the Mock
+
+The limits of the web review hold here too: most views read domain data from the engine, not from the state of the
+scenario. In addition, the mock returns the same plan for every plan id, and it has no routes for
+`/api/v1/config/<aspect>` and `/api/v1/roles`. Each finding says whether its cause is the client or the mock
+(link:cross-cutting/findings.adoc#CLI-CC-F-10[CLI-CC-F-10]).
+
+The mock was set back to `fully-onboarded` at the end. No code was changed.
+
+[#order]
+== Order of Work
+
+. *Safety first* (link:use-cases/plan.adoc[Use Cases, Plan], steps 1 to 3): the pause dialogue, `runtime stop`, and
+  one strict choice prompt for every dialogue. These are small and remove the acts that do what the operator did not
+  ask.
+. *The broken acts* (Use Cases, steps 4 to 7): answering, the pushed notices, the onboarding dialogue, the project
+  onboarding, the cleanup dialogue.
+. *Foundation* (link:cross-cutting/plan.adoc[Cross-Cutting, Plan]): texts, display layer, time, errors, PTY tests.
+. *Interaction* (link:ux/plan.adoc[UX, Plan]): footer and help, "needs you", verb modes, scripting.
+. *Presentation* (link:visual-design/plan.adoc[Visual Design, Plan]): colour roles, ASCII fallback, column grid,
+  brand.
+
+[#web]
+== Compared With the Web Review
+
+* *Shared defects.* Raw enums and ids, raw time, and the wrong report after an answer elsewhere appear in both clients.
+  The cause is the same: no shared display layer. The cross-cutting proposals of both reviews converge on one display
+  layer in `pm-api` and the web catalogue.
+* *Reading is stronger here.* The printed `status` and epic views answer more in one screen than any web view.
+* *Acting is weaker here.* The web app can onboard, answer, pause safely and clean up. The terminal client cannot.
+* *Design maturity.* The web app has a skin that needs a redesign. The terminal client has a sound frame without
+  colour, hierarchy, or brand.
+
+== Language of These Documents
+
+The documents follow the spirit of ASD-STE100
+(link:../../../../plan-marshall-documentation/doc/articles/karpathy-ste100-output.adoc[ASD-STE100 Output]): short
+sentences, one action per step, one term per thing. The terms of the product glossary are used as they are.

@@ -1,0 +1,65 @@
+= CLI Review: Cross-Cutting, Plan
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[CLI Review] » link:README.adoc[Cross-Cutting] » Plan
+
+The foundation steps. CLI-CC-S-01 goes first of all steps of this review: the PTY tests prove the safety fixes of
+link:../use-cases/plan.adoc[Use Cases, Plan].
+
+[#CLI-CC-S-01]
+== CLI-CC-S-01: PTY Tests for the Dialogues That Act
+
+Proposals:: link:proposals.adoc#CLI-CC-P-07[CLI-CC-P-07]
+
+. Add `/mock/acts` to the mock: the acts received since the last reset.
+. Add the `*DialogueIT` classes with the three cases each. They fail today for pause, answer, onboarding, project
+  setup, cleanup, and runtime stop. That is expected: the use-case steps make them pass.
+. Count the dialogue paths in the coverage gate.
+
+[#CLI-CC-S-02]
+== CLI-CC-S-02: The Gate Scope
+
+Proposals:: link:proposals.adoc#CLI-CC-P-05[CLI-CC-P-05] (now)
+
+. Move `gate().verify()` from the read-only paths to the act paths; check acts in the console dispatcher.
+. Rewrite the refusal text through the catalogue.
+. Extend `OperatorGateTest` and add a test per verb: read-only verbs run with a marker set, act verbs refuse.
+. Bring the development switch to the operator for a decision. Do not build it before the decision.
+
+[#CLI-CC-S-03]
+== CLI-CC-S-03: Catalogue Completeness
+
+Proposals:: link:proposals.adoc#CLI-CC-P-01[CLI-CC-P-01], link:proposals.adoc#CLI-CC-P-04[CLI-CC-P-04]
+
+. Move the fixed strings into the catalogue; add the Picocli resource bundle and handlers.
+. Add `operator.refusal.<code>` texts and fixes for every `pm-api` error code.
+. Add the literal-scanning test.
+
+[#CLI-CC-S-04]
+== CLI-CC-S-04: Display Layer and Time
+
+Proposals:: link:proposals.adoc#CLI-CC-P-02[CLI-CC-P-02], link:proposals.adoc#CLI-CC-P-03[CLI-CC-P-03]
+
+. Specify the time rule in `shared/texts-and-languages.adoc`; run `doc-review`.
+. Add `Display` to `pm-api` with words, titles, time, and duration; unit tests per kind and language.
+. Use it in every view, printed tree, and dialogue of the client.
+. Offer the same keys to the web app (web review, CC-S-01).
+
+[#CLI-CC-S-05]
+== CLI-CC-S-05: Accessibility and the Start Script
+
+Proposals:: link:proposals.adoc#CLI-CC-P-06[CLI-CC-P-06], link:proposals.adoc#CLI-CC-P-08[CLI-CC-P-08]
+
+. Print the summary line after `q`.
+. Write the PID file of `start.sh` for `-d` only.
+
+[#CLI-CC-S-06]
+== CLI-CC-S-06: The Proof of Presence (`L-1`)
+
+Proposals:: link:proposals.adoc#CLI-CC-P-05[CLI-CC-P-05] (later)
+
+. Write the decision record for the proof of presence with the three options; let the operator decide.
+. Change `PM-SEC-3` and `L-1` in `plan-marshall-documentation`.
+. Plan the runtime and client work as a work package in `doc/plans/`.

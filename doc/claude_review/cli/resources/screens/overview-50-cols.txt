@@ -1,0 +1,3 @@
+The terminal is too narrow for the full-screen view; here is the scrollback instead.
+plans: plan list refused by the runtime (HTTP 404): {"error":"mock_no_route","message":"No route matched for GET /api/v1
+/plans in state 'reports.unread'","state":"reports.unread","offered_links":["open_completion","read_all"]}

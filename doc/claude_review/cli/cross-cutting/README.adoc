@@ -1,0 +1,28 @@
+= CLI Review: Cross-Cutting
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[CLI Review] » Cross-Cutting
+
+This folder covers: Language and texts, raw data, time, errors, fallbacks, accessibility, the operator gate (PM-SEC-3), tests, and the mock.
+
+[cols="1,3",options="header"]
+|===
+|Document |What it holds
+
+|link:analysis.adoc[Analysis]
+|The high-level result.
+
+|link:findings.adoc[Findings]
+|The detailed findings with evidence (`CLI-CC-F-nn`).
+
+|link:proposals.adoc[Proposals]
+|The changes, as engineering detail. Each proposal names the findings it resolves.
+
+|link:plan.adoc[Plan]
+|The steps, in order. Each step names its proposals.
+
+|link:verification.adoc[Verification]
+|The checks that prove the steps.
+|===

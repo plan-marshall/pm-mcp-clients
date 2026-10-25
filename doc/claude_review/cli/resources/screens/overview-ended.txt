@@ -1,0 +1,30 @@
+Ended work · pm-mcp-clients                                                                                 ● connected
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▶ ▸ plan  fix-relay-v1                         merged       #214 · 16 Oct
+  ◇ epic  relay-hardening-v1                   completed    15 Oct
+  ▸ plan  relay-cursor-order-v1                aborted      15 Oct
+    the edit was not ours
+  ▸ plan  codeberg-issues                      cancelled    14 Oct
+    replaced by relay-v2
+  ▸ plan  docs-cleanup                         abandoned    11 Oct
+    no longer needed
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+↑↓ move   Enter open   a actions   / filter   Esc backts   Tab by epic   E ended work   Esc back

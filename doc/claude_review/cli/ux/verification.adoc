@@ -1,0 +1,89 @@
+= CLI Review: UX, Verification
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[CLI Review] » link:README.adoc[UX] » Verification
+
+[#targets]
+== Targets
+
+Measured as in link:analysis.adoc#tasks[Analysis, Key Tasks], in the scenario `running-work`.
+
+[cols="3,1,1,3",options="header"]
+|===
+|Task |Commands |Inputs |How
+
+|T1: What needs me now?
+|1
+|1
+|`needs`, or the prompt badge, which already counts it.
+
+|T2: Answer a waiting decision.
+|1
+|≤ 3
+|`answer Q-007`, Enter on the recommendation (or `answer Q-007 2`).
+
+|T3: Why does this plan wait?
+|0
+|1
+|`!` on the row in the overview opens the decision.
+
+|T4: Start a plan from an issue.
+|1
+|5
+|Unchanged; every choice has a key.
+
+|T5: What happened?
+|1
+|1
+|`reports`; rows fit their columns.
+|===
+
+== Checks
+
+[cols="1,1,3,2",options="header"]
+|===
+|Check |Step |What must be true |Where
+
+|CLI-UX-V-01
+|CLI-UX-S-01
+|After every level change (overview → plan view → activity → back, `E`, `R`, `S`, `a`), no cell of the footer or of
+any row shows text of the previous level.
+|`TuiScreenTest`; walk at 120 × 30
+
+|CLI-UX-V-02
+|CLI-UX-S-02
+|`?` shows a box with every binding of the level and the row details; `Esc` closes it. The footer shows the keys by
+priority and `? more` when cut; no key is cut in the middle. At 80 columns `a`, `Enter`, `Esc`, `?`, `q` stay.
+|`TuiCapabilityIT`
+
+|CLI-UX-V-03
+|CLI-UX-S-03
+|`answer Q-999 1`, `plan nope`, `bogus`, and `config show` (if still refused) print the three-line pattern, no HTTP
+status, no JSON. Exit codes: `1`, `1`, `2`, `1`.
+|`ExitCodesTest`; walk
+
+|CLI-UX-V-04
+|CLI-UX-S-04
+|`needs` lists every item of `running-work` that needs the operator, across projects, with its command. The prompt
+badges, the overview, `status`, and `needs` give the same counts. `!` on the waiting row opens its decision.
+|`NeedsCommandTest`; PTY test
+
+|CLI-UX-V-05
+|CLI-UX-S-05
+|`help` lists every verb in groups; `help plan` and `plan --help` show the plan verbs; `epic <id>` opens full screen
+in a terminal; `epic <id> --print` prints.
+|walk; transcript tests
+
+|CLI-UX-V-06
+|CLI-UX-S-06
+|`plans --json` validates against its schema and holds plans, not the status. Each listing verb has `--json` with a
+schema test.
+|schema tests
+
+|CLI-UX-V-07
+|all
+|The five targets above are met in a walk by a person who has not used the client before, without reading the docs.
+|walk
+|===

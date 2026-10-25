@@ -1,0 +1,177 @@
+= CLI Review: Use Cases, Proposals
+:toc: left
+:toclevels: 2
+:nofooter:
+:uc: ../../../../../plan-marshall-documentation/doc/use-cases
+:tc: ../../../design/terminal-client
+:op: pm-operator/src/main/java/de/planmarshall/operator
+
+link:../README.adoc[CLI Review] » link:README.adoc[Use Cases] » Proposals
+
+Each proposal names the findings it resolves. Paths are relative to the repository root; `{op}` stands for the
+package root of the client.
+
+[#CLI-UC-P-01]
+== CLI-UC-P-01: One State Dialogue for the Onboardings
+
+Resolves:: CLI-UC-F-01, CLI-UC-F-02, CLI-UC-F-03, CLI-UC-F-21
+
+The design already states the rule: the client renders the state the runtime reports and sends the chosen link. Build
+that renderer once and use it for the machine onboarding, the project onboarding, and the later setting changes.
+
+* *`StateDialogue`* (new, `{op}/dialogue/StateDialogue.java`): a loop of fetch state → render frame → read choice →
+  send link → repeat, until a final state or `q`.
+* *Frame* (`03-dialogues.adoc#state-frame`):
+** the step line `[n/7] Step · Title`;
+** the content, indented two spaces, 80 columns at most;
+** the prompt line with the primary action as a question.
+* *Texts*: the title, explanation, and option texts come from the shared catalogue by state id
+  (`onboarding.*.properties`), never from the link name. A link without a catalogue text is a build failure (see
+  CLI-UC-P-07), not a raw word on screen.
+* *Choices*: through the strict choice prompt of CLI-UC-P-02.
+* *Entry*:
+** `EntryFlow` hands over to `StateDialogue` after `h)`.
+** Enter at an empty prompt continues the open onboarding (`04-console.adoc#prompt`).
+** `onboard` without options runs the dialogue; `--step` and `--auto --yes` stay for scripts and print one line per
+   state (`✓ Interface language  Deutsch   (--interface de)`, `01-commands.adoc#direct-verbs`).
+* *Project onboarding*: `project setup <id>` and "Continue" in the explorer run the same dialogue on the project's
+  onboarding resource.
+
+[#CLI-UC-P-02]
+== CLI-UC-P-02: One Strict Choice Prompt
+
+Resolves:: CLI-UC-F-18, CLI-UC-F-03, CLI-UC-F-23
+
+A shared prompt type for every dialogue, `{op}/dialogue/ChoicePrompt.java`:
+
+* *Input*:
+** A choice is a key, a number, or a range (multi-choice).
+** Enter takes the preselection only where the dialogue declares one.
+** `?` explains, `?n` explains item n.
+** `q` (German `v`) leaves: "Left <state>. Nothing was sent."
+* *Unknown input re-asks*: "3 is not offered here: 1-2, a, l, q" (`03-dialogues.adoc`). It never falls through to a
+  default.
+* *Echo*: the typed answer stays on the prompt line.
+* *Consent and irreversible acts*: no Enter default (`y`/`n` only).
+* *Rendering*: options with consequences in a two-column list; the preselection marked `←` with its reason.
+
+Replace the hand-written parsing in `WorkActionDialogue.pause` (`switch` with `default -> "task"`), `cancel`/`abandon`,
+`AnswerCommand`, `StartDialogue`, `EntryFlow`, and `OnboardCommand.confirm` (`[y/N]`).
+
+[#CLI-UC-P-03]
+== CLI-UC-P-03: A Working Answer Dialogue
+
+Resolves:: CLI-UC-F-10, CLI-UC-F-11
+
+* *Terminal ownership*: `AnswerCommand` must not close a terminal it did not open. Use the scoped terminal of the
+  console as borrowed (no try-with-resources). In the shell, open and close its own.
+* *Errors*: no `catch (IOException | RuntimeException)` that prints to a writer of the closed terminal. Let a refusal
+  reach the common refusal renderer (link:../ux/proposals.adoc#CLI-UX-P-05[CLI-UX-P-05]).
+* *Content*:
+** options, votes, dissent, and recommendation from the decision envelope;
+** the evidence hint built from `evidence` (file, lines, summary);
+** the range `1-N` from the option count.
+* *Texts*: every string through `MessageCatalogue` (`operator.decision.*`). Remove the fixed English listed in
+  CLI-UC-F-11.
+* *Direct answer*: `answer Q-007 2` sends without a dialogue and prints `✓ Q-007 answered: Rebase onto main`.
+* *Test*: a PTY test per path (option, own words, waiver, later) against the mock (see CLI-CC-P-07).
+
+[#CLI-UC-P-04]
+== CLI-UC-P-04: One Event Contract for Both Clients
+
+Resolves:: CLI-UC-F-07, CLI-UC-F-06
+
+* *Event name first*: `ConsoleNotice.fromEventMap` takes the SSE event name (`decision.opened`,
+  `decision.answered`, `hold.opened`, `landing.failed`, `report.sent`, …) and maps it to a notice. The `type` field
+  stays a fallback only while the runtime sends it.
+* *A shared table*: put the table of event names and their notice kinds into `pm-api`
+  (`de.planmarshall.api.events.EventKind`), so the web app and the console read the same list.
+* *Answered elsewhere*: add the notice
+  `– Q-007 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.`
+  (`04-console.adoc#answered-elsewhere`). Show the option label, never the key.
+* *Badges*:
+** The prompt badge counts come from the status (`needs_operator` per kind).
+** They are refreshed on each event: `pm [3 questions · 1 hold] ›`, at most three, then `+N`.
+
+[#CLI-UC-P-05]
+== CLI-UC-P-05: Confirm Every Act That Cannot Be Undone
+
+Resolves:: CLI-UC-F-31, CLI-UC-F-34, CLI-UC-F-19
+
+* *`runtime stop|restart|upgrade`*:
+** Run the stop dialogue of `25-system.adoc`: what runs, then `1) Stop when done   2) Stop now   k) keep it running`.
+** `--now` and `--when-done` answer it for scripts.
+** `--no-input` without an answer exits `3`.
+* *`cleanup`*:
+** Run the cleanup dialogue of `26-cleanup.adoc` after the list: `d r i x o q`.
+** The deletion is confirmed with `y`/`n` only.
+** `cleanup --list` keeps the printed form.
+* *Actions by state*:
+** The action menu comes from the links of the state, in the order of `19-actions.adoc`.
+** A waiting plan offers the decision first (`! Decide Q-009…`).
+** A held plan offers the acts of its hold above the others.
+
+[#CLI-UC-P-06]
+== CLI-UC-P-06: Show What the Runtime Is Doing, Once
+
+Resolves:: CLI-UC-F-32, CLI-UC-F-33
+
+* *One model*: the printed and the full-screen system views render from one model (`SystemSnapshot`) and one
+  formatter. Today they disagree on listeners and token units.
+* *Lifecycle first*: the first line shows the lifecycle state: `draining · 2 plans finish · stop in 4 min`,
+  `restarting`, `stopped`.
+* *No repeats*: one line per job kind; "not measured" once, with the reason.
+
+[#CLI-UC-P-07]
+== CLI-UC-P-07: The Config Contract
+
+Resolves:: CLI-UC-F-04, CLI-UC-F-05
+
+* Decide which is right: the client's aspect endpoints (`/api/v1/config/<aspect>`) or the transport table
+  (`GET /api/v1/config`, `PUT`/`DELETE /api/v1/config/{level}/{key}`). Update the other. This is a decision of the
+  operator; the specification lives in `plan-marshall-documentation`.
+* Give the mock the routes the decision keeps.
+* Exit codes: a failed read exits `1` (`01-commands.adoc#exit-codes`).
+* `config` overview: align values in one column; print the prompt on its own line; show all items the prompt offers.
+
+[#CLI-UC-P-08]
+== CLI-UC-P-08: Mock Changes for Conformance Work
+
+Resolves:: CLI-UC-F-13, CLI-UC-F-15, CLI-UC-F-32
+
+Extends the mock proposal of the web review (link:../../use-cases/proposals.adoc#UC-P-08[web UC-P-08]):
+
+* Plan details per id. An unknown id is a `404 plan_not_found`, so the client must show "not found".
+* The routes the clients call in every scenario (`/api/v1/plans` in `reports-and-system`, or an empty list on
+  purpose).
+* The lifecycle state of `system.*` in `/api/v1/status` (`lifecycle_state: draining`).
+* `README.adoc` of the mock: the socket is `run/runtime.sock`, not `pm-mcpd.sock`.
+
+[#documents]
+== Changes to the Use-Case Documents
+
+The use cases need no change for the terminal client. Their `Design::` lines already name the terminal documents, and
+the design describes every missing dialogue. Two additions make the proposals of the web review complete for both
+clients:
+
+. *UC-PLN-7 "See What Needs You"* (proposed in link:../../use-cases/proposals.adoc#UC-P-09[web UC-P-09]): add the
+  terminal variation.
++
+[source,asciidoc]
+----
+Variations::
+* In the terminal client, the console prompt carries one badge per kind that needs the operator, and the verb
+  `needs` (also `!` at the prompt) lists every item across projects in the order of the inbox, each with the act
+  that resolves it (`answer Q-007`, `plan hold fix-relay`). A pushed notice adds to the list; it never takes the
+  focus.
+----
+. *UC-PLN-4 "See What Runs, Across Projects"*: add the machine-readable variation, since operators script the
+  terminal client.
++
+[source,asciidoc]
+----
+Variations::
+* A script asks for the same picture: `plans --json` and `status --json` print the projects, plans, epics, and what
+  needs the operator as one document with stable field names, and exit `0`; a refused request exits `1` and prints
+  the error code on stderr.
+----

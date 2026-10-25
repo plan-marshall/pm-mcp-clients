@@ -1,0 +1,125 @@
+= CLI Review: UX, Analysis
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[CLI Review] » link:README.adoc[UX] » Analysis
+
+== Result in Short
+
+The terminal client has two faces:
+
+. *The printed verbs are fast.* `status`, `epic <id>`, `system`, `reports`, and `questions` each answer one question in
+  one screen, with no key to learn. For a production operator this is the strongest part of either client.
+. *The interactive parts are fragile.* The help key breaks every full-screen view. The footer keeps text of the level
+  before. Dialogues have no way out or no question at all. Errors are HTTP codes and JSON. The operator cannot trust
+  what a key or an answer will do.
+
+[#model]
+== Interaction Model Today
+
+[source,text]
+----
+pm-operator <verb>           printed result, exit code         status, epic, system, reports, projects --list
+pm-operator                  console  pm ›                     help, questions, answer, plans, any verb
+  plans | tui | projects     full-screen views (alternate screen)
+    Running work · projects ─ project (by plan | by epic) ─ plan view ─ worker activity
+                            └ E ended work   R reports   S system   a actions   ! what waits   ? help
+  dialogues                  line mode in the scrollback       start, pause, cancel, chat, answer, config
+----
+
+Observations:
+
+* *Three surfaces, three key languages.* Verbs take options, the console takes verbs, the views take single keys, and
+  dialogues take a key plus Enter. `q` leaves a view, prints a usage dump at the console prompt, and pauses a plan in
+  the pause dialogue.
+* *Verb modes differ by verb.* In a terminal, `plan <id>` opens full screen; `epic <id>` prints; `system` prints in the
+  shell and opens full screen in the console.
+* *Discoverability.* The console `help` lists 9 of the 29 verbs. The shell has no `help` verb (`pm-operator help` is a usage
+  error). The full-screen help overlay does not work.
+
+[#tasks]
+== Key Tasks, Measured
+
+The tasks of the web review, measured from a shell in the scenario `fully-onboarded` (T2 in `running-work`).
+"Commands" counts typed commands and opened views; "inputs" counts keys and lines.
+
+[cols="3,1,1,4",options="header"]
+|===
+|Task |Commands |Inputs |What happens
+
+|T1: What needs me now, across all projects?
+|2
+|≥ 2
+|`status` shows `! 2` and `! 1` per project, with kinds (`! decision`, `! landing failed`, `! setup`). `questions` lists
+three decisions; the overview shows one. No single answer; the counts disagree (CLI-UX-F-01).
+
+|T2: Answer a waiting decision.
+|—
+|—
+|Not possible. `answer Q-007` shows no options (link:../use-cases/findings-plans-control.adoc#CLI-UC-F-10[CLI-UC-F-10]).
+
+|T3: Why does this plan wait, and what do I do?
+|≥ 3
+|≥ 5
+|The overview row says `decision · waiting for you`. `Enter` opens the plan view, which does not show the decision. `!`
+opens Pause, Cancel, Chat, Settings. The operator leaves, runs `questions`, and finds the id.
+
+|T4: Start a plan from an issue.
+|1
+|5
+|`plan add --project pm-mcp-clients`, `i`, `42`, Enter, Enter. Fast. Choices without keys make the operator hesitate.
+
+|T5: What happened since I last looked?
+|1
+|1
+|`reports`. Complete and grouped. Rows overflow their columns.
+|===
+
+Targets for the redesign are in link:verification.adoc#targets[Verification, Targets]: T1 in one command, T2 in three
+inputs, T3 in one key from the overview.
+
+[#problems]
+== Main Problems, Ranked
+
+[cols="1,4,1",options="header"]
+|===
+|Rank |Problem |Findings
+
+|1
+|Dialogues that act without a clear question or a way out.
+|CLI-UX-F-04
+
+|2
+|The help key and the footer corrupt the screen.
+|CLI-UX-F-02, CLI-UX-F-03
+
+|3
+|No single answer to "what needs me"; `!` misleads.
+|CLI-UX-F-01
+
+|4
+|Errors are raw: HTTP codes, JSON bodies, Picocli usage dumps, exit `0` after a failure.
+|CLI-UX-F-05, CLI-UX-F-07
+
+|5
+|Inconsistent modes and help across verbs, console, and views.
+|CLI-UX-F-06, CLI-UX-F-08
+
+|6
+|Scripting output is wrong (`plans --json`).
+|CLI-UX-F-09
+|===
+
+[#direction]
+== Direction
+
+* *Printed first.* Keep the printed verbs as the fast path, and make each one complete: `needs` (what needs me),
+  `status`, `epic`, `plan --print`, `system`, `reports`.
+* *One dialogue contract.* Every dialogue that acts uses the strict choice prompt: a question, numbered or lettered
+  choices, the preselection marked, `?` explains, `q` leaves, unknown input re-asks.
+* *One key language in views.* The footer is complete, never stale, and `?` shows all keys.
+* *One error pattern.* `✗` line, cause in words, `→ fix`, and the exit code of `01-commands.adoc`.
+* *Scripts are users.* `--json` on every listing verb, with stable fields, documented.
+
+Details: link:proposals.adoc[Proposals].

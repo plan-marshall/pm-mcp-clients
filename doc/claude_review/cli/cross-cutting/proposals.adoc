@@ -1,0 +1,165 @@
+= CLI Review: Cross-Cutting, Proposals
+:toc: left
+:toclevels: 2
+:nofooter:
+:op: pm-operator/src/main/java/de/planmarshall/operator
+
+link:../README.adoc[CLI Review] » link:README.adoc[Cross-Cutting] » Proposals
+
+[#CLI-CC-P-01]
+== CLI-CC-P-01: Every Text Through the Catalogue
+
+Resolves:: CLI-CC-F-01
+
+* *Dialogues*: move every string of `AnswerCommand`, `OnboardCommand`, `WorkActionDialogue`, `CleanupCommand`,
+  `RuntimeCommand` into `operator.en.properties` and `operator.de.properties`.
+* *Picocli*: set a `ResourceBundle` on the command line (`CommandLine.setResourceBundle`) for usage texts. Use custom
+  handlers for parameter errors (link:../ux/proposals.adoc#CLI-UX-P-05[CLI-UX-P-05]).
+* *Guard*: a unit test scans the client's sources for string literals passed to `print`, `println`, `printf`,
+  `readLine`, and `askRaw`. It fails on any literal that is not a format of catalogue values. The web review proposes
+  the same guard for the web app (link:../../cross-cutting/proposals.adoc#CC-P-09[web CC-P-09]).
+
+[#CLI-CC-P-02]
+== CLI-CC-P-02: One Display Layer for Both Clients
+
+Resolves:: CLI-CC-F-02, CLI-CC-F-03
+
+* *Display words*: a `Display` class in `pm-api` (`de.planmarshall.api.display`) turns domain values into words from
+  the catalogue:
+** leaf states (`done`, `success`, `running`);
+** landing states (`failed`);
+** off-track signals (`repeating`);
+** gate kinds (`ci_check`, `coverage`);
+** activity kinds (`link` → "sent its result").
+* *Ids*: a raw id never reaches the operator alone. A step id or a link name without a catalogue text is a build
+  failure, not a fallback.
+* *Titles*: name a plan, an epic, or a project by its title in every view. Show the id dim behind it where the
+  operator types it (`Fix Relay Transport  fix-relay`). Ended work uses the same rule.
+* *Shared keys*: the web app reads the same catalogue keys (web review, CC-P-01), so both clients say the same word.
+
+[#CLI-CC-P-03]
+== CLI-CC-P-03: One Time Formatter
+
+Resolves:: CLI-CC-F-04
+
+Specify in `shared/texts-and-languages.adoc` and implement once in `pm-api` (`Display.time`, `Display.duration`):
+
+[cols="2,2,2",options="header"]
+|===
+|Kind |English |German
+
+|Duration under 1 h
+|`25 min`
+|`25 min`
+
+|Duration under 2 d
+|`2 h 10 min`
+|`2 h 10 min`
+
+|Duration of 2 d or more
+|`9 d 1 h`
+|`9 T 1 h`
+
+|Moment today
+|`today 14:02`, `since 14:02`
+|`heute 14:02`, `seit 14:02`
+
+|Moment yesterday
+|`yesterday 18:40`
+|`gestern 18:40`
+
+|Moment within 7 days
+|`Mon 18:40`
+|`Mo 18:40`
+
+|Moment before
+|`12 Sep`
+|`12. Sep.`
+
+|Age in a list
+|`9 d ago`
+|`vor 9 T`
+|===
+
+No ISO string, ever. One clock: the age of a plan comes from its start, the age in its phase from the phase start;
+both views show the same two values.
+
+[#CLI-CC-P-04]
+== CLI-CC-P-04: Refusals by Error Code
+
+Resolves:: CLI-CC-F-05
+
+`OperatorRefusedException` carries the `pm-api` error code and the message. `RefusalRenderer`
+(link:../ux/proposals.adoc#CLI-UX-P-05[CLI-UX-P-05]) maps the code to `operator.refusal.<code>` and
+`operator.refusal.<code>.fix`. An unknown code prints "The runtime refused: <message>" and the fix "status shows the
+runtime" — never the body.
+
+[#CLI-CC-P-05]
+== CLI-CC-P-05: The Operator Gate: Narrow It Now, Replace It Later
+
+Resolves:: CLI-CC-F-07, CLI-CC-F-08
+
+*Now* (no change to the requirement):
+
+* *Gate acts only.* Call `gate().verify()` in the commands that send an operator act (answer, plan and epic acts,
+  enrol, release, unenrol, credentials, config set/unset, cleanup acts, runtime acts, web pair and revoke, accept-edit).
+  Remove it from read-only paths (`questions`, `reports` list, `projects` list, `roles list/show`, `config` view,
+  `settings` view, `plan`/`epic` views). Enter the console without the gate; check it when the console dispatches an
+  act.
+* *Say what it is.* The refusal names the guard honestly:
++
+[source,text]
+----
+✗ Operator acts are refused here: this terminal belongs to a coding agent (CLAUDECODE is set).
+  Run pm-operator in a terminal of your own.
+----
+* *Test the gate, not around it.* `OperatorGateTest` keeps the marker matrix. The PTY tests keep clearing the
+  environment, and say why in a comment that names `PM-SEC-3`.
+* *A development switch, outside releases.* Add `PM_OPERATOR_DEV_ALLOW_AGENT=1` for runs from the source tree only.
+  `start.sh` sets it on request; the native binary ignores it. The switch must not exist in a release build, and the
+  host rule stays. *Decision of the operator* (security).
+
+*Later* (`L-1`, requirement change in `plan-marshall-documentation`):
+
+* Replace the guard with a proof of presence that a model cannot produce. Options, cheapest first:
+** a confirmation on a paired device (the web app on the phone shows "Approve: pause fix-relay");
+** an OS user-presence check (macOS LocalAuthentication / Touch ID; polkit on Linux);
+** a second, operator-only token in the OS keychain, released only with user presence.
+* Let the runtime verify the proof per act, so the operator endpoints of the API need it too, and the token alone is
+  no longer enough.
+
+[#CLI-CC-P-06]
+== CLI-CC-P-06: Accessibility Fixes
+
+Resolves:: CLI-CC-F-06
+
+* The ASCII fallback (link:../visual-design/proposals.adoc#CLI-VD-P-02[CLI-VD-P-02]).
+* Echo every answer in every dialogue (link:../use-cases/proposals.adoc#CLI-UC-P-02[CLI-UC-P-02]).
+* After `q` from a full-screen view, print one line: where the operator was and what arrived meanwhile
+  (`15-overview.adoc#full-screen-live`).
+
+[#CLI-CC-P-07]
+== CLI-CC-P-07: PTY Tests for Every Dialogue That Acts
+
+Resolves:: CLI-CC-F-09
+
+* One `*DialogueIT` per dialogue that acts, on `PtySession` against `MockRuntime`:
+** pause, cancel, abandon;
+** answer, waiver;
+** onboarding (guided, automatic);
+** project setup;
+** cleanup;
+** runtime stop, restart, upgrade.
+* Each test runs three cases:
+** `q` first: nothing was sent;
+** an unknown input: re-asked;
+** the main path: the act arrived, and the screen says so.
+* Read the act from the mock (an event log endpoint `/mock/acts`, to add to the mock), not from the screen only.
+* Mark the IT classes so that the coverage of the dialogue paths counts in the 80 % gate of the module.
+
+[#CLI-CC-P-08]
+== CLI-CC-P-08: Development Script
+
+Resolves:: CLI-CC-F-11
+
+`start.sh` writes the PID file only for `-d` (background). A foreground run never blocks another.

@@ -1,0 +1,26 @@
+System
+Runtime   pm-mcpd 0.9.1 · build 2026-10-02 (a1b2c3d) · 0.10.0 available: runtime upgrade
+          running since today 08:14 · 6 h 12 min
+          memory 412 MB in use of 1 GB · 680 MB resident · CPU 4 %
+          machine store 2.3 GB · 38 GB free on its disk · measured 13:40
+          listeners  socket · loopback 127.0.0.1:7420 · network 192.168.1.20:7421 (2 devices)
+Work      plans    3 running · 1 waiting for you · 1 held · 2 paused
+          epics    1 running · 1 waiting for you
+          tasks    4 running · 6 queued
+          projects 3 with running work
+Workers   5 · 3 busy · 2 idle
+          planner       claude  opus-4.5    busy  fix-relay
+          implementer   claude  sonnet-4.5  busy  relay-docs
+          implementer   codex   gpt-5       idle
+          implementer   claude  sonnet-4.5  busy  token-usage
+          reviewer      claude  sonnet-4.5  idle
+Jobs      build  1 of 2 slots · 1 queued  test  0 of 1 slot
+          locks  3 held
+Models    last hour, per model
+          claude:opus-4.5       42 calls   2.02 M tokens (1.90 M in · 0.12 M out)   1 retry
+          claude:sonnet-4.5    118 calls   3.61 M tokens (3.20 M in · 0.41 M out)
+          codex:gpt-5           12 calls   tokens not measured: not reported by codex   1 error
+Cleanup   due: 12 plans · 2 epics · 40 logs · frees 1.8 GB
+          4 kept for good · last sweep today 03:00
+plans · cleanup · system --window today · system --by role
+EXIT=0

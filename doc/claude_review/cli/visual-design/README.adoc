@@ -1,0 +1,28 @@
+= CLI Review: Visual Design
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[CLI Review] » Visual Design
+
+This folder covers: Terminal presentation: layout grid, colour, glyphs, density, truncation, brand, and the design documents.
+
+[cols="1,3",options="header"]
+|===
+|Document |What it holds
+
+|link:analysis.adoc[Analysis]
+|The high-level result.
+
+|link:findings.adoc[Findings]
+|The detailed findings with evidence (`CLI-VD-F-nn`).
+
+|link:proposals.adoc[Proposals]
+|The changes, as engineering detail. Each proposal names the findings it resolves.
+
+|link:plan.adoc[Plan]
+|The steps, in order. Each step names its proposals.
+
+|link:verification.adoc[Verification]
+|The checks that prove the steps.
+|===

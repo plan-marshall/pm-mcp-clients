@@ -1,0 +1,141 @@
+= CLI Review: Findings, Onboarding and Entry
+:toc: left
+:toclevels: 2
+:nofooter:
+:uc: ../../../../../plan-marshall-documentation/doc/use-cases
+:tc: ../../../design/terminal-client
+
+link:../README.adoc[CLI Review] » link:README.adoc[Use Cases] » Findings: Onboarding and Entry
+
+Scenario `onboarding` (state `onboard.mode` and the states after it) and scenario `fully-onboarded` (the entry).
+
+[#CLI-UC-F-01]
+== CLI-UC-F-01: The Guided Onboarding Never Begins
+
+Severity:: `blocker`
+Use cases:: link:{uc}/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], UC-ONB-3 to UC-ONB-9
+Design:: link:{tc}/06-transcripts-steps-1-3.adoc[Transcripts, Steps 1 to 3],
+link:{tc}/03-dialogues.adoc#state-frame[State Frame]
+
+The console prints a good introduction with the seven steps. After `h) here, in the terminal` it asks
+"Begin with step 1? [Enter]   a) decide everything for me". Every answer returns to the prompt: Enter, `a`, and any
+other text. The state stays `onboard.mode`; the links `begin` and `auto` are never sent.
+
+[source,text]
+----
+Where do you want to set it up?   w) in the web app [Enter]   h) here, in the terminal   ?   › h
+Set up this machine for plan-marshall
+Begin with step 1? [Enter]   a) decide everything for me   ?   ›
+Type plans or tui to open the full-screen overview.
+pm [setup 0/7] ›
+----
+
+Cause (code): `EntryFlow` reads the answer and acts only on `q`
+(`pm-operator/src/main/java/de/planmarshall/operator/EntryFlow.java:192-203`). There is no dialogue for the states
+after `onboard.mode`. Evidence: link:../resources/screens/onboarding-console.txt[onboarding-console.txt].
+
+[#CLI-UC-F-02]
+== CLI-UC-F-02: The `onboard` Verb Prints Raw Links
+
+Severity:: `blocker`
+Use cases:: link:{uc}/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:{uc}/01-onboarding.adoc#UC-ONB-2[UC-ONB-2]
+Design:: link:{tc}/01-commands.adoc#direct-verbs[Direct Verbs]
+
+`pm-operator onboard` prints the state title, a step counter, and the link names of the state. `--step <link>` sends
+one link and prints the next state the same way. `--auto --yes` stops at the consent of the automatic run:
+
+[source,text]
+----
+Machine onboarding
+  Decide everything for me?
+  Step 1 of 7
+  You can choose:
+    no
+    yes
+----
+
+The operator sees link relations (`begin`, `auto`, `set`, `no`, `yes`), which the design keeps internal. Nothing
+explains what each choice does. The automatic run of UC-ONB-2 cannot finish from the terminal without knowing the
+link names. Cause (code): `OnboardCommand.render` (`OnboardCommand.java:105-136`) prints `links` as they come.
+
+[#CLI-UC-F-03]
+== CLI-UC-F-03: `?` Leaves the Onboarding Instead of Explaining
+
+Severity:: `major`
+Use cases:: link:{uc}/01-onboarding.adoc#UC-ONB-1[UC-ONB-1]
+Design:: link:{tc}/03-dialogues.adoc#explanation[Explanation]
+
+At "Begin with step 1?" the prompt offers `?`. Typing `?` leaves the question and prints "plans oder tui öffnet die
+Vollbild-Übersicht." (the hint about the overview). The design says `?` prints the state's explanation and never sends
+or leaves.
+
+[#CLI-UC-F-04]
+== CLI-UC-F-04: Each Aspect of `config` Fails With `HTTP 404`
+
+Severity:: `major`
+Use cases:: link:{uc}/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]
+Design:: link:{tc}/02-levels.adoc[Levels]
+
+`config show` prints "Unable to load settings: HTTP 404" and exits with `0`. `config language` prints "Failed to
+update language settings: HTTP 404". `roles list` prints "Failed to read roles: HTTP 404".
+
+Cause (code and contract): `ConfigCommand` calls `/api/v1/config/<aspect>` (`language`, `harnesses`, `models`,
+`roles`, `credentials`, `providers`, `plan-defaults`, `consents`, `documents`); `RolesCommand` calls
+`/api/v1/roles`. The transport table of the specification lists `GET /api/v1/config` and
+`PUT`/`DELETE /api/v1/config/{level}/{key}` only
+(link:../../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc[Processes
+and Transport], line 194). The mock implements none of them. Either the client or the specification is out of date.
+The exit code `0` after a failure is a defect of the client in any case.
+
+[#CLI-UC-F-05]
+== CLI-UC-F-05: The `config` Overview Has Layout Defects
+
+Severity:: `minor`
+Use cases:: link:{uc}/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]
+
+`config` shows "How this machine is set up" with seven aspects and the tokens. Three defects:
+
+* The labels are not aligned: each value starts four spaces after its label, not in one column.
+* The prompt is printed on the line of the last token: `no expiry knowOpen: 1-11   q) leave   ?   ›`.
+* The prompt offers `1-11`, but items 10 and 11 are not visible.
+
+Evidence: link:../resources/screens/config-dialogue.txt[config-dialogue.txt]. `settings machine` prints the same
+facts as a clean numbered list.
+
+[#CLI-UC-F-06]
+== CLI-UC-F-06: The Prompt Has No Badge for Open Questions
+
+Severity:: `major`
+Use cases:: link:{uc}/02-entry.adoc#UC-ENT-1[UC-ENT-1]
+Design:: link:{tc}/04-console.adoc#prompt[Prompt]
+
+In `fully-onboarded` three questions are open, and in `running-work` eight. The prompt stays `pm ›`. The design asks
+for `pm [3 questions] ›`. The setup badge works: `pm [setup 0/7] ›` in the scenario `onboarding`.
+
+The start lines also carry a raw time: "5 unread reports since 2026-10-15T18:40:00Z" (design: "since yesterday
+18:40", link:{tc}/24-reports.adoc#arrival[Arrival]).
+
+[#CLI-UC-F-07]
+== CLI-UC-F-07: Pushed Notices Never Reach the Console
+
+Severity:: `major`
+Use cases:: link:{uc}/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:{uc}/03-plans.adoc#UC-PLN-2[UC-PLN-2]
+Design:: link:{tc}/04-console.adoc#pushed[Pushed Notices],
+link:{tc}/04-console.adoc#answered-elsewhere[Answered Elsewhere]
+
+A `decision.opened` event (the payload of `pm-web-e2e/tests/decisions.spec.js`) and a `decision.answered` event were
+broadcast through `POST /mock/broadcast` while the console waited at its prompt. Neither printed a line.
+
+Cause (code): `PmConsole.applyConsoleEvent` passes the event data to `ConsoleNotice.fromEventMap`, which switches on a
+`type` field inside the data (`question`, `decision`, `waiver_request`, …) and ignores the event name
+(`ConsoleNotice.java:297`). The runtime and the web app use named events (`decision.opened`) without `type`. There is
+no case for `decision.answered`, so the "answered elsewhere" line of the design cannot appear.
+
+[#CLI-UC-F-08]
+== CLI-UC-F-08: Paired Devices Conform; Revoking Not Run
+
+Severity:: `minor`
+Use cases:: link:{uc}/02-entry.adoc#UC-ENT-2[UC-ENT-2]
+
+`web devices` lists the devices with origin and last use, and says "The console needs no pairing and is not listed".
+This matches the design. Revoking was not run, to keep the pairing of the browser used for the web review.

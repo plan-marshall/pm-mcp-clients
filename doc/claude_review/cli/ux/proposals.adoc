@@ -1,0 +1,135 @@
+= CLI Review: UX, Proposals
+:toc: left
+:toclevels: 2
+:nofooter:
+:op: pm-operator/src/main/java/de/planmarshall/operator
+
+link:../README.adoc[CLI Review] » link:README.adoc[UX] » Proposals
+
+[#CLI-UX-P-01]
+== CLI-UX-P-01: "Needs You" in Every Surface
+
+Resolves:: CLI-UX-F-01
+
+The terminal form of the attention inbox of the web review (link:../../ux/proposals.adoc#UX-P-01[web UX-P-01]).
+
+* *The verb `needs`* (alias `!` at the console prompt): every item that needs the operator, across projects, in the
+  order of the inbox (blocking first, then by age). One row per item: kind, subject, what it blocks, since when, and
+  the command that resolves it.
++
+[source,text]
+----
+pm › needs
+Needs you · 5
+  ! decision   fix-relay        blocks the plan     since 14:02   answer Q-007
+  ! decision   drop-legacy-api  cannot be undone    since 14:15   answer Q-009
+  ! landing    remediation      failed              since 13:40   plan hold remediation
+  ! setup      plan-marshall    credential sonar    since 9 d     project setup plan-marshall
+  ! waiver     session-log      coverage:pm-api     since 14:02   answer WR-3
+----
+* *The prompt badges*: one per kind, from the same list (link:../use-cases/proposals.adoc#CLI-UC-P-04[CLI-UC-P-04]).
+* *The overview root*: a first group "Needs you" above the projects, with the same rows.
+* *The key `!`*: opens the act of the waiting item of the selected row: the decision, the hold, or the setup. On a row
+  without a wait, it jumps to the next row that waits. On the root, it opens the "Needs you" group.
+* *One count.* The overview, `status`, `questions`, `needs`, and the badges read one source: `needs_operator` of the
+  status. Fixture counts that disagree are mock defects to fix (CLI-UC-P-08).
+
+[#CLI-UX-P-02]
+== CLI-UX-P-02: A Footer and a Help That Never Lie
+
+Resolves:: CLI-UX-F-02, CLI-UX-F-03, CLI-UX-F-10
+
+* *Clear the line.* Every row of a frame ends with `ESC[K` or is padded to the width (`TuiScreen`). This removes all
+  stale text. A unit test renders level A then level B on one `VirtualScreenTerminal` and asserts no cell of A remains.
+* *Footer priority.*
+** Each binding has a priority in `TuiKeyRegistry` (move, open, back, the primary act, help first).
+** The footer fills the width by priority and ends with `? more` when keys are left out.
+** It never cuts a key in the middle.
+* *The help overlay.*
+** It draws a box over the view with all bindings of the level, grouped (move, open, act, views, leave), and the
+   details of the selected row.
+** The first `Esc` closes it.
+** The footer shows `Esc close` while it is open.
+* *Test*: `TuiCapabilityIT` gets `helpOverlayShowsAllKeys` and `footerHasNoResidue` for each level.
+
+[#CLI-UX-P-03]
+== CLI-UX-P-03: One Dialogue Grammar
+
+Resolves:: CLI-UX-F-04
+
+Every dialogue uses `StateDialogue` or `ChoicePrompt` (link:../use-cases/proposals.adoc#CLI-UC-P-01[CLI-UC-P-01],
+link:../use-cases/proposals.adoc#CLI-UC-P-02[CLI-UC-P-02]). The grammar:
+
+[source,text]
+----
+Pause fix-relay?                                         <- the act as a question
+  1) now                       2 tasks withdrawn, 1 job stopped
+  2) after the current task ←  implement · 4 min finish   <- preselection with its reason
+  3) after the current phase   execute runs to its end
+  Its epic   relay-hardening is told                      <- what else changes
+Pause after the current task? [Enter]   1-3   ?   q) leave   ›
+----
+
+Rules:
+
+* The prompt question names the primary action.
+* Every choice has a key; Enter is a choice only where a preselection exists.
+* The answer is echoed, then confirmed with `✓`.
+* `q` and `Ctrl+C` leave and send nothing. The line says so.
+* An act that cannot be undone has no Enter default.
+
+[#CLI-UX-P-04]
+== CLI-UX-P-04: One Rule for Verb Modes
+
+Resolves:: CLI-UX-F-06
+
+* *In a terminal*: view verbs open full screen (`plans`, `plan <id>`, `epic <id>`, `projects`, `system`, `reports`).
+  The full-screen view leaves with `q` and prints one summary line.
+* *With `--print`, or not in a terminal*: the same verbs print the tree.
+* *Act verbs* (`answer`, `cleanup`, `runtime stop`, `plan pause`) run a dialogue in a terminal and need their answer
+  as an option otherwise.
+* The rule goes into `01-commands.adoc` as one table: verb, terminal mode, printed mode, JSON.
+
+[#CLI-UX-P-05]
+== CLI-UX-P-05: One Error Pattern
+
+Resolves:: CLI-UX-F-05, CLI-UX-F-07
+
+* *Renderer*: one `RefusalRenderer` in `{op}` turns a refusal into three lines. The error code of `pm-api` maps to a
+  catalogue text and a fix:
++
+[source,text]
+----
+✗ Q-999 is not an open question.
+  It was answered, withdrawn, or never existed.
+  → questions lists the open ones.
+----
+* *Never show*: an HTTP status, a JSON body, or an exception class.
+* *Picocli*:
+** A custom `IParameterExceptionHandler` prints the catalogue text and the nearest verb: `✗ bogus is not a verb.
+   → help lists them.`
+** The usage text comes from the catalogue, in the operator's language.
+* *Exit codes*: as in `01-commands.adoc#exit-codes` (`1` refused, `2` usage, `3` needs input). A unit test checks the
+  code of every verb for success, refusal, and usage error.
+
+[#CLI-UX-P-06]
+== CLI-UX-P-06: Help Everywhere
+
+Resolves:: CLI-UX-F-08
+
+* `help [<verb>]` in the shell and in the console; `--help` and `-h` on every subcommand.
+* The console `help` lists all verbs in groups: daily (needs, plans, answer, reports), plans and projects, machine,
+  runtime. Plus one line: "The process designer is in the web app."
+* At the console prompt `?` is the same as `help`.
+
+[#CLI-UX-P-07]
+== CLI-UX-P-07: JSON for Scripts
+
+Resolves:: CLI-UX-F-09
+
+* `--json` on `status`, `plans`, `needs`, `questions`, `reports`, `projects --list`, `system`, `epic <id>`,
+  `plan <id>`.
+* Each prints one document with stable field names; the schema is documented in `01-commands.adoc` and tested by a
+  schema test per verb.
+* `plans --json` prints the projects, plans, epics, and needs, not the status.
+* No reason line on stdout under `--json`; errors go to stderr as `{"error": "<code>", "message": "…"}`.

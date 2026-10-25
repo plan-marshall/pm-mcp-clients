@@ -1,0 +1,30 @@
+Projects                                                                                                    ● connected
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  Being added
+▶ ~/git/cui-parent   Identity (2 of 10)
+  Favourites
+  ★ pm-mcp-clients         ready   needs you: 2   3 plans · 1 epic   8 days ago
+  ★ pm-mcp-core            ready   2 plans · 0 epics   8 days ago
+  Recent
+    plan-marshall          setup needs: credential sonar   needs you: 1   9 days ago
+    cui-http               ready   11 days ago
+  All projects · by name
+    API-Sheriff            ready   43 days ago
+    cui-http               ready   11 days ago
+    legacy-portal          released   69 days ago
+    plan-marshall          setup needs: credential sonar   needs you: 1   9 days ago
+  ★ pm-mcp-clients         ready   needs you: 2   3 plans · 1 epic   8 days ago
+  ★ pm-mcp-core            ready   2 plans · 0 epics   8 days ago
+
+
+
+
+
+
+
+
+
+
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+↑↓ move   Enter actions   * favourite   s sort   / filter   + add   q leave

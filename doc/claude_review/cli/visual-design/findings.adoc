@@ -1,0 +1,123 @@
+= CLI Review: Visual Design, Findings
+:toc: left
+:toclevels: 2
+:nofooter:
+:tc: ../../../design/terminal-client
+
+link:../README.adoc[CLI Review] » link:README.adoc[Visual Design] » Findings
+
+[#keep]
+== Patterns to Keep
+
+* The frame of the full-screen views: header, lines, footer, the connection dot on the right.
+* The glyph set of the design and its meaning: `▸` plan, `◇` epic, `↳` sub-workflow, `✓ ▶ ○` leaf states, `★`
+  favourite, `⚠` off track, `≥` floor, `!` needs you. Every glyph is followed by a word.
+* Line drawing with the terminal's line set (`ESC ( 0`), which works in every terminal and font.
+* The indented printed trees (`status`, `epic`), which stay readable at any width.
+
+[#CLI-VD-F-01]
+== CLI-VD-F-01: The Product Prints No Colour
+
+Severity:: `major`
+Design:: link:{tc}/03-dialogues.adoc#terminal[Terminal]
+
+Over all captured sessions, the client wrote two attributes: reset and reverse video (`SGR 0`, `SGR 7`). The colours
+seen on screen came from libraries:
+
+* Picocli's usage text (red for errors, yellow for options);
+* JLine's completion list (cyan).
+
+The design asks for green `✓`, red `✗`, and bold for the preselection and the step line. None of it is there. The
+result:
+
+* `! decision` and a running plan have the same weight;
+* `⚠ off track` does not stand out;
+* the header and the content look alike.
+
+`NO_COLOR` therefore changes nothing.
+
+[#CLI-VD-F-02]
+== CLI-VD-F-02: No ASCII Fallback
+
+Severity:: `major`
+Design:: link:{tc}/03-dialogues.adoc#terminal[Terminal]
+
+With `LANG=C`, the full-screen view prints `?` for every glyph:
+
+[source,text]
+----
+Running work ? pm-mcp-clients ? by epic                                       ? connected
+                ? epic  Relay Hardening                3 running ? 3 staged
+? decision      ? plan  Drop the legacy endpoints      finalize ? waiting for you
+----
+
+The design defines the fallback: `✓ ✗ ← ✎ · → …` become `ok x <- * - -> ...`. The printed `status` writes UTF-8
+whatever the locale says. Evidence: link:../resources/screens/overview-lang-c.txt[overview-lang-c.txt].
+
+[#CLI-VD-F-03]
+== CLI-VD-F-03: Row Kinds Do Not Share a Column Grid
+
+Severity:: `minor`
+
+* *Plan view.* Phase rows put the state in its own column (`✓ done             phase init      2 min`). Task rows put
+  everything into one dotted list (`✓ TASK-001 · implement · claude sonnet · attempt 1 · done · success · 4 min`). The
+  eye loses the state column at the place where it matters most.
+* *System view.* Second lines start at column 10, the group labels at column 2. The sub-labels (`memory`, `listeners`,
+  `plans`) have no column of their own.
+* *`config`.* Each value starts four spaces after its label, so the values do not align.
+* *Reports.* Long texts push the age out of its column; detail lines are indented less than their rows.
+* *Overview.* The marker column (`decision`, `landing failed`) is 14 columns wide; "landing failed" overflows it in
+  the `alongside` group.
+
+[#CLI-VD-F-04]
+== CLI-VD-F-04: Facts Repeat
+
+Severity:: `minor`
+
+* `done · success` for one state; `2 of 3 tasks done` twice in a row.
+* `ended ended 12 Sep` in the cleanup list.
+* The system `Jobs` line, then build and test again.
+* `not measured` twice in one model row.
+* The age in the report row and in its detail line.
+
+Each repeat costs a line or a scan, and makes the screen look unfinished.
+
+[#CLI-VD-F-05]
+== CLI-VD-F-05: Truncation Where Space Is Free
+
+Severity:: `minor`
+
+* `↳ sub-workflow remediation.ci…` is cut at 120 columns while 70 columns are free.
+* The header path drops the phase but keeps the task id.
+* The footer is cut in mid-key (link:../ux/findings.adoc#CLI-UX-F-03[CLI-UX-F-03]).
+
+[#CLI-VD-F-06]
+== CLI-VD-F-06: Hierarchy Only by Indentation
+
+Severity:: `major`
+
+Group titles (`alongside`, `without epic`, `Being added`, `Favourites`), the header, and the rows use the same
+weight. Only indentation tells levels apart. In the system view the six group labels (`Runtime`, `Work`, `Workers`, …)
+are the only structure, and they are plain text.
+
+[#CLI-VD-F-07]
+== CLI-VD-F-07: No Brand
+
+Severity:: `minor`
+Design:: link:../../../design/web-app/brand-mark.adoc[Brand Mark] (web only)
+
+The full-screen header shows the place and the connection; the console greeting shows the runtime version. The
+product name appears only in the onboarding text. The prompt is `pm ›`. Nothing tells a viewer of a screenshot which
+product it is.
+
+[#CLI-VD-F-08]
+== CLI-VD-F-08: Gaps in the Design Documents
+
+Severity:: `minor`
+
+* No rule for light and dark terminal themes.
+* No colour roles beyond `✓` and `✗`.
+* No column grid for rows.
+* No formal time and duration format; it is defined only by example.
+* No texts for `operator.tui.unavailable.*` (only `operator.overview.too_narrow` and `operator.system.too_narrow`).
+* Mockups of the project and ended levels leave out `? help` and `q leave`, which the key registry binds.

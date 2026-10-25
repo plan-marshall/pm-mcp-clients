@@ -1,0 +1,13 @@
+How this machine is set up
+  Settings revision 4
+Aspects
+    1) Language    Deutsch, models English
+    2) Harnesses    Claude Code 2.4.1 (default), OpenCode 1.9.0
+    3) Models    4 models on 2 harnesses
+    4) Roles    31 roles
+    5) Credentials    macOS Keychain
+    6) Providers    GitHub (gh); SonarCloud not available
+    7) Plans    Pull Request · Test first · key points
+Tokens
+    8) github    GitHub · fine-grained · ⚠ expires in 9 days
+    9) sonar    SonarCloud · user token · no expiry knowOpen: 1-11   q) leave   ?   ›

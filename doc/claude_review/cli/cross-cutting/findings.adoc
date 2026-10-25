@@ -1,0 +1,210 @@
+= CLI Review: Cross-Cutting, Findings
+:toc: left
+:toclevels: 2
+:nofooter:
+:tc: ../../../design/terminal-client
+:req: ../../../../../plan-marshall-documentation/doc/requirements
+
+link:../README.adoc[CLI Review] » link:README.adoc[Cross-Cutting] » Findings
+
+[#CLI-CC-F-01]
+== CLI-CC-F-01: Texts Bypass the Catalogue
+
+Severity:: `major`
+Design:: link:{tc}/09-texts-common.adoc[Common Texts], link:../../../design/shared/texts-and-languages.adoc[Texts and
+Languages]
+
+* *Fixed English in dialogues*: `AnswerCommand` (see
+  link:../use-cases/findings-plans-control.adoc#CLI-UC-F-11[CLI-UC-F-11]), `OnboardCommand` ("Decide everything for
+  me? Start the automatic run? [y/N]"), the waiver prompts.
+* *Picocli*: usage texts, "Unmatched argument at index 0", "Did you mean", "Unknown option" are English in every
+  language.
+* *Raw values in German screens*:
+** `✓ TASK-001 · implement · claude sonnet · Versuch 1 · done · success · 4 min`;
+** `vom Weg ab: repeating`;
+** `Landen fehlgeschlagen lande remediation.ci-failure · failed`.
+
+Evidence: link:../resources/screens/plan-view-de.txt[plan-view-de.txt].
+
+[#CLI-CC-F-02]
+== CLI-CC-F-02: Raw Ids and Values Reach the Screen
+
+Severity:: `major`
+
+[cols="2,3",options="header"]
+|===
+|Where |What the operator sees
+
+|Overview, `alongside`
+|`landing remediation.ci-failure · failed`, `running`
+
+|`questions`
+|`waiver request: ci_check:integration-tests`, `coverage:pm-api`
+
+|Worker activity
+|`link  submit:TASK-003`
+
+|Plan view leaf
+|`running · - · 6 min`
+
+|`onboard`
+|`You can choose: begin auto`, `no yes`, `set`
+
+|`project setup`
+|`(step current)`
+
+|Overview details
+|`off track: repeating`
+|===
+
+The web review lists the same class of defect for the web app
+(link:../../cross-cutting/findings.adoc#CC-F-02[web CC-F-02]).
+
+[#CLI-CC-F-03]
+== CLI-CC-F-03: Ids and Titles Mix for the Same Thing
+
+Severity:: `major`
+
+* The overview names a plan by title: "Drop the legacy endpoints", "Fix Relay Transport".
+* The plan view header, the pause dialogue, `questions`, the printed epic, and ended work name it by id:
+  `drop-legacy-api`, `fix-relay`, `relay-auth-v2`.
+* `status --ended` mixes both: `fix-relay-v1` next to "Event bus v1".
+
+The operator must learn two names per plan and match them by eye.
+
+[#CLI-CC-F-04]
+== CLI-CC-F-04: Time Has Many Formats
+
+Severity:: `major`
+
+* Raw ISO: "5 unread reports since 2026-10-15T18:40:00Z" (console greeting).
+* Long durations in hours: `217 h 11 min`, `288 h 46 min`. The design writes days (`3 d`).
+* Three relative forms for one kind of fact: `9 days ago` (overview root), `9 d ago` (reports), `1 week ago`
+  (`status --ended`).
+* One plan, two durations: the overview says the plan runs for `219 h 1 min`, the plan view `2 h 10 min`. Part of this
+  is the mock's fixture (CLI-UC-F-13); the client still uses two clocks.
+
+[#CLI-CC-F-05]
+== CLI-CC-F-05: Refusals Show HTTP and JSON
+
+Severity:: `major`
+
+See link:../ux/findings.adoc#CLI-UX-F-05[CLI-UX-F-05]. The cause is shared: commands print
+`OperatorRefusedException` messages that hold the HTTP status and the body. There is no mapping from the `pm-api` error
+code to a catalogue text and a fix.
+
+[#CLI-CC-F-06]
+== CLI-CC-F-06: Accessibility
+
+Severity:: `minor`
+
+* *Good.* Every full-screen view has a printed form; every glyph is followed by a word; the client prints no colour,
+  so no meaning depends on colour.
+* *Gaps.*
+** Without UTF-8 the full-screen view writes `?` for glyphs (link:../visual-design/findings.adoc#CLI-VD-F-02[CLI-VD-F-02]).
+** The help overlay does not work (link:../ux/findings.adoc#CLI-UX-F-02[CLI-UX-F-02]).
+** The pause dialogue does not echo the typed answer.
+** A screen reader user who leaves a view with `q` gets no summary line.
+
+[#CLI-CC-F-07]
+== CLI-CC-F-07: The Operator Gate (`PM-SEC-3`): Works as Written, Weak as a Control
+
+Severity:: `major`
+Requirement:: link:{req}/08-security.adoc#PM-SEC-3[PM-SEC-3: Operator Channel Isolation]
+
+The operator asked: is `PM-SEC-3` a bug? The answer has three parts.
+
+*What the gate does.* `OperatorGate.verify` (`pm-operator/…/OperatorGate.java`) refuses the client when:
+
+* an environment marker of a coding agent is present (`CLAUDECODE`, `CLAUDE_CODE`, `CLAUDE_PID`, `AI_AGENT`,
+  `OPENCODE*`, `GEMINI_CLI`, `ANTIGRAVITY_*`, `CODEX*`, …), or
+* `System.console()` is not an interactive terminal.
+
+It exits with code `4`.
+
+*Is it a bug?* Not in the narrow sense. The requirement asks for exactly these checks and records the bypass as an
+accepted residual risk: "a model-driven shell that deliberately defeats them (a pseudo-terminal, a cleared
+environment, indirect invocation) can run operator verbs". The proof that the model cannot produce is deferred to
+`L-1`. The implementation matches the requirement.
+
+*Is it a good control?* No. It is weak where it should be strong, and strong where it should be absent:
+
+* *Easy to defeat.* This review ran the client with `env -i` under `script(1)`, after the operator agreed. The
+  project's own `PtySession` does the same for every PTY test (`builder.environment().clear()`). Any agent that can
+  run a shell can do it.
+* *It is not the real boundary.* Two things stop a model from acting as the operator:
+** the host rule that denies the whole binary to the model (`Bash(pm-operator:*)`);
+** the runtime token, which any process of the same OS user can read to call the operator endpoints directly.
+   The gate adds no protection beyond the host rule.
+* *It costs the developers.* The agent that builds and tests the client cannot run it to check its own work. Every
+  PTY test must clear the environment. Reviews like this one need an exception.
+* *It refuses the real operator in some places.* An operator who types `! pm-operator questions` into a Claude Code
+  session, or runs it in an IDE terminal that inherits an agent's variables, is refused, although a person is at the
+  keyboard.
+* *It names markers of products.* The list must follow every new agent and every renamed variable. A missed marker
+  is a silent hole.
+
+Verdict: a requirement that works as written, with a design weakness. Fix the scope now
+(link:#CLI-CC-F-08[CLI-CC-F-08]); replace the guard with a proof of presence when `L-1` is planned
+(link:proposals.adoc#CLI-CC-P-05[CLI-CC-P-05]).
+
+[#CLI-CC-F-08]
+== CLI-CC-F-08: The Gate Covers Read-Only Verbs
+
+Severity:: `major`
+Requirement:: link:{req}/08-security.adoc#PM-SEC-3[PM-SEC-3]
+
+The requirement says the client "accepts an operator act only when" the checks pass. The inspection, lifecycle, and
+installer verbs (`status`, `drain`, `runtime`, `client`) keep their own rules. The client calls
+`gate().verify()`:
+
+* *in read-only verbs*: `questions`, `reports` (list), `projects` (list), `roles` (list, show), `config` (view),
+  `settings` (view), `plan` and `epic` (view);
+* *in the console entry*, so the whole console is gated;
+* *but not* in `status`, `plans`, `system`, and `drain`.
+
+Reading the questions or the reports is not an operator act. Gating it adds nothing, because `status` and `plans`
+show the same facts ungated, and the runtime API serves them to any token holder.
+
+[#CLI-CC-F-09]
+== CLI-CC-F-09: No PTY Test Runs a Dialogue That Acts
+
+Severity:: `major`
+Design:: link:{tc}/27-tui-testing.adoc[TUI Testing]
+
+The three test layers of `27-tui-testing.adoc` exist:
+
+* model and layout tests;
+* `VirtualScreenTerminal`;
+* `PtySession` with `AnsiScreen`.
+
+The PTY layer covers:
+
+* `TuiCapabilityIT`: views open, fallbacks;
+* `TranscriptDialogueIT`: status, web pair, console, console settings, plan start.
+
+No PTY test covers answer, waiver, pause, cancel, onboarding, project setup, cleanup, or runtime stop. The unit tests
+of those dialogues use fakes for the terminal and the runtime. That is why a swallowed exception (answer), an ignored
+answer (onboarding), and a default for any input (pause) pass the build.
+
+[#CLI-CC-F-10]
+== CLI-CC-F-10: Limits and Defects of the Mock
+
+Severity:: `minor` (mock)
+
+* Plan details: one fixture for every id (link:../use-cases/findings-plans-control.adoc#CLI-UC-F-13[CLI-UC-F-13]).
+* No routes for `/api/v1/config/<aspect>` and `/api/v1/roles`
+  (link:../use-cases/findings-onboarding-entry.adoc#CLI-UC-F-04[CLI-UC-F-04]).
+* No route for `/api/v1/plans` in `reports-and-system`.
+* The lifecycle state of `system.draining` is not in the status the client reads.
+* Counts disagree across resources: three questions vs one waiting plan; "3 projects with running work" vs two.
+* `README.adoc` names the socket `pm-mcpd.sock`; the mock creates `run/runtime.sock`.
+
+[#CLI-CC-F-11]
+== CLI-CC-F-11: The Start Script Blocks a Second Run
+
+Severity:: `minor` (development)
+
+`pm-operator/start.sh` writes its PID file also for a run in the foreground. A second run in another terminal prints
+"pm-operator is already running (PID: …)" and exits `0`. After a killed run, the stale file blocks until the script
+checks the PID. Running the console in one terminal and a verb in another is a normal operator pattern.

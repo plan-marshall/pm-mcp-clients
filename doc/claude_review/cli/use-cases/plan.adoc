@@ -1,0 +1,107 @@
+= CLI Review: Use Cases, Plan
+:toc: left
+:toclevels: 2
+:nofooter:
+:op: pm-operator/src/main/java/de/planmarshall/operator
+
+link:../README.adoc[CLI Review] » link:README.adoc[Use Cases] » Plan
+
+The steps are in order. Each step is one pull request. Each step names its proposals and the tests that must change.
+Build and test through Maven only: `./mvnw -pl pm-operator verify -Pintegration-tests`.
+
+[#CLI-UC-S-01]
+== CLI-UC-S-01: The Strict Choice Prompt
+
+Proposals:: link:proposals.adoc#CLI-UC-P-02[CLI-UC-P-02]
+
+. Add `{op}/dialogue/ChoicePrompt.java` with the rules of the proposal, and its unit test `ChoicePromptTest`.
+. Use it in `WorkActionDialogue.pause`, `cancel`, `abandon`. Remove `default -> "task"`.
+. Add the consequences of each pause point from the plan's actions resource.
+. Add a PTY test `PauseDialogueIT` (`transcript/`): `q` leaves and sends nothing; `9` re-asks; Enter takes the
+  preselection.
+
+[#CLI-UC-S-02]
+== CLI-UC-S-02: Confirm the Runtime Acts
+
+Proposals:: link:proposals.adoc#CLI-UC-P-05[CLI-UC-P-05]
+
+. Add the stop, restart, and upgrade dialogues to `RuntimeCommand` and to the `a` menu of the system view.
+. Add `--now`, `--when-done`, and the exit code `3` for `--no-input`.
+. Add `RuntimeStopDialogueIT` against the mock: `k` keeps it running; `1` stops when done.
+
+[#CLI-UC-S-03]
+== CLI-UC-S-03: Actions by State
+
+Proposals:: link:proposals.adoc#CLI-UC-P-05[CLI-UC-P-05]
+
+. Build the action menu from the offered links, in the order of `19-actions.adoc` (`actions/ActionMenus.java`).
+. Put the decision first for a waiting plan and the hold acts first for a held plan.
+. Extend `ActionMenusTest` with one case per plan state of `19-actions.adoc`.
+
+[#CLI-UC-S-04]
+== CLI-UC-S-04: The Answer Dialogue
+
+Proposals:: link:proposals.adoc#CLI-UC-P-03[CLI-UC-P-03]
+
+. Fix the terminal ownership and the error path of `AnswerCommand`.
+. Render options, votes, dissent, evidence, and the range from the envelope.
+. Move every string into `operator.en.properties` and `operator.de.properties`.
+. Add `AnswerDialogueIT`: option, own words, waiver, later, and `answer Q-007 2`.
+
+[#CLI-UC-S-05]
+== CLI-UC-S-05: The Event Contract
+
+Proposals:: link:proposals.adoc#CLI-UC-P-04[CLI-UC-P-04]
+
+. Add `EventKind` to `pm-api` with the event names and notice kinds; use it in `ConsoleNotice`.
+. Add the "answered elsewhere" notice and the prompt badges.
+. Extend `ConsoleNoticeTest` with named events; add `ConsoleNoticeIT`, which broadcasts through `/mock/broadcast`.
+. Ask the operator to align the web app's event handling to the same table (web review, CC-P-01).
+
+[#CLI-UC-S-06]
+== CLI-UC-S-06: The State Dialogue and the Onboardings
+
+Proposals:: link:proposals.adoc#CLI-UC-P-01[CLI-UC-P-01]
+
+. Add `{op}/dialogue/StateDialogue.java` on top of `ChoicePrompt`.
+. Hand `EntryFlow` and `OnboardCommand` over to it; keep `--step` and `--auto --yes` for scripts.
+. Use it for `project setup` and "Continue" in the explorer.
+. Add a test that fails when a state of the onboarding scenario has no catalogue text.
+. Add `OnboardingDialogueIT`: the guided path through the scenario `onboarding` to `onboard.completed`, and the
+  automatic path with `--auto --yes`.
+
+[#CLI-UC-S-07]
+== CLI-UC-S-07: The Cleanup Dialogue
+
+Proposals:: link:proposals.adoc#CLI-UC-P-05[CLI-UC-P-05]
+
+. Add the prompt `d r i x o q` to `CleanupCommand`; keep `cleanup --list`.
+. Remove the double word "ended ended".
+. Add `CleanupDialogueIT` in `reports-and-system` (`cleanup.preview` → `cleanup.completed`).
+
+[#CLI-UC-S-08]
+== CLI-UC-S-08: System Model and Config Contract
+
+Proposals:: link:proposals.adoc#CLI-UC-P-06[CLI-UC-P-06], link:proposals.adoc#CLI-UC-P-07[CLI-UC-P-07]
+
+. Render the printed and the full-screen system views from one `SystemSnapshot`.
+. Show the lifecycle state on the first line.
+. Bring the config decision to the operator. Then align the client or the specification.
+. Set the exit code `1` on every failed read.
+
+[#CLI-UC-S-09]
+== CLI-UC-S-09: Mock Fixes
+
+Proposals:: link:proposals.adoc#CLI-UC-P-08[CLI-UC-P-08]
+
+. Plan details per id, `404` for an unknown id.
+. Routes in every scenario, the lifecycle state in the status, the socket name in the README.
+. Extend the scenario consistency test of the mock (web review, UC-S-01).
+
+[#CLI-UC-S-10]
+== CLI-UC-S-10: Use-Case Documents
+
+Proposals:: link:proposals.adoc#documents[Changes to the Use-Case Documents]
+
+. Add the two variations to UC-PLN-7 (once agreed) and UC-PLN-4 in `plan-marshall-documentation`.
+. Run the `doc-review` skill on the changed modules.

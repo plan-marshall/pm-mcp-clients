@@ -1,0 +1,20 @@
+[1/2] Sources · What does the plan start from?   project pm-mcp-clients
+  d) Description   f) Documents   i) Issue   l) Lesson   c) Local changes   p) Pull request
+  Continue   ?
+?  › i
+Number or URL of the issue  › 42
+[1/2] Sources · What does the plan start from?   project pm-mcp-clients
+  ✓  Issue   Issue comments API   stored
+  d) Description   f) Documents
+  a plan that lands local changes takes only descriptions and documents besides
+  a plan that adopts a pull request takes only descriptions and documents besides
+  Continue   Chat   x) remove one   ?
+?  ›
+[2/2] Ready · The plan starts from
+  Issue   Issue comments API
+  Id     [started-work] ← from the title
+  Start the plan? [Enter]   e) edit   ?
+Start the plan? [Enter]   e) edit   ?  ›
+started-work has started
+Follow it
+EXIT=0

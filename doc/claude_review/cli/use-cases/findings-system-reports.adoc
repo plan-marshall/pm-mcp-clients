@@ -1,0 +1,81 @@
+= CLI Review: Findings, System and Reports
+:toc: left
+:toclevels: 2
+:nofooter:
+:uc: ../../../../../plan-marshall-documentation/doc/use-cases
+:tc: ../../../design/terminal-client
+
+link:../README.adoc[CLI Review] » link:README.adoc[Use Cases] » Findings: System and Reports
+
+Scenarios `reports-and-system` (states `system.running`, `system.draining`, `reports.unread`) and `fully-onboarded`.
+
+[#CLI-UC-F-31]
+== CLI-UC-F-31: `runtime stop` Stops Without a Question
+
+Severity:: `blocker`
+Use cases:: link:{uc}/07-system.adoc#UC-SYS-1[UC-SYS-1]
+Design:: link:{tc}/25-system.adoc[System, Stop]
+
+`pm-operator runtime stop` prints `runtime   stopping` and exits with `0`. The design asks first:
+`1) Stop when done   2) Stop now   k) keep it running   [1] ›`, and says what runs. The system view offers
+`s Stop…`, `r Restart…`, `u Upgrade…`; the dialogue behind `s` was not run. The mock was reset afterwards. Evidence:
+link:../resources/screens/runtime-stop.txt[runtime-stop.txt].
+
+[#CLI-UC-F-32]
+== CLI-UC-F-32: The Draining State Is Not Shown
+
+Severity:: `major`
+Use cases:: link:{uc}/07-system.adoc#UC-SYS-1[UC-SYS-1]
+
+In `system.draining` the printed system view shows "running since today 08:14". The web app shows the draining state
+in the same mock state (link:../../use-cases/findings-system-reports.adoc#UC-F-39[web UC-F-39]). The client reads the
+lifecycle from a source that the mock does not change, or it does not show it. Evidence:
+link:../resources/screens/system-printed.txt[system-printed.txt].
+
+[#CLI-UC-F-33]
+== CLI-UC-F-33: The System Figures Repeat and Contradict
+
+Severity:: `major`
+Use cases:: link:{uc}/07-system.adoc#UC-SYS-2[UC-SYS-2]
+Design:: link:{tc}/25-system.adoc[System]
+
+The system view has all six groups of the design (Runtime, Work, Workers, Jobs, Models, Cleanup). Defects:
+
+* The full-screen `Jobs` line holds build, test, and locks, and the next two lines repeat build and test.
+* `codex:gpt-5   12 calls   not measured   1 error   12 calls not measured` says "not measured" twice.
+* The printed view says `network 192.168.1.20:7421 (2 devices)`; the full-screen view says `network off`, at the
+  same time.
+* The printed view writes `0.12 M out`; the full-screen view writes `120 k out` for the same number.
+* `Work` counts "3 projects with running work"; the overview of the same moment shows running work in two.
+
+Evidence: link:../resources/screens/system-view.txt[system-view.txt],
+link:../resources/screens/system-printed.txt[system-printed.txt].
+
+[#CLI-UC-F-34]
+== CLI-UC-F-34: `cleanup` Lists but Does Not Ask
+
+Severity:: `major`
+Use cases:: link:{uc}/07-system.adoc#UC-SYS-3[UC-SYS-3]
+Design:: link:{tc}/26-cleanup.adoc[Cleanup]
+
+`cleanup` prints the run (`Cleanup cln-0012 · due since today 03:00`), the summary, and eight numbered candidates. Then
+the prompt `pm ›` returns. The design prompt `d) delete…   r) ask me again in 3 days   i) ignore   x) leave items out
+o) open   q) leave` is absent. The cleanup cannot be done from the terminal. Each plan row says `ended ended 12 Sep`.
+Evidence: link:../resources/screens/cleanup-console.txt[cleanup-console.txt].
+
+[#CLI-UC-F-35]
+== CLI-UC-F-35: Reports Overflow Their Columns
+
+Severity:: `minor`
+Use cases:: link:{uc}/03-plans.adoc#UC-PLN-6[UC-PLN-6]
+Design:: link:{tc}/24-reports.adoc[Reports]
+
+`reports` (printed) and `R` (full screen) show the unread reports grouped by project, epic, and plan. Defects:
+
+* Long texts push the age out of its column: `relay-token-store started by relay-hardening (2 of 3 at once) 9 d ago`.
+* A report of a project shows `project` in the plan column.
+* The full-screen view gives the age twice: in the row and in the detail line (`rep-0142 · 9 d ago`).
+* The detail lines are indented less than their rows.
+* The order is not newest first in `reports-and-system` (`rep-0143`, `rep-0144`, `rep-0142`).
+
+Evidence: link:../resources/screens/reports-printed.txt[reports-printed.txt].

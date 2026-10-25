@@ -1,0 +1,22 @@
+Runtime pm-mcpd 0.9.1, running since today 08:14 · 5 workers · 1 of 2 build slots in use
+! 2  pm-mcp-clients · 3 plans · 1 epic
+                epic  Relay Hardening                  3 running · 3 staged
+       └─             plan  Fix Relay Transport              execute · running · 217 h 24 min
+       └─                         in epic Relay Hardening · 2 of 3 tasks · off track: repeating
+       └─                         pull request #214 https://github.com/plan-marshall/pm-mcp-clients/pull/214
+     without epic
+     ! decision plan  Drop the legacy endpoints        finalize · waiting for you · 217 h 32 min
+                            4 of 4 tasks
+     alongside
+     ! landing failed   landing remediation.ci-failure        failed
+                        removing 2 moved documents from git   running
+! 1  plan-marshall · setup needs you
+     ! setup    epic  platform setup                   0 running · 1 staged
+     pm-mcp-core · 2 plans
+     without epic
+                plan  Session log and generations      execute · running · 220 h 59 min
+                            3 of 5 tasks
+                            pull request #198 https://github.com/plan-marshall/pm-mcp-core/pull/198
+                plan  Profile loader                   finalize · paused · 217 h 59 min
+                            8 of 8 tasks
+EXIT=0

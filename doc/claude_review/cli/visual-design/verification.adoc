@@ -1,0 +1,61 @@
+= CLI Review: Visual Design, Verification
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[CLI Review] » link:README.adoc[Visual Design] » Verification
+
+== How to Verify
+
+* *Screens*: `TuiCapabilityIT` already captures the real screen through `PtySession` and parses it with `AnsiScreen`.
+  Extend `AnsiScreen` to keep the attribute of each cell (bold, dim, reverse, colour index), so tests can assert
+  roles, not only text.
+* *Look*: compare each view in a dark and a light terminal theme (for example the default themes of the macOS
+  Terminal and of iTerm2) at 120 × 30 and 80 × 24.
+
+== Checks
+
+[cols="1,1,3,2",options="header"]
+|===
+|Check |Step |What must be true |Where
+
+|CLI-VD-V-01
+|CLI-VD-S-01
+|The design documents state the roles, the switch-off rules, the ASCII table, the grid, and the brand line, and pass
+`doc-review`.
+|`doc-review`
+
+|CLI-VD-V-02
+|CLI-VD-S-02
+|No raw `ESC[` and no glyph literal outside `Style` and `Glyphs`.
+|unit test
+
+|CLI-VD-V-03
+|CLI-VD-S-03
+|In `running-work`, the `!` marker cells are yellow, `✓` cells green, `failed` cells red, the header bold, the
+details dim. With `NO_COLOR=1` no colour attribute is written; bold and reverse stay. With `TERM=dumb` no attribute
+is written.
+|`TuiCapabilityIT` with attributes
+
+|CLI-VD-V-04
+|CLI-VD-S-02
+|With `LANG=C` every view writes ASCII only (no byte above `0x7F`) and every glyph has its ASCII form.
+|`TuiCapabilityIT`
+
+|CLI-VD-V-05
+|CLI-VD-S-04
+|In the plan view the state of every task row starts in the same column as the state of the phase rows. No row of
+the overview, the plan view, the system view, or the reports repeats a fact of its own row or its details line.
+|`*FullScreenTest`; transcripts
+
+|CLI-VD-V-06
+|CLI-VD-S-05
+|Every full-screen header starts with `plan-marshall`; the console greeting names the product and its version.
+|`TuiCapabilityIT`; console transcript
+
+|CLI-VD-V-07
+|all
+|A screenshot of the overview and of the plan view, on dark and light, matches link:cli-vd-roles.svg[the roles
+sheet] in roles and grid. The operator agrees that it is fit to show to customers.
+|operator review
+|===
