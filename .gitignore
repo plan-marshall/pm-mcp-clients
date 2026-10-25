@@ -8,6 +8,8 @@
 *.project
 **/.vscode
 .DS_Store
+# Playwright MCP browser artifacts (screenshots, traces)
+.playwright-mcp/
 .asciidoctorconfig.adoc
 .factorypath
 src/guard-controls/**/target

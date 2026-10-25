@@ -75,6 +75,17 @@ plan spec names the plan, proposal and finding documents it comes from.
   writes `doc/claude_review/verification-results/{slug}.adoc` and files every failed check as a `finding`
   to the epic inbox.
 
+- 2026-10-25 — Browser checks on every output change (operator request: opencode now has the Playwright MCP
+  server of `opencode.json`). Every runbook deliverable that changes what the web app renders carries a
+  Done-when "Browser check (Playwright MCP)" with its scenario, states and routes. The procedure is a
+  standing constraint taken from `AGENTS.md` § Browser checks: mock first, then the app; fresh pairing
+  per session; `de`/`en`, dark/light, 1440 and 390 px; baseline and after snapshots plus screenshots
+  under `.plan/temp/browser/{plan}/`. It fails closed: no MCP server, no met clause. That covers 37
+  plans: all web plans except `web-design-docs-closure`, which changes documents only, plus the two
+  mock plans and the shared catalogue plan. Nine terminal plans that change catalogue areas the web
+  also renders get one browser regression check. Verification plans (`plan-marshall` lane) keep their
+  Chrome walks.
+
 ## Open Defects
 
 - None at staging.
