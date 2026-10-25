@@ -1,0 +1,54 @@
+= CLI Review: Use Cases
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[CLI Review] » Use Cases
+
+This folder states how well `pm-operator` implements the use cases it serves
+(link:../../../../../plan-marshall-documentation/doc/UseCases.adoc[Use Cases]), and which use cases need changes. The
+set comes from `doc/design/terminal-client/README.adoc` and the `Design::` line of each use case. It holds all use
+cases except two: UC-PLN-3 (the process designer, web only) and UC-PRJ-4 (a draft without design).
+
+[cols="1,3",options="header"]
+|===
+|Document |What it holds
+
+|link:analysis.adoc[Analysis]
+|The verdict per use case in one matrix, and the main gaps.
+
+|link:findings-onboarding-entry.adoc[Findings: Onboarding and Entry]
+|UC-ONB-1 to UC-ONB-10, UC-ENT-1, UC-ENT-2.
+
+|link:findings-plans-control.adoc[Findings: Plans and Control]
+|UC-PLN-1, UC-PLN-2, UC-PLN-4, UC-PLN-5, UC-CTL-1 to UC-CTL-5.
+
+|link:findings-projects-starting.adoc[Findings: Projects and Starting Work]
+|UC-PRJ-1 to UC-PRJ-3, UC-STA-1 to UC-STA-9.
+
+|link:findings-system-reports.adoc[Findings: System and Reports]
+|UC-SYS-1 to UC-SYS-3, UC-PLN-6.
+
+|link:proposals.adoc[Proposals]
+|The changes to the client and the mock that close the gaps, and the changes to the use-case documents.
+
+|link:plan.adoc[Plan]
+|The steps, in order.
+
+|link:verification.adoc[Verification]
+|The checks per step, with the mock scenario and state for each.
+|===
+
+Verdicts (the scale of the web review):
+
+`conforms`:: The flow and its variations are there. Only small defects remain.
+`partial`:: The main flow works. Some variations or outcomes are absent.
+`deviates`:: The client does something other than the use case says.
+`missing`:: There is no implementation.
+`not verified`:: The mock does not show the state, or the act was not run. The test named is the only evidence.
+
+Severities of findings:
+
+`blocker`:: The act does harm or cannot be done.
+`major`:: The operator is misled or slowed down a lot.
+`minor`:: A defect the operator can work around.

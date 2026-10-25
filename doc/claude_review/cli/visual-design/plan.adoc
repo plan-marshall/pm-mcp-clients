@@ -1,0 +1,56 @@
+= CLI Review: Visual Design, Plan
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[CLI Review] » link:README.adoc[Visual Design] » Plan
+
+The steps come after the foundation of link:../cross-cutting/plan.adoc[Cross-Cutting, Plan], because the display layer
+decides the words each row shows.
+
+[#CLI-VD-S-01]
+== CLI-VD-S-01: Design Documents First
+
+Proposals:: link:proposals.adoc#CLI-VD-P-06[CLI-VD-P-06]
+
+. Add the colour roles, the switch-off rules, and the ASCII table to `03-dialogues.adoc#terminal`.
+. Add the column grid and the brand line to `15-overview.adoc`; fix the footers of the mockups.
+. Add `operator.tui.unavailable.*` to `09-texts-common.adoc`.
+. Run the `doc-review` skill on `doc/design/terminal-client/`.
+
+[#CLI-VD-S-02]
+== CLI-VD-S-02: The `Style` and `Glyphs` Classes
+
+Proposals:: link:proposals.adoc#CLI-VD-P-01[CLI-VD-P-01], link:proposals.adoc#CLI-VD-P-02[CLI-VD-P-02]
+
+. Add `tui/Style.java` (role → SGR, switched off per the rules) and `tui/Glyphs.java` (UTF-8 and ASCII tables).
+. Add `StyleTest` and `GlyphsTest`, and a test that fails on a raw `ESC[` or a glyph literal outside these classes.
+
+[#CLI-VD-S-03]
+== CLI-VD-S-03: Apply the Roles
+
+Proposals:: link:proposals.adoc#CLI-VD-P-01[CLI-VD-P-01]
+
+. Apply the roles in the overview, the plan view, the epic, the projects, the reports, the system view.
+. Apply them in the printed trees and the dialogues (`✓` green, `✗` red, the step line and the prompt question bold).
+. Update the expected screens of the `*FullScreenTest` classes.
+. Their assertions read the text only. Add one assertion per view for the attribute of the `!` marker and of the
+  header.
+
+[#CLI-VD-S-04]
+== CLI-VD-S-04: The Column Grid and the Repeats
+
+Proposals:: link:proposals.adoc#CLI-VD-P-03[CLI-VD-P-03], link:proposals.adoc#CLI-VD-P-04[CLI-VD-P-04]
+
+. Add a `RowLayout` with the five columns; use it in every list view.
+. Give task rows the state column; give the system view a sub-label column.
+. Remove the repeats of CLI-VD-F-04.
+. Update the transcripts in `src/test/resources/transcript/`.
+
+[#CLI-VD-S-05]
+== CLI-VD-S-05: The Brand Line
+
+Proposals:: link:proposals.adoc#CLI-VD-P-05[CLI-VD-P-05]
+
+. Add the product name to the full-screen header and the console greeting.
+. Update `TuiCapabilityIT` and the console transcript.

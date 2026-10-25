@@ -1,0 +1,63 @@
+= CLI Review: UX, Plan
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[CLI Review] » link:README.adoc[UX] » Plan
+
+The steps follow the safety steps of link:../use-cases/plan.adoc[Use Cases, Plan] (CLI-UC-S-01 to CLI-UC-S-03).
+
+[#CLI-UX-S-01]
+== CLI-UX-S-01: Clear Every Row
+
+Proposals:: link:proposals.adoc#CLI-UX-P-02[CLI-UX-P-02]
+
+. Pad or erase every row in `TuiScreen` when a frame is written.
+. Add `TuiScreenTest.levelChangeLeavesNoResidue` on `VirtualScreenTerminal`.
+
+[#CLI-UX-S-02]
+== CLI-UX-S-02: Footer Priority and Help Overlay
+
+Proposals:: link:proposals.adoc#CLI-UX-P-02[CLI-UX-P-02]
+
+. Add a priority to `TuiKeyRegistry.Binding`; fill the footer by priority; end with `? more`.
+. Rebuild the help overlay as a box with grouped bindings and the row details.
+. Extend `TuiCapabilityIT` with `helpOverlayShowsAllKeys` and `footerHasNoResidue` on each level.
+. Update the mockups of `15-overview.adoc` so every footer shows `? help` and `q leave`.
+
+[#CLI-UX-S-03]
+== CLI-UX-S-03: The Error Pattern and Exit Codes
+
+Proposals:: link:proposals.adoc#CLI-UX-P-05[CLI-UX-P-05]
+
+. Add `RefusalRenderer` with the catalogue texts per `pm-api` error code.
+. Add the Picocli parameter exception handler and catalogue usage texts.
+. Set the exit codes; add `ExitCodesTest`.
+
+[#CLI-UX-S-04]
+== CLI-UX-S-04: "Needs You"
+
+Proposals:: link:proposals.adoc#CLI-UX-P-01[CLI-UX-P-01]
+
+. Add the verb `needs` and the console alias `!`.
+. Add the "Needs you" group to the overview root; change `!` to open the act of the wait.
+. Read every count from `needs_operator`.
+. Add `NeedsCommandTest` and a PTY test in `running-work`.
+
+[#CLI-UX-S-05]
+== CLI-UX-S-05: Verb Modes and Help
+
+Proposals:: link:proposals.adoc#CLI-UX-P-04[CLI-UX-P-04], link:proposals.adoc#CLI-UX-P-06[CLI-UX-P-06]
+
+. Add `--print` to the view verbs; open full screen in a terminal by default.
+. Add `help [<verb>]` in shell and console, `--help` on every subcommand, `?` at the prompt.
+. Add the verb-mode table to `01-commands.adoc`.
+
+[#CLI-UX-S-06]
+== CLI-UX-S-06: JSON Output
+
+Proposals:: link:proposals.adoc#CLI-UX-P-07[CLI-UX-P-07]
+
+. Fix `plans --json`.
+. Add `--json` to the listing verbs with a schema test each.
+. Document the schemas in `01-commands.adoc`.

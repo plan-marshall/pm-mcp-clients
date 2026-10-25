@@ -1,0 +1,194 @@
+= CLI Review: UX, Findings
+:toc: left
+:toclevels: 2
+:nofooter:
+:tc: ../../../design/terminal-client
+
+link:../README.adoc[CLI Review] » link:README.adoc[UX] » Findings
+
+Severities: `blocker`, `major`, `minor` (see link:../use-cases/README.adoc[Use Cases]).
+
+[#keep]
+== Patterns to Keep
+
+* *The printed `status` tree.* One screen, every project, every plan with phase, state, age, tasks, signal, and pull
+  request. The `!` marker is always followed by its kind.
+* *The printed epic.* Workstreams, sources, landings, findings, watches, tokens, and events in one screen, with the
+  command to go deeper next to each block (`epic findings relay-hardening`).
+* *The full-screen frame.* Header with the place and the connection state, separators, footer from the key registry,
+  the inverted selection with `▶`.
+* *Suggested next commands.* Printed views end with what to type next: `plans · cleanup · system --window today`,
+  `reports read rep-0142 · reports read --all`.
+* *Fallbacks with a reason.* "The terminal is too narrow for the full-screen view; here is the scrollback instead."
+* *The onboarding introduction.* It lists the seven steps and says that nothing is looked at, run, or changed before
+  the operator allows it.
+
+[#CLI-UX-F-01]
+== CLI-UX-F-01: No Single Answer to "What Needs Me"
+
+Severity:: `major`
+Design:: link:{tc}/04-console.adoc#prompt[Prompt], link:{tc}/15-overview.adoc[Overview]
+
+* `status` marks needs per project with their kind. It is the best answer today, but it is not called that, and it
+  lists running work too.
+* `questions` lists decisions and waiver requests only: 3 in `fully-onboarded`, 8 in `running-work`. Holds, failed
+  landings, and setup questions are elsewhere.
+* The full-screen overview shows one decision for `pm-mcp-clients` while `questions` lists three for the same
+  project.
+* The prompt has no badge (link:../use-cases/findings-onboarding-entry.adoc#CLI-UC-F-06[CLI-UC-F-06]).
+* `!` "what waits" opens the actions of the selected row
+  (link:../use-cases/findings-plans-control.adoc#CLI-UC-F-14[CLI-UC-F-14]).
+
+[#CLI-UX-F-02]
+== CLI-UX-F-02: The Help Key Breaks Every Full-Screen View
+
+Severity:: `major`
+Design:: link:{tc}/15-overview.adoc#full-screen-keys[Full-Screen Keys]
+
+`?` should show all keys and the details of the selected row, as an overlay. In the overview, the plan view, and the
+projects explorer, `?` instead collapses the screen:
+
+* the selected row on line 3;
+* a copy of the footer on line 4;
+* every other line cleared.
+
+`?` or `Esc` restores the view. The terminal output confirms this: the frame after `?` writes only those rows and
+clears the rest.
+
+[source,text]
+----
+pm-mcp-clients › relay-hardening › fix-relay › TASK-003                     ● connected
+───────────────────────────────────────────────────────────────────────────────────────
+      ▶ TASK-003 · implement · claude sonnet · attempt 1 · running · - · 6 min
+↑↓ move   Enter details   → open   ← close   . where it is   * open all   n not in …
+───────────────────────────────────────────────────────────────────────────────────────
+↑↓ move   Enter details   → open   ← close   . where it is   * open all   n not in …
+----
+
+Cause (code, likely): `TuiViewStack.toggleHelp` with `refreshHelpRows` (`OverviewFullScreenApp.java:1750-1753`)
+produce no help rows, and the frame then draws the selection only. Evidence:
+link:../resources/screens/plan-view-help.txt[plan-view-help.txt].
+
+[#CLI-UX-F-03]
+== CLI-UX-F-03: The Footer Is Stale or Cut
+
+Severity:: `major`
+Design:: link:{tc}/15-overview.adoc#full-screen-layout[Full-Screen Layout]
+
+* *Stale text.* A frame writes the footer without clearing the rest of the line. After a level change the end of the
+  previous footer stays: `Esc closerite`, `q leaveclose . where it is`, `Esc back Esc back`,
+  `q leaveEsc back plan t tokens`. The raw output confirms it: the footer string ends with no erase and no padding.
+* *Cut keys.* At 120 columns the plan view footer ends in `…`. `a actions`, `e epic`, and `Esc back` are not visible.
+  At 80 columns the overview footer ends in `E end…`. The design keeps the keys that apply and drops the rest with a
+  `?` hint.
+* *Footer of the help overlay.* The footer does not change when `?` is open.
+
+Evidence: link:../resources/screens/activity-footer-residue.txt[activity-footer-residue.txt],
+link:../resources/screens/overview-80x24.txt[overview-80x24.txt].
+
+[#CLI-UX-F-04]
+== CLI-UX-F-04: Dialogues Without a Clear Question or a Way Out
+
+Severity:: `blocker`
+Design:: link:{tc}/03-dialogues.adoc[Dialogues]
+
+[cols="2,3",options="header"]
+|===
+|Dialogue |What happens
+
+|Pause (`a` → `p`)
+|One line, no consequences, no `q`; any input pauses (CLI-UC-F-18).
+
+|Runtime stop
+|No question at all (CLI-UC-F-31).
+
+|Cleanup
+|A list, then the prompt `pm ›`; no question (CLI-UC-F-34).
+
+|Answer
+|A header, then nothing (CLI-UC-F-10).
+
+|Onboarding
+|A question whose answers are all ignored (CLI-UC-F-01).
+
+|Automatic onboarding
+|`[y/N]`, a style the design does not use.
+
+|Start
+|Choices without keys; the prompt is `?  ›` alone (CLI-UC-F-23).
+|===
+
+The design has one dialogue grammar (`[n/7]` step line, `←` preselection, the primary action as the prompt
+question, `?`, `q`). Only the console settings and the start dialogue come close to it.
+
+[#CLI-UX-F-05]
+== CLI-UX-F-05: Errors Are Raw
+
+Severity:: `major`
+Design:: link:{tc}/03-dialogues.adoc#refusals[Refusals and Errors], link:{tc}/01-commands.adoc#exit-codes[Exit Codes]
+
+* `answer Q-999 1`:
+  `answer: answer Q-999 refused by the runtime (HTTP 404): {"error":"not_found","message":"Question Q-999 not found."}`.
+* `config show`: "Unable to load settings: HTTP 404", exit `0`.
+* `roles list`: "Failed to read roles: HTTP 404".
+* An unknown verb: "Unmatched argument at index 0: 'bogus'", then "Did you mean: pm-operator abort or pm-operator
+  status or pm-operator onboard?".
+* `q` or `?` at the console prompt prints the full Picocli usage (40 lines).
+
+The design asks for a `✗` line, the detail in words, and `→ fix`, never a stack trace or a JSON body.
+
+[#CLI-UX-F-06]
+== CLI-UX-F-06: Verb Modes Differ Without a Rule
+
+Severity:: `minor`
+
+* `plan <id>` in a terminal opens the full-screen plan view; `epic <id>` prints.
+* `system` prints in the shell and opens full screen in the console.
+* `cleanup` and `reports` print only; `projects` opens full screen; `projects --list` prints.
+* After `q` from `plans`, nothing is printed. The design prints "While the overview was open: …" when something
+  arrived.
+
+[#CLI-UX-F-07]
+== CLI-UX-F-07: Exit Codes Do Not Tell Failure
+
+Severity:: `major`
+Design:: link:{tc}/01-commands.adoc#exit-codes[Exit Codes]
+
+`config show` fails and exits `0`. `answer Q-007` shows nothing and exits `0`. `runtime stop` exits `0` without a
+question. A script cannot tell success from failure. `--no-input` exits `3` where a choice is needed, as designed
+(`onboard --auto --no-input`).
+
+[#CLI-UX-F-08]
+== CLI-UX-F-08: Help Is Incomplete
+
+Severity:: `minor`
+Design:: link:{tc}/01-commands.adoc#command-tree[Command Tree]
+
+* The console `help` lists 9 verbs (plans, tui, plan, epic, questions, answer, status, web, exit) and says "Any
+  operator verb … can be typed here". `reports`, `projects`, `system`, `cleanup`, `start` are not listed.
+* `help <verb>` does not exist in the console; `pm-operator help` is a usage error in the shell; subcommands reject
+  `--help` (`project --help`: "Unknown option: '--help'").
+* The design asks for `help [<verb>]` and for a line saying the process designer is in the web app.
+
+[#CLI-UX-F-09]
+== CLI-UX-F-09: `plans --json` Prints the Runtime Status
+
+Severity:: `major`
+
+`pm-operator plans --json` prints the runtime status document (`status`, `version`, `listeners`, `web`,
+`paired_devices_count`), not the plans. A script that asks for the running work gets the wrong document. Evidence:
+link:../resources/screens/plans-json.txt[plans-json.txt].
+
+[#CLI-UX-F-10]
+== CLI-UX-F-10: Narrow Widths Follow the Design, Except the Footer
+
+Severity:: `minor`
+Design:: link:{tc}/15-overview.adoc#full-screen-narrow[Narrow Terminals]
+
+* Below 60 columns the view does not open and says why.
+* At 80 columns rows lose their details line, as designed.
+* At 66 columns rows are cut with `…`.
+* `TERM=dumb` prints the reason and the scrollback form.
+
+Only the footer loses keys instead of keeping them (CLI-UX-F-03). Evidence:
+link:../resources/screens/plan-view-66x24.txt[plan-view-66x24.txt].

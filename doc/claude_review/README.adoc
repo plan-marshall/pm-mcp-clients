@@ -93,6 +93,8 @@ data across views.
 
 The order of work across the folders is in <<order>>.
 
+The terminal client `pm-operator` has its own review, with the same structure: link:cli/README.adoc[CLI Review].
+
 [#method]
 == Method
 

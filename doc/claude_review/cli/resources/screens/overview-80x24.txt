@@ -1,0 +1,24 @@
+Running work · pm-mcp-clients · by plan                             ● connected
+───────────────────────────────────────────────────────────────────────────────
+▶ decision      ▸ plan  Drop the legacy endpoints      finalize · waiting for …
+                ▸ plan  Fix Relay Transport            execute · running
+                ▸ plan  Relay metrics                  execute · paused
+  alongside
+  landing failed     landing remediation.ci-failure · failed
+    removing 2 moved documents from git · running
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+───────────────────────────────────────────────────────────────────────────────
+↑↓ move   Enter open   a actions   e epic   ! what waits   Tab by epic   E end…

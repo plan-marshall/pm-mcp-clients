@@ -1,0 +1,30 @@
+Running work ? pm-mcp-clients ? by epic                                                                     ? connected
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+                ? epic  Relay Hardening                3 running ? 3 staged
+    289 h 12 min ? 4 of 9 plans
+          └─    ? plan  Fix Relay Transport            execute ? running
+    219 h 22 min ? in execute 217 h 37 min ? 2 of 3 tasks ? off track: repeating ? #214
+  without epic
+? decision      ? plan  Drop the legacy endpoints      finalize ? waiting for you
+    220 h 40 min ? in finalize 217 h 45 min ? 4 of 4 tasks
+  alongside
+  landing failed     landing remediation.ci-failure ? failed
+    removing 2 moved documents from git ? running
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+?? move   Enter open   a actions   ! what waits   Tab by plan   E ended work   Esc back

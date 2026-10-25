@@ -1,0 +1,30 @@
+pm-mcp-clients › relay-hardening › drop-legacy-api › TASK-003                                               ● verbunden
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+  drop-legacy-api · execute · läuft · 2 h 10 min · #214
+  Tokens bisher   ≥ 412 Tsd. (≥ 380 Tsd. rein · ≥ 32 Tsd. raus)
+    ✓ fertig           Phase init                     2 min
+    ✓ fertig           Phase refine                   14 min
+    ✓ fertig           Phase outline                  31 min
+    ✓ fertig           Phase plan                     9 min
+  ▾ ▶ läuft            Phase execute                  25 min
+    ▾ ▶ läuft            execute.envelope               6 min · 2 von 3 Tasks fertig
+      2 von 3 Tasks fertig
+      ✓ TASK-001 · implement · claude sonnet · Versuch 1 · done · success · 4 min
+      ✓ TASK-002 · module-tester · claude sonnet · Versuch 1 · done · success · 3 min
+▶     ▶ TASK-003 · implement · claude sonnet · Versuch 1 · running · - · 6 min
+      ○ geplant          ↳ Sub-Workflow remediation.ci…
+    ○ geplant          Phase finalize
+
+
+
+
+
+
+
+
+
+
+
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+↑↓ bewege   Enter Details   → öffne   ← schließe   . wo er steht   * öffne alle   n nicht in diesem Plan   t Token   p…

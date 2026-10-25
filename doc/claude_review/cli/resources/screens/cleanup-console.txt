@@ -1,0 +1,79 @@
+✓ Runtime running (pm-mcpd 0.9.1)
+✓ Web app: http://127.0.0.1:7420   (paired: Firefox on mbp-oliver)
+▪ 7 unread reports since 2026-10-13T08:00:00Z · reports shows them
+Type plans or tui to open the full-screen overview.
+pm › system
+pm › cleanup
+Cleanup cln-0012 · due since today 03:00
+Summary   12 plans · 2 epics · 40 logs · 5 read reports · 1 unenrolled project
+          frees 1.8 GB
+pm-mcp-clients
+    1) ▸ fix-relay          merged (#214)     ended ended 12 Sep  84 MB   6 logs
+    2) ▸ docs-typo          no change         ended ended 11 Sep   2 MB    1 log
+    3) ◇ relay-hardening    completed         ended ended 10 Sep  12 MB
+    4)   logs of relay-docs plan kept until 24 Oct            31 MB  14 logs
+    5)   3 read reports
+pm-mcp-core
+    6) ▸ token-usage        merged (#88)      ended ended 9 Sep 120 MB  11 logs
+    7)   2 read reports
+Unenrolled projects
+    8)   legacy-portal                                           1.1 GB
+Kept for good 4 (cleanup --kept) · durations 30 days, reminder 3 days · last sweep today 03:00
+pm › q
+Unmatched argument at index 0: 'q'
+Usage: pm-operator [-hV] [--tui] [COMMAND]
+Operator command line of PM-MCP.
+  -h, --help      Show this help message and exit.
+      --tui       Launch the full-screen overview TUI directly
+  -V, --version   Print version information and exit.
+Commands:
+  status         Shows the runtime status; never starts the runtime.
+  plans          Shows the overview of running work across projects.
+  web            Enables, pairs, or configures the runtime's web access.
+  runtime        Starts, stops, restarts, or upgrades the runtime.
+  drain          Signals the runtime to stop after completing active work.
+  onboard        Runs the machine onboarding, guided or automatic.
+  config         Manages machine and project configuration.
+  credentials    The operator's credential acts.
+  settings       Inspects and changes the machine's settings.
+  project        Manages project enrolments and lifecycle.
+  projects       Explores and lists projects on this machine.
+  client         Manages client bundle installations for coding agent harnesses.
+  plan           Inspects or controls plans.
+  epic           Inspects or controls epics.
+  abort          Aborts a plan or epic by state.
+  recipe         Recipe operations.
+  start          Start a plan or an epic.
+  lesson         Verify a lesson's premise before a plan starts from it.
+  git-source     Adopt a pull request or capture the local changes.
+  questions      Lists open decisions and questions.
+  answer         Answers an open question or decision.
+  reports        Reports operations.
+  system         Shows the system view; never starts the runtime.
+  cleanup        Cleanup operations: view open jobs, delete, remind, ignore, or
+                   manage kept items.
+  enrol          Enrols a project from the specified or current directory.
+  enrol-harness  Enrols the headless CLI of a client profile after showing
+                   path, version and SHA-256.
+  roles          Reads the effective role set and qualifies a role.
+  unenrol        Removes a project's enrolment.
+  accept-edit    Accepts a manual store edit after showing its recorded and
+                   current size and SHA-256.
+pm › reports
+Reports · 7 unread
+pm-mcp-clients
+  relay-hardening
+    rep-0143   relay-token-store   relay-token-store started by relay-hardening (2 of 3 at once) 9 d ago
+                                                              reports open rep-0143
+    rep-0144   relay-docs          relay-docs waits: overlap with relay-auth-v2 (2 files) 9 d ago
+                                                              reports open rep-0144
+    rep-0142   fix-relay           fix-relay ended: merged (#214)        9 d ago
+                                                              reports open rep-0142
+  rep-0139   docs-typo           docs-typo ended: no change            9 d ago · sent 9 d ago
+                                                            reports open rep-0139
+pm-mcp-core
+  rep-0131   project             pm-mcp-core is onboarded              10 d ago
+                                                            reports open rep-0131
+reports read rep-0143 · reports read --all
+2 older: reports --older
+pm › exit

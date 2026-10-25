@@ -1,0 +1,25 @@
+✓ Runtime running (pm-mcpd 0.9.1)
+✓ Web app: http://127.0.0.1:7420   (paired: Primary Desktop Browser)
+▪ 5 unread reports since 2026-10-15T18:40:00Z · reports shows them
+Type plans or tui to open the full-screen overview.
+pm › help
+Commands:
+  plans                  overview of running, held, and paused plans
+  tui                    the same overview, in full screen
+  plan <id>              details and actions of a plan
+  epic <id>              details and actions of an epic
+  questions              open questions and waiver requests
+  answer <id> [<opt>]    answer a question or waiver request
+  status                 runtime and listener status
+  web [pair|qr|copy]     web app pairing and access
+  exit                   leave the console
+Any operator verb (runtime, config, projects, client, etc.) can be typed here.
+pm › questions
+Open Questions · 3 pending
+  Q-007  plan fix-relay  execute · blocks the plan · can be undone
+         "Resolve rebase conflict"   waiting since 14:02
+  Q-012  plan storage-v2 outline · blocks the plan · can be undone
+         "How should the new store be introduced?"   waiting since 14:30
+  Q-015  epic relay-hardening outline · blocks the epic · costly to undo
+         "Which reconnect ceiling?"   waiting since 14:50
+pm › exit

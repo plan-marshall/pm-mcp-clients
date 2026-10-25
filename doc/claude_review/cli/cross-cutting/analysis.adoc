@@ -1,0 +1,47 @@
+= CLI Review: Cross-Cutting, Analysis
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[CLI Review] » link:README.adoc[Cross-Cutting] » Analysis
+
+== Result in Short
+
+Five concerns cut across every verb and view:
+
+. *Texts.* The catalogue covers the views well, in English and German. Dialogues and errors bypass it: fixed English
+  in `AnswerCommand`, Picocli's English usage and errors, raw values (`done · success`, `failed`, `running`) in
+  German screens.
+. *Raw data.* Link relations, gate ids, step ids, and `-` placeholders reach the screen. One plan is shown by title in
+  one view and by id in the next.
+. *Time.* Raw ISO time, hours without days (`217 h 11 min`), and three forms of relative time.
+. *The operator gate.* `PM-SEC-3` works as written. Its checks are easy to defeat by design, and the client applies them
+  to read-only verbs that the requirement does not cover. It is not a bug in the narrow sense, but it is the wrong
+  tool in two places (link:findings.adoc#CLI-CC-F-07[CLI-CC-F-07], link:findings.adoc#CLI-CC-F-08[CLI-CC-F-08]).
+. *Tests.* The PTY layer exists and works. It covers opening views and a few transcripts, not the dialogues that act,
+  which is where the blockers are.
+
+[#shared]
+== Shared With the Web Review
+
+The web review found the same text and data defects in the web app (link:../../cross-cutting/analysis.adoc[web
+Cross-Cutting, Analysis]): raw enums, raw time, mixed languages. Both clients format domain values themselves, each in
+its own way. The right fix is one display layer that both use:
+
+* a table of display words per enum value and state id, in the shared catalogue;
+* one time and duration formatter, specified in `shared/texts-and-languages.adoc`;
+* one id-to-title rule.
+
+`pm-api` holds the catalogue already (`pm-api/src/main/resources/messages/`), so the terminal client can use it
+directly, and the web app reads the same keys.
+
+[#gate]
+== The Operator Gate in One Paragraph
+
+The gate refuses the client when a coding-agent marker is in the environment or no terminal is attached. The
+requirement calls this a guard against accidental and naive invocation, and accepts that a deliberate shell defeats it
+(`PM-SEC-3`, residual risk; proof deferred to `L-1`). This review defeated it in one line, the same way the project's
+own PTY tests do. The real boundaries are elsewhere: the host rule that denies `pm-operator` to the model, and the
+runtime token, which any process of the same user can read. Meanwhile the gate blocks the developer's own agent from
+running the client it builds, and it gates read-only verbs. The proposals keep the guard, narrow it to acts, make its
+limit visible, and point to the real control (link:proposals.adoc#CLI-CC-P-05[CLI-CC-P-05]).

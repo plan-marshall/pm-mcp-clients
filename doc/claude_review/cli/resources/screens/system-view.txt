@@ -1,0 +1,30 @@
+System · pm-mcpd 0.9.1                                                                                      ● connected
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+▶ Runtime   running since today 08:14 · 6 h 12 min · 0.10.0 available
+          memory 412 MB in use of 1 GB · 680 MB resident · CPU 4 %
+          machine store 2.3 GB · 38 GB free on its disk · measured 13:40
+          listeners  socket · loopback 127.0.0.1:7420 · network off
+  Work      plans  3 running · 1 waiting for you · 1 held · 2 paused
+          epics  1 running · 1 waiting for you
+          tasks  4 running · 6 queued
+          3 projects with running work
+  Workers   5 · 3 busy · 2 idle
+          planner       claude    opus-4.5    busy     fix-relay
+          implementer   claude    sonnet-4.5  busy     relay-docs
+          implementer   codex     gpt-5       idle
+          implementer   claude    sonnet-4.5  busy     token-usage
+          reviewer      claude    sonnet-4.5  idle
+  Jobs      build  1 of 2 slots · 1 queued · test  0 of 1 slot · locks  3 held
+          build  1 of 2 slots · 1 queued
+          test  0 of 1 slot
+  Models    Last hour · 172 calls · ≥ 5.63 M tokens (≥ 5.10 M in · ≥ 530 k out)
+          claude:opus-4.5        42 calls   2.02 M tokens (1.90 M in · 120 k out)    1 retry
+          claude:sonnet-4.5      118 calls   3.61 M tokens (3.20 M in · 410 k out)
+          codex:gpt-5            12 calls   not measured   1 error   12 calls not measured
+  Cleanup   due: 12 plans · 2 epics · 40 logs · 5 read reports · 1 unenrolled project · frees 1.8 GB
+          4 kept for good · last sweep today 03:00
+
+
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+↑↓ move   Enter open   w window   b by role   p per project   a actions   ? help   q leave

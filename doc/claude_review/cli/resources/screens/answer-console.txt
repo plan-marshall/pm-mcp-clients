@@ -1,0 +1,10 @@
+✓ Runtime running (pm-mcpd 0.9.1)
+✓ Web app: http://127.0.0.1:7420   (paired: Firefox on mbp-oliver)
+▪ 7 unread reports since 2026-10-13T08:00:00Z · reports shows them
+Type plans or tui to open the full-screen overview.
+pm › answer Q-007
+Question Q-007 · plan fix-relay · execute · blocks the plan · can be undone
+  The change conflicts with main in RelayServer.java.
+pm › ?
+Unmatched argument at index 0: '?'
+Usage: pm-operator [-hV] [--tui] [COMMAND]

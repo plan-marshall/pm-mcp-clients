@@ -1,0 +1,20 @@
+✓ Runtime running (pm-mcpd 0.1.0-SNAPSHOT)
+plan-marshall is running. This machine is not set up yet.
+  Seven steps. Nothing on this machine is looked at, run, or changed until
+  you say so in that step. You can stop at any point; Enter at the prompt,
+  or the web app, continues where you stopped.
+    1  Language     the language of plan-marshall and of the models' texts
+    2  Harnesses    the coding agents the server works with, one of them the default
+    3  Models       the models plans may use on each coding agent
+    4  Roles        a coding agent and a model for every role
+    5  Credentials  where this machine keeps its tokens
+    6  Providers    the git hosts, CI and analysis services this machine uses
+    7  Plans        how plans run unless a project says otherwise
+Where do you want to set it up?   w) in the web app [Enter]   h) here, in the terminal   ?   › h
+Set up this machine for plan-marshall
+Begin with step 1? [Enter]   a) decide everything for me   ?   ›
+Type plans or tui to open the full-screen overview.
+pm [setup 0/7] ›
+Set up this machine for plan-marshall
+Begin with step 1? [Enter]   a) decide everything for me   ?   ›
+pm [setup 0/7] ›

@@ -1,0 +1,7 @@
+{"status":"ready","version":"0.9.1","lifecycle_state":"running","listener":"unix","machine":{"name":"mock-machine","onbo
+arded":true},"running_since":"today 08:14","uptime_seconds":22320,"workers_count":5,"build_slots_used":1,"build_slots_to
+tal":2,"web":{"enabled":true,"lan":true,"port":7420,"lan_port":7420,"open":true,"lan_fingerprint":"4F:1A:9C:6D:2B:88:71:
+03:C5:9E:44:AF:20:DB:16:E2:07"},"listeners":[{"listener":"loopback","state":"open","port":7420,"url":"http://127.0.0.1:7
+420"},{"listener":"lan","state":"open","port":7420,"url":"https://mbp-oliver.local:7420","fingerprint":"4F:1A:9C:6D:2B:8
+8:71:03:C5:9E:44:AF:20:DB:16:E2:07"}],"paired_devices_count":2}
+EXIT=0

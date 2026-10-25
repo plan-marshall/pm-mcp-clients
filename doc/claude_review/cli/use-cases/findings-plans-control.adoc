@@ -1,0 +1,159 @@
+= CLI Review: Findings, Plans and Control
+:toc: left
+:toclevels: 2
+:nofooter:
+:uc: ../../../../../plan-marshall-documentation/doc/use-cases
+:tc: ../../../design/terminal-client
+
+link:../README.adoc[CLI Review] » link:README.adoc[Use Cases] » Findings: Plans and Control
+
+Scenarios `fully-onboarded` and `running-work` (states `overview.running`, `decisions.open`, `control.holds`).
+
+[#CLI-UC-F-10]
+== CLI-UC-F-10: A Decision Cannot Be Answered
+
+Severity:: `blocker`
+Use cases:: link:{uc}/03-plans.adoc#UC-PLN-2[UC-PLN-2]
+Design:: link:{tc}/14-transcripts-decisions.adoc[Transcripts, Decisions], link:{tc}/04-console.adoc#answering[Answering]
+
+`answer Q-007` prints the header and the description, then returns. No option, no recommendation, no prompt. The
+exit code is `0`. The same happens in the shell and in the console, for `Q-012`, `Q-015`, `Q-016`, and for the waiver
+request `WR-2`.
+
+[source,text]
+----
+pm › answer Q-007
+Question Q-007 · plan fix-relay · execute · blocks the plan · can be undone
+  The change conflicts with main in RelayServer.java.
+pm ›
+----
+
+The runtime sends the options: `GET /api/v1/decisions/Q-007` returns one part with two options, votes, and dissent.
+
+Cause (code, not confirmed): `AnswerCommand.handleInteractive` opens `context.createTerminal()` in a
+try-with-resources block. In the console this is the console's own terminal, lent for the command. The waiver path
+prints its header, flushes, and then `readLineSafe` returns `null` at once (end of input), so the method returns `0`.
+The `catch` writes its message through a writer of the terminal that is already closed, so no error is visible. No PTY
+test runs `answer` (link:../cross-cutting/findings.adoc#CLI-CC-F-09[CLI-CC-F-09]). Evidence:
+link:../resources/screens/answer-console.txt[answer-console.txt].
+
+[#CLI-UC-F-11]
+== CLI-UC-F-11: The Answer Dialogue Has Fixed English Texts
+
+Severity:: `major`
+Use cases:: link:{uc}/03-plans.adoc#UC-PLN-2[UC-PLN-2]
+
+Code reading of `AnswerCommand`, since the dialogue never got that far:
+
+* Fixed English: "I understood:", "Correct? [Enter]   e) edit my words   o) choose an option instead", "interpret
+  asks:", "Waive the gate or decline the request?", "Reason (required):", "Type y, d or l.", "Error reading interactive
+  input".
+* Fixed evidence hints: "? shows the evidence: the conflict, both versions of the method" and "the failing run, the
+  test", whatever the evidence is.
+* A fixed range: "other: 1-3" and "Choose: 1-3", whatever the number of options.
+
+[#CLI-UC-F-12]
+== CLI-UC-F-12: The Plan View Shows Raw Values in Leaf Rows
+
+Severity:: `minor`
+Use cases:: link:{uc}/03-plans.adoc#UC-PLN-1[UC-PLN-1]
+Design:: link:{tc}/16-plan-view.adoc[Plan View]
+
+The plan view opens on the running leaf, as designed. The tree, the token line, and the worker activity level work.
+The activity level reads like a narrative (wrote, tool, changed, asked). Defects:
+
+* Leaf rows: `running · - · 6 min` (a dash for "no result yet") and `done · success` (two words for one state).
+* Leaf rows do not use the state column of the phase rows (see
+  link:../visual-design/findings.adoc#CLI-VD-F-03[CLI-VD-F-03]).
+* The header path ends with the selected task (`… › fix-relay › TASK-003`). The design shows the phase.
+* The activity names a raw link relation: `link  submit:TASK-003`.
+* `2 of 3 tasks done` appears twice: on the envelope row and as its own line.
+
+Evidence: link:../resources/screens/plan-view.txt[plan-view.txt],
+link:../resources/screens/activity-footer-residue.txt[activity-footer-residue.txt].
+
+[#CLI-UC-F-13]
+== CLI-UC-F-13: The Mock Returns One Plan for Every Id
+
+Severity:: `minor` (mock)
+Use cases:: link:{uc}/03-plans.adoc#UC-PLN-1[UC-PLN-1]
+
+`plan nope` opens a plan view titled `nope` with the tree of `fix-relay`. "Drop the legacy endpoints" (finalize,
+waiting) opens as `drop-legacy-api · execute · running`, in epic `relay-hardening`, with the same tree. This is a
+fixture defect of the mock. It also hides a defect of the client: no view says "plan not found". See
+link:proposals.adoc#CLI-UC-P-08[CLI-UC-P-08].
+
+[#CLI-UC-F-14]
+== CLI-UC-F-14: `!` "What Waits" Opens the Actions of the Selected Row
+
+Severity:: `major`
+Use cases:: link:{uc}/03-plans.adoc#UC-PLN-4[UC-PLN-4]
+Design:: link:{tc}/15-overview.adoc#full-screen-keys[Full-Screen Keys]
+
+The footer of the project level offers `! what waits`. On a running plan, `!` opens the action menu (Pause, Cancel,
+Chat, Settings). On the waiting plan it opens the same menu, without the decision. The operator expects the waiting
+item, or a list of what waits.
+
+Cause (code): `OverviewFullScreenApp.openWhatWaits` (`OverviewFullScreenApp.java:1073-1098`) opens the hold dialogue
+on the epic level and otherwise calls `openActions()`. Evidence:
+link:../resources/screens/overview-what-waits.txt[overview-what-waits.txt].
+
+[#CLI-UC-F-15]
+== CLI-UC-F-15: A Refused Request Shows as "Nothing Runs"
+
+Severity:: `major`
+Use cases:: link:{uc}/03-plans.adoc#UC-PLN-4[UC-PLN-4]
+
+In the scenario `reports-and-system` the mock refuses `GET /api/v1/plans` with `404`. The scrollback form prints the
+refusal. The full-screen view shows "Nothing runs. Start a plan in a project, or enrol one." An error must never look
+like an empty state. Evidence: link:../resources/screens/overview-50-cols.txt[overview-50-cols.txt] (the refusal).
+
+[#CLI-UC-F-17]
+== CLI-UC-F-17: The Printed Epic Contradicts Itself
+
+Severity:: `minor`
+Use cases:: link:{uc}/03-plans.adoc#UC-PLN-5[UC-PLN-5]
+Design:: link:{tc}/15-overview.adoc[Overview]
+
+`epic relay-hardening` prints workstreams, sources, landings, findings, watches, tokens, and events in one screen.
+This is better than the web epic view. Two numbers do not match their rows:
+
+* `Landings 2` lists one landing.
+* The head says `needs you: 3`; the workstreams show one plan waiting for you.
+
+The epic uses plan ids only (`relay-auth-v2`); the overview uses titles ("Fix Relay Transport"). See
+link:../cross-cutting/findings.adoc#CLI-CC-F-03[CLI-CC-F-03]. Evidence:
+link:../resources/screens/epic-printed.txt[epic-printed.txt].
+
+[#CLI-UC-F-18]
+== CLI-UC-F-18: The Pause Dialogue Pauses on Any Input
+
+Severity:: `blocker`
+Use cases:: link:{uc}/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1]
+Design:: link:{tc}/19-actions.adoc[Actions], link:{tc}/03-dialogues.adoc#resume[Leaving a Dialogue]
+
+`a` → `p` on a plan prints one line and waits:
+
+[source,text]
+----
+Where does drop-legacy-api hold?  1) now   2) after the current task   3) after the current phase  › drop-legacy-api pausing after the task
+----
+
+* There is no way out. The dialogue offers no `q`, and `q`, `x`, or a typo are taken as the default.
+* The input is not echoed.
+* The options show no consequences. The design shows for each option what stops and what finishes, the preselection
+  (`←`), and that the epic is told.
+
+Cause (code): `WorkActionDialogue.pause` maps `"1"`/`"now"` and `"3"`/`"phase"`, and everything else to `"task"`
+(`WorkActionDialogue.java:147-151`), then sends the act. In the observed run the plan was paused after its task. The
+mock was reset afterwards. Evidence: link:../resources/screens/pause-dialogue-q.txt[pause-dialogue-q.txt].
+
+[#CLI-UC-F-19]
+== CLI-UC-F-19: The Menu of a Waiting Plan Lacks the Decision
+
+Severity:: `major`
+Use cases:: link:{uc}/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1]
+Design:: link:{tc}/19-actions.adoc[Actions, "What it offers"]
+
+The design says: a plan waiting for you offers the decision first (`!`), then Pause, Cancel, Chat, Settings. The
+client offers Pause, Cancel, Chat, Settings only. The one act the state asks for is absent.

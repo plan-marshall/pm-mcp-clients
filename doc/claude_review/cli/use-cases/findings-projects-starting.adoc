@@ -1,0 +1,73 @@
+= CLI Review: Findings, Projects and Starting Work
+:toc: left
+:toclevels: 2
+:nofooter:
+:uc: ../../../../../plan-marshall-documentation/doc/use-cases
+:tc: ../../../design/terminal-client
+
+link:../README.adoc[CLI Review] » link:README.adoc[Use Cases] » Findings: Projects and Starting Work
+
+Scenario `projects-and-start` (states `projects.explorer`, `projects.being-added`, `start.sources`).
+
+[#CLI-UC-F-21]
+== CLI-UC-F-21: The Project Onboarding Has No Dialogue
+
+Severity:: `blocker`
+Use cases:: link:{uc}/04-projects.adoc#UC-PRJ-1[UC-PRJ-1]
+Design:: link:{tc}/17-projects.adoc#onboarding[Projects, Onboarding]
+
+The explorer shows `~/git/cui-parent   Identity (2 of 10)` under "Being added", with `c Continue` and `x Abandon…`.
+
+* `c Continue` leaves the view, prints "✓ Project onboarding started for ~/git/cui-parent", and comes back. The
+  onboarding was not started; it was at step 2. Nothing asks for the identity.
+* `project setup cui-parent` prints "✓ Project setup for cui-parent (step current)". The placeholder `current` is the
+  step id of the request, printed as is.
+
+The design describes a ten-step dialogue that ends with "✓ pm-mcp-clients is ready". The web app has the same gap at
+the identity step (link:../../use-cases/findings-projects-starting.adoc#UC-F-31[web UC-F-31]).
+
+[#CLI-UC-F-22]
+== CLI-UC-F-22: The Projects Explorer Conforms
+
+Severity:: `minor`
+Use cases:: link:{uc}/04-projects.adoc#UC-PRJ-2[UC-PRJ-2]
+Design:: link:{tc}/17-projects.adoc[Projects]
+
+The explorer has the groups of the design (Being added, Favourites, Recent, All projects · by name), the star, the
+status words (`ready`, `setup needs: credential sonar`, `released`), `needs you: N`, and the age. `Enter` opens the
+actions in place. Two small defects:
+
+* `2 plans · 0 epics`: a zero is shown; the other rows leave zeros out.
+* The help key and the footer have the defects of all views
+  (link:../ux/findings.adoc#CLI-UX-F-02[CLI-UX-F-02], link:../ux/findings.adoc#CLI-UX-F-03[CLI-UX-F-03]).
+
+Evidence: link:../resources/screens/projects-explorer.txt[projects-explorer.txt].
+
+[#CLI-UC-F-23]
+== CLI-UC-F-23: The Start Dialogue Works, With Prompt Defects
+
+Severity:: `minor`
+Use cases:: link:{uc}/05-starting-work.adoc#UC-STA-1[UC-STA-1]
+Design:: link:{tc}/18-starting.adoc[Starting]
+
+`plan add --project pm-mcp-clients` → `i` → `42` → Enter → Enter starts a plan. The step line `[1/2] Sources` and the
+source keys match the design. Defects:
+
+* Choices without keys: `Continue`, `Chat`, and `Follow it` have no letter. The design writes `Enter) continue`,
+  `h) chat`, `f) Follow it   b) back to the project`.
+* The prompt line is `?  ›` alone, below the choices. The design puts the primary action into the prompt.
+* The prompt "Start the plan? [Enter]   e) edit   ?" is printed twice.
+* Two lines end in mid-sentence: "a plan that lands local changes takes only descriptions and documents besides".
+* The dialogue ends after "Follow it" without waiting for a key.
+
+Evidence: link:../resources/screens/start-dialogue.txt[start-dialogue.txt].
+
+[#CLI-UC-F-24]
+== CLI-UC-F-24: The Start Kinds Beyond the Plan Were Not Run
+
+Severity:: `minor`
+Use cases:: UC-STA-2 to UC-STA-9
+
+The start of an epic, from documents, a recipe, a decomposition, a pull request, a lesson, and local changes was not
+run. `StartDialogueTest` covers them with fakes; no PTY test covers them. The release of a project (UC-PRJ-3) was not
+run either.
