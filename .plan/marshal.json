@@ -235,6 +235,12 @@
       ]
     }
   },
+  "credentials_config": {
+    "workflow-integration-sonar": {
+      "organization": "plan-marshall",
+      "project_key": "plan-marshall_pm-mcp-clients"
+    }
+  },
   "interaction_mode": "advanced",
   "project": {
     "default_base_branch": "main",

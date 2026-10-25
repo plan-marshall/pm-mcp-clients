@@ -85,20 +85,28 @@ plan spec names the plan, proposal and finding documents it comes from.
   mock plans and the shared catalogue plan. Nine terminal plans that change catalogue areas the web
   also renders get one browser regression check. Verification plans (`plan-marshall` lane) keep their
   Chrome walks.
+- 2026-10-25 — Sonar gate: added the non-secret Sonar block (`organization`, `project_key =
+  plan-marshall_pm-mcp-clients`) to `.plan/marshal.json` through `manage-providers credentials edit`
+  (operator request); `runbook_lane resolve` now reports `sonar: configured`. The specs keep stating the
+  gate.
+- 2026-10-25 — Terminal checks on every output change (operator request). There is no terminal MCP
+  server, and the operator gate (`PM-SEC-3`) refuses coding agents by design, so the check runs through
+  the PTY harness: PLAN-02 gains `ScreenCaptureIT`. It runs a named set of captures (scenario, states,
+  command, keys, size, locale, environment) and writes the screen text and the per-cell attributes to
+  files that the agent reads before and after its change. 21 terminal plans have a "Terminal check
+  (screen capture)" Done-when on every output-changing deliverable. The two documentation-only
+  terminal plans have none. PLAN-05 now depends on PLAN-02. The `cli` verification plans use the same
+  harness and never run `pm-operator` in the agent's shell. Alternative not taken: driving
+  `pm-operator` from the agent's shell with a cleared environment. That would work around the gate
+  outside the tests.
+- 2026-10-25 — `opencode.json` already starts Playwright MCP with `--isolated` and
+  `--output-dir .plan/temp/playwright-mcp`; the browser checks name their files there.
 
 ## Open Defects
 
 - None at staging.
 
 ## Watches
-
-- Sonar gate of the runbook lane — SonarCloud is configured (`.github/project.yml`:
-  `plan-marshall_pm-mcp-clients`; provider and `default:sonar-roundtrip` in `.plan/marshal.json`), but
-  `runbook_lane resolve` reads only `credentials_config.workflow-integration-sonar.project_key` in
-  `marshal.json`, which is absent, and so reports `sonar: not_configured` — the lane would skip the
-  open-issue merge gate. Every implementation spec therefore states the Sonar gate unconditionally. Fix
-  in config: `manage-providers credentials edit --extra project_key=plan-marshall_pm-mcp-clients` for the
-  Sonar provider (operator's change). — re-check `resolve` before the first runbook emit.
 
 - Operator decisions still open: the development switch `PM_OPERATOR_DEV_ALLOW_AGENT` (CLI-CC-P-05,
   security; PLAN-14 does not build it); the config contract (PLAN-32); the proof of presence (PLAN-24

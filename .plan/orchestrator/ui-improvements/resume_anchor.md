@@ -1,1 +1,1 @@
-Decomposed (75 plans). Next: land the ledger (unignore .plan/orchestrator, PR, merge via queue), then /plan-orchestrator next slug=ui-improvements. Before the first runbook emit: re-check runbook_lane resolve reports sonar: configured.
+Specs adapted (browser + terminal checks, Sonar configured) and landed. Next: /plan-orchestrator next slug=ui-improvements to fill 3 slots; then await landings and analyze.
