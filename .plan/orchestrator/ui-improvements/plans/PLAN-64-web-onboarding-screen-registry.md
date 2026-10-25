@@ -1,0 +1,92 @@
+# PLAN-64: Web: Every Onboarding State Has a Screen
+
+epic: ui-improvements
+workstream: WS-03
+
+> Staged plan spec — one shippable unit of work, ready for hand-off on the `runbook` lane.
+> This spec is SELF-SUFFICIENT: the emitted command is a one-line pointer and carries no brief.
+
+## Objective
+
+Replace the generic state card of the onboarding by a screen registry with a build check, render a state without a screen as the error pattern (never its id), and move the `entry.*` states into the settings frame (UC-S-02; UC-P-01).
+
+Source of this plan (read before scoping):
+
+- `doc/claude_review/use-cases/plan.adoc (UC-S-02)`
+- `doc/claude_review/use-cases/proposals.adoc#UC-P-01`
+- `doc/claude_review/use-cases/findings-onboarding-entry.adoc`
+
+## Deliverables
+
+1. **Registry**
+   - What: `lib/views/onboarding/screens.ts` maps a state id or pattern (`*.consent`) to a screen; the `{:else}` chain of `OnboardingView.svelte` goes.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Done when:
+     - `screens.registry.test.ts` reads every state of `onboarding.json` and fails for a state without a screen (evidence order: `test-first`)
+2. **Missing screen at runtime**
+   - What: A state without a screen shows "This screen is not available in the web app", the terminal command, and a way back.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Done when:
+     - A unit test with an unknown state: no state id in the text (evidence order: `test-first`)
+3. **Entry states in settings**
+   - What: `entry.*` renders inside the settings frame; `entry.lan-open` shows the LAN URL, the QR code and the fingerprint, with no step bar.
+   - Persona: plan-marshall:persona-integration-tester
+   - Skills: pm-dev-frontend:javascript
+   - Done when:
+     - `entry.spec.js` on `entry.lan-open` (evidence order: `test-first`)
+     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+
+## Standing Constraints
+
+- Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `./mvnw -pl pm-web-e2e verify -Pintegration-tests`, `./mvnw -pl pm-api verify`.
+- No new dependency or plugin unless this spec names it as approved by the operator.
+- Every view this plan touches uses the design system v2 components (VD-S-06): no plain text button, no acting link, no state pill, no uppercase label, no emoji, no own page width.
+- Every server value on a touched view passes through the display layer and the formatter of WS-02.
+- Views this plan touches pass the text guard of `web-text-guard-report`: the baseline file may only shrink, never grow.
+- The design document of `doc/design/` that this plan changes is updated in the same pull request (UX-S-13, VD-S-09).
+- This project analyses its pull requests with SonarCloud (project `plan-marshall_pm-mcp-clients`, `.github/project.yml`; provider `plan-marshall:workflow-integration-sonar` and step `default:sonar-roundtrip` in `.plan/marshal.json`) — treat it as `sonar: configured` even where `runbook_lane resolve` reports `not_configured` (its `credentials_config` block is missing; see the epic's Watches). An open Sonar issue is fixed in a pushed commit, or dismissed with a stated reason recorded as `{issue-key}: {reason}` in the run's progress record and transmitted through the plan-less transition verb, `plan-marshall:workflow-integration-sonar:sonar_rest transition --issue-key {key} --transition {falsepositive|wontfix}`. A dismissal the run cannot transmit is a blocker, never a silent pass. The merge gate reads the open-issue count at the head — `0` confirmed, or every remaining issue dismissed — and an `undecidable` read blocks.
+
+## Claim Labels
+
+- OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/use-cases/plan.adoc (UC-S-02)`, `doc/claude_review/use-cases/proposals.adoc#UC-P-01` — read at `doc/claude_review/use-cases/plan.adoc`
+- Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+
+## Expected Surface
+
+- OBSERVED: `pm-web-app/src/lib/views/OnboardingView.svelte` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-web-app/src/lib/views/onboarding/screens.ts` — absent at HEAD c4dc9bb4; created by this plan
+- OBSERVED: `pm-web-app/src/lib/views/onboarding/screens.registry.test.ts` — absent at HEAD c4dc9bb4; created by this plan
+- OBSERVED: `pm-web-app/src/lib/views/SettingsView.svelte` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-web-e2e/tests/onboarding.spec.js` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-web-e2e/tests/entry.spec.js` — present at HEAD c4dc9bb4
+- OBSERVED: `doc/design/web-app/onboarding.adoc` — present at HEAD c4dc9bb4
+- OBSERVED: `doc/design/web-app/entry.adoc` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-api/src/main/resources/messages/onboarding.en.properties` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-api/src/main/resources/messages/onboarding.de.properties` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-api/src/main/resources/messages/entry.en.properties` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-api/src/main/resources/messages/entry.de.properties` — present at HEAD c4dc9bb4
+
+## Dependencies and Sequencing
+
+- Depends on: `PLAN-45` (`web-error-loading-pattern`), `PLAN-60` (`web-settings-one-place`)
+- Overlaps with: none known at staging
+- Adjacent to: none
+
+## Hand-Off Command
+
+Lane: `runbook` (run with opencode).
+
+```text
+/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-64-web-onboarding-screen-registry.md
+```
+
+## Write-Boundary
+
+The plan implementing this spec touches only its own repository source and tests (and, where a deliverable says so,
+the sibling repository `plan-marshall-documentation`). It creates and edits NO file under `.plan/orchestrator/` other than its own
+`inbox/{sender}-{seq}` message — the orchestrator owns every other ledger write — and reports
+its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
+sole sanctioned write mechanism are stated in
+`persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.

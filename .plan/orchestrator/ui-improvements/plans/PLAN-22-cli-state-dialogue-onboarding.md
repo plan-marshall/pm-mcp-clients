@@ -1,0 +1,99 @@
+# PLAN-22: Terminal: One State Dialogue for Both Onboardings
+
+epic: ui-improvements
+workstream: WS-04
+
+> Staged plan spec — one shippable unit of work, ready for hand-off on the `runbook` lane.
+> This spec is SELF-SUFFICIENT: the emitted command is a one-line pointer and carries no brief.
+
+## Objective
+
+Build the renderer of a runtime state once (`StateDialogue`) and use it for the guided machine onboarding, the automatic path for scripts, and the project onboarding (CLI-UC-S-06; CLI-UC-P-01).
+
+Source of this plan (read before scoping):
+
+- `doc/claude_review/cli/use-cases/plan.adoc#CLI-UC-S-06`
+- `doc/claude_review/cli/use-cases/proposals.adoc#CLI-UC-P-01`
+- `doc/claude_review/cli/use-cases/findings-onboarding-entry.adoc`
+
+## Deliverables
+
+1. **StateDialogue**
+   - What: `dialogue/StateDialogue.java` on `ChoicePrompt`: fetch state → render frame (step line, content, prompt) → read choice → send link → repeat until final or `q`; texts by state id from the catalogue.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
+   - Done when:
+     - A unit test drives three states with a fake API (evidence order: `test-first`)
+2. **Machine onboarding**
+   - What: `EntryFlow` hands over after `h)`; Enter at an empty prompt continues the open onboarding; `onboard` runs the dialogue; `--step` and `--auto --yes` print one line per state.
+   - Persona: plan-marshall:persona-integration-tester
+   - Skills: pm-dev-java:junit-integration, pm-dev-java:junit-core
+   - Done when:
+     - `OnboardingDialogueIT` enabled: guided path to `onboard.completed`; `--auto --yes` to the result table (evidence order: `test-first`)
+3. **Project onboarding**
+   - What: `project setup <id>` and "Continue" in the explorer run the same dialogue on the project's onboarding resource.
+   - Persona: plan-marshall:persona-integration-tester
+   - Skills: pm-dev-java:junit-integration, pm-dev-java:junit-core
+   - Done when:
+     - `ProjectSetupDialogueIT` enabled: `project setup cui-parent` shows id, name, pilot (evidence order: `test-first`)
+4. **Catalogue completeness**
+   - What: A test fails when a state of the onboarding scenario has no catalogue text.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
+   - Done when:
+     - The test fails for a removed key (evidence order: `test-first`)
+     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+
+## Standing Constraints
+
+- Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-operator verify -Pintegration-tests`, `./mvnw -pl pm-api verify`.
+- No new dependency or plugin unless this spec names it as approved by the operator.
+- Java 25, Lombok, records; no generic `Exception`/`RuntimeException`; JUnit 5 only, no Mockito (CLAUDE.md).
+- Every new operator text goes through `MessageCatalogue` into `operator.en.properties` and `operator.de.properties`.
+- A dialogue fixed here enables its `*DialogueIT` of `cli-pty-dialogue-harness` (removes the `@Disabled` that names this plan).
+- This project analyses its pull requests with SonarCloud (project `plan-marshall_pm-mcp-clients`, `.github/project.yml`; provider `plan-marshall:workflow-integration-sonar` and step `default:sonar-roundtrip` in `.plan/marshal.json`) — treat it as `sonar: configured` even where `runbook_lane resolve` reports `not_configured` (its `credentials_config` block is missing; see the epic's Watches). An open Sonar issue is fixed in a pushed commit, or dismissed with a stated reason recorded as `{issue-key}: {reason}` in the run's progress record and transmitted through the plan-less transition verb, `plan-marshall:workflow-integration-sonar:sonar_rest transition --issue-key {key} --transition {falsepositive|wontfix}`. A dismissal the run cannot transmit is a blocker, never a silent pass. The merge gate reads the open-issue count at the head — `0` confirmed, or every remaining issue dismissed — and an `undecidable` read blocks.
+
+## Claim Labels
+
+- OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/use-cases/plan.adoc#CLI-UC-S-06`, `doc/claude_review/cli/use-cases/proposals.adoc#CLI-UC-P-01` — read at `doc/claude_review/cli/use-cases/plan.adoc`
+- HYPOTHESIS: `EntryFlow` asks "Begin with step 1?" and ignores the answer, and `OnboardCommand` prints raw links — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/EntryFlow.java` (verify-at-outline)
+- Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+
+## Expected Surface
+
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/dialogue/StateDialogue.java` — absent at HEAD c4dc9bb4; created by this plan
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/EntryFlow.java` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/OnboardCommand.java` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ProjectCommand.java` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/projects/` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/dialogue/StateDialogueTest.java` — absent at HEAD c4dc9bb4; created by this plan
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/OnboardingDialogueIT.java` — absent at HEAD c4dc9bb4; created by this plan
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/ProjectSetupDialogueIT.java` — absent at HEAD c4dc9bb4; created by this plan
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/OnboardCommandTest.java` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-api/src/main/resources/messages/onboarding.en.properties` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-api/src/main/resources/messages/onboarding.de.properties` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-api/src/main/resources/messages/projects.en.properties` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-api/src/main/resources/messages/projects.de.properties` — present at HEAD c4dc9bb4
+
+## Dependencies and Sequencing
+
+- Depends on: `PLAN-10` (`cli-choice-prompt-pause`)
+- Overlaps with: none known at staging
+- Adjacent to: none
+
+## Hand-Off Command
+
+Lane: `runbook` (run with opencode).
+
+```text
+/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-22-cli-state-dialogue-onboarding.md
+```
+
+## Write-Boundary
+
+The plan implementing this spec touches only its own repository source and tests (and, where a deliverable says so,
+the sibling repository `plan-marshall-documentation`). It creates and edits NO file under `.plan/orchestrator/` other than its own
+`inbox/{sender}-{seq}` message — the orchestrator owns every other ledger write — and reports
+its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
+sole sanctioned write mechanism are stated in
+`persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.

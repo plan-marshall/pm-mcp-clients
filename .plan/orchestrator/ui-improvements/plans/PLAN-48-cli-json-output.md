@@ -1,0 +1,89 @@
+# PLAN-48: Terminal: JSON for Scripts
+
+epic: ui-improvements
+workstream: WS-05
+
+> Staged plan spec — one shippable unit of work, ready for hand-off on the `runbook` lane.
+> This spec is SELF-SUFFICIENT: the emitted command is a one-line pointer and carries no brief.
+
+## Objective
+
+Fix `plans --json` and add `--json` with stable, documented, schema-tested fields to every listing verb; errors as JSON on stderr (CLI-UX-S-06; CLI-UX-P-07).
+
+Source of this plan (read before scoping):
+
+- `doc/claude_review/cli/ux/plan.adoc#CLI-UX-S-06`
+- `doc/claude_review/cli/ux/proposals.adoc#CLI-UX-P-07`
+
+## Deliverables
+
+1. **plans --json**
+   - What: Prints projects, plans, epics and needs, not the status.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
+   - Done when:
+     - A schema test of `plans --json` (evidence order: `test-first`)
+2. **--json on listing verbs**
+   - What: `status`, `needs`, `questions`, `reports`, `projects --list`, `system`, `epic <id>`, `plan <id>`; no reason line on stdout; errors `{"error": "<code>", "message": …}` on stderr.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
+   - Done when:
+     - One schema test per verb (evidence order: `test-first`)
+3. **Schemas documented**
+   - What: The schemas in `01-commands.adoc`.
+   - Persona: plan-marshall:persona-documenter
+   - Skills: pm-documents:ref-asciidoc, pm-documents:ref-documentation
+   - Done when:
+     - The document passes `doc-review` (evidence order: `none`)
+     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+
+## Standing Constraints
+
+- Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-operator verify -Pintegration-tests`.
+- No new dependency or plugin unless this spec names it as approved by the operator.
+- Java 25, Lombok, records; no generic `Exception`/`RuntimeException`; JUnit 5 only, no Mockito (CLAUDE.md).
+- Every new operator text goes through `MessageCatalogue` into `operator.en.properties` and `operator.de.properties`.
+- `pm-operator` may not depend on `jackson-databind` if the build rules forbid it; write JSON with the streaming API the project already uses.
+- This project analyses its pull requests with SonarCloud (project `plan-marshall_pm-mcp-clients`, `.github/project.yml`; provider `plan-marshall:workflow-integration-sonar` and step `default:sonar-roundtrip` in `.plan/marshal.json`) — treat it as `sonar: configured` even where `runbook_lane resolve` reports `not_configured` (its `credentials_config` block is missing; see the epic's Watches). An open Sonar issue is fixed in a pushed commit, or dismissed with a stated reason recorded as `{issue-key}: {reason}` in the run's progress record and transmitted through the plan-less transition verb, `plan-marshall:workflow-integration-sonar:sonar_rest transition --issue-key {key} --transition {falsepositive|wontfix}`. A dismissal the run cannot transmit is a blocker, never a silent pass. The merge gate reads the open-issue count at the head — `0` confirmed, or every remaining issue dismissed — and an `undecidable` read blocks.
+
+## Claim Labels
+
+- OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/ux/plan.adoc#CLI-UX-S-06`, `doc/claude_review/cli/ux/proposals.adoc#CLI-UX-P-07` — read at `doc/claude_review/cli/ux/plan.adoc`
+- Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
+
+## Expected Surface
+
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/PlansCommand.java` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/StatusCommand.java` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/NeedsCommand.java` — absent at HEAD c4dc9bb4; created by this plan
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/QuestionsCommand.java` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ReportsCommand.java` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ProjectsCommand.java` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/SystemCommand.java` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/EpicCommand.java` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/PlanCommand.java` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/json/` — absent at HEAD c4dc9bb4; created by this plan
+- OBSERVED: `doc/design/terminal-client/01-commands.adoc` — present at HEAD c4dc9bb4
+
+## Dependencies and Sequencing
+
+- Depends on: `PLAN-42` (`cli-verb-modes-and-help`)
+- Overlaps with: none known at staging
+- Adjacent to: none
+
+## Hand-Off Command
+
+Lane: `runbook` (run with opencode).
+
+```text
+/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-48-cli-json-output.md
+```
+
+## Write-Boundary
+
+The plan implementing this spec touches only its own repository source and tests (and, where a deliverable says so,
+the sibling repository `plan-marshall-documentation`). It creates and edits NO file under `.plan/orchestrator/` other than its own
+`inbox/{sender}-{seq}` message — the orchestrator owns every other ledger write — and reports
+its outcome through its PR and its inbox message. The inbox exception's qualifiers and the
+sole sanctioned write mechanism are stated in
+`persona-plan-orchestrator/standards/orchestration-model.md` § Ledger Write-Boundary.
