@@ -1,0 +1,11 @@
+{
+  "id": "PLAN-33",
+  "slug": "verify-cli-acts",
+  "workstream": "WS-04",
+  "status": "staged",
+  "lane": "plan-marshall",
+  "plan_marshall_plan_id": "",
+  "pr": "",
+  "landing": "",
+  "seq": 33
+}

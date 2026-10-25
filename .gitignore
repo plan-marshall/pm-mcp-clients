@@ -17,3 +17,8 @@ src/guard-controls/**/target
 .plan/*
 !.plan/marshal.json
 !.plan/project-architecture/
+# Orchestrator ledgers are git-tracked; only their logs stay local
+!.plan/orchestrator/
+!.plan/archived-orchestrators/
+.plan/orchestrator/*/logs/
+.plan/archived-orchestrators/*/logs/
