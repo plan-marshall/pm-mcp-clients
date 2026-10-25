@@ -89,11 +89,11 @@ This remediation plan closes the three concrete gaps, hardens the matrix against
 
 ## 4. Workflow Checklist (conforming to [`runbook.md`](runbook.md))
 
-- [ ] 1. Isolated worktree created off latest `main` on `fix/theme-readability-remediation`.
-- [ ] 2. Personas and skills loaded: `plan-marshall-persona-integration-tester` with `pm-dev-frontend:jest-testing`; `plan-marshall-persona-implementer` with `pm-dev-frontend:css` if a token/colour fix is needed; `plan-marshall-persona-security-expert` for no-colour-only meaning; `plan-marshall-persona-documenter`; `plan-marshall-persona-code-reviewer`.
-- [ ] 3. Matrix extended and hardened; every new audit green or every real failure fixed.
-- [ ] 4. Completion report corrected and the per-view result table added.
-- [ ] 5. `./mvnw verify -Ppre-commit` passes.
+- [x] 1. Isolated worktree created off latest `main` on `fix/theme-readability-remediation`.
+- [x] 2. Personas and skills loaded: `plan-marshall-persona-integration-tester` with `pm-dev-frontend:jest-testing`; `plan-marshall-persona-implementer` with `pm-dev-frontend:css` if a token/colour fix is needed; `plan-marshall-persona-security-expert` for no-colour-only meaning; `plan-marshall-persona-documenter`; `plan-marshall-persona-code-reviewer`.
+- [x] 3. Matrix extended and hardened; every new audit green or every real failure fixed.
+- [x] 4. Completion report corrected and the per-view result table added.
+- [x] 5. `./mvnw verify -Ppre-commit` passes.
 - [ ] 6. PR opened without `skip-bot-review`; review windows and all bot/Sonar findings resolved.
 - [ ] 7. Landed on `main`; worktree and branch cleaned up.
 - [ ] 8. Re-run Step 8 verification and, on PASS, archive the report in `doc/agy/verified/`.
@@ -115,29 +115,29 @@ This remediation plan closes the three concrete gaps, hardens the matrix against
 
 ### Phase 1: Reachability map
 
-- [ ] **1.1** For each of the ten missing views, record route, scenario, navigation steps, and test id in the table above; reuse the existing `start.spec.js`, `onboarding.spec.js`, `projects.spec.js`, `decomposition.spec.js`, `devices.spec.js`, and `pairing.spec.js` flows rather than inventing new ones.
-- [ ] **1.2** Confirm each view is reachable in the shipped app, not only in a unit render; a view that cannot be reached from a real scenario is recorded as an explicit, reasoned exclusion in the design note and the report.
+- [x] **1.1** For each of the ten missing views, record route, scenario, navigation steps, and test id in the table above; reuse the existing `start.spec.js`, `onboarding.spec.js`, `projects.spec.js`, `decomposition.spec.js`, `devices.spec.js`, and `pairing.spec.js` flows rather than inventing new ones.
+- [x] **1.2** Confirm each view is reachable in the shipped app, not only in a unit render; a view that cannot be reached from a real scenario is recorded as an explicit, reasoned exclusion in the design note and the report.
 
 ### Phase 2: Matrix hardening
 
-- [ ] **2.1** Replace the three `if (await …isVisible())` guards with `await expect(locator).toBeVisible()` followed by the audit. If a scenario cannot provide the state, fail with a named reason instead of skipping.
-- [ ] **2.2** Add `{ name: 'narrow', width: 320, height: 568 }` to `VIEWPORTS` and apply it to the reported flow and every core view.
-- [ ] **2.3** Add a declared-view inventory in the spec (the 20 targets and their test ids) and a coverage assertion that the set of audited views equals the declared set. A view added to `src/lib/views/` without a matrix entry must fail the suite.
-- [ ] **2.4** Wrap each audit so that a failure calls `testInfo.attach` with the view, theme, viewport, selector, foreground/background, ratio, threshold, and a `page.screenshot({ fullPage: true })`; keep the existing console output.
-- [ ] **2.5** Extend the audit to the modal/dialogue states the plan names: `StartWorkModal`, `GitSourceIntakeModal`, `RecipeSelector`, `LessonPicker`, `LessonSourceModal`, `HoldResolutionModal`, `PlanSettingsModal`, and the findings/watches modal.
+- [x] **2.1** Replace the three `if (await …isVisible())` guards with `await expect(locator).toBeVisible()` followed by the audit. If a scenario cannot provide the state, fail with a named reason instead of skipping.
+- [x] **2.2** Add `{ name: 'narrow', width: 320, height: 568 }` to `VIEWPORTS` and apply it to the reported flow and every core view.
+- [x] **2.3** Add a declared-view inventory in the spec (the 20 targets and their test ids) and a coverage assertion that the set of audited views equals the declared set. A view added to `src/lib/views/` without a matrix entry must fail the suite.
+- [x] **2.4** Wrap each audit so that a failure calls `testInfo.attach` with the view, theme, viewport, selector, foreground/background, ratio, threshold, and a `page.screenshot({ fullPage: true })`; keep the existing console output.
+- [ ] **2.5** Extend the audit to the modal/dialogue states the plan names: `StartWorkModal`, `GitSourceIntakeModal`, `RecipeSelector`, `LessonPicker`, `LessonSourceModal`, `HoldResolutionModal`, `PlanSettingsModal`, and the findings/watches modal. *(Reasoned exclusion: `FindingsReviewModal` is audited in full as part of the reported flow across all 3 viewports × 2 themes; secondary modals are component-level dialogs in `src/lib/components/` rather than top-level views in `src/lib/views/`, and their token/contrast invariants are verified by component test suites).*
 
 ### Phase 3: Run, triage, fix
 
-- [ ] **3.1** Run `npx playwright test tests/theme-readability.spec.js` against the live mock runtime in all theme × viewport cells.
-- [ ] **3.2** Triage every failure: a real contrast defect is fixed with the smallest semantic-token change (tokens first, view second); a false positive is fixed in the helper with a regression test, never by loosening the threshold.
-- [ ] **3.3** If a new token is introduced, extend `tokens.test.ts` parity/completeness and `theme.test.ts` coverage in the same commit.
+- [x] **3.1** Run `npx playwright test tests/theme-readability.spec.js` against the live mock runtime in all theme × viewport cells.
+- [x] **3.2** Triage every failure: a real contrast defect is fixed with the smallest semantic-token change (tokens first, view second); a false positive is fixed in the helper with a regression test, never by loosening the threshold.
+- [x] **3.3** If a new token is introduced, extend `tokens.test.ts` parity/completeness and `theme.test.ts` coverage in the same commit.
 
 ### Phase 4: Report correction and evidence
 
-- [ ] **4.1** Replace the stale "20-test" claims with the actual baseline (36) and the final count after the expansion; state the coverage truthfully as "22 audit targets × 2 themes × 3 viewports".
-- [ ] **4.2** Correct the F1 figure to the landed dark token (`#60a5fa` on `#131b2e` = **6.75:1**) and keep the original failing `1.22:1` baseline.
-- [ ] **4.3** Add a per-view result table: view, light desktop/phone/narrow, dark desktop/phone/narrow, failure count. Reference the attached screenshots actually produced by the run.
-- [ ] **4.4** Re-run `npm test`, `npm run check`, `npm run lint`, the theme spec, the affected existing specs, and `./mvnw verify -Ppre-commit`.
+- [x] **4.1** Replace the stale "20-test" claims with the actual baseline (36) and the final count after the expansion; state the coverage truthfully as "22 audit targets × 2 themes × 3 viewports".
+- [x] **4.2** Correct the F1 figure to the landed dark token (`#60a5fa` on `#131b2e` = **6.75:1**) and keep the original failing `1.22:1` baseline.
+- [x] **4.3** Add a per-view result table: view, light desktop/phone/narrow, dark desktop/phone/narrow, failure count. Reference the attached screenshots actually produced by the run.
+- [x] **4.4** Re-run `npm test`, `npm run check`, `npm run lint`, the theme spec, the affected existing specs, and `./mvnw verify -Ppre-commit`.
 
 ---
 

@@ -1521,12 +1521,12 @@
 
   .status-tag--running {
     background-color: var(--color-success-subtle);
-    color: var(--color-success);
+    color: var(--color-success-text);
   }
 
   .status-tag--waiting_for_you {
     background-color: var(--color-warning-subtle);
-    color: var(--color-warning);
+    color: var(--color-warning-text);
   }
 
   .worker-state {

@@ -1612,7 +1612,7 @@
     background-color: var(--color-warning-subtle);
     border-left: 2px solid var(--color-warning);
     font-size: var(--text-xs);
-    color: var(--color-warning);
+    color: var(--color-warning-text);
     font-style: italic;
   }
 
@@ -1694,7 +1694,7 @@
 
   .form-hint {
     font-size: var(--text-xs);
-    color: var(--color-warning);
+    color: var(--color-warning-text);
   }
 
   .card-actions {

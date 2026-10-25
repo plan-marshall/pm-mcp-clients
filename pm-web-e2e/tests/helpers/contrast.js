@@ -221,7 +221,57 @@ export const IN_BROWSER_CONTRAST_ANALYZER = `
  * @returns {Promise<{ all: Array<any>, failures: Array<any> }>}
  */
 export async function auditPageContrast(page, options = {}) {
-  const elements = await page.evaluate(`(${IN_BROWSER_CONTRAST_ANALYZER})(${JSON.stringify(options)})`);
+  const elements = await page.evaluate(
+    `(${IN_BROWSER_CONTRAST_ANALYZER})(${JSON.stringify(options)})`,
+  );
   const failures = elements.filter((e) => !e.passed);
   return { all: elements, failures };
+}
+
+/**
+ * Runs the contrast audit on the active page, logging errors and attaching failure artifacts on failure.
+ *
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').TestInfo} [testInfo]
+ * @param {{ view: string, theme: string, viewport: { name: string, width: number, height: number } }} context
+ * @param {object} [options]
+ * @returns {Promise<{ all: Array<any>, failures: Array<any> }>}
+ */
+export async function auditViewContrast(page, testInfo, { view, theme, viewport }, options = {}) {
+  const { all, failures } = await auditPageContrast(page, options);
+  if (failures.length > 0) {
+    console.error(`Contrast failures in ${view} (${theme}, ${viewport.name}):`, failures);
+    if (testInfo) {
+      for (const f of failures) {
+        await testInfo.attach(`contrast-failure-${view}-${theme}-${viewport.name}`, {
+          body: JSON.stringify(
+            {
+              view,
+              theme,
+              viewport: { name: viewport.name, width: viewport.width, height: viewport.height },
+              selector: f.selector,
+              color: f.color,
+              background: f.background,
+              ratio: f.ratio,
+              threshold: f.threshold,
+              text: f.text,
+            },
+            null,
+            2,
+          ),
+          contentType: 'application/json',
+        });
+      }
+      try {
+        const screenshot = await page.screenshot({ fullPage: true });
+        await testInfo.attach(`contrast-failure-${view}-${theme}-${viewport.name}-screenshot`, {
+          body: screenshot,
+          contentType: 'image/png',
+        });
+      } catch (err) {
+        console.warn(`Failed to capture failure screenshot for ${view}:`, err);
+      }
+    }
+  }
+  return { all, failures };
 }
