@@ -1,0 +1,167 @@
+= UX: Findings
+:toc: left
+:toclevels: 2
+:nofooter:
+:shots: ../resources/screenshots
+
+link:../README.adoc[Review] » link:README.adoc[UX] » Findings
+
+Scenario `fully-onboarded` unless stated; desktop 1566 px; language `de`.
+
+[#keep]
+== Patterns to Keep
+
+* *Tree and narrative* (plan view): the structure on the left, the story of the selected part on the right. Extend it
+  to the epic (workstreams left, plan narrative right) and to the designer (structure left, text right).
+* *Consent screens* (onboarding): what, where, what runs, what never happens, the tokens; then the three answers.
+* *Labels that name the act*: "Check 2 harnesses, Claude Code the default", "Delete 8 items…", "Pause the plan".
+* *Inline choice for a small act*: the pause panel with "where it holds".
+* *The completion report and the cleanup preview*: structured, scannable, with the act at the end.
+
+== Findings
+
+[#UX-F-01]
+=== UX-F-01: No single place for "what needs me"
+
+* Severity: `blocker` (for a production tool)
+* Seen: attention is spread over five places:
+** the sidebar of the overview ("!2", "!1", with no word on what);
+** the header counts (decisions 3, reports 5);
+** the block "Nebenher" at the bottom of one project ("! Landen fehlgeschlagen");
+** rows inside an epic ("wartet auf dich");
+** the project cards ("die Einrichtung braucht dich").
+* Effect: task T1 takes four screens and still misses holds and expiring tokens
+  (link:analysis.adoc#tasks[Analysis, Key Tasks]).
+
+[#UX-F-02]
+=== UX-F-02: The navigation is flat, and has no jump by name
+
+* Seen: seven header items of equal weight, plus language, theme, and the machine badge. Daily items sit beside rare
+  items. At 390 px the header takes two rows (about a quarter of the screen); the designer, system, and settings
+  items become emoji without a label (✎, 🖥, ⚙).
+* Missing: a search or command palette to go to a plan, an epic, a decision, or a pull request by name.
+
+[#UX-F-03]
+=== UX-F-03: Settings live on two pages with near-identical names
+
+* Seen: "Einstellungen der Maschine" (`/settings/machine`) and "Maschinen-Einstellungen" (`/settings`). Each has a
+  button to the other. The header item opens the first; paired devices hide behind "Verwalte sie" at its bottom.
+* See also link:../use-cases/findings-onboarding-entry.adoc#UC-F-11[UC-F-11].
+
+[#UX-F-04]
+=== UX-F-04: No primary act per state
+
+* Seen:
+** Epic: nine buttons of the same style, including "Archiviere das Epic" and "Brich das Epic ab".
+** Plan head: "Prozess gestalten", "Spring dorthin, wo er steht", "#214", "Zeige die Details", "Zurück": a button, a
+   button, a pill link, an underlined link, plain text.
+** Plan acts: "Halte den Plan an", "Brich den Plan ab", "Chat", "Einstellungen", the same style.
+* Effect: the operator must read every label to find what the state asks.
+
+[#UX-F-05]
+=== UX-F-05: Destructive acts are at rest and dominant
+
+* Seen:
+** Project cards: "Freigeben…" and "Austragen…" in red on every card.
+** Paired devices: four filled red buttons, one per device, plus "revoke all others".
+** Project onboarding: "Verwirf es" is the strongest button; "Setze fort" is secondary.
+* Expected: destructive acts are rare. They belong in an overflow menu, and they become red only in their
+  confirmation.
+
+[#UX-F-06]
+=== UX-F-06: Paths end in raw error codes
+
+* Seen:
+** "Zeige die Details" on a running plan → `plan_not_found` and "Erneut versuchen".
+** "Start the plan" with a project unknown to the engine → `project_not_found` in red, nothing else.
+* Expected: what happened, why, and what to do, with an act.
+
+[#UX-F-07]
+=== UX-F-07: A control of another view sits in the plan head
+
+* Seen: "Zeige die Details" in the plan head is the report control ("Öffne die Details des Berichts…"). For a running
+  plan, it leads to an error. See link:../use-cases/findings-plans-control.adoc#UC-F-18[UC-F-18].
+
+[#UX-F-08]
+=== UX-F-08: The plan tree promises more than it has
+
+* Seen: every finished phase has an expand control, and expanding shows nothing. Selecting it shows "Dieser Teil hat
+  keine Aktivität auf Task-Ebene." The token line offers a breakdown that "is not reported yet". The labels repeat
+  the kind: "PHASE phase init", "TASKS execute.envelope", "SUB_WORKFLOW sub-workflow remediation.ci-failure".
+* Effect: the operator learns that clicking in the tree is often useless.
+
+[#UX-F-09]
+=== UX-F-09: Ids where titles belong
+
+* Seen: the showroom plan head shows `drop-legacy-api` where the overview says "Drop the legacy endpoints". The epic's
+  workstreams list plan ids. The cleanup lists ids. The breadcrumb mixes "Relay Hardening" (title) and
+  `relay-hardening` (id).
+* Expected: the title first; the id small, beside it, copyable.
+
+[#UX-F-10]
+=== UX-F-10: Every view has its own layout
+
+* Seen: content width about 460 px (projects), 670 px (decisions), 730 px (reports), 960 px (system), full width
+  (overview, plan, epic, designer). Page heads differ: a title with buttons, a title with a pill, a breadcrumb with five
+  controls, an eyebrow "Quellen" above a title.
+* Effect: on a 1566 px screen the projects page uses less than a third of the width; the operator's eye jumps between
+  layouts.
+
+[#UX-F-11]
+=== UX-F-11: Decisions are a long list of full cards
+
+* Seen: eight open decisions in `running-work`, each a full card with evidence, options, a note field, and four
+  buttons. No order, no grouping, no compact triage row. The layouts "Kompakt" and "Geteilt" exist but are not the
+  default.
+* Expected: a triage list (what, plan, blocks, since) with the detail beside it.
+
+[#UX-F-12]
+=== UX-F-12: The start flow looks unfinished
+
+* Seen: plain text buttons, two buttons "Beschreibung" and "+ Beschreibung", an orphan heading "Chat", no step
+  indicator, no back, no styled primary act. Details:
+  link:../use-cases/findings-projects-starting.adoc#UC-F-34[UC-F-34].
+
+image::{shots}/vd-start-choice.jpg[The first start screen: a title and two plain text buttons,width=640]
+
+[#UX-F-13]
+=== UX-F-13: The overview rows do not scan
+
+* Seen: the word "Aktionen" floats in the middle of each row (it is a menu button without the look of one). State,
+  phase, and "needs you" sit at the right edge in pills of different colours. The block "Nebenher" with a failed
+  landing sits below the plans, where the eye arrives last. The ended-work table collapses its columns ("Pull
+  RequestBeendet").
+* Expected: aligned columns (title, state, phase, since, progress, needs you); the row menu at the right as an icon
+  button; failures in the attention inbox.
+
+[#UX-F-14]
+=== UX-F-14: Loading has no form
+
+* Seen: the bare word "checking" (start); "Die gekoppelten Geräte werden geladen …" on the machine settings page,
+  which loads more than devices; a spinner alone (cleanup, 4 s); the header badges appear late.
+* Expected: skeletons in the shape of the content; a time limit; a cause when it fails.
+
+image::{shots}/ux-machine-settings-loading.jpg[The machine settings page announces paired devices while it loads everything,width=640]
+
+[#UX-F-15]
+=== UX-F-15: Designer results are out of sight
+
+* Seen: "Validate" writes its results into a thin strip at the bottom edge. The installed units list truncates its
+  acts ("Entferne…", "Entfe") and scrolls sideways. The head has "Zurück zum Designer" while the designer is open.
+* Expected: results above the text, linked to lines; the units list readable at its width.
+
+image::{shots}/ux-designer-validate.jpg[The designer after Validate: results in a strip at the bottom edge,width=640]
+
+[#UX-F-16]
+=== UX-F-16: Forms save per field
+
+* Seen: plan settings with nine "Save" buttons; machine settings with "Speichern" per block and "Übernimm diese
+  Fristen" for two numbers.
+* Expected: one form, one save, a clear "changed" mark, and "reset to inherited" per field.
+
+[#UX-F-17]
+=== UX-F-17: Live state is invisible
+
+* Seen: the app receives events (SSE), but nothing shows that the view is live or when it was last updated. The system
+  view has a manual refresh button beside live data.
+* Expected: a quiet live indicator in the shell; "stream lost, reconnecting" when it is lost (UC-SYS-2 asks for it).

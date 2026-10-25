@@ -1,0 +1,92 @@
+= Use Cases: Findings for System and Reports
+:toc: left
+:toclevels: 2
+:nofooter:
+:uc: ../../../../plan-marshall-documentation/doc/use-cases
+:shots: ../resources/screenshots
+
+link:../README.adoc[Review] » link:README.adoc[Use Cases] » Findings: System and Reports
+
+Scenarios: `fully-onboarded` (language `de`) and `reports-and-system` (language `en`), theme dark, 1566 px.
+
+== What Works
+
+* The system view: an update banner, a cleanup banner, runtime figures, work counts, workers, jobs, and models with
+  the windows last hour, today, seven days.
+* The draining banner across the top: "Stop now" and "Keep it running".
+* The cleanup preview: due since, a summary with the space it frees, details per project with each item checked and
+  openable, "Unchecked items are kept for good.", and the three answers "Ask me again in 3 days", "Ignore", and
+  "Delete 8 items…".
+* The reports list: grouped by project and epic, an unread count, "mark all shown as read", and a completion report
+  with result, deliverables, re-planning, decisions, and the plan's own decisions with their verdicts. Opening a report
+  marks it read.
+
+image::{shots}/uc-cleanup-preview.jpg[The cleanup preview: items per project, checked, with the three answers at the bottom,width=640]
+
+== Findings: System
+
+[#UC-F-39]
+=== UC-F-39: While draining, the view still offers stop, restart, and upgrade
+
+* Severity: `major`
+* Use case: link:{uc}/07-system.adoc#UC-SYS-1[UC-SYS-1], "actions by state"
+* State: `system.draining`.
+* Seen: the banner says "Stopping when what runs is done · 0 left: running work". The runtime card still offers
+  "Stop…", "Restart…", and "Upgrade…". The update banner still offers "Upgrade…". "0 left" contradicts the state (two
+  blockers) and the words "running work". No countdown, no list of what still runs.
+* Expected: while draining, only _stop now_ and _withdraw_; the work that still runs, listed; the countdown.
+
+image::{shots}/uc-system-draining.jpg[Draining: the banner offers stop now and keep running, while the card still offers stop, restart, upgrade,width=640]
+
+[#UC-F-40]
+=== UC-F-40: The runtime figures show raw enums and repeat their labels
+
+* Severity: `major`
+* Use case: link:{uc}/07-system.adoc#UC-SYS-2[UC-SYS-2]
+* Seen: "1 waiting for_you", "3 running", "2 paused", "1 held", "busy", "idle", "1 retry", "1 error", "ok" in the
+  German view. Labels repeat in the value: "Aufgaben | Tasks 4 laufen", "Build-Slots | Build-Slots 1 von 2 Slots",
+  "Listener | Listener Socket …". "Aktualisiere…" appears twice. The state of the live stream is not shown.
+* Expected: catalogue texts for every state; a value that does not repeat its label; "stream lost" when it is lost.
+
+image::{shots}/cc-system-raw-enums.jpg[System view: raw enum "waiting for_you" and repeated labels,width=640]
+
+[#UC-F-41]
+=== UC-F-41: The cleanup shows raw kinds and doubled words
+
+* Severity: `minor`
+* Use case: link:{uc}/07-system.adoc#UC-SYS-3[UC-SYS-3]
+* Seen: chips `READ_REPORTS`, `UNENROLLED_PROJECT`, `PLAN`, `EPIC`, `LOGS`; "ended ended 12 Sep"; each project name
+  printed twice. The summary says 12 plans; the details list 3. The system banner says "frees 1.8 GB"; the cleanup says
+  "frees 1.3 GB".
+* Expected: plain kind names; numbers that agree across views.
+
+== Findings: Reports
+
+[#UC-F-42]
+=== UC-F-42: Reports show raw times and English outcomes
+
+* Severity: `minor`
+* Use case: link:{uc}/03-plans.adoc#UC-PLN-6[UC-PLN-6]
+* Seen: "2026-10-16T11:25:00Z" on every row and in the completion report; badge "MERGED"; "done" per deliverable;
+  the path in the report head is not a link; an empty row "Grund —".
+* Expected: local time with relative age; catalogue words; the path as links to project, epic, and plan.
+
+[#UC-F-43]
+=== UC-F-43: Read and unread look alike
+
+* Severity: `minor`
+* Use case: link:{uc}/03-plans.adoc#UC-PLN-6[UC-PLN-6]
+* Seen: every row has the same weight and the two links "Zeige die Details", "Markiere als gelesen". A row that is
+  read has no visible difference from a row that is not.
+* Expected: unread rows stand out; the act "mark as read" is on hover or in the row menu.
+
+[#UC-F-44]
+=== UC-F-44: "Cleanup is due" arrives as a report and as a banner
+
+* Severity: `minor`
+* Use cases: link:{uc}/03-plans.adoc#UC-PLN-6[UC-PLN-6] (`system.cleanup_due`), link:{uc}/07-system.adoc#UC-SYS-3[UC-SYS-3]
+* Seen: the report "Cleanup is due: 12 candidates from 3 projects" sits in the project group of pm-mcp-clients,
+  although it concerns the machine.
+* Expected: machine reports in a machine group.
+
+image::{shots}/vd-completion-report.jpg[The completion report: clear structure, raw time and English badge,width=640]

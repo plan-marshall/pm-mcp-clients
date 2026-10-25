@@ -1,0 +1,269 @@
+= Use Cases: Proposals
+:toc: left
+:toclevels: 2
+:nofooter:
+:uc: ../../../../plan-marshall-documentation/doc/use-cases
+
+link:../README.adoc[Review] » link:README.adoc[Use Cases] » Proposals
+
+Part 1 closes the gaps of the app. Part 2 changes the mock so that every use case can be checked in Chrome. Part 3
+changes the use-case documents. The visual form of every screen named here follows
+link:../visual-design/proposals.adoc[Visual Design, Proposals]; the page structure follows
+link:../ux/proposals.adoc[UX, Proposals].
+
+== Part 1: Changes to the App
+
+[#UC-P-01]
+=== UC-P-01: Every state has a designed screen; no generic state card
+
+Resolves: UC-F-05, UC-F-13, and the generic card in UC-F-02.
+
+* Replace the `{:else}` chain in `pm-web-app/src/lib/views/OnboardingView.svelte` by a registry
+  `lib/views/onboarding/screens.ts`: a map from state id (or state pattern such as `*.consent`) to a screen component.
+* Add a unit test `screens.registry.test.ts`. It reads every state of
+  `pm-mock-runtime/src/main/resources/scenarios/onboarding.json` (the same import as `scenarioMockFetch.ts`) and fails
+  for a state without a screen.
+* At runtime, a state without a screen renders the error pattern of
+  link:../ux/proposals.adoc#UX-P-08[UX-P-08]: "This screen is not available in the web app", the terminal command
+  that shows the state, and a way back. It never prints the state id as content.
+* Entry states (`entry.*`) render inside the settings frame, not the onboarding frame. `entry.lan-open` shows the LAN
+  URL, the QR code (`PairingQr`), and the fingerprint.
+
+[#UC-P-02]
+=== UC-P-02: Acts derive from the state
+
+Resolves: UC-F-18 (part 2), UC-F-27, UC-F-39.
+
+* One component `ActionBar` (link:../ux/proposals.adoc#UX-P-04[UX-P-04]) takes the acts the server offers for the
+  resource and their order. Views do not hold their own button lists.
+* `PlanView.svelte`: the completion-report control renders only when the plan has ended. A waiting plan shows "Open the
+  decision" as its primary act; a held plan shows the hold and its resolving acts (UC-CTL-4).
+* `SystemView.svelte`: the runtime acts follow the runtime state: running (stop, restart, check, upgrade), draining
+  (stop now, withdraw), upgrading (its step, withdraw, stop now). The update banner hides while draining. The draining
+  banner lists what still runs and counts down.
+* Where the API does not yet send the offered acts for a resource, the view derives them from the state with one table
+  per resource kind in `lib/actions/byState.ts`, tested against every state in the use cases.
+
+[#UC-P-03]
+=== UC-P-03: The missing variations of the onboarding
+
+Resolves: UC-F-01 to UC-F-04, UC-F-06 to UC-F-12.
+
+[cols="1,4",options="header"]
+|===
+|Screen |Change
+
+|Frame (UC-ONB-1)
+|Until onboarded, the header shows the brand, the machine, language, and theme only. The step bar marks no step on
+the mode screen.
+
+|`auto.result` (UC-ONB-2)
+|A "Change" link per row that opens the sub-workflow of that aspect.
+
+|`language.choose` (UC-ONB-3)
+|After recording, set the locale of the app to the interface language. The header toggle overrides it for this
+browser only, and says so in its hover advisory.
+
+|`harness.choose` (UC-ONB-4)
+|Monogram when no icon is fetched (link:../../design/web-app/harness-icons.adoc[Harness Icons]). The token line says
+"usage complete", "usage partial", or "usage not reported".
+
+|`harness.none` (UC-ONB-4)
+|Per harness found: name, path, the check that failed, the answer received, and the fix.
+
+|`catalogue.select` (UC-ONB-5)
+|The advice's recommendation preselected and marked "recommended", with its reason. A text field per harness that
+cannot list its models.
+
+|`roles.review` (UC-ONB-6)
+|Roles grouped by phase; departures from the default marked; an advisory per role; a change per role (harness, model,
+effort); "Ask the steward" with accept or reject per proposed departure; a role that cannot be met shown empty and
+assignable.
+
+|`store.choose` (UC-ONB-7)
+|Per option, two lines: "Protects a secret against: …", "Does not protect against: …".
+
+|`providers.failed` (UC-ONB-8)
+|Label "Provider". Acts: "Enter the token again" (opens `CredentialEntry`), "Check again", "Continue without".
+
+|`defaults.review` (UC-ONB-9)
+|Per axis: its name, one sentence of meaning, a choice of its variants with plain names, variants that need a missing
+provider disabled with the reason. Posture only on a later run.
+
+|Settings (UC-ONB-10)
+|One settings place (link:../ux/proposals.adoc#UX-P-02[UX-P-02]). The conflict notice shows the other client's value
+and "Apply mine again".
+|===
+
+[#UC-P-04]
+=== UC-P-04: The plan shows its phase workflows and its intent
+
+Resolves: UC-F-15 to UC-F-18.
+
+* The plan tree renders an expand control only for a node with children.
+* A phase node expands to its workflow: the steps taken, the steps not taken (muted, with the reason), and the
+  sub-workflows. The data comes from the instance diagram the server already draws
+  (`PM-IMPL-5`; see the use case).
+* The narrative of a phase without task activity shows what the phase produced: its outcome, its duration, its loop
+  count, and for outline and refine a link to the intent.
+* A tab "Intent" on the plan page shows the intent record (link:../../design/shared/intent-and-outline.adoc[Intent
+  and Outline]).
+* "By phase and role" renders only when the server reports a breakdown.
+* A list "Not in this plan" under the phases, with the reason per phase.
+
+[#UC-P-05]
+=== UC-P-05: Correct feedback for a decision
+
+Resolves: UC-F-19 to UC-F-21.
+
+* The recommendation reads "Recommended: Rebase onto main (by implement)". The option list keeps its marker.
+* Evidence renders as fields: one row per key with a plain label; `file` and `lines` as a link to the file view where
+  the project offers one; unknown structures fall back to the JSON block, folded.
+* `DecisionView.svelte`: the answer request carries a client request id. The `decision.answered` event with the same
+  id confirms the own answer ("Decided: Rebase onto main"). Only other events produce "answered elsewhere", with the
+  channel, the device name, and the option label.
+
+[#UC-P-06]
+=== UC-P-06: Overview and epic agree with themselves
+
+Resolves: UC-F-23 to UC-F-26, UC-F-29.
+
+* Overview by epic and by plan render from one list of plans; a test asserts both groupings hold the same plans.
+* The epic head counts come from the same rows the view lists.
+* Ended work gets "Chat about it" (read-only) per row.
+* The epic page gets a tab "Intent" (destination, done-when checks with evidence, non-goals).
+* Each wait shows its reason and "since" with a relative time.
+* The findings review opens with the first open item selected.
+
+[#UC-P-07]
+=== UC-P-07: Project onboarding and the start gate
+
+Resolves: UC-F-31, UC-F-34 to UC-F-37.
+
+* `ProjectOnboardingView.svelte`, identity step: fields id, name, pilot, with the proposal filled in.
+* A step that needs the terminal uses one pattern: what is missing, the command to run, "Check again", and what
+  happens after. The abandon act is secondary and asks first.
+* `StartView.svelte`: the setup gate shows a spinner with "Checking the project's setup…", gives up after 20 s with
+  the cause and "Try again", and shows a refused gate with its reason and the act that resolves it.
+* A start for an unknown project shows the error pattern with "Choose a project".
+* The entry is created when the first source is added (or the empty entry is dropped when the operator leaves without
+  a source).
+* The visual rework of the start flow is in link:../ux/proposals.adoc#UX-P-07[UX-P-07].
+
+== Part 2: The Mock as a Test Bed
+
+[#UC-P-08]
+=== UC-P-08: Every scenario state reaches the views it concerns
+
+Resolves: UC-F-12, UC-F-16, UC-F-38, and the "not verified" verdicts.
+
+* In `pm-mock-runtime`, each state of `running-work`, `projects-and-start`, and `reports-and-system` carries the domain
+  facts it stands for (plan instance, holds, start registry state), and `goto` applies them. Today `goto` changes the
+  offered links only, and the engine keeps its domain fixtures.
+* A contract test per scenario walks every state and asserts that the API resource the state concerns differs from the
+  start state (or is declared equal on purpose).
+* A fixture consistency test asserts that counts agree across resources: overview groupings, epic counts, findings
+  counts, cleanup summary and details, role counts.
+* `pm-mock-runtime/README.adoc`: replace the stale list of bundled scenarios with the six of `primary.txt`; correct the
+  use-case ids in the scenario descriptions (`UC-CTL-6`, `UC-CTL-7`, `UC-DEC-*` do not exist; decisions are UC-PLN-2).
+
+[#documents]
+== Part 3: Changes to the Use-Case Documents
+
+The texts below follow the template of `UseCases.adoc`. New use cases start as `DRAFT`. They are written neutral
+between the clients.
+
+[#UC-P-09]
+=== UC-P-09: New UC-PLN-7 "See What Needs You"
+
+Resolves: UC-F-46. Target: `03-plans.adoc`, after UC-PLN-6.
+
+[source,asciidoc]
+----
+[#UC-PLN-7]
+== UC-PLN-7: See What Needs You
+
+Status:: `DRAFT`
+Actor:: The operator.
+Goal:: See in one place everything that waits for the operator, across all projects, and act on it.
+Trigger:: The operator opens a client, or a count of things that need them changes.
+Preconditions:: The machine is onboarded.
+Flow::
+. *One list.* Everything that waits for the operator, in one list: decisions (UC-PLN-2), holds (UC-CTL-4), failed
+  landings, questions of a project's setup (UC-PRJ-1), findings and watches to review (UC-CTL-3), a credential that
+  expires or failed (UC-ONB-10), a cleanup that is due (UC-SYS-3).
+. *Each item.* What it is, where it belongs (project › epic › plan), since when, what it blocks, and the act that
+  resolves it.
+. *Order.* Items that block running work first; then by age, oldest first.
+. *Act.* The operator resolves an item from the list, or opens it where it belongs.
+Variations::
+* *Nothing waits*: the list says so, and names the running work instead.
+* *Resolved elsewhere*: an item resolved in another client leaves the list, with a quiet notice.
+* *Reports*: reports never wait for the operator (UC-PLN-6); they are not items of this list.
+Outcome:: The operator knows what waits for them, and nothing waits unseen.
+Requirements:: none yet.
+Design:: the shared design: no design document yet.
+----
+
+[#UC-P-10]
+=== UC-P-10: New UC-PLN-8 "Go to Work by Name"
+
+Resolves: UC-F-47. Target: `03-plans.adoc`, after UC-PLN-7.
+
+[source,asciidoc]
+----
+[#UC-PLN-8]
+== UC-PLN-8: Go to Work by Name
+
+Status:: `DRAFT`
+Actor:: The operator.
+Goal:: Reach a plan, an epic, a decision, a project, or a report by its id, title, or pull request.
+Trigger:: The operator knows a name or a number.
+Preconditions:: The machine is onboarded.
+Flow::
+. *Name.* The operator gives a part of an id, a title, or a pull request number.
+. *Matches.* The client lists the matches by kind (project, epic, plan, decision, report), running work first.
+. *Go.* The operator opens one match where it belongs (UC-PLN-1, UC-PLN-5, UC-PLN-2, UC-PRJ-2, UC-PLN-6).
+Variations::
+* *Ended work*: ended plans and epics match, marked as ended.
+* *No match*: the client says so and keeps the name.
+Outcome:: The operator is at the work they named.
+Requirements:: none yet.
+Design:: the shared design: no design document yet.
+----
+
+[#UC-P-11]
+=== UC-P-11: UC-PLN-2: the order of open decisions and the own answer
+
+Resolves: UC-F-48, UC-F-21. Target: UC-PLN-2, `Variations::`.
+
+[source,asciidoc]
+----
+* *Several open*: open decisions are ordered by what they block (a decision that blocks running work first), then
+  by age, oldest first. The operator can group them by project.
+* *Own answer confirmed*: after the operator answers, the client confirms the answer with the chosen option in words.
+  "Answered in another channel" is shown only for an answer given elsewhere.
+----
+
+[#UC-P-12]
+=== UC-P-12: UC-PRJ-1: a step that needs the machine's terminal
+
+Resolves: UC-F-49. Target: UC-PRJ-1, `Variations::`.
+
+[source,asciidoc]
+----
+* *Needs the terminal*: a step that only the machine's terminal can do (for example the build environment) names the
+  command and what it records. The client checks again when the operator asks, and continues once the value is
+  there. The step is never marked done before.
+----
+
+[#UC-P-13]
+=== UC-P-13: UC-ONB-1: the onboarding only, until onboarded
+
+Resolves: UC-F-45. Target: UC-ONB-1, `Variations::`.
+
+[source,asciidoc]
+----
+* *Not yet onboarded*: until the machine is onboarded, a client offers the onboarding and nothing that needs an
+  onboarded machine.
+----

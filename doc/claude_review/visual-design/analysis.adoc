@@ -1,0 +1,87 @@
+= Visual Design: Analysis
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » link:README.adoc[Visual Design] » Analysis
+
+== Result in Short
+
+The app has a sound base: one token file (`pm-web-app/src/styles/tokens.css`), semantic colour roles, both themes
+audited for contrast (link:../../design/web-app/theme-readability.adoc[Theme Readability]), and an own icon set for
+workflow units. It looks like a careful internal tool. It does not yet look like a product a team would pay for.
+
+Three causes:
+
+. *No hierarchy.* Almost all text is `0.75rem` to `0.875rem`. Titles are only one step larger. Every card has the
+  same border and the same surface. The eye has no first place to land.
+. *No identity.* A system font, a generic blue as the only accent, a tiny brand mark, and emoji in the header. Nothing
+  says "plan-marshall" except the word.
+. *Inconsistency in the build.* Controls appear in five forms (filled, outlined, plain text, underlined link, pill
+  link). Badges use many saturated colours. One view (Start) has no styling at all. Content widths change per view.
+
+[#against-design]
+== The Build Against Its Own Design
+
+The design document states rules that the build breaks. These are defects of the build, not of the design:
+
+[cols="2,2,1",options="header"]
+|===
+|Rule in the design |What the build does |Finding
+
+|"A danger control is filled only for the irreversible act of its dialogue; the entry that opens the dialogue is a
+plain danger-coloured link." (link:../../design/web-app/README.adoc#colour[Semantic Colour Tokens])
+|Filled red buttons at rest: four on the devices page, "Verwirf es" in the project onboarding.
+|VD-F-06
+
+|"The theme … the choice is remembered per browser." (link:../../design/web-app/README.adoc#themes[Light and Dark
+Themes])
+|The theme falls back to the system on every full load.
+|link:../cross-cutting/findings.adoc#CC-F-06[CC-F-06]
+
+|Content bounds: reading 480 px, table 1000 px, explorer and reports 1200 px, process views full width
+(link:../../design/web-app/README.adoc#grid[Layout Grid]).
+|Projects about 460 px, reports about 730 px, decisions about 670 px, system about 960 px.
+|VD-F-05
+
+|"A view never invents a colour, a spacing, or a type size."
+|The start view uses browser default buttons; the overview's "Aktionen" has no control style.
+|VD-F-02
+
+|"Every state also has its word."
+|State words are English enums in a German view (`waiting for_you`, `busy`).
+|link:../cross-cutting/findings.adoc#CC-F-01[CC-F-01]
+|===
+
+[#design-limits]
+== Limits of the Design Itself
+
+Some rules of the design hold the product back. They need a change of the design, not only of the build:
+
+* *The type scale stops at `1.5rem`.* There is no size for a page title that leads, and no display size for a
+  figure. A product needs at least two more steps.
+* *Monospace for "anything the operator may compare".* This puts token counts, versions, model ids, and plan ids in
+  monospace in running text. Lines such as "Tokens bisher ≥ 412 Tsd. (≥ 380 Tsd. rein · ≥ 32 Tsd. raus)" become
+  noisy. Tabular numerals in the sans face do the job for numbers; monospace should stay for code, paths, and ids in
+  chips.
+* *The frame is one column with a header row.* With seven entries plus switches, the header is full on the desktop and
+  wraps on the phone. The UX proposal of a left rail (link:../ux/proposals.adoc#UX-P-02[UX-P-02]) needs a design change
+  of the frame.
+* *The palette has no brand colour.* Primary is the blue of a framework default (`#2563eb`). The brand mark has no
+  colour of its own.
+
+[#direction]
+== Direction
+
+"A calm control room." The operator watches work that runs for hours and reacts to a few moments that matter. The
+design should be quiet by default and loud only where the operator must act.
+
+* *Quiet ground*: graphite surfaces in dark, warm off-white in light; few borders; elevation by surface steps.
+* *One brand accent* (indigo-violet) for the primary act, the selection, and the brand mark. Not for state.
+* *State colours are semantic and soft*: amber for "needs you", blue for "running", red for "failed or held", green for
+  "done", grey for neutral. Shown as a dot with a word, not as saturated pills.
+* *Clear hierarchy*: a larger page title, bold section titles, regular body, muted meta.
+* *One control language*: primary, secondary, ghost, and icon buttons; links only inside text.
+* *A typeface with character* and tabular numerals.
+
+Details and values: link:proposals.adoc[Proposals].

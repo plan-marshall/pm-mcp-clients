@@ -1,0 +1,116 @@
+= Cross-Cutting: Proposals
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » link:README.adoc[Cross-Cutting] » Proposals
+
+Paths are relative to `pm-web-app/src/` unless stated.
+
+[#CC-P-01]
+== CC-P-01: A Display Layer for Server Values
+
+Resolves: CC-F-01, CC-F-02.
+
+* New module `lib/display/index.ts`:
+** `displayState(kind, value)` → `$t('state.<kind>.<value>')`, for plan, epic, task, worker, model status, landing,
+   cleanup kind, activity kind, decision reversibility, and every other enum the API carries;
+** `displayError(code)` → the title, cause, and fix keys of link:../ux/proposals.adoc#UX-P-08[UX-P-08];
+** `displayUnit(id)` → the unit's plain name from the catalogue of workflow units (for `landing.pull-request` →
+   "Pull request"), with the id as a chip beside it where the operator needs it.
+* Views never print an API enum or code directly. A unit test parses every `.svelte` file and fails when a field known to
+  be an enum (a list kept in `lib/display/enumFields.ts`) is interpolated without `displayState`.
+* A test reads the enum values of the `pm-api` contract (the same JSON the client decodes; for a start, the values used
+  in the six mock scenarios) and fails when a value has no key in `de` and `en`.
+
+[#CC-P-02]
+== CC-P-02: Catalogue Fixes
+
+Resolves: CC-F-05, CC-F-12.
+
+Fix every string in the table of link:findings.adoc#CC-F-05[CC-F-05] in the runtime's message catalogue (`de` and `en`),
+and remove terminal key hints from texts the web uses. Loading texts get keys per view
+(`<area>.loading`), each naming what loads. Keys live where the catalogue lives today (the runtime, served by
+`GET /api/v1/messages/<locale>/<area>`); the mock serves the same keys.
+
+[#CC-P-03]
+== CC-P-03: Titles with Their Arguments
+
+Resolves: CC-F-03.
+
+* `ROUTE_TITLE_KEYS` becomes `ROUTE_TITLES: Record<AppRoute, (state) => { key, args }>`; plan, epic, start, and project
+  routes pass their title or name.
+* Until the argument is known, the title uses a key without parameters (`plan.view.title.loading` → "Plan").
+* A unit test renders the title for every route with and without its argument and fails on `{` in the result.
+
+[#CC-P-04]
+== CC-P-04: One Format for Time, Duration, Numbers
+
+Resolves: CC-F-04.
+
+* `lib/display/format.ts`: `formatTime(iso, style)` with styles `relative` ("vor 2 Std."), `short` ("16. Okt., 11:25"),
+  `clock` ("11:25:03") through `Intl.DateTimeFormat` and `Intl.RelativeTimeFormat` in the app locale;
+  `formatDuration(ms)`; `formatTokens(n, floor)`; `formatBytes(n)`.
+* Lists use `relative` with `short` in the hover advisory; details use `short`; the activity stream uses `clock` with the
+  date on the first row of each day.
+* Replaces `lib/utils/tokenFormat.ts` and every inline formatting.
+
+[#CC-P-05]
+== CC-P-05: Locale Switch Refreshes Everything
+
+Resolves: CC-F-10, CC-F-11.
+
+* `setLocale` clears the cached catalogue of the other locale only after the new one is loaded, then re-renders; the
+  cache key includes the catalogue version the runtime reports (`/api/v1/status`), so a new runtime never serves a stale
+  cache.
+* No view composes a summary from cached strings outside `$t`; summaries like "3 plans · 1 epic" are catalogue messages
+  with plural rules.
+* The recorded interface language (UC-ONB-3) sets the locale on first load; the header switch overrides it for this
+  browser and says so in its advisory.
+
+[#CC-P-06]
+== CC-P-06: Theme Remembered
+
+Resolves: CC-F-06.
+
+* `localStorage` key `pm_theme` with `light`, `dark`, or `system`; read and write inside `try`/`catch`; missing or
+  unreadable means `system`.
+* The theme control offers the three choices (in the rail foot, link:../ux/proposals.adoc#UX-P-02[UX-P-02]).
+* An inline script in `app.html` sets `data-theme` before the first paint, so no flash of the wrong theme.
+
+[#CC-P-07]
+== CC-P-07: Accessibility Baseline
+
+Resolves: CC-F-07.
+
+* Escape closes every panel, popover, and dialog; focus returns to the control that opened it.
+* A disabled control states its reason in its advisory and to assistive technology (`aria-describedby`).
+* Icon-only controls have a visible label from the tablet width up, and an `aria-label` always.
+* Minimum text size 12 px; no uppercase transforms; touch targets 44 px on the phone.
+* An automated check of the rendered pages with axe-core in `pm-web-e2e` is advised. It is a new dependency and needs the
+  operator's decision; without it, a manual checklist per view in the pull request.
+
+[#CC-P-08]
+== CC-P-08: One Source per Number
+
+Resolves: CC-F-09.
+
+* A count shown in a head is computed from the same list the view renders (`$derived` from the list, never a second
+  field), or the view shows the server's count and the list states "showing n of m".
+* The fixture consistency test of link:../use-cases/proposals.adoc#UC-P-08[UC-P-08] keeps the mock honest.
+
+[#CC-P-09]
+== CC-P-09: The Text Guard
+
+Resolves: all findings of this folder as a regression guard.
+
+* `pm-web-e2e/tests/helpers/textGuard.js`: collects the visible text of a page and fails on:
+** raw enums (`/\b[a-z]+_[a-z_]+\b/` outside chips and code);
+** state ids (`/\b[a-z]+\.[a-z][a-z-]+\b/` outside chips and code);
+** placeholders (`/\{[a-z_]+\}/`);
+** ISO times (`/\d{4}-\d{2}-\d{2}T\d{2}:/`);
+** emoji (`/\p{Extended_Pictographic}/u`);
+** in `de`, a list of English interface words (`running`, `done`, `failed`, `paused`, `busy`, `idle`, `ago`) outside
+   model-written blocks, and in `en` the German counterparts.
+* Model-written content carries `data-model-text` so the guard skips it.
+* The guard runs in `theme-readability.spec.js` for every declared view, in both locales.

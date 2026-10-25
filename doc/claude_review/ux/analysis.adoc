@@ -1,0 +1,140 @@
+= UX: Analysis
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » link:README.adoc[UX] » Analysis
+
+== Result in Short
+
+The app is built from the server's point of view: one view per resource, and each view shows the resource
+completely. That is correct and honest. It is not yet a tool for an operator who must react fast:
+
+. *No answer to the first question.* "What needs me now?" has no single answer. It is spread over the overview
+  sidebar, the decisions page, the reports page, the "Nebenher" block at the bottom of one project, and rows inside
+  epics.
+. *No next action.* Each view offers all acts with equal weight. The epic offers nine buttons; the plan offers four plus
+  five controls in its head. Nothing tells the operator which one the state asks for.
+. *Destructive acts dominate.* Red links on every project card, red buttons on every device row, and a red "abandon"
+  as the strongest button of the project onboarding.
+. *Dead ends.* Several paths end in a raw error code or a loading text that never ends.
+. *One layout per view.* Page width, header form, and control style change from view to view. The operator relearns
+  each page.
+
+The prototype has strong parts to build on (link:findings.adoc#keep[Findings, Patterns to Keep]).
+
+[#ia]
+== Information Architecture Today
+
+[source,text]
+----
+Header (flat, 7 items + 2 toggles + machine badge)
+├── Laufende Arbeit ── project sidebar ── by plan | by epic ── ended work
+│                                     └── plan page ── activity of a task
+│                                     └── epic page ── findings / watches review
+│                                     └── start (entry) ── sources ── ready ── started
+├── Projekte ── project cards ── setup (project onboarding) | release | unenrol
+├── Entscheidungen (count)
+├── Berichte (count) ── completion report
+├── Prozess-Designer
+├── System ── cleanup
+└── Einstellungen der Maschine ── /settings/machine  ⇄  /settings (devices, listener, credentials)
+----
+
+Observations:
+
+* All seven items are peers. Items for daily work (running work, decisions) sit beside items for rare work (designer,
+  system, settings).
+* The counts in the header (decisions, reports) are the only signal of attention. Holds, failed landings, setup
+  questions, and expiring tokens have no count.
+* The plan and the epic are reached only through the overview or a breadcrumb. There is no search and no jump by id.
+* Settings are split over two pages that link to each other.
+
+[#tasks]
+== Key Tasks, Measured
+
+Measured in the scenario `fully-onboarded`, desktop, from the overview. "Screens" counts distinct views; "clicks"
+counts clicks and does not count scrolling.
+
+[cols="3,1,1,4",options="header"]
+|===
+|Task |Screens |Clicks |What happens
+
+|T1: What needs me now, across all projects?
+|≥ 4
+|≥ 4
+|The overview shows one project. The sidebar shows "!2" and "!1" without saying what. The operator opens each project,
+then Decisions, then reads "Nebenher" at the bottom of a project to find the failed landing. There is no complete
+answer anywhere.
+
+|T2: Answer a waiting decision.
+|1
+|3
+|Decisions, choose an option, "Entscheide". Fast. But with eight open decisions there is no order, and the notice after
+the answer is wrong (link:../use-cases/findings-plans-control.adoc#UC-F-21[UC-F-21]).
+
+|T3: Why does this plan wait, and what do I do?
+|≥ 3
+|≥ 3
+|The overview row says "! Entscheidung · wartet auf dich". Opening the row shows the plan view, which does not show
+the decision. The operator goes to Decisions and searches for the plan.
+
+|T4: Start a plan from an issue.
+|1 (5 steps)
+|≥ 6
+|Start the plan, a plan from sources, + Issue, enter the number, add, continue, start. The count is fine. The view
+has no styling, two buttons with the same name, and no step indicator, so the operator hesitates at each step.
+
+|T5: What happened since I last looked?
+|1
+|1
+|Reports. The list is grouped, but read and unread look alike, and every row carries a raw ISO time.
+|===
+
+Targets for the redesign are in link:verification.adoc#targets[Verification, Targets]: T1 in one screen and zero
+clicks, T3 in one click.
+
+[#problems]
+== Main Problems, Ranked
+
+[cols="1,4,1",options="header"]
+|===
+|Rank |Problem |Findings
+
+|1
+|No place for "what needs me" across projects.
+|UX-F-01
+
+|2
+|No primary act per state; destructive acts at rest and dominant.
+|UX-F-04, UX-F-05
+
+|3
+|Dead ends: raw error codes, loading without end, a misplaced control.
+|UX-F-06, UX-F-07, UX-F-14
+
+|4
+|Navigation flat and split; settings on two pages; no jump by name.
+|UX-F-02, UX-F-03
+
+|5
+|Each view its own layout; ids instead of titles.
+|UX-F-09, UX-F-10
+
+|6
+|Flows that look unfinished: start, plan settings, designer results.
+|UX-F-12, UX-F-15, UX-F-16
+|===
+
+[#direction]
+== Direction
+
+The proposals turn the app from "a window per resource" into "a control room":
+
+* A home that answers "what needs me" (the attention inbox, UC-PLN-7 proposed).
+* A left rail with three groups: work, records, machine. A command palette to jump by name (UC-PLN-8 proposed).
+* Four page templates (triage list, object page, wizard, dashboard), used by every view.
+* One primary act per state; the rest secondary; destructive acts only behind an overflow menu and a confirmation.
+* One error pattern and one loading pattern, so no path ends without a way on.
+
+Details: link:proposals.adoc[Proposals].

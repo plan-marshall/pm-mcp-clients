@@ -1,0 +1,123 @@
+= Visual Design: Findings
+:toc: left
+:toclevels: 2
+:nofooter:
+:shots: ../resources/screenshots
+
+link:../README.adoc[Review] » link:README.adoc[Visual Design] » Findings
+
+Evidence from Chrome at 1566 px and 390 px, dark and light. Token names refer to `pm-web-app/src/styles/tokens.css`.
+
+== What Works
+
+* Dark theme contrast is good; the audit of link:../../design/web-app/theme-readability.adoc[Theme Readability] shows.
+* The onboarding cards: one card, a clear title, a body, a footer with the acts on the right. This is the cleanest
+  pattern of the app.
+* The completion report and the cleanup preview: titled sections, aligned key-value rows, figures on the right.
+* The workflow icons in the plan tree (phase icons) are consistent and original.
+
+== Findings
+
+[#VD-F-01]
+=== VD-F-01: No visual hierarchy
+
+* Severity: `major`
+* Seen: page titles at `--text-xl`/`--text-2xl` (1.25–1.5 rem); almost everything else at `--text-xs` and
+  `--text-sm`. Section titles, card titles, and row titles look alike. Every card has the same border
+  (`--color-border`) on the same surface. In the plan view, the tree rows use four sizes and three colours in one
+  line ("PHASE phase init fertig 2 min").
+* Effect: no first place for the eye; the screen reads as a uniform field of small text.
+
+[#VD-F-02]
+=== VD-F-02: Five control styles, and one view without styling
+
+* Severity: `blocker` (for a product)
+* Seen:
+** filled buttons ("Starte den Plan" on the overview);
+** outlined buttons ("Beendete Arbeit");
+** plain text buttons (the whole start view, the pause confirm, "Benenne es um", "Erneuere", "Ersetze");
+** underlined links that act ("Zeige die Details", "Markiere als gelesen");
+** a pill that links ("#214").
+* The start view uses unstyled buttons throughout.
+
+image::{shots}/vd-start-sources.jpg[The start view without control styles,width=640]
+
+[#VD-F-03]
+=== VD-F-03: Too many saturated pills
+
+* Severity: `major`
+* Seen: the machine name in an orange pill (warning colour for neutral information); "!2" in red; state pills in
+  green, orange, red, purple, blue on one row ("! Entscheidung", "finalize", "wartet auf dich"); uppercase chips
+  ("MERGED", "PLAN", "READ_REPORTS"); type chips in the activity stream (`TOOL_CALL` in blue, `FILE_CHANGED` in green).
+* Effect: colour loses its meaning; the eye cannot tell what is urgent.
+
+[#VD-F-04]
+=== VD-F-04: Monospace and uppercase are overused
+
+* Severity: `minor`
+* Seen: token lines, breadcrumbs, report paths, time stamps, and model ids in monospace inside running text;
+  uppercase labels "PHASE", "TASKS", "SUB_WORKFLOW", "ERZÄHLUNG DES TEILS", "STARTE MIT EINER INSTALLIERTEN EINHEIT".
+* Effect: lines look like log output; uppercase shouts where nothing is urgent.
+
+[#VD-F-05]
+=== VD-F-05: Content widths change per view and waste space
+
+* Severity: `major`
+* Seen: projects about 460 px of 1566 px; decisions about 670 px; reports about 730 px; system about 960 px; overview,
+  plan, epic, designer full width. The design asks for 1200 px for the explorer and the reports.
+
+[#VD-F-06]
+=== VD-F-06: Danger is filled at rest
+
+* Severity: `major`
+* Seen: the devices page has four filled red buttons ("Entziehe allen anderen die Kopplung", "Entziehe die
+  Kopplung…" ×3). The project onboarding's strongest button is the red "Verwirf es". Project cards end in red links.
+* Breaks: the design rule in link:../../design/web-app/README.adoc#colour[Semantic Colour Tokens].
+
+[#VD-F-07]
+=== VD-F-07: No brand presence
+
+* Severity: `major`
+* Seen: the mark at 20 px in the header; no brand colour; system font stack; nothing on the pairing page or the empty
+  states that carries the brand.
+
+[#VD-F-08]
+=== VD-F-08: Mixed iconography
+
+* Severity: `minor`
+* Seen: emoji in the header (✎, 🖥, ⚙, 🌙, ☀️), emoji in the cleanup banner (🧹), original SVG icons for workflow units,
+  Unicode glyphs in the tree (▶, ✓, ○), no icons for harnesses (no monograms either).
+* Effect: emoji render differently per platform and look cheap next to the SVG icons.
+
+[#VD-F-09]
+=== VD-F-09: Tables and rows are not aligned
+
+* Severity: `major`
+* Seen: the ended-work table collapses its columns ("Pull RequestBeendet", headers off their cells); the overview rows
+  place pills at the right edge at varying positions; the epic workstreams put the wait reason in a floating middle
+  column.
+
+[#VD-F-10]
+=== VD-F-10: The light theme is flat
+
+* Severity: `minor`
+* Seen: white cards on `#f8fafc`, thin grey borders, the same blue. No warmth, little depth. The light theme is a
+  colour inversion, not a designed theme.
+
+image::{shots}/cc-overview-light-en.jpg[The overview in the light theme: flat grey and white,width=640]
+
+[#VD-F-11]
+=== VD-F-11: No empty, loading, or error visuals
+
+* Severity: `major`
+* Seen: loading is a word ("checking"), a sentence, or a bare spinner; errors are a red code; empty states are not
+  designed.
+
+[#VD-F-12]
+=== VD-F-12: The phone layout breaks in places
+
+* Severity: `major`
+* Seen at 390 px: the header takes two rows, the plan view scrolls sideways, header controls wrap word by word ("Show
+  the details" in three lines), the token line wraps in monospace.
+
+image::{shots}/cc-plan-view-phone.jpg[The plan view at 390 px: sideways scroll and wrapped controls,width=320]

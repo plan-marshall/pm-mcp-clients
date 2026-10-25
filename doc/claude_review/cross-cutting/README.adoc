@@ -1,0 +1,30 @@
+= Review: Cross-Cutting
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » Cross-Cutting
+
+This folder holds what touches every view: language and texts, raw data on screen, dates and numbers, theme,
+accessibility, phone width, and the consistency of data across views. Most fixes here are small, and they come first in
+the order of work (link:../README.adoc#order[Review, Order of Work]).
+
+[cols="1,3",options="header"]
+|===
+|Document |What it holds
+
+|link:analysis.adoc[Analysis]
+|The result in short and the causes.
+
+|link:findings.adoc[Findings]
+|The findings `CC-F-01` to `CC-F-12`, with evidence and causes.
+
+|link:proposals.adoc[Proposals]
+|The text guard, the catalogue fixes, titles, formatting, locale, theme, accessibility, consistency.
+
+|link:plan.adoc[Plan]
+|The steps, in order.
+
+|link:verification.adoc[Verification]
+|The checks per step, including the guard every other folder relies on.
+|===

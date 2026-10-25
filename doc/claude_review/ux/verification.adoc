@@ -1,0 +1,135 @@
+= UX: Verification
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » link:README.adoc[UX] » Verification
+
+[#targets]
+== Targets for the Key Tasks
+
+The tasks of link:analysis.adoc#tasks[Analysis, Key Tasks], measured the same way (desktop, `fully-onboarded`, from
+the home page).
+
+[cols="3,1,1,1,1",options="header"]
+|===
+|Task |Screens today |Clicks today |Screens target |Clicks target
+
+|T1: What needs me now, across all projects?
+|≥ 4
+|≥ 4
+|1
+|0
+
+|T2: Answer a waiting decision.
+|1
+|3
+|1
+|2 (option, decide) or 1 (`Enter` on the recommendation)
+
+|T3: Why does this plan wait, and what do I do?
+|≥ 3
+|≥ 3
+|1
+|1 (the attention strip's act)
+
+|T4: Start a plan from an issue.
+|1
+|≥ 6
+|1
+|≤ 6, with no hesitation (each step has one primary act)
+
+|T5: What happened since I last looked?
+|1
+|1
+|1
+|1, unread rows visibly set apart
+|===
+
+A second person who has not seen the app does T1 to T5 after a two-minute introduction. Each task passes when the
+person finishes it without help. Record time and errors per task in the pull request of UX-S-13.
+
+== Checks per Step
+
+[cols="1,1,3,2",options="header"]
+|===
+|Check |Step |What must be true |Where
+
+|UX-V-01
+|UX-S-01
+|The rail shows three groups; the counts match the header counts of today. At 390 px the bottom bar shows four items
+with labels; no horizontal scroll on any route. The live indicator turns amber when the mock stops and green when it
+restarts.
+|`fully-onboarded`, every route; stop and start `pm-mock-runtime`
+
+|UX-V-02
+|UX-S-02
+|The inbox lists decisions, the failed landing, the setup question, the expiring token, and the due cleanup of
+`fully-onboarded`, blocking first. Each row's act opens the right place. An answered decision leaves the list.
+|`fully-onboarded`; `inbox.spec.js`
+
+|UX-V-03
+|UX-S-03
+|`⌘K` then "relay" lists the epic, its plans, and their decisions; `Enter` opens the first. "214" finds the plan of
+pull request 214.
+|`fully-onboarded`; `chrome.spec.js`
+
+|UX-V-04
+|UX-S-04
+|No view sets its own page width (a lint rule or test greps view styles for `max-width` on the page root). The four
+reference views use their template.
+|unit test; code review
+
+|UX-V-05
+|UX-S-05
+|For every state in `byState.ts`: at most one primary act; no red control at rest anywhere (a test in
+`theme-readability.spec.js` asserts no element with the danger background outside an open dialog).
+|`byState.test.ts`; e2e
+
+|UX-V-06
+|UX-S-06
+|Stopping the mock while a view loads shows the error pattern within 15 s with "Try again". `plan_not_found` and
+`project_not_found` show a title, a cause, and an act; the code only under "Details".
+|stop the mock; `/plans/does-not-exist`
+
+|UX-V-07
+|UX-S-07
+|The plan head shows the title, the id chip, and the state sentence. A waiting plan shows the attention strip with
+"Open the decision". The Settings tab replaces the modal. No `LINK` row without text.
+|`running-work` → `control.ready`, `decisions.open`
+
+|UX-V-08
+|UX-S-08
+|Eight decisions in `running-work` are ordered blocking first. `1`, `2`, `Enter` decide; the next decision is selected;
+the toast names the option.
+|`running-work` → `decisions.open`
+
+|UX-V-09
+|UX-S-09
+|Running work lists all projects; columns align at 1440 px; the row menu is an icon button; ended work is a table with
+aligned columns. The rail item opens running work even after ended work was open.
+|`fully-onboarded`
+
+|UX-V-10
+|UX-S-10
+|The start shows steps 1 to 3 with one primary act each; Back works on every step; an abandoned start without a source
+leaves no entry.
+|`projects-and-start` → `start.sources`
+
+|UX-V-11
+|UX-S-11
+|Epic waits show "since". Project cards keep release and unenrol in the overflow. Unread reports stand out. Designer
+results appear above the text and jump to their line.
+|`fully-onboarded`; `designer` → `designer.unit-invalid`
+
+|UX-V-12
+|UX-S-12
+|`/settings/machine` redirects to `/settings?tab=setup`. One "Save" per form, disabled until a change. Plan settings
+show plain names.
+|`fully-onboarded`
+
+|UX-V-13
+|UX-S-13
+|The changed designs pass `doc-review`. Every proposal of this folder is marked done or dropped with a reason.
+|`doc-review`
+|===

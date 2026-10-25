@@ -1,0 +1,223 @@
+= Use Cases: Analysis
+:toc: left
+:toclevels: 2
+:nofooter:
+:uc: ../../../../plan-marshall-documentation/doc/use-cases
+
+link:../README.adoc[Review] » link:README.adoc[Use Cases] » Analysis
+
+== Result in Short
+
+The main flows of the use cases work in the web app. An operator can onboard the machine, follow a plan, answer a
+decision, start a plan from a description, and clean up. The app falls short in three ways:
+
+. *Variations are absent.* Many use cases list variations (advice, a change link, the steward, a fix action, the
+  intent record). The app shows the happy path and leaves them out.
+. *Raw data replaces the designed screen.* Some states have no designed screen. For them, the app shows a generic
+  card with the state id (`Machine · harness.none`, `Machine · entry.lan-open`) or a raw error code (`plan_not_found`).
+. *Actions are not offered by state.* The system view offers stop, restart, and upgrade while the runtime drains. The
+  plan view offers a completion report for a plan that still runs.
+
+The use-case documents are in good shape. They need five additions, mainly for the speed the operator needs in
+production (link:proposals.adoc#documents[Proposals, Changes to the Use-Case Documents]).
+
+[#matrix]
+== Verdict per Use Case
+
+[cols="2,4,1,3",options="header"]
+|===
+|Use case |Title |Verdict |Main reason (findings)
+
+|link:{uc}/01-onboarding.adoc#UC-ONB-1[UC-ONB-1]
+|Onboard a Machine
+|`partial`
+|Flow and steps present; the full navigation is open before the machine is onboarded (UC-F-01).
+
+|link:{uc}/01-onboarding.adoc#UC-ONB-2[UC-ONB-2]
+|Onboard Automatically
+|`partial`
+|Result table present; no change link per step (UC-F-02).
+
+|link:{uc}/01-onboarding.adoc#UC-ONB-3[UC-ONB-3]
+|Choose the Languages
+|`partial`
+|Choice correct; the interface language chosen is not applied (UC-F-03).
+
+|link:{uc}/01-onboarding.adoc#UC-ONB-4[UC-ONB-4]
+|Enrol the Harnesses
+|`partial`
+|Consent, choice, blocked state good; no monogram, empty token text, raw state for "none found" (UC-F-04, UC-F-05).
+
+|link:{uc}/01-onboarding.adoc#UC-ONB-5[UC-ONB-5]
+|Choose the Models for the Work
+|`partial`
+|Selection present; no advice shown (UC-F-06).
+
+|link:{uc}/01-onboarding.adoc#UC-ONB-6[UC-ONB-6]
+|Assign Models to the Roles
+|`partial`
+|Defaults only; no review of departures, no change per role, no steward (UC-F-07).
+
+|link:{uc}/01-onboarding.adoc#UC-ONB-7[UC-ONB-7]
+|Choose Where Credentials Are Kept
+|`partial`
+|Choice and recommendation present; no statement of what protects a secret (UC-F-08).
+
+|link:{uc}/01-onboarding.adoc#UC-ONB-8[UC-ONB-8]
+|Choose the Providers of the Machine
+|`partial`
+|Failure shows cause and fix; no action to fix the credential; wrong label (UC-F-09).
+
+|link:{uc}/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]
+|Choose How Plans Run by Default
+|`deviates`
+|Raw unit ids, no meaning per axis, no way to change a value (UC-F-10).
+
+|link:{uc}/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]
+|Change the Machine's Settings
+|`partial`
+|Aspects and consents present; two settings pages; conflict not shown (UC-F-11, UC-F-12).
+
+|link:{uc}/02-entry.adoc#UC-ENT-1[UC-ENT-1]
+|Enter and Connect
+|`partial`
+|Pairing works; the listener state has no URL and no QR code, and shows the state id (UC-F-13).
+
+|link:{uc}/02-entry.adoc#UC-ENT-2[UC-ENT-2]
+|Manage Paired Devices
+|`conforms`
+|All acts present; "this device" is not set apart; first load can hang (UC-F-14).
+
+|link:{uc}/03-plans.adoc#UC-PLN-1[UC-PLN-1]
+|Follow a Plan Down to Its Parts
+|`partial`
+|Tree, leaf, activity, loop count present; no phase workflow, no intent, tokens per phase not reported (UC-F-15 to
+UC-F-18).
+
+|link:{uc}/03-plans.adoc#UC-PLN-2[UC-PLN-2]
+|Decide What a Plan Asks
+|`partial`
+|Options, votes, dissent, parts present; recommendation as index, evidence as JSON, wrong channel after answer
+(UC-F-19 to UC-F-21).
+
+|link:{uc}/03-plans.adoc#UC-PLN-3[UC-PLN-3]
+|Design a Plan's Process
+|`partial`
+|Edit, structure, validate present; results below the fold; invalid unit not shown in the mock (UC-F-22).
+
+|link:{uc}/03-plans.adoc#UC-PLN-4[UC-PLN-4]
+|See What Runs, Across Projects
+|`partial`
+|Projects, by plan, by epic, ended work present; grouping contradicts itself; no read-only chat (UC-F-23, UC-F-24).
+
+|link:{uc}/03-plans.adoc#UC-PLN-5[UC-PLN-5]
+|Follow an Epic
+|`partial`
+|Head, workstreams, sources, landings, findings, events present; no intent, no "since when" (UC-F-25, UC-F-26).
+
+|link:{uc}/03-plans.adoc#UC-PLN-6[UC-PLN-6]
+|Catch Up on What Happened
+|`conforms`
+|List, detail, mark read, completion report present; raw time (UC-F-42).
+
+|link:{uc}/04-projects.adoc#UC-PRJ-1[UC-PRJ-1]
+|Onboard a Project
+|`deviates`
+|The identity step has no fields and sends the operator to the terminal (UC-F-31).
+
+|link:{uc}/04-projects.adoc#UC-PRJ-2[UC-PRJ-2]
+|Explore Projects
+|`conforms`
+|Favourites, recent, being added, actions present; destructive acts at rest (UC-F-32).
+
+|link:{uc}/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]
+|Release a Project
+|`not verified`
+|The release dialog was not opened, to keep the mock state; `projects.spec.js` covers it.
+
+|link:{uc}/04-projects.adoc#UC-PRJ-4[UC-PRJ-4]
+|Allow an Upstream MCP Server
+|`missing`
+|No view. The use case is `DRAFT` and has no design (UC-F-33).
+
+|link:{uc}/05-starting-work.adoc#UC-STA-1[UC-STA-1]
+|Start a Plan
+|`conforms`
+|The path from description to started plan works; the view has no styling and broken texts (UC-F-34, UC-F-35).
+
+|link:{uc}/05-starting-work.adoc#UC-STA-2[UC-STA-2] to link:{uc}/05-starting-work.adoc#UC-STA-9[UC-STA-9]
+|Start an Epic, Documents, Issue, Recipe, Decompose, Pull Request, Lesson, Local Changes
+|`not verified`
+|The start view hangs on "checking" after a jump to a `start.*` state (UC-F-36); `start.spec.js`,
+`decomposition.spec.js`, `git-sources.spec.js`, `lesson-source.spec.js` cover them.
+
+|link:{uc}/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1]
+|Control a Plan
+|`partial`
+|Pause with "where it holds" conforms; confirm buttons unstyled; completion report offered while running (UC-F-27).
+
+|link:{uc}/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2]
+|Control an Epic
+|`partial`
+|All acts present as nine equal buttons; cancel not set apart (UC-F-28).
+
+|link:{uc}/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3]
+|Review an Epic's Findings or Watches
+|`partial`
+|Review dialog present; counts contradict the epic card; no item preselected (UC-F-29).
+
+|link:{uc}/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]
+|Resolve What Holds a Plan
+|`not verified`
+|No hold is visible in the mock views; `control.spec.js` covers it.
+
+|link:{uc}/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5]
+|Change a Plan's Settings
+|`partial`
+|Origin per value present; raw keys and values, one save per row, no "remove the override" (UC-F-30).
+
+|link:{uc}/07-system.adoc#UC-SYS-1[UC-SYS-1]
+|Manage the Runtime
+|`deviates`
+|While draining, the view still offers stop, restart, and upgrade (UC-F-39).
+
+|link:{uc}/07-system.adoc#UC-SYS-2[UC-SYS-2]
+|See What the Runtime Is Doing
+|`partial`
+|Figures present; raw enums, labels repeated, no state of the live stream (UC-F-40).
+
+|link:{uc}/07-system.adoc#UC-SYS-3[UC-SYS-3]
+|Clean Up
+|`conforms`
+|Summary, details, selection, three answers present; raw kinds and duplicated words (UC-F-41).
+|===
+
+Totals: 5 `conforms`, 20 `partial`, 3 `deviates`, 1 `missing`, 10 `not verified`.
+
+[#gaps]
+== Main Gaps
+
+. *The generic state card.* `OnboardingView.svelte` renders any state without a designed screen as a card with the
+  title, the scope, and the state id. The operator sees `Machine · harness.none`. A state without a screen must be a
+  defect the build finds, not a screen the operator sees (link:proposals.adoc#UC-P-01[UC-P-01]).
+. *Actions not derived from the state.* The use cases say "actions by state" (principle `actions-by-state` of
+  `06-controlling-work.adoc`). The app has fixed button sets per view (link:proposals.adoc#UC-P-02[UC-P-02]).
+. *Variations of the onboarding.* Advice, the steward, change links, a fix for a credential, and the meaning of
+  each plan default are absent (link:proposals.adoc#UC-P-03[UC-P-03]).
+. *The plan's intent and the phase workflow.* UC-PLN-1 drills from a phase to its workflow, taken and not taken.
+  The app stops at the phase (link:proposals.adoc#UC-P-04[UC-P-04]).
+. *Feedback after an act.* The decision answer reports the wrong channel and an index instead of the option
+  (link:proposals.adoc#UC-P-05[UC-P-05]).
+
+[#mock]
+== The Mock as a Test Bed
+
+The mock is good enough for the main flows. For conformance work it has two limits:
+
+* Most views read domain data from the engine, not from the state of the scenario. A jump to `control.holds` or
+  `process.pruned-lane` does not change the plan view. The e2e specs work around this with their own fixtures.
+* The README of `pm-mock-runtime` lists scenarios that no longer exist, and the scenario descriptions name use cases
+  that do not exist (`UC-CTL-6`, `UC-CTL-7`, `UC-DEC-1` to `UC-DEC-3`).
+
+link:proposals.adoc#UC-P-08[UC-P-08] makes every state of a scenario visible in the views it concerns, so that a
+conformance walk in Chrome is possible for all 39 use cases.

@@ -1,0 +1,46 @@
+= Review: Use Cases
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » Use Cases
+
+This folder states how well `pm-web-app` implements the use cases
+(link:../../../../plan-marshall-documentation/doc/UseCases.adoc[Use Cases]), and which use cases need changes.
+
+[cols="1,3",options="header"]
+|===
+|Document |What it holds
+
+|link:analysis.adoc[Analysis]
+|The verdict per use case in one matrix, and the main gaps.
+
+|link:findings-onboarding-entry.adoc[Findings: Onboarding and Entry]
+|UC-ONB-1 to UC-ONB-10, UC-ENT-1, UC-ENT-2.
+
+|link:findings-plans-control.adoc[Findings: Plans and Control]
+|UC-PLN-1 to UC-PLN-5, UC-CTL-1 to UC-CTL-5.
+
+|link:findings-projects-starting.adoc[Findings: Projects and Starting Work]
+|UC-PRJ-1 to UC-PRJ-4, UC-STA-1 to UC-STA-9.
+
+|link:findings-system-reports.adoc[Findings: System and Reports]
+|UC-SYS-1 to UC-SYS-3, UC-PLN-6.
+
+|link:proposals.adoc[Proposals]
+|The changes to the app that close the gaps, and the changes to the use-case documents, written in their style.
+
+|link:plan.adoc[Plan]
+|The steps, in order.
+
+|link:verification.adoc[Verification]
+|The checks per step, with the mock scenario and state for each.
+|===
+
+Verdicts:
+
+`conforms`:: The flow and its variations are there. Only small defects remain.
+`partial`:: The main flow works. Some variations or outcomes are absent.
+`deviates`:: The app does something other than the use case says.
+`missing`:: There is no implementation.
+`not verified`:: The mock does not show the state in Chrome. The e2e spec named is the only evidence.

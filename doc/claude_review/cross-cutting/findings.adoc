@@ -1,0 +1,187 @@
+= Cross-Cutting: Findings
+:toc: left
+:toclevels: 2
+:nofooter:
+:shots: ../resources/screenshots
+
+link:../README.adoc[Review] » link:README.adoc[Cross-Cutting] » Findings
+
+[#CC-F-01]
+== CC-F-01: German and English mix on one screen
+
+* Severity: `blocker` (for a product)
+* Seen in `de`:
+** plan tree: "phase init fertig" beside "TASK-001 … done"; head "execute running 2 h 10 min";
+** off-track banner: "vom Weg ab: repeating (5 von 5): show";
+** system: "1 waiting for_you", "3 running", "2 paused", "busy", "idle", "1 retry", "ok";
+** overview: "8 d ago", "failed", "running"; ended work: "Grund: the edit was not ours";
+** machine settings: "Deutsch, models English", "4 models on 2 harnesses", "31 roles", "SonarCloud not available";
+** epic: "2 documents", "1 issue"; events "relay-auth-v2 asks a decision";
+** completion report: "MERGED", "done".
+* Seen in `en` after a switch from `de`: "3 Pläne · 1 Epic", "die Einrichtung braucht dich"; and back in `de`: "3 plans
+  · 1 epic", "setup needs you".
+* Note: some English is model-written content (decision texts, reasons). That is correct: the model language may differ
+  (link:../../../../plan-marshall-documentation/doc/articles/karpathy-ste100-output.adoc[ASD-STE100 Output]). The
+  defect is the interface's own words.
+
+[#CC-F-02]
+== CC-F-02: Raw enums, codes, and state ids reach the operator
+
+* Severity: `major`
+* Seen: `waiting for_you`; `READ_REPORTS`, `UNENROLLED_PROJECT`; `landing.pull-request`, `method.test-first`;
+  `role.implement`, `integration.git`; `Machine · harness.none`, `Machine · entry.lan-open`; `plan_not_found`,
+  `project_not_found`; activity tags `TOOL_CALL`, `FILE_CHANGED`, `ASSISTANT_TEXT`, `LINK`.
+
+image::{shots}/cc-system-raw-enums.jpg[System view with raw enums,width=640]
+
+[#CC-F-03]
+== CC-F-03: Placeholders in titles
+
+* Severity: `major`
+* Seen: browser tab titles "(3) {plan}", "(3) {epic}", "Einen Plan in {project} starten".
+* Cause: `routes/+layout.svelte` calls `$t(ROUTE_TITLE_KEYS[route])` without arguments; the keys `plan.view.title`,
+  `epic.view.title`, `start.plan.title` carry parameters.
+
+[#CC-F-04]
+== CC-F-04: Raw and mixed time formats
+
+* Severity: `major`
+* Seen: "2026-10-16T11:25:00Z" (reports), "2026-10-12T09:00:00Z · terminal" (consents),
+  "2026-10-25T10:38:07.423556Z" beside "14:02:11" in one activity list, "8 d ago" in German, "vor 1 Woche" on project
+  cards, "gekoppelt 20. Sept." on devices. Five formats in one app.
+
+[#CC-F-05]
+== CC-F-05: Broken and repeated strings
+
+* Severity: `major`
+
+[cols="2,2,3",options="header"]
+|===
+|Where |Seen |Expected
+
+|Start, source row
+|`r) entfernen`
+|"Entfernen" (the terminal's key hint "(r)" must not reach the web)
+
+|Start, started
+|"Add retry metrics to the relay reconnect. ist gestartet"
+|"„Add retry metrics …“ ist gestartet." (title quoted, one sentence end)
+
+|Machine settings, durations
+|"30 Tage · 3 Frage mich nach Tage"
+|"Beendete Arbeit 30 Tage aufbewahren · Erinnerung nach 3 Tagen"
+
+|Cleanup rows
+|"ended ended 12 Sep"
+|"ended 12 Sep"
+
+|Onboarding completed
+|title "This machine is ready" repeated as body
+|body names what is ready, or no body
+
+|Onboarding mode
+|"You can stop at any point; …" twice
+|once
+
+|Decision, multi-part
+|title repeated as description
+|description only when it adds
+
+|Provider failure
+|row label "Choose what this machine works with"
+|"Provider"
+
+|Project onboarding, identity
+|heading "Identität", subtitle "Identity"
+|no translated duplicate
+
+|System
+|"Aufgaben · Tasks 4 laufen", "Build-Slots · Build-Slots 1 von 2 Slots", "Listener · Listener Socket …"
+|value without its label repeated
+
+|Decision answered
+|"beantwortet über die Konsole (—): 2"
+|"Entschieden: Rebase onto main" (see link:../use-cases/findings-plans-control.adoc#UC-F-21[UC-F-21])
+|===
+
+[#CC-F-06]
+== CC-F-06: The theme is not remembered
+
+* Severity: `minor`
+* Seen: light theme chosen; after a navigation with a full load, the app is dark again. The language is remembered.
+* Cause: `toggleTheme()` in `routes/+layout.svelte` only sets `data-theme`; start-up reads `prefers-color-scheme`.
+* Breaks: link:../../design/web-app/README.adoc#themes[Light and Dark Themes] ("remembered per browser").
+
+[#CC-F-07]
+== CC-F-07: Accessibility gaps seen in passing
+
+* Severity: `minor` (not a full audit)
+* Seen: the pause panel does not close with Escape; "Entscheide" looks disabled without saying why; at 390 px the
+  designer, system, and settings entries are emoji without visible labels; uppercase and small text (`--text-xs`) for
+  many labels; focus order not checked.
+* A full audit belongs in link:verification.adoc#CC-V-07[CC-V-07].
+
+[#CC-F-08]
+== CC-F-08: The phone layout breaks
+
+* Severity: `major`
+* Seen at 390 px: the plan view scrolls sideways; header controls wrap word by word; the header takes two rows.
+* See link:../visual-design/findings.adoc#VD-F-12[VD-F-12].
+
+image::{shots}/cc-overview-phone.jpg[The overview at 390 px: two header rows and a nested scroll box,width=320]
+
+[#CC-F-09]
+== CC-F-09: Numbers disagree across views
+
+* Severity: `major` when the app shows both numbers; `minor` when only the mock fixture is wrong.
+
+[cols="2,2,1",options="header"]
+|===
+|Numbers |Where |Owner
+
+|epic "3 laufen" with 1 row by epic, 2 rows by plan
+|overview
+|app
+
+|"3 new · 4 open · 2 kept" vs 3 items
+|epic card vs findings review
+|app (or fixture)
+
+|"2 Landungen" vs 1 listed
+|epic
+|app
+
+|12 plans in summary vs 3 in details; 1.3 GB vs 1.8 GB
+|cleanup vs system banner
+|fixture
+
+|36 roles vs 31 roles
+|onboarding completed vs settings
+|fixture
+
+|"0 left: running work" while two blockers
+|draining banner
+|app
+|===
+
+[#CC-F-10]
+== CC-F-10: Server-provided phrases do not follow the locale switch
+
+* Severity: `major`
+* Seen: see CC-F-01, last point.
+* Cause (likely): the catalogue cache per locale in `lib/i18n/index.ts` and summary strings built from a cached
+  catalogue; to be confirmed when fixing.
+
+[#CC-F-11]
+== CC-F-11: The chosen interface language is not used
+
+* Severity: `major`
+* See link:../use-cases/findings-onboarding-entry.adoc#UC-F-03[UC-F-03].
+
+[#CC-F-12]
+== CC-F-12: Loading texts and states are not catalogued as a pattern
+
+* Severity: `minor`
+* Seen: "checking" (English, lower case, in a German view), "Die gekoppelten Geräte werden geladen …" on a page that
+  loads more than devices.
+* See link:../ux/findings.adoc#UX-F-14[UX-F-14].

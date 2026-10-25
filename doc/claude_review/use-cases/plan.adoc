@@ -1,0 +1,95 @@
+= Use Cases: Plan
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » link:README.adoc[Use Cases] » Plan
+
+The steps run after the foundation of link:../cross-cutting/plan.adoc[Cross-Cutting, Plan] and the components of
+link:../visual-design/plan.adoc[Visual Design, Plan]. Steps UC-S-01 and UC-S-08 do not depend on them and can start at
+once.
+
+Every step is one pull request in the usual flow (branch, commits, pull request), with its unit tests and the e2e specs
+named. Each step updates the design document it touches in `doc/design/` in the same pull request.
+
+[cols="1,4,2,3",options="header"]
+|===
+|Step |What to do |Proposals |Files and tests
+
+|UC-S-01
+|Make every scenario state reach the views it concerns. Add the per-scenario state contract test and the fixture
+consistency test. Correct the README and the scenario descriptions.
+|UC-P-08
+|`pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java`, scenario JSON files,
+`pm-mock-runtime/README.adoc`; new `ScenarioStateContractTest`, `FixtureConsistencyTest`.
+
+|UC-S-02
+|Replace the generic state card by the screen registry with its build check and the runtime error pattern. Move
+`entry.*` states into the settings frame.
+|UC-P-01
+|`lib/views/OnboardingView.svelte`, new `lib/views/onboarding/screens.ts`, new
+`screens.registry.test.ts`; e2e `onboarding.spec.js`, `entry.spec.js`.
+
+|UC-S-03
+|Introduce `ActionBar` with acts by state. Apply it to plan, epic, and system. Hide the completion-report control
+for a running plan. Fix the draining acts.
+|UC-P-02
+|new `lib/components/ActionBar.svelte`, new `lib/actions/byState.ts` with its test; `PlanView.svelte`,
+`EpicView.svelte`, `SystemView.svelte`, `WorkControlPanel.svelte`, `ControlActionsBar.svelte` (replaced); e2e
+`control.spec.js`, `system.spec.js`.
+
+|UC-S-04
+|Onboarding variations, one screen per pull request in this order: frame, `defaults.review`, `roles.review`,
+`providers.failed`, `harness.none`, `auto.result`, `language.choose`, `catalogue.select`, `store.choose`,
+`harness.choose`, settings conflict.
+|UC-P-03
+|`OnboardingView.svelte` screens, `HarnessChoice.svelte`, `ModelsChoice.svelte`, `AspectChoice.svelte`,
+`CredentialEntry.svelte`, `MachineSettingsView.svelte`; catalogue texts in the runtime's message catalogue; e2e
+`onboarding.spec.js`.
+
+|UC-S-05
+|Plan tree with phase workflows, true expanders, phase narrative, the Intent tab, "not in this plan", and the breakdown
+control only when reported.
+|UC-P-04
+|`PlanView.svelte`, `NodeNarrative.svelte`, `lib/utils/processNode.ts`; e2e `plan-view.spec.js`.
+
+|UC-S-06
+|Decision feedback: recommendation by label, evidence as fields, own answer confirmed by request id.
+|UC-P-05
+|`DecisionView.svelte`, `PremiseEvidenceView.svelte` (or a new `EvidenceView.svelte`), `lib/api/client.ts` (request id);
+e2e `decisions.spec.js`.
+
+|UC-S-07
+|Overview and epic consistency, read-only chat for ended work, the epic's Intent tab, "since" for waits, first open
+finding selected.
+|UC-P-06
+|`OverviewView.svelte`, `EpicView.svelte`, `FindingsReviewModal.svelte`, `ChatPanel.svelte`; e2e `overview.spec.js`,
+`epic-view.spec.js`.
+
+|UC-S-08
+|Write the use-case changes UC-P-09 to UC-P-13 into `plan-marshall-documentation` as `DRAFT`, ask the operator to agree,
+then link the new use cases from the designs that serve them.
+|UC-P-09 to UC-P-13
+|`plan-marshall-documentation/doc/use-cases/01-onboarding.adoc`, `03-plans.adoc`, `04-projects.adoc`;
+`doc/UseCases.adoc` (index).
+
+|UC-S-09
+|Project onboarding identity step, the "needs the terminal" pattern, the start gate with progress and time limit, the
+error pattern for an unknown project, the lazy entry.
+|UC-P-07
+|`ProjectOnboardingView.svelte`, `StartView.svelte`, `lib/stores/start.ts`; e2e `projects.spec.js`, `start.spec.js`.
+
+|UC-S-10
+|Implement UC-PLN-7 and UC-PLN-8 once agreed: the attention inbox and the jump-to search
+(link:../ux/proposals.adoc#UX-P-01[UX-P-01], link:../ux/proposals.adoc#UX-P-02[UX-P-02]).
+|UC-P-09, UC-P-10
+|See link:../ux/plan.adoc[UX, Plan], steps UX-S-02 and UX-S-03.
+|===
+
+== Dependencies
+
+* UC-S-03 needs `ActionBar` from link:../visual-design/plan.adoc[VD-S-03].
+* UC-S-05, UC-S-06, UC-S-07 need the page templates of link:../ux/plan.adoc[UX-S-04].
+* UC-S-10 needs UC-S-08 (the use cases agreed).
+* All view steps need the text guard of link:../cross-cutting/plan.adoc[CC-S-01] so that new screens cannot show raw
+  data.

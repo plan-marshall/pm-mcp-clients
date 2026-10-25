@@ -1,0 +1,79 @@
+= Visual Design: Plan
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Review] » link:README.adoc[Visual Design] » Plan
+
+Paths are relative to `pm-web-app/src/`. Each step is one pull request with tests, and with the design document update
+of link:proposals.adoc#VD-P-09[VD-P-09] that belongs to it.
+
+[cols="1,4,2,3",options="header"]
+|===
+|Step |What to do |Proposals |Files and tests
+
+|[[VD-S-00]]VD-S-00
+|Ask the operator two decisions: the typeface Inter as a self-hosted font file, and an own icon set versus Lucide.
+Record the answers in the design.
+|VD-P-03, VD-P-06
+|none (decision)
+
+|[[VD-S-01]]VD-S-01
+|Tokens v2: new colour, type, spacing, radius, elevation, motion tokens for both themes; old names as aliases. Theme
+persisted with a "system" choice (link:../cross-cutting/plan.adoc[CC-S-03]).
+|VD-P-02, VD-P-03, VD-P-04
+|`styles/tokens.css`, `styles/base.css`, `styles/tokens.test.ts`; fonts in `../static/fonts/` if VD-S-00 agrees; e2e
+`theme-readability.spec.js` (allowlist reset).
+
+|[[VD-S-02]]VD-S-02
+|Icon set: the UI icons as SVG on the workflow icon contract; replace every emoji; harness monograms.
+|VD-P-06
+|`lib/icons/ui/*.svg`, `lib/icons/uiIcons.ts`, `lib/components/Icon.svelte`, `HarnessChoice.svelte`; licence gate of
+`workflow-visual-language.adoc` applied.
+
+|[[VD-S-03]]VD-S-03
+|Core components: `Button`, `IconButton`, `ActionBar` (style), `StatusLabel`, `CountBadge`, `Chip`, `Card`,
+`KeyValueList`, `Tabs`, `Breadcrumb`, `Dialog`, `Toast`, `AttentionStrip`. A development page `/dev/components`.
+|VD-P-05
+|`lib/components/*.svelte` with tests; `routes/dev/components/+page.svelte` (dev build only).
+
+|[[VD-S-04]]VD-S-04
+|Data components: `DataTable`, `EmptyState`, `ErrorState`, `Skeleton`; formatting helpers for time, duration, tokens.
+|VD-P-05, VD-P-07
+|`lib/components/DataTable.svelte`, `EmptyState.svelte`, `ErrorState.svelte`, `Skeleton.svelte`; `lib/utils/format.ts`
+(replaces `tokenFormat.ts`) with tests.
+
+|[[VD-S-05]]VD-S-05
+|Brand: rail head, pairing page, empty states, favicon with attention dot.
+|VD-P-08
+|`lib/components/BrandMark.svelte`, `lib/views/PairingView.svelte`, `../static/brand-mark.svg`, `app.html`; e2e
+`pairing.spec.js`.
+
+|[[VD-S-06]]VD-S-06
+|Apply components view by view, together with the UX steps (UX-S-07 to UX-S-12): no plain text button, no acting link,
+no state pill, no uppercase label, no emoji left.
+|VD-P-01, VD-P-05
+|all views in `lib/views/`; e2e as in link:../ux/plan.adoc[UX, Plan].
+
+|[[VD-S-07]]VD-S-07
+|Light theme pass: review every view in light; tune surfaces and shadows.
+|VD-P-02
+|`styles/tokens.css`; e2e `theme-readability.spec.js`.
+
+|[[VD-S-08]]VD-S-08
+|Remove the old token aliases; a lint rule that fails on a raw hex value or an old token name in a view.
+|VD-P-02
+|`styles/tokens.css`; `eslint.config.js` or a stylelint rule (stylelint is a new dependency; without it, a unit test
+that scans `.svelte` style blocks).
+
+|[[VD-S-09]]VD-S-09
+|Design documents: rewrite "Visual Language", update theme readability, view density, brand mark; add
+`components.adoc`.
+|VD-P-09
+|`doc/design/web-app/*.adoc`; `doc-review` skill.
+|===
+
+== Order
+
+VD-S-00 first (it decides two inputs). Then VD-S-01 → VD-S-02 and VD-S-03 in parallel → VD-S-04 → VD-S-05. VD-S-06
+runs with the UX view steps. VD-S-07 and VD-S-08 close. VD-S-09 travels with each step.
