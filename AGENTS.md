@@ -14,11 +14,14 @@ truth for the development setup; this section holds only what an automated brows
 ### Ports and startup
 
 - App: `http://localhost:5173`; mock runtime: `http://127.0.0.1:7420`. Vite proxies `/api` and `/mock` to the mock.
-- Start the mock first, then the app; `start.sh` does not start the mock:
+- Start the mock first, then the app; `pm-web-app/start.sh` does not start the mock:
   ```bash
-  ./mvnw -pl pm-mock-runtime exec:java -Dexec.args="--scenario <scenario> --web-port 7420"
-  ./pm-web-app/start.sh          # stop with ./pm-web-app/stop.sh
+  ./pm-mock-runtime/start.sh --scenario <scenario> --web-port 7420   # stop with ./pm-mock-runtime/stop.sh
+  ./pm-web-app/start.sh                                             # stop with ./pm-web-app/stop.sh
   ```
+  Use the mock's `start.sh`, not a bare `mvn exec:java`: the bare run keeps the base in a temporary directory and
+  deletes it on shutdown, which takes the stored device secret with it, so a browser that paired once is refused
+  with 401 on the next start.
 - `start.sh` accepts `-p`/`--port` and records the effective port in `pm-web-app/target/pm-web-app.port`. Read that
   file instead of assuming `5173` when a non-default port was used.
 - `start.sh` prints `Local:`, `Network:` and `Paired:` coordinates, the last with a code that works right now.
@@ -34,19 +37,21 @@ truth for the development setup; this section holds only what an automated brows
 ### Persistence
 
 - The browser keeps its pairing in `localStorage` under `pm_device_secret`.
-- The mock keeps the paired device secret in one file per machine at `~/.plan-marshall-mcp/mock-web-device-secret`
-  (mode `0600`; `PM_MOCK_DEVICE_SECRET_FILE` overrides the path). A pairing therefore survives `mvn clean`, a mock
-  restart and a switch to another worktree.
+- `pm-mock-runtime/start.sh` keeps the paired device secret in one machine-wide file at
+  `~/.plan-marshall-mcp/mock-web-device-secret` (mode `0600`; `PM_MOCK_DEVICE_SECRET_FILE` overrides the path) and
+  passes it as `--device-secret`. A pairing therefore survives `mvn clean`, a mock restart and a switch to another
+  worktree.
 - Deleting `pm-mock-runtime/target/machine` (or the printed `Base`) resets the scenario, **not** the device secret.
 - Reset the pairing only by stopping the mock and deleting the secret file — then pair again with a fresh code.
 
 ### Rules for the MCP browser
 
-- By default the MCP server uses a temporary profile, so `localStorage` is empty on every launch: **pair again per
-  session** using a fresh code. This is the right default; do not assume a previous session is still paired.
-- Add `--user-data-dir .plan/temp/playwright-profile` to the `opencode.json` command only for a long manual session
-  where pairing once is intended.
-- Checks of the pairing flow itself must use a clean profile (`--isolated` or a fresh directory); a stored secret
-  would mask a broken flow.
-- Write screenshots, snapshots and traces under `.plan/temp/` (`--output-dir`), never the repository root.
-  `.playwright-mcp/` is gitignored as a backstop.
+- `opencode.json` passes `--isolated`, so the browser profile lives in memory and `localStorage` is empty on every
+  launch: **pair again per session** with a fresh code, and never assume a previous session is still paired. This
+  also keeps a stored secret from masking a broken pairing flow.
+- Without `--isolated` the server uses a persistent profile under
+  `~/Library/Caches/ms-playwright-mcp/mcp-{channel}-{workspace-hash}`. Use that only for a long manual session where
+  pairing once is intended, never for a pairing-flow check; `--isolated` and `--user-data-dir` are mutually exclusive.
+- `--output-dir .plan/temp/playwright-mcp` catches automatically named screenshots, snapshots and traces. Explicit
+  `filename` arguments resolve against the workspace root instead, so omit the filename or pass a path under
+  `.plan/temp/`. `.playwright-mcp/` is gitignored as a backstop when the flag is absent.
