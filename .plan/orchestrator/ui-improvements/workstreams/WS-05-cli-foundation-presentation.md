@@ -34,6 +34,7 @@ The cross-cutting foundation, interaction model, and presentation of `pm-operato
 
 ## Sequencing and Surface Notes
 
+- PLAN-05 after PLAN-02
 - PLAN-14 after PLAN-02
 - PLAN-15 after PLAN-02, PLAN-05
 - PLAN-24 after PLAN-14

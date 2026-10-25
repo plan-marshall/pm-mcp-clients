@@ -4,7 +4,7 @@
 
 ## START HERE
 
-**Resume anchor**: Decomposed (75 plans). Next: land the ledger (unignore .plan/orchestrator, PR, merge via queue), then /plan-orchestrator next slug=ui-improvements. Before the first runbook emit: re-check runbook_lane resolve reports sonar: configured.
+**Resume anchor**: Specs adapted (browser + terminal checks, Sonar configured) and landed. Next: /plan-orchestrator next slug=ui-improvements to fill 3 slots; then await landings and analyze.
 **Phase**: orchestrating
 **Parked**:
 - PLAN-32 (WS-04)
@@ -89,7 +89,7 @@
 | # | Plan | Workstream | Status | Surface (expected) | Lane |
 |---|------|------------|--------|--------------------|------|
 | 1 | PLAN-01 | WS-02 | staged | pm-web-e2e/tests/helpers/textGuard.js; pm-web-e2e/tests/text-guard-baseline.json; pm-web-e2e/tests/theme-readability.spec.js | runbook |
-| 2 | PLAN-02 | WS-04 | staged | pm-mock-runtime/src/main/java/de/planmarshall/mock/http/; pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java; pm-mock-runtime/src/test/java/de/planmarshall/mock/runtime/; pm-operator/pom.xml; pm-operator/src/test/java/de/planmarshall/operator/transcript/ | runbook |
+| 2 | PLAN-02 | WS-04 | staged | doc/design/terminal-client/27-tui-testing.adoc; pm-mock-runtime/src/main/java/de/planmarshall/mock/http/; pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java; pm-mock-runtime/src/test/java/de/planmarshall/mock/runtime/; pm-operator/pom.xml; pm-operator/src/test/java/de/planmarshall/operator/transcript/; pm-operator/src/test/java/de/planmarshall/operator/transcript/ScreenCaptureIT.java; pm-operator/src/test/resources/screen-captures/ | runbook |
 | 3 | PLAN-03 | WS-01 | staged | pm-mock-runtime/README.adoc; pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java; pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/StartRegistry.java; pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json; pm-mock-runtime/src/main/resources/scenarios/projects-and-start.json; pm-mock-runtime/src/main/resources/scenarios/reports-and-system.json; pm-mock-runtime/src/main/resources/scenarios/running-work.json; pm-mock-runtime/src/test/java/de/planmarshall/mock/runtime/FixtureConsistencyTest.java; pm-mock-runtime/src/test/java/de/planmarshall/mock/runtime/ScenarioStateContractTest.java | runbook |
 | 4 | PLAN-04 | WS-02 | staged | pm-api/src/main/resources/messages/common.de.properties; pm-api/src/main/resources/messages/common.en.properties; pm-web-app/src/app.html; pm-web-app/src/lib/routes.ts; pm-web-app/src/routes/+layout.svelte; pm-web-app/src/routes/layout.test.ts; pm-web-e2e/tests/chrome.spec.js | runbook |
 | 5 | PLAN-05 | WS-05 | staged | pm-api/src/main/resources/messages/overview.de.properties; pm-api/src/main/resources/messages/overview.en.properties; pm-operator/src/main/java/de/planmarshall/operator/overview/OverviewFullScreenApp.java; pm-operator/src/main/java/de/planmarshall/operator/tui/TuiScreenDriver.java; pm-operator/src/test/java/de/planmarshall/operator/tui/TuiScreenDriverTest.java; pm-operator/start.sh | runbook |

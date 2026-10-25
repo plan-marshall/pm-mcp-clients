@@ -24,12 +24,14 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
    - Done when:
      - Transcript tests: `epic <id>` full screen; `epic <id> --print` prints (evidence order: `test-first`)
+     - Terminal check (screen capture) shows this deliverable's change as specified on: `fully-onboarded`: `help`, `help plan`, `plan --help`, `epic relay-hardening`, `epic relay-hardening --print`; before and after captures recorded (evidence order: `none`)
 2. **Help**
    - What: `help [<verb>]` in shell and console, all verbs in groups plus "The process designer is in the web app."; `--help`/`-h` on every subcommand; `?` equals `help` at the prompt.
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
    - Done when:
      - A test: `help` lists every verb; `help plan` equals `plan --help` (evidence order: `test-first`)
+     - Terminal check (screen capture) shows this deliverable's change as specified on: `fully-onboarded`: `help`, `help plan`, `plan --help`, `epic relay-hardening`, `epic relay-hardening --print`; before and after captures recorded (evidence order: `none`)
 3. **Verb-mode table**
    - What: One table in `01-commands.adoc`: verb, terminal mode, printed mode, JSON.
    - Persona: plan-marshall:persona-documenter
@@ -44,6 +46,7 @@ Source of this plan (read before scoping):
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - Java 25, Lombok, records; no generic `Exception`/`RuntimeException`; JUnit 5 only, no Mockito (CLAUDE.md).
 - Every new operator text goes through `MessageCatalogue` into `operator.en.properties` and `operator.de.properties`.
+- Terminal check of the rendered output through the screen capture harness of `cli-pty-dialogue-harness` (`ScreenCaptureIT`, command line in `doc/design/terminal-client/27-tui-testing.adoc`): write this plan's captures to `pm-operator/src/test/resources/screen-captures/{plan}.txt`, run the set BEFORE the change and copy `pm-operator/target/screens/{plan}/` to `.plan/temp/terminal/{plan}/before/`, then run it AFTER and copy to `.../after/`. Capture at 120 × 30 and 80 × 24 in `en_US.UTF-8` and `de_DE.UTF-8` unless the target names other sizes or environments. Read every `.txt` and `.attrs.txt` with the file tools and compare them with the deliverable; the screen text shows no raw id, link name, state id, `-` placeholder, ISO time or HTTP status, and no text of a previous level. Never run `pm-operator` in the agent's own shell: the operator gate refuses a coding agent by design (`PM-SEC-3`) and is never worked around; only the harness, which clears the environment like every PTY test, runs it. If the harness is not available, the terminal Done-when clauses are NOT met — a blocker, never skipped.
 - This project analyses its pull requests with SonarCloud (project `plan-marshall_pm-mcp-clients`, `.github/project.yml`; provider `plan-marshall:workflow-integration-sonar` and step `default:sonar-roundtrip` in `.plan/marshal.json`) — treat it as `sonar: configured` even where `runbook_lane resolve` reports `not_configured` (its `credentials_config` block is missing; see the epic's Watches). An open Sonar issue is fixed in a pushed commit, or dismissed with a stated reason recorded as `{issue-key}: {reason}` in the run's progress record and transmitted through the plan-less transition verb, `plan-marshall:workflow-integration-sonar:sonar_rest transition --issue-key {key} --transition {falsepositive|wontfix}`. A dismissal the run cannot transmit is a blocker, never a silent pass. The merge gate reads the open-issue count at the head — `0` confirmed, or every remaining issue dismissed — and an `undecidable` read blocks.
 
 ## Claim Labels

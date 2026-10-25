@@ -8,7 +8,7 @@ workstream: WS-03
 
 ## Objective
 
-Run the checks of the inbox, running work, start, epic, projects, reports, designer and settings. Every check below comes from the verification documents of the review (`doc/claude_review/`); each one is run as written there, against the mock runtime (`pm-mock-runtime/start.sh --scenario <name> --web-port 7420`, `POST /mock/goto/<state>`), in Chrome for the web app (both locales, both themes, 1440 px and 390 px) and in a real terminal through `pm-operator/start.sh` for the terminal client (`en_US.UTF-8` and `de_DE.UTF-8`, 120 × 30 and 80 × 24), plus the Maven test runs the check names.
+Run the checks of the inbox, running work, start, epic, projects, reports, designer and settings. Every check below comes from the verification documents of the review (`doc/claude_review/`); each one is run as written there, against the mock runtime (`pm-mock-runtime/start.sh --scenario <name> --web-port 7420`, `POST /mock/goto/<state>`), in Chrome for the web app (both locales, both themes, 1440 px and 390 px), and for the terminal client through the screen capture harness `ScreenCaptureIT` of `cli-pty-dialogue-harness` (`en_US.UTF-8` and `de_DE.UTF-8`, 120 × 30 and 80 × 24) — never by running `pm-operator` in the agent's own shell, which the operator gate refuses by design (`PM-SEC-3`); a check that needs a person at a real terminal asks the operator. Plus the Maven test runs the check names.
 
 ## Deliverables
 
