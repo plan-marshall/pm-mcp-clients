@@ -1168,7 +1168,7 @@
   }
 
   .path-sep {
-    color: var(--color-border);
+    color: var(--color-text-muted);
   }
 
   .deleted-note {

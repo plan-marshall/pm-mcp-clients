@@ -575,7 +575,7 @@
   }
 
   .breadcrumb-sep {
-    color: var(--color-border);
+    color: var(--color-text-muted);
   }
 
   .report-header {
@@ -610,7 +610,7 @@
 
   .report-badge--merged {
     background: var(--color-success-subtle);
-    color: var(--color-success);
+    color: var(--color-success-text);
     border: 1px solid var(--color-success-border);
   }
 
@@ -770,13 +770,13 @@
 
   .own-call-chip--consistent {
     background: var(--color-success-subtle);
-    color: var(--color-success);
+    color: var(--color-success-text);
     border-color: var(--color-success-border);
   }
 
   .own-call-chip--conflicts {
     background: var(--color-danger-subtle);
-    color: var(--color-danger);
+    color: var(--color-danger-text);
     border-color: var(--color-danger-border);
   }
 
@@ -794,7 +794,7 @@
   }
 
   .own-call-sep {
-    color: var(--color-border);
+    color: var(--color-text-muted);
   }
 
   .change-map-cause {
