@@ -1,0 +1,131 @@
+{
+  "best_practices": [],
+  "generation": {
+    "by": "architecture",
+    "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+  },
+  "insights": [],
+  "internal_dependencies": [
+    "pm-api"
+  ],
+  "key_dependencies": [],
+  "key_dependencies_reasoning": "implements the server side of the pm-api contract",
+  "key_packages": {
+    "pm-mock-runtime/src/main/java/de/planmarshall/mock/http": {
+      "description": "Minimal HTTP/1.1 and SSE server engine for the mock's listeners."
+    },
+    "pm-mock-runtime/src/main/java/de/planmarshall/mock/junit5": {
+      "description": "JUnit 5 extension that starts the mock as stub daemon for client tests."
+    },
+    "pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime": {
+      "description": "Mock runtime state machine, request router and control engine."
+    },
+    "pm-mock-runtime/src/main/java/de/planmarshall/mock/scenario": {
+      "description": "Scenario data model, loader and validation driving the mock's behaviour."
+    }
+  },
+  "purpose": "library",
+  "purpose_reasoning": "jar consumed in test scope by pm-relay and pm-operator, also runnable via start.sh",
+  "responsibility": "Scenario-driven in-memory mock of the daemon serving the Unix-domain socket and loopback HTTP API, used for manual testing of the clients and as the stub daemon behind CLI tests via its JUnit 5 extension.",
+  "responsibility_reasoning": "pm-mock-runtime/README.adoc and package-info files",
+  "skills_by_profile": {
+    "implementation": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:persona-plan-marshall-agent"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:ref-code-quality"
+        },
+        {
+          "description": "marshalld build-server consumption client (submit/wait/ping/preflight) \u2014 build-dispatch routes builds through the daemon when the project is registered, else falls back in-process",
+          "skill": "plan-marshall:build-server-client"
+        },
+        {
+          "description": "Core Java patterns including modern features and performance optimization",
+          "skill": "pm-dev-java:java-core"
+        },
+        {
+          "description": "Lombok patterns including @Delegate, @Builder, @Value, @Data, @UtilityClass for reducing boilerplate",
+          "requires": "lombok",
+          "skill": "pm-dev-java:java-lombok"
+        },
+        "pm-dev-java-cui:cui-logging"
+      ]
+    },
+    "module_testing": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:persona-plan-marshall-agent"
+        },
+        {
+          "description": "Language-agnostic code quality principles (SRP, CQS, complexity, error handling)",
+          "skill": "plan-marshall:ref-code-quality"
+        },
+        {
+          "description": "Language-agnostic testing methodology (AAA, coverage, reliability, determinism)",
+          "skill": "plan-marshall:persona-module-tester"
+        },
+        {
+          "description": "marshalld build-server consumption client (submit/wait/ping/preflight) \u2014 test-run dispatch routes through the daemon when the project is registered, else falls back in-process",
+          "skill": "plan-marshall:build-server-client"
+        },
+        {
+          "description": "Core Java patterns including modern features and performance optimization",
+          "skill": "pm-dev-java:java-core"
+        },
+        {
+          "description": "JUnit 5 testing patterns with AAA structure, coverage analysis, and assertion standards",
+          "skill": "pm-dev-java:junit-core"
+        },
+        {
+          "description": "Lombok patterns including @Delegate, @Builder, @Value, @Data, @UtilityClass for reducing boilerplate",
+          "requires": "lombok",
+          "skill": "pm-dev-java:java-lombok"
+        },
+        "pm-dev-java-cui:cui-logging"
+      ]
+    },
+    "quality": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:persona-plan-marshall-agent"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:ref-code-quality"
+        },
+        {
+          "description": "Core Java patterns including modern features and performance optimization",
+          "skill": "pm-dev-java:java-core"
+        },
+        {
+          "description": "JavaDoc documentation standards including class, method, and code example patterns",
+          "skill": "pm-dev-java:javadoc"
+        },
+        {
+          "description": "Lombok patterns including @Delegate, @Builder, @Value, @Data, @UtilityClass for reducing boilerplate",
+          "requires": "lombok",
+          "skill": "pm-dev-java:java-lombok"
+        },
+        "pm-dev-java-cui:cui-logging"
+      ]
+    },
+    "security": {
+      "defaults": [
+        "pm-dev-java-cui:cui-logging",
+        {
+          "description": "CUI HTTP request-sanitization security surface",
+          "skill": "pm-dev-java-cui:cui-http"
+        }
+      ]
+    }
+  },
+  "skills_by_profile_reasoning": "operator confirmed detected domains: general-dev+java+java-cui on Maven modules, general-dev+javascript on npm modules, documentation on doc",
+  "tips": [],
+  "type": "module"
+}

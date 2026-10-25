@@ -1,0 +1,68 @@
+{
+  "best_practices": [],
+  "generation": {
+    "by": "architecture",
+    "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+  },
+  "insights": [],
+  "internal_dependencies": [],
+  "key_dependencies": [],
+  "key_dependencies_reasoning": "",
+  "key_packages": {
+    "doc/design": {
+      "description": "Design of the two clients and their shared part \u2014 the specification the implementation follows (index README.adoc)."
+    },
+    "doc/plans": {
+      "description": "Work packages of this repository with the status index README.adoc."
+    }
+  },
+  "purpose": "documentation",
+  "purpose_reasoning": "documentation only",
+  "responsibility": "Repository-local documentation: the design of the two clients and what they share (doc/design, the specification their implementation follows), the work-package plans (doc/plans) and the review records.",
+  "responsibility_reasoning": "CLAUDE.md and doc/ layout",
+  "skills_by_profile": {
+    "documentation": {
+      "defaults": [
+        {
+          "description": "AsciiDoc formatting, validation, link verification, and template creation",
+          "skill": "pm-documents:ref-asciidoc"
+        },
+        {
+          "description": "Content quality, tone analysis, organization standards, and review orchestration",
+          "skill": "pm-documents:ref-documentation"
+        },
+        {
+          "description": "Narrative styles for technical documentation \u2014 tone, voice, and arc for the engineering-narrative style",
+          "skill": "pm-documents:ref-narrative-styles"
+        },
+        {
+          "description": "SVG diagram authoring standards \u2014 visual language, theme handling, AsciiDoc embedding, per-diagram-type patterns",
+          "skill": "pm-documents:ref-svg-diagrams"
+        }
+      ]
+    },
+    "implementation": {
+      "defaults": [
+        {
+          "description": "AsciiDoc formatting, validation, link verification, and template creation",
+          "skill": "pm-documents:ref-asciidoc"
+        },
+        {
+          "description": "Content quality, tone analysis, organization standards, and review orchestration",
+          "skill": "pm-documents:ref-documentation"
+        },
+        {
+          "description": "Narrative styles for technical documentation \u2014 tone, voice, and arc for the engineering-narrative style",
+          "skill": "pm-documents:ref-narrative-styles"
+        },
+        {
+          "description": "SVG diagram authoring standards \u2014 visual language, theme handling, AsciiDoc embedding, per-diagram-type patterns",
+          "skill": "pm-documents:ref-svg-diagrams"
+        }
+      ]
+    }
+  },
+  "skills_by_profile_reasoning": "operator confirmed detected domains: general-dev+java+java-cui on Maven modules, general-dev+javascript on npm modules, documentation on doc",
+  "tips": [],
+  "type": "module"
+}

@@ -1,0 +1,108 @@
+{
+  "best_practices": [],
+  "generation": {
+    "by": "architecture",
+    "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+  },
+  "insights": [],
+  "internal_dependencies": [],
+  "key_dependencies": [],
+  "key_dependencies_reasoning": "",
+  "key_packages": {
+    ".mvn": {
+      "description": "Maven config: organisation registry settings, rrf group filter and maven.config."
+    },
+    "pom.xml": {
+      "description": "Root POM: modules, parent pm-mcp-parent and the enforcer executions of the dependency rules."
+    }
+  },
+  "purpose": "parent",
+  "purpose_reasoning": "packaging=pom at root",
+  "responsibility": "Aggregator and root POM of the client build: lists the modules, inherits Java release, managed versions and the deployment target from de.planmarshall:pm-mcp-parent, and carries the enforcer executions that guard the dependency rules.",
+  "responsibility_reasoning": "root pom.xml and CLAUDE.md Dependency Rules",
+  "skills_by_profile": {
+    "implementation": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:persona-plan-marshall-agent"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:ref-code-quality"
+        },
+        {
+          "description": "marshalld build-server consumption client (submit/wait/ping/preflight) \u2014 build-dispatch routes builds through the daemon when the project is registered, else falls back in-process",
+          "skill": "plan-marshall:build-server-client"
+        },
+        {
+          "description": "Core Java patterns including modern features and performance optimization",
+          "skill": "pm-dev-java:java-core"
+        },
+        "pm-dev-java-cui:cui-logging"
+      ]
+    },
+    "module_testing": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:persona-plan-marshall-agent"
+        },
+        {
+          "description": "Language-agnostic code quality principles (SRP, CQS, complexity, error handling)",
+          "skill": "plan-marshall:ref-code-quality"
+        },
+        {
+          "description": "Language-agnostic testing methodology (AAA, coverage, reliability, determinism)",
+          "skill": "plan-marshall:persona-module-tester"
+        },
+        {
+          "description": "marshalld build-server consumption client (submit/wait/ping/preflight) \u2014 test-run dispatch routes through the daemon when the project is registered, else falls back in-process",
+          "skill": "plan-marshall:build-server-client"
+        },
+        {
+          "description": "Core Java patterns including modern features and performance optimization",
+          "skill": "pm-dev-java:java-core"
+        },
+        {
+          "description": "JUnit 5 testing patterns with AAA structure, coverage analysis, and assertion standards",
+          "skill": "pm-dev-java:junit-core"
+        },
+        "pm-dev-java-cui:cui-logging"
+      ]
+    },
+    "quality": {
+      "defaults": [
+        {
+          "description": "Foundational agent behavior rules (user interaction, tool usage, research, dependency management)",
+          "skill": "plan-marshall:persona-plan-marshall-agent"
+        },
+        {
+          "description": "Language-agnostic code quality, refactoring, and documentation principles",
+          "skill": "plan-marshall:ref-code-quality"
+        },
+        {
+          "description": "Core Java patterns including modern features and performance optimization",
+          "skill": "pm-dev-java:java-core"
+        },
+        {
+          "description": "JavaDoc documentation standards including class, method, and code example patterns",
+          "skill": "pm-dev-java:javadoc"
+        },
+        "pm-dev-java-cui:cui-logging"
+      ]
+    },
+    "security": {
+      "defaults": [
+        "pm-dev-java-cui:cui-logging",
+        {
+          "description": "CUI HTTP request-sanitization security surface",
+          "skill": "pm-dev-java-cui:cui-http"
+        }
+      ]
+    }
+  },
+  "skills_by_profile_reasoning": "operator confirmed detected domains: general-dev+java+java-cui on Maven modules, general-dev+javascript on npm modules, documentation on doc",
+  "tips": [],
+  "type": "module"
+}

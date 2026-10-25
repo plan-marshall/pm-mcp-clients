@@ -111,3 +111,12 @@ to `main`_). The hard rules:
 
 CI: reusable workflows of `cuioss/cuioss-organization`, pinned by full SHA with a version comment; configuration in
 `.github/project.yml`.
+
+## Temporary Files
+
+Use `.plan/temp/` for ALL temporary and generated files (covered by `Edit(.plan/**)` permission — avoids permission prompts).
+
+## Tool Usage
+
+- Use proper tools (Edit, Read, Write) instead of shell commands (echo, cat)
+- Never use Bash for file operations (find, grep, cat, ls) — use Glob, Read, Grep tools instead

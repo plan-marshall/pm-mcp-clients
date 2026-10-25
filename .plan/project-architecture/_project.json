@@ -1,0 +1,116 @@
+{
+  "description": "The client contract of plan-marshall-mcp (pm-api) and everything that runs outside the pm-mcpd daemon: the job launcher pm-exec, the host-facing relay pm-mcp (pm-relay), the operator CLI/TUI pm-operator, the scenario-driven mock runtime and the SvelteKit operator web app with its Playwright E2E suite.",
+  "description_reasoning": "README.md module table and CLAUDE.md Project section",
+  "extensions_used": [
+    "plan-marshall",
+    "pm-documents"
+  ],
+  "modules": {
+    "documentation": {
+      "description": "Repository-local documentation: the design of the two clients and what they share (doc/design, the specification their implementation follows), the work-package plans (doc/plans) and the review records.",
+      "generation": {
+        "by": "architecture",
+        "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+      }
+    },
+    "guard-control-central-before-registry": {
+      "description": "Fixture project for BuildGuardsIT of pm-api that deliberately violates one build guard of the root POM (central-before-registry) and must fail the build; it is not a module of the reactor.",
+      "generation": {
+        "by": "architecture",
+        "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+      }
+    },
+    "guard-control-jackson-databind": {
+      "description": "Fixture project for BuildGuardsIT of pm-api that deliberately violates one build guard of the root POM (jackson-databind) and must fail the build; it is not a module of the reactor.",
+      "generation": {
+        "by": "architecture",
+        "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+      }
+    },
+    "guard-control-model-facing-content": {
+      "description": "Fixture project for BuildGuardsIT of pm-api that deliberately violates one build guard of the root POM (model-facing-content) and must fail the build; it is not a module of the reactor.",
+      "generation": {
+        "by": "architecture",
+        "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+      }
+    },
+    "guard-control-product-module": {
+      "description": "Fixture project for BuildGuardsIT of pm-api that deliberately violates one build guard of the root POM (product-module) and must fail the build; it is not a module of the reactor.",
+      "generation": {
+        "by": "architecture",
+        "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+      }
+    },
+    "pm-api": {
+      "description": "Client contract of the daemon API shared by pm-mcp and pm-operator: machine paths, the Unix-socket HTTP/SSE client, the on-demand daemon start, runtime-token checks, host detection and the data contracts of every API surface, built on the jackson-core streaming API only.",
+      "generation": {
+        "by": "architecture",
+        "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+      }
+    },
+    "pm-exec": {
+      "description": "Tiny native job launcher pm-exec that the runtime starts every job through, creating the job's process group and confinement; depends on no other module of the product.",
+      "generation": {
+        "by": "architecture",
+        "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+      }
+    },
+    "pm-mcp-clients": {
+      "description": "Aggregator and root POM of the client build: lists the modules, inherits Java release, managed versions and the deployment target from de.planmarshall:pm-mcp-parent, and carries the enforcer executions that guard the dependency rules.",
+      "generation": {
+        "by": "architecture",
+        "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+      }
+    },
+    "pm-mock-runtime": {
+      "description": "Scenario-driven in-memory mock of the daemon serving the Unix-domain socket and loopback HTTP API, used for manual testing of the clients and as the stub daemon behind CLI tests via its JUnit 5 extension.",
+      "generation": {
+        "by": "architecture",
+        "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+      }
+    },
+    "pm-operator": {
+      "description": "Operator CLI pm-operator (native binary): status, runtime start/stop and web enable/disable commands plus the full-screen JLine terminal client with plan, epic, overview and report views, built on pm-api and picocli only.",
+      "generation": {
+        "by": "architecture",
+        "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+      }
+    },
+    "pm-relay": {
+      "description": "Host- and model-facing CLI pm-mcp (native binary): the serve STDIO relay that connects harness sessions and workers to the daemon, built on pm-api and picocli only.",
+      "generation": {
+        "by": "architecture",
+        "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+      }
+    },
+    "pm-web-app-maven": {
+      "description": "Maven side of the operator web app: packages the built SvelteKit SPA as a resource JAR so the runtime can serve it.",
+      "generation": {
+        "by": "architecture",
+        "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+      }
+    },
+    "pm-web-app-npm": {
+      "description": "Browser-based operator web interface (SvelteKit 3 + Svelte 5 + Vite) talking to the daemon's loopback HTTP API: views for plans, decisions, reports, devices and pairing, with Vitest unit tests.",
+      "generation": {
+        "by": "architecture",
+        "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+      }
+    },
+    "pm-web-e2e-maven": {
+      "description": "Maven wrapper that runs the Playwright end-to-end suite of the web app inside the build against the mock runtime.",
+      "generation": {
+        "by": "architecture",
+        "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+      }
+    },
+    "pm-web-e2e-npm": {
+      "description": "End-to-end Playwright tests of pm-web-app, driving a real browser against the app served with the mock runtime.",
+      "generation": {
+        "by": "architecture",
+        "tree_sha": "a23e8ee8c350b2d3d7ac93e41a3961ee1b817f8dff8b7af17a0bab34461bf6e5"
+      }
+    }
+  },
+  "name": "pm-mcp-clients"
+}
