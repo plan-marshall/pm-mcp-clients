@@ -333,6 +333,12 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/cli-overview.adoc[`cli-overview`]; link:implemented/cli-plan-view.adoc[`cli-plan-view`]; link:implemented/cli-projects.adoc[`cli-projects`]; link:implemented/cli-reports.adoc[`cli-reports`]; link:implemented/cli-system.adoc[`cli-system`]
 |epic clients
 
+|link:start-lesson-untrusted.adoc[`start-lesson-untrusted`]
+|A lesson written from untrusted text at the start: its mark in the choice, its screening, flagged and unscreened as for an issue
+|`open`
+|link:implemented/start-contract.adoc[`start-contract`]; link:implemented/cli-start.adoc[`cli-start`]; link:implemented/web-start.adoc[`web-start`]
+|Milestone 10
+
 |===
 
 [#full-screen-status]
