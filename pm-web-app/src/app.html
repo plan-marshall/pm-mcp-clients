@@ -7,9 +7,11 @@
     <title>plan-marshall</title>
     <!--
       The theme is set before the first paint, so a remembered choice never flashes the other one.
-      This is the inline twin of `src/lib/theme.ts`: the same key, the same three choices, and the
-      same rule that an unreadable or unknown choice follows the system. It cannot import the
-      module because it must run before any script is fetched.
+      This is the inline twin of `src/lib/theme.ts`: the same key, and the same rule that an
+      unreadable, missing or unknown choice follows the system. It keeps no list of the choices:
+      any stored value other than `system` is the theme itself, and the module only ever stores a
+      choice it offers, so a choice added later needs no change here. It cannot import the module
+      because it must run before any script is fetched.
     -->
     <script>
       (function () {
@@ -17,9 +19,6 @@
         try {
           choice = window.localStorage.getItem('pm_theme') || 'system';
         } catch (error) {
-          choice = 'system';
-        }
-        if (choice !== 'light' && choice !== 'dark') {
           choice = 'system';
         }
         var prefersDark = false;

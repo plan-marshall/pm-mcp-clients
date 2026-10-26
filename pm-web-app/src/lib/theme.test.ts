@@ -94,9 +94,9 @@ describe('the remembered theme', () => {
     const html = readFileSync(path.resolve(__dirname, '../app.html'), 'utf-8');
 
     expect(html).toContain(`'${THEME_STORAGE_KEY}'`);
-    expect(html).toContain("'light'");
-    expect(html).toContain("'dark'");
-    // The default and the fallback of an unreadable or unknown choice are both the system choice.
+    // The script keeps no list of the choices: it applies whatever the module stored.
+    expect(html).not.toContain("'light' &&");
+    // The default and the fallback of an unreadable choice are both the system choice.
     expect(html).toContain("var choice = 'system';");
     expect(html).toContain("choice = 'system';");
     expect(html).toContain('document.documentElement.dataset.theme');
@@ -110,6 +110,9 @@ describe('the remembered theme', () => {
     ['a stored dark choice while the system asks for light', 'dark', false, 'dark'],
     ['the system choice following a dark system', 'system', true, 'dark'],
     ['the system choice following a light system', 'system', false, 'light'],
+    // A choice added after this script was written needs no change here: the script repeats the
+    // stored value instead of matching it against a list of its own.
+    ['a stored choice this script has never heard of', 'high-contrast', false, 'high-contrast'],
   ])(
     'sets the theme before the first paint for %s',
     (_name, stored: string, prefersDark: boolean, expected: string) => {
