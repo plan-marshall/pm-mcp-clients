@@ -109,7 +109,11 @@ describe('the app shell', () => {
         .map((radio) => (radio as HTMLInputElement).labels?.[0]?.textContent?.trim()),
     ).toEqual(['Light', 'Dark', 'System']);
     for (const option of within(theme).getAllByRole('radio')) {
-      expect(option).not.toHaveAttribute('title');
+      expect(option as HTMLInputElement).not.toHaveAttribute('title');
+    }
+    // The visible label carries no tooltip either: it says what it does.
+    for (const choice of ['light', 'dark', 'system']) {
+      expect(screen.getByTestId(`theme-${choice}`)).not.toHaveAttribute('title');
     }
   });
 

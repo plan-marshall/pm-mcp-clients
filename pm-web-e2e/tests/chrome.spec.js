@@ -48,6 +48,7 @@ test.describe('Web chrome, navigation and action advisories', () => {
     await expect(theme.getByRole('radio')).toHaveCount(3);
     for (const name of ['Light', 'Dark', 'System']) {
       await expect(theme.getByRole('radio', { name })).toBeVisible();
+      await expect(page.getByTestId(`theme-${name.toLowerCase()}`)).not.toHaveAttribute('title');
     }
 
     // No control repeats its own visible label on hover.

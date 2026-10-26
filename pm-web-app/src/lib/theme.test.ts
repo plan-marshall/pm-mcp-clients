@@ -7,6 +7,7 @@ import {
   readThemeChoice,
   resolveTheme,
   systemPrefersDark,
+  watchSystemTheme,
   writeThemeChoice,
 } from './theme';
 
@@ -87,16 +88,46 @@ describe('the remembered theme', () => {
 
   it('keeps the pre-paint script in app.html in step with this module', () => {
     // The script cannot import the module: it has to run before any script is fetched. This test
-    // is what keeps its key, its choices and its attribute the same as the module's, so renaming
-    // one of them cannot silently disable the mechanism that prevents the flash.
+    // is what keeps its key, its three choices, its fallback and its attribute the same as the
+    // module's, so changing one of them cannot silently disable the mechanism that prevents the
+    // flash.
     const html = readFileSync(path.resolve(__dirname, '../app.html'), 'utf-8');
 
     expect(html).toContain(`'${THEME_STORAGE_KEY}'`);
     expect(html).toContain("'light'");
     expect(html).toContain("'dark'");
+    // The default and the fallback of an unreadable or unknown choice are both the system choice.
+    expect(html).toContain("var choice = 'system';");
+    expect(html).toContain("choice = 'system';");
     expect(html).toContain("setAttribute('data-theme'");
     // In the head, and before the app's own head content: no paint can precede it.
     expect(html.indexOf('data-theme')).toBeGreaterThan(-1);
     expect(html.indexOf('data-theme')).toBeLessThan(html.indexOf('%sveltekit.head%'));
+  });
+
+  it('follows the machine while the system choice is in force', () => {
+    let listener: (() => void) | null = null;
+    const removeEventListener = vi.fn();
+    vi.stubGlobal('matchMedia', () => ({
+      matches: false,
+      media: '(prefers-color-scheme: dark)',
+      onchange: null,
+      addEventListener: (_type: string, handler: () => void) => {
+        listener = handler;
+      },
+      removeEventListener,
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }));
+    const onChange = vi.fn();
+
+    const stopWatching = watchSystemTheme(onChange);
+    expect(listener).not.toBeNull();
+    (listener as unknown as () => void)();
+    expect(onChange).toHaveBeenCalledTimes(1);
+
+    stopWatching();
+    expect(removeEventListener).toHaveBeenCalledTimes(1);
   });
 });
