@@ -21,8 +21,8 @@ import org.jline.utils.WCWidth;
  *
  * <p>The parser understands the subset of ANSI that {@code Display}, an {@code xterm} terminal,
  * and the console hand-off use: cursor addressing and movement, erase in line and display, SGR
- * (inverse only), the private modes 1049/47/1047 (alternate screen) and 25 (cursor), OSC, and the
- * string introducers. Everything else is skipped.
+ * (inverse, bold, dim, and the foreground colour index), the private modes 1049/47/1047 (alternate
+ * screen) and 25 (cursor), OSC, and the string introducers. Everything else is skipped.
  *
  * <p>The same parser serves the in-memory {@link VirtualScreenTerminal} and the real
  * {@code PtySession}: both feed it the bytes the process wrote and assert the visible result the
@@ -33,9 +33,44 @@ import org.jline.utils.WCWidth;
  * @param alternateScreenActive whether the alternate screen is active
  * @param alternation           how often the alternate screen was entered and left
  * @param cursorVisible         whether the cursor is visible
+ * @param cellStyles            per row, the attributes of every cell
  */
 public record AnsiScreen(List<String> lines, Set<Integer> invertedRows, boolean alternateScreenActive,
-Alternation alternation, boolean cursorVisible) {
+Alternation alternation, boolean cursorVisible, List<List<CellStyle>> cellStyles) {
+
+    /**
+     * The attributes of one cell, as the screen capture records them.
+     *
+     * @param bold    whether the cell is bold
+     * @param dim     whether the cell is dim
+     * @param reverse whether the cell is drawn in reverse
+     * @param colour  the foreground colour index, or {@code -1} for the terminal's default
+     */
+    public record CellStyle(boolean bold, boolean dim, boolean reverse, int colour) {
+
+        /** The style of a cell the terminal drew without attributes. */
+        public static final CellStyle PLAIN = new CellStyle(false, false, false, -1);
+
+        /**
+         * @return the compact run text, for example {@code -}, {@code b}, {@code br4}
+         */
+        public String text() {
+            var text = new StringBuilder();
+            if (bold) {
+                text.append('b');
+            }
+            if (dim) {
+                text.append('d');
+            }
+            if (reverse) {
+                text.append('r');
+            }
+            if (colour >= 0) {
+                text.append('c').append(colour);
+            }
+            return text.isEmpty() ? "-" : text.toString();
+        }
+    }
 
     /**
      * @param entries the number of alternate-screen entries
@@ -69,6 +104,9 @@ Alternation alternation, boolean cursorVisible) {
         private final int rows;
         private final String[] cells;
         private final boolean[] inverse;
+        private final boolean[] bold;
+        private final boolean[] dim;
+        private final int[] colour;
         private final boolean[] continuation;
         private final Set<Integer> invertedRows = new TreeSet<>();
         private final StringBuilder csi = new StringBuilder();
@@ -77,6 +115,9 @@ Alternation alternation, boolean cursorVisible) {
         private int column;
         private int state = GROUND;
         private boolean inverseStyle;
+        private boolean boldStyle;
+        private boolean dimStyle;
+        private int colourIndex = -1;
         private boolean alternateCharacterSet;
         private boolean cursorVisible = true;
         private boolean alternate;
@@ -88,6 +129,10 @@ Alternation alternation, boolean cursorVisible) {
             this.rows = Math.max(1, rows);
             cells = new String[this.columns * this.rows];
             inverse = new boolean[this.columns * this.rows];
+            bold = new boolean[this.columns * this.rows];
+            dim = new boolean[this.columns * this.rows];
+            colour = new int[this.columns * this.rows];
+            java.util.Arrays.fill(colour, -1);
             continuation = new boolean[this.columns * this.rows];
         }
 
@@ -186,6 +231,9 @@ Alternation alternation, boolean cursorVisible) {
             int cell = row * columns + column;
             cells[cell] = new String(Character.toChars(codePoint));
             inverse[cell] = inverseStyle;
+            bold[cell] = boldStyle;
+            dim[cell] = dimStyle;
+            colour[cell] = colourIndex;
             continuation[cell] = false;
             if (inverseStyle) {
                 invertedRows.add(row);
@@ -224,10 +272,16 @@ Alternation alternation, boolean cursorVisible) {
         private void scrollUp() {
             System.arraycopy(cells, columns, cells, 0, columns * (rows - 1));
             System.arraycopy(inverse, columns, inverse, 0, columns * (rows - 1));
+            System.arraycopy(bold, columns, bold, 0, columns * (rows - 1));
+            System.arraycopy(dim, columns, dim, 0, columns * (rows - 1));
+            System.arraycopy(colour, columns, colour, 0, columns * (rows - 1));
             System.arraycopy(continuation, columns, continuation, 0, columns * (rows - 1));
             for (int cell = columns * (rows - 1); cell < columns * rows; cell++) {
                 cells[cell] = null;
                 inverse[cell] = false;
+                bold[cell] = false;
+                dim[cell] = false;
+                colour[cell] = -1;
                 continuation[cell] = false;
             }
             recomputeInvertedRows();
@@ -278,18 +332,46 @@ Alternation alternation, boolean cursorVisible) {
         private void style(String raw) {
             if (raw.isEmpty()) {
                 inverseStyle = false;
+                boldStyle = false;
+                dimStyle = false;
+                colourIndex = -1;
                 return;
             }
             for (var part : raw.split(";")) {
                 switch (part) {
-                    case "0", "" -> inverseStyle = false;
+                    case "0", "" -> {
+                        inverseStyle = false;
+                        boldStyle = false;
+                        dimStyle = false;
+                        colourIndex = -1;
+                    }
+                    case "1" -> boldStyle = true;
+                    case "2" -> dimStyle = true;
+                    case "22" -> {
+                        boldStyle = false;
+                        dimStyle = false;
+                    }
                     case "7" -> inverseStyle = true;
                     case "27" -> inverseStyle = false;
-                    default -> {
-                        // Colour is not part of the screen text.
-                    }
+                    case "39" -> colourIndex = -1;
+                    default -> colourIndex = colourOf(part, colourIndex);
                 }
             }
+        }
+
+        private static int colourOf(String part, int current) {
+            try {
+                int code = Integer.parseInt(part);
+                if (code >= 30 && code <= 37) {
+                    return code - 30;
+                }
+                if (code >= 90 && code <= 97) {
+                    return code - 90 + 8;
+                }
+            } catch (NumberFormatException _) {
+                // A parameter the screen text does not carry.
+            }
+            return current;
         }
 
         private void setMode(boolean privateMode, String raw, boolean enabled) {
@@ -347,24 +429,31 @@ Alternation alternation, boolean cursorVisible) {
         private void clear(int cell) {
             cells[cell] = null;
             inverse[cell] = false;
+            bold[cell] = false;
+            dim[cell] = false;
+            colour[cell] = -1;
             continuation[cell] = false;
         }
 
         private AnsiScreen snapshot() {
             var lines = new ArrayList<String>(rows);
+            var styles = new ArrayList<List<CellStyle>>(rows);
             for (int r = 0; r < rows; r++) {
                 var line = new StringBuilder();
+                var rowStyles = new ArrayList<CellStyle>(columns);
                 for (int c = 0; c < columns; c++) {
                     int cell = r * columns + c;
+                    rowStyles.add(new CellStyle(bold[cell], dim[cell], inverse[cell], colour[cell]));
                     if (continuation[cell]) {
                         continue;
                     }
                     line.append(cells[cell] == null ? " " : cells[cell]);
                 }
                 lines.add(line.toString().stripTrailing());
+                styles.add(List.copyOf(rowStyles));
             }
             return new AnsiScreen(List.copyOf(lines), Set.copyOf(invertedRows), alternate,
-                                new Alternation(entries, exits), cursorVisible);
+                                new Alternation(entries, exits), cursorVisible, List.copyOf(styles));
         }
 
         private static int number(String raw, int fallback) {

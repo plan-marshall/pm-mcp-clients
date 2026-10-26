@@ -54,6 +54,20 @@ class AnsiScreenTest {
     }
 
     @Test
+    @DisplayName("records bold, dim, reverse and the colour index per cell")
+    void recordsCellAttributes() {
+        var screen = AnsiScreen.parse("\u001b[1;2;7;31mA\u001b[0mB\u001b[94mC", 4, 1);
+
+        var row = screen.cellStyles().getFirst();
+
+        assertAll(
+                            () -> assertEquals("bdrc1", row.get(0).text()),
+                            () -> assertEquals(AnsiScreen.CellStyle.PLAIN.text(), row.get(1).text()),
+                            () -> assertEquals("c12", row.get(2).text())
+        );
+    }
+
+    @Test
     @DisplayName("counts alternate-screen entries and exits and tracks the cursor")
     void countsAlternationAndCursor() {
         var active = AnsiScreen.parse("\u001b[?1049h\u001b[?25lRunning work", 40, 4);

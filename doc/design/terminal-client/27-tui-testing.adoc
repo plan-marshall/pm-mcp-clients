@@ -140,6 +140,64 @@ second JLine terminal, JLine fell back to a dumb `0 × 0` terminal, the view ref
 printed the status tree instead. The failing-before capture is in
 link:../../agy/operator-tui-pty-and-console-handoff-plan-report.md[the plan's report].
 
+[#screen-captures]
+== Screen Captures for Review
+
+`ScreenCaptureIT` runs a named capture set on the same `PtySession` and `MockRuntime`:
+
+[source,bash]
+----
+./mvnw -pl pm-operator verify -Pintegration-tests \
+  -Dit.test=ScreenCaptureIT -Dpm.screens=baseline \
+  -Dpm.screens.out=.plan/temp/terminal/{plan}/after
+----
+
+The set is `pm-operator/src/test/resources/screen-captures/{set}.txt`, one capture per line, pipe
+separated:
+
+[cols="2,5",options="header"]
+|===
+|Field |Meaning
+
+|name
+|The file name below the output directory
+
+|scenario
+|The standard scenario the mock starts with
+
+|states
+|The states to enter, comma separated (`-` for none)
+
+|command
+|The operator verb
+
+|keys
+|The keys to type once the screen has settled (`\n` for Enter, `-` for none)
+
+|columns x rows
+|The pinned terminal size
+
+|locale
+|The `LANG` of the child
+
+|environment
+|Extra `KEY=VALUE` pairs, comma separated (`-` for none)
+|===
+
+Every capture writes three files below `target/screens/{set}/` (or `-Dpm.screens.out`):
+
+* `{name}.txt` — the visible screen, one line per row.
+* `{name}.attrs.txt` — per row, the runs of cells that share their attributes: `start-end`, then
+  `b` (bold), `d` (dim), `r` (reverse) and `c{n}` (the foreground colour index), `-` for none.
+* `{name}.stdout.txt` — the raw output, which is how a printed verb (rather than a full-screen
+  view) is read.
+
+Without `-Dpm.screens` the class is skipped, so the integration-test lane pays nothing for it. The
+child's environment is cleared and rebuilt like every PTY test (`PM-SEC-3`): the operator gate
+refuses a coding agent, and only the harness runs the operator. For a plan's terminal check the
+set runs before the change into `.plan/temp/terminal/{plan}/before/` and after it into
+`.../after/`; every `.txt` and `.attrs.txt` is read and compared with the deliverable.
+
 [#flake]
 == Flake Control
 
