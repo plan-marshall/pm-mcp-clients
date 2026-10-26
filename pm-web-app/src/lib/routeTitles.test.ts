@@ -13,11 +13,12 @@ const ROUTES = Object.keys(ROUTE_TITLES) as AppRoute[];
 /** A store with no selection: the route knows no name yet. */
 const NOTHING_SELECTED: TitleState = {};
 
-/** A store that names a plan, an epic and a project. */
+/** A store that names a plan, an epic, a project and a project onboarding. */
 const SELECTED: TitleState = {
   selectedPlanId: 'drop-legacy-api',
   selectedEpicId: 'relay-hardening',
   startProjectId: 'pm-mcp-clients',
+  selectedOnboardingId: 'pm-mcp-clients',
 };
 
 for (const locale of ['en', 'de'] as const) {
@@ -58,7 +59,7 @@ describe('the names a route title carries', () => {
     });
   });
 
-  it('names the project a start begins in', () => {
+  it('names the project a start begins in and the one being set up', () => {
     expect(ROUTE_TITLES.start(SELECTED)).toEqual({
       key: 'start.plan.title',
       args: { project: 'pm-mcp-clients' },
@@ -67,11 +68,18 @@ describe('the names a route title carries', () => {
       key: 'start.plan.title',
       args: { project: 'pm-mcp-clients' },
     });
+    expect(ROUTE_TITLES['project-onboarding'](SELECTED)).toEqual({
+      key: 'project.onboarding.title',
+      args: { project: 'pm-mcp-clients' },
+    });
   });
 
   it('falls back to the unparameterized key while the name is unknown', () => {
     expect(ROUTE_TITLES.plan(NOTHING_SELECTED)).toEqual({ key: 'plan.view.title.loading' });
     expect(ROUTE_TITLES.epic(NOTHING_SELECTED)).toEqual({ key: 'epic.view.title.loading' });
     expect(ROUTE_TITLES.start(NOTHING_SELECTED)).toEqual({ key: 'start.plan.title.loading' });
+    expect(ROUTE_TITLES['project-onboarding'](NOTHING_SELECTED)).toEqual({
+      key: 'project.onboarding.title_new',
+    });
   });
 });

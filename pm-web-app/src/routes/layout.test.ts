@@ -100,12 +100,15 @@ describe('the app shell', () => {
     expect(screen.getByTestId('nav-projects-btn')).not.toHaveAttribute('title');
     expect(screen.getByTestId('nav-designer-btn')).not.toHaveAttribute('title');
 
-    // The theme offers three explicit choices, each with a visible label that needs no tooltip.
+    // The theme offers three explicit choices as one radio group, each with a visible label and
+    // none with a tooltip that would repeat it.
     const theme = screen.getByRole('group', { name: 'Theme' });
-    expect(within(theme).getAllByRole('button').map((button) => button.textContent?.trim())).toEqual(
-      ['Light', 'Dark', 'System'],
-    );
-    for (const option of within(theme).getAllByRole('button')) {
+    expect(
+      within(theme)
+        .getAllByRole('radio')
+        .map((radio) => (radio as HTMLInputElement).labels?.[0]?.textContent?.trim()),
+    ).toEqual(['Light', 'Dark', 'System']);
+    for (const option of within(theme).getAllByRole('radio')) {
       expect(option).not.toHaveAttribute('title');
     }
   });

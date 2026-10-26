@@ -69,6 +69,8 @@ export interface TitleState {
   selectedEpicId?: string | null;
   /** The project a start begins in. */
   startProjectId?: string | null;
+  /** The project whose onboarding the project-onboarding route shows. */
+  selectedOnboardingId?: string | null;
 }
 
 /** The catalogue key of a route's tab title, and the names its text carries. */
@@ -121,7 +123,13 @@ export const ROUTE_TITLES: Record<AppRoute, (state: TitleState) => RouteTitle> =
   pair: () => plainTitle('web.pair.page.title'),
   entry: startTitle,
   onboarding: () => plainTitle('onboard.entry.title'),
-  'project-onboarding': () => plainTitle('project.explorer.title'),
+  'project-onboarding': (state) =>
+    namedTitle(
+      'project.onboarding.title',
+      'project.onboarding.title_new',
+      'project',
+      state.selectedOnboardingId,
+    ),
   settings: () => plainTitle('web.settings.page.title'),
   'machine-settings': () => plainTitle('web.settings.page.title'),
   projects: () => plainTitle('project.explorer.title'),

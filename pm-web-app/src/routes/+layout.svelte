@@ -352,19 +352,23 @@
         {$currentLocale === 'en' ? 'DE' : 'EN'}
       </button>
 
-      <div class="theme-choice" role="group" aria-label={$t('web.frame.theme.label')}>
+      <fieldset class="theme-choice">
+        <legend class="sr-only">{$t('web.frame.theme.label')}</legend>
         {#each THEME_CHOICES as choice (choice)}
-          <button
-            type="button"
-            class="header-action-btn theme-choice__option"
-            aria-pressed={themeChoice === choice}
-            data-testid={`theme-${choice}`}
-            onclick={() => chooseTheme(choice)}
-          >
+          <input
+            class="theme-choice__input"
+            type="radio"
+            name="pm-theme"
+            id={`theme-${choice}`}
+            value={choice}
+            checked={themeChoice === choice}
+            onchange={() => chooseTheme(choice)}
+          />
+          <label class="theme-choice__option" for={`theme-${choice}`} data-testid={`theme-${choice}`}>
             {$t(`web.frame.theme.${choice}`)}
-          </button>
+          </label>
         {/each}
-      </div>
+      </fieldset>
     </div>
   </header>
 
@@ -527,25 +531,56 @@
     flex-direction: column;
   }
 
-  /* The three theme choices sit together: the frame says it is one control, the fill says which
-     choice is in force. */
+  /* The three theme choices are one control: a radio group, so the frame says they belong
+     together and the radio role says exactly one is in force. */
   .theme-choice {
     display: inline-flex;
     align-items: center;
     gap: 1px;
+    margin: 0;
     padding: 1px;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
   }
 
-  .theme-choice__option {
-    border-radius: calc(var(--radius-sm) - 1px);
+  /* The radio itself stays reachable for the keyboard and the screen reader; the label is what a
+     person sees and clicks. */
+  .theme-choice__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
 
-  .theme-choice__option[aria-pressed='true'] {
+  .theme-choice__option {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    border-radius: calc(var(--radius-sm) - 1px);
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  .theme-choice__option:hover {
+    background-color: var(--color-bg-subtle);
+    color: var(--color-text-primary);
+  }
+
+  .theme-choice__input:checked + .theme-choice__option {
     background-color: var(--color-primary-subtle);
     color: var(--color-primary);
     font-weight: 600;
+  }
+
+  .theme-choice__input:focus-visible + .theme-choice__option {
+    box-shadow: var(--focus-ring);
   }
 
   .draining-banner {

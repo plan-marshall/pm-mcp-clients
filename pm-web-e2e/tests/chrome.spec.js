@@ -42,11 +42,12 @@ test.describe('Web chrome, navigation and action advisories', () => {
     await expect(page.getByTestId('nav-projects-btn')).not.toHaveAttribute('title');
     await expect(page.getByTestId('nav-designer-btn')).not.toHaveAttribute('title');
 
-    // The theme is three explicit choices, each with a visible label that needs no tooltip.
+    // The theme is three explicit choices in one radio group, each with a visible label that
+    // needs no tooltip.
     const theme = page.getByRole('group', { name: 'Theme' });
-    await expect(theme.getByRole('button')).toHaveText(['Light', 'Dark', 'System']);
-    for (const option of await theme.getByRole('button').all()) {
-      await expect(option).not.toHaveAttribute('title');
+    await expect(theme.getByRole('radio')).toHaveCount(3);
+    for (const name of ['Light', 'Dark', 'System']) {
+      await expect(theme.getByRole('radio', { name })).toBeVisible();
     }
 
     // No control repeats its own visible label on hover.

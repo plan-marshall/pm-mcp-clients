@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   THEME_STORAGE_KEY,
@@ -81,5 +83,20 @@ describe('the remembered theme', () => {
     }));
 
     expect(systemPrefersDark()).toBe(true);
+  });
+
+  it('keeps the pre-paint script in app.html in step with this module', () => {
+    // The script cannot import the module: it has to run before any script is fetched. This test
+    // is what keeps its key, its choices and its attribute the same as the module's, so renaming
+    // one of them cannot silently disable the mechanism that prevents the flash.
+    const html = readFileSync(path.resolve(__dirname, '../app.html'), 'utf-8');
+
+    expect(html).toContain(`'${THEME_STORAGE_KEY}'`);
+    expect(html).toContain("'light'");
+    expect(html).toContain("'dark'");
+    expect(html).toContain("setAttribute('data-theme'");
+    // In the head, and before the app's own head content: no paint can precede it.
+    expect(html.indexOf('data-theme')).toBeGreaterThan(-1);
+    expect(html.indexOf('data-theme')).toBeLessThan(html.indexOf('%sveltekit.head%'));
   });
 });
