@@ -77,7 +77,11 @@
       "loop_back_without_asking": true,
       "checks_wait_timeout_seconds": 600,
       "steps": {
-        "default:finalize-step-sync-baseline": {},
+        "default:finalize-step-sync-baseline": {
+          "auto_rebase_threshold": "no_overlap_only",
+          "lane": "minimal"
+        },
+        "default:finalize-step-simplify": {},
         "default:finalize-step-security-audit": {
           "lane": "full"
         },
@@ -87,8 +91,12 @@
         "default:code-review": {
           "lane": "standard"
         },
-        "default:architecture-refresh": {},
-        "default:pre-push-quality-gate": {},
+        "default:architecture-refresh": {
+          "lane": "minimal"
+        },
+        "default:pre-push-quality-gate": {
+          "lane": "minimal"
+        },
         "default:push": {
           "lane": "minimal"
         },
@@ -133,11 +141,16 @@
         "default:lessons-capture": {
           "lane": "standard"
         },
-        "default:finalize-step-preference-emitter": {},
+        "default:finalize-step-preference-emitter": {
+          "preference_min_recurrence": 2,
+          "lane": "minimal"
+        },
         "default:record-metrics": {
           "lane": "minimal"
         },
-        "default:finalize-step-print-phase-breakdown": {},
+        "default:finalize-step-print-phase-breakdown": {
+          "lane": "minimal"
+        },
         "default:emit-landing": {
           "lane": "minimal"
         },
@@ -348,7 +361,7 @@
       "plugin_cache_keep_versions": 5,
       "plugin_cache_keep_days": 3
     },
-    "provisioned_version": "0.1.2010",
+    "provisioned_version": "0.1.2017",
     "config_seed_fingerprint": "a2efc4ac"
   }
 }
