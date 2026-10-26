@@ -48,8 +48,9 @@ foreground colour index), whether the alternate screen is active, how often it w
 and whether the cursor is visible. It understands the subset the view and an
 `xterm` terminal use: cursor addressing and movement, erase in line and display, SGR (inverse, bold,
 dim, and the 16 basic foreground colours), the private modes 1049/47/1047 (alternate screen) and 25
-(cursor), OSC, and the string introducers. Everything else is skipped; a 256-colour or true-colour
-sequence is not decoded, so such a cell reports the terminal's default colour.
+(cursor), OSC, and the string introducers. Everything else is skipped; an extended colour sequence
+(`38;5;n`, `38;2;r;g;b`) is not decoded as a palette index, so such a cell reports whichever basic
+colour its last parameter names, or the default when it names none.
 
 `VirtualScreenTerminal` delegates to it, so an assertion means the same thing on both layers.
 `AnsiScreenTest` covers the sequences the view emits, the cell attributes, wrapping, wide glyphs,

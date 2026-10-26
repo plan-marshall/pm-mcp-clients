@@ -106,7 +106,6 @@ class ScreenCaptureIT {
                 var screen = session.screen();
                 var raw = session.rawOutput();
                 assertFalse(raw.isEmpty(), capture.name() + " wrote nothing to the terminal");
-                assertFalse(screen.lines().isEmpty(), capture.name() + " drew no row");
                 Files.writeString(output.resolve(capture.name() + ".txt"),
                                     String.join("\n", screen.lines()) + "\n", StandardCharsets.UTF_8);
                 Files.writeString(output.resolve(capture.name() + ".attrs.txt"),

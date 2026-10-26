@@ -5803,8 +5803,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     /**
-     * Records one operator act: a request that changes state, as opposed to the reads a view or a
-     * dialogue makes on its way. The log is what {@code GET /mock/acts} serves.
+     * Records one operator act: an authenticated request that is not a read. A dialogue sends one
+     * when it sends what the operator chose. A request is recorded whether the runtime accepts or
+     * refuses it, so the log proves what was sent, not what took effect. The log is what
+     * {@code GET /mock/acts} serves.
      *
      * @param request the authenticated request
      */
