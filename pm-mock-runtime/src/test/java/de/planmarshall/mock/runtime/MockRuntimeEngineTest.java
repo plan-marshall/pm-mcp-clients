@@ -652,6 +652,39 @@ class MockRuntimeEngineTest {
         }
     }
 
+    @Test
+    @DisplayName("records the operator acts since the last reset and serves them at /mock/acts")
+    void actLogRecordsActsAndResetEmptiesIt() throws Exception {
+        var auth = Map.of("Authorization", "Bearer test-token");
+        engine.switchScenario(StandardScenarios.FULLY_ONBOARDED);
+
+        send("POST", "/api/v1/plans/fix-relay/pause", auth,
+                "{\"point\":\"after_task\"}".getBytes(StandardCharsets.UTF_8), false);
+        send("POST", "/api/v1/projects/pm-mcp-clients/favourite", auth,
+                "{\"favourite\":true}".getBytes(StandardCharsets.UTF_8), false);
+
+        var acts = send("GET", "/mock/acts", Map.of(), new byte[0], false);
+        assertEquals(200, acts.status());
+        var listed = acts.json().get("acts");
+        assertTrue(listed instanceof List<?> list, String.valueOf(listed));
+        var list = (List<?>) listed;
+        assertEquals(2, list.size(), String.valueOf(list));
+        var first = JsonTree.asObject(list.getFirst());
+        var second = JsonTree.asObject(list.get(1));
+        assertNotNull(first);
+        assertNotNull(second);
+        assertEquals("POST", first.get("method"));
+        assertEquals("/api/v1/plans/fix-relay/pause", first.get("path"));
+        assertEquals("POST", second.get("method"));
+        assertEquals("/api/v1/projects/pm-mcp-clients/favourite", second.get("path"));
+
+        var reset = send("POST", "/mock/reset", Map.of(), new byte[0], false);
+        assertEquals(200, reset.status());
+        var emptied = send("GET", "/mock/acts", Map.of(), new byte[0], false);
+        assertTrue(emptied.json().get("acts") instanceof List<?> after && after.isEmpty(),
+                String.valueOf(emptied.json()));
+    }
+
     private static String brokenFixtureJson() {
         return """
                 {
