@@ -39,7 +39,7 @@ function themeStorage(): Storage | null {
  * @returns whether it names one of the three choices
  */
 export function isThemeChoice(value: unknown): value is ThemeChoice {
-  return THEME_CHOICES.some((choice) => choice === value);
+  return typeof value === 'string' && (THEME_CHOICES as readonly string[]).includes(value);
 }
 
 /**
