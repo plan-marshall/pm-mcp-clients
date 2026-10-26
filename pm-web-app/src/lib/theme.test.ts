@@ -99,10 +99,10 @@ describe('the remembered theme', () => {
     // The default and the fallback of an unreadable or unknown choice are both the system choice.
     expect(html).toContain("var choice = 'system';");
     expect(html).toContain("choice = 'system';");
-    expect(html).toContain("setAttribute('data-theme'");
+    expect(html).toContain('document.documentElement.dataset.theme');
     // In the head, and before the app's own head content: no paint can precede it.
-    expect(html.indexOf('data-theme')).toBeGreaterThan(-1);
-    expect(html.indexOf('data-theme')).toBeLessThan(html.indexOf('%sveltekit.head%'));
+    expect(html.indexOf('dataset.theme')).toBeGreaterThan(-1);
+    expect(html.indexOf('dataset.theme')).toBeLessThan(html.indexOf('%sveltekit.head%'));
   });
 
   it('follows the machine while the system choice is in force', () => {

@@ -28,8 +28,11 @@
         } catch (error) {
           prefersDark = false;
         }
-        var theme = choice === 'system' ? (prefersDark ? 'dark' : 'light') : choice;
-        document.documentElement.setAttribute('data-theme', theme);
+        var theme = choice;
+        if (choice === 'system') {
+          theme = prefersDark ? 'dark' : 'light';
+        }
+        document.documentElement.dataset.theme = theme;
       })();
     </script>
     %sveltekit.head%

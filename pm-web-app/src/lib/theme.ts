@@ -110,7 +110,7 @@ export function resolveTheme(choice: ThemeChoice, prefersDark: boolean): Resolve
 export function applyTheme(choice: ThemeChoice): ResolvedTheme {
   const resolved = resolveTheme(choice, systemPrefersDark());
   if (typeof document !== 'undefined') {
-    document.documentElement.setAttribute('data-theme', resolved);
+    document.documentElement.dataset.theme = resolved;
   }
   return resolved;
 }
