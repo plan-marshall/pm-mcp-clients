@@ -242,6 +242,9 @@ Alternation alternation, boolean cursorVisible, List<List<CellStyle>> cellStyles
             if (width == 2 && column + 1 < columns) {
                 cells[cell + 1] = null;
                 inverse[cell + 1] = inverseStyle;
+                bold[cell + 1] = boldStyle;
+                dim[cell + 1] = dimStyle;
+                colour[cell + 1] = colourIndex;
                 continuation[cell + 1] = true;
             }
             column = Math.min(columns, column + width);
@@ -335,7 +338,7 @@ Alternation alternation, boolean cursorVisible, List<List<CellStyle>> cellStyles
                 resetStyle();
                 return;
             }
-            var parts = raw.split(";");
+            var parts = raw.split(";", -1);
             for (int index = 0; index < parts.length; index++) {
                 var part = parts[index];
                 if ("38".equals(part) || "48".equals(part)) {

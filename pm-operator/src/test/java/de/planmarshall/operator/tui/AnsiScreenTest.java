@@ -81,6 +81,32 @@ class AnsiScreenTest {
     }
 
     @Test
+    @DisplayName("a trailing empty SGR parameter resets the style")
+    void trailingEmptyParameterResets() {
+        var screen = AnsiScreen.parse("\u001b[1mA\u001b[1;mB", 4, 1);
+
+        var row = screen.cellStyles().getFirst();
+
+        assertAll(
+                            () -> assertEquals("b", row.get(0).text()),
+                            () -> assertEquals("-", row.get(1).text())
+        );
+    }
+
+    @Test
+    @DisplayName("a wide glyph carries its attributes on both cells")
+    void wideGlyphCarriesAttributes() {
+        var screen = AnsiScreen.parse("\u001b[1m\u4e2dB", 4, 1);
+
+        var row = screen.cellStyles().getFirst();
+
+        assertAll(
+                            () -> assertEquals("b", row.get(0).text()),
+                            () -> assertEquals("b", row.get(1).text())
+        );
+    }
+
+    @Test
     @DisplayName("counts alternate-screen entries and exits and tracks the cursor")
     void countsAlternationAndCursor() {
         var active = AnsiScreen.parse("\u001b[?1049h\u001b[?25lRunning work", 40, 4);

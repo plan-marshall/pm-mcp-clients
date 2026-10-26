@@ -10,6 +10,7 @@
 package de.planmarshall.operator.transcript;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.nayuki.qrcodegen.QrCode;
 import java.io.IOException;
@@ -103,7 +104,8 @@ class ScreenCaptureIT {
                 runtime.goToState(state);
             }
             try (var session = start(runtime, capture)) {
-                awaitQuiet(session);
+                assertTrue(awaitQuiet(session),
+                                    capture.name() + " did not settle within " + READY_TIMEOUT);
                 var screen = session.screen();
                 var raw = session.rawOutput();
                 assertFalse(raw.isEmpty(), capture.name() + " wrote nothing to the terminal");
@@ -142,9 +144,10 @@ class ScreenCaptureIT {
      * of a drawn screen rather than of a half-drawn one.
      *
      * @param session the running session
+     * @return {@code true} when the screen settled before the deadline
      * @throws InterruptedException if interrupted
      */
-    private static void awaitQuiet(PtySession session) throws InterruptedException {
+    private static boolean awaitQuiet(PtySession session) throws InterruptedException {
         var deadline = System.nanoTime() + READY_TIMEOUT.toNanos();
         var lastLength = 0;
         var quietSince = 0L;
@@ -154,7 +157,7 @@ class ScreenCaptureIT {
                 if (quietSince == 0L) {
                     quietSince = System.nanoTime();
                 } else if (System.nanoTime() - quietSince >= SETTLE.toNanos()) {
-                    return;
+                    return true;
                 }
             } else {
                 lastLength = length;
@@ -165,6 +168,7 @@ class ScreenCaptureIT {
                 throw new InterruptedException();
             }
         }
+        return false;
     }
 
     private static String attributes(AnsiScreen screen) {
