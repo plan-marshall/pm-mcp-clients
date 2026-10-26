@@ -68,6 +68,19 @@ class AnsiScreenTest {
     }
 
     @Test
+    @DisplayName("skips an extended colour sequence whole instead of reading its operands as styles")
+    void skipsExtendedColour() {
+        var screen = AnsiScreen.parse("\u001b[1mA\u001b[0m\u001b[38;5;1mB", 4, 1);
+
+        var row = screen.cellStyles().getFirst();
+
+        assertAll(
+                            () -> assertEquals("b", row.get(0).text()),
+                            () -> assertEquals("-", row.get(1).text())
+        );
+    }
+
+    @Test
     @DisplayName("counts alternate-screen entries and exits and tracks the cursor")
     void countsAlternationAndCursor() {
         var active = AnsiScreen.parse("\u001b[?1049h\u001b[?25lRunning work", 40, 4);

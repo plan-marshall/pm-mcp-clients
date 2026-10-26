@@ -43,9 +43,10 @@ import com.fasterxml.jackson.core.JsonFactory;
 import picocli.CommandLine;
 
 /**
- * Runs a named screen-capture set on a real pseudo-terminal (CLI-CC-S-01): every line of
- * {@code src/test/resources/screen-captures/{set}.txt} is one capture, and the test writes the
- * screen text, the cell attributes and the raw output below {@code target/screens/{set}/}.
+ * Runs a named screen-capture set on a real pseudo-terminal (CLI-CC-S-01): every non-blank,
+ * non-comment line of {@code src/test/resources/screen-captures/{set}.txt} is one capture, and the
+ * test writes the screen text, the cell attributes and the raw output below
+ * {@code target/screens/{set}/} or, with {@code -Dpm.screens.out}, below that directory.
  *
  * <p>It is selected by {@code -Dpm.screens={set}} and skipped without it, so the ordinary
  * integration-test lane pays nothing for it. The command line is documented in

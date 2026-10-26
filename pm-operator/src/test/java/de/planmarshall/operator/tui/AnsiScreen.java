@@ -332,20 +332,18 @@ Alternation alternation, boolean cursorVisible, List<List<CellStyle>> cellStyles
 
         private void style(String raw) {
             if (raw.isEmpty()) {
-                inverseStyle = false;
-                boldStyle = false;
-                dimStyle = false;
-                colourIndex = -1;
+                resetStyle();
                 return;
             }
-            for (var part : raw.split(";")) {
+            var parts = raw.split(";");
+            for (int index = 0; index < parts.length; index++) {
+                var part = parts[index];
+                if ("38".equals(part) || "48".equals(part)) {
+                    index += extendedColourOperands(parts, index);
+                    continue;
+                }
                 switch (part) {
-                    case "0", "" -> {
-                        inverseStyle = false;
-                        boldStyle = false;
-                        dimStyle = false;
-                        colourIndex = -1;
-                    }
+                    case "0", "" -> resetStyle();
                     case "1" -> boldStyle = true;
                     case "2" -> dimStyle = true;
                     case "22" -> {
@@ -358,6 +356,29 @@ Alternation alternation, boolean cursorVisible, List<List<CellStyle>> cellStyles
                     default -> colourIndex = colourOf(part, colourIndex);
                 }
             }
+        }
+
+        private void resetStyle() {
+            inverseStyle = false;
+            boldStyle = false;
+            dimStyle = false;
+            colourIndex = -1;
+        }
+
+        /**
+         * @param parts the SGR parameters
+         * @param index the position of the {@code 38} or {@code 48} introducer
+         * @return how many following parameters the extended colour consumes
+         */
+        private static int extendedColourOperands(String[] parts, int index) {
+            if (index + 1 >= parts.length) {
+                return 0;
+            }
+            return switch (parts[index + 1]) {
+                case "5" -> Math.min(2, parts.length - index - 1);
+                case "2" -> Math.min(4, parts.length - index - 1);
+                default -> 0;
+            };
         }
 
         private static int colourOf(String part, int current) {
