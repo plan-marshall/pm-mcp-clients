@@ -12,13 +12,13 @@ package de.planmarshall.operator.transcript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.planmarshall.mock.StandardScenarios;
+
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
-
-import de.planmarshall.mock.StandardScenarios;
 
 /**
  * The machine onboarding dialogue on a real pseudo-terminal (CLI-CC-S-01): {@code q} sends nothing,
@@ -35,7 +35,7 @@ class OnboardingDialogueIT {
     @DisplayName("q first: the dialogue leaves and sends nothing")
     void qFirstSendsNothing() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.ONBOARDING);
-                            var session = harness.open("onboard")) {
+             var session = harness.open("onboard")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "q\n");
@@ -51,7 +51,7 @@ class OnboardingDialogueIT {
     @DisplayName("an unknown input re-asks and sends nothing")
     void unknownInputReAsks() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.ONBOARDING);
-                            var session = harness.open("onboard")) {
+             var session = harness.open("onboard")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "zzz\nq\n");
@@ -66,7 +66,7 @@ class OnboardingDialogueIT {
     @DisplayName("the main path: the guided run steps to the completed state")
     void mainPathCompletes() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.ONBOARDING);
-                            var session = harness.open("onboard")) {
+             var session = harness.open("onboard")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "h\n\n\n\n\n\n\n\n");

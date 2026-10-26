@@ -11,13 +11,13 @@ package de.planmarshall.operator.transcript;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.planmarshall.mock.StandardScenarios;
+
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
-
-import de.planmarshall.mock.StandardScenarios;
 
 /**
  * The answer dialogue on a real pseudo-terminal (CLI-CC-S-01): {@code q} sends nothing, an unknown
@@ -34,7 +34,7 @@ class AnswerDialogueIT {
     @DisplayName("q first: the dialogue leaves and sends nothing")
     void qFirstSendsNothing() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
-                            var session = harness.open("answer", "Q-007", "--interactive")) {
+             var session = harness.open("answer", "Q-007", "--interactive")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "q\n");
@@ -49,7 +49,7 @@ class AnswerDialogueIT {
     @DisplayName("an unknown input re-asks and sends nothing")
     void unknownInputReAsks() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
-                            var session = harness.open("answer", "Q-007", "--interactive")) {
+             var session = harness.open("answer", "Q-007", "--interactive")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "zzz\nl\n");
@@ -64,7 +64,7 @@ class AnswerDialogueIT {
     @DisplayName("the main path: the chosen option sends the answer")
     void mainPathAnswers() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
-                            var session = harness.open("answer", "Q-007", "--interactive")) {
+             var session = harness.open("answer", "Q-007", "--interactive")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "1\n");

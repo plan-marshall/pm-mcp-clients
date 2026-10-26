@@ -12,13 +12,13 @@ package de.planmarshall.operator.transcript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.planmarshall.mock.StandardScenarios;
+
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
-
-import de.planmarshall.mock.StandardScenarios;
 
 /**
  * The cleanup dialogue on a real pseudo-terminal (CLI-CC-S-01): {@code q} deletes nothing, an
@@ -35,7 +35,7 @@ class CleanupDialogueIT {
     @DisplayName("q first: the dialogue leaves and deletes nothing")
     void qFirstSendsNothing() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
-                            var session = harness.open("cleanup", "--delete")) {
+             var session = harness.open("cleanup", "--delete")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "q\n");
@@ -51,7 +51,7 @@ class CleanupDialogueIT {
     @DisplayName("an unknown input re-asks and deletes nothing")
     void unknownInputReAsks() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
-                            var session = harness.open("cleanup", "--delete")) {
+             var session = harness.open("cleanup", "--delete")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "zzz\nq\n");
@@ -66,7 +66,7 @@ class CleanupDialogueIT {
     @DisplayName("the main path: the delete act arrives")
     void mainPathDeletes() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
-                            var session = harness.open("cleanup", "--delete")) {
+             var session = harness.open("cleanup", "--delete")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "y\n");

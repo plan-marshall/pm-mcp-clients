@@ -12,13 +12,13 @@ package de.planmarshall.operator.transcript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.planmarshall.mock.StandardScenarios;
+
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
-
-import de.planmarshall.mock.StandardScenarios;
 
 /**
  * The runtime stop dialogue on a real pseudo-terminal (CLI-CC-S-01): {@code k} keeps the runtime
@@ -35,7 +35,7 @@ class RuntimeStopDialogueIT {
     @DisplayName("q first: the dialogue leaves and sends nothing")
     void qFirstSendsNothing() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
-                            var session = harness.open("runtime", "stop")) {
+             var session = harness.open("runtime", "stop")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "q\n");
@@ -51,7 +51,7 @@ class RuntimeStopDialogueIT {
     @DisplayName("an unknown input re-asks and sends nothing")
     void unknownInputReAsks() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
-                            var session = harness.open("runtime", "stop")) {
+             var session = harness.open("runtime", "stop")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "9\nq\n");
@@ -66,7 +66,7 @@ class RuntimeStopDialogueIT {
     @DisplayName("the main path: 1 sends the stop")
     void mainPathStops() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
-                            var session = harness.open("runtime", "stop")) {
+             var session = harness.open("runtime", "stop")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "1\n");

@@ -12,13 +12,13 @@ package de.planmarshall.operator.transcript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.planmarshall.mock.StandardScenarios;
+
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
-
-import de.planmarshall.mock.StandardScenarios;
 
 /**
  * The project setup dialogue on a real pseudo-terminal (CLI-CC-S-01): {@code q} sends nothing, an
@@ -35,8 +35,8 @@ class ProjectSetupDialogueIT {
     @DisplayName("q first: the dialogue leaves and sends nothing")
     void qFirstSendsNothing() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.PROJECTS_AND_START)
-                            .goTo("projects.being-added");
-                            var session = harness.open("project", "setup", "cui-parent")) {
+                                 .goTo("projects.being-added");
+             var session = harness.open("project", "setup", "cui-parent")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "q\n");
@@ -52,8 +52,8 @@ class ProjectSetupDialogueIT {
     @DisplayName("an unknown input re-asks and sends nothing")
     void unknownInputReAsks() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.PROJECTS_AND_START)
-                            .goTo("projects.being-added");
-                            var session = harness.open("project", "setup", "cui-parent")) {
+                                 .goTo("projects.being-added");
+             var session = harness.open("project", "setup", "cui-parent")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "zzz\nq\n");
@@ -68,8 +68,8 @@ class ProjectSetupDialogueIT {
     @DisplayName("the main path: the setup act arrives")
     void mainPathStartsSetup() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.PROJECTS_AND_START)
-                            .goTo("projects.being-added");
-                            var session = harness.open("project", "setup", "cui-parent")) {
+                                 .goTo("projects.being-added");
+             var session = harness.open("project", "setup", "cui-parent")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "\n");

@@ -11,6 +11,7 @@ package de.planmarshall.operator.transcript;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.nayuki.qrcodegen.QrCode;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -18,10 +19,8 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
-import org.junit.jupiter.api.Assumptions;
 
 import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.http.HttpRequest;
@@ -31,9 +30,10 @@ import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.operator.PmOperator;
 
+import org.junit.jupiter.api.Assumptions;
+
 import com.fasterxml.jackson.core.JsonFactory;
 
-import io.nayuki.qrcodegen.QrCode;
 import picocli.CommandLine;
 
 /**

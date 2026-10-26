@@ -12,13 +12,13 @@ package de.planmarshall.operator.transcript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.planmarshall.mock.StandardScenarios;
+
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
-
-import de.planmarshall.mock.StandardScenarios;
 
 /**
  * The cancel dialogue on a real pseudo-terminal (CLI-CC-S-01): {@code q} sends nothing, an unknown
@@ -35,7 +35,7 @@ class CancelDialogueIT {
     @DisplayName("q first: the dialogue leaves and sends nothing")
     void qFirstSendsNothing() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
-                            var session = harness.open("plan", "cancel", "fix-relay")) {
+             var session = harness.open("plan", "cancel", "fix-relay")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "q\n");
@@ -51,7 +51,7 @@ class CancelDialogueIT {
     @DisplayName("an unknown input re-asks and sends nothing")
     void unknownInputReAsks() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
-                            var session = harness.open("plan", "cancel", "fix-relay")) {
+             var session = harness.open("plan", "cancel", "fix-relay")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "zzz\nq\n");
@@ -66,7 +66,7 @@ class CancelDialogueIT {
     @DisplayName("the main path: the reason and the confirmation send the cancel")
     void mainPathCancels() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
-                            var session = harness.open("plan", "cancel", "fix-relay")) {
+             var session = harness.open("plan", "cancel", "fix-relay")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "because\ny\n");

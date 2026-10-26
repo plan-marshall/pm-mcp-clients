@@ -9,8 +9,9 @@
  */
 package de.planmarshall.operator.transcript;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
+import io.nayuki.qrcodegen.QrCode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -21,14 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.LockSupport;
-
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
-import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledOnOs;
-import org.junit.jupiter.api.condition.OS;
 
 import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.testsupport.BinaryUnderTest;
@@ -37,9 +32,14 @@ import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.operator.PmOperator;
 import de.planmarshall.operator.tui.AnsiScreen;
 
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
+
 import com.fasterxml.jackson.core.JsonFactory;
 
-import io.nayuki.qrcodegen.QrCode;
 import picocli.CommandLine;
 
 /**
@@ -66,7 +66,7 @@ class ScreenCaptureIT {
 
     /** One capture line of the set. */
     private record Capture(String name, String scenario, List<String> states, List<String> command,
-                        String keys, int columns, int rows, String locale, Map<String, String> environment) {
+    String keys, int columns, int rows, String locale, Map<String, String> environment) {
     }
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
@@ -82,7 +82,7 @@ class ScreenCaptureIT {
         Assumptions.assumeTrue(Files.isExecutable(Path.of(SCRIPT)), SCRIPT + " is not available");
 
         var captures = readSet(setName);
-        assertTrue(!captures.isEmpty(), "the capture set " + setName + " is empty");
+        assertFalse(captures.isEmpty(), "the capture set " + setName + " is empty");
         var selected = System.getProperty(OUTPUT_PROPERTY);
         var output = selected != null && !selected.isBlank()
                             ? Path.of(selected)
@@ -96,7 +96,7 @@ class ScreenCaptureIT {
 
     private void capture(Capture capture, Path output) throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
-                            .scenario(capture.scenario()).build())) {
+                                 .scenario(capture.scenario()).build())) {
             MockMachine.recordLiveRuntime(runtime);
             for (var state : capture.states()) {
                 runtime.goToState(state);

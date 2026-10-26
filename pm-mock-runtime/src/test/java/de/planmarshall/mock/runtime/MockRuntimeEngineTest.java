@@ -11,6 +11,7 @@ package de.planmarshall.mock.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -666,7 +667,7 @@ class MockRuntimeEngineTest {
         var acts = send("GET", "/mock/acts", Map.of(), new byte[0], false);
         assertEquals(200, acts.status());
         var listed = acts.json().get("acts");
-        assertTrue(listed instanceof List<?> list, String.valueOf(listed));
+        assertInstanceOf(List.class, listed, String.valueOf(listed));
         var list = (List<?>) listed;
         assertEquals(2, list.size(), String.valueOf(list));
         var first = JsonTree.asObject(list.getFirst());

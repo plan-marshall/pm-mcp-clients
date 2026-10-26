@@ -10,6 +10,7 @@
 package de.planmarshall.operator.tui;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -132,7 +133,7 @@ Alternation alternation, boolean cursorVisible, List<List<CellStyle>> cellStyles
             bold = new boolean[this.columns * this.rows];
             dim = new boolean[this.columns * this.rows];
             colour = new int[this.columns * this.rows];
-            java.util.Arrays.fill(colour, -1);
+            Arrays.fill(colour, -1);
             continuation = new boolean[this.columns * this.rows];
         }
 
