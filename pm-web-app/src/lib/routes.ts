@@ -12,6 +12,9 @@
  *
  * The pairing code lands on `/pair`; the address bar follows the store on every other route, so
  * a reload, a bookmark, and the browser's back all open the same view.
+ *
+ * The module also carries the tab title of every route: the catalogue key it reads and the name
+ * the route gives it, so a title is never formatted without the name it needs.
  */
 
 export type AppRoute =
@@ -57,6 +60,87 @@ export type StartPath = Pick<RouteParams, 'projectId' | 'entryId'>;
 export interface PathMatch extends RouteParams {
   route: AppRoute;
 }
+
+/** The store fields a tab title reads: the names the routes carry. */
+export interface TitleState {
+  /** The plan the plan route shows. */
+  selectedPlanId?: string | null;
+  /** The epic the epic and decomposition routes show. */
+  selectedEpicId?: string | null;
+  /** The project a start begins in. */
+  startProjectId?: string | null;
+}
+
+/** The catalogue key of a route's tab title, and the names its text carries. */
+export interface RouteTitle {
+  key: string;
+  args?: Record<string, string>;
+}
+
+/** The tab title of a route whose text names nothing. */
+function plainTitle(key: string): RouteTitle {
+  return { key };
+}
+
+/**
+ * The tab title of a route that names one thing, and its unparameterized form while that name is
+ * not known yet.
+ *
+ * @param key the catalogue key of the text that carries the name
+ * @param loadingKey the catalogue key of the text used before the name is known
+ * @param name the parameter the text reads
+ * @param value the name the route carries, if it carries one
+ * @returns the key and its arguments
+ */
+function namedTitle(
+  key: string,
+  loadingKey: string,
+  name: string,
+  value: string | null | undefined,
+): RouteTitle {
+  return value ? { key, args: { [name]: value } } : plainTitle(loadingKey);
+}
+
+/**
+ * The tab title of the start routes, which name the project a start begins in.
+ *
+ * @param state the store's names
+ * @returns the key and its arguments
+ */
+function startTitle(state: TitleState): RouteTitle {
+  return namedTitle('start.plan.title', 'start.plan.title.loading', 'project', state.startProjectId);
+}
+
+/**
+ * The tab title of every route: its catalogue key, and the names a route carries.
+ *
+ * A parameterized key is never formatted without its argument, so no `{placeholder}` reaches the
+ * tab: until the name is known the route uses the plain `…title.loading` text instead.
+ */
+export const ROUTE_TITLES: Record<AppRoute, (state: TitleState) => RouteTitle> = {
+  pair: () => plainTitle('web.pair.page.title'),
+  entry: startTitle,
+  onboarding: () => plainTitle('onboard.entry.title'),
+  'project-onboarding': () => plainTitle('project.explorer.title'),
+  settings: () => plainTitle('web.settings.page.title'),
+  'machine-settings': () => plainTitle('web.settings.page.title'),
+  projects: () => plainTitle('project.explorer.title'),
+  overview: () => plainTitle('overview.running.title'),
+  plan: (state) =>
+    namedTitle('plan.view.title', 'plan.view.title.loading', 'plan', state.selectedPlanId),
+  epic: (state) =>
+    namedTitle('epic.view.title', 'epic.view.title.loading', 'epic', state.selectedEpicId),
+  decomposition: (state) =>
+    namedTitle('epic.view.title', 'epic.view.title.loading', 'epic', state.selectedEpicId),
+  decisions: () => plainTitle('decisions.list.title'),
+  reports: () => plainTitle('report.list.title'),
+  system: () => plainTitle('system.view.title'),
+  cleanup: () => plainTitle('system.view.title'),
+  designer: () => plainTitle('designer.view.title'),
+  start: startTitle,
+  revoked: () => plainTitle('devices.revoked.title'),
+  'listener-off': () => plainTitle('web.entry.lan_off.title'),
+};
 
 /** Path of every route that has a fixed path of its own. */
 const FIXED_ROUTE_PATHS: Partial<Record<AppRoute, string>> = {
