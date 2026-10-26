@@ -21,8 +21,9 @@ import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
 /**
- * The runtime stop dialogue on a real pseudo-terminal (CLI-CC-S-01): {@code k} keeps the runtime
- * running, an unknown input re-asks, and {@code 1} sends the stop.
+ * The runtime stop dialogue on a real pseudo-terminal (CLI-CC-S-01): {@code q} sends nothing, an
+ * unknown input re-asks, and {@code 1} sends the stop. The {@code k} case (keep it running) belongs
+ * to the confirmation the fixing plan adds.
  */
 @DisplayName("pm-operator runtime stop dialogue on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -34,7 +35,7 @@ class RuntimeStopDialogueIT {
     @Test
     @DisplayName("q first: the dialogue leaves and sends nothing")
     void qFirstSendsNothing() throws Exception {
-        try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
+        try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("system.running");
              var session = harness.open("runtime", "stop")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
@@ -50,7 +51,7 @@ class RuntimeStopDialogueIT {
     @Test
     @DisplayName("an unknown input re-asks and sends nothing")
     void unknownInputReAsks() throws Exception {
-        try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
+        try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("system.running");
              var session = harness.open("runtime", "stop")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
@@ -65,7 +66,7 @@ class RuntimeStopDialogueIT {
     @Test
     @DisplayName("the main path: 1 sends the stop")
     void mainPathStops() throws Exception {
-        try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
+        try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("system.running");
              var session = harness.open("runtime", "stop")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 

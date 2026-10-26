@@ -43,15 +43,17 @@ is what the process layer adds.
 === `AnsiScreen`
 
 `AnsiScreen` is the one parser both terminal layers use. It turns the bytes a view wrote into the
-visible lines, the rows drawn inverted, whether the alternate screen is active, how often it was
-entered and left, and whether the cursor is visible. It understands the subset the view and an
-`xterm` terminal use: cursor addressing and movement, erase in line and display, SGR (inverse only),
-the private modes 1049/47/1047 (alternate screen) and 25 (cursor), OSC, and the string introducers.
-Everything else is skipped.
+visible lines, the rows drawn inverted, the attributes of every cell (bold, dim, reverse, and the
+foreground colour index), whether the alternate screen is active, how often it was entered and left,
+and whether the cursor is visible. It understands the subset the view and an
+`xterm` terminal use: cursor addressing and movement, erase in line and display, SGR (inverse, bold,
+dim, and the 16 basic foreground colours), the private modes 1049/47/1047 (alternate screen) and 25
+(cursor), OSC, and the string introducers. Everything else is skipped; a 256-colour or true-colour
+sequence is not decoded, so such a cell reports the terminal's default colour.
 
 `VirtualScreenTerminal` delegates to it, so an assertion means the same thing on both layers.
-`AnsiScreenTest` covers the sequences the view emits, wrapping, wide glyphs, OSC, and the
-alternate-screen and cursor modes.
+`AnsiScreenTest` covers the sequences the view emits, the cell attributes, wrapping, wide glyphs,
+OSC, and the alternate-screen and cursor modes.
 
 [#in-memory]
 === `VirtualScreenTerminal`
@@ -149,8 +151,11 @@ link:../../agy/operator-tui-pty-and-console-handoff-plan-report.md[the plan's re
 ----
 ./mvnw -pl pm-operator verify -Pintegration-tests \
   -Dit.test=ScreenCaptureIT -Dpm.screens=baseline \
-  -Dpm.screens.out=.plan/temp/terminal/{plan}/after
+  -Dpm.screens.out=/absolute/path/.plan/temp/terminal/{plan}/after
 ----
+
+`-Dpm.screens.out` must be an absolute path: failsafe forks with `pm-operator` as its working
+directory, so a relative path lands below the module.
 
 The set is `pm-operator/src/test/resources/screen-captures/{set}.txt`, one capture per line, pipe
 separated:
@@ -188,7 +193,8 @@ Every capture writes three files below `target/screens/{set}/` (or `-Dpm.screens
 
 * `{name}.txt` — the visible screen, one line per row.
 * `{name}.attrs.txt` — per row, the runs of cells that share their attributes: `start-end`, then
-  `b` (bold), `d` (dim), `r` (reverse) and `c{n}` (the foreground colour index), `-` for none.
+  `b` (bold), `d` (dim), `r` (reverse) and `c{n}` (the foreground colour index), `-` for none. The
+  rows are numbered from 1 as the screen shows them; the cell runs count from 0, left to right.
 * `{name}.stdout.txt` — the raw output, which is how a printed verb (rather than a full-screen
   view) is read.
 

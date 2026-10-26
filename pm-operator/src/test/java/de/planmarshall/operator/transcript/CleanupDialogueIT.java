@@ -34,7 +34,7 @@ class CleanupDialogueIT {
     @Test
     @DisplayName("q first: the dialogue leaves and deletes nothing")
     void qFirstSendsNothing() throws Exception {
-        try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
+        try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("cleanup.preview");
              var session = harness.open("cleanup", "--delete")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
@@ -50,7 +50,7 @@ class CleanupDialogueIT {
     @Test
     @DisplayName("an unknown input re-asks and deletes nothing")
     void unknownInputReAsks() throws Exception {
-        try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
+        try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("cleanup.preview");
              var session = harness.open("cleanup", "--delete")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
@@ -65,7 +65,7 @@ class CleanupDialogueIT {
     @Test
     @DisplayName("the main path: the delete act arrives")
     void mainPathDeletes() throws Exception {
-        try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
+        try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("cleanup.preview");
              var session = harness.open("cleanup", "--delete")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 

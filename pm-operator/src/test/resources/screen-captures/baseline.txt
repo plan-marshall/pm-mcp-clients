@@ -1,5 +1,5 @@
-# The baseline capture set: the printed status, the plans view, and the plan view of the showroom,
-# at both documented sizes and in both languages.
+# The baseline capture set: the printed status, the plans view, and the plan view of fix-relay in
+# the showroom, at both documented sizes and in both languages.
 #
 # One capture per line, pipe separated:
 #   name | scenario | states to goto (comma separated, - for none) | command | keys to send | columns x rows | locale | extra environment (KEY=VALUE, comma separated, - for none)

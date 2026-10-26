@@ -145,7 +145,7 @@ final class DialogueHarness implements AutoCloseable {
     }
 
     /**
-     * Asserts that the runtime received exactly the act.
+     * Asserts that the runtime received at least one such act.
      *
      * @param method the HTTP method
      * @param path   the request path

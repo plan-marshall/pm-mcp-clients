@@ -676,6 +676,7 @@ class MockRuntimeEngineTest {
         assertNotNull(second);
         assertEquals("POST", first.get("method"));
         assertEquals("/api/v1/plans/fix-relay/pause", first.get("path"));
+        assertEquals("showroom.active", first.get("state"));
         assertEquals("POST", second.get("method"));
         assertEquals("/api/v1/projects/pm-mcp-clients/favourite", second.get("path"));
 

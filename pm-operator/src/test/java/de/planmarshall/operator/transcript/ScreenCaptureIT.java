@@ -104,12 +104,15 @@ class ScreenCaptureIT {
             try (var session = start(runtime, capture)) {
                 awaitQuiet(session);
                 var screen = session.screen();
+                var raw = session.rawOutput();
+                assertFalse(raw.isEmpty(), capture.name() + " wrote nothing to the terminal");
+                assertFalse(screen.lines().isEmpty(), capture.name() + " drew no row");
                 Files.writeString(output.resolve(capture.name() + ".txt"),
                                     String.join("\n", screen.lines()) + "\n", StandardCharsets.UTF_8);
                 Files.writeString(output.resolve(capture.name() + ".attrs.txt"),
                                     attributes(screen), StandardCharsets.UTF_8);
                 Files.writeString(output.resolve(capture.name() + ".stdout.txt"),
-                                    session.rawOutput(), StandardCharsets.UTF_8);
+                                    raw, StandardCharsets.UTF_8);
                 if (!capture.keys().isEmpty()) {
                     DialogueHarness.type(session, capture.keys());
                     session.awaitExit(READY_TIMEOUT);
@@ -143,11 +146,11 @@ class ScreenCaptureIT {
      */
     private static void awaitQuiet(PtySession session) throws InterruptedException {
         var deadline = System.nanoTime() + READY_TIMEOUT.toNanos();
-        var lastLength = -1;
+        var lastLength = 0;
         var quietSince = 0L;
         while (System.nanoTime() < deadline) {
             var length = session.rawOutput().length();
-            if (length == lastLength) {
+            if (length > 0 && length == lastLength) {
                 if (quietSince == 0L) {
                     quietSince = System.nanoTime();
                 } else if (System.nanoTime() - quietSince >= SETTLE.toNanos()) {
@@ -213,6 +216,9 @@ class ScreenCaptureIT {
             throw new IllegalArgumentException("A capture line names 8 fields, got " + fields.length + ": " + line);
         }
         var size = fields[5].strip().split("x");
+        if (size.length != 2) {
+            throw new IllegalArgumentException("A capture size is COLUMNSxROWS: " + fields[5].strip());
+        }
         var command = new ArrayList<String>();
         for (var token : fields[3].strip().split("\\s+")) {
             if (!token.isEmpty()) {

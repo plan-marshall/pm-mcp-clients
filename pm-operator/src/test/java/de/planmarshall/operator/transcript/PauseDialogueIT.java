@@ -54,14 +54,11 @@ class PauseDialogueIT {
              var session = harness.open("plan", "pause", "fix-relay")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
-            DialogueHarness.type(session, "9\n");
-            assertTrue(session.awaitText("1) now", DialogueHarness.TIMEOUT), session.rawOutput());
+            DialogueHarness.type(session, "9\nq\n");
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             assertEquals(2, DialogueHarness.times(session.screenText(), PROMPT), session.screenText());
             harness.assertNoAct();
-
-            DialogueHarness.type(session, "q\n");
-            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
         }
     }
 
