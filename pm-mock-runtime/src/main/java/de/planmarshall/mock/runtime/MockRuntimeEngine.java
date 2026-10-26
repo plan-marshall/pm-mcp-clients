@@ -5815,6 +5815,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if ("GET".equals(method) || "HEAD".equals(method) || "OPTIONS".equals(method)) {
             return;
         }
+        if (request.path().startsWith("/mcp")) {
+            // A JSON-RPC call of the relay's MCP endpoint is no operator act.
+            return;
+        }
         var act = new LinkedHashMap<String, Object>();
         act.put(KEY_METHOD, method);
         act.put("path", request.path());

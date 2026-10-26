@@ -159,17 +159,15 @@ final class DialogueHarness implements AutoCloseable {
 
     /**
      * Types the keys into the session. A dialogue that already left before it could read them is
-     * not an error of the harness: the case is about whether it left with nothing sent.
+     * reported: the case is about whether it left with nothing sent, so a send into a closed session
+     * fails the test rather than hiding a dialogue that never consumed the key.
      *
      * @param session the running session
      * @param keys    the keys to type
+     * @throws IOException if the dialogue already left
      */
-    static void type(PtySession session, String keys) {
-        try {
-            session.send(keys);
-        } catch (IOException _) {
-            // The dialogue left before it read the keys; its screen and its acts are the evidence.
-        }
+    static void type(PtySession session, String keys) throws IOException {
+        session.send(keys);
     }
 
     /**
