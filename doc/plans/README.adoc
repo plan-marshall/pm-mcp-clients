@@ -63,6 +63,12 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |nothing
 |Milestone 4
 
+|link:exec-listed-read-set.adoc[`exec-listed-read-set`]
+|`pm-exec`: a listed read set for workers
+|`open`
+|nothing
+|Milestone 4
+
 |link:implemented/operator-harness-and-roles-verbs.adoc[`operator-harness-and-roles-verbs`]
 |Operator verbs of harness enrolment and roles
 |`done`
