@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import Layout from './+layout.svelte';
 import { apiClient, type ReportsPage, type StatusResponse } from '../lib/api/client';
@@ -100,11 +100,14 @@ describe('the app shell', () => {
     expect(screen.getByTestId('nav-projects-btn')).not.toHaveAttribute('title');
     expect(screen.getByTestId('nav-designer-btn')).not.toHaveAttribute('title');
 
-    // An icon-only control still explains what it does.
-    expect(screen.getByLabelText('Toggle light/dark theme')).toHaveAttribute(
-      'title',
-      'Switch between the light and dark theme',
+    // The theme offers three explicit choices, each with a visible label that needs no tooltip.
+    const theme = screen.getByRole('group', { name: 'Theme' });
+    expect(within(theme).getAllByRole('button').map((button) => button.textContent?.trim())).toEqual(
+      ['Light', 'Dark', 'System'],
     );
+    for (const option of within(theme).getAllByRole('button')) {
+      expect(option).not.toHaveAttribute('title');
+    }
   });
 
   it('shows the project mark in the linked brand beside the visible text', async () => {

@@ -42,11 +42,12 @@ test.describe('Web chrome, navigation and action advisories', () => {
     await expect(page.getByTestId('nav-projects-btn')).not.toHaveAttribute('title');
     await expect(page.getByTestId('nav-designer-btn')).not.toHaveAttribute('title');
 
-    // An icon-only control still explains itself.
-    await expect(page.getByRole('button', { name: 'Toggle light/dark theme' })).toHaveAttribute(
-      'title',
-      /light and dark theme/,
-    );
+    // The theme is three explicit choices, each with a visible label that needs no tooltip.
+    const theme = page.getByRole('group', { name: 'Theme' });
+    await expect(theme.getByRole('button')).toHaveText(['Light', 'Dark', 'System']);
+    for (const option of await theme.getByRole('button').all()) {
+      await expect(option).not.toHaveAttribute('title');
+    }
 
     // No control repeats its own visible label on hover.
     const repeated = await page.locator('.app-header__actions button').evaluateAll((buttons) =>
@@ -84,6 +85,22 @@ test.describe('Web chrome, navigation and action advisories', () => {
       'title',
       /Return to the view you came from/,
     );
+  });
+
+  test('keeps the chosen theme across a full load', async ({ page }) => {
+    // The choice is this browser's, not the operating system's: a full load must restore it, in
+    // both directions, so a light choice on a dark machine is not undone either.
+    await page.getByTestId('theme-dark').click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+    await page.getByTestId('theme-light').click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   });
 
   test('shows the project mark in the header at desktop and phone width', async ({ page }) => {

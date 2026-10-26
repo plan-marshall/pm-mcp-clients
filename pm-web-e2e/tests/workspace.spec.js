@@ -68,14 +68,11 @@ test.describe('Routing, History & Frame', () => {
     await expect(page.getByTestId('machine-settings-view')).toBeVisible();
   });
 
-  test('toggles light/dark theme', async ({ page }) => {
-    const themeBtn = page.locator('button[aria-label="Toggle light/dark theme"]');
-    await expect(themeBtn).toBeVisible();
+  test('switches the theme between the three choices', async ({ page }) => {
+    await page.getByTestId('theme-dark').click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
-    const initialTheme = await page.locator('html').getAttribute('data-theme');
-    await themeBtn.click();
-
-    const newTheme = await page.locator('html').getAttribute('data-theme');
-    expect(newTheme).not.toBe(initialTheme);
+    await page.getByTestId('theme-light').click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   });
 });

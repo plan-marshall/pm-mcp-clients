@@ -14,6 +14,14 @@
   } from '../lib/stores/runtime';
   import { apiClient, type ConnectionStatus } from '../lib/api/client';
   import { pathForRoute, type AppRoute } from '../lib/routes';
+  import {
+    THEME_CHOICES,
+    applyTheme,
+    readThemeChoice,
+    watchSystemTheme,
+    writeThemeChoice,
+    type ThemeChoice,
+  } from '../lib/theme';
   import { installAdvisoryTitles } from '../lib/utils/advisoryTitle';
   import Spinner from '../lib/components/Spinner.svelte';
   import PairingView from '../lib/views/PairingView.svelte';
@@ -32,7 +40,9 @@
 
   let { children }: Props = $props();
 
-  let theme = $state<'light' | 'dark'>('light');
+  // The theme this browser chose. `app.html` already applied it before the first paint; the
+  // control reads the same choice so the pressed option and the document agree.
+  let themeChoice = $state<ThemeChoice>(readThemeChoice());
   // The first write settles the address bar on the route the store chose; every later one is a
   // history entry, so the browser's Back returns to the previous view.
   let addressBarSettled = false;
@@ -108,17 +118,21 @@
   });
 
   onMount(async () => {
-    // Detect system theme
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      theme = 'dark';
-    }
-    document.documentElement.setAttribute('data-theme', theme);
+    // The theme was set before the first paint; applying it again keeps the document and the
+    // stored choice in step after hydration, and the listener below lets `system` follow the
+    // machine while the app runs.
+    applyTheme(themeChoice);
 
     // The address bar is the route: a reload, a bookmark, or the browser's back returns here.
     adoptRouteFromLocation();
     const onPop = () => adoptRouteFromLocation();
     window.addEventListener('popstate', onPop);
     onDestroy(() => window.removeEventListener('popstate', onPop));
+    onDestroy(
+      watchSystemTheme(() => {
+        if (themeChoice === 'system') applyTheme('system');
+      }),
+    );
 
     // Initialize i18n before the runtime, so a notice the runtime composes at start-up reads
     // from the catalogue. A slow catalogue must not block start-up: the race bounds the wait.
@@ -147,9 +161,15 @@
     addressBarSettled = true;
   }
 
-  function toggleTheme() {
-    theme = theme === 'light' ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', theme);
+  /**
+   * Applies a theme the person picked and keeps it for the next visit.
+   *
+   * @param choice the picked theme
+   */
+  function chooseTheme(choice: ThemeChoice): void {
+    themeChoice = choice;
+    writeThemeChoice(choice);
+    applyTheme(choice);
   }
 
   function toggleLocale() {
@@ -364,14 +384,19 @@
         {$currentLocale === 'en' ? 'DE' : 'EN'}
       </button>
 
-      <button
-        class="header-action-btn"
-        onclick={toggleTheme}
-        aria-label={$t('web.frame.toggle_theme')}
-        data-advisory={$t('web.frame.toggle_theme.title')}
-      >
-        {theme === 'light' ? '🌙' : '☀️'}
-      </button>
+      <div class="theme-choice" role="group" aria-label={$t('web.frame.theme.label')}>
+        {#each THEME_CHOICES as choice (choice)}
+          <button
+            type="button"
+            class="header-action-btn theme-choice__option"
+            aria-pressed={themeChoice === choice}
+            data-testid={`theme-${choice}`}
+            onclick={() => chooseTheme(choice)}
+          >
+            {$t(`web.frame.theme.${choice}`)}
+          </button>
+        {/each}
+      </div>
     </div>
   </header>
 
@@ -532,6 +557,27 @@
     flex: 1;
     display: flex;
     flex-direction: column;
+  }
+
+  /* The three theme choices sit together: the frame says it is one control, the fill says which
+     choice is in force. */
+  .theme-choice {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    padding: 1px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  .theme-choice__option {
+    border-radius: calc(var(--radius-sm) - 1px);
+  }
+
+  .theme-choice__option[aria-pressed='true'] {
+    background-color: var(--color-primary-subtle);
+    color: var(--color-primary);
+    font-weight: 600;
   }
 
   .draining-banner {
