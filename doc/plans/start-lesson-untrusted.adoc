@@ -1,0 +1,32 @@
+= A lesson written from untrusted text, at the start
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `start-lesson-untrusted`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-8[UC-STA-8] (variation _A lesson written from untrusted text_); link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 10
+Where:: `pm-api` (the start contract and the mock runtime), `pm-operator`, `pm-web-app`
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+A lesson is the project's own memory, read as trusted. A lesson whose writing read a review comment, a bot finding, or an issue can carry an injection the screener missed into the next plan; the engine therefore marks such a lesson and screens it when a start takes it as a source. The operator has to see that mark and the screening like those of an issue.
+
+* *Design first*: the package changes link:../design/shared/starting-work.adoc#lesson[Starting Work, A Lesson] and the lesson part of link:../design/terminal-client/18-starting.adoc#lesson[Terminal Client, A Lesson] and has the operator accept it before building it: in the choice (`source-lesson.choose`) a marked lesson shows `untrusted` beside its title; once stored it is screened (`source-lesson.screen`), and the flagged and unscreened waits (`source-lesson.flagged`, `source-lesson.unscreened`) are those of an issue, with the same texts and the same _Use it anyway_ (with a reason) and _Remove it_.
+* The start contract carries the mark on each lesson of the choice and the three states for `source-lesson`; the mock runtime offers a marked lesson whose screening is clean, flagged, and failed.
+* The source's line shows `untrusted` and `screening` as for an issue, under the rule _Trust_ of the shared design.
+* Texts from the message catalogue only.
+
+== Trace
+
+Requirements, specification sections, and use cases stay in `plan-marshall-documentation` (those of the engine in `pm-mcp-core`) and are only referenced here.
+
+* Requirement: link:../../../plan-marshall-documentation/doc/requirements/08-security.adoc#PM-SEC-1[PM-SEC-1]
+* Specification: link:../../../pm-mcp-core/doc/specification/state-catalogue/09-bootstrap-and-lessons.adoc#state-catalogue-source[State Catalogue § Source Units]; link:../../../pm-mcp-core/doc/specification/store-schemas/10-job-and-lesson-records.adoc#lesson-record[Store Schemas § Lesson Record] (Derived from Untrusted Text)
+* Use case: link:../../../plan-marshall-documentation/doc/use-cases/05-starting-work.adoc#UC-STA-8[UC-STA-8]
+* Reason: link:../../../plan-marshall-documentation/doc/articles/context-collapse.adoc[Context Collapse] (an assistant's memory written from a summarized page and reused in every later session)
+
+== Done When
+
+The operator accepted the design; both clients choose a marked lesson against the mock runtime and pass through a clean, a flagged, and a failed screening in their tests, and an unmarked lesson is stored without a screening.
