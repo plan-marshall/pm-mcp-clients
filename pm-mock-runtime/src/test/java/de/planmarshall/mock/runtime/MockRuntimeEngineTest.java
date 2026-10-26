@@ -688,8 +688,8 @@ class MockRuntimeEngineTest {
 
         send("POST", "/mcp", auth, "{}".getBytes(StandardCharsets.UTF_8), false);
         assertTrue(send("GET", "/mock/acts", Map.of(), new byte[0], false).json().get("acts")
-                            instanceof List<?> mcpActs && mcpActs.isEmpty(),
-                            "an MCP call is no operator act");
+                instanceof List<?> mcpActs && mcpActs.isEmpty(),
+                "an MCP call is no operator act");
     }
 
     private static String brokenFixtureJson() {
