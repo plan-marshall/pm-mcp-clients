@@ -42,6 +42,10 @@ export const FOREIGN_INTERFACE_WORDS = Object.freeze({
  */
 export const ISO_TIME_PLACEHOLDER = '<iso-time>';
 
+/** How often the guard re-reads a page that is still filling, and how long it waits between reads. */
+const SETTLE_ATTEMPTS = 12;
+const SETTLE_INTERVAL_MS = 150;
+
 /**
  * Reads every accepted text node of the page in the browser and collects the violations.
  *
@@ -131,6 +135,10 @@ function collectInPage({ locale, foreignWords, isoPlaceholder }) {
 /**
  * Collects the text-guard violations of the page that is open.
  *
+ * A view fills asynchronously, so the page is read until two consecutive reads agree: the
+ * violations a report lists are the ones the settled page shows, never the ones of a half
+ * rendered list.
+ *
  * @param {import('@playwright/test').Page} page the page to read
  * @param {{ locale: 'de' | 'en' }} options the interface locale the page is shown in; words of
  *   the other language are reported in it
@@ -143,7 +151,19 @@ export async function collectTextGuardViolations(page, options) {
   if (!foreignWords) {
     throw new TypeError(`The text guard covers the locales de and en, not ${String(locale)}.`);
   }
-  return page.evaluate(collectInPage, { locale, foreignWords, isoPlaceholder: ISO_TIME_PLACEHOLDER });
+  const read = () =>
+    page.evaluate(collectInPage, { locale, foreignWords, isoPlaceholder: ISO_TIME_PLACEHOLDER });
+
+  let previous = await read();
+  for (let attempt = 0; attempt < SETTLE_ATTEMPTS; attempt += 1) {
+    await page.waitForTimeout(SETTLE_INTERVAL_MS);
+    const current = await read();
+    if (JSON.stringify(current) === JSON.stringify(previous)) {
+      return current;
+    }
+    previous = current;
+  }
+  return previous;
 }
 
 /**

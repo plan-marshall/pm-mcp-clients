@@ -11,6 +11,12 @@ import {
   addDescription,
   continueAndStart,
 } from './helpers/pairing.js';
+import {
+  collectTextGuardViolations,
+  normalizeViolations,
+  diffViolations,
+  formatViolation,
+} from './helpers/textGuard.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -47,6 +53,443 @@ export const DECLARED_VIEWS = [
 /** Tracks views that have been audited during test execution. */
 const AUDIT_CACHE_FILE = path.resolve(__dirname, '../.audited-views.json');
 const auditedViews = new Set();
+
+/** The two interface locales every declared view is read in. */
+const GUARD_LOCALES = ['de', 'en'];
+
+/** The committed text-guard baseline: one violation list per view and locale. */
+const GUARD_BASELINE_FILE = path.resolve(__dirname, 'text-guard-baseline.json');
+
+/**
+ * Reads the committed baseline, or an empty one while the baseline is still being bootstrapped.
+ *
+ * @returns {{ schema: string, views: Record<string, Record<string, Array<{ rule: string, word: string }>>> }}
+ *   the baseline document
+ */
+function readGuardBaseline() {
+  if (!fs.existsSync(GUARD_BASELINE_FILE)) {
+    return { schema: 'text-guard-baseline/1', views: {} };
+  }
+  return JSON.parse(fs.readFileSync(GUARD_BASELINE_FILE, 'utf8'));
+}
+
+/**
+ * Stores one view's entries in the baseline document and writes it back, views and locales in
+ * declaration order so the committed file has one stable shape.
+ *
+ * @param {{ schema: string, views: object }} baseline the baseline document to extend
+ * @param {string} view the declared view
+ * @param {string} locale the interface locale
+ * @param {Array<{ rule: string, word: string }>} violations the collected entries
+ */
+function writeGuardBaselineEntry(baseline, view, locale, violations) {
+  baseline.views[view] = { ...(baseline.views[view] ?? {}), [locale]: violations };
+  const ordered = { schema: baseline.schema, views: {} };
+  for (const name of DECLARED_VIEWS) {
+    const byLocale = baseline.views[name];
+    if (!byLocale) {
+      continue;
+    }
+    ordered.views[name] = {};
+    for (const active of GUARD_LOCALES) {
+      if (byLocale[active]) {
+        ordered.views[name][active] = byLocale[active];
+      }
+    }
+  }
+  fs.writeFileSync(GUARD_BASELINE_FILE, `${JSON.stringify(ordered, null, 2)}\n`);
+}
+
+/**
+ * Holds the views one journey collected against the committed baseline: a view that gained a
+ * violation fails with the view and the word, and an entry for a defect that is gone asks for
+ * the baseline to shrink. A view without an entry is written while the baseline is bootstrapped
+ * outside CI; CI never invents an entry.
+ *
+ * @param {Record<string, Array<{ rule: string, word: string }>>} collected the violations per view
+ * @param {string} locale the interface locale the views were read in
+ */
+function verifyGuardViews(collected, locale) {
+  const baseline = readGuardBaseline();
+  const failures = [];
+  for (const [view, violations] of Object.entries(collected)) {
+    const recorded = baseline.views?.[view]?.[locale];
+    if (!recorded) {
+      if (process.env.CI) {
+        failures.push(`${view} (${locale}) has no entry in ${path.basename(GUARD_BASELINE_FILE)}`);
+      } else {
+        writeGuardBaselineEntry(baseline, view, locale, violations);
+        console.log(`[text-guard] baseline entry written: ${view} (${locale})`);
+      }
+      continue;
+    }
+    const { added, removed } = diffViolations(recorded, violations);
+    for (const violation of added) {
+      failures.push(`${view} (${locale}) gained ${formatViolation(violation)}`);
+    }
+    for (const violation of removed) {
+      failures.push(
+        `${view} (${locale}) no longer shows ${formatViolation(violation)}; shrink the baseline`,
+      );
+    }
+  }
+  expect(
+    failures,
+    `The text guard baseline differs from the page.\n${failures.join('\n')}`,
+  ).toEqual([]);
+}
+
+/** Interface labels of the routes and radio buttons, in both interface languages. */
+const LABELS = {
+  overview: /Laufende Arbeit|Running work/i,
+  projects: /^Projekte$|^Projects$/i,
+  decisions: /^Entscheidungen$|^Decisions$/i,
+  reports: /^Berichte$|^Reports$/i,
+  designer: /Prozess-Designer|Process designer/i,
+  system: /^System$/,
+  settings: /Einstellungen der Maschine|Machine settings/i,
+  byEpic: /nach Epic|by epic/i,
+  review: /Review…|Sieh es dir an…/i,
+  startPlan: /Starte den Plan|Start the plan/i,
+  startEpic: /Starte das Epic|Start the epic/i,
+};
+
+/**
+ * Waits until the app has initialized its runtime, which follows the catalogue load, so the
+ * page is rendered in the locale the browser stored before the navigation.
+ *
+ * @param {import('@playwright/test').Page} page the page to wait for
+ */
+async function waitForApp(page) {
+  await page.waitForFunction(
+    async () => {
+      const { runtimeStore } = await import('/src/lib/stores/runtime.ts');
+      let initialized = false;
+      const unsubscribe = runtimeStore.subscribe((state) => {
+        initialized = state.isInitialized;
+      });
+      unsubscribe();
+      return initialized;
+    },
+    undefined,
+    { timeout: 20000 },
+  );
+}
+
+/**
+ * Stores the interface language before the next document load, so the app boots in it.
+ *
+ * @param {import('@playwright/test').Page} page the page of the running app
+ * @param {string} locale the interface locale
+ */
+async function storeLocale(page, locale) {
+  await page.evaluate((active) => localStorage.setItem('pm_locale', active), locale);
+}
+
+/**
+ * Switches the mock scenario, pairs, and reloads the shell in the requested language.
+ *
+ * @param {import('@playwright/test').Page} page the page of the running app
+ * @param {import('@playwright/test').APIRequestContext} request the request fixture
+ * @param {string} scenario the mock scenario
+ * @param {string} locale the interface locale
+ */
+async function pairInLocale(page, request, scenario, locale) {
+  await switchScenario(request, scenario);
+  await pair(page, request);
+  await storeLocale(page, locale);
+  await page.reload();
+  await waitForApp(page);
+}
+
+/**
+ * Opens a route of the paired app in the requested language.
+ *
+ * @param {import('@playwright/test').Page} page the page of the running app
+ * @param {string} locale the interface locale
+ * @param {string} route the path to open
+ */
+async function gotoInLocale(page, locale, route) {
+  await storeLocale(page, locale);
+  await page.goto(route);
+  await waitForApp(page);
+}
+
+/**
+ * Opens the overview of one project through the header, in either language.
+ *
+ * @param {import('@playwright/test').Page} page the page of the running app
+ * @param {string} projectId the project to select
+ */
+async function openProjectOverview(page, projectId) {
+  await page.locator('.app-header').getByRole('button', { name: LABELS.overview }).click();
+  await expect(page.locator('.overview')).toBeVisible();
+  await page
+    .locator('.project-list')
+    .getByRole('tab', { name: new RegExp(projectId, 'i') })
+    .click();
+  await expect(page.locator('.project-title')).toContainText(projectId);
+}
+
+/**
+ * One route through the app that ends at declared views, in the order the pages are shown.
+ *
+ * `open` prepares the app for the locale, `walk` reaches every view and hands each one to the
+ * recorder. Every declared view of `DECLARED_VIEWS` is reached exactly once per locale.
+ */
+const GUARD_JOURNEYS = [
+  {
+    title: 'overview and epic',
+    async open(page, request, locale) {
+      await pairInLocale(page, request, 'running-work', locale);
+    },
+    async walk(page, record) {
+      await page.locator('.app-header').getByRole('button', { name: LABELS.overview }).click();
+      await expect(page.locator('.overview')).toBeVisible();
+      await record('OverviewView');
+
+      await page.getByRole('radio', { name: LABELS.byEpic }).click({ force: true });
+      const epicCard = page.getByTestId('epic-card').first();
+      await expect(epicCard).toBeVisible();
+      await epicCard.click();
+      await expect(page.getByTestId('epic-view')).toBeVisible();
+      await record('EpicView');
+    },
+  },
+  {
+    title: 'plan',
+    async open(page, request, locale) {
+      await pairInLocale(page, request, 'plan-view', locale);
+    },
+    async walk(page, record) {
+      await page.locator('.app-header').getByRole('button', { name: LABELS.overview }).click();
+      await expect(page.locator('.overview')).toBeVisible();
+      await page.locator('[data-testid="plan-card"]').first().click();
+      await expect(page.getByTestId('plan-view')).toBeVisible();
+      await record('PlanView');
+    },
+  },
+  {
+    title: 'reports and completion report',
+    async open(page, request, locale) {
+      await pairInLocale(page, request, 'reports', locale);
+    },
+    async walk(page, record) {
+      await page.locator('.app-header').getByRole('button', { name: LABELS.reports }).click();
+      await expect(page.locator('.reports-view')).toBeVisible();
+      await record('ReportsView');
+
+      const card = page.locator('.report-card', { hasText: 'fix-relay' });
+      await expect(card).toBeVisible();
+      await card.locator('.action-btn--detail').click();
+      await expect(page.locator('.completion-report')).toBeVisible();
+      await record('CompletionReportView');
+    },
+  },
+  {
+    title: 'decisions',
+    async open(page, request, locale) {
+      await pairInLocale(page, request, 'decisions', locale);
+    },
+    async walk(page, record) {
+      await page.locator('.app-header').getByRole('button', { name: LABELS.decisions }).click();
+      await expect(page.locator('.decisions-view')).toBeVisible();
+      await record('DecisionView');
+    },
+  },
+  {
+    title: 'system and cleanup',
+    async open(page, request, locale) {
+      await pairInLocale(page, request, 'system', locale);
+    },
+    async walk(page, record) {
+      await page.locator('.app-header').getByRole('button', { name: LABELS.system }).click();
+      await expect(page.getByTestId('system-view')).toBeVisible();
+      await record('SystemView');
+
+      const review = page.getByRole('button', { name: LABELS.review });
+      await expect(review).toBeVisible();
+      await review.click();
+      await expect(page.getByTestId('cleanup-view')).toBeVisible();
+      await record('CleanupView');
+    },
+  },
+  {
+    title: 'settings, machine settings and designer',
+    async open(page, request, locale) {
+      await pairInLocale(page, request, 'designer', locale);
+    },
+    async walk(page, record) {
+      await page.locator('.app-header').getByRole('button', { name: LABELS.settings }).click();
+      await expect(page.getByTestId('settings-view')).toBeVisible();
+      await record('SettingsView');
+
+      await page.getByTestId('machine-settings-button').click();
+      await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+      await record('MachineSettingsView');
+
+      await page.getByTestId('open-designer-btn').click();
+      await expect(page.getByTestId('process-designer')).toBeVisible();
+      await record('ProcessDesigner');
+    },
+  },
+  {
+    title: 'project explorer and project onboarding',
+    async open(page, request, locale) {
+      await pairInLocale(page, request, 'projects', locale);
+      await gotoInLocale(page, locale, '/projects');
+    },
+    async walk(page, record) {
+      await expect(page.getByTestId('project-explorer-view')).toBeVisible();
+      await record('ProjectExplorerView');
+
+      const add = page.getByTestId('add-project-btn');
+      await expect(add).toBeVisible();
+      await add.click();
+      await expect(page).toHaveURL(/\/projects\/onboard$/);
+      await expect(page.getByTestId('project-onboarding-view')).toBeVisible();
+      await record('ProjectOnboardingView');
+    },
+  },
+  {
+    title: 'start and recipe ready',
+    async open(page, request, locale) {
+      await pairInLocale(page, request, 'start', locale);
+    },
+    async walk(page, record) {
+      await openProjectOverview(page, 'pm-mcp-clients');
+      await page.getByRole('button', { name: LABELS.startPlan }).click();
+      await expect(page.getByTestId('start-view')).toBeVisible();
+      await record('StartView');
+
+      await page.getByTestId('choose-recipe').click();
+      await page.getByTestId('recipe-choose-code-review').click();
+      await page.getByTestId('recipe-continue').click();
+      await expect(page.getByTestId('recipe-ready')).toBeVisible();
+      await record('RecipeReadyView');
+    },
+  },
+  {
+    title: 'decomposition review',
+    async open(page, request, locale) {
+      await pairInLocale(page, request, 'start', locale);
+    },
+    async walk(page, record) {
+      await openProjectOverview(page, 'pm-mcp-clients');
+      await page.getByRole('button', { name: LABELS.startEpic }).click();
+      await expect(page.getByTestId('start-view')).toBeVisible({ timeout: 15000 });
+      await expect(page.getByTestId('start-loading')).toHaveCount(0, { timeout: 15000 });
+      if (await page.getByTestId('choose-sources').isVisible()) {
+        await page.getByTestId('choose-sources').click();
+      } else if (await page.getByTestId('epic-adopt').isVisible()) {
+        await page.getByTestId('adopt-new').click();
+      }
+      await expect(page.getByTestId('source-list')).toBeVisible({ timeout: 15000 });
+      await addDescription(page, 'Relay hardening');
+      await continueAndStart(page);
+
+      const decompose = page.getByTestId('started-decompose');
+      await expect(decompose).toBeVisible();
+      await decompose.click();
+      await expect(page.getByTestId('decomposition-review')).toBeVisible();
+      await record('DecompositionReviewView');
+    },
+  },
+  {
+    title: 'epic adopt',
+    async open(page, request, locale) {
+      await pairInLocale(page, request, 'start-epic-adopt', locale);
+      await gotoInLocale(page, locale, '/entries/ent-7a2e4f01');
+    },
+    async walk(page, record) {
+      await expect(page.getByTestId('start-view')).toBeVisible();
+      await expect(page.getByTestId('epic-adopt')).toBeVisible();
+      await record('EpicAdoptView');
+    },
+  },
+  {
+    title: 'onboarding',
+    async open(page, request, locale) {
+      await switchScenario(request, 'onboarding');
+      await page.goto('/');
+      await page.evaluate(() => localStorage.clear());
+      await storeLocale(page, locale);
+      await page.goto('/pair#code=KXQB-MRTN');
+      await waitForApp(page);
+    },
+    async walk(page, record) {
+      await expect(page).toHaveURL(/\/onboarding$/);
+      await expect(page.getByTestId('onboarding-view')).toBeVisible();
+      await record('OnboardingView');
+    },
+  },
+  {
+    title: 'pairing',
+    async open(page, request, locale) {
+      await switchScenario(request, 'web-pairing');
+      await page.goto('/');
+      await page.evaluate(() => localStorage.clear());
+      await storeLocale(page, locale);
+      await page.goto('/pair');
+      await waitForApp(page);
+    },
+    async walk(page, record) {
+      await expect(page.getByTestId('pairing-view')).toBeVisible();
+      await record('PairingView');
+    },
+  },
+  {
+    title: 'revoked',
+    async open(page, request, locale) {
+      await pairInLocale(page, request, 'paired-devices', locale);
+    },
+    async walk(page, record) {
+      await page.locator('.app-header').getByRole('button', { name: LABELS.settings }).click();
+      await expect(page.locator('.settings-view')).toBeVisible();
+
+      const revoke = page.getByTestId('revoke-btn-dev-1');
+      await expect(revoke).toBeVisible();
+      await revoke.click();
+      await expect(page.getByTestId('revoke-modal')).toBeVisible();
+      await page.getByTestId('revoke-confirm-button').click();
+      await expect(page.getByTestId('revoked-view')).toBeVisible();
+      await record('RevokedView');
+    },
+  },
+  {
+    title: 'listener off',
+    async open(page, request, locale) {
+      await pairInLocale(page, request, 'paired-devices', locale);
+    },
+    async walk(page, record) {
+      await expect(async () => {
+        await page.evaluate(async () => {
+          const { runtimeStore } = await import('/src/lib/stores/runtime.ts');
+          runtimeStore.update((state) => ({
+            ...state,
+            isPaired: true,
+            isRevoked: false,
+            isListenerClosed: true,
+            currentRoute: 'listener-off',
+          }));
+        });
+        await expect(page.getByTestId('listener-off-view')).toBeVisible({ timeout: 1000 });
+      }).toPass({ timeout: 15000 });
+      await record('ListenerOffView');
+    },
+  },
+  {
+    title: 'epic decomposition',
+    async open(page, request, locale) {
+      await pairInLocale(page, request, 'decomposition', locale);
+      await gotoInLocale(page, locale, '/epics/relay-hardening/decomposition?project=pm-mcp-clients');
+    },
+    async walk(page, record) {
+      await expect(page.getByTestId('epic-decomposition')).toBeVisible();
+      await record('EpicDecompositionView');
+    },
+  },
+];
 
 async function auditView(page, testInfo, { view, theme, viewport }, options = {}) {
   auditedViews.add(view);
@@ -487,6 +930,30 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
       });
     }
   }
+
+  test.describe('Text Guard, report mode', () => {
+    for (const locale of GUARD_LOCALES) {
+      test.describe(`collected interface text in ${locale}`, () => {
+        for (const journey of GUARD_JOURNEYS) {
+          test(`${journey.title} (${locale})`, async ({ page, request }) => {
+            await page.setViewportSize({ width: 1440, height: 900 });
+            await journey.open(page, request, locale);
+            const collected = {};
+            await journey.walk(page, async (view) => {
+              const violations = normalizeViolations(
+                await collectTextGuardViolations(page, { locale }),
+              );
+              collected[view] = violations;
+              const listed =
+                violations.map((violation) => formatViolation(violation)).join(', ') || 'none';
+              console.log(`[text-guard] ${view} (${locale}): ${violations.length} - ${listed}`);
+            });
+            verifyGuardViews(collected, locale);
+          });
+        }
+      });
+    }
+  });
 
   test.describe('Declared View Coverage Guard', () => {
     test('all 22 declared views in src/lib/views/ are present and were audited', () => {
