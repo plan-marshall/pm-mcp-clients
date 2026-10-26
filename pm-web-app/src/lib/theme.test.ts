@@ -105,14 +105,48 @@ describe('the remembered theme', () => {
     expect(html.indexOf('dataset.theme')).toBeLessThan(html.indexOf('%sveltekit.head%'));
   });
 
+  it.each([
+    ['a stored light choice while the system asks for dark', 'light', true, 'light'],
+    ['a stored dark choice while the system asks for light', 'dark', false, 'dark'],
+    ['the system choice following a dark system', 'system', true, 'dark'],
+    ['the system choice following a light system', 'system', false, 'light'],
+  ])(
+    'sets the theme before the first paint for %s',
+    (_name, stored: string, prefersDark: boolean, expected: string) => {
+      // The script is executed, not merely matched: a script that is present but never runs would
+      // leave the attribute unset and the first paint in the wrong theme.
+      const html = readFileSync(path.resolve(__dirname, '../app.html'), 'utf-8');
+      const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
+      expect(script).toBeTruthy();
+      localStorage.setItem(THEME_STORAGE_KEY, stored);
+      vi.stubGlobal('matchMedia', () => ({
+        matches: prefersDark,
+        media: '(prefers-color-scheme: dark)',
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }));
+      document.documentElement.removeAttribute('data-theme');
+
+      new Function(script as string)();
+
+      expect(document.documentElement.getAttribute('data-theme')).toBe(expected);
+    },
+  );
+
   it('follows the machine while the system choice is in force', () => {
     let listener: (() => void) | null = null;
+    let registeredFor: string | null = null;
     const removeEventListener = vi.fn();
     vi.stubGlobal('matchMedia', () => ({
       matches: false,
       media: '(prefers-color-scheme: dark)',
       onchange: null,
-      addEventListener: (_type: string, handler: () => void) => {
+      addEventListener: (type: string, handler: () => void) => {
+        registeredFor = type;
         listener = handler;
       },
       removeEventListener,
@@ -123,6 +157,9 @@ describe('the remembered theme', () => {
     const onChange = vi.fn();
 
     const stopWatching = watchSystemTheme(onChange);
+    // The browser only reports a preference change on `change`; a listener on any other event
+    // would never fire, so the registration itself is part of what the test proves.
+    expect(registeredFor).toBe('change');
     expect(listener).not.toBeNull();
     (listener as unknown as () => void)();
     expect(onChange).toHaveBeenCalledTimes(1);

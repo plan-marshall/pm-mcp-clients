@@ -90,14 +90,17 @@ test.describe('Web chrome, navigation and action advisories', () => {
   });
 
   test('keeps the chosen theme across a full load', async ({ page }) => {
-    // The choice is this browser's, not the operating system's: a full load must restore it, in
-    // both directions, so a light choice on a dark machine is not undone either.
+    // The choice is this browser's, not the operating system's. The system preference is set
+    // against the choice in each direction, so a start-up that follows the machine instead of the
+    // stored choice fails here instead of passing by accident.
+    await page.emulateMedia({ colorScheme: 'light' });
     await page.getByTestId('theme-dark').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
 
+    await page.emulateMedia({ colorScheme: 'dark' });
     await page.getByTestId('theme-light').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 

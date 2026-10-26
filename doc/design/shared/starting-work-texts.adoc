@@ -30,6 +30,10 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |Start an epic in {project}
 |Ein Epic in {project} starten
 
+|`start.epic.title.loading`
+|Start an epic
+|Ein Epic starten
+
 |`start.gate.machine`
 |This machine is not fully onboarded: {need}.
 |Diese Maschine ist noch nicht vollständig eingerichtet: {need}.

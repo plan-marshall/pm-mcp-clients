@@ -21,6 +21,9 @@ const SELECTED: TitleState = {
   selectedOnboardingId: 'pm-mcp-clients',
 };
 
+/** The same store while an epic's start is open. */
+const EPIC_START: TitleState = { ...SELECTED, startKind: 'epic' };
+
 for (const locale of ['en', 'de'] as const) {
   const catalogue = loadMessages(locale);
 
@@ -35,6 +38,14 @@ for (const locale of ['en', 'de'] as const) {
 
     it.each(ROUTES)('renders %s with its argument', (route) => {
       const { key, args } = ROUTE_TITLES[route](SELECTED);
+      const title = formatString(catalogue[key] ?? '', args);
+
+      expect(title, `route ${route} names no catalogue text`).not.toBe('');
+      expect(title).not.toContain('{');
+    });
+
+    it.each(ROUTES)('renders %s with an epic start open', (route) => {
+      const { key, args } = ROUTE_TITLES[route](EPIC_START);
       const title = formatString(catalogue[key] ?? '', args);
 
       expect(title, `route ${route} names no catalogue text`).not.toBe('');
@@ -71,6 +82,20 @@ describe('the names a route title carries', () => {
     expect(ROUTE_TITLES['project-onboarding'](SELECTED)).toEqual({
       key: 'project.onboarding.title',
       args: { project: 'pm-mcp-clients' },
+    });
+  });
+
+  it('says whether the start is a plan or an epic', () => {
+    expect(ROUTE_TITLES.start(EPIC_START)).toEqual({
+      key: 'start.epic.title',
+      args: { project: 'pm-mcp-clients' },
+    });
+    expect(ROUTE_TITLES.entry(EPIC_START)).toEqual({
+      key: 'start.epic.title',
+      args: { project: 'pm-mcp-clients' },
+    });
+    expect(ROUTE_TITLES.start({ startKind: 'epic' })).toEqual({
+      key: 'start.epic.title.loading',
     });
   });
 

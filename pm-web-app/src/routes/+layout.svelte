@@ -652,6 +652,11 @@
   }
 
   @media (max-width: 640px) {
+    /* A touch target stays 44 px on the phone, as every header control does. */
+    .theme-choice__option {
+      min-height: 2.75rem;
+    }
+
     .header-action-btn__text {
       display: none;
     }

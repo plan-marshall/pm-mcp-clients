@@ -69,6 +69,8 @@ export interface TitleState {
   selectedEpicId?: string | null;
   /** The project a start begins in. */
   startProjectId?: string | null;
+  /** Whether the open start is a plan's or an epic's. */
+  startKind?: 'plan' | 'epic' | null;
   /** The project whose onboarding the project-onboarding route shows. */
   selectedOnboardingId?: string | null;
 }
@@ -106,11 +108,20 @@ function namedTitle(
 /**
  * The tab title of the start routes, which name the project a start begins in.
  *
+ * A start is a plan's or an epic's, and the title says which: the start view itself uses the same
+ * two keys, so the tab and the page heading never disagree.
+ *
  * @param state the store's names
  * @returns the key and its arguments
  */
 function startTitle(state: TitleState): RouteTitle {
-  return namedTitle('start.plan.title', 'start.plan.title.loading', 'project', state.startProjectId);
+  const epic = state.startKind === 'epic';
+  return namedTitle(
+    epic ? 'start.epic.title' : 'start.plan.title',
+    epic ? 'start.epic.title.loading' : 'start.plan.title.loading',
+    'project',
+    state.startProjectId,
+  );
 }
 
 /**

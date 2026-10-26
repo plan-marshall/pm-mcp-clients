@@ -7,17 +7,17 @@
  * choice, no readable storage, or a stored value that names no theme gets.
  */
 
+/** The choices, in the order the control shows them: the one source of the union below. */
+export const THEME_CHOICES = ['light', 'dark', 'system'] as const;
+
 /** The three choices the theme control offers. */
-export type ThemeChoice = 'light' | 'dark' | 'system';
+export type ThemeChoice = (typeof THEME_CHOICES)[number];
 
 /** The theme the document actually shows. */
 export type ResolvedTheme = 'light' | 'dark';
 
 /** The storage key of the chosen theme. */
 export const THEME_STORAGE_KEY = 'pm_theme';
-
-/** The choices, in the order the control shows them. */
-export const THEME_CHOICES: readonly ThemeChoice[] = ['light', 'dark', 'system'];
 
 /** The media query the `system` choice follows. */
 const DARK_MEDIA_QUERY = '(prefers-color-scheme: dark)';
@@ -39,7 +39,7 @@ function themeStorage(): Storage | null {
  * @returns whether it names one of the three choices
  */
 export function isThemeChoice(value: unknown): value is ThemeChoice {
-  return value === 'light' || value === 'dark' || value === 'system';
+  return THEME_CHOICES.some((choice) => choice === value);
 }
 
 /**
