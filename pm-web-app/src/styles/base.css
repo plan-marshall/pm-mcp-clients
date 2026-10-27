@@ -123,16 +123,13 @@ kbd {
 }
 
 /*
- * Honour the person's reduced-motion setting. The token durations already fall to 0 ms; this
- * shortens a component's own animation or transition as well.
+ * Honour the person's reduced-motion setting. The motion tokens fall to 0 ms in `tokens.css`, so
+ * everything that takes its duration from them stops; this keeps the page from smooth-scrolling as
+ * well. A component that still hard-codes its own duration is migrated to the motion tokens in
+ * VD-S-06.
  */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+  html {
+    scroll-behavior: auto;
   }
 }

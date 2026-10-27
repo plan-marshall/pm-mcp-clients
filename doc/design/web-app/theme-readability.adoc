@@ -89,7 +89,7 @@ Each size carries its line height as `--line-height-xs` to `--line-height-3xl`; 
 * *Spacing*: `--space-1` to `--space-16` on the 4 px scale of VD-P-04, including the new 48 px (`--space-12`) and 64 px (`--space-16`).
 * *Radius*: `--radius-sm` 6 px, `--radius-md` 8 px, `--radius-lg` 12 px, `--radius-full`.
 * *Elevation*: `--shadow-1` (cards in light), `--shadow-2` (popovers), `--shadow-overlay` (dialogs). In dark, elevation is the surface step and the shadows stay faint; each of the three is declared per theme.
-* *Motion*: `--duration-fast` 120 ms, `--duration-base` 200 ms and `--ease-standard` `cubic-bezier(0.2, 0, 0, 1)`; `prefers-reduced-motion: reduce` sets both durations to `0ms`, and `base.css` shortens a component's own animation as well.
+* *Motion*: `--duration-fast` 120 ms, `--duration-base` 200 ms and `--ease-standard` `cubic-bezier(0.2, 0, 0, 1)`; `prefers-reduced-motion: reduce` sets both durations to `0ms`, so everything that takes its duration from a token stops, and `base.css` turns off smooth scrolling. A component that still hard-codes a duration is migrated to the motion tokens in VD-S-06.
 * *Breakpoints*: `--breakpoint-tablet` 768 px and `--breakpoint-desktop` 1280 px name the three widths of the proposal: phone below 768 px, tablet 768–1279 px, desktop from 1280 px.
 
 === Old Token Names as Aliases
