@@ -1,0 +1,733 @@
+{
+  "schema": "text-guard-baseline/1",
+  "views": {
+    "OverviewView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "foreign-word",
+          "word": "ago"
+        },
+        {
+          "rule": "foreign-word",
+          "word": "failed"
+        },
+        {
+          "rule": "foreign-word",
+          "word": "running"
+        },
+        {
+          "rule": "state-id",
+          "word": "remediation.ci-failure"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "state-id",
+          "word": "remediation.ci-failure"
+        }
+      ]
+    },
+    "PlanView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "▶"
+        },
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "⚠"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "foreign-word",
+          "word": "done"
+        },
+        {
+          "rule": "foreign-word",
+          "word": "failed"
+        },
+        {
+          "rule": "foreign-word",
+          "word": "running"
+        },
+        {
+          "rule": "iso-time",
+          "word": "<iso-time>"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "assistant_text"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "file_changed"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "sub_workflow"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "tool_call"
+        },
+        {
+          "rule": "state-id",
+          "word": "execute.envelope"
+        },
+        {
+          "rule": "state-id",
+          "word": "remediation.ci-failure"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "▶"
+        },
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "⚠"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "iso-time",
+          "word": "<iso-time>"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "assistant_text"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "file_changed"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "sub_workflow"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "tool_call"
+        },
+        {
+          "rule": "state-id",
+          "word": "execute.envelope"
+        },
+        {
+          "rule": "state-id",
+          "word": "remediation.ci-failure"
+        }
+      ]
+    },
+    "EpicView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⏸"
+        },
+        {
+          "rule": "emoji",
+          "word": "▶"
+        },
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "foreign-word",
+          "word": "paused"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⏸"
+        },
+        {
+          "rule": "emoji",
+          "word": "▶"
+        },
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ]
+    },
+    "ReportsView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "▪"
+        },
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "iso-time",
+          "word": "<iso-time>"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "▪"
+        },
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "iso-time",
+          "word": "<iso-time>"
+        }
+      ]
+    },
+    "CompletionReportView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "foreign-word",
+          "word": "done"
+        },
+        {
+          "rule": "iso-time",
+          "word": "<iso-time>"
+        },
+        {
+          "rule": "state-id",
+          "word": "github.com"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "iso-time",
+          "word": "<iso-time>"
+        },
+        {
+          "rule": "state-id",
+          "word": "github.com"
+        }
+      ]
+    },
+    "DecisionView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "iso-time",
+          "word": "<iso-time>"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "ci_check"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "iso-time",
+          "word": "<iso-time>"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "ci_check"
+        }
+      ]
+    },
+    "SystemView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "emoji",
+          "word": "🧹"
+        },
+        {
+          "rule": "foreign-word",
+          "word": "busy"
+        },
+        {
+          "rule": "foreign-word",
+          "word": "idle"
+        },
+        {
+          "rule": "foreign-word",
+          "word": "paused"
+        },
+        {
+          "rule": "foreign-word",
+          "word": "running"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "for_you"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "emoji",
+          "word": "🧹"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "for_you"
+        }
+      ]
+    },
+    "CleanupView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ]
+    },
+    "SettingsView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ]
+    },
+    "MachineSettingsView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "iso-time",
+          "word": "<iso-time>"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "iso-time",
+          "word": "<iso-time>"
+        }
+      ]
+    },
+    "ProcessDesigner": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "commit_and_push"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "depends_on_config"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "in_worktree"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "message_mode"
+        },
+        {
+          "rule": "state-id",
+          "word": "git.stage-and-commit"
+        },
+        {
+          "rule": "state-id",
+          "word": "landing.pull-request"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "commit_and_push"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "depends_on_config"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "in_worktree"
+        },
+        {
+          "rule": "raw-enum",
+          "word": "message_mode"
+        },
+        {
+          "rule": "state-id",
+          "word": "git.stage-and-commit"
+        },
+        {
+          "rule": "state-id",
+          "word": "landing.pull-request"
+        }
+      ]
+    },
+    "ProjectExplorerView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "state-id",
+          "word": "de.cuioss"
+        },
+        {
+          "rule": "state-id",
+          "word": "github.com"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        },
+        {
+          "rule": "state-id",
+          "word": "de.cuioss"
+        },
+        {
+          "rule": "state-id",
+          "word": "github.com"
+        }
+      ]
+    },
+    "StartView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ]
+    },
+    "OnboardingView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ]
+    },
+    "ProjectOnboardingView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ]
+    },
+    "PairingView": {
+      "de": [],
+      "en": []
+    },
+    "RevokedView": {
+      "de": [],
+      "en": []
+    },
+    "ListenerOffView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ]
+    },
+    "EpicDecompositionView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ]
+    },
+    "DecompositionReviewView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ]
+    },
+    "EpicAdoptView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ]
+    },
+    "RecipeReadyView": {
+      "de": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ],
+      "en": [
+        {
+          "rule": "emoji",
+          "word": "⚙"
+        },
+        {
+          "rule": "emoji",
+          "word": "🖥"
+        }
+      ]
+    }
+  }
+}
