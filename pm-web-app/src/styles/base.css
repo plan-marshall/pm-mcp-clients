@@ -13,8 +13,9 @@ html,
 body {
   height: 100%;
   font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 1.5;
+  font-size: var(--text-base);
+  line-height: var(--line-height-base);
+  font-feature-settings: var(--font-feature-settings);
   color: var(--color-text-primary);
   background-color: var(--color-bg-app);
   -webkit-font-smoothing: antialiased;
@@ -27,13 +28,13 @@ body {
 }
 
 a {
-  color: var(--color-primary);
+  color: var(--color-brand);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 a:hover {
-  color: var(--color-primary-hover);
+  color: var(--color-brand-hover);
 }
 
 button,
@@ -101,4 +102,19 @@ kbd {
   white-space: nowrap;
   width: 1px;
   height: 1px;
+}
+
+/*
+ * Honour the person's reduced-motion setting. The token durations already fall to 0 ms; this
+ * shortens a component's own animation or transition as well.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
