@@ -391,24 +391,24 @@ class PmOperatorTest {
         @DisplayName("web pair prints URL returned by runtime on ephemeral port rather than default 7420")
         void pairPrintsUrlReturnedByRuntimeOnEphemeralPort() throws Exception {
             try (var mock = MockRuntime.start(MockRuntimeConfig.builder()
-                    .scenario(StandardScenarios.FULLY_ONBOARDED)
-                    .webPort(0)
-                    .build())) {
+                                     .scenario(StandardScenarios.FULLY_ONBOARDED)
+                                     .webPort(0)
+                                     .build())) {
                 var self = ProcessHandle.current();
                 Files.writeString(mock.paths().runtimeRecord(),
-                        "{\"pid\":" + self.pid() + ",\"start_instant\":\"" + self.info().startInstant().orElseThrow() + "\"}",
-                        StandardCharsets.UTF_8);
+                                    "{\"pid\":" + self.pid() + ",\"start_instant\":\"" + self.info().startInstant().orElseThrow() + "\"}",
+                                    StandardCharsets.UTF_8);
 
                 var outWriter = new StringWriter();
                 var errWriter = new StringWriter();
                 var env = Map.of(MachinePaths.ENV_BASE, mock.base().toString());
                 var context = new OperatorContext(
-                        env,
-                        mock.base().getParent(),
-                        true,
-                        ClientEnvironment.capture(env),
-                        () -> null,
-                        null
+                                    env,
+                                    mock.base().getParent(),
+                                    true,
+                                    ClientEnvironment.capture(env),
+                                    () -> null,
+                                    null
                 );
 
                 int exitCode = PmOperator.execute(context, new PrintWriter(outWriter), new PrintWriter(errWriter), "web", "pair");
@@ -418,9 +418,9 @@ class PmOperatorTest {
                 assertNotEquals(7420, livePort);
                 String output = outWriter.toString();
                 assertTrue(output.contains("http://127.0.0.1:" + livePort + "/pair#code="),
-                        "Output must contain live port " + livePort + ", but was:\n" + output);
+                                    "Output must contain live port " + livePort + ", but was:\n" + output);
                 assertFalse(output.contains("7420"),
-                        "Output must not contain default port 7420, but was:\n" + output);
+                                    "Output must not contain default port 7420, but was:\n" + output);
             }
         }
 
