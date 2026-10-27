@@ -111,6 +111,82 @@ A word not in the glossary is translated. A new domain word is added here before
 * *Build checks*: a pack that lacks a key of the English pack fails the build, as does a key that exists in a pack but not in English, an argument that differs from the English one, and a glossary term translated in a German text (checked against the glossary above).
 * *Delivery*: the command-line binaries carry the packs as resources of `pm-api`; the runtime serves `GET /api/v1/messages/{locale}/{area}` with an entity tag, so a browser keeps a loaded pack until the release changes it, and `GET /api/v1/messages` with the locales that have a pack and their areas; both without a device secret, so the pairing page has its texts. The pack shown is that of the machine's interface language; the locale the client sends counts only while none is set.
 
+[#titles]
+== Titles and Ids
+
+A value is named by its title; the id is what the operator types, not what the operator reads.
+
+* *The title first.* A plan, an epic, a project, a task, a step, and a workflow unit are named by their title in every view of both clients: a list, a detail, a report, a completion message, a prompt.
+* *The id beside it.* The id follows the title, dim in the terminal and as a chip in the web app (`Fix Relay Transport  fix-relay`), and only where the operator types it or matches on it: a search, a filter, a command line, the detail an action is taken from. A view that never needs the id shows none, and no view shows the id to fill space.
+* *Never the id alone.* A value without a title is a defect of the data, never a reason to fall back to the id. A step id or a link name with no catalogue text is a build failure, not a fallback.
+* *Ended work.* Ended work follows the rule as running work does, with the same words for the same state.
+* *A unit id.* A workflow unit id renders the plain name of its catalogue key (`landing.pull-request` reads "Pull request"), with the id as a chip beside it where the operator needs it.
+
+[#time]
+== Time and Duration
+
+Every instant and every duration is shown in one format, defined here and nowhere else, as <<numbers>> defines counts of tokens. The runtime sends the exact value — the instant, the span in milliseconds — and a client only formats it: the terminal client through `Display.time` and `Display.duration` of `pm-api`, the web app through its display layer, which produces the same strings. One rule, one implementation per client, and no second way of writing a time in either.
+
+[cols="2,2,2",options="header"]
+|===
+|Kind |English |German
+
+|Duration under 1 h
+|`25 min`
+|`25 min`
+
+|Duration under 2 d
+|`2 h 10 min`
+|`2 h 10 min`
+
+|Duration of 2 d or more
+|`9 d 1 h`
+|`9 T 1 h`
+
+|Moment today
+|`today 14:02`, `since 14:02`
+|`heute 14:02`, `seit 14:02`
+
+|Moment yesterday
+|`yesterday 18:40`
+|`gestern 18:40`
+
+|Moment within 7 days
+|`Mon 18:40`
+|`Mo 18:40`
+
+|Moment before
+|`12 Sep`
+|`12. Sep.`
+
+|Age in a list
+|`9 d ago`
+|`vor 9 T`
+|===
+
+* *No ISO string, ever.* No ISO-8601 instant (`2026-10-27T16:18:35Z`), date, or duration (`PT2H10M`) reaches a text, a title, a chip, a hover, or an error message. An ISO string is a transport value: it is read from the server, formatted once, and never shown.
+* *One clock.* The age of a plan comes from its start and the age in its phase from the phase start; both views show the same two values, and neither derives one from the other.
+* *Words are texts, figures are data.* The words that frame a figure — _today_, _since_, _yesterday_, _ago_ — are catalogue texts, so both clients say the same word; the unit marks (`s`, `min`, `h`, and `d`, `T` for the day in German) are fixed in the packs as `k`, `M`, `Tsd.`, and `Mio.` are (<<numbers>>). The weekday, the month, and the figure itself come from the language's own date and number data, never from a table written by hand.
+* *Three styles, one rule.* The web app renders a moment in three styles — `relative`, `short`, and `clock`. They are renderings of this rule, not a second format: each takes its words and its figures from it, and no view writes a moment in two of them at once.
+
+[cols="1,2,2",options="header"]
+|===
+|Style |Renders |Where
+
+|`relative`
+|the distance to now in the unit that distance has — the row _Age in a list_ and the _since_ form of _Moment today_
+|a list, with the `short` rendering as its hover advisory
+
+|`short`
+|the moment itself to the minute — the rows _Moment today_, _Moment yesterday_, _Moment within 7 days_, and _Moment before_, and the time beside the day where a detail shows one (`16 Oct, 11:25`, `16. Okt., 11:25`)
+|a detail, and the hover advisory of a list
+
+|`clock`
+|the moment itself to the second
+|the activity stream, with the date on the first row of each day
+|===
+
+A duration has one rendering in both clients — `Display.duration` in `pm-api`, `formatDuration` in the web app — and the three duration rows above are its only outputs.
 
 [#numbers]
 == Numbers: Tokens
