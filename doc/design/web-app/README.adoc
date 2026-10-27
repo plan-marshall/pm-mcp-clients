@@ -36,6 +36,18 @@ Everything else the web app shows is designed once for both clients in the share
 * *Web and terminal say the same.* Both render the same state with the same texts from the same catalogue (link:../shared/texts-and-languages.adoc[Texts and Languages]); a link is a button in the web app and a key or a numbered choice in the terminal. Where the web app shows a table, the terminal shows a list, with the same columns as fields.
 * *First run and later change look alike.* A later run of one aspect opens the same screen with the current values filled in and the step bar showing only that aspect.
 
+[#operator-decisions]
+== Decisions of the Operator
+
+The operator of the visual redesign decided on 2026-10-25:
+
+* *Inter, self-hosted.* The interface typeface is Inter, delivered as a variable `woff2` file in `pm-web-app/static/fonts/` with its SIL Open Font License file; the app never fetches a font from a font service (link:theme-readability.adoc[Theme Readability]).
+* *The project's own UI icon set.* The interface icons are the project's own set on link:workflow-visual-language.adoc[Workflow Visual Language]; no open icon library enters the build.
+* *axe-core in `pm-web-e2e`.* The automated accessibility audit of the built app runs with axe-core in the end-to-end suite.
+* *stylelint in `pm-web-app`.* The token rules — no raw colour literal and no old token name in a view or a component — are enforced with stylelint in the Maven build.
+
+Each decision is carried out by the step of the visual redesign that needs it; this section records the decision itself, not the state of its implementation.
+
 [#structure]
 == Structure and Navigation
 
