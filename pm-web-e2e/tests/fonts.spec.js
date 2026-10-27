@@ -44,8 +44,11 @@ test.describe('Self-hosted Inter (VD-P-03)', () => {
     const paths = fontRequests.map((url) => new URL(url).pathname);
     expect(paths).toContain('/fonts/InterVariable.woff2');
 
-    const family = await page.evaluate(() => getComputedStyle(document.body).fontFamily);
-    expect(family.startsWith('Inter')).toBe(true);
+    await expect
+      .poll(() =>
+        page.evaluate(() => getComputedStyle(document.body).fontFamily.startsWith('Inter')),
+      )
+      .toBe(true);
 
     await expect.poll(() => page.evaluate(() => document.fonts.check('14px Inter'))).toBe(true);
   });
