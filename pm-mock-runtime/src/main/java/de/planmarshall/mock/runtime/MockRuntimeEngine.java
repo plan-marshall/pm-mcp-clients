@@ -207,6 +207,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_MESSAGE = "message";
     private static final String KEY_STATE = "state";
     private static final String KEY_SCENARIO = "scenario";
+
+    /** The cleanup item kinds the delete counts report separately. */
+    private static final String CLEANUP_KIND_PLAN = "plan";
+    private static final String CLEANUP_KIND_EPIC = "epic";
     private static final String KEY_STATUS = "status";
     private static final String KEY_LOOPBACK = "loopback";
     private static final String KEY_DEVICE_ID = "device_id";
@@ -1059,10 +1063,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /**
      * Jumps directly to a state within the current scenario.
      * <p>
-     * The jump is a re-seed, not only a move: every domain store is wiped and re-seeded from the
-     * state's runtime fixture, so operator-made state does not survive it. A caller that means
-     * "move to the next state and keep what the operator did" uses
-     * {@link #transitionTo(String)} instead.
+     * The jump is a re-seed, not only a move: the domain stores — plans, epics, holdings, settings,
+     * chats, reviews, decisions, reports, projects, start entries, the system lifecycle with its
+     * cleanup job, and the paired devices — are wiped and re-seeded from the state's runtime
+     * fixture, so operator-made state does not survive it.
      *
      * @param stateId the state identifier
      * @throws IllegalArgumentException if the state does not exist in the current scenario
@@ -7339,20 +7343,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         boolean hasOpenJob;
+        CleanupSummary cleanupSummary;
         synchronized (systemLock) {
             hasOpenJob = activeCleanupJob != null && activeCleanupJob.isOpen();
+            cleanupSummary = hasOpenJob
+                    ? activeCleanupJob.summary()
+                    : new CleanupSummary(0, 0, 0, 0, 0, 0L, keptItems.size(), "today 03:00", "tomorrow 03:00");
         }
-        var cleanupSummary = new CleanupSummary(
-                hasOpenJob ? 12 : 0,
-                hasOpenJob ? 2 : 0,
-                hasOpenJob ? 40 : 0,
-                hasOpenJob ? 5 : 0,
-                hasOpenJob ? 1 : 0,
-                hasOpenJob ? 1997956704L : 0L,
-                keptItems.size(),
-                "today 03:00",
-                "tomorrow 03:00"
-        );
 
         var snapshot = new SystemSnapshot(runtimeMetrics, workMetrics, workers, jobs, models, cleanupSummary, window, projectFilter);
         response.json(200, snapshot.toMap());
@@ -7590,27 +7587,46 @@ public final class MockRuntimeEngine implements AutoCloseable {
             );
 
             var decided = activeCleanupJob.summary();
+            var freedBytes = decided.freedBytes();
+            var deletedPlans = decided.plansCount();
+            var deletedEpics = decided.epicsCount();
+            var deletedLogs = decided.logsCount();
+            for (var projectItem : activeCleanupJob.projectItems()) {
+                for (var entry : projectItem.items()) {
+                    if (!unchecked.contains(entry.id())) {
+                        continue;
+                    }
+                    freedBytes -= entry.sizeBytes();
+                    deletedLogs -= entry.logsCount();
+                    if (CLEANUP_KIND_PLAN.equals(entry.kind())) {
+                        deletedPlans--;
+                    } else if (CLEANUP_KIND_EPIC.equals(entry.kind())) {
+                        deletedEpics--;
+                    }
+                }
+            }
+
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
                     CONST_DECISION, "delete",
                     "by", "operator",
                     "channel", isWeb ? "web" : "cli",
                     "device", isWeb ? "iPad" : KEY_TERMINAL,
-                    "freed_bytes", decided.freedBytes()
+                    "freed_bytes", freedBytes
             ));
             broadcastEvent("cleanup.done", Map.of(
                     "job_id", jobId,
-                    "freed_bytes", decided.freedBytes(),
-                    "deleted_plans", decided.plansCount(),
-                    "deleted_epics", decided.epicsCount(),
-                    "deleted_logs", decided.logsCount()
+                    "freed_bytes", freedBytes,
+                    "deleted_plans", deletedPlans,
+                    "deleted_epics", deletedEpics,
+                    "deleted_logs", deletedLogs
             ));
 
             response.json(200, Map.of(
                     KEY_STATUS, "deleted",
                     "job_id", jobId,
                     CONST_DECISION, "delete",
-                    "freed_bytes", decided.freedBytes(),
+                    "freed_bytes", freedBytes,
                     "kept_count", keptItems.size()
             ));
         }

@@ -21,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
 
 
@@ -85,6 +86,29 @@ class FixtureConsistencyTest {
                         body(engine, "POST", "/api/v1/system/cleanup/cln-0012/delete")));
                 assertNotNull(deleted);
                 assertEquals(JsonTree.number(summary, "freed_bytes").longValue(),
+                        JsonTree.number(deleted, "freed_bytes").longValue(), "freed_bytes");
+            }
+        }
+
+        @Test
+        @DisplayName("the delete response leaves out an unchecked item's size and counts")
+        void deleteResponseLeavesOutTheUncheckedItem() throws Exception {
+            try (var engine = engine(StandardScenarios.REPORTS_AND_SYSTEM)) {
+                var job = get(engine, "/api/v1/system/cleanup");
+                var summary = JsonTree.object(job, "summary");
+                assertNotNull(summary);
+                var exclusion = itemsOf(job).stream()
+                        .filter(entry -> "token-usage".equals(JsonTree.string(entry, "id")))
+                        .findFirst();
+                assertTrue(exclusion.isPresent(), "the fixture knows no token-usage item");
+                var entry = exclusion.get();
+                var body = JsonTree.write(Map.of("unchecked_ids", List.of("token-usage")))
+                        .getBytes(StandardCharsets.UTF_8);
+                var deleted = JsonTree.asObject(JsonTree.parse(
+                        body(engine, "POST", "/api/v1/system/cleanup/cln-0012/delete", body)));
+                assertNotNull(deleted);
+                assertEquals(JsonTree.number(summary, "freed_bytes").longValue()
+                                - JsonTree.number(entry, "size_bytes").longValue(),
                         JsonTree.number(deleted, "freed_bytes").longValue(), "freed_bytes");
             }
         }
@@ -186,19 +210,16 @@ class FixtureConsistencyTest {
                 var roles = aspect(settings, "roles");
                 assertNotNull(roles);
                 var expected = leadingNumber(JsonTree.string(roles, "summary"));
-                for (var stateId : List.of("roles.validate", "onboard.summary")) {
+                var named = 0;
+                for (var stateId : new TreeSet<>(engine.currentScenario().states().keySet())) {
                     engine.goToState(stateId);
-                    var raw = body(engine, "/api/v1/onboarding/state");
-                    var matcher = ROLES.matcher(raw);
-                    var found = new ArrayList<String>();
+                    var matcher = ROLES.matcher(body(engine, "/api/v1/onboarding/state"));
                     while (matcher.find()) {
-                        found.add(matcher.group(1));
-                    }
-                    assertFalse(found.isEmpty(), stateId + " names no role count");
-                    for (var count : found) {
-                        assertEquals(expected, count, stateId + " names a role count of its own");
+                        named++;
+                        assertEquals(expected, matcher.group(1), stateId + " names a role count of its own");
                     }
                 }
+                assertTrue(named > 0, "no onboarding state names a role count at all");
             }
         }
     }
@@ -330,7 +351,12 @@ class FixtureConsistencyTest {
     }
 
     private static String body(MockRuntimeEngine engine, String method, String path) throws IOException {
-        var request = new MockHttpRequest(method, path, Map.of("Authorization", AUTH), new byte[0],
+        return body(engine, method, path, new byte[0]);
+    }
+
+    private static String body(MockRuntimeEngine engine, String method, String path, byte[] payload)
+            throws IOException {
+        var request = new MockHttpRequest(method, path, Map.of("Authorization", AUTH), payload,
                 System.nanoTime());
         var out = new ByteArrayOutputStream();
         engine.dispatch(request, new MockHttpResponse(out), false);
@@ -338,5 +364,29 @@ class FixtureConsistencyTest {
         var split = raw.indexOf("\r\n\r\n");
         assertTrue(split >= 0, "no response body for " + path);
         return raw.substring(split + 4);
+    }
+
+    private static List<Map<String, Object>> itemsOf(Map<String, Object> job) {
+        var projectItems = JsonTree.asArray(job.get("project_items"));
+        assertNotNull(projectItems);
+        var out = new ArrayList<Map<String, Object>>();
+        for (var element : projectItems) {
+            var item = JsonTree.asObject(element);
+            assertNotNull(item);
+            out.addAll(items(item));
+        }
+        return out;
+    }
+
+    private static List<Map<String, Object>> items(Map<String, Object> projectItem) {
+        var list = JsonTree.asArray(projectItem.get("items"));
+        assertNotNull(list);
+        var out = new ArrayList<Map<String, Object>>();
+        for (var element : list) {
+            var item = JsonTree.asObject(element);
+            assertNotNull(item);
+            out.add(item);
+        }
+        return out;
     }
 }
