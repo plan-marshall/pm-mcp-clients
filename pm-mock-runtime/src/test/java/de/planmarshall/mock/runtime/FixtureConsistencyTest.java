@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
-import java.util.regex.Pattern;
 
 
 import org.junit.jupiter.api.DisplayName;
@@ -46,8 +45,8 @@ class FixtureConsistencyTest {
 
     private static final String AUTH = "Bearer test-token";
 
-    /** A number followed by "roles", the shape every onboarding summary uses. */
-    private static final Pattern ROLES = Pattern.compile("(\\d+) roles");
+    /** The suffix every onboarding summary follows when it names a role count. */
+    private static final String ROLE_COUNT_SUFFIX = " roles";
 
     @Nested
     @DisplayName("The cleanup summary and its details")
@@ -212,10 +211,20 @@ class FixtureConsistencyTest {
                 var named = 0;
                 for (var stateId : new TreeSet<>(engine.currentScenario().states().keySet())) {
                     engine.goToState(stateId);
-                    var matcher = ROLES.matcher(body(engine, "/api/v1/onboarding/state"));
-                    while (matcher.find()) {
-                        named++;
-                        assertEquals(expected, matcher.group(1), stateId + " names a role count of its own");
+                    var raw = body(engine, "/api/v1/onboarding/state");
+                    var at = raw.indexOf(ROLE_COUNT_SUFFIX);
+                    while (at > 0) {
+                        var end = at;
+                        var begin = end;
+                        while (begin > 0 && Character.isDigit(raw.charAt(begin - 1))) {
+                            begin--;
+                        }
+                        if (begin < end) {
+                            named++;
+                            assertEquals(expected, raw.substring(begin, end),
+                                    stateId + " names a role count of its own");
+                        }
+                        at = raw.indexOf(ROLE_COUNT_SUFFIX, at + ROLE_COUNT_SUFFIX.length());
                     }
                 }
                 assertTrue(named > 0, "no onboarding state names a role count at all");

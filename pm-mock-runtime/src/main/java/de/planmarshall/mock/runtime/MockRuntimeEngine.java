@@ -211,6 +211,16 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /** The cleanup item kinds the delete counts report separately. */
     private static final String CLEANUP_KIND_PLAN = "plan";
     private static final String CLEANUP_KIND_EPIC = "epic";
+
+    /** The default sweep coordinates every cleanup fixture carries. */
+    private static final String SWEEP_TODAY = "today 03:00";
+    private static final String SWEEP_TOMORROW = "tomorrow 03:00";
+
+    /** The member the cleanup resources report the freed size under. */
+    private static final String FIELD_FREED_BYTES = "freed_bytes";
+
+    /** The fixture member the cleanup residues are read from. */
+    private static final String FIXTURE_RESIDUE = "residue";
     private static final String KEY_STATUS = "status";
     private static final String KEY_LOOPBACK = "loopback";
     private static final String KEY_DEVICE_ID = "device_id";
@@ -531,7 +541,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private volatile String drainingBy;
     private volatile boolean canWithdrawStop;
     /** The snapshot representation the seeding state shows, or {@code null} for the engine default. */
-    private volatile @Nullable Map<String, Object> systemSnapshotFixture;
+    private @Nullable Map<String, Object> systemSnapshotFixture;
     private CleanupJob activeCleanupJob;
     private final List<CleanupKeptItem> keptItems = new ArrayList<>();
     private CleanupDurations cleanupDurations;
@@ -6367,11 +6377,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
             cleanupDurations = new CleanupDurations(30, 30, 30, 30, 30, 3);
             cleanupResidues.clear();
-            cleanupResidues.add(new CleanupResidue("temporary_files", 214, 356515840L, "today 03:00"));
-            cleanupResidues.add(new CleanupResidue("worker_directories", 18, 1288490188L, "today 03:00"));
-            cleanupResidues.add(new CleanupResidue("stale_locks", 3, 0L, "today 03:00"));
-            cleanupResidues.add(new CleanupResidue("old_workspace_rows", 612, 0L, "today 03:00"));
-            cleanupResidues.add(new CleanupResidue("retired_lessons", 4, 0L, "today 03:00"));
+            cleanupResidues.add(new CleanupResidue("temporary_files", 214, 356515840L, SWEEP_TODAY));
+            cleanupResidues.add(new CleanupResidue("worker_directories", 18, 1288490188L, SWEEP_TODAY));
+            cleanupResidues.add(new CleanupResidue("stale_locks", 3, 0L, SWEEP_TODAY));
+            cleanupResidues.add(new CleanupResidue("old_workspace_rows", 612, 0L, SWEEP_TODAY));
+            cleanupResidues.add(new CleanupResidue("retired_lessons", 4, 0L, SWEEP_TODAY));
 
             var clientsEntries = List.of(
                     new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged (#214)", "ended 12 Sep", 88080384L, 6, 0, null),
@@ -6395,7 +6405,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             );
 
             var summary = new CleanupSummary(
-                    12, 2, 40, 5, 1, 1997956704L, 4, "today 03:00", "tomorrow 03:00"
+                    12, 2, 40, 5, 1, 1997956704L, 4, SWEEP_TODAY, SWEEP_TOMORROW
             );
 
             var links = Map.of(
@@ -6407,7 +6417,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             activeCleanupJob = new CleanupJob(
                     "cln-0012",
                     CleanupJobState.OPEN,
-                    "today 03:00",
+                    SWEEP_TODAY,
                     summary,
                     projectItems,
                     links
@@ -6466,22 +6476,37 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 keptItems.add(new CleanupKeptItem(
                         JsonTree.string(kept, "item_id"),
                         JsonTree.string(kept, "kind"),
-                        JsonTree.string(kept, "label"),
-                        JsonTree.string(kept, "reason"),
+                        JsonTree.string(kept, KEY_LABEL),
+                        JsonTree.string(kept, KEY_REASON),
                         JsonTree.string(kept, "kept_at"),
                         JsonTree.string(kept, "kept_by")));
             }
         }
-        if (facts.containsKey("residue")) {
+        if (facts.containsKey(FIXTURE_RESIDUE)) {
             cleanupResidues.clear();
-            for (var residue : fixtureObjects(facts, "residue", "facts.residue")) {
+            for (var residue : fixtureObjects(facts, FIXTURE_RESIDUE, "facts." + FIXTURE_RESIDUE)) {
                 cleanupResidues.add(new CleanupResidue(
-                        JsonTree.string(residue, "step"),
+                        requiredMember(residue, "step", "facts." + FIXTURE_RESIDUE),
                         intMember(residue, "count"),
                         JsonTree.number(residue, "bytes") != null ? JsonTree.number(residue, "bytes").longValue() : 0L,
                         JsonTree.string(residue, "last_run")));
             }
         }
+    }
+
+    /**
+     * @param map     the fixture member map
+     * @param key     the member to read
+     * @param fixture the fixture's name, for the failure message
+     * @return the member's value
+     * @throws IllegalStateException when the fixture does not carry the member
+     */
+    private static String requiredMember(Map<String, Object> map, String key, String fixture) {
+        var value = JsonTree.string(map, key);
+        if (value == null) {
+            throw new IllegalStateException("Fixture '" + fixture + "' names no '" + key + "'");
+        }
+        return value;
     }
 
     /**
@@ -7245,7 +7270,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleGetSystem(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var query = request.query() != null ? request.query() : "";
-        var snapshotFixture = systemSnapshotFixture;
+        Map<String, Object> snapshotFixture;
+        synchronized (systemLock) {
+            snapshotFixture = systemSnapshotFixture;
+        }
         if (snapshotFixture != null && query.isBlank()) {
             response.json(200, snapshotFixture);
             return;
@@ -7348,7 +7376,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             hasOpenJob = activeCleanupJob != null && activeCleanupJob.isOpen();
             cleanupSummary = hasOpenJob
                     ? activeCleanupJob.summary()
-                    : new CleanupSummary(0, 0, 0, 0, 0, 0L, keptItems.size(), "today 03:00", "tomorrow 03:00");
+                    : new CleanupSummary(0, 0, 0, 0, 0, 0L, keptItems.size(), SWEEP_TODAY, SWEEP_TOMORROW);
         }
 
         var snapshot = new SystemSnapshot(runtimeMetrics, workMetrics, workers, jobs, models, cleanupSummary, window, projectFilter);
@@ -7553,7 +7581,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         KEY_STATUS, "deleted",
                         "job_id", jobId,
                         CONST_DECISION, "delete",
-                        "freed_bytes", done.freedBytes(),
+                        FIELD_FREED_BYTES, done.freedBytes(),
                         "kept_count", keptItems.size()
                 ));
                 return;
@@ -7612,11 +7640,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "by", "operator",
                     "channel", isWeb ? "web" : "cli",
                     "device", isWeb ? "iPad" : KEY_TERMINAL,
-                    "freed_bytes", freedBytes
+                    FIELD_FREED_BYTES, freedBytes
             ));
             broadcastEvent("cleanup.done", Map.of(
                     "job_id", jobId,
-                    "freed_bytes", freedBytes,
+                    FIELD_FREED_BYTES, freedBytes,
                     "deleted_plans", deletedPlans,
                     "deleted_epics", deletedEpics,
                     "deleted_logs", deletedLogs
@@ -7626,7 +7654,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     KEY_STATUS, "deleted",
                     "job_id", jobId,
                     CONST_DECISION, "delete",
-                    "freed_bytes", freedBytes,
+                    FIELD_FREED_BYTES, freedBytes,
                     "kept_count", keptItems.size()
             ));
         }
