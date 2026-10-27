@@ -48,9 +48,10 @@ plan spec names the plan, proposal and finding documents it comes from.
   right (CLI-UC-P-07).
 - PLAN-08 (`use-case-documents`) gates PLAN-46 (command palette), PLAN-49 (attention inbox) and
   PLAN-36 (`needs`): UC-PLN-7 and UC-PLN-8 must be agreed first.
-- PLAN-76 (`shared-port-assignment`) gates every staged plan that names a port block: those specs pass
-  their ports (`PM_MOCK_WEB_PORT`, `PM_WEB_PORT`, `--web-port`, `-p`) only once PLAN-76 has landed, and
-  each lists it under Depends on. Emit none of them before it lands.
+- PLAN-76 (`shared-port-assignment`) shipped (PR #243). Every staged plan that names a port block passes its
+  own ports (`PM_MOCK_WEB_PORT`, `PM_WEB_PORT`, `--web-port`, `-p`), so plans with blocks may run side by
+  side. PLAN-03 predates the blocks and runs on the defaults `7420`/`5173`; while it runs, no other plan
+  uses the defaults.
 - Cross-repo plans — PLAN-08 and PLAN-24 land their main change in `plan-marshall-documentation`; their
   Expected Surface names only the files of this repository.
 
@@ -147,6 +148,14 @@ plan spec names the plan, proposal and finding documents it comes from.
   PLAN-73's Expected Surface is updated in the same act: the three guard files exist now, and
   `text-guard.spec.js` is added. The port collision with PLAN-03 cost PLAN-01 several hours, which
   confirms PLAN-76.
+- 2026-10-27 — PLAN-76 landing analysed (`landings/PLAN-76.md`), and the operator's hold on new launches
+  lifted. Emitted three plans, one per track, all with port blocks and disjoint from PLAN-03 and from each
+  other: PLAN-06 (`shared-display-vocabulary`), PLAN-07 (`cli-terminal-design-docs`) and PLAN-12
+  (`web-design-tokens-v2`).
+  - With PLAN-03, that is four in flight, one above N=3, at the operator's request ("three if sensible").
+    It is sensible because the port blocks remove the collision that motivated the limit.
+  - Not chosen: PLAN-08 (same track as PLAN-06); PLAN-10, PLAN-13 and PLAN-14, which share
+    `operator.{de,en}.properties` with each other; PLAN-15, which shares `15-overview.adoc` with PLAN-07.
 
 ## Open Defects
 
@@ -157,7 +166,9 @@ plan spec names the plan, proposal and finding documents it comes from.
   `rb-04-web-theme-and-titles-001.md` (PLAN-04), same two keys. Recurrence 2026-10-27:
   `rb-05-cli-summary-line-and-start-script-001.md` (PLAN-05), only `total_tokens` missing; it is the first
   opencode landing that carries `plugin_version` (`0.1.2017`, read at landing time). Recurrence 2026-10-27:
-  `rb-01-web-text-guard-report-001.md` (PLAN-01), only `total_tokens` missing.
+  `rb-01-web-text-guard-report-001.md` (PLAN-01), only `total_tokens` missing. Recurrence 2026-10-27:
+  `rb-76-shared-port-assignment-001.md` (PLAN-76, harness `antigravity`), `total_tokens`, `model` and
+  `effort` missing.
 
 ## Watches
 
@@ -183,7 +194,17 @@ plan spec names the plan, proposal and finding documents it comes from.
   or at the PLAN-29 verification (`CC-V-04`).
 - The e2e suite on `main` has a failing case before any epic change: the `CleanupView` contrast check in
   light at narrow width (seen in PLAN-04's base run at `65973291`). PLAN-01 saw the same case for
-  `SystemView`, failing on `origin/main` and green on re-run, so it may be flaky rather than failing. — re-check at PLAN-09
+  `SystemView`, failing on `origin/main` and green on re-run, so it may be flaky rather than failing.
+  PLAN-76 changed `CleanupView`'s success colour to `--color-success-text` (not stated in its landing);
+  that may fix the `CleanupView` case.
+- PLAN-76's deliverable 1 browser check is not evidenced. It asked for the system view showing
+  `127.0.0.1:20760` while a second mock runs on `7420`; no Playwright file and no progress line exist.
+  The behaviour is covered by `MockRuntimeTest` and the concurrency run. — check it in PLAN-18
+  (`verify-shared-foundation`).
+- First landing from the `antigravity` harness (PLAN-76): `model` and `effort` are `unknown`. Its message
+  was thinner than the lane asks: no operator questions, no build-server section, no rule-break account.
+  Its skew question named executor `0.1.0`, against `0.1.2017` in the facts. — re-check at the next
+  antigravity landing. — re-check at PLAN-09
   (changes `CleanupView`) and PLAN-70 (`web-light-theme-pass`).
 - PLAN-04 was run a second time after it shipped (2026-10-27 about 12:00, opencode). The run found the spec
   already merged (`099a3b40`) and stopped with no commit and no PR. It left the worktree

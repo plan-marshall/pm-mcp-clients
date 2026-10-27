@@ -4,7 +4,7 @@
 
 ## START HERE
 
-**Resume anchor**: PLAN-01 shipped (PR #237). In flight: PLAN-03, PLAN-76 (shared-port-assignment, PR #241 open); PLAN-07 emitted, awaiting start confirmation. Hold every spec with a port block until PLAN-76 has landed; check terminal-check targets per deliverable before emitting a terminal spec. Next: /plan-orchestrator analyze slug=ui-improvements on each landing message, then next.
+**Resume anchor**: PLAN-76 shipped (PR #243); port blocks in effect. In flight: PLAN-03 (default ports). Emitted, awaiting start confirmation: PLAN-06, PLAN-07, PLAN-12. Next: /plan-orchestrator analyze slug=ui-improvements on each landing message, then next; check terminal-check targets per deliverable before emitting a terminal spec.
 **Phase**: orchestrating
 **Parked**:
 - PLAN-32 (WS-04)
@@ -83,7 +83,7 @@
 - PLAN-03 (WS-01) — status: launched
 - PLAN-04 (WS-02) — plan=04-web-theme-and-titles — PR 231 — landing=landings/PLAN-04.md — status: shipped
 - PLAN-05 (WS-05) — plan=05-cli-summary-line-and-start-script — PR 238 — landing=landings/PLAN-05.md — status: shipped
-- PLAN-76 (WS-01) — status: launched
+- PLAN-76 (WS-01) — plan=76-shared-port-assignment — PR 243 — landing=landings/PLAN-76.md — status: shipped
 
 ## Ordered Queue
 
@@ -160,4 +160,3 @@
 | 69 | PLAN-73 | WS-03 | staged | pm-api/src/main/resources/messages/common.de.properties; pm-api/src/main/resources/messages/common.en.properties; pm-web-app/src/lib/views/; pm-web-e2e/tests/helpers/textGuard.js; pm-web-e2e/tests/text-guard-baseline.json; pm-web-e2e/tests/text-guard.spec.js; pm-web-e2e/tests/theme-readability.spec.js | runbook |
 | 70 | PLAN-74 | WS-03 | staged | doc/design/web-app/README.adoc; doc/design/web-app/brand-mark.adoc; doc/design/web-app/components.adoc; doc/design/web-app/interaction-affordances.adoc; doc/design/web-app/theme-readability.adoc; doc/design/web-app/view-density-and-filtering.adoc | runbook |
 | 71 | PLAN-75 | WS-03 | staged | doc/claude_review/README.adoc; doc/claude_review/verification-results/verify-web-final.adoc; pm-web-e2e/tests/mobile.spec.js; pm-web-e2e/tests/visual.spec.js | plan-marshall |
-| 72 | PLAN-76 | WS-01 | launched | AGENTS.md; README.md; doc/design/terminal-client/27-tui-testing.adoc; pm-mock-runtime/README.adoc; pm-mock-runtime/scripts/; pm-mock-runtime/src/main/java/de/planmarshall/mock/cli/MockRuntimeCli.java; pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java; pm-mock-runtime/src/test/java/de/planmarshall/mock/; pm-mock-runtime/start.sh; pm-mock-runtime/stop.sh; pm-operator/src/main/java/de/planmarshall/operator/WebCommand.java; pm-operator/src/test/java/de/planmarshall/operator/; pm-operator/src/test/resources/transcript/; pm-web-app/scripts/; pm-web-app/start.sh; pm-web-app/stop.sh; pm-web-app/vite.config.ts; pm-web-e2e/global-setup.js; pm-web-e2e/playwright.config.js; pm-web-e2e/pom.xml; pm-web-e2e/tests/ | runbook |
