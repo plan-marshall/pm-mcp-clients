@@ -32,6 +32,9 @@ import de.planmarshall.api.message.MessageCatalogue;
  */
 public final class ConsoleNoticeBuffer {
 
+    /** The message parameter name of the place the operator was in, shared by its three uses. */
+    private static final String WHERE = "where";
+
     /** What kind of item arrived while the view was open. */
     public enum Category {
         /** A decision or waiver request. */
@@ -154,7 +157,7 @@ public final class ConsoleNoticeBuffer {
      * @return the meanwhile summary and the verbatim lines
      */
     public synchronized Drained drain(String locale, String where) {
-        Objects.requireNonNull(where, "where");
+        Objects.requireNonNull(where, WHERE);
         var parts = new ArrayList<String>();
         if (decisions > 0) {
             parts.add(MessageCatalogue.format(locale, "operator.overview.meanwhile.decisions",
@@ -219,9 +222,9 @@ public final class ConsoleNoticeBuffer {
      * @return the meanwhile line
      */
     private static String meanwhile(String locale, String where, String events) {
-        Objects.requireNonNull(where, "where");
+        Objects.requireNonNull(where, WHERE);
         return MessageCatalogue.format(locale, "operator.overview.meanwhile",
-                            Map.of("where", where, "events", events));
+                            Map.of(WHERE, where, "events", events));
     }
 
     /**

@@ -22,6 +22,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
@@ -312,34 +313,28 @@ public final class OverviewFullScreenApp {
         if (lvl == null) {
             return "";
         }
-        var kind = lvl.kind();
-        if (kind == TuiLevel.Kind.PLAN) {
-            var view = currentPlanView.get();
-            return view != null ? view.breadcrumb(locale, selectedId) : lvl.title();
-        }
-        if (kind == TuiLevel.Kind.PLAN_ACTIVITY) {
-            var view = currentActivity.get();
-            return view != null ? view.breadcrumb() : lvl.title();
-        }
-        if (kind == TuiLevel.Kind.PLAN_COMPLETION) {
-            var view = currentCompletion.get();
-            return view != null ? view.breadcrumb(locale) : lvl.title();
-        }
-        if (kind == TuiLevel.Kind.EPIC) {
-            var view = currentEpicView.get();
-            return view != null ? view.level(locale).title() : lvl.title();
-        }
-        if (kind == TuiLevel.Kind.REPORTS) {
-            var view = currentReports.get();
-            return view != null ? view.breadcrumb(locale) : lvl.title();
-        }
-        if (kind == TuiLevel.Kind.SYSTEM) {
-            var view = currentSystem.get();
-            return view != null
-                                ? view.breadcrumb(locale, SystemLevel.sectionOf(lvl.id()))
-                                : lvl.title();
-        }
-        return lvl.title();
+        var title = lvl.title();
+        return switch (lvl.kind()) {
+            case PLAN -> header(currentPlanView.get(), title, view -> view.breadcrumb(locale, selectedId));
+            case PLAN_ACTIVITY -> header(currentActivity.get(), title, view -> view.breadcrumb());
+            case PLAN_COMPLETION -> header(currentCompletion.get(), title, view -> view.breadcrumb(locale));
+            case EPIC -> header(currentEpicView.get(), title, view -> view.level(locale).title());
+            case REPORTS -> header(currentReports.get(), title, view -> view.breadcrumb(locale));
+            case SYSTEM -> header(currentSystem.get(), title,
+                                view -> view.breadcrumb(locale, SystemLevel.sectionOf(lvl.id())));
+            default -> title;
+        };
+    }
+
+    /**
+     * @param view     the model of the level, or {@code null} when the level has none yet
+     * @param fallback the title the level was pushed with
+     * @param header   the header the live model renders
+     * @param <T>      the model type
+     * @return the live header, or the fallback when the model is missing
+     */
+    private static <T> String header(@Nullable T view, String fallback, Function<T, String> header) {
+        return view != null ? header.apply(view) : fallback;
     }
 
     /**
