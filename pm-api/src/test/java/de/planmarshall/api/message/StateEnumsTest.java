@@ -29,7 +29,7 @@ import de.planmarshall.api.system.ModelStatus;
 
 /**
  * Pins the wire values of the state enums the shared display vocabulary reads, and the resolution
- * behaviour each of them offers.
+ * behaviour they offer.
  */
 class StateEnumsTest {
 
@@ -50,7 +50,7 @@ class StateEnumsTest {
                         wireValues(LandingState.values(), LandingState::value),
                         "Landing state should name both carriers"),
                 () -> assertEquals(
-                        List.of("plan", "epic", "read_reports", "unenrolled_project"),
+                        List.of("plan", "epic", "logs", "read_reports", "unenrolled_project"),
                         wireValues(CleanupKind.values(), CleanupKind::value),
                         "Cleanup kind should name every item kind"),
                 () -> assertEquals(

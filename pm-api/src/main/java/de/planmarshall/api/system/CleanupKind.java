@@ -20,6 +20,7 @@ import org.jspecify.annotations.Nullable;
 public enum CleanupKind {
     PLAN("plan"),
     EPIC("epic"),
+    LOGS("logs"),
     READ_REPORTS("read_reports"),
     UNENROLLED_PROJECT("unenrolled_project");
 

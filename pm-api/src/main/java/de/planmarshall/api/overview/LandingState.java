@@ -16,7 +16,8 @@ import org.jspecify.annotations.Nullable;
  * {@code state} of an {@link AlongsideLanding} ({@code running}, {@code failed}) and the terminal
  * {@code status} of a placing ({@code written}, {@code committed}, {@code landed}).
  * <p>
- * A placing that neither committed nor landed is the failure the hold {@code landing_failed} names.
+ * A placing that ended without committing or landing is the failure the hold {@code landing_failed}
+ * names; a placing still at {@code written} is in progress, not a failure.
  */
 public enum LandingState {
     RUNNING("running"),

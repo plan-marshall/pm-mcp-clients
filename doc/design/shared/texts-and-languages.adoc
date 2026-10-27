@@ -108,7 +108,7 @@ A word not in the glossary is translated. A new domain word is added here before
 ** `operator`: the verbs of `pm-operator`;
 ** `relay`: `pm-mcp`.
 * *Files*: `messages/<area>.<locale>.properties`, UTF-8, ICU message syntax (arguments, `plural` with `one`, `other`, exact `=n` cases and `#`, `select` with `other`), which `pm-api` evaluates itself; no formatting library is used. English (`en`) is complete and the base; German (`de`) ships from the start.
-* *One word per value*: where an area pack still carries its own word for a value the shared `state.*` family names, the shared key is the authority. The area key stays only until the view that reads it moves to the shared key, and is removed then.
+* *One word per value*: where an area pack still carries its own word for a value the shared `state.*` family names, the shared key is the authority. The area key stays only until the view that reads it moves to the shared key, and is removed then — except a variant that gives the state a point the chip cannot carry (`overview.state.pausing` names the task or the phase it stops after); that one stays an area key beside the shared word.
 * *Build checks*: a pack that lacks a key of the English pack fails the build, as does a key that exists in a pack but not in English, an argument that differs from the English one, and a glossary term translated in a German text (checked against the glossary above).
 * *Delivery*: the command-line binaries carry the packs as resources of `pm-api`; the runtime serves `GET /api/v1/messages/{locale}/{area}` with an entity tag, so a browser keeps a loaded pack until the release changes it, and `GET /api/v1/messages` with the locales that have a pack and their areas; both without a device secret, so the pairing page has its texts. The pack shown is that of the machine's interface language; the locale the client sends counts only while none is set.
 
@@ -126,7 +126,7 @@ A value is named by its title; the id is what the operator types, not what the o
 [#time]
 == Time and Duration
 
-Every instant and every duration is shown in one format, defined here and nowhere else, as <<numbers>> defines counts of tokens. The runtime sends the exact value — the instant, the span in milliseconds — and a client only formats it: the terminal client through `Display.time` and `Display.duration`, which `pm-api` gains with the display layer; the web app through its own display layer, which produces the same strings. One rule, one implementation per client, and no second way of writing a time in either once the display layer replaces the inline formatters.
+Every instant and every duration is shown in one format, defined here and nowhere else, as <<numbers>> defines counts of tokens. The runtime sends the exact value — the instant, the span in seconds (`duration_seconds`) — and a client only formats it: the terminal client through `Display.time` and `Display.duration`, which `pm-api` gains with the display layer; the web app through its own display layer, which produces the same strings. One rule, one implementation per client, and no second way of writing a time in either once the display layer replaces the inline formatters.
 
 [cols="2,2,2",options="header"]
 |===
@@ -165,7 +165,7 @@ Every instant and every duration is shown in one format, defined here and nowher
 |`vor 9 T`
 |===
 
-* *No ISO string, ever.* No ISO-8601 instant (`2026-10-27T16:18:35Z`), date, or duration (`PT2H10M`) reaches a text, a title, a chip, a hover, or an error message. An ISO string is a transport value: it is read from the server, formatted once, and never shown.
+* *No ISO string, ever.* No ISO-8601 instant (`2026-10-27T16:18:35Z`), date, or duration (`PT2H10M`) reaches a text, a title, a chip, a hover, or an error message. An ISO string is a transport value: it is read from the server, formatted once, and never shown. The few fields the cleanup contract already ships display-ready — `last_sweep_at`, `next_check_at`, `kept_at`, `ended_at` — are shown as they arrive until they move to an instant, and no new field adds another.
 * *One clock.* The age of a plan comes from its start and the age in its phase from the phase start; both views show the same two values, and neither derives one from the other.
 * *Words are texts, figures are data.* The words that frame a figure — _today_, _since_, _yesterday_, _ago_ — are catalogue texts, so both clients say the same word; the unit marks (`s`, `min`, `h`, and `d`, `T` for the day in German) are fixed in the packs as `k`, `M`, `Tsd.`, and `Mio.` are (<<numbers>>). The weekday, the month, and the figure itself come from the language's own date and number data, never from a table written by hand.
 * *A duration under a minute.* A span shorter than a minute is shown in seconds (`30 s`), as the terminal shows it today; the three duration rows above cover every longer span.

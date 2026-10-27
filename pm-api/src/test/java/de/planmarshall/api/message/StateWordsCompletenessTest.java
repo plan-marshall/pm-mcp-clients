@@ -44,8 +44,8 @@ import de.planmarshall.api.system.WorkerState;
  * Each family is read from the {@code pm-api} enum that closes it, so an enum that gains a constant
  * fails this test until its word exists in {@code en} and {@code de}. The six primary mock
  * scenarios ({@code onboarding}, {@code running-work}, {@code projects-and-start},
- * {@code reports-and-system}, {@code designer}, {@code fully-onboarded}) serve their values from
- * the same enums.
+ * {@code reports-and-system}, {@code designer}, {@code fully-onboarded}) serve values from the same
+ * sets; the enums are their closed form, held here rather than read from the mock.
  */
 class StateWordsCompletenessTest {
 

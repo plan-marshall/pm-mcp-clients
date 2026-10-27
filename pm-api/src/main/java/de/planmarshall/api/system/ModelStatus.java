@@ -15,8 +15,9 @@ import org.jspecify.annotations.Nullable;
  * Closed enumeration of the status of a model row in the system view.
  * <p>
  * The value is derived from the row's counters rather than served: {@link ModelMetric} carries no
- * status field, so a row with no error and no retry reads {@code ok}, one with either reads that
- * counter, and one whose calls were not measured reads {@code not_measured}.
+ * status field. A row whose calls were not measured reads {@code not_measured}; otherwise a row with
+ * errors or retries reads each counter it has — a row can carry both, so the view shows both badges —
+ * and a row with neither reads {@code ok}.
  */
 public enum ModelStatus {
     OK("ok"),
