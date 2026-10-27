@@ -6023,7 +6023,82 @@
           "state_id": "control.holds"
         },
         "facts": {
-          "summary": "The five closed hold kinds and their acts"
+          "summary": "The five closed hold kinds and their acts",
+          "runtime": {
+            "control": {
+              "holds": [
+                {
+                  "hold_id": "H-0001",
+                  "subject_id": "relay-cursor-order",
+                  "subject_kind": "plan",
+                  "kind": "integrity_pause",
+                  "cause": "the plan's store file references.json changed outside the runtime",
+                  "attempts": 0,
+                  "file_path": "references.json",
+                  "recorded_size": 4812,
+                  "recorded_digest": "3f9a6b2cc21e",
+                  "current_size": 5034,
+                  "current_digest": "b70d41aa9a44",
+                  "acts": [
+                    "retry",
+                    "accept",
+                    "abort"
+                  ]
+                },
+                {
+                  "hold_id": "H-0002",
+                  "subject_id": "relay-docs",
+                  "subject_kind": "plan",
+                  "kind": "held",
+                  "cause": "waits: overlap with relay-auth-v2 (2 files)",
+                  "attempts": 1,
+                  "last_tried_at": "2026-10-16T10:14:00Z",
+                  "acts": [
+                    "retry",
+                    "end_plan"
+                  ]
+                },
+                {
+                  "hold_id": "H-1001",
+                  "subject_id": "fix-relay",
+                  "subject_kind": "plan",
+                  "kind": "stalled",
+                  "cause": "no progress for twenty minutes",
+                  "attempts": 0,
+                  "acts": [
+                    "retry",
+                    "end_plan"
+                  ]
+                },
+                {
+                  "hold_id": "H-1002",
+                  "subject_id": "fix-relay",
+                  "subject_kind": "plan",
+                  "kind": "condition",
+                  "cause": "waits for the base branch to carry the relay fix",
+                  "attempts": 2,
+                  "last_tried_at": "2026-10-16T09:14:00Z",
+                  "acts": [
+                    "retry",
+                    "end_plan"
+                  ]
+                },
+                {
+                  "hold_id": "H-1003",
+                  "subject_id": "fix-relay",
+                  "subject_kind": "plan",
+                  "kind": "landing_failed",
+                  "cause": "the landing failed: checks_fail",
+                  "attempts": 1,
+                  "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+                  "acts": [
+                    "retry",
+                    "end_plan"
+                  ]
+                }
+              ]
+            }
+          }
         },
         "links": []
       },
@@ -6039,7 +6114,58 @@
           "state_id": "control.settings"
         },
         "facts": {
-          "summary": "A plan's settings and their revision guard"
+          "summary": "A plan's settings and their revision guard",
+          "runtime": {
+            "control": {
+              "settings": [
+                {
+                  "plan_id": "fix-relay",
+                  "revision": 7,
+                  "values": [
+                    {
+                      "aspect": "landing",
+                      "value": "landing.pull-request",
+                      "origin": "project",
+                      "choices": [
+                        "landing.pull-request",
+                        "landing.main",
+                        "landing.files"
+                      ]
+                    },
+                    {
+                      "aspect": "method",
+                      "value": "method.test-first",
+                      "origin": "machine",
+                      "choices": [
+                        "method.test-first",
+                        "method.tests-after"
+                      ]
+                    },
+                    {
+                      "aspect": "asking",
+                      "value": "ask.questions-only",
+                      "origin": "plan",
+                      "choices": [
+                        "ask.every-phase",
+                        "ask.key-points",
+                        "ask.questions-only"
+                      ]
+                    },
+                    {
+                      "aspect": "posture",
+                      "value": "standard",
+                      "origin": "plan"
+                    },
+                    {
+                      "aspect": "base",
+                      "value": "main",
+                      "origin": "plan"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
         },
         "links": []
       },

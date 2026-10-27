@@ -292,15 +292,16 @@ final class StartRegistry {
     }
 
     /**
-     * Seeds the registry from the active scenario.
+     * Seeds the registry from the active scenario and the state that seeds the engine.
      * <p>
-     * The fixture is the operator representation's {@code facts.runtime.start} of the state the
-     * scenario starts in, merged over the scenario's base state {@code running_work.active} so a case
-     * state declares only what differs.
+     * The fixture is the operator representation's {@code facts.runtime.start} of that state,
+     * merged over the scenario's base state {@code running_work.active} so a case state declares
+     * only what differs.
      *
      * @param scenario the active scenario
+     * @param stateId  the state whose operator facts the engine applies, may be {@code null}
      */
-    synchronized void init(Scenario scenario) {
+    synchronized void init(Scenario scenario, @Nullable String stateId) {
         entries.clear();
         projectRecipes.clear();
         projectLandings.clear();
@@ -314,7 +315,7 @@ final class StartRegistry {
         sourceCounter = 0;
         chatCounter = 0;
         documentsMode = DocumentsMode.ASK.wireValue();
-        var fixture = startFixtureOf(scenario);
+        var fixture = startFixtureOf(scenario, stateId);
         if (fixture.isEmpty()) {
             return;
         }
@@ -325,12 +326,13 @@ final class StartRegistry {
 
     /**
      * @param scenario the active scenario
-     * @return the start fixture of the scenario's start state, merged over its base state
+     * @param stateId  the state whose operator facts the engine applies, may be {@code null}
+     * @return the start fixture of that state, merged over the scenario's base state
      */
-    private static Map<String, Object> startFixtureOf(Scenario scenario) {
+    private static Map<String, Object> startFixtureOf(Scenario scenario, @Nullable String stateId) {
         var fixture = new LinkedHashMap<String, Object>();
         mergeStartFixture(runtimeFixtureOf(scenario, FIXTURE_BASE_STATE), fixture);
-        mergeStartFixture(runtimeFixtureOf(scenario, scenario.start()), fixture);
+        mergeStartFixture(runtimeFixtureOf(scenario, stateId), fixture);
         return fixture;
     }
 

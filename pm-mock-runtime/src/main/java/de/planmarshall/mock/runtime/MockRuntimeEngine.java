@@ -321,6 +321,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String FIXTURE_ONBOARD = "onboard";
     private static final String FIXTURE_SUMMARY = "summary";
     private static final String FIXTURE_LAN_CONFLICT = "lan_conflict";
+    /** The runtime snapshot representation a system state shows. */
+    private static final String FIXTURE_SNAPSHOT = "snapshot";
     /** The state-specific route overrides a state's runtime fixture may carry ("METHOD /path"). */
     private static final String FIXTURE_ROUTES = "routes";
     /** The state whose runtime fixture is the base every other state of the scenario inherits. */
@@ -493,6 +495,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final AtomicReference<Scenario> currentScenario = new AtomicReference<>();
     private final AtomicReference<String> currentStateId = new AtomicReference<>();
     /**
+     * The state whose operator fixture seeds the engine's domain state: the scenario's start state
+     * until a jump enters another state, then the state the jump entered (UC-S-01).
+     */
+    private final AtomicReference<String> fixtureStateId = new AtomicReference<>();
+    /**
      * The operator links offered by the states entered so far, as {@code METHOD href} to the state id
      * that offered it. A request that matches no link of the current state but one of these, offered by
      * a state left meanwhile, is an act against a state left meanwhile, answered {@code act_not_available}
@@ -519,6 +526,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private volatile RuntimeLifecycleState lifecycleState = RuntimeLifecycleState.RUNNING;
     private volatile String drainingBy;
     private volatile boolean canWithdrawStop;
+    /** The snapshot representation the seeding state shows, or {@code null} for the engine default. */
+    private volatile @Nullable Map<String, Object> systemSnapshotFixture;
     private CleanupJob activeCleanupJob;
     private final List<CleanupKeptItem> keptItems = new ArrayList<>();
     private CleanupDurations cleanupDurations;
@@ -606,21 +615,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
         // the active scenario and every stateful fixture untouched.
         validateRuntimeFixture(scenario);
         this.currentScenario.set(scenario);
+        this.currentStateId.set(scenario.start());
+        this.fixtureStateId.set(scenario.start());
         this.currentPairingCode = scenario.pairingCode();
         this.pairingCounter = 0;
         offeredOperatorLinks.clear();
         operatorActs.clear();
-        initDefaultDevices();
-        initDefaultReports();
-        initDefaultDecisions();
-        initDefaultSystem();
-        initDefaultProjects();
-        initDefaultEnrolment();
-        initDefaultControl();
-        initDefaultOnboarding();
-        initDefaultStart();
-        initDefaultDecomposition();
-        initDefaultLessonSource();
+        seedStateFixtures();
         designer.init(scenario);
         transitionTo(scenario.start());
         broadcastReset();
@@ -634,6 +635,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
         operatorActs.clear();
         this.currentPairingCode = currentScenario.get().pairingCode();
         this.pairingCounter = 0;
+        this.fixtureStateId.set(currentScenario.get().start());
+        seedStateFixtures();
+        designer.init(currentScenario.get());
+        transitionTo(currentScenario.get().start());
+        broadcastReset();
+    }
+
+    /**
+     * Seeds every engine-owned domain store from the current fixture state, so the state's operator
+     * facts reach the resources that are served from the engine rather than from a scenario route
+     * (UC-S-01).
+     */
+    private void seedStateFixtures() {
         initDefaultDevices();
         initDefaultReports();
         initDefaultDecisions();
@@ -645,9 +659,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultStart();
         initDefaultDecomposition();
         initDefaultLessonSource();
-        designer.init(currentScenario.get());
-        transitionTo(currentScenario.get().start());
-        broadcastReset();
     }
 
     private void initDefaultDevices() {
@@ -675,13 +686,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @return {@code true} when the state fixture seeded the devices
      */
     private boolean seedDevicesFromStateFixture() {
-        var runtime = stateRuntimeFixture(currentScenario.get().start());
+        var fixtureState = fixtureStateId.get();
+        var runtime = stateRuntimeFixture(fixtureState);
         if (runtime == null || !runtime.containsKey(FIXTURE_DEVICES)) {
             return false;
         }
         if (!(runtime.get(FIXTURE_DEVICES) instanceof List<?> devices)) {
             throw new IllegalStateException("facts.runtime.devices in state '"
-                    + currentScenario.get().start() + "' is no array");
+                    + fixtureState + "' is no array");
         }
         try {
             var list = DeviceListResource.fromTree(devices);
@@ -699,7 +711,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         catch (IOException | RuntimeException e) {
             throw new IllegalStateException("Malformed facts.runtime.devices in state '"
-                    + currentScenario.get().start() + "'", e);
+                    + fixtureState + "'", e);
         }
     }
 
@@ -741,7 +753,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * object keeps the default of an open listener on {@link #DEFAULT_LAN_PORT}.
      */
     private void seedListenerFromStatus() {
-        var runtime = stateRuntimeFixture(currentScenario.get().start());
+        var runtime = stateRuntimeFixture(fixtureStateId.get());
         var web = runtime != null ? JsonTree.asObject(runtime.get(FIXTURE_WEB)) : null;
         if (web == null) {
             var route = currentScenario.get().route("GET", "/api/v1/status");
@@ -802,15 +814,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     /**
-     * The engine-only fixture of the state the scenario starts in, merged over the scenario's base
+     * The engine-only fixture of the state that seeds the engine, merged over the scenario's base
      * fixture so a case state declares only what differs. The base is the {@code running_work.active}
      * state of the consolidated running-work scenario; a scenario that has no such state is seeded
-     * by its start state alone.
+     * by its own fixture state alone.
      *
      * @return the merged fixture, or {@code null} when neither the state nor the base carries one
      */
     private @Nullable Map<String, Object> startRuntimeFixture() {
-        return startRuntimeFixtureOf(currentScenario.get());
+        return mergedRuntimeFixture(currentScenario.get(), fixtureStateId.get());
     }
 
     /**
@@ -821,8 +833,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @return the merged fixture, or {@code null} when neither state carries one
      */
     private static @Nullable Map<String, Object> startRuntimeFixtureOf(Scenario scenario) {
+        return mergedRuntimeFixture(scenario, scenario.start());
+    }
+
+    /**
+     * @param scenario the scenario
+     * @param stateId  the state whose fixture seeds the engine
+     * @return that state's runtime fixture merged over the scenario's base fixture, or {@code null}
+     *         when neither carries one
+     */
+    private static @Nullable Map<String, Object> mergedRuntimeFixture(Scenario scenario,
+            @Nullable String stateId) {
         var base = runtimeFixtureOf(scenario, BASE_FIXTURE_STATE);
-        var own = runtimeFixtureOf(scenario, scenario.start());
+        var own = runtimeFixtureOf(scenario, stateId);
         if (base == null || own == null || own == base) {
             return own != null ? own : base;
         }
@@ -1044,6 +1067,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (!scenario.states().containsKey(stateId)) {
             throw new IllegalArgumentException("State '" + stateId + "' does not exist in scenario '" + scenario.name() + "'");
         }
+        var fixture = mergedRuntimeFixture(scenario, stateId);
+        if (fixture != null) {
+            validateFixtureMembers(fixture);
+        }
+        this.fixtureStateId.set(stateId);
+        seedStateFixtures();
         transitionTo(stateId);
     }
 
@@ -2573,6 +2602,16 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (fixture == null) {
             return;
         }
+        validateFixtureMembers(fixture);
+    }
+
+    /**
+     * Refuses one runtime fixture's malformed members, so a jump can be validated before it seeds
+     * the engine.
+     *
+     * @param fixture the merged runtime fixture
+     */
+    private static void validateFixtureMembers(Map<String, Object> fixture) {
         var control = fixtureObject(fixture, FIXTURE_CONTROL);
         if (control != null) {
             readControlSeed(control);
@@ -2636,7 +2675,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             localChangePreviews.clear();
             capturedProjects.clear();
         }
-        startRegistry.init(currentScenario.get());
+        startRegistry.init(currentScenario.get(), fixtureStateId.get());
     }
 
     private void initDefaultLessonSource() {
@@ -6104,7 +6143,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         onboardingAuto = true;
         synchronized (this) {
             if (currentScenario.get().states().containsKey("auto.consent")) {
-                goToState("auto.consent");
+                transitionTo("auto.consent");
             }
         }
         handleOnboardingState(response);
@@ -6364,7 +6403,91 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     projectItems,
                     links
             );
+
+            applySystemStateFacts();
         }
+    }
+
+    /**
+     * Applies the seeding state's system facts: the lifecycle the state stands for, the runtime
+     * snapshot it shows, and the cleanup job and sweep state it describes (UC-S-01). A state that
+     * declares none of them keeps the engine's default world.
+     */
+    private void applySystemStateFacts() {
+        systemSnapshotFixture = null;
+        var facts = stateFacts(fixtureStateId.get());
+        if (facts == null) {
+            return;
+        }
+        lifecycleState = RuntimeLifecycleState.fromValue(JsonTree.string(facts, "lifecycle_state"));
+        canWithdrawStop = Boolean.TRUE.equals(JsonTree.bool(facts, "can_withdraw_stop"));
+        drainingBy = JsonTree.string(facts, "draining_by");
+        var runtime = JsonTree.object(facts, FIXTURE_RUNTIME);
+        systemSnapshotFixture = runtime != null ? JsonTree.asObject(runtime.get(FIXTURE_SNAPSHOT)) : null;
+        applyCleanupFacts(facts);
+    }
+
+    /**
+     * Applies the cleanup facts a state declares: whether a job is open, the job itself, the sweep
+     * durations, the kept items, and the residues. A fact the state does not declare keeps the
+     * engine's default.
+     *
+     * @param facts the seeding state's operator facts
+     */
+    private void applyCleanupFacts(Map<String, Object> facts) {
+        if (Boolean.FALSE.equals(JsonTree.bool(facts, "open"))) {
+            activeCleanupJob = null;
+        }
+        var job = JsonTree.object(facts, "job");
+        if (job != null) {
+            activeCleanupJob = readFixture(() -> CleanupJob.fromMap(job), "facts.job");
+        }
+        if (JsonTree.object(facts, "progress") != null && activeCleanupJob != null) {
+            var running = activeCleanupJob;
+            activeCleanupJob = new CleanupJob(running.jobId(), CleanupJobState.DELETING, running.dueSince(),
+                    running.summary(), running.projectItems(), running.links());
+        }
+        var durations = JsonTree.object(facts, "durations");
+        if (durations != null) {
+            cleanupDurations = readFixture(() -> CleanupDurations.fromMap(durations), "facts.durations");
+        }
+        if (facts.containsKey("kept")) {
+            keptItems.clear();
+            for (var kept : fixtureObjects(facts, "kept", "facts.kept")) {
+                keptItems.add(new CleanupKeptItem(
+                        JsonTree.string(kept, "item_id"),
+                        JsonTree.string(kept, "kind"),
+                        JsonTree.string(kept, "label"),
+                        JsonTree.string(kept, "reason"),
+                        JsonTree.string(kept, "kept_at"),
+                        JsonTree.string(kept, "kept_by")));
+            }
+        }
+        if (facts.containsKey("residue")) {
+            cleanupResidues.clear();
+            for (var residue : fixtureObjects(facts, "residue", "facts.residue")) {
+                cleanupResidues.add(new CleanupResidue(
+                        JsonTree.string(residue, "step"),
+                        intMember(residue, "count"),
+                        JsonTree.number(residue, "bytes") != null ? JsonTree.number(residue, "bytes").longValue() : 0L,
+                        JsonTree.string(residue, "last_run")));
+            }
+        }
+    }
+
+    /**
+     * @param stateId a state of the active scenario, may be {@code null}
+     * @return that state's operator facts, or {@code null} when the state or its facts are absent
+     */
+    private @Nullable Map<String, Object> stateFacts(@Nullable String stateId) {
+        if (stateId == null) {
+            return null;
+        }
+        var state = currentScenario.get().state(stateId);
+        var representation = state != null ? JsonTree.asObject(state.representation()) : null;
+        return representation != null
+                ? JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS))
+                : null;
     }
 
     private void initDefaultProjects() {
@@ -7113,6 +7236,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleGetSystem(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var query = request.query() != null ? request.query() : "";
+        var snapshotFixture = systemSnapshotFixture;
+        if (snapshotFixture != null && query.isBlank()) {
+            response.json(200, snapshotFixture);
+            return;
+        }
         SystemWindow window = SystemWindow.HOUR;
         String projectFilter = null;
         for (var part : query.split("&")) {
