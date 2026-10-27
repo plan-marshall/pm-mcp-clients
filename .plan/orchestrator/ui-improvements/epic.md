@@ -144,7 +144,9 @@ plan spec names the plan, proposal and finding documents it comes from.
   `missing_keys` `total_tokens` and `plugin_version` (both `unknown` on opencode). It was reconciled as far
   as its facts go. The runbook lane on opencode cannot measure tokens or read the plugin version, so every
   opencode landing will repeat this until the lane can. Recurrence 2026-10-27:
-  `rb-04-web-theme-and-titles-001.md` (PLAN-04), same two keys.
+  `rb-04-web-theme-and-titles-001.md` (PLAN-04), same two keys. Recurrence 2026-10-27:
+  `rb-05-cli-summary-line-and-start-script-001.md` (PLAN-05), only `total_tokens` missing; it is the first
+  opencode landing that carries `plugin_version` (`0.1.2017`, read at landing time).
 
 ## Watches
 
@@ -162,7 +164,7 @@ plan spec names the plan, proposal and finding documents it comes from.
 - Build server: the routed `verify -Ppre-commit` of PLAN-02 failed with exit -1 because `marshalld`
   invoked a bare `mvn` instead of the project's `./mvnw`. The project was enrolled and the daemon
   upgraded to 0.1.2017 on 2026-10-26, after that run. Recurrence: PLAN-04's one routed build failed the
-  same way (`mvn` not on the daemon's PATH). — re-check at the next landing that routes through the
+  same way (`mvn` not on the daemon's PATH), and so did PLAN-05's (job log `8d16de87…`). — re-check at the next landing that routes through the
   daemon.
 - Tab titles name the identifier (`drop-legacy-api`), not the display title (PLAN-04 residue). No
   staged plan owns a title store for the shell. — decide when PLAN-09 (`web-display-layer`) is emitted,
@@ -170,3 +172,16 @@ plan spec names the plan, proposal and finding documents it comes from.
 - The e2e suite on `main` has one failing case before any epic change: the `CleanupView` contrast check
   in light at narrow width (seen in PLAN-04's base run at `65973291`). — re-check at PLAN-09
   (changes `CleanupView`) and PLAN-70 (`web-light-theme-pass`).
+- PLAN-04 was run a second time after it shipped (2026-10-27 about 12:00, opencode). The run found the spec
+  already merged (`099a3b40`) and stopped with no commit and no PR. It left the worktree
+  `.plan/local/worktrees/04-web-theme-and-titles` and the branch `feature/04-web-theme-and-titles`,
+  locally and on origin, both at `394c627b`. The runbook lane does not check the queue row before setup:
+  a `shipped` row should stop a run before it creates a worktree. The leftovers are removed (the run
+  removed its worktree and local branch; the operator deleted the remote branch and the temp files on
+  2026-10-27). Its landing message `rb-04-web-theme-and-titles-002.md` (`pr=n/a`, `deliverables_done=0`)
+  was absorbed here; the row stays `shipped` on PR #231. — raise the lane check with the lane fix.
+- Terminal-check targets per deliverable: the generator gave every output-changing terminal deliverable
+  the plan's one terminal target, so a deliverable whose change no screen can show gets a clause it
+  cannot meet (PLAN-05 D2.2, a `start.sh` change checked on `plans`, `q`). — before emitting each
+  staged terminal spec, check every "Terminal check" clause against its deliverable. Correct it to the
+  deliverable's own observable, or drop it for a non-rendering change and say so.
