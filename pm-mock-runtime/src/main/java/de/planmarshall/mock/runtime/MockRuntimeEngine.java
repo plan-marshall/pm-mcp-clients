@@ -6485,6 +6485,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (facts.containsKey(FIXTURE_RESIDUE)) {
             cleanupResidues.clear();
             for (var residue : fixtureObjects(facts, FIXTURE_RESIDUE, "facts." + FIXTURE_RESIDUE)) {
+                if (residue == null) {
+                    continue;
+                }
                 cleanupResidues.add(new CleanupResidue(
                         requiredMember(residue, "step", "facts." + FIXTURE_RESIDUE),
                         intMember(residue, "count"),
