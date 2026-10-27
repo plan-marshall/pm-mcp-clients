@@ -101,6 +101,21 @@ class MockRuntimeCliTest {
         var result = MockRuntimeCli.parse(new String[0], out, err, Map.of("PM_MOCK_WEB_PORT", "invalid"));
         assertEquals(2, result.exitCode());
         assertTrue(stderr().contains("invalid port in PM_MOCK_WEB_PORT: invalid"));
+
+        var outOfRange = MockRuntimeCli.parse(new String[0], out, err, Map.of("PM_MOCK_WEB_PORT", "70000"));
+        assertEquals(2, outOfRange.exitCode());
+    }
+
+    @Test
+    @DisplayName("reports invalid port error when CLI --web-port is out of range")
+    void outOfRangeCliPort() {
+        var result = MockRuntimeCli.parse(new String[]{"--web-port", "70000"}, out, err, Map.of());
+        assertEquals(2, result.exitCode());
+        assertTrue(stderr().contains("invalid port: 70000"));
+
+        var belowMin = MockRuntimeCli.parse(new String[]{"--web-port", "-2"}, out, err, Map.of());
+        assertEquals(2, belowMin.exitCode());
+        assertTrue(stderr().contains("invalid port: -2"));
     }
 
     @Test

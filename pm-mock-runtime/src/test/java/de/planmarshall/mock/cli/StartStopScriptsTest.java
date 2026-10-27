@@ -13,11 +13,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 
@@ -61,15 +63,21 @@ class StartStopScriptsTest {
                     "-s", "status-only"
             );
             pb.directory(mockRuntimeDir().toFile());
+            pb.redirectErrorStream(true);
             var process = pb.start();
+            var outputFuture = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                } catch (IOException _) {
+                    return "";
+                }
+            });
             var exited = process.waitFor(60, TimeUnit.SECONDS);
             assertTrue(exited, "start.sh should exit within 60 seconds");
             var exitCode = process.exitValue();
             assertNotEquals(0, exitCode, "start.sh must fail when assigned port is in use");
 
-            var stdout = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-            var stderr = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
-            var combinedOutput = stdout + "\n" + stderr;
+            var combinedOutput = outputFuture.get(5, TimeUnit.SECONDS);
 
             assertTrue(combinedOutput.contains(String.valueOf(occupiedPort)),
                     "Output must name the occupied port " + occupiedPort + "; got:\n" + combinedOutput);
@@ -92,15 +100,21 @@ class StartStopScriptsTest {
             );
             pb.directory(mockRuntimeDir().toFile());
             pb.environment().put("PM_MOCK_WEB_PORT", String.valueOf(occupiedPort));
+            pb.redirectErrorStream(true);
             var process = pb.start();
+            var outputFuture = CompletableFuture.supplyAsync(() -> {
+                try {
+                    return new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+                } catch (IOException _) {
+                    return "";
+                }
+            });
             var exited = process.waitFor(60, TimeUnit.SECONDS);
             assertTrue(exited, "start.sh should exit within 60 seconds");
             var exitCode = process.exitValue();
             assertNotEquals(0, exitCode, "start.sh must fail when assigned env port is in use");
 
-            var stdout = new String(process.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-            var stderr = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
-            var combinedOutput = stdout + "\n" + stderr;
+            var combinedOutput = outputFuture.get(5, TimeUnit.SECONDS);
 
             assertTrue(combinedOutput.contains(String.valueOf(occupiedPort)),
                     "Output must name the occupied port " + occupiedPort + "; got:\n" + combinedOutput);

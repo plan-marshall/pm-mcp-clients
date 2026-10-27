@@ -259,7 +259,12 @@ public final class MockRuntimeCli {
 
     private static Integer parsePortArg(String portStr, PrintStream err) {
         try {
-            return Integer.parseInt(portStr);
+            int port = Integer.parseInt(portStr);
+            if (port < -1 || port > 65535) {
+                err.println("Error: invalid port: " + portStr);
+                return null;
+            }
+            return port;
         } catch (NumberFormatException _) {
             err.println("Error: invalid port: " + portStr);
             return null;
@@ -272,7 +277,12 @@ public final class MockRuntimeCli {
             return 7420;
         }
         try {
-            return Integer.parseInt(envPort.trim());
+            int port = Integer.parseInt(envPort.trim());
+            if (port < -1 || port > 65535) {
+                err.println("Error: invalid port in PM_MOCK_WEB_PORT: " + envPort);
+                return null;
+            }
+            return port;
         } catch (NumberFormatException _) {
             err.println("Error: invalid port in PM_MOCK_WEB_PORT: " + envPort);
             return null;
