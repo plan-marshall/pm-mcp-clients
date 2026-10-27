@@ -137,6 +137,16 @@ plan spec names the plan, proposal and finding documents it comes from.
     plan). It overlaps the in-flight PLAN-01 (`pm-web-e2e/tests/`), PLAN-03 (`MockRuntimeEngine.java`,
     `pm-mock-runtime/README.adoc`) and PLAN-05 (`pm-operator` tests). The operator chose the emit; the
     later of each pair rebases.
+- 2026-10-27 — PLAN-01 landing analysed (`landings/PLAN-01.md`). Its unmet clauses are spec wording, not
+  missing code, so the gaps are folded into PLAN-73 (`web-text-guard-failing`), deliverable 1:
+  - the guard does not scan chips, aria labels or glyphs;
+  - CC-F-05 has no rule;
+  - split tokens are not seen;
+  - the browser clause becomes "every violation the guard lists appears in the snapshot".
+
+  PLAN-73's Expected Surface is updated in the same act: the three guard files exist now, and
+  `text-guard.spec.js` is added. The port collision with PLAN-03 cost PLAN-01 several hours, which
+  confirms PLAN-76.
 
 ## Open Defects
 
@@ -146,7 +156,8 @@ plan spec names the plan, proposal and finding documents it comes from.
   opencode landing will repeat this until the lane can. Recurrence 2026-10-27:
   `rb-04-web-theme-and-titles-001.md` (PLAN-04), same two keys. Recurrence 2026-10-27:
   `rb-05-cli-summary-line-and-start-script-001.md` (PLAN-05), only `total_tokens` missing; it is the first
-  opencode landing that carries `plugin_version` (`0.1.2017`, read at landing time).
+  opencode landing that carries `plugin_version` (`0.1.2017`, read at landing time). Recurrence 2026-10-27:
+  `rb-01-web-text-guard-report-001.md` (PLAN-01), only `total_tokens` missing.
 
 ## Watches
 
@@ -164,13 +175,15 @@ plan spec names the plan, proposal and finding documents it comes from.
 - Build server: the routed `verify -Ppre-commit` of PLAN-02 failed with exit -1 because `marshalld`
   invoked a bare `mvn` instead of the project's `./mvnw`. The project was enrolled and the daemon
   upgraded to 0.1.2017 on 2026-10-26, after that run. Recurrence: PLAN-04's one routed build failed the
-  same way (`mvn` not on the daemon's PATH), and so did PLAN-05's (job log `8d16de87…`). — re-check at the next landing that routes through the
+  same way (`mvn` not on the daemon's PATH), and so did PLAN-05's (job log `8d16de87…`) and PLAN-01's two
+  (`9798359b`, `e497dbb4`). — re-check at the next landing that routes through the
   daemon.
 - Tab titles name the identifier (`drop-legacy-api`), not the display title (PLAN-04 residue). No
   staged plan owns a title store for the shell. — decide when PLAN-09 (`web-display-layer`) is emitted,
   or at the PLAN-29 verification (`CC-V-04`).
-- The e2e suite on `main` has one failing case before any epic change: the `CleanupView` contrast check
-  in light at narrow width (seen in PLAN-04's base run at `65973291`). — re-check at PLAN-09
+- The e2e suite on `main` has a failing case before any epic change: the `CleanupView` contrast check in
+  light at narrow width (seen in PLAN-04's base run at `65973291`). PLAN-01 saw the same case for
+  `SystemView`, failing on `origin/main` and green on re-run, so it may be flaky rather than failing. — re-check at PLAN-09
   (changes `CleanupView`) and PLAN-70 (`web-light-theme-pass`).
 - PLAN-04 was run a second time after it shipped (2026-10-27 about 12:00, opencode). The run found the spec
   already merged (`099a3b40`) and stopped with no commit and no PR. It left the worktree

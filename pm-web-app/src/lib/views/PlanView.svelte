@@ -988,17 +988,17 @@
                             {/if}
                           </div>
                         {:else if entry.kind === 'changed' || entry.kind === 'file_changed'}
-                          <div class="file-changed mono">
+                          <div class="file-changed mono" data-model-text>
                             {stripControlSequences(
                               entry.content || (entry.files && entry.files[0]) || '',
                             )}
                           </div>
                         {:else if entry.kind === 'gap'}
-                          <div class="activity-gap text-muted italic">
+                          <div class="activity-gap text-muted italic" data-model-text>
                             {stripControlSequences(entry.content || '')}
                           </div>
                         {:else}
-                          <div class="entry-content">
+                          <div class="entry-content" data-model-text>
                             {stripControlSequences(entry.content)}
                           </div>
                         {/if}

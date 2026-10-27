@@ -2,10 +2,10 @@
   "id": "PLAN-01",
   "slug": "web-text-guard-report",
   "workstream": "WS-02",
-  "status": "launched",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "01-web-text-guard-report",
+  "pr": "237",
+  "landing": "landings/PLAN-01.md",
   "seq": 1
 }

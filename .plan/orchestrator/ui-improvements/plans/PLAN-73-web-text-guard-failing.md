@@ -18,7 +18,15 @@ Source of this plan (read before scoping):
 ## Deliverables
 
 1. **Remaining violations fixed**
-   - What: Fix every entry left in the baseline.
+   - What: Fix every entry left in the baseline. Close the gaps the report-mode guard left (PLAN-01 landing,
+     `landings/PLAN-01.md`):
+     - The guard does not scan chips, aria labels or the theme-toggle glyphs that the browser shows. Extend its rule set
+       to them, or record per element why it stays out.
+     - CC-F-05 has no rule among CC-P-09's six. Add the rule, or record the decision that the guard cannot see it.
+     - Split tokens (a word split across inline elements) stay invisible by PLAN-01's decision. Decide here whether
+       the guard joins inline runs.
+     - The browser clause reads "every violation the guard lists appears in the browser snapshot", not an equality
+       of the two word sets.
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
    - Done when:
@@ -50,8 +58,9 @@ Source of this plan (read before scoping):
 ## Expected Surface
 
 - OBSERVED: `pm-web-e2e/tests/theme-readability.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/helpers/textGuard.js` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `pm-web-e2e/tests/text-guard-baseline.json` — absent at HEAD c4dc9bb4; created by this plan
+- OBSERVED: `pm-web-e2e/tests/helpers/textGuard.js` — present at HEAD 1b39f219 (created by PLAN-01)
+- OBSERVED: `pm-web-e2e/tests/text-guard-baseline.json` — present at HEAD 1b39f219 (created by PLAN-01)
+- OBSERVED: `pm-web-e2e/tests/text-guard.spec.js` — present at HEAD 1b39f219 (created by PLAN-01)
 - OBSERVED: `pm-web-app/src/lib/views/` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD c4dc9bb4

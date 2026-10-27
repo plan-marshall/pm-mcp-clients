@@ -673,6 +673,7 @@
         <div
           class="report-card__body text-muted"
           class:report-card__body--clamped={$layout === 'compact' && !bodyOpen}
+          data-model-text
         >
           {item.body || item.summary}
         </div>
