@@ -6501,7 +6501,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @return the member's value
      * @throws IllegalStateException when the fixture does not carry the member
      */
-    private static String requiredMember(Map<String, Object> map, String key, String fixture) {
+    private static String requiredMember(@Nullable Map<String, Object> map, String key, String fixture) {
+        if (map == null) {
+            throw new IllegalStateException("Fixture '" + fixture + "' carries an empty entry");
+        }
         var value = JsonTree.string(map, key);
         if (value == null) {
             throw new IllegalStateException("Fixture '" + fixture + "' names no '" + key + "'");
@@ -7553,10 +7556,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
             } else {
                 var resp = new LinkedHashMap<String, Object>();
                 resp.put("open", false);
-                resp.put("next_check_at", "tomorrow 03:00");
+                resp.put("next_check_at", SWEEP_TOMORROW);
                 resp.put("kept_count", keptItems.size());
                 resp.put("durations", cleanupDurations.toMap());
-                resp.put("residue", cleanupResidues.stream().map(CleanupResidue::toMap).toList());
+                resp.put(FIXTURE_RESIDUE, cleanupResidues.stream().map(CleanupResidue::toMap).toList());
                 response.json(200, resp);
             }
         }
