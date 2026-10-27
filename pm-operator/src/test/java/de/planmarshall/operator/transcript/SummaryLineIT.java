@@ -62,7 +62,7 @@ class SummaryLineIT {
     @DisplayName("plans then q prints the line for the overview")
     void plansThenQPrintsTheLine() throws Exception {
         try (var runtime = start(StandardScenarios.RUNNING_WORK);
-                            var session = open(runtime, "plans")) {
+             var session = open(runtime, "plans")) {
             assertTrue(session.awaitText("Running work", TIMEOUT), session.rawOutput());
 
             session.send("q");
@@ -79,7 +79,7 @@ class SummaryLineIT {
     @DisplayName("plan fix-relay then q names the plan view, not the overview")
     void planViewThenQNamesItsOwnPlace() throws Exception {
         try (var runtime = start(StandardScenarios.RUNNING_WORK);
-                            var session = open(runtime, "plan", "fix-relay")) {
+             var session = open(runtime, "plan", "fix-relay")) {
             assertTrue(session.awaitText("fix-relay", TIMEOUT), session.rawOutput());
 
             session.send("q");

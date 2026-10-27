@@ -172,7 +172,7 @@ class ScreenCaptureIT {
                     quietSince = System.nanoTime();
                 } else if (System.nanoTime() - quietSince >= SETTLE.toNanos()
                                     && (session.screen().alternateScreenActive()
-                                                        || System.nanoTime() - start >= MIN_WAIT.toNanos())) {
+                                    || System.nanoTime() - start >= MIN_WAIT.toNanos())) {
                     return true;
                 }
             } else {
