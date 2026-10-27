@@ -103,23 +103,26 @@ function writeGuardBaselineEntry(baseline, view, locale, violations) {
 /**
  * Holds the views one journey collected against the committed baseline: a view that gained a
  * violation fails with the view and the word, and an entry for a defect that is gone asks for
- * the baseline to shrink. A view without an entry is written while the baseline is bootstrapped
- * outside CI; CI never invents an entry.
+ * the baseline to shrink. Only an explicit `TEXT_GUARD_BOOTSTRAP=1` run writes a missing entry;
+ * every other run fails on one, so the baseline never grows behind a review.
  *
  * @param {Record<string, Array<{ rule: string, word: string }>>} collected the violations per view
  * @param {string} locale the interface locale the views were read in
  */
 function verifyGuardViews(collected, locale) {
   const baseline = readGuardBaseline();
+  const bootstrap = process.env.TEXT_GUARD_BOOTSTRAP === '1';
   const failures = [];
   for (const [view, violations] of Object.entries(collected)) {
     const recorded = baseline.views?.[view]?.[locale];
     if (!recorded) {
-      if (process.env.CI) {
-        failures.push(`${view} (${locale}) has no entry in ${path.basename(GUARD_BASELINE_FILE)}`);
-      } else {
+      if (bootstrap) {
         writeGuardBaselineEntry(baseline, view, locale, violations);
         console.log(`[text-guard] baseline entry written: ${view} (${locale})`);
+      } else {
+        failures.push(
+          `${view} (${locale}) has no entry in ${path.basename(GUARD_BASELINE_FILE)}; run with TEXT_GUARD_BOOTSTRAP=1 to record it`,
+        );
       }
       continue;
     }
@@ -240,6 +243,7 @@ async function openProjectOverview(page, projectId) {
 const GUARD_JOURNEYS = [
   {
     title: 'overview and epic',
+    views: ['OverviewView', 'EpicView'],
     async open(page, request, locale) {
       await pairInLocale(page, request, 'running-work', locale);
     },
@@ -258,6 +262,7 @@ const GUARD_JOURNEYS = [
   },
   {
     title: 'plan',
+    views: ['PlanView'],
     async open(page, request, locale) {
       await pairInLocale(page, request, 'plan-view', locale);
     },
@@ -271,6 +276,7 @@ const GUARD_JOURNEYS = [
   },
   {
     title: 'reports and completion report',
+    views: ['ReportsView', 'CompletionReportView'],
     async open(page, request, locale) {
       await pairInLocale(page, request, 'reports', locale);
     },
@@ -288,6 +294,7 @@ const GUARD_JOURNEYS = [
   },
   {
     title: 'decisions',
+    views: ['DecisionView'],
     async open(page, request, locale) {
       await pairInLocale(page, request, 'decisions', locale);
     },
@@ -299,6 +306,7 @@ const GUARD_JOURNEYS = [
   },
   {
     title: 'system and cleanup',
+    views: ['SystemView', 'CleanupView'],
     async open(page, request, locale) {
       await pairInLocale(page, request, 'system', locale);
     },
@@ -316,6 +324,7 @@ const GUARD_JOURNEYS = [
   },
   {
     title: 'settings, machine settings and designer',
+    views: ['SettingsView', 'MachineSettingsView', 'ProcessDesigner'],
     async open(page, request, locale) {
       await pairInLocale(page, request, 'designer', locale);
     },
@@ -335,6 +344,7 @@ const GUARD_JOURNEYS = [
   },
   {
     title: 'project explorer and project onboarding',
+    views: ['ProjectExplorerView', 'ProjectOnboardingView'],
     async open(page, request, locale) {
       await pairInLocale(page, request, 'projects', locale);
       await gotoInLocale(page, locale, '/projects');
@@ -353,6 +363,7 @@ const GUARD_JOURNEYS = [
   },
   {
     title: 'start and recipe ready',
+    views: ['StartView', 'RecipeReadyView'],
     async open(page, request, locale) {
       await pairInLocale(page, request, 'start', locale);
     },
@@ -371,6 +382,7 @@ const GUARD_JOURNEYS = [
   },
   {
     title: 'decomposition review',
+    views: ['DecompositionReviewView'],
     async open(page, request, locale) {
       await pairInLocale(page, request, 'start', locale);
     },
@@ -397,6 +409,7 @@ const GUARD_JOURNEYS = [
   },
   {
     title: 'epic adopt',
+    views: ['EpicAdoptView'],
     async open(page, request, locale) {
       await pairInLocale(page, request, 'start-epic-adopt', locale);
       await gotoInLocale(page, locale, '/entries/ent-7a2e4f01');
@@ -409,6 +422,7 @@ const GUARD_JOURNEYS = [
   },
   {
     title: 'onboarding',
+    views: ['OnboardingView'],
     async open(page, request, locale) {
       await switchScenario(request, 'onboarding');
       await page.goto('/');
@@ -425,6 +439,7 @@ const GUARD_JOURNEYS = [
   },
   {
     title: 'pairing',
+    views: ['PairingView'],
     async open(page, request, locale) {
       await switchScenario(request, 'web-pairing');
       await page.goto('/');
@@ -440,6 +455,7 @@ const GUARD_JOURNEYS = [
   },
   {
     title: 'revoked',
+    views: ['RevokedView'],
     async open(page, request, locale) {
       await pairInLocale(page, request, 'paired-devices', locale);
     },
@@ -458,6 +474,7 @@ const GUARD_JOURNEYS = [
   },
   {
     title: 'listener off',
+    views: ['ListenerOffView'],
     async open(page, request, locale) {
       await pairInLocale(page, request, 'paired-devices', locale);
     },
@@ -480,6 +497,7 @@ const GUARD_JOURNEYS = [
   },
   {
     title: 'epic decomposition',
+    views: ['EpicDecompositionView'],
     async open(page, request, locale) {
       await pairInLocale(page, request, 'decomposition', locale);
       await gotoInLocale(page, locale, '/epics/relay-hardening/decomposition?project=pm-mcp-clients');
@@ -932,6 +950,11 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
   }
 
   test.describe('Text Guard, report mode', () => {
+    test('every declared view is reached by exactly one journey', () => {
+      const reached = GUARD_JOURNEYS.flatMap((journey) => journey.views);
+      expect(reached.slice().sort()).toEqual(DECLARED_VIEWS.slice().sort());
+    });
+
     for (const locale of GUARD_LOCALES) {
       test.describe(`collected interface text in ${locale}`, () => {
         for (const journey of GUARD_JOURNEYS) {
@@ -948,6 +971,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
                 violations.map((violation) => formatViolation(violation)).join(', ') || 'none';
               console.log(`[text-guard] ${view} (${locale}): ${violations.length} - ${listed}`);
             });
+            expect(Object.keys(collected).sort()).toEqual(journey.views.slice().sort());
             verifyGuardViews(collected, locale);
           });
         }

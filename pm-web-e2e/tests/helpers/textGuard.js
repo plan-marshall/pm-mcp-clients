@@ -7,13 +7,15 @@
  * interface iconography, and interface words of the other language inside a localised page.
  *
  * The guard only reads the DOM. Content the model writes carries `data-model-text` and is
- * skipped, and so are chips (`badge`, `chip`, `tag`) and code, where a raw identifier is the
- * intended presentation rather than a leak.
+ * skipped. Raw enums and state ids are also skipped in code and in chips whose class token
+ * starts with `badge`, `chip` or `tag` (`badge--danger`, `badge-subject`); a prefixed tag such
+ * as `entry-kind-tag` or `status-tag` is read, because there the raw identifier is the defect.
+ * The other four rules report everywhere outside model-written content.
  *
  * Evidence for the review `doc/claude_review/cross-cutting/proposals.adoc#CC-P-09`.
  */
 
-/** Rule names, in the order a report lists them. */
+/** Rule names, the vocabulary a report and the baseline use. */
 export const TEXT_GUARD_RULES = Object.freeze([
   'raw-enum',
   'state-id',
@@ -29,7 +31,7 @@ export const TEXT_GUARD_RULES = Object.freeze([
  * `de` lists what must not appear in a German interface, `en` the German counterparts. They are
  * state labels and relative time words: the terms the review saw untranslated on one screen.
  */
-export const FOREIGN_INTERFACE_WORDS = Object.freeze({
+const FOREIGN_INTERFACE_WORDS = Object.freeze({
   de: Object.freeze(['running', 'done', 'failed', 'paused', 'busy', 'idle', 'ago']),
   en: Object.freeze(['läuft', 'fertig', 'fehlgeschlagen', 'pausiert', 'beschäftigt', 'untätig', 'vor']),
 });
@@ -40,7 +42,7 @@ export const FOREIGN_INTERFACE_WORDS = Object.freeze({
  * The timestamps a runtime reports are generated per run, so the baseline compares the rule
  * that fired, not the instant that happened to be rendered.
  */
-export const ISO_TIME_PLACEHOLDER = '<iso-time>';
+const ISO_TIME_PLACEHOLDER = '<iso-time>';
 
 /** How often the guard re-reads a page that is still filling, and how long it waits between reads. */
 const SETTLE_ATTEMPTS = 12;
@@ -51,12 +53,14 @@ const SETTLE_INTERVAL_MS = 150;
  *
  * Runs inside the page, so it carries its own rules and selects nothing from this module.
  *
- * @param {{ locale: string, foreignWords: Array<string>, isoPlaceholder: string }} options
- * @returns {Array<{ rule: string, word: string, context: string }>} the violations, sorted
+ * @param {{ foreignWords: Array<string>, isoPlaceholder: string }} options
+ * @returns {Array<{ rule: string, word: string, context: string }>} the violations, sorted by
+ *   rule and then word, so a baseline entry has one stable position
  */
-function collectInPage({ locale, foreignWords, isoPlaceholder }) {
+function collectInPage({ foreignWords, isoPlaceholder }) {
   const SKIPPED_SUBTREES = '[data-model-text], script, style, noscript, template, svg, head';
-  const CHIPS_AND_CODE = 'code, pre, kbd, samp, [class*="badge"], [class*="chip"], [class*="tag"]';
+  const CODE_TAGS = new Set(['code', 'pre', 'kbd', 'samp']);
+  const CHIP_CLASS = /^(badge|chip|tag)(-|--|$)/;
   const FIXED_RULES = [
     { rule: 'raw-enum', pattern: /\b[a-z]+_[a-z_]+\b/g, skipInChip: true },
     { rule: 'state-id', pattern: /\b[a-z]+\.[a-z][a-z-]+\b/g, skipInChip: true },
@@ -84,9 +88,30 @@ function collectInPage({ locale, foreignWords, isoPlaceholder }) {
 
   function isRendered(element) {
     if (typeof element.checkVisibility === 'function') {
-      return element.checkVisibility();
+      return element.checkVisibility({
+        visibilityProperty: true,
+        contentVisibilityAuto: true,
+      });
     }
     return element.offsetParent !== null;
+  }
+
+  /** @param {Element} element @returns {boolean} whether a chip or a code block wraps it */
+  function isChipOrCode(element) {
+    for (let node = element; node !== null; node = node.parentElement) {
+      if (node === document.body) {
+        return false;
+      }
+      if (CODE_TAGS.has(node.tagName.toLowerCase())) {
+        return true;
+      }
+      for (const name of node.classList ?? []) {
+        if (CHIP_CLASS.test(name)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   function scan(text, { context, inChip }) {
@@ -102,7 +127,7 @@ function collectInPage({ locale, foreignWords, isoPlaceholder }) {
     for (const word of foreignWords) {
       const pattern = new RegExp(
         `(?<!\\p{L})${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?!\\p{L})`,
-        'gu',
+        'giu',
       );
       if (pattern.test(text)) {
         report('foreign-word', word, context);
@@ -122,14 +147,36 @@ function collectInPage({ locale, foreignWords, isoPlaceholder }) {
     if (!element || element.closest(SKIPPED_SUBTREES) || !isRendered(element)) {
       continue;
     }
-    scan(text, { context: describe(element), inChip: element.closest(CHIPS_AND_CODE) !== null });
+    scan(text, { context: describe(element), inChip: isChipOrCode(element) });
   }
 
-  return violations.sort((left, right) =>
-    left.rule === right.rule
-      ? left.word.localeCompare(right.word)
-      : left.rule.localeCompare(right.rule),
-  );
+  return violations.sort((left, right) => {
+    if (left.rule !== right.rule) {
+      return left.rule < right.rule ? -1 : 1;
+    }
+    if (left.word === right.word) {
+      return 0;
+    }
+    return left.word < right.word ? -1 : 1;
+  });
+}
+
+/**
+ * Orders two entries by rule and then by word, with a plain code-unit comparison so a written
+ * baseline stays byte-identical across machines.
+ *
+ * @param {{ rule: string, word: string }} left the first entry
+ * @param {{ rule: string, word: string }} right the second entry
+ * @returns {number} the comparison result
+ */
+function compareEntries(left, right) {
+  if (left.rule !== right.rule) {
+    return left.rule < right.rule ? -1 : 1;
+  }
+  if (left.word === right.word) {
+    return 0;
+  }
+  return left.word < right.word ? -1 : 1;
 }
 
 /**
@@ -152,7 +199,7 @@ export async function collectTextGuardViolations(page, options) {
     throw new TypeError(`The text guard covers the locales de and en, not ${String(locale)}.`);
   }
   const read = () =>
-    page.evaluate(collectInPage, { locale, foreignWords, isoPlaceholder: ISO_TIME_PLACEHOLDER });
+    page.evaluate(collectInPage, { foreignWords, isoPlaceholder: ISO_TIME_PLACEHOLDER });
 
   let previous = await read();
   for (let attempt = 0; attempt < SETTLE_ATTEMPTS; attempt += 1) {
@@ -178,11 +225,7 @@ export function normalizeViolations(violations) {
   for (const { rule, word } of violations) {
     seen.set(`${rule}\u0000${word}`, { rule, word });
   }
-  return [...seen.values()].sort((left, right) =>
-    left.rule === right.rule
-      ? left.word.localeCompare(right.word)
-      : left.rule.localeCompare(right.rule),
-  );
+  return [...seen.values()].sort((left, right) => compareEntries(left, right));
 }
 
 /**
@@ -214,5 +257,5 @@ export function diffViolations(baseline, actual) {
  */
 export function formatViolation(violation) {
   const location = violation.context ? ` (${violation.context})` : '';
-  return `${violation.rule}: ${violation.word}${location}`.replace(': undefined', ': -');
+  return `${violation.rule}: ${violation.word}${location}`;
 }

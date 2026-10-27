@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { collectTextGuardViolations } from './helpers/textGuard.js';
+import { collectTextGuardViolations, TEXT_GUARD_RULES } from './helpers/textGuard.js';
 
 /**
  * One violation per rule of CC-P-09 on a synthetic page: a raw enum, a state id, a
@@ -18,8 +18,12 @@ const ONE_VIOLATION_PER_RULE = `<!doctype html>
   </body>
 </html>`;
 
-/** The same violations, but in places the guard must not report. */
-const SKIPPED_VIOLATIONS = `<!doctype html>
+/**
+ * The same violations, in the places the guard must skip and in one container it must still
+ * read: model-written content, a chip, a code block and unrendered text stay silent, while a
+ * `.stage` wrapper is no chip and is read.
+ */
+const SKIPPED_AND_READ = `<!doctype html>
 <html lang="de">
   <head><title>Start</title></head>
   <body>
@@ -27,7 +31,8 @@ const SKIPPED_VIOLATIONS = `<!doctype html>
     <p data-model-text>running done failed</p>
     <span class="badge">waiting_for_you</span>
     <code>landing.pull-request</code>
-    <p hidden>fertig</p>
+    <div class="stage">waiting_for_you</div>
+    <p hidden>running</p>
   </body>
 </html>`;
 
@@ -37,14 +42,9 @@ test.describe('Text guard rules', () => {
 
     const violations = await collectTextGuardViolations(page, { locale: 'de' });
 
-    expect([...new Set(violations.map((violation) => violation.rule))].sort()).toEqual([
-      'emoji',
-      'foreign-word',
-      'iso-time',
-      'placeholder',
-      'raw-enum',
-      'state-id',
-    ]);
+    expect([...new Set(violations.map((violation) => violation.rule))].sort()).toEqual(
+      [...TEXT_GUARD_RULES].sort(),
+    );
     expect(violations.map((violation) => violation.word)).toEqual(
       expect.arrayContaining([
         'waiting_for_you',
@@ -58,12 +58,13 @@ test.describe('Text guard rules', () => {
   });
 
   test('skips model-written content, chips, code and unrendered text', async ({ page }) => {
-    await page.setContent(SKIPPED_VIOLATIONS);
+    await page.setContent(SKIPPED_AND_READ);
 
     const violations = await collectTextGuardViolations(page, { locale: 'de' });
 
     expect(violations).toEqual([
       expect.objectContaining({ rule: 'foreign-word', word: 'running' }),
+      expect.objectContaining({ rule: 'raw-enum', word: 'waiting_for_you' }),
     ]);
   });
 
