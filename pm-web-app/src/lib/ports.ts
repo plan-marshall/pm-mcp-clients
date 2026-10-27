@@ -15,7 +15,7 @@ function parsePort(name: string, rawValue: string | undefined, defaultPort: numb
   if (!/^\d+$/.test(trimmed)) {
     throw new Error(`Invalid ${name}: "${rawValue}". Expected an integer between 1 and 65535.`);
   }
-  const port = parseInt(trimmed, 10);
+  const port = Number.parseInt(trimmed, 10);
   if (port < 1 || port > 65535) {
     throw new Error(`Invalid ${name}: "${rawValue}". Expected an integer between 1 and 65535.`);
   }

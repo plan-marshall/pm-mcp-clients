@@ -14,10 +14,12 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.LockSupport;
 
 
 import org.junit.jupiter.api.DisplayName;
@@ -151,7 +153,14 @@ class StartStopScriptsTest {
             Files.writeString(worktreeA.resolve("target/pm-mock-runtime.log"), "Loopback Web Port:  " + portA + "\n");
 
             // Wait until processA is alive and listening
-            Thread.sleep(1500);
+            long deadline = System.currentTimeMillis() + 3000;
+            while (System.currentTimeMillis() < deadline && processA.isAlive()) {
+                try (var s = new Socket("127.0.0.1", portA)) {
+                    break;
+                } catch (Exception _) {
+                    LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(100));
+                }
+            }
             if (!processA.isAlive()) {
                 var errOutput = new String(processA.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
                 var stdOutput = new String(processA.getInputStream().readAllBytes(), StandardCharsets.UTF_8);

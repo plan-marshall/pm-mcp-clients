@@ -715,4 +715,25 @@ class MockRuntimeEngineTest {
                 }
                 """;
     }
+
+    @Test
+    @DisplayName("setWebPort updates webPort reflected in system and connection endpoints")
+    void webPortReflectedInSystemAndConnection() throws Exception {
+        engine.switchScenario(StandardScenarios.FULLY_ONBOARDED);
+        engine.setWebPort(20760);
+
+        var connRes = send("GET", "/api/v1/status/connection", Map.of("Authorization", "Bearer test-secret"), new byte[0], true);
+        assertEquals(200, connRes.status());
+        assertEquals("http://127.0.0.1:20760", JsonTree.string(connRes.json(), "loopback_url"));
+
+        var webRes = send("GET", "/api/v1/web", Map.of("Authorization", "Bearer test-secret"), new byte[0], true);
+        assertEquals(200, webRes.status());
+        assertEquals(Integer.valueOf(20760), JsonTree.integer(webRes.json(), "port"));
+
+        var sysRes = send("GET", "/api/v1/system", Map.of("Authorization", "Bearer test-token"), new byte[0], false);
+        assertEquals(200, sysRes.status());
+        var runtime = JsonTree.asObject(sysRes.json().get("runtime"));
+        assertNotNull(runtime);
+        assertEquals("127.0.0.1:20760", JsonTree.string(runtime, "loopback_listener"));
+    }
 }

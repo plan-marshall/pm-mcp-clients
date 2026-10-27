@@ -114,14 +114,12 @@ public final class MockRuntimeCli {
                 case "--token", "-t" -> token = args[i++];
                 case "--device-secret", "-d" -> deviceSecret = args[i++];
                 case "--web-port", "-p" -> {
-                    var portStr = args[i++];
-                    try {
-                        webPort = Integer.parseInt(portStr);
-                        webPortSpecified = true;
-                    } catch (NumberFormatException _) {
-                        err.println("Error: invalid port: " + portStr);
+                    var parsed = parsePortArg(args[i++], err);
+                    if (parsed == null) {
                         return new CliParseResult(2, null);
                     }
+                    webPort = parsed;
+                    webPortSpecified = true;
                 }
                 default -> {
                     err.println("Error: unrecognized argument: " + arg);
@@ -132,17 +130,11 @@ public final class MockRuntimeCli {
         }
 
         if (!webPortSpecified) {
-            var envPort = env != null ? env.get("PM_MOCK_WEB_PORT") : null;
-            if (envPort != null && !envPort.isBlank()) {
-                try {
-                    webPort = Integer.parseInt(envPort.trim());
-                } catch (NumberFormatException _) {
-                    err.println("Error: invalid port in PM_MOCK_WEB_PORT: " + envPort);
-                    return new CliParseResult(2, null);
-                }
-            } else {
-                webPort = 7420;
+            var fallback = resolveFallbackWebPort(env, err);
+            if (fallback == null) {
+                return new CliParseResult(2, null);
             }
+            webPort = fallback;
         }
 
         var configBuilder = MockRuntimeConfig.builder()
@@ -250,6 +242,28 @@ public final class MockRuntimeCli {
             // A machine without a resolvable name still has the loopback coordinate.
         }
         return "localhost";
+    }
+
+    private static Integer parsePortArg(String portStr, PrintStream err) {
+        try {
+            return Integer.parseInt(portStr);
+        } catch (NumberFormatException _) {
+            err.println("Error: invalid port: " + portStr);
+            return null;
+        }
+    }
+
+    private static Integer resolveFallbackWebPort(Map<String, String> env, PrintStream err) {
+        var envPort = env != null ? env.get("PM_MOCK_WEB_PORT") : null;
+        if (envPort == null || envPort.isBlank()) {
+            return 7420;
+        }
+        try {
+            return Integer.parseInt(envPort.trim());
+        } catch (NumberFormatException _) {
+            err.println("Error: invalid port in PM_MOCK_WEB_PORT: " + envPort);
+            return null;
+        }
     }
 
     private static void printUsage(PrintStream out) {

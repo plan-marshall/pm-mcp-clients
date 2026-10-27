@@ -58,6 +58,7 @@ public final class WebCommand implements Callable<Integer> {
 
     /** The default port of the web listener ({@code machine-config.json}, {@code web.port}). */
     static final int DEFAULT_PORT = 7420;
+    private static final String LOOPBACK_URL_PREFIX = "http://127.0.0.1:";
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
     private static final String LABEL = "label";
     private static final String STATUS = "status";
@@ -161,7 +162,7 @@ public final class WebCommand implements Callable<Integer> {
                 var code = json != null && json.get("code") instanceof String c ? c : "CODE";
                 var url = json != null && json.get("url") instanceof String u && !u.isBlank()
                                     ? u
-                                    : "http://127.0.0.1:" + DEFAULT_PORT + "/pair#code=" + code;
+                                    : LOOPBACK_URL_PREFIX + DEFAULT_PORT + "/pair#code=" + code;
                 var validUntil = LocalTime.now(ZoneId.systemDefault()).plusMinutes(10).format(TIME_FORMATTER);
 
                 var locale = localeFor(context);
@@ -199,7 +200,7 @@ public final class WebCommand implements Callable<Integer> {
             var port = EntryFlow.getWebPort(status);
             new EntryFlow(context).ensureLoopbackListener(runtime, port);
 
-            String url = "http://127.0.0.1:" + port;
+            String url = LOOPBACK_URL_PREFIX + port;
             if (pair) {
                 var pairing = new EntryFlow(context).issuePairingCode(runtime, port);
                 url = pairing.url();
@@ -655,7 +656,7 @@ public final class WebCommand implements Callable<Integer> {
             }
             out.println("  " + MessageCatalogue.format(locale, "entry.listener.lan_open", Map.of(
                                 "url", lanUrl,
-                                LOOPBACK, "http://127.0.0.1:" + loopbackPort)));
+                                LOOPBACK, LOOPBACK_URL_PREFIX + loopbackPort)));
             var fingerprint = JsonTree.string(json, "lan_fingerprint");
             if (fingerprint != null) {
                 out.println("  " + MessageCatalogue.format(locale, "entry.listener.fingerprint", Map.of())

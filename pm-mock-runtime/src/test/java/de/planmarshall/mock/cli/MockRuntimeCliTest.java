@@ -96,6 +96,24 @@ class MockRuntimeCliTest {
     }
 
     @Test
+    @DisplayName("reports invalid port error in PM_MOCK_WEB_PORT")
+    void invalidEnvPort() {
+        var result = MockRuntimeCli.parse(new String[0], out, err, Map.of("PM_MOCK_WEB_PORT", "invalid"));
+        assertEquals(2, result.exitCode());
+        assertTrue(stderr().contains("invalid port in PM_MOCK_WEB_PORT: invalid"));
+    }
+
+    @Test
+    @DisplayName("falls back to default 7420 when env is null or PM_MOCK_WEB_PORT is blank")
+    void nullOrBlankEnvFallback() {
+        var nullEnv = MockRuntimeCli.parse(new String[0], out, err, null);
+        assertEquals(7420, nullEnv.config().getWebPort());
+
+        var blankEnv = MockRuntimeCli.parse(new String[0], out, err, Map.of("PM_MOCK_WEB_PORT", "   "));
+        assertEquals(7420, blankEnv.config().getWebPort());
+    }
+
+    @Test
     @DisplayName("CLI --web-port overrides PM_MOCK_WEB_PORT")
     void cliPortOverridesEnv() {
         var result = MockRuntimeCli.parse(new String[]{"--web-port", "8088"}, out, err, Map.of("PM_MOCK_WEB_PORT", "9099"));

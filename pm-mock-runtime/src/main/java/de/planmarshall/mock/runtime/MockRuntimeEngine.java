@@ -6290,11 +6290,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return currentPairingCode;
     }
 
-    /** @return the loopback web TCP port, or 7420 by default */
-    public int webPort() {
-        return webPort;
-    }
-
     /**
      * Sets the live loopback web TCP port bound by the server.
      *
