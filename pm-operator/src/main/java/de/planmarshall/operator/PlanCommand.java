@@ -47,6 +47,8 @@ import de.planmarshall.api.report.TokenComponentRecord;
 import de.planmarshall.api.report.TokenFormat;
 import de.planmarshall.api.report.TokenUsageRecord;
 import de.planmarshall.api.start.EntryKind;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
+import de.planmarshall.operator.dialogue.ChoicePrompt.Choice;
 import de.planmarshall.operator.overview.OverviewFullScreenApp;
 import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiScreenDriver;
@@ -601,19 +603,6 @@ public final class PlanCommand implements Callable<Integer> {
             this.context = context;
         }
 
-        private String askPoint(PrintWriter out) {
-            var locale = context.clientEnvironment().locale();
-            var prompt = new StartPrompt(context, out, locale, false);
-            var answer = prompt.askRaw(MessageCatalogue.format(locale, "operator.actions.pause.ask",
-                                                    Map.of("plan", planId)), "control.pause",
-                                MessageCatalogue.format(locale, "operator.actions.pause.task", Map.of()), planId);
-            return switch (answer.trim()) {
-                case "1", "now" -> "now";
-                case "3", "phase" -> "after_phase";
-                default -> "after_task";
-            };
-        }
-
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
@@ -631,7 +620,27 @@ public final class PlanCommand implements Callable<Integer> {
                     return 3;
                 }
                 if (context.isInteractiveTerminal()) {
-                    point = askPoint(out);
+                    var locale = context.clientEnvironment().locale();
+                    var prompt = new StartPrompt(context, out, locale, false);
+                    var choicePrompt = new ChoicePrompt(prompt, "control.pause");
+                    choicePrompt.title(MessageCatalogue.format(locale, "operator.actions.pause.where",
+                                        Map.of("plan", planId)));
+                    var cNow = MessageCatalogue.format(locale, "operator.actions.pause.consequence.now", Map.of());
+                    var cTask = MessageCatalogue.format(locale, "operator.actions.pause.consequence.task", Map.of());
+                    var cPhase = MessageCatalogue.format(locale, "operator.actions.pause.consequence.phase", Map.of());
+                    choicePrompt.addChoice("now", MessageCatalogue.format(locale, "operator.actions.pause.now", Map.of()),
+                                        cNow, null, false, null);
+                    choicePrompt.addChoice("task", MessageCatalogue.format(locale, "operator.actions.pause.task", Map.of()),
+                                        cTask, null, true, null);
+                    choicePrompt.addChoice("phase", MessageCatalogue.format(locale, "operator.actions.pause.phase", Map.of()),
+                                        cPhase, null, false, null);
+                    Choice choice;
+                    try {
+                        choice = choicePrompt.ask();
+                    } catch (StartPrompt.StartLeftException _) {
+                        return 0;
+                    }
+                    point = "now".equals(choice.key()) ? "now" : "phase".equals(choice.key()) ? "after_phase" : "after_task";
                 }
             }
 

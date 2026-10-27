@@ -4120,24 +4120,36 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        if ("POST".equals(method) && path.contains("/actions/")) {
+        if ("POST".equals(method)) {
             var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
             var sub = path.substring(prefix.length());
+            String subjectId = null;
+            String action = null;
             var marker = sub.indexOf("/actions/");
-            if (marker < 0) {
-                return false;
-            }
-            var subjectId = sub.substring(0, marker);
-            var action = sub.substring(marker + "/actions/".length());
-            if (action.contains("/")) {
-                return false;
-            }
-            if (isPlan) {
-                handlePlanAction(request, response, subjectId, action);
+            if (marker >= 0) {
+                subjectId = sub.substring(0, marker);
+                action = sub.substring(marker + "/actions/".length());
             } else {
-                handleEpicAction(request, response, subjectId, action);
+                var slash = sub.indexOf('/');
+                if (slash > 0 && sub.indexOf('/', slash + 1) < 0) {
+                    var candidate = sub.substring(slash + 1);
+                    if (isPlan && Set.of("pause", "start", "cancel", "abandon").contains(candidate)) {
+                        subjectId = sub.substring(0, slash);
+                        action = candidate;
+                    } else if (isEpic && Set.of("auto", "common_files", "cancel", "next", "archive").contains(candidate)) {
+                        subjectId = sub.substring(0, slash);
+                        action = candidate;
+                    }
+                }
             }
-            return true;
+            if (subjectId != null && action != null && !action.contains("/")) {
+                if (isPlan) {
+                    handlePlanAction(request, response, subjectId, action);
+                } else {
+                    handleEpicAction(request, response, subjectId, action);
+                }
+                return true;
+            }
         }
 
         if (isPlan && "GET".equals(method) && path.endsWith("/holds")) {

@@ -13,8 +13,11 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import org.jline.reader.EndOfFileException;
+import org.jline.reader.UserInterruptException;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.ChatReadBackResource;
@@ -22,6 +25,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.start.EntryKind;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 import picocli.CommandLine.Model.CommandSpec;
 import picocli.CommandLine.Option;
@@ -110,13 +114,43 @@ final class ActionSupport {
             if (context.isInteractiveTerminal()) {
                 var locale = context.clientEnvironment().locale();
                 var prompt = new StartPrompt(context, out, locale, false);
-                effectiveReason = prompt.askRaw(MessageCatalogue.format(locale, "operator.actions.end.reason",
-                                    Map.of()) + StartPrompt.SUFFIX, "control.action",
-                                    MessageCatalogue.format(locale, "operator.actions.end.reason", Map.of()), id);
-                if (effectiveReason.isBlank()) {
+                var reasonPrompt = MessageCatalogue.format(locale, "operator.actions.end.reason", Map.of())
+                                    + StartPrompt.SUFFIX;
+                String reason;
+                try {
+                    reason = prompt.reader().readLine(reasonPrompt);
+                } catch (EndOfFileException | UserInterruptException _) {
+                    reason = null;
+                }
+                if (reason == null || "q".equalsIgnoreCase(reason) || (locale.toLowerCase(Locale.ROOT).startsWith("de")
+                                    && "v".equalsIgnoreCase(reason))) {
+                    out.println(MessageCatalogue.format(locale, "operator.dialogue.left",
+                                        Map.of("state", "control.action")));
+                    out.flush();
+                    return 0;
+                }
+                reason = reason.trim();
+                if (reason.isBlank()) {
                     out.println(MessageCatalogue.format(locale, "operator.actions.end.reason_required", Map.of()));
                     out.flush();
                     return 1;
+                }
+                effectiveReason = reason;
+                out.println("  " + MessageCatalogue.format(locale, "operator.actions.end.reason", Map.of())
+                                    + "         " + effectiveReason);
+                out.flush();
+
+                var confirmPrompt = new ChoicePrompt(prompt, "control.action").consent(false);
+                var confirmTitle = MessageCatalogue.format(locale, "operator.actions.cancel.confirm",
+                                    Map.of("action", actionVerb)) + "?";
+                confirmPrompt.title(confirmTitle);
+                try {
+                    var consent = confirmPrompt.askConsent();
+                    if (!consent.confirmed()) {
+                        return 0;
+                    }
+                } catch (StartPrompt.StartLeftException _) {
+                    return 0;
                 }
             } else {
                 effectiveReason = (CANCEL.equalsIgnoreCase(actionVerb) ? "Cancelled" : "Abandoned")

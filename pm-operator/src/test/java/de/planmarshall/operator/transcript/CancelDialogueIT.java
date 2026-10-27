@@ -14,7 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.planmarshall.mock.StandardScenarios;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -26,7 +25,6 @@ import org.junit.jupiter.api.condition.OS;
  */
 @DisplayName("pm-operator cancel dialogue on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
-@Disabled("PLAN-10-cli-choice-prompt-pause fixes the strict choice prompt of the cancel dialogue")
 class CancelDialogueIT {
 
     private static final String PROMPT = "Reason";

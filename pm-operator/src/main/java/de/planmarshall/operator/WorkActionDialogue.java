@@ -17,6 +17,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import org.jline.reader.EndOfFileException;
+import org.jline.reader.UserInterruptException;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.ArchiveCheckLine;
@@ -25,6 +27,7 @@ import de.planmarshall.api.control.WorkActions;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.operator.actions.WorkActionsClient;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 /**
  * One action of a plan or an epic, run as its dialogue ({@code doc/design/terminal-client/19-actions.adoc}).
@@ -112,7 +115,7 @@ final class WorkActionDialogue {
             return 1;
         }
         return switch (action) {
-            case "pause" -> pause();
+            case "pause" -> pause(actions);
             case "start" -> start();
             case "cancel", "abandon" -> EPIC.equals(kind) ? endEpic() : end(action, actions);
             case "chat" -> chat(epic);
@@ -139,16 +142,25 @@ final class WorkActionDialogue {
         return 0;
     }
 
-    private int pause() throws IOException {
-        var options = MessageCatalogue.format(prompt.locale(), "operator.actions.pause.ask",
-                            Map.of("plan", id));
-        var answer = prompt.askRaw(options, STATE_ID,
-                            MessageCatalogue.format(prompt.locale(), "operator.actions.pause.task", Map.of()), id);
-        var point = switch (answer) {
-            case "1", "now" -> "now";
-            case "3", "phase" -> "phase";
-            default -> "task";
-        };
+    private int pause(WorkActions actions) throws IOException {
+        var choicePrompt = new ChoicePrompt(prompt, STATE_ID);
+        var where = MessageCatalogue.format(prompt.locale(), "operator.actions.pause.where", Map.of("plan", id));
+        choicePrompt.title(where);
+        var cNow = MessageCatalogue.format(prompt.locale(), "operator.actions.pause.consequence.now", Map.of());
+        var cTask = MessageCatalogue.format(prompt.locale(), "operator.actions.pause.consequence.task", Map.of());
+        var cPhase = MessageCatalogue.format(prompt.locale(), "operator.actions.pause.consequence.phase", Map.of());
+        choicePrompt.addChoice("now", MessageCatalogue.format(prompt.locale(), "operator.actions.pause.now", Map.of()),
+                            cNow, null, false, null);
+        choicePrompt.addChoice("task", MessageCatalogue.format(prompt.locale(), "operator.actions.pause.task", Map.of()),
+                            cTask, null, true, null);
+        choicePrompt.addChoice("phase", MessageCatalogue.format(prompt.locale(), "operator.actions.pause.phase", Map.of()),
+                            cPhase, null, false, null);
+        if (actions.epicId() != null) {
+            choicePrompt.epicTold(MessageCatalogue.format(prompt.locale(), "operator.actions.end.told",
+                                Map.of("epic", actions.epicId())));
+        }
+        var choice = choicePrompt.ask();
+        var point = choice.key();
         client.perform(kind, id, "pause", Map.of("point", point));
         if ("now".equals(point)) {
             prompt.line("operator.actions.result.paused", Map.of("plan", id));
@@ -182,22 +194,19 @@ final class WorkActionDialogue {
         if (reason == null) {
             return 0;
         }
-        var closeAnswer = prompt.askRaw(MessageCatalogue.format(prompt.locale(),
-                            "operator.actions.end.pull_request", Map.of()) + "   "
-                            + MessageCatalogue.format(prompt.locale(), "operator.actions.end.close_pr", Map.of())
-                            + StartPrompt.SUFFIX, STATE_ID,
-                            MessageCatalogue.format(prompt.locale(), "operator.actions.end.close_pr", Map.of()),
-                            id);
-        var confirm = prompt.askRaw(MessageCatalogue.format(prompt.locale(), "operator.actions.end.confirm",
-                            Map.of("action", outcome)) + StartPrompt.SUFFIX, STATE_ID,
-                            MessageCatalogue.format(prompt.locale(), "operator.actions.cancel.confirm",
-                                                Map.of("action", outcome)), id);
-        if (!Answers.isYes(confirm)) {
+        prompt.raw("  " + MessageCatalogue.format(prompt.locale(), "operator.actions.end.reason", Map.of())
+                            + "         " + reason);
+        var confirmTitle = MessageCatalogue.format(prompt.locale(), "operator.actions.cancel.confirm",
+                            Map.of("action", outcome)) + "?";
+        var consent = new ChoicePrompt(prompt, STATE_ID).consent(false);
+        consent.title(confirmTitle);
+        var consentResult = consent.askConsent();
+        if (!consentResult.confirmed()) {
             return 0;
         }
         var payload = new LinkedHashMap<String, Object>();
         payload.put("reason", reason);
-        payload.put("close_pr", !"2".equals(closeAnswer));
+        payload.put("close_pr", true);
         client.perform(kind, id, action, payload);
         prompt.line("operator.actions.result.ended",
                             Map.of("plan", id, "outcome", "cancel".equals(action) ? "cancelled"
@@ -219,18 +228,18 @@ final class WorkActionDialogue {
                             + "   " + MessageCatalogue.format(prompt.locale(),
                             "operator.actions.epic.cancel.afterwards_text", Map.of()));
         var plans = prompt.askRaw(MessageCatalogue.format(prompt.locale(),
-                            "operator.actions.epic.cancel.with_plans", Map.of()) + StartPrompt.SUFFIX, STATE_ID,
+                                                "operator.actions.epic.cancel.with_plans", Map.of()), STATE_ID,
                             MessageCatalogue.format(prompt.locale(), "operator.actions.epic.cancel.plans", Map.of()),
                             id);
         var reason = askReason();
         if (reason == null) {
             return 0;
         }
-        var confirm = prompt.askRaw(MessageCatalogue.format(prompt.locale(),
-                            "operator.actions.epic.cancel.confirm", Map.of()) + StartPrompt.SUFFIX, STATE_ID,
-                            MessageCatalogue.format(prompt.locale(), "operator.actions.epic.cancel.title",
-                                                Map.of("epic", id)), id);
-        if (!Answers.isYes(confirm)) {
+        var consent = new ChoicePrompt(prompt, STATE_ID).consent(false);
+        consent.title(MessageCatalogue.format(prompt.locale(), "operator.actions.epic.cancel.title",
+                            Map.of("epic", id)));
+        var consentResult = consent.askConsent();
+        if (!consentResult.confirmed()) {
             return 0;
         }
         var payload = new LinkedHashMap<String, Object>();
@@ -242,9 +251,21 @@ final class WorkActionDialogue {
     }
 
     private @Nullable String askReason() {
-        var reason = prompt.askRaw(MessageCatalogue.format(prompt.locale(), "operator.actions.end.reason", Map.of())
-                            + StartPrompt.SUFFIX, STATE_ID,
-                            MessageCatalogue.format(prompt.locale(), "operator.actions.end.reason", Map.of()), id);
+        var question = MessageCatalogue.format(prompt.locale(), "operator.actions.end.reason", Map.of())
+                            + StartPrompt.SUFFIX;
+        String reason;
+        try {
+            reason = prompt.reader().readLine(question);
+        } catch (EndOfFileException | UserInterruptException _) {
+            reason = null;
+        }
+        if (reason == null || "q".equalsIgnoreCase(reason) || (prompt.locale().toLowerCase(Locale.ROOT).startsWith("de")
+                            && "v".equalsIgnoreCase(reason))) {
+            prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.dialogue.left",
+                                Map.of("state", STATE_ID)));
+            throw new StartPrompt.StartLeftException();
+        }
+        reason = reason.trim();
         if (reason.isBlank()) {
             prompt.line("operator.actions.end.reason_required", Map.of());
             return null;
