@@ -33,6 +33,9 @@ Launch the mock runtime using its lifecycle script (with smart incremental build
 # Or specify scenario and web port directly:
 ./pm-mock-runtime/start.sh --scenario onboarding-happy --web-port 7420
 
+# The web port can also be passed via PM_MOCK_WEB_PORT:
+PM_MOCK_WEB_PORT=7420 ./pm-mock-runtime/start.sh --scenario onboarding-happy
+
 # Stop mock runtime:
 ./pm-mock-runtime/stop.sh
 ```
@@ -115,10 +118,16 @@ java -jar pm-operator/target/pm-operator-0.1.0-SNAPSHOT.jar
 Detailed instructions are available in [`pm-web-app/README.md`](pm-web-app/README.md).
 
 #### Running the Development Server
-With `pm-mock-runtime` running on port 7420:
+With `pm-mock-runtime` running on port 7420 (or custom `PM_MOCK_WEB_PORT`):
 ```bash
 # Start Vite in background (default, target/pm-web-app.pid):
 ./pm-web-app/start.sh
+
+# Or start with custom web port and mock port:
+./pm-web-app/start.sh -p 5173 -m 7420
+
+# Environment variables PM_WEB_PORT and PM_MOCK_WEB_PORT are also respected:
+PM_WEB_PORT=5173 PM_MOCK_WEB_PORT=7420 ./pm-web-app/start.sh
 
 # Or start in foreground:
 ./pm-web-app/start.sh --foreground
@@ -132,7 +141,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173` in your browser. Vite automatically proxies `/api` and `/mock` endpoints to `http://127.0.0.1:7420`.
+Open `http://localhost:5173` (or the configured `PM_WEB_PORT`) in your browser. Vite automatically proxies `/api` and `/mock` endpoints to `http://127.0.0.1:7420` (or `PM_MOCK_WEB_PORT`).
 
 #### Testing User Flows
 - **Pairing Flow**: Navigate to `http://localhost:5173/pair#code=TEST-CODE` to verify browser pairing.

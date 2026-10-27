@@ -6,6 +6,21 @@ Guidance for AI coding agents working in this repository.
 packages and git workflow. OpenCode V2 does not load it automatically — **read it before starting work** and follow
 it. This file holds only what is specific to OpenCode and not covered there.
 
+## Ports
+
+Each plan uses the block its spec names in Standing Constraints:
+- Mock web port: `20000 + 10 × NN`
+- App port: `20000 + 10 × NN + 1`
+where `NN` is the plan number (for example, PLAN-76 uses mock web port `20760` and app port `20761`). The rest of the block (`20000 + 10 × NN + 2` to `20000 + 10 × NN + 9`) is reserved.
+
+Without a block the defaults apply: `7420` (mock web port) and `5173` (app port), which is the operator's own loop.
+
+Environment variables:
+- `PM_MOCK_WEB_PORT`: sets the mock runtime loopback web port.
+- `PM_WEB_PORT`: sets the web app port.
+
+An assigned port that is in use is a blocker, never a reason to take another port or kill foreign processes.
+
 ## Browser checks (Playwright MCP)
 
 Playwright MCP is configured in `opencode.json`, pinned to a package version. `pm-web-app/README.md` is the source of
@@ -13,23 +28,23 @@ truth for the development setup; this section holds only what an automated brows
 
 ### Ports and startup
 
-- App: `http://localhost:5173`; mock runtime: `http://127.0.0.1:7420`. Vite proxies `/api` and `/mock` to the mock.
+- App: `http://localhost:<app-port>` (default `5173`); mock runtime: `http://127.0.0.1:<mock-web-port>` (default `7420`). Vite proxies `/api` and `/mock` to the mock.
 - Start the mock first, then the app; `pm-web-app/start.sh` does not start the mock:
   ```bash
-  ./pm-mock-runtime/start.sh --scenario <scenario> --web-port 7420   # stop with ./pm-mock-runtime/stop.sh
-  ./pm-web-app/start.sh                                             # stop with ./pm-web-app/stop.sh
+  ./pm-mock-runtime/start.sh --scenario <scenario> --web-port <mock-web-port>   # stop with ./pm-mock-runtime/stop.sh
+  PM_MOCK_WEB_PORT=<mock-web-port> ./pm-web-app/start.sh -p <app-port>          # stop with ./pm-web-app/stop.sh
   ```
   Use the mock's `start.sh`, not a bare `mvn exec:java`: the bare run keeps the base in a temporary directory and
   deletes it on shutdown, which takes the stored device secret with it, so a browser that paired once is refused
   with 401 on the next start.
-- `start.sh` accepts `-p`/`--port` and records the effective port in `pm-web-app/target/pm-web-app.port`. Read that
+- `start.sh` accepts `-p`/`--port` (and `-m`/`--mock-port`) and records the effective port in `pm-web-app/target/pm-web-app.port`. Read that
   file instead of assuming `5173` when a non-default port was used.
 - `start.sh` prints `Local:`, `Network:` and `Paired:` coordinates, the last with a code that works right now.
 
 ### Pairing code
 
 - A code is **single-use**. Take the current one from the `Paired:` line, or ask the mock:
-  `POST http://127.0.0.1:7420/mock/pairing` returns the open code, or issues the next one when the previous was
+  `POST http://127.0.0.1:<mock-web-port>/mock/pairing` returns the open code, or issues the next one when the previous was
   consumed. Re-running `start.sh` while a code is open prints the same code.
 - Open `<app>/pair#code=<CODE>`. Do not rewrite a URL that still carries the code fragment; it is redeemed on load.
 - `/mock` is restricted to clients on this machine. Never read or issue a code through the `Network:` URL.
