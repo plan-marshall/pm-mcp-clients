@@ -184,15 +184,15 @@ Two-column views (a list beside a detail, the process tree beside the inspector,
 |Name |Width |Rules
 
 |Desktop
-|`>= 1024px`
+|`>= 1280px`
 |The frame in one header row; two-column views side by side; tables show every column; the header entries show their labels.
 
 |Tablet
-|`640px` to `1023px`
+|`768px` to `1279px`
 |The header wraps to a second row; two-column views keep both columns but at `1fr 1fr`; a wide table may drop its least important column, never its identifying one; the process tree and the inspector stack when the tree is narrower than `360px`.
 
 |Phone
-|< `640px`
+|< `768px`
 |One column throughout; the header keeps the icons and hides the words of the system and settings entries; breadcrumbs shorten in the middle; a table becomes a list of rows, each row a labelled pair (the terminal's field list, link:../terminal-client/03-dialogues.adoc#content[Terminal Client, Content]); a dialogue takes the whole body; a badge stays visible but never widens its row.
 |===
 
