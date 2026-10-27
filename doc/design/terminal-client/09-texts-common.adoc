@@ -420,3 +420,29 @@ The `common.error.*` keys above are the error codes the onboarding, the entry, a
 |you were asked
 |du wurdest gefragt
 |===
+
+[#texts-operator-tui]
+=== `operator`: Full-Screen Availability
+
+The texts printed to stderr when a full-screen view falls back to scrollback output (xref:15-overview.adoc#full-screen-not-available[Why the View Does Not Open]):
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`operator.tui.unavailable.non_interactive`
+|The full-screen view needs an interactive terminal.
+|Die Vollbildansicht erfordert ein interaktives Terminal.
+
+|`operator.tui.unavailable.dumb_terminal`
+|The terminal type does not support full-screen display.
+|Der Terminaltyp unterstützt keine Vollbildanzeige.
+
+|`operator.tui.unavailable.configured_off`
+|The full-screen view is switched off in the configuration.
+|Die Vollbildansicht ist in der Konfiguration ausgeschaltet.
+
+|`operator.tui.unavailable.too_narrow`
+|The terminal is too narrow for the full-screen view; here is the tree.
+|Das Terminal ist zu schmal für die Vollbildansicht; hier ist der Baum.
+|===
