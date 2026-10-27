@@ -206,35 +206,47 @@ The layout is usable down to `320px` without horizontal scrolling. A touch targe
 |Token |Size |Face |Use
 
 |`--text-xs`
-|`0.75rem`
+|`0.75rem` (12 px)
 |sans
 |Badges, counts, timestamps, the machine's name in the header.
 
 |`--text-sm`
-|`0.875rem`
+|`0.8125rem` (13 px)
 |sans
 |Table cells, secondary lines, the explanation under a title, a notice.
 
 |`--text-base`
-|`1rem`
+|`0.875rem` (14 px)
 |sans
 |Body copy, a button's label, the default of a form control.
 
-|`--text-lg`
-|`1.125rem`
+|`--text-md`
+|`1rem` (16 px)
 |sans
-|A card's or a section's title.
+|A row's title, a card's title.
+
+|`--text-lg`
+|`1.125rem` (18 px)
+|sans
+|A section's title.
 
 |`--text-xl`
-|`1.25rem`
+|`1.375rem` (22 px)
 |sans
-|A view's title where it is not the page's only `<h1>`.
+|A panel's or a dialog's title.
 
 |`--text-2xl`
-|`1.5rem`
+|`1.75rem` (28 px)
 |sans
-|The page's `<h1>`, and the figure of a summary.
+|The page's `<h1>`.
+
+|`--text-3xl`
+|`2.25rem` (36 px)
+|sans
+|The figure of a dashboard, the inbox count, the pairing code.
 |===
+
+Each size carries its line height as `--line-height-xs` to `--line-height-3xl` and its weight as `--weight-regular` (400), `--weight-medium` (500) or `--weight-semibold` (600), in the scale of link:../../claude_review/visual-design/proposals.adoc#VD-P-03[VD-P-03]. The interface runs on Inter, self-hosted as a variable `woff2` in `pm-web-app/static/fonts/` with its SIL Open Font License; the system stack follows it as the fallback, and `font-feature-settings` turns on tabular numerals (`tnum`) and the single-storey `a` (`cv11`).
 
 `--font-sans` is the face of every word of the interface. `--font-mono` (at `0.9em`) is the face of every identifier, path, digest, branch, commit, model id, version, count of tokens, diff line, and log line: anything the operator may compare character by character or copy. A view switches the face, never the words: a value is not translated, an identifier is never emphasised by a colour alone.
 
@@ -250,35 +262,49 @@ The palette is semantic: a view names the role, not the hue. The tokens are defi
 |Role |Tokens |Where
 
 |Ground
-|`--color-bg-app`, `--color-bg-surface`, `--color-bg-subtle`, `--color-bg-inset`
-|The page, a card, a table header and a hover, an inset field.
+|`--color-bg-app`, `--color-bg-rail`, `--color-bg-surface`, `--color-bg-raised`, `--color-bg-subtle`
+|The page, the navigation rail, a card, a popover or a dialog, a table header and a hover.
 
 |Line
-|`--color-border`, `--color-border-subtle`
-|The edge of a card or a control, and the rule between rows.
+|`--color-border`, `--color-border-strong`
+|The edge of a card or a control, the rule between rows, and a focus-adjacent edge.
 
 |Text
-|`--color-text-primary`, `--color-text-secondary`, `--color-text-muted`, `--color-text-inverse`
-|Body, a secondary line, a hint or a timestamp, text on a filled control.
+|`--color-text-primary`, `--color-text-secondary`, `--color-text-muted`, `--color-on-brand`
+|Body, a secondary line, a hint or a timestamp, and the label on a brand-coloured fill.
 
-|Primary
-|`--color-primary`, `--color-primary-hover`, `--color-primary-subtle`, `--color-primary-text`
-|The one action of a view, a link, the selected tab or view switch, a count badge.
+|Brand
+|`--color-brand`, `--color-brand-hover`, `--color-brand-subtle`
+|The one action of a view, a link, the selected row, the brand mark.
+
+|Attention
+|`--color-attention`, `--color-attention-subtle`, `--color-attention-text`
+|The dot and edge of a thing that needs the operator, the attention strip, and its text.
+
+|Running
+|`--color-running`
+|The dot of running work and a progress bar.
 
 |Success
-|`--color-success`, `--color-success-subtle`, `--color-success-border`
-|A finished check, a ready project, a plan that landed.
-
-|Warning
-|`--color-warning`, `--color-warning-subtle`, `--color-warning-border`
-|Something waits for the operator, a drain runs, an aspect needs a look.
+|`--color-success`
+|The dot of a finished check, a ready project, a plan that landed.
 
 |Danger
-|`--color-danger`, `--color-danger-subtle`, `--color-danger-border`
-|A failure, an irreversible action, a revoked device, a refused step.
+|`--color-danger`, `--color-danger-subtle`
+|The dot of a failure or a hold, the confirm button of a danger dialog, an error block.
+
+|Neutral
+|`--color-neutral`
+|The dot of planned, paused or staged work.
+
+|Epic
+|`--color-epic`
+|The epic glyph, never a fill.
 |===
 
-A colour never carries a meaning alone: every state also has its word and, where it stands in a row, its badge glyph or icon. `--color-primary` marks exactly one primary action per screen; every other action is secondary or a plain link. A danger control is filled only for the irreversible act of its dialogue; the entry that opens the dialogue is a plain danger-coloured link.
+The names of design system v1 (`--color-primary`, `--color-warning`, `--color-bg-inset` and the rest) stay declared as aliases of these tokens until link:../../claude_review/visual-design/plan.adoc#VD-S-08[VD-S-08] removes them; a view may still name one, and it renders the v2 value of its theme.
+
+A colour never carries a meaning alone: every state also has its word and, where it stands in a row, its badge glyph or icon. `--color-brand` marks exactly one primary action per screen; every other action is secondary or a plain link. A danger control is filled only for the irreversible act of its dialogue; the entry that opens the dialogue is a plain danger-coloured link.
 
 [#states]
 === States and Attention
@@ -320,7 +346,7 @@ A badge is at most one per kind per row; a row that carries both a state and a h
 The theme is a choice this browser remembers: light, dark, or system, offered together in the header. `system` follows the operating system (`prefers-color-scheme`) and is what a browser with no choice, no readable storage, or a stored value that names no theme gets. The choice is kept under `pm_theme` and applied before the first paint, so a reload never shows the other theme first. Every token is defined in both themes, and a view uses only the tokens, so a theme switch never requires a view to change.
 
 * *Light*: the app's ground is the lightest step, a card is white, text is the darkest step. The primary, success, warning, and danger roles take their darker variants so that text on a subtle background keeps a contrast ratio of at least `4.5:1`.
-* *Dark*: the ground is the darkest step and a card one step above it, so a card reads as raised, never as a hole. Text is the lightest step; the roles take their lighter variants. A filled control keeps white text on the primary fill.
+* *Dark*: the ground is the darkest step and a card one step above it, so a card reads as raised, never as a hole. Text is the lightest step; the roles take their lighter variants. A filled control takes `--color-on-brand` on the brand fill: white in light, the app ground in dark.
 * *Never inverted*: a colour that carries meaning is not swapped between the themes (danger stays red, success stays green), and no view hard-codes a hex value. An identifier in `--font-mono` keeps the same contrast as body text; a diff keeps its added and removed roles in both themes.
 
 [#reports-layout]
