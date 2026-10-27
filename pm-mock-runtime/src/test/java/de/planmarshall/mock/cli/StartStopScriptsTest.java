@@ -155,7 +155,8 @@ class StartStopScriptsTest {
             // Wait until processA is alive and listening
             long deadline = System.currentTimeMillis() + 3000;
             while (System.currentTimeMillis() < deadline && processA.isAlive()) {
-                try (var s = new Socket("127.0.0.1", portA)) {
+                try {
+                    new Socket("127.0.0.1", portA).close();
                     break;
                 } catch (Exception _) {
                     LockSupport.parkNanos(TimeUnit.MILLISECONDS.toNanos(100));

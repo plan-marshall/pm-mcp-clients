@@ -80,6 +80,14 @@ public final class MockRuntimeCli {
         return parse(args, out, err, System.getenv());
     }
 
+    private static final class CliOptions {
+        private String scenario = StandardScenarios.STATUS_ONLY;
+        private Path base;
+        private Integer webPort;
+        private String token;
+        private String deviceSecret;
+    }
+
     /**
      * Parses command-line arguments without starting the server.
      *
@@ -90,67 +98,72 @@ public final class MockRuntimeCli {
      * @return parse result
      */
     public static CliParseResult parse(String[] args, PrintStream out, PrintStream err, Map<String, String> env) {
-        String scenario = StandardScenarios.STATUS_ONLY;
-        Path base = null;
-        int webPort = -1;
-        boolean webPortSpecified = false;
-        String token = null;
-        String deviceSecret = null;
-
-        var i = 0;
-        while (i < args.length) {
-            var arg = args[i++];
-            if ("--help".equals(arg) || "-h".equals(arg)) {
-                printUsage(out);
-                return new CliParseResult(0, null);
-            }
-            if (i >= args.length && isValuedOption(arg)) {
-                err.println(ERR_MISSING_ARG + arg);
-                return new CliParseResult(2, null);
-            }
-            switch (arg) {
-                case "--scenario", "-s" -> scenario = args[i++];
-                case "--base", "-b" -> base = Path.of(args[i++]);
-                case "--token", "-t" -> token = args[i++];
-                case "--device-secret", "-d" -> deviceSecret = args[i++];
-                case "--web-port", "-p" -> {
-                    var parsed = parsePortArg(args[i++], err);
-                    if (parsed == null) {
-                        return new CliParseResult(2, null);
-                    }
-                    webPort = parsed;
-                    webPortSpecified = true;
-                }
-                default -> {
-                    err.println("Error: unrecognized argument: " + arg);
-                    printUsage(err);
-                    return new CliParseResult(2, null);
-                }
-            }
+        var opts = new CliOptions();
+        var parseExit = parseArguments(args, opts, out, err);
+        if (parseExit != null) {
+            return new CliParseResult(parseExit, null);
         }
 
-        if (!webPortSpecified) {
-            var fallback = resolveFallbackWebPort(env, err);
-            if (fallback == null) {
-                return new CliParseResult(2, null);
-            }
-            webPort = fallback;
+        var webPort = opts.webPort != null ? opts.webPort : resolveFallbackWebPort(env, err);
+        if (webPort == null) {
+            return new CliParseResult(2, null);
         }
 
         var configBuilder = MockRuntimeConfig.builder()
-                .scenario(scenario)
-                .base(base)
+                .scenario(opts.scenario)
+                .base(opts.base)
                 .webPort(webPort);
 
-        if (token != null) {
-            configBuilder.runtimeToken(token);
+        if (opts.token != null) {
+            configBuilder.runtimeToken(opts.token);
         }
 
-        if (deviceSecret != null) {
-            configBuilder.deviceSecret(deviceSecret);
+        if (opts.deviceSecret != null) {
+            configBuilder.deviceSecret(opts.deviceSecret);
         }
 
         return new CliParseResult(0, configBuilder.build());
+    }
+
+    private static Integer parseArguments(String[] args, CliOptions opts, PrintStream out, PrintStream err) {
+        var index = new int[]{0};
+        while (index[0] < args.length) {
+            var arg = args[index[0]++];
+            if ("--help".equals(arg) || "-h".equals(arg)) {
+                printUsage(out);
+                return 0;
+            }
+            var errCode = parseOption(arg, args, index, opts, err);
+            if (errCode != null) {
+                return errCode;
+            }
+        }
+        return null;
+    }
+
+    private static Integer parseOption(String arg, String[] args, int[] index, CliOptions opts, PrintStream err) {
+        if (index[0] >= args.length && isValuedOption(arg)) {
+            err.println(ERR_MISSING_ARG + arg);
+            return 2;
+        }
+        switch (arg) {
+            case "--scenario", "-s" -> opts.scenario = args[index[0]++];
+            case "--base", "-b" -> opts.base = Path.of(args[index[0]++]);
+            case "--token", "-t" -> opts.token = args[index[0]++];
+            case "--device-secret", "-d" -> opts.deviceSecret = args[index[0]++];
+            case "--web-port", "-p" -> {
+                opts.webPort = parsePortArg(args[index[0]++], err);
+                if (opts.webPort == null) {
+                    return 2;
+                }
+            }
+            default -> {
+                err.println("Error: unrecognized argument: " + arg);
+                printUsage(err);
+                return 2;
+            }
+        }
+        return null;
     }
 
     /**
