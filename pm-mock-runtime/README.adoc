@@ -329,15 +329,18 @@ To switch scenarios:
 
 === Bundled Scenarios
 
-The module ships with the following standard scenarios out of the box, declared as constants in `de.planmarshall.mock.StandardScenarios`:
+The module ships with six canonical scenarios, the ones link:src/main/resources/scenarios/primary.txt[`primary.txt`] lists and the interactive launcher offers; the Java catalog (`de.planmarshall.mock.StandardScenarios`) and `start.sh` both read that file:
 
-* `StandardScenarios.STATUS_ONLY` (`"status-only"`): represents an idle runtime serving machine status.
-* `StandardScenarios.ONBOARDING_HAPPY` (`"onboarding-happy"`): complete happy path machine onboarding flow through mode selection, language selection, harness verification, and confirmation.
-* `StandardScenarios.ONBOARDING_HARNESS_NOT_LOGGED_IN` (`"onboarding-harness-not-logged-in"`): machine onboarding where harness probing fails with a missing login diagnosis and offers a fix link.
-* `StandardScenarios.WEB_PAIRING` (`"web-pairing"`): browser pairing flow demonstrating pairing code exchange and subsequent authenticated web client requests.
+* `StandardScenarios.ONBOARDING` (`"onboarding"`): the guided and automatic machine onboarding, the machine's settings, and the entry with browser pairing, paired devices, the LAN listener, and the shared operator interaction (UC-ONB-1..10, UC-ENT-1..2).
+* `StandardScenarios.RUNNING_WORK` (`"running-work"`): running work across projects, plans, and epics, a plan's process and intent, decisions, and the control of plans and epics (UC-PLN-1..6, UC-CTL-1..5).
+* `StandardScenarios.PROJECTS_AND_START` (`"projects-and-start"`): the project explorer, enrolment and store integrity, git and lesson sources, and starting plans and epics from every intake source (UC-PRJ-1..4, UC-STA-1..9).
+* `StandardScenarios.REPORTS_AND_SYSTEM` (`"reports-and-system"`): the reports inbox, plan completion reports, the runtime lifecycle (drain, stop, restart), and cleanup and kept items (UC-PLN-6, UC-SYS-1..3).
+* `StandardScenarios.DESIGNER` (`"designer"`): the process designer with installed units at every level, the catalogue of building blocks, validation findings, placing, and removing (UC-PLN-3).
 * `StandardScenarios.FULLY_ONBOARDED` (`"fully-onboarded"`): the showroom. One fully onboarded machine with every operator domain populated at once (projects, running work, decisions, reports, system, settings, start, designer, and the event stream), so both clients can be walked end to end without switching scenarios.
 
-The fine-grained entries above remain resolvable by name for case-level tests. The interactive launcher offers the canonical scenarios in link:src/main/resources/scenarios/primary.txt[`primary.txt`], the one list the Java catalog and `start.sh` both read; `fully-onboarded` is the sixth entry.
+A state of a canonical scenario is a jump target: `POST /mock/goto/<state>` enters it, and the engine applies the operator facts that state carries — its control state (plans, epics, holds, settings, chats, reviews), its decisions, reports, projects, start entry, system lifecycle, and cleanup job — so the views the state concerns show the state, not the scenario's start.
+
+The fine-grained case scenarios (`status-only`, `onboarding-happy`, `web-pairing`, the onboarding harness cases, and the per-flow cases) remain resolvable by name for case-level tests.
 
 `StandardScenarios.ALL` provides an unmodifiable list of all delivered standard scenario names.
 
