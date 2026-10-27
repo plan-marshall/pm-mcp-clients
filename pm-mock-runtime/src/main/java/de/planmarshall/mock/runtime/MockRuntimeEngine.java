@@ -6472,47 +6472,54 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         if (facts.containsKey("kept")) {
             keptItems.clear();
-            for (var kept : fixtureObjects(facts, "kept", "facts.kept")) {
-                keptItems.add(new CleanupKeptItem(
-                        JsonTree.string(kept, "item_id"),
-                        JsonTree.string(kept, "kind"),
-                        JsonTree.string(kept, KEY_LABEL),
-                        JsonTree.string(kept, KEY_REASON),
-                        JsonTree.string(kept, "kept_at"),
-                        JsonTree.string(kept, "kept_by")));
-            }
+            keptItems.addAll(keptItemsOf(facts));
         }
         if (facts.containsKey(FIXTURE_RESIDUE)) {
             cleanupResidues.clear();
-            for (var residue : fixtureObjects(facts, FIXTURE_RESIDUE, "facts." + FIXTURE_RESIDUE)) {
-                if (residue == null) {
-                    continue;
-                }
-                cleanupResidues.add(new CleanupResidue(
-                        requiredMember(residue, "step", "facts." + FIXTURE_RESIDUE),
-                        intMember(residue, "count"),
-                        JsonTree.number(residue, "bytes") != null ? JsonTree.number(residue, "bytes").longValue() : 0L,
-                        JsonTree.string(residue, "last_run")));
-            }
+            cleanupResidues.addAll(residuesOf(facts));
         }
     }
 
     /**
-     * @param map     the fixture member map
-     * @param key     the member to read
-     * @param fixture the fixture's name, for the failure message
-     * @return the member's value
-     * @throws IllegalStateException when the fixture does not carry the member
+     * @param facts the state's operator facts
+     * @return the kept items the fixture names
      */
-    private static String requiredMember(@Nullable Map<String, Object> map, String key, String fixture) {
-        if (map == null) {
-            throw new IllegalStateException("Fixture '" + fixture + "' carries an empty entry");
+    private static List<CleanupKeptItem> keptItemsOf(Map<String, Object> facts) {
+        var out = new ArrayList<CleanupKeptItem>();
+        for (var kept : fixtureObjects(facts, "kept", "facts.kept")) {
+            if (kept == null) {
+                continue;
+            }
+            out.add(new CleanupKeptItem(
+                    JsonTree.string(kept, "item_id"),
+                    JsonTree.string(kept, "kind"),
+                    JsonTree.string(kept, KEY_LABEL),
+                    JsonTree.string(kept, KEY_REASON),
+                    JsonTree.string(kept, "kept_at"),
+                    JsonTree.string(kept, "kept_by")));
         }
-        var value = JsonTree.string(map, key);
-        if (value == null) {
-            throw new IllegalStateException("Fixture '" + fixture + "' names no '" + key + "'");
+        return out;
+    }
+
+    /**
+     * @param facts the state's operator facts
+     * @return the cleanup residues the fixture names; an entry without a step is skipped
+     */
+    private static List<CleanupResidue> residuesOf(Map<String, Object> facts) {
+        var out = new ArrayList<CleanupResidue>();
+        for (var residue : fixtureObjects(facts, FIXTURE_RESIDUE, "facts." + FIXTURE_RESIDUE)) {
+            if (residue == null) {
+                continue;
+            }
+            var step = JsonTree.string(residue, "step");
+            if (step == null) {
+                continue;
+            }
+            var bytes = JsonTree.number(residue, "bytes");
+            out.add(new CleanupResidue(step, intMember(residue, "count"),
+                    bytes != null ? bytes.longValue() : 0L, JsonTree.string(residue, "last_run")));
         }
-        return value;
+        return out;
     }
 
     /**
