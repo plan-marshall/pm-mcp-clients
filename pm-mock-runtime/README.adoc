@@ -338,7 +338,7 @@ The module ships with six canonical scenarios, the ones link:src/main/resources/
 * `StandardScenarios.DESIGNER` (`"designer"`): the process designer with installed units at every level, the catalogue of building blocks, validation findings, placing, and removing (UC-PLN-3).
 * `StandardScenarios.FULLY_ONBOARDED` (`"fully-onboarded"`): the showroom. One fully onboarded machine with every operator domain populated at once (projects, running work, decisions, reports, system, settings, start, designer, and the event stream), so both clients can be walked end to end without switching scenarios.
 
-A state of a canonical scenario is a jump target: `POST /mock/goto/<state>` enters it, and the engine applies the operator facts that state carries — its control state (plans, epics, holds, settings, chats, reviews), its decisions, reports, projects, start entry, system lifecycle, and cleanup job — so the views the state concerns show the state, not the scenario's start.
+A state is a jump target where the engine applies the operator facts it carries: `POST /mock/goto/<state>` enters it and re-seeds its control state (plans, epics, holds, settings, chats, reviews), its decisions, reports, projects, start entry, system lifecycle, and cleanup job — so the views those facts concern show the state, not the scenario's start. The designer's catalogue is read when the scenario switches and is not re-applied by a jump.
 
 The fine-grained case scenarios (`status-only`, `onboarding-happy`, `web-pairing`, the onboarding harness cases, and the per-flow cases) remain resolvable by name for case-level tests.
 

@@ -1586,7 +1586,7 @@
           "level": "machine"
         },
         "facts": {
-          "summary": "36 roles assigned"
+          "summary": "31 roles assigned"
         },
         "links": []
       },
@@ -2297,7 +2297,7 @@
             {
               "aspect": "roles",
               "step": 4,
-              "summary": "36 roles assigned"
+              "summary": "31 roles assigned"
             },
             {
               "aspect": "store",

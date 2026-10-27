@@ -1058,6 +1058,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     /**
      * Jumps directly to a state within the current scenario.
+     * <p>
+     * The jump is a re-seed, not only a move: every domain store is wiped and re-seeded from the
+     * state's runtime fixture, so operator-made state does not survive it. A caller that means
+     * "move to the next state and keep what the operator did" uses
+     * {@link #transitionTo(String)} instead.
      *
      * @param stateId the state identifier
      * @throws IllegalArgumentException if the state does not exist in the current scenario
@@ -7546,11 +7551,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             if (activeCleanupJob.state() == CleanupJobState.DONE) {
+                var done = activeCleanupJob.summary();
                 response.json(200, Map.of(
                         KEY_STATUS, "deleted",
                         "job_id", jobId,
                         CONST_DECISION, "delete",
-                        "freed_bytes", 1825361100L,
+                        "freed_bytes", done.freedBytes(),
                         "kept_count", keptItems.size()
                 ));
                 return;
@@ -7583,27 +7589,28 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     activeCleanupJob.links()
             );
 
+            var decided = activeCleanupJob.summary();
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
                     CONST_DECISION, "delete",
                     "by", "operator",
                     "channel", isWeb ? "web" : "cli",
                     "device", isWeb ? "iPad" : KEY_TERMINAL,
-                    "freed_bytes", 1825361100L
+                    "freed_bytes", decided.freedBytes()
             ));
             broadcastEvent("cleanup.done", Map.of(
                     "job_id", jobId,
-                    "freed_bytes", 1825361100L,
-                    "deleted_plans", 11,
-                    "deleted_epics", 2,
-                    "deleted_logs", 29
+                    "freed_bytes", decided.freedBytes(),
+                    "deleted_plans", decided.plansCount(),
+                    "deleted_epics", decided.epicsCount(),
+                    "deleted_logs", decided.logsCount()
             ));
 
             response.json(200, Map.of(
                     KEY_STATUS, "deleted",
                     "job_id", jobId,
                     CONST_DECISION, "delete",
-                    "freed_bytes", 1825361100L,
+                    "freed_bytes", decided.freedBytes(),
                     "kept_count", keptItems.size()
             ));
         }

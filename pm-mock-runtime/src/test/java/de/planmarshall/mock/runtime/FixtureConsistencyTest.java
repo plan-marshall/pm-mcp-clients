@@ -10,15 +10,17 @@
 package de.planmarshall.mock.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -42,6 +44,9 @@ class FixtureConsistencyTest {
 
     private static final String AUTH = "Bearer test-token";
 
+    /** A number followed by "roles", the shape every onboarding summary uses. */
+    private static final Pattern ROLES = Pattern.compile("(\\d+) roles");
+
     @Nested
     @DisplayName("The cleanup summary and its details")
     class Cleanup {
@@ -58,8 +63,27 @@ class FixtureConsistencyTest {
         @DisplayName("the preview state's own job is the sum of the project items")
         void previewStateAppliesItsOwnJob() throws Exception {
             try (var engine = engine(StandardScenarios.REPORTS_AND_SYSTEM)) {
+                var before = JsonTree.number(JsonTree.object(get(engine, "/api/v1/system/cleanup"), "summary"),
+                        "freed_bytes").longValue();
                 engine.goToState("cleanup.preview");
+                var after = JsonTree.number(JsonTree.object(get(engine, "/api/v1/system/cleanup"), "summary"),
+                        "freed_bytes").longValue();
+                assertNotEquals(before, after, "the preview state must apply its own job");
                 assertCleanupAgrees(engine, "/api/v1/system/cleanup");
+            }
+        }
+
+        @Test
+        @DisplayName("the delete response frees what the job's summary says")
+        void deleteResponseMatchesTheSummary() throws Exception {
+            try (var engine = engine(StandardScenarios.REPORTS_AND_SYSTEM)) {
+                var summary = JsonTree.object(get(engine, "/api/v1/system/cleanup"), "summary");
+                assertNotNull(summary);
+                var deleted = JsonTree.asObject(JsonTree.parse(
+                        body(engine, "POST", "/api/v1/system/cleanup/cln-0012/delete")));
+                assertNotNull(deleted);
+                assertEquals(JsonTree.number(summary, "freed_bytes").longValue(),
+                        JsonTree.number(deleted, "freed_bytes").longValue(), "freed_bytes");
             }
         }
 
@@ -73,7 +97,7 @@ class FixtureConsistencyTest {
                 assertNotNull(summary);
                 assertNotNull(snapshot);
                 for (var key : List.of("plans_count", "epics_count", "logs_count", "reports_count",
-                        "freed_bytes", "kept_for_good_count")) {
+                        "projects_count", "freed_bytes", "kept_for_good_count")) {
                     assertEquals(summary.get(key), snapshot.get(key), key);
                 }
             }
@@ -149,6 +173,30 @@ class FixtureConsistencyTest {
                 var roles = aspect(settings, "roles");
                 assertNotNull(roles);
                 assertEquals(leadingNumber(JsonTree.string(roles, "summary")), leadingNumber(step));
+            }
+        }
+
+        @Test
+        @DisplayName("no onboarding state names a role count the machine settings do not")
+        void everyStateNamesTheSettingsNumber() throws Exception {
+            try (var engine = engine(StandardScenarios.ONBOARDING)) {
+                var settings = get(engine, "/api/v1/machine/settings");
+                var roles = aspect(settings, "roles");
+                assertNotNull(roles);
+                var expected = leadingNumber(JsonTree.string(roles, "summary"));
+                for (var stateId : List.of("roles.validate", "onboard.summary")) {
+                    engine.goToState(stateId);
+                    var raw = body(engine, "/api/v1/onboarding/state");
+                    var matcher = ROLES.matcher(raw);
+                    var found = new ArrayList<String>();
+                    while (matcher.find()) {
+                        found.add(matcher.group(1));
+                    }
+                    assertTrue(!found.isEmpty(), stateId + " names no role count");
+                    for (var count : found) {
+                        assertEquals(expected, count, stateId + " names a role count of its own");
+                    }
+                }
             }
         }
     }
@@ -276,7 +324,11 @@ class FixtureConsistencyTest {
     }
 
     private static String body(MockRuntimeEngine engine, String path) throws IOException {
-        var request = new MockHttpRequest("GET", path, Map.of("Authorization", AUTH), new byte[0],
+        return body(engine, "GET", path);
+    }
+
+    private static String body(MockRuntimeEngine engine, String method, String path) throws IOException {
+        var request = new MockHttpRequest(method, path, Map.of("Authorization", AUTH), new byte[0],
                 System.nanoTime());
         var out = new ByteArrayOutputStream();
         engine.dispatch(request, new MockHttpResponse(out), false);
