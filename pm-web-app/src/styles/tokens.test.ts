@@ -156,7 +156,10 @@ const SURFACES = [
   '--color-bg-subtle',
 ];
 
-/** Every foreground the interface renders as text, against every surface. */
+/**
+ * Every text pair the interface renders: the three text roles on every surface, and each accent
+ * role on the surfaces it actually appears on.
+ */
 const TEXT_PAIRS: Array<[string, string]> = [
   ...SURFACES.flatMap((surface) =>
     ['--color-text-primary', '--color-text-secondary', '--color-text-muted'].map(
