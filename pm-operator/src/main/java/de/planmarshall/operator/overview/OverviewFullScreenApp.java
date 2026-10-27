@@ -22,6 +22,7 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Function;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
@@ -269,15 +270,97 @@ public final class OverviewFullScreenApp {
             sseThread.interrupt();
             saveState();
             noticeBuffer.deactivate();
-            var drained = noticeBuffer.drain(locale);
-            if (!drained.summary().isEmpty()) {
-                out.println(drained.summary());
-            }
+            var where = leavingPlace();
+            var drained = noticeBuffer.drain(locale, where);
+            out.println(drained.summary().isEmpty()
+                                ? ConsoleNoticeBuffer.leavingLine(locale, where)
+                                : drained.summary());
             for (var line : drained.lines()) {
                 out.println(line);
             }
             out.flush();
         }
+    }
+
+    /**
+     * Names where the operator was when the view closed, so the line the view leaves behind says
+     * where and not only what arrived: the live header of the level the operator left, or the
+     * overview itself when no level names a narrower place.
+     *
+     * @return the localized place
+     */
+    String leavingPlace() {
+        synchronized (this) {
+            var lvl = stack.level();
+            if (lvl == null || lvl.kind() == TuiLevel.Kind.OVERVIEW) {
+                return ConsoleNoticeBuffer.overviewPlace(locale);
+            }
+            var selected = stack.selected();
+            var title = levelBreadcrumb(lvl, selected != null ? selected.id() : null);
+            return title.isBlank() ? ConsoleNoticeBuffer.overviewPlace(locale) : title;
+        }
+    }
+
+    /**
+     * The header the level shows, recomputed from the live model: a report count or a system
+     * window can change while the view is open, so the pushed level title may be stale.
+     *
+     * @param lvl        the level, or {@code null}
+     * @param selectedId the selected row, or {@code null}
+     * @return the header, empty when there is no level
+     */
+    private String levelBreadcrumb(@Nullable TuiLevel lvl, @Nullable String selectedId) {
+        if (lvl == null) {
+            return "";
+        }
+        var title = lvl.title();
+        return switch (lvl.kind()) {
+            case PLAN -> header(currentPlanView.get(), title, view -> view.breadcrumb(locale, selectedId));
+            case PLAN_ACTIVITY -> header(currentActivity.get(), title, view -> view.breadcrumb());
+            case PLAN_COMPLETION -> header(currentCompletion.get(), title, view -> view.breadcrumb(locale));
+            case EPIC -> header(currentEpicView.get(), title, view -> view.level(locale).title());
+            case REPORTS -> header(currentReports.get(), title, view -> view.breadcrumb(locale));
+            case SYSTEM -> header(currentSystem.get(), title,
+                                view -> view.breadcrumb(locale, SystemLevel.sectionOf(lvl.id())));
+            default -> title;
+        };
+    }
+
+    /**
+     * @param view     the model of the level, or {@code null} when the level has none yet
+     * @param fallback the title the level was pushed with
+     * @param header   the header the live model renders
+     * @param <T>      the model type
+     * @return the live header, or the fallback when the model is missing
+     */
+    private static <T> String header(@Nullable T view, String fallback, Function<T, String> header) {
+        return view != null ? header.apply(view) : fallback;
+    }
+
+    /**
+     * @param lvl the level, or {@code null}
+     * @return the footer the level shows, or {@code null} when it has none
+     */
+    private @Nullable String levelFooter(@Nullable TuiLevel lvl) {
+        if (lvl == null) {
+            return null;
+        }
+        var kind = lvl.kind();
+        if (kind == TuiLevel.Kind.PLAN) {
+            var view = currentPlanView.get();
+            return view != null ? view.footer(locale) : null;
+        }
+        if (kind == TuiLevel.Kind.EPIC) {
+            var view = currentEpicView.get();
+            return view != null ? view.footer(locale) : null;
+        }
+        if (kind == TuiLevel.Kind.SYSTEM) {
+            var view = currentSystem.get();
+            if (view != null && SystemLevel.sectionOf(lvl.id()) == SystemLevel.Section.ROOT) {
+                return view.footer(locale);
+            }
+        }
+        return null;
     }
 
     /**
@@ -682,45 +765,8 @@ public final class OverviewFullScreenApp {
         var kind = lvl != null ? lvl.kind() : TuiLevel.Kind.OVERVIEW;
         var selected = stack.selected();
         var selectedId = selected != null ? selected.id() : null;
-        var breadcrumb = lvl != null ? lvl.title() : "";
-        String footer = null;
-        if (kind == TuiLevel.Kind.PLAN) {
-            var view = currentPlanView.get();
-            if (view != null) {
-                breadcrumb = view.breadcrumb(locale, selectedId);
-                footer = view.footer(locale);
-            }
-        } else if (kind == TuiLevel.Kind.PLAN_ACTIVITY) {
-            var view = currentActivity.get();
-            if (view != null) {
-                breadcrumb = view.breadcrumb();
-            }
-        } else if (kind == TuiLevel.Kind.PLAN_COMPLETION) {
-            var view = currentCompletion.get();
-            if (view != null) {
-                breadcrumb = view.breadcrumb(locale);
-            }
-        } else if (kind == TuiLevel.Kind.EPIC) {
-            var view = currentEpicView.get();
-            if (view != null) {
-                breadcrumb = view.level(locale).title();
-                footer = view.footer(locale);
-            }
-        } else if (kind == TuiLevel.Kind.REPORTS) {
-            var view = currentReports.get();
-            if (view != null) {
-                breadcrumb = view.breadcrumb(locale);
-            }
-        } else if (kind == TuiLevel.Kind.SYSTEM) {
-            var view = currentSystem.get();
-            if (view != null) {
-                var section = SystemLevel.sectionOf(lvl != null ? lvl.id() : null);
-                breadcrumb = view.breadcrumb(locale, section);
-                if (section == SystemLevel.Section.ROOT) {
-                    footer = view.footer(locale);
-                }
-            }
-        }
+        var breadcrumb = levelBreadcrumb(lvl, selectedId);
+        var footer = levelFooter(lvl);
         var rows = stack.visibleRows();
         if (statusMessage != null && !statusMessage.isBlank()) {
             var withStatus = new ArrayList<TuiRow>(rows.size() + 1);

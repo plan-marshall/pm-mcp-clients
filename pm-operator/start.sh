@@ -149,8 +149,8 @@ if [ "$DAEMON" = true ]; then
     echo "Logs: $LOG_FILE"
     echo "To stop: $SCRIPT_DIR/stop.sh"
 else
-    # Run in foreground and record PID so stop.sh can track it
-    echo "$$" > "$PID_FILE"
-    trap 'rm -f "$PID_FILE"' EXIT INT TERM
+    # A foreground run writes no PID file: the guard above is about the background process, and
+    # one foreground run must never block another (CLI-CC-P-08). stop.sh finds a foreground run by
+    # its process name.
     exec "${JAVA_CMD[@]}"
 fi

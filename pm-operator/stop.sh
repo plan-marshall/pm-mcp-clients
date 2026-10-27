@@ -15,6 +15,7 @@ PID_FILE="$SCRIPT_DIR/target/pm-operator.pid"
 # Also clean up legacy dot-file if present
 rm -f "$SCRIPT_DIR/.pm-operator.pid" 2>/dev/null || true
 
+STOPPED_BACKGROUND=false
 if [ -f "$PID_FILE" ]; then
     PID="$(cat "$PID_FILE" 2>/dev/null || true)"
     if [ -n "$PID" ] && kill -0 "$PID" 2>/dev/null; then
@@ -36,20 +37,20 @@ if [ -f "$PID_FILE" ]; then
         fi
         rm -f "$PID_FILE"
         echo "pm-operator stopped successfully."
-        exit 0
+        STOPPED_BACKGROUND=true
     else
         rm -f "$PID_FILE"
-        echo "Stale PID file removed. pm-operator is not running."
-        exit 0
+        echo "Stale PID file removed."
     fi
 fi
 
-# Fallback: check if any pm-operator process is running
+# A foreground run writes no PID file, so it is found by its process name; this also reaches a
+# foreground run that lives beside the background one.
 RUNNING_PIDS="$(pgrep -f "de.planmarshall.operator.PmOperator" 2>/dev/null || true)"
 if [ -n "$RUNNING_PIDS" ]; then
     echo "Stopping pm-operator process(es): $RUNNING_PIDS..."
     kill $RUNNING_PIDS 2>/dev/null || true
     echo "pm-operator stopped successfully."
-else
+elif [ "$STOPPED_BACKGROUND" = false ]; then
     echo "pm-operator is not running."
 fi

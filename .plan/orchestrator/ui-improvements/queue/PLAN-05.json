@@ -2,10 +2,10 @@
   "id": "PLAN-05",
   "slug": "cli-summary-line-and-start-script",
   "workstream": "WS-05",
-  "status": "launched",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "05-cli-summary-line-and-start-script",
+  "pr": "238",
+  "landing": "landings/PLAN-05.md",
   "seq": 5
 }
