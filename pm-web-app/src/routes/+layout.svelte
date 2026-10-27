@@ -13,7 +13,15 @@
     syncUrl,
   } from '../lib/stores/runtime';
   import { apiClient, type ConnectionStatus } from '../lib/api/client';
-  import { pathForRoute, type AppRoute } from '../lib/routes';
+  import { pathForRoute, ROUTE_TITLES, type AppRoute } from '../lib/routes';
+  import {
+    THEME_CHOICES,
+    applyTheme,
+    readThemeChoice,
+    watchSystemTheme,
+    writeThemeChoice,
+    type ThemeChoice,
+  } from '../lib/theme';
   import { installAdvisoryTitles } from '../lib/utils/advisoryTitle';
   import Spinner from '../lib/components/Spinner.svelte';
   import PairingView from '../lib/views/PairingView.svelte';
@@ -32,7 +40,9 @@
 
   let { children }: Props = $props();
 
-  let theme = $state<'light' | 'dark'>('light');
+  // The theme this browser chose. `app.html` already applied it before the first paint; the
+  // control reads the same choice so the pressed option and the document agree.
+  let themeChoice = $state<ThemeChoice>(readThemeChoice());
   // The first write settles the address bar on the route the store chose; every later one is a
   // history entry, so the browser's Back returns to the previous view.
   let addressBarSettled = false;
@@ -108,17 +118,21 @@
   });
 
   onMount(async () => {
-    // Detect system theme
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      theme = 'dark';
-    }
-    document.documentElement.setAttribute('data-theme', theme);
+    // The theme was set before the first paint; applying it again keeps the document and the
+    // stored choice in step after hydration, and the listener below lets `system` follow the
+    // machine while the app runs.
+    applyTheme(themeChoice);
 
     // The address bar is the route: a reload, a bookmark, or the browser's back returns here.
     adoptRouteFromLocation();
     const onPop = () => adoptRouteFromLocation();
     window.addEventListener('popstate', onPop);
     onDestroy(() => window.removeEventListener('popstate', onPop));
+    onDestroy(
+      watchSystemTheme(() => {
+        if (themeChoice === 'system') applyTheme('system');
+      }),
+    );
 
     // Initialize i18n before the runtime, so a notice the runtime composes at start-up reads
     // from the catalogue. A slow catalogue must not block start-up: the race bounds the wait.
@@ -147,57 +161,31 @@
     addressBarSettled = true;
   }
 
-  function toggleTheme() {
-    theme = theme === 'light' ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', theme);
+  /**
+   * Applies a theme the person picked and keeps it for the next visit.
+   *
+   * @param choice the picked theme
+   */
+  function chooseTheme(choice: ThemeChoice): void {
+    themeChoice = choice;
+    writeThemeChoice(choice);
+    applyTheme(choice);
   }
 
   function toggleLocale() {
     setLocale($currentLocale === 'en' ? 'de' : 'en');
   }
 
-  /** The catalogue key of each route's tab title; the type makes a route impossible to miss. */
-  const ROUTE_TITLE_KEYS: Record<AppRoute, string> = {
-    pair: 'web.pair.page.title',
-    entry: 'start.plan.title',
-    onboarding: 'onboard.entry.title',
-    'project-onboarding': 'project.explorer.title',
-    settings: 'web.settings.page.title',
-    'machine-settings': 'web.settings.page.title',
-    projects: 'project.explorer.title',
-    overview: 'overview.running.title',
-    plan: 'plan.view.title',
-    epic: 'epic.view.title',
-    decomposition: 'epic.view.title',
-    decisions: 'decisions.list.title',
-    reports: 'report.list.title',
-    system: 'system.view.title',
-    cleanup: 'system.view.title',
-    designer: 'designer.view.title',
-    start: 'start.plan.title',
-    revoked: 'devices.revoked.title',
-    'listener-off': 'web.entry.lan_off.title',
-  };
-
-  /**
-   * The title the address bar carries for the route, before the open decisions are counted.
-   *
-   * @param route the route shown
-   * @returns the catalogue title of that route
-   */
-  function routeTitle(route: AppRoute): string {
-    return $t(ROUTE_TITLE_KEYS[route]);
-  }
-
   // The tab title counts the open decisions, so an operator in another tab sees them without
-  // opening the app; the list and the badge carry the same count.
+  // opening the app; the list and the badge carry the same count. The route supplies the key and
+  // the name it carries, so no title is ever formatted without its argument.
   $effect(() => {
     if (typeof document === 'undefined') return;
     const count = $runtimeStore.openDecisionsCount;
-    const key = ROUTE_TITLE_KEYS[$runtimeStore.currentRoute];
+    const { key, args } = ROUTE_TITLES[$runtimeStore.currentRoute]($runtimeStore);
     // The address bar never shows a raw key: the title waits for the catalogue to arrive.
-    if (!key || !$messagesStore[key]) return;
-    const base = routeTitle($runtimeStore.currentRoute);
+    if (!$messagesStore[key]) return;
+    const base = $t(key, args);
     document.title = count > 0 ? $t('decision.notify.tab_title', { count, title: base }) : base;
   });
 </script>
@@ -364,14 +352,23 @@
         {$currentLocale === 'en' ? 'DE' : 'EN'}
       </button>
 
-      <button
-        class="header-action-btn"
-        onclick={toggleTheme}
-        aria-label={$t('web.frame.toggle_theme')}
-        data-advisory={$t('web.frame.toggle_theme.title')}
-      >
-        {theme === 'light' ? '🌙' : '☀️'}
-      </button>
+      <fieldset class="theme-choice">
+        <legend class="sr-only">{$t('web.frame.theme.label')}</legend>
+        {#each THEME_CHOICES as choice (choice)}
+          <input
+            class="theme-choice__input"
+            type="radio"
+            name="pm-theme"
+            id={`theme-${choice}`}
+            value={choice}
+            checked={themeChoice === choice}
+            onchange={() => chooseTheme(choice)}
+          />
+          <label class="theme-choice__option" for={`theme-${choice}`} data-testid={`theme-${choice}`}>
+            {$t(`web.frame.theme.${choice}`)}
+          </label>
+        {/each}
+      </fieldset>
     </div>
   </header>
 
@@ -534,6 +531,58 @@
     flex-direction: column;
   }
 
+  /* The three theme choices are one control: a radio group, so the frame says they belong
+     together and the radio role says exactly one is in force. */
+  .theme-choice {
+    display: inline-flex;
+    align-items: center;
+    gap: 1px;
+    margin: 0;
+    padding: 1px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+  }
+
+  /* The radio itself stays reachable for the keyboard and the screen reader; the label is what a
+     person sees and clicks. */
+  .theme-choice__input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .theme-choice__option {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+    border-radius: calc(var(--radius-sm) - 1px);
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+
+  .theme-choice__option:hover {
+    background-color: var(--color-bg-subtle);
+    color: var(--color-text-primary);
+  }
+
+  .theme-choice__input:checked + .theme-choice__option {
+    background-color: var(--color-primary-subtle);
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+
+  .theme-choice__input:focus-visible + .theme-choice__option {
+    box-shadow: var(--focus-ring);
+  }
+
   .draining-banner {
     display: flex;
     align-items: center;
@@ -603,6 +652,11 @@
   }
 
   @media (max-width: 640px) {
+    /* A touch target stays 44 px on the phone, as every header control does. */
+    .theme-choice__option {
+      min-height: 2.75rem;
+    }
+
     .header-action-btn__text {
       display: none;
     }

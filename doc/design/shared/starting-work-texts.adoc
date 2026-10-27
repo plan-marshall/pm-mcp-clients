@@ -22,9 +22,17 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |Start a plan in {project}
 |Einen Plan in {project} starten
 
+|`start.plan.title.loading`
+|Start a plan
+|Einen Plan starten
+
 |`start.epic.title`
 |Start an epic in {project}
 |Ein Epic in {project} starten
+
+|`start.epic.title.loading`
+|Start an epic
+|Ein Epic starten
 
 |`start.gate.machine`
 |This machine is not fully onboarded: {need}.

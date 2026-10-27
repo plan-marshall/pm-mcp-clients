@@ -82,7 +82,7 @@ A control is audited by its class, not one by one. Every class below must carry 
 |===
 |Class |Why it needs one
 
-|Icon-only controls (the language and theme switches, the favourite star, the notice dismiss)
+|Icon-only controls (the language switch, the favourite star, the notice dismiss)
 |The glyph or the icon does not name the action; the advisory is the only explanation in words.
 
 |Destructive or irreversible actions (waive or decline, discard the draft, release or unenrol a project, stop the runtime now)

@@ -14,7 +14,7 @@ Status: `FINAL`. This document is the design authority for theme readability, se
 [#overview]
 == Overview and Problem Statement
 
-The web app supports both light and dark themes, selectable through the user interface toggle and responding to the browser's `prefers-color-scheme`. During operation against running mock scenarios, three systemic readability defects were observed:
+The web app supports both light and dark themes, chosen in the header as light, dark, or system, and remembered per browser. `system` follows the browser's `prefers-color-scheme`; an explicit choice overrides it, and the choice is applied before the first paint. During operation against running mock scenarios, three systemic readability defects were observed:
 
 . **Findings review action readability in dark mode (F1):** The epic findings review button (`.review-open`, labelled "Review" or "Prüfen") rendered with `rgb(0, 0, 0)` on a dark card background (`rgb(19, 27, 46)`), resulting in an unacceptable 1.22:1 contrast ratio. The root cause was an incomplete button reset in `base.css` (`button { background: none; }` without `color: inherit;`), causing standard `<button>` elements without explicit color to fall back to the browser's default black text.
 . **Undefined CSS token references (F2):** Five color tokens (`--color-accent`, `--color-accent-hover`, `--color-bg-base`, `--color-bg-subtle-hover`, `--color-warning-text`) were referenced in views and components but never declared in `tokens.css`.

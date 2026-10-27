@@ -42,11 +42,14 @@ test.describe('Web chrome, navigation and action advisories', () => {
     await expect(page.getByTestId('nav-projects-btn')).not.toHaveAttribute('title');
     await expect(page.getByTestId('nav-designer-btn')).not.toHaveAttribute('title');
 
-    // An icon-only control still explains itself.
-    await expect(page.getByRole('button', { name: 'Toggle light/dark theme' })).toHaveAttribute(
-      'title',
-      /light and dark theme/,
-    );
+    // The theme is three explicit choices in one radio group, each with a visible label that
+    // needs no tooltip.
+    const theme = page.getByRole('group', { name: 'Theme' });
+    await expect(theme.getByRole('radio')).toHaveCount(3);
+    for (const name of ['Light', 'Dark', 'System']) {
+      await expect(theme.getByRole('radio', { name })).toBeVisible();
+      await expect(page.getByTestId(`theme-${name.toLowerCase()}`)).not.toHaveAttribute('title');
+    }
 
     // No control repeats its own visible label on hover.
     const repeated = await page.locator('.app-header__actions button').evaluateAll((buttons) =>
@@ -84,6 +87,25 @@ test.describe('Web chrome, navigation and action advisories', () => {
       'title',
       /Return to the view you came from/,
     );
+  });
+
+  test('keeps the chosen theme across a full load', async ({ page }) => {
+    // The choice is this browser's, not the operating system's. The system preference is set
+    // against the choice in each direction, so a start-up that follows the machine instead of the
+    // stored choice fails here instead of passing by accident.
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.getByTestId('theme-dark').click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.getByTestId('theme-light').click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   });
 
   test('shows the project mark in the header at desktop and phone width', async ({ page }) => {
