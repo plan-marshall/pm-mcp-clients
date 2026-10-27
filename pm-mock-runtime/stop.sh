@@ -49,43 +49,6 @@ if [ -f "$PID_FILE" ]; then
     rm -f "$PID_FILE"
 fi
 
-# Free the port as well: a runtime started outside this worktree keeps no PID file here. When
-# this worktree's own process was stopped above, the port is its business and we leave any
-# other runtime alone.
-if [ "$STOPPED" = false ]; then
-    PORT="$(grep -oE 'Loopback Web Port:  [0-9]+' "$LOG_FILE" 2>/dev/null | tail -n1 | grep -oE '[0-9]+' || true)"
-    [ -n "$PORT" ] || PORT=7420
-    PORT_PIDS="$(lsof -ti ":$PORT" 2>/dev/null || true)"
-    for pid in $PORT_PIDS; do
-        if is_mock_process "$pid"; then
-            echo "Stopping pm-mock-runtime listening on port $PORT (PID: $pid)..."
-            stop_pid "$pid"
-            STOPPED=true
-        else
-            echo "Port $PORT is held by a non-mock process (PID: $pid); leaving it alone."
-        fi
-    done
-
-    # Wait for the port to be released so the next start binds immediately.
-    if [ -n "$PORT_PIDS" ]; then
-        for _ in {1..50}; do
-            if [ -z "$(lsof -ti ":$PORT" 2>/dev/null || true)" ]; then
-                break
-            fi
-            sleep 0.1
-        done
-        REMAINING="$(lsof -ti ":$PORT" 2>/dev/null || true)"
-        if [ -n "$REMAINING" ]; then
-            for pid in $REMAINING; do
-                if is_mock_process "$pid"; then
-                    echo "Port $PORT is still held by pm-mock-runtime (PID: $pid)." >&2
-                    exit 1
-                fi
-            done
-        fi
-    fi
-fi
-
 if [ "$STOPPED" = true ]; then
     echo "pm-mock-runtime stopped successfully."
 else

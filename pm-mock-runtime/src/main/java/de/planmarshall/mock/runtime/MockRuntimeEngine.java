@@ -294,7 +294,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String FIELD_ONBOARDED = "onboarded";
     private static final String CONST_LAN_HOST = "mbp-oliver.local";
     private static final String CONST_LAN_FINGERPRINT = "4F:1A:9C:6D:2B:88:71:03:C5:9E:44:AF:20:DB:16:E2:07";
-    private static final String CONST_LOOPBACK_URL = "http://127.0.0.1:7420";
     private static final int DEFAULT_LAN_PORT = 7421;
     private static final String KEY_LANDING = "landing";
     private static final String KEY_METHOD = "method";
@@ -541,6 +540,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Set<String> capturedProjects = ConcurrentHashMap.newKeySet();
     private volatile boolean lanListenerOn = true;
     private volatile int lanListenerPort = DEFAULT_LAN_PORT;
+    private volatile int webPort = 7420;
     private volatile String currentPairingCode;
     private long pairingCounter;
     private volatile boolean closed;
@@ -1768,7 +1768,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var code = new PairingCode(currentPairingCode);
         var resource = PairingResource.of(
                 code,
-                "http://127.0.0.1:7420/pair#code=" + code.display());
+                loopbackUrl() + "/pair#code=" + code.display());
         response.json(201, resource.toMap());
     }
 
@@ -1962,7 +1962,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var resp = new LinkedHashMap<String, Object>();
         resp.put(FIELD_ENABLED, true);
         resp.put(FIELD_LAN, lanListenerOn);
-        resp.put("port", 7420);
+        resp.put("port", webPort > 0 ? webPort : 7420);
         resp.put("open", true);
         response.json(200, resp);
     }
@@ -1973,7 +1973,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleConnectionStatus(MockHttpResponse response) throws IOException {
         var resp = new LinkedHashMap<String, Object>();
-        resp.put("loopback_url", CONST_LOOPBACK_URL);
+        resp.put("loopback_url", loopbackUrl());
         resp.put("loopback_open", true);
         resp.put("lan_enabled", lanListenerOn);
         resp.put(FIELD_LAN_PORT, lanListenerPort);
@@ -1990,8 +1990,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private List<Map<String, Object>> listenerMaps() {
-        var loopback = new ListenerResource(ListenerKind.LOOPBACK, ListenerState.OPEN, 7420,
-                CONST_LOOPBACK_URL, null);
+        var port = webPort > 0 ? webPort : 7420;
+        var loopback = new ListenerResource(ListenerKind.LOOPBACK, ListenerState.OPEN, port,
+                loopbackUrl(), null);
         var lan = new ListenerResource(
                 ListenerKind.LAN,
                 lanListenerOn ? ListenerState.OPEN : ListenerState.CLOSED,
@@ -2003,11 +2004,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleOpenLanListener(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var requestedPort = extractLanPort(request);
-        if (requestedPort == 7420) {
+        var liveLoopbackPort = webPort > 0 ? webPort : 7420;
+        if (requestedPort == liveLoopbackPort) {
             broadcastListenerChanged(ListenerState.PORT_OCCUPIED, requestedPort);
             response.json(409, Map.of(
                     KEY_ERROR, ERR_WEB_LISTENER_CONFLICT,
-                    KEY_MESSAGE, "Port 7420 is held by the loopback listener"));
+                    KEY_MESSAGE, "Port " + liveLoopbackPort + " is held by the loopback listener"));
             return;
         }
         lanListenerPort = requestedPort;
@@ -2051,6 +2053,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void broadcastListenerChanged(ListenerState state, int port) {
         var event = new ListenerChangedEvent(ListenerKind.LAN, state, port);
         broadcastEvent(EVENT_LISTENER_CHANGED, event.toMap());
+    }
+
+    private String loopbackUrl() {
+        var port = webPort > 0 ? webPort : 7420;
+        return "http://127.0.0.1:" + port;
     }
 
     private String lanListenerUrl() {
@@ -2105,7 +2112,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var resp = new LinkedHashMap<String, Object>();
             resp.put(FIELD_ENABLED, true);
             resp.put(FIELD_LAN, lanListenerOn);
-            resp.put("port", 7420);
+            resp.put("port", webPort > 0 ? webPort : 7420);
             resp.put("open", true);
             response.json(200, resp);
             return true;
@@ -6283,6 +6290,20 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return currentPairingCode;
     }
 
+    /** @return the loopback web TCP port, or 7420 by default */
+    public int webPort() {
+        return webPort;
+    }
+
+    /**
+     * Sets the live loopback web TCP port bound by the server.
+     *
+     * @param webPort the bound port
+     */
+    public void setWebPort(int webPort) {
+        this.webPort = webPort;
+    }
+
     /** @return the accepted runtime token */
     public String runtimeToken() {
         return runtimeToken;
@@ -7139,7 +7160,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 40802189312L,
                 "13:40",
                 true,
-                "127.0.0.1:7420",
+                "127.0.0.1:" + (webPort > 0 ? webPort : 7420),
                 lanListenerOn ? "192.168.1.20:7421" : "off",
                 2,
                 0,

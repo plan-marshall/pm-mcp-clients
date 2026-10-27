@@ -17,6 +17,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Map;
 
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
@@ -68,7 +69,7 @@ public final class MockRuntimeCli {
     }
 
     /**
-     * Parses command-line arguments without starting the server.
+     * Parses command-line arguments without starting the server, using the system environment.
      *
      * @param args command-line arguments
      * @param out  standard output stream
@@ -76,9 +77,23 @@ public final class MockRuntimeCli {
      * @return parse result
      */
     public static CliParseResult parse(String[] args, PrintStream out, PrintStream err) {
+        return parse(args, out, err, System.getenv());
+    }
+
+    /**
+     * Parses command-line arguments without starting the server.
+     *
+     * @param args command-line arguments
+     * @param out  standard output stream
+     * @param err  error output stream
+     * @param env  environment map for resolving environment variable fallbacks
+     * @return parse result
+     */
+    public static CliParseResult parse(String[] args, PrintStream out, PrintStream err, Map<String, String> env) {
         String scenario = StandardScenarios.STATUS_ONLY;
         Path base = null;
         int webPort = -1;
+        boolean webPortSpecified = false;
         String token = null;
         String deviceSecret = null;
 
@@ -102,6 +117,7 @@ public final class MockRuntimeCli {
                     var portStr = args[i++];
                     try {
                         webPort = Integer.parseInt(portStr);
+                        webPortSpecified = true;
                     } catch (NumberFormatException _) {
                         err.println("Error: invalid port: " + portStr);
                         return new CliParseResult(2, null);
@@ -112,6 +128,20 @@ public final class MockRuntimeCli {
                     printUsage(err);
                     return new CliParseResult(2, null);
                 }
+            }
+        }
+
+        if (!webPortSpecified) {
+            var envPort = env != null ? env.get("PM_MOCK_WEB_PORT") : null;
+            if (envPort != null && !envPort.isBlank()) {
+                try {
+                    webPort = Integer.parseInt(envPort.trim());
+                } catch (NumberFormatException _) {
+                    err.println("Error: invalid port in PM_MOCK_WEB_PORT: " + envPort);
+                    return new CliParseResult(2, null);
+                }
+            } else {
+                webPort = 7420;
             }
         }
 
@@ -184,8 +214,10 @@ public final class MockRuntimeCli {
         out.println("  Runtime Token:      " + runtime.token());
         var pairingCode = runtime.pairingCode();
         if (pairingCode != null && !pairingCode.isBlank() && runtime.webPort() >= 0) {
+            var appPort = System.getenv("PM_WEB_PORT");
+            var effectiveAppPort = appPort != null && !appPort.isBlank() ? appPort.trim() : "5173";
             out.println("  Pairing Code:       " + pairingCode);
-            out.println("  Web App URL:        http://" + systemHost() + ":5173/pair#code=" + pairingCode);
+            out.println("  Web App URL:        http://" + systemHost() + ":" + effectiveAppPort + "/pair#code=" + pairingCode);
         }
         out.println();
         out.println("Use 'pm-operator' with PM_MCP_BASE=" + runtime.base() + " to interact.");
@@ -225,7 +257,7 @@ public final class MockRuntimeCli {
         out.println("Options:");
         out.println("  -s, --scenario <name|path>  The initial scenario name or file path (default: status-only)");
         out.println("  -b, --base <dir>            Target machine directory <PM_MCP_BASE> (default: temporary dir)");
-        out.println("  -p, --web-port <port>       Loopback TCP port for web client testing (default: disabled)");
+        out.println("  -p, --web-port <port>       Loopback TCP port for web client testing (default: 7420 or PM_MOCK_WEB_PORT)");
         out.println("  -t, --token <token>         Fixed runtime token for authentication");
         out.println("  -d, --device-secret <secret> Fixed web device secret, bypassing the persisted one");
         out.println("  -h, --help                  Print this help message");
