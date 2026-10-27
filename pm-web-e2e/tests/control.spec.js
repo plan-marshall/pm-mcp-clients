@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
+import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 
 // Controlling work (UC-CTL-1..5): the mock runtime's contract for a plan's and an epic's actions,
 // its holds, and a plan's settings, and the web app's own views of them.
-const BASE = 'http://127.0.0.1:7420';
+const BASE = MOCK_RUNTIME_URL;
 
 test.describe('Controlling work (UC-CTL-1..5)', () => {
   let secret;

@@ -17,6 +17,7 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Map;
 
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
@@ -68,7 +69,7 @@ public final class MockRuntimeCli {
     }
 
     /**
-     * Parses command-line arguments without starting the server.
+     * Parses command-line arguments without starting the server, using the system environment.
      *
      * @param args command-line arguments
      * @param out  standard output stream
@@ -76,59 +77,93 @@ public final class MockRuntimeCli {
      * @return parse result
      */
     public static CliParseResult parse(String[] args, PrintStream out, PrintStream err) {
-        String scenario = StandardScenarios.STATUS_ONLY;
-        Path base = null;
-        int webPort = -1;
-        String token = null;
-        String deviceSecret = null;
+        return parse(args, out, err, System.getenv());
+    }
 
-        var i = 0;
-        while (i < args.length) {
-            var arg = args[i++];
-            if ("--help".equals(arg) || "-h".equals(arg)) {
-                printUsage(out);
-                return new CliParseResult(0, null);
-            }
-            if (i >= args.length && isValuedOption(arg)) {
-                err.println(ERR_MISSING_ARG + arg);
-                return new CliParseResult(2, null);
-            }
-            switch (arg) {
-                case "--scenario", "-s" -> scenario = args[i++];
-                case "--base", "-b" -> base = Path.of(args[i++]);
-                case "--token", "-t" -> token = args[i++];
-                case "--device-secret", "-d" -> deviceSecret = args[i++];
-                case "--web-port", "-p" -> {
-                    var portStr = args[i++];
-                    try {
-                        webPort = Integer.parseInt(portStr);
-                    } catch (NumberFormatException _) {
-                        err.println("Error: invalid port: " + portStr);
-                        return new CliParseResult(2, null);
-                    }
-                }
-                default -> {
-                    err.println("Error: unrecognized argument: " + arg);
-                    printUsage(err);
-                    return new CliParseResult(2, null);
-                }
-            }
+    private static final class CliOptions {
+        private String scenario = StandardScenarios.STATUS_ONLY;
+        private Path base;
+        private Integer webPort;
+        private String token;
+        private String deviceSecret;
+    }
+
+    /**
+     * Parses command-line arguments without starting the server.
+     *
+     * @param args command-line arguments
+     * @param out  standard output stream
+     * @param err  error output stream
+     * @param env  environment map for resolving environment variable fallbacks
+     * @return parse result
+     */
+    public static CliParseResult parse(String[] args, PrintStream out, PrintStream err, Map<String, String> env) {
+        var opts = new CliOptions();
+        var parseExit = parseArguments(args, opts, out, err);
+        if (parseExit != null) {
+            return new CliParseResult(parseExit, null);
+        }
+
+        var webPort = opts.webPort != null ? opts.webPort : resolveFallbackWebPort(env, err);
+        if (webPort == null) {
+            return new CliParseResult(2, null);
         }
 
         var configBuilder = MockRuntimeConfig.builder()
-                .scenario(scenario)
-                .base(base)
+                .scenario(opts.scenario)
+                .base(opts.base)
                 .webPort(webPort);
 
-        if (token != null) {
-            configBuilder.runtimeToken(token);
+        if (opts.token != null) {
+            configBuilder.runtimeToken(opts.token);
         }
 
-        if (deviceSecret != null) {
-            configBuilder.deviceSecret(deviceSecret);
+        if (opts.deviceSecret != null) {
+            configBuilder.deviceSecret(opts.deviceSecret);
         }
 
         return new CliParseResult(0, configBuilder.build());
+    }
+
+    private static Integer parseArguments(String[] args, CliOptions opts, PrintStream out, PrintStream err) {
+        var index = new int[]{0};
+        while (index[0] < args.length) {
+            var arg = args[index[0]++];
+            if ("--help".equals(arg) || "-h".equals(arg)) {
+                printUsage(out);
+                return 0;
+            }
+            var errCode = parseOption(arg, args, index, opts, err);
+            if (errCode != null) {
+                return errCode;
+            }
+        }
+        return null;
+    }
+
+    private static Integer parseOption(String arg, String[] args, int[] index, CliOptions opts, PrintStream err) {
+        if (index[0] >= args.length && isValuedOption(arg)) {
+            err.println(ERR_MISSING_ARG + arg);
+            return 2;
+        }
+        switch (arg) {
+            case "--scenario", "-s" -> opts.scenario = args[index[0]++];
+            case "--base", "-b" -> opts.base = Path.of(args[index[0]++]);
+            case "--token", "-t" -> opts.token = args[index[0]++];
+            case "--device-secret", "-d" -> opts.deviceSecret = args[index[0]++];
+            case "--web-port", "-p" -> {
+                opts.webPort = parsePortArg(args[index[0]++], err);
+                if (opts.webPort == null) {
+                    return 2;
+                }
+            }
+            default -> {
+                err.println("Error: unrecognized argument: " + arg);
+                printUsage(err);
+                return 2;
+            }
+        }
+        return null;
     }
 
     /**
@@ -184,8 +219,10 @@ public final class MockRuntimeCli {
         out.println("  Runtime Token:      " + runtime.token());
         var pairingCode = runtime.pairingCode();
         if (pairingCode != null && !pairingCode.isBlank() && runtime.webPort() >= 0) {
+            var appPort = System.getenv("PM_WEB_PORT");
+            var effectiveAppPort = appPort != null && !appPort.isBlank() ? appPort.trim() : "5173";
             out.println("  Pairing Code:       " + pairingCode);
-            out.println("  Web App URL:        http://" + systemHost() + ":5173/pair#code=" + pairingCode);
+            out.println("  Web App URL:        http://" + systemHost() + ":" + effectiveAppPort + "/pair#code=" + pairingCode);
         }
         out.println();
         out.println("Use 'pm-operator' with PM_MCP_BASE=" + runtime.base() + " to interact.");
@@ -220,12 +257,44 @@ public final class MockRuntimeCli {
         return "localhost";
     }
 
+    private static Integer parsePortArg(String portStr, PrintStream err) {
+        try {
+            int port = Integer.parseInt(portStr);
+            if (port < -1 || port > 65535) {
+                err.println("Error: invalid port: " + portStr);
+                return null;
+            }
+            return port;
+        } catch (NumberFormatException _) {
+            err.println("Error: invalid port: " + portStr);
+            return null;
+        }
+    }
+
+    private static Integer resolveFallbackWebPort(Map<String, String> env, PrintStream err) {
+        var envPort = env != null ? env.get("PM_MOCK_WEB_PORT") : null;
+        if (envPort == null || envPort.isBlank()) {
+            return 7420;
+        }
+        try {
+            int port = Integer.parseInt(envPort.trim());
+            if (port < -1 || port > 65535) {
+                err.println("Error: invalid port in PM_MOCK_WEB_PORT: " + envPort);
+                return null;
+            }
+            return port;
+        } catch (NumberFormatException _) {
+            err.println("Error: invalid port in PM_MOCK_WEB_PORT: " + envPort);
+            return null;
+        }
+    }
+
     private static void printUsage(PrintStream out) {
         out.println("Usage: pm-mock-runtime [options]");
         out.println("Options:");
         out.println("  -s, --scenario <name|path>  The initial scenario name or file path (default: status-only)");
         out.println("  -b, --base <dir>            Target machine directory <PM_MCP_BASE> (default: temporary dir)");
-        out.println("  -p, --web-port <port>       Loopback TCP port for web client testing (default: disabled)");
+        out.println("  -p, --web-port <port>       Loopback TCP port for web client testing (default: 7420 or PM_MOCK_WEB_PORT)");
         out.println("  -t, --token <token>         Fixed runtime token for authentication");
         out.println("  -d, --device-secret <secret> Fixed web device secret, bypassing the persisted one");
         out.println("  -h, --help                  Print this help message");

@@ -217,6 +217,7 @@ public final class MockRuntime implements AutoCloseable {
         if (config.getWebPort() >= 0) {
             try {
                 tcpServer = MockHttpServer.startTcp(config.getWebPort(), (req, res) -> engine.dispatch(req, res, true));
+                engine.setWebPort(tcpServer.port());
             } catch (IOException e) {
                 unixServer.close();
                 engine.close();

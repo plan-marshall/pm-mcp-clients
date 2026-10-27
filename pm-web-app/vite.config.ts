@@ -3,6 +3,7 @@ import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import { defineConfig } from 'vitest/config';
+import { resolvePorts } from './src/lib/ports.ts';
 
 /** The addresses a request from this machine itself carries. */
 const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
@@ -127,14 +128,14 @@ export default defineConfig({
     fs: {
       allow: ['..'],
     },
-    port: 5173,
+    port: resolvePorts().webPort,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:7420',
+        target: resolvePorts().mockTarget,
         changeOrigin: true,
       },
       '/mock': {
-        target: 'http://127.0.0.1:7420',
+        target: resolvePorts().mockTarget,
         changeOrigin: true,
         // `/mock` is development tooling: a LAN client must not change the scenario or read/issue
         // pairing codes through the proxy. `/api` stays reachable as the app needs it.

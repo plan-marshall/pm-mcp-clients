@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 
 test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
   test.beforeEach(async ({ page, request }) => {
     // Switch mock runtime to reports scenario
-    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+    const res = await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
       data: { scenario: 'reports' },
     });
     expect(res.ok()).toBeTruthy();
@@ -106,7 +107,7 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
 
 test.describe('Reports: paths, details, and the quiet notice (UC-PLN-6)', () => {
   test.beforeEach(async ({ page, request }) => {
-    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+    const res = await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
       data: { scenario: 'reports' },
     });
     expect(res.ok()).toBeTruthy();
@@ -164,7 +165,7 @@ test.describe('Reports: paths, details, and the quiet notice (UC-PLN-6)', () => 
         created_at: '2026-10-21T10:00:00Z',
       },
     };
-    const res = await request.post('http://127.0.0.1:7420/mock/broadcast', {
+    const res = await request.post(`${MOCK_RUNTIME_URL}/mock/broadcast`, {
       data: { event: 'report.sent', data: report },
     });
     expect(res.ok()).toBeTruthy();

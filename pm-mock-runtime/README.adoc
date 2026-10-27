@@ -42,6 +42,9 @@ The simplest way to start the mock runtime is using `start.sh`:
 
 # Or pass specific scenario and port directly:
 ./pm-mock-runtime/start.sh --scenario onboarding-happy --web-port 7420
+
+# The web port can also be passed via PM_MOCK_WEB_PORT:
+PM_MOCK_WEB_PORT=7420 ./pm-mock-runtime/start.sh --scenario onboarding-happy
 ----
 
 The script automatically:
@@ -79,7 +82,7 @@ To stop the background server:
 
 | `-p, --web-port`
 | `<port>`
-| Loopback TCP port on `127.0.0.1` for web client testing. If omitted, the web listener is disabled.
+| Loopback TCP port on `127.0.0.1` for web client testing (default `7420`, or `PM_MOCK_WEB_PORT`). Pass `0` for an ephemeral port, or `-1` to disable the web listener.
 
 | `-t, --token`
 | `<token>`
@@ -109,7 +112,7 @@ Mock runtime started successfully:
 Use 'pm-operator' with PM_MCP_BASE=/tmp/pm-mock12345/b to interact.
 ----
 
-The web app URL names the machine, not `localhost`, so a phone on the same network can open it; `PM_WEB_HOST` overrides the name. The loopback listener line stays the local coordinate.
+The web app URL names the machine, not `localhost`, so a phone on the same network can open it; `PM_WEB_HOST` overrides the name and `PM_WEB_PORT` configures the port (default `5173`). The loopback listener line stays the local coordinate.
 
 `start.sh` keeps the web device secret in one machine-wide file, `~/.plan-marshall-mcp/mock-web-device-secret` (mode `0600`; `PM_MOCK_DEVICE_SECRET_FILE` overrides the path), and passes it to the mock with `--device-secret`. The secret therefore survives `mvn clean`, a mock restart, and a switch to another worktree, so a paired browser stays paired. To reset the development session, stop the mock and delete that file. The mock still starts on a stable base (`pm-mock-runtime/target/machine`, or a short stable temp path when the checkout is too deep for a Unix-domain socket) for the scenario state, runtime token, and socket; deleting the printed `Base` directory resets the scenario but does not change the device secret. An operator-supplied `--base` keeps its own directory, and `-d`/`--device-secret` overrides the machine-wide secret for a manual run.
 

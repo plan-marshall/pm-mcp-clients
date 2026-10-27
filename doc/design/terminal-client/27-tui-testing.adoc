@@ -222,6 +222,9 @@ set runs before the change into `.plan/temp/terminal/{plan}/before/` and after i
   test machine.
 * The size and `TERM` are pinned per case, so the suite does not depend on the terminal that started
   Maven.
+* Java tests and ITs that start a mock web listener bind ephemeral ports (`webPort(0)`) and read
+  the live bound port from the runtime, avoiding fixed port 7420 and eliminating cross-session or
+  cross-worktree port collisions.
 
 [#snapshots]
 == Why a Real PTY

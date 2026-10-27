@@ -1,4 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
+import { BASE_URL, WEB_PORT } from './tests/helpers/ports.js';
+
+const customPortsPassed = Boolean(process.env.PM_WEB_PORT || process.env.PM_MOCK_WEB_PORT);
 
 export default defineConfig({
   testDir: './tests',
@@ -8,14 +11,14 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   timeout: 30000,
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: BASE_URL,
     trace: 'on-first-retry',
   },
   globalSetup: './global-setup.js',
   webServer: {
-    command: 'npm run dev --prefix ../pm-web-app -- --port 5173',
-    port: 5173,
-    reuseExistingServer: !process.env.CI,
+    command: `npm run dev --prefix ../pm-web-app -- --port ${WEB_PORT}`,
+    port: WEB_PORT,
+    reuseExistingServer: !process.env.CI && !customPortsPassed,
     timeout: 30000,
   },
   projects: [

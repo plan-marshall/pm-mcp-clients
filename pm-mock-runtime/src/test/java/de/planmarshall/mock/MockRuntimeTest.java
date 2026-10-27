@@ -489,4 +489,87 @@ class MockRuntimeTest {
             assertFalse(auth.renew());
         }
     }
+
+    @Test
+    @DisplayName("an ephemeral web port is reported truthfully across all engine endpoints")
+    void ephemeralWebPortReportedTruthfully() throws Exception {
+        var config = MockRuntimeConfig.builder()
+                .scenario(StandardScenarios.WEB_PAIRING)
+                .webPort(0)
+                .build();
+
+        try (var runtime = MockRuntime.start(config)) {
+            var livePort = runtime.webPort();
+            assertTrue(livePort > 0, "livePort must be allocated");
+            assertNotEquals(7420, livePort, "ephemeral port should not be 7420");
+
+            var baseUrl = "http://127.0.0.1:" + livePort;
+            var httpClient = HttpClient.newHttpClient();
+
+            // 1. POST /mock/pairing URL reflects live port
+            var pairPostReq = java.net.http.HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + "/mock/pairing"))
+                    .POST(java.net.http.HttpRequest.BodyPublishers.noBody())
+                    .build();
+            var pairPostRes = httpClient.send(pairPostReq, HttpResponse.BodyHandlers.ofString());
+            assertEquals(201, pairPostRes.statusCode());
+            var pairPostJson = JsonTree.asObject(JsonTree.parse(pairPostRes.body()));
+            var pairingUrl = JsonTree.string(pairPostJson, "url");
+            assertNotNull(pairingUrl);
+            assertTrue(pairingUrl.startsWith("http://127.0.0.1:" + livePort + "/pair#code="),
+                    "pairing URL must reflect live port: " + pairingUrl);
+
+            // Pair to get device secret for authenticated routes
+            var code = JsonTree.string(pairPostJson, "code");
+            var pairReq = java.net.http.HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + "/api/v1/pair"))
+                    .header("Content-Type", "application/json")
+                    .POST(java.net.http.HttpRequest.BodyPublishers.ofString("{\"code\":\"" + code + "\"}"))
+                    .build();
+            var pairRes = httpClient.send(pairReq, HttpResponse.BodyHandlers.ofString());
+            assertEquals(200, pairRes.statusCode());
+            var deviceSecret = JsonTree.string(JsonTree.asObject(JsonTree.parse(pairRes.body())), "device_secret");
+
+            // 2. GET /api/v1/status/connection reports live loopback URL and listener port
+            var connReq = java.net.http.HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + "/api/v1/status/connection"))
+                    .header("Authorization", "Bearer " + deviceSecret)
+                    .GET()
+                    .build();
+            var connRes = httpClient.send(connReq, HttpResponse.BodyHandlers.ofString());
+            assertEquals(200, connRes.statusCode());
+            var connJson = JsonTree.asObject(JsonTree.parse(connRes.body()));
+            assertEquals("http://127.0.0.1:" + livePort, JsonTree.string(connJson, "loopback_url"));
+
+            var listeners = JsonTree.asArray(connJson.get("listeners"));
+            assertNotNull(listeners);
+            var loopbackListener = listeners.stream()
+                    .map(JsonTree::asObject)
+                    .filter(l -> "loopback".equals(JsonTree.string(l, "listener")))
+                    .findFirst()
+                    .orElseThrow();
+            assertEquals((long) livePort, JsonTree.number(loopbackListener, "port").longValue());
+            assertEquals("http://127.0.0.1:" + livePort, JsonTree.string(loopbackListener, "url"));
+
+            // 3. GET /api/v1/web reports live port
+            var webReq = java.net.http.HttpRequest.newBuilder()
+                    .uri(URI.create(baseUrl + "/api/v1/web"))
+                    .header("Authorization", "Bearer " + deviceSecret)
+                    .GET()
+                    .build();
+            var webRes = httpClient.send(webReq, HttpResponse.BodyHandlers.ofString());
+            assertEquals(200, webRes.statusCode());
+            var webJson = JsonTree.asObject(JsonTree.parse(webRes.body()));
+            assertEquals((long) livePort, JsonTree.number(webJson, "port").longValue());
+
+            // 4. Opening LAN listener on the live loopback port is refused with conflict naming live port
+            var unixClient = new UnixSocketHttpClient(runtime.socketPath());
+            var conflict = unixClient.send(HttpRequest.json("PUT", "/api/v1/web/listeners/lan", "{\"port\":" + livePort + "}")
+                    .withHeader("Authorization", "Bearer " + runtime.token()));
+            assertEquals(409, conflict.status());
+            var conflictJson = JsonTree.asObject(JsonTree.parse(conflict.body()));
+            assertEquals("web_listener_conflict", JsonTree.string(conflictJson, "error"));
+            assertEquals("Port " + livePort + " is held by the loopback listener", JsonTree.string(conflictJson, "message"));
+        }
+    }
 }

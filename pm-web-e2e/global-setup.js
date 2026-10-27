@@ -2,6 +2,7 @@ import { spawn, execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { MOCK_WEB_PORT } from './tests/helpers/ports.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -35,9 +36,12 @@ export default async function globalSetup() {
     }
   };
 
-  const isUp = await isPortReachable(7420);
+  const isUp = await isPortReachable(MOCK_WEB_PORT);
   if (isUp) {
-    console.log('[pm-web-e2e] Mock runtime is already running on port 7420');
+    if (process.env.PM_MOCK_WEB_PORT) {
+      throw new Error(`Port ${MOCK_WEB_PORT} is already in use by another process. Assigned ports cannot reuse an existing server.`);
+    }
+    console.log(`[pm-web-e2e] Mock runtime is already running on default port ${MOCK_WEB_PORT}`);
     return cleanupAuditCache;
   }
 
@@ -75,7 +79,7 @@ export default async function globalSetup() {
     cpOutput,
   ].join(path.delimiter);
 
-  console.log('[pm-web-e2e] Starting pm-mock-runtime on port 7420...');
+  console.log(`[pm-web-e2e] Starting pm-mock-runtime on port ${MOCK_WEB_PORT}...`);
   mockProcess = spawn(
     'java',
     [
@@ -83,7 +87,7 @@ export default async function globalSetup() {
       cp,
       'de.planmarshall.mock.cli.MockRuntimeCli',
       '--web-port',
-      '7420',
+      String(MOCK_WEB_PORT),
       '--scenario',
       'web-pairing',
     ],
@@ -100,7 +104,7 @@ export default async function globalSetup() {
   // Wait for mock runtime to be ready
   let ready = false;
   for (let i = 0; i < 30; i++) {
-    if (await isPortReachable(7420)) {
+    if (await isPortReachable(MOCK_WEB_PORT)) {
       ready = true;
       break;
     }
@@ -109,10 +113,10 @@ export default async function globalSetup() {
 
   if (!ready) {
     if (mockProcess) mockProcess.kill();
-    throw new Error('Timed out waiting for pm-mock-runtime to start on port 7420');
+    throw new Error(`Timed out waiting for pm-mock-runtime to start on port ${MOCK_WEB_PORT}`);
   }
 
-  console.log('[pm-web-e2e] pm-mock-runtime is ready on port 7420');
+  console.log(`[pm-web-e2e] pm-mock-runtime is ready on port ${MOCK_WEB_PORT}`);
 
   // Return teardown function
   return () => {

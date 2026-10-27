@@ -82,6 +82,7 @@ HAS_PORT=false
 HAS_BASE=false
 HAS_DEVICE_SECRET=false
 REQUESTED_PORT=7420
+PORT_ASSIGNED=false
 FOREGROUND=false
 PASSED_ARGS=()
 
@@ -130,11 +131,13 @@ while [ $# -gt 0 ]; do
                 exit 1
             fi
             HAS_PORT=true
+            PORT_ASSIGNED=true
             REQUESTED_PORT="$2"
             shift 2
             ;;
         --web-port=*)
             HAS_PORT=true
+            PORT_ASSIGNED=true
             REQUESTED_PORT="${1#--web-port=}"
             shift
             ;;
@@ -148,6 +151,11 @@ while [ $# -gt 0 ]; do
             ;;
     esac
 done
+
+if [ "$HAS_PORT" = false ] && [ -n "${PM_MOCK_WEB_PORT:-}" ]; then
+    PORT_ASSIGNED=true
+    REQUESTED_PORT="$PM_MOCK_WEB_PORT"
+fi
 
 FINAL_ARGS=()
 
@@ -215,28 +223,8 @@ if [ "$HAS_SCENARIO" = false ]; then
     FINAL_ARGS+=(--scenario "$selected_scenario")
 fi
 
-# A runtime started from another worktree or through `mvn exec:java` keeps no PID file here;
-# its listener on the port is still ours to stop when its command line names the mock.
 port_pids() {
     lsof -ti ":$1" 2>/dev/null || true
-}
-
-is_mock_process() {
-    ps -p "$1" -o command= 2>/dev/null | grep -qE 'MockRuntimeCli|pm-mock-runtime'
-}
-
-stop_mock_pid() {
-    local pid="$1"
-    kill -TERM "$pid" 2>/dev/null || true
-    for _ in {1..50}; do
-        if ! kill -0 "$pid" 2>/dev/null; then
-            return 0
-        fi
-        sleep 0.1
-    done
-    if kill -0 "$pid" 2>/dev/null; then
-        kill -KILL "$pid" 2>/dev/null || true
-    fi
 }
 
 WEB_PORT="$REQUESTED_PORT"
@@ -245,22 +233,13 @@ if [ -z "$WEB_PORT" ]; then
     exit 1
 fi
 
-# Free the port first (preferred), then fall back to the next free one.
 if [[ "$WEB_PORT" =~ ^[0-9]+$ ]] && [ "$WEB_PORT" -gt 0 ]; then
-    for pid in $(port_pids "$WEB_PORT"); do
-        if is_mock_process "$pid"; then
-            echo "Port $WEB_PORT is held by a previous mock runtime (PID: $pid); stopping it."
-            stop_mock_pid "$pid"
+    PIDS="$(port_pids "$WEB_PORT")"
+    if [ -n "$PIDS" ]; then
+        if [ "$PORT_ASSIGNED" = true ]; then
+            echo "Error: assigned port $WEB_PORT is in use by process (PID: $PIDS)." >&2
+            exit 1
         fi
-    done
-    for _ in {1..50}; do
-        if [ -z "$(port_pids "$WEB_PORT")" ]; then
-            break
-        fi
-        sleep 0.1
-    done
-
-    if [ -n "$(port_pids "$WEB_PORT")" ]; then
         REQUESTED="$WEB_PORT"
         WEB_PORT=""
         for ((candidate = REQUESTED + 1; candidate <= REQUESTED + 100; candidate++)); do
@@ -273,8 +252,7 @@ if [[ "$WEB_PORT" =~ ^[0-9]+$ ]] && [ "$WEB_PORT" -gt 0 ]; then
             echo "Error: port $REQUESTED is in use and no free port was found." >&2
             exit 1
         fi
-        echo "Port $REQUESTED could not be freed; using $WEB_PORT instead."
-        echo "Note: pm-web-app proxies /api and /mock to 127.0.0.1:7420." >&2
+        echo "Port $REQUESTED is in use (PID: $PIDS); falling back to free port $WEB_PORT."
     fi
 fi
 

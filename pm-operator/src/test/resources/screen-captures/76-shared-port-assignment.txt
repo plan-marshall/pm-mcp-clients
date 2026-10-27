@@ -1,0 +1,5 @@
+# Screen captures for PLAN-76
+# name | scenario | states to goto (comma separated, - for none) | command | keys to send | columns x rows | locale | extra environment (KEY=VALUE, comma separated, - for none)
+status-120-en | fully-onboarded | - | status | - | 120x30 | en_US.UTF-8 | -
+web-120-en | fully-onboarded | - | web | - | 120x30 | en_US.UTF-8 | -
+web-pair-120-en | fully-onboarded | - | web pair | - | 120x30 | en_US.UTF-8 | -

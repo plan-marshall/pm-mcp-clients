@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 
 test.describe('System View, Runtime Lifecycle & Cleanup (UC-SYS-1..3)', () => {
   test.beforeEach(async ({ page, request }) => {
     // Switch mock runtime to system scenario
-    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+    const res = await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
       data: { scenario: 'system' },
     });
     expect(res.ok()).toBeTruthy();
@@ -23,7 +24,7 @@ test.describe('System View, Runtime Lifecycle & Cleanup (UC-SYS-1..3)', () => {
 
   test.afterAll(async ({ request }) => {
     try {
-      await request.post('http://127.0.0.1:7420/mock/scenario', {
+      await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
         data: { scenario: 'web-pairing' },
       });
     } catch {
@@ -133,7 +134,7 @@ test.describe('System View, Runtime Lifecycle & Cleanup (UC-SYS-1..3)', () => {
 
 test.describe('System: figures, filters, upgrade, and cleanup preview (UC-SYS-1..3)', () => {
   test.beforeEach(async ({ page, request }) => {
-    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+    const res = await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
       data: { scenario: 'system' },
     });
     expect(res.ok()).toBeTruthy();

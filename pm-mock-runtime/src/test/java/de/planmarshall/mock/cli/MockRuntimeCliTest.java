@@ -19,6 +19,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.concurrent.locks.LockSupport;
 import java.util.regex.Pattern;
 
@@ -73,16 +74,76 @@ class MockRuntimeCliTest {
     }
 
     @Test
-    @DisplayName("parses default options without arguments")
+    @DisplayName("parses default options without arguments, defaulting webPort to 7420")
     void defaultOptions() {
-        var result = MockRuntimeCli.parse(new String[0], out, err);
+        var result = MockRuntimeCli.parse(new String[0], out, err, Map.of());
         assertEquals(0, result.exitCode());
         assertTrue(result.isSuccess());
         var config = result.config();
         assertNotNull(config);
         assertEquals(StandardScenarios.STATUS_ONLY, config.getScenario());
         assertNull(config.getBase());
-        assertEquals(-1, config.getWebPort());
+        assertEquals(7420, config.getWebPort());
+    }
+
+    @Test
+    @DisplayName("falls back to PM_MOCK_WEB_PORT when CLI argument is not specified")
+    void webPortEnvFallback() {
+        var result = MockRuntimeCli.parse(new String[0], out, err, Map.of("PM_MOCK_WEB_PORT", "9099"));
+        assertEquals(0, result.exitCode());
+        assertTrue(result.isSuccess());
+        assertEquals(9099, result.config().getWebPort());
+    }
+
+    @Test
+    @DisplayName("reports invalid port error in PM_MOCK_WEB_PORT")
+    void invalidEnvPort() {
+        var result = MockRuntimeCli.parse(new String[0], out, err, Map.of("PM_MOCK_WEB_PORT", "invalid"));
+        assertEquals(2, result.exitCode());
+        assertTrue(stderr().contains("invalid port in PM_MOCK_WEB_PORT: invalid"));
+
+        var outOfRange = MockRuntimeCli.parse(new String[0], out, err, Map.of("PM_MOCK_WEB_PORT", "70000"));
+        assertEquals(2, outOfRange.exitCode());
+    }
+
+    @Test
+    @DisplayName("reports invalid port error when CLI --web-port is out of range")
+    void outOfRangeCliPort() {
+        var result = MockRuntimeCli.parse(new String[]{"--web-port", "70000"}, out, err, Map.of());
+        assertEquals(2, result.exitCode());
+        assertTrue(stderr().contains("invalid port: 70000"));
+
+        var belowMin = MockRuntimeCli.parse(new String[]{"--web-port", "-2"}, out, err, Map.of());
+        assertEquals(2, belowMin.exitCode());
+        assertTrue(stderr().contains("invalid port: -2"));
+    }
+
+    @Test
+    @DisplayName("falls back to default 7420 when env is null or PM_MOCK_WEB_PORT is blank")
+    void nullOrBlankEnvFallback() {
+        var nullEnv = MockRuntimeCli.parse(new String[0], out, err, null);
+        assertEquals(7420, nullEnv.config().getWebPort());
+
+        var blankEnv = MockRuntimeCli.parse(new String[0], out, err, Map.of("PM_MOCK_WEB_PORT", "   "));
+        assertEquals(7420, blankEnv.config().getWebPort());
+    }
+
+    @Test
+    @DisplayName("CLI --web-port overrides PM_MOCK_WEB_PORT")
+    void cliPortOverridesEnv() {
+        var result = MockRuntimeCli.parse(new String[]{"--web-port", "8088"}, out, err, Map.of("PM_MOCK_WEB_PORT", "9099"));
+        assertEquals(0, result.exitCode());
+        assertTrue(result.isSuccess());
+        assertEquals(8088, result.config().getWebPort());
+    }
+
+    @Test
+    @DisplayName("CLI --web-port -1 explicitly disables web listener")
+    void cliPortDisabledExplicit() {
+        var result = MockRuntimeCli.parse(new String[]{"--web-port", "-1"}, out, err, Map.of());
+        assertEquals(0, result.exitCode());
+        assertTrue(result.isSuccess());
+        assertEquals(-1, result.config().getWebPort());
     }
 
     @Test
@@ -198,7 +259,7 @@ class MockRuntimeCliTest {
             LockSupport.parkNanos(100_000_000L);
             currentThread.interrupt();
         });
-        var exitCode = MockRuntimeCli.run(new String[]{"-s", StandardScenarios.RUNNING_WORK}, out, err);
+        var exitCode = MockRuntimeCli.run(new String[]{"-s", StandardScenarios.RUNNING_WORK, "--web-port", "-1"}, out, err);
         assertEquals(0, exitCode);
         assertTrue(stdout().contains("Mock runtime started successfully"));
         assertFalse(stdout().contains("Pairing Code:"));

@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 
 test.describe('Projects Explorer Flow (UC-PRJ-1..3)', () => {
   test.beforeEach(async ({ page, request }) => {
     // Switch mock runtime to projects scenario
-    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+    const res = await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
       data: { scenario: 'projects' },
     });
     expect(res.ok()).toBeTruthy();
