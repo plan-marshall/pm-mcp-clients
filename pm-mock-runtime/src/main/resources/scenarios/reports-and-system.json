@@ -2687,7 +2687,7 @@
                 "logs_count": 40,
                 "reports_count": 5,
                 "projects_count": 1,
-                "freed_bytes": 1932735283,
+                "freed_bytes": 1997956704,
                 "kept_for_good_count": 4,
                 "last_sweep_at": "today 03:00",
                 "next_check_at": "tomorrow 03:00"
@@ -3035,7 +3035,7 @@
               "logs_count": 40,
               "reports_count": 5,
               "projects_count": 1,
-              "freed_bytes": 1932735283,
+              "freed_bytes": 816840704,
               "kept_for_good_count": 4,
               "last_sweep_at": "today 03:00",
               "next_check_at": "tomorrow 03:00"

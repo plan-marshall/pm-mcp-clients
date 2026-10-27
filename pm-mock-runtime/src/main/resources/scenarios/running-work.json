@@ -146,7 +146,7 @@
             "id": "relay-hardening",
             "title": "Relay Hardening",
             "project": "pm-mcp-clients",
-            "running_plans_count": 3,
+            "running_plans_count": 1,
             "staged_plans_count": 3
           },
           {
@@ -209,7 +209,7 @@
             "epic_id": "relay-hardening",
             "title": "Relay Hardening",
             "running_since": "2026-10-13T15:38:00Z",
-            "running_plans_count": 3,
+            "running_plans_count": 1,
             "staged_plans_count": 3,
             "plans_done": 4,
             "plans_total": 9,
@@ -1465,7 +1465,7 @@
                   "state": "running",
                   "auto_start": true,
                   "scope": 3,
-                  "running": 3,
+                  "running": 1,
                   "overlap_max_files": 0,
                   "resource": {
                     "epic_id": "relay-hardening",
@@ -1475,7 +1475,7 @@
                     "auto_start": true,
                     "overlap_max_files": 0,
                     "scope": 3,
-                    "running": 3,
+                    "running": 1,
                     "workstreams": [
                       {
                         "id": "WS-1",
@@ -1548,11 +1548,11 @@
                       "2 documents",
                       "1 issue"
                     ],
-                    "landings": 2,
+                    "landings": 1,
                     "findings": {
-                      "new": 3,
-                      "open": 4,
-                      "kept": 2
+                      "new": 0,
+                      "open": 1,
+                      "kept": 1
                     },
                     "watches": {
                       "new": 1,
@@ -2776,7 +2776,7 @@
                     "epic_id": "relay-hardening",
                     "title": "Relay Hardening",
                     "running_since": "2026-10-13T15:38:00Z",
-                    "running_plans_count": 3,
+                    "running_plans_count": 1,
                     "staged_plans_count": 3,
                     "plans_done": 4,
                     "plans_total": 9,

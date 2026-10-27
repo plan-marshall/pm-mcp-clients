@@ -80,7 +80,7 @@ test.describe('Overview View (UC-PLN-4)', () => {
     // In by-epic view, verify epic card
     const epicTitle = page.getByTestId('epic-card').getByText('Relay Hardening');
     await expect(epicTitle).toBeVisible();
-    await expect(page.getByText(/3 running · 3 staged/)).toBeVisible();
+    await expect(page.getByText(/1 running · 3 staged/)).toBeVisible();
 
     // Switch back to by-plan
     await byPlanBtn.click();

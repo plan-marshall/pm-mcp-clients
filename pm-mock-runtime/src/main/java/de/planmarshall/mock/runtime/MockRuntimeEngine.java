@@ -6066,7 +6066,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             summaries.put("3", "3 models on 2 harnesses");
         }
         if (upTo >= 4) {
-            summaries.put("4", "36 roles assigned");
+            summaries.put("4", "31 roles assigned");
         }
         if (upTo >= 5) {
             summaries.put("5", "macOS Keychain");
@@ -6386,7 +6386,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             );
 
             var summary = new CleanupSummary(
-                    12, 2, 40, 5, 1, 1932735283L, 4, "today 03:00", "tomorrow 03:00"
+                    12, 2, 40, 5, 1, 1997956704L, 4, "today 03:00", "tomorrow 03:00"
             );
 
             var links = Map.of(
@@ -7343,7 +7343,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 hasOpenJob ? 40 : 0,
                 hasOpenJob ? 5 : 0,
                 hasOpenJob ? 1 : 0,
-                hasOpenJob ? 1932735283L : 0L,
+                hasOpenJob ? 1997956704L : 0L,
                 keptItems.size(),
                 "today 03:00",
                 "tomorrow 03:00"
