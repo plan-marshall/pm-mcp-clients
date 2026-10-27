@@ -124,7 +124,7 @@
   --color-danger-contrast: var(--color-on-brand);
   --color-epic-subtle: var(--color-bg-subtle);
   --color-epic-text: var(--color-epic);
-  --color-star: var(--color-attention);
+  --color-star: var(--color-attention-text);
   --shadow-sm: var(--shadow-1);
   --shadow-md: var(--shadow-2);
 }

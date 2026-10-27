@@ -9,15 +9,21 @@
   padding: 0;
 }
 
-html,
+html {
+  height: 100%;
+  font-size: 100%;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-app);
+}
+
 body {
   height: 100%;
   font-family: var(--font-sans);
   font-size: var(--text-base);
   line-height: var(--line-height-base);
   font-feature-settings: var(--font-feature-settings);
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-app);
+  color: inherit;
+  background-color: inherit;
   -webkit-font-smoothing: antialiased;
 }
 

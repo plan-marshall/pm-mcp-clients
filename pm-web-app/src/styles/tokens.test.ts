@@ -141,7 +141,7 @@ const ALIASES: Record<string, string> = {
   '--color-danger-contrast': '--color-on-brand',
   '--color-epic-subtle': '--color-bg-subtle',
   '--color-epic-text': '--color-epic',
-  '--color-star': '--color-attention',
+  '--color-star': '--color-attention-text',
   '--shadow-sm': '--shadow-1',
   '--shadow-md': '--shadow-2',
 };
@@ -170,6 +170,7 @@ const TEXT_PAIRS: Array<[string, string]> = [
   ['--color-on-brand', '--color-danger'],
   ['--color-attention-text', '--color-attention-subtle'],
   ['--color-text-primary', '--color-attention-subtle'],
+  ['--color-star', '--color-bg-surface'],
   ['--color-running', '--color-bg-surface'],
   ['--color-danger', '--color-bg-surface'],
   ['--color-success', '--color-bg-surface'],
@@ -275,6 +276,24 @@ function parseThemes(source: string): {
  */
 function rem(px: number): string {
   return `${px / 16}rem`;
+}
+
+/**
+ * @param palette the theme's declarations, aliases included
+ * @returns the palette with every `var(--token)` alias replaced by the token it names
+ */
+function resolveAliases(palette: Record<string, string>): Record<string, string> {
+  const resolved = { ...palette };
+  for (let pass = 0; pass < 5; pass += 1) {
+    for (const [name, value] of Object.entries(resolved)) {
+      const alias = /^var\((--[a-zA-Z0-9_-]+)\)$/.exec(value.trim());
+      const target = alias ? resolved[alias[1]] : undefined;
+      if (target && !target.startsWith('var(')) {
+        resolved[name] = target;
+      }
+    }
+  }
+  return resolved;
 }
 
 /**
@@ -427,7 +446,7 @@ describe('tokens.css: the design system v2 contract', () => {
 
   describe('WCAG 2.1 AA contrast of every pair, in both themes', () => {
     it.each(['light', 'dark'] as const)('keeps every text pair at or above 4.5:1 in the %s theme', (theme) => {
-      const palette = theme === 'light' ? themes.light : themes.dark;
+      const palette = resolveAliases({ ...themes.root, ...(theme === 'light' ? themes.light : themes.dark) });
       const failures = TEXT_PAIRS.map(([foreground, background]) => {
         const ratio = contrast(palette[foreground], palette[background]);
         return { foreground, background, ratio: Math.round(ratio * 100) / 100 };
@@ -437,7 +456,7 @@ describe('tokens.css: the design system v2 contract', () => {
     });
 
     it.each(['light', 'dark'] as const)('keeps every state dot at or above 3:1 in the %s theme', (theme) => {
-      const palette = theme === 'light' ? themes.light : themes.dark;
+      const palette = resolveAliases({ ...themes.root, ...(theme === 'light' ? themes.light : themes.dark) });
       const failures = DOT_PAIRS.map(([foreground, background]) => {
         const ratio = contrast(palette[foreground], palette[background]);
         return { foreground, background, ratio: Math.round(ratio * 100) / 100 };
