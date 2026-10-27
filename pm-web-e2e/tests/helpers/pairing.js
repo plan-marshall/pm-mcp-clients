@@ -1,7 +1,8 @@
 import { expect } from '@playwright/test';
+import { MOCK_RUNTIME_URL } from './ports.js';
 
 /** The mock runtime the suite starts in its global setup. */
-const MOCK_RUNTIME = 'http://127.0.0.1:7420';
+const MOCK_RUNTIME = MOCK_RUNTIME_URL;
 
 /**
  * Switches the mock runtime to a scenario and waits for the answer.

@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 
 /**
  * The epic view, UC-PLN-5: the whole epic at a glance — its head, workstreams and members, sources,
@@ -7,7 +8,7 @@ import { test, expect } from '@playwright/test';
  * overview's working case, `fully-onboarded` as the showroom's.
  */
 
-const MOCK = 'http://127.0.0.1:7420';
+const MOCK = MOCK_RUNTIME_URL;
 const PAIRING_CODE = 'KXQB-MRTN';
 
 /**

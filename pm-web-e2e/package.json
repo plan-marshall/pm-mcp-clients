@@ -10,6 +10,7 @@
   },
   "scripts": {
     "test": "playwright test",
+    "test:ports-guard": "node scripts/guard-ports.js",
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
     "lint": "eslint .",

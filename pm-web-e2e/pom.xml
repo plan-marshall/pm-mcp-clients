@@ -22,6 +22,8 @@
         <skipPlaywrightTests>true</skipPlaywrightTests>
         <playwright.output.dir>${project.build.directory}</playwright.output.dir>
         <sonar.skip>true</sonar.skip>
+        <pm.mock.webPort></pm.mock.webPort>
+        <pm.web.port></pm.web.port>
     </properties>
 
     <build>
@@ -67,6 +69,16 @@
                             <skip>${skip.lint}</skip>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>npm-ports-guard</id>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <phase>test</phase>
+                        <configuration>
+                            <arguments>run test:ports-guard</arguments>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
 
@@ -110,6 +122,8 @@
                             <environmentVariables>
                                 <PLAYWRIGHT_OUTPUT_DIR>${playwright.output.dir}</PLAYWRIGHT_OUTPUT_DIR>
                                 <PW_TEST_HTML_REPORT_OPEN>never</PW_TEST_HTML_REPORT_OPEN>
+                                <PM_MOCK_WEB_PORT>${pm.mock.webPort}</PM_MOCK_WEB_PORT>
+                                <PM_WEB_PORT>${pm.web.port}</PM_WEB_PORT>
                             </environmentVariables>
                             <skip>${skipPlaywrightTests}</skip>
                         </configuration>
@@ -120,6 +134,28 @@
     </build>
 
     <profiles>
+        <profile>
+            <id>env-mock-port</id>
+            <activation>
+                <property>
+                    <name>env.PM_MOCK_WEB_PORT</name>
+                </property>
+            </activation>
+            <properties>
+                <pm.mock.webPort>${env.PM_MOCK_WEB_PORT}</pm.mock.webPort>
+            </properties>
+        </profile>
+        <profile>
+            <id>env-web-port</id>
+            <activation>
+                <property>
+                    <name>env.PM_WEB_PORT</name>
+                </property>
+            </activation>
+            <properties>
+                <pm.web.port>${env.PM_WEB_PORT}</pm.web.port>
+            </properties>
+        </profile>
         <profile>
             <id>e2e</id>
             <properties>

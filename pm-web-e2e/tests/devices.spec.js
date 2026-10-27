@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 
 test.describe('Paired Devices Flow (UC-ENT-2)', () => {
   test.beforeEach(async ({ page, request }) => {
     // Switch mock runtime to paired-devices scenario
-    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+    const res = await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
       data: { scenario: 'paired-devices' },
     });
     expect(res.ok()).toBeTruthy();

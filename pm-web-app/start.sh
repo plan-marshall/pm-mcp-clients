@@ -26,7 +26,7 @@ rm -f "$SCRIPT_DIR/.pm-web-app.pid" 2>/dev/null || true
 
 # The port the running server listens on; 5173 unless overridden.
 web_port_from_args() {
-    local web_port=5173
+    local web_port="${PM_WEB_PORT:-5173}"
     local expect_port=false
     for arg in "$@"; do
         if [ "$expect_port" = true ]; then
@@ -47,16 +47,17 @@ web_port_from_args() {
 # issues the replacement the web-only development loop has no terminal client to ask for. The
 # log file is the last fallback.
 current_pairing_code() {
+    local mock_port="${1:-${MOCK_PORT:-${PM_MOCK_WEB_PORT:-7420}}}"
     local pairing_code=""
     local mock_state
-    mock_state="$(curl -s -m 0.5 http://127.0.0.1:7420/mock/state 2>/dev/null || true)"
+    mock_state="$(curl -s -m 0.5 "http://127.0.0.1:${mock_port}/mock/state" 2>/dev/null || true)"
     if [ -n "$mock_state" ]; then
         pairing_code="$(echo "$mock_state" | grep -o '"pairing_code":"[^"]*' | cut -d'"' -f4 || true)"
     fi
 
     if [ -z "$pairing_code" ]; then
         local issued
-        issued="$(curl -s -m 1 -X POST http://127.0.0.1:7420/mock/pairing 2>/dev/null || true)"
+        issued="$(curl -s -m 1 -X POST "http://127.0.0.1:${mock_port}/mock/pairing" 2>/dev/null || true)"
         if [ -n "$issued" ]; then
             pairing_code="$(echo "$issued" | grep -o '"code":"[^"]*' | cut -d'"' -f4 || true)"
         fi
@@ -147,6 +148,7 @@ fi
 # 4. Parse options
 FOREGROUND=false
 PASSED_ARGS=()
+MOCK_PORT="${PM_MOCK_WEB_PORT:-7420}"
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -154,14 +156,30 @@ while [ $# -gt 0 ]; do
             FOREGROUND=true
             shift
             ;;
-        -p)
+        -p|--port)
             # Vite only knows the long form: translate it instead of forwarding an unknown option.
             if [ $# -lt 2 ]; then
-                echo "Error: -p requires a port." >&2
+                echo "Error: $1 requires a port." >&2
                 exit 1
             fi
             PASSED_ARGS+=(--port "$2")
             shift 2
+            ;;
+        --port=*)
+            PASSED_ARGS+=("$1")
+            shift
+            ;;
+        -m|--mock-port)
+            if [ $# -lt 2 ]; then
+                echo "Error: $1 requires a port." >&2
+                exit 1
+            fi
+            MOCK_PORT="$2"
+            shift 2
+            ;;
+        --mock-port=*)
+            MOCK_PORT="${1#--mock-port=}"
+            shift
             ;;
         *)
             PASSED_ARGS+=("$1")
@@ -171,19 +189,21 @@ while [ $# -gt 0 ]; do
 done
 
 WEB_PORT="$(web_port_from_args ${PASSED_ARGS[@]+"${PASSED_ARGS[@]}"})"
+export PM_WEB_PORT="$WEB_PORT"
+export PM_MOCK_WEB_PORT="$MOCK_PORT"
 
 cd "$SCRIPT_DIR"
 
 if [ "$FOREGROUND" = true ]; then
     echo "Starting pm-web-app in foreground..."
-    render_connection_urls "$WEB_PORT" "$(current_pairing_code)"
+    render_connection_urls "$WEB_PORT" "$(current_pairing_code "$MOCK_PORT")"
     echo "$$" > "$PID_FILE"
     echo "$WEB_PORT" > "$PORT_FILE"
     trap 'rm -f "$PID_FILE" "$PORT_FILE"' EXIT INT TERM
     exec "$NODE_BIN" "$VITE_BIN" ${PASSED_ARGS[@]+"${PASSED_ARGS[@]}"}
 else
     # Check if the requested port is already in use
-    EXISTING_PORT_PID="$(lsof -ti ":$WEB_PORT" 2>/dev/null || true)"
+    EXISTING_PORT_PID="$(lsof -ti ":$WEB_PORT" -sTCP:LISTEN 2>/dev/null || true)"
     if [ -n "$EXISTING_PORT_PID" ]; then
         echo "Port $WEB_PORT is already in use by process $EXISTING_PORT_PID."
         echo "To stop: $SCRIPT_DIR/stop.sh"
@@ -228,7 +248,7 @@ fs.writeFileSync(process.argv[1], String(child.pid));
 
     echo "$WEB_PORT" > "$PORT_FILE"
     echo "pm-web-app started successfully (PID: $PID)."
-    render_connection_urls "$WEB_PORT" "$(current_pairing_code)"
+    render_connection_urls "$WEB_PORT" "$(current_pairing_code "$MOCK_PORT")"
     echo "Logs:    $LOG_FILE"
     echo "To stop: $SCRIPT_DIR/stop.sh"
 fi

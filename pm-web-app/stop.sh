@@ -50,20 +50,6 @@ if [ -f "$PID_FILE" ]; then
     fi
 fi
 
-# Fallback: check the recorded port, or Vite's default 5173
-STOP_PORT="$(cat "$PORT_FILE" 2>/dev/null || true)"
-case "$STOP_PORT" in
-    ''|*[!0-9]*) STOP_PORT=5173 ;;
-esac
-PORT_PID="$(lsof -ti ":$STOP_PORT" 2>/dev/null || true)"
-if [ -n "$PORT_PID" ]; then
-    echo "Stopping process listening on port $STOP_PORT (PID: $PORT_PID)..."
-    kill $PORT_PID 2>/dev/null || true
-    rm -f "$PORT_FILE"
-    echo "pm-web-app stopped successfully."
-    STOPPED=true
-fi
-
 if [ "$STOPPED" = false ]; then
     echo "pm-web-app is not running."
 fi

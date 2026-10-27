@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 
 test.describe('Web Client Entry & Connection (UC-ENT-1)', () => {
   test.beforeEach(async ({ page, request }) => {
     // Switch mock runtime to the entry scenario (machine not onboarded yet, network listener open)
-    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+    const res = await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
       data: { scenario: 'entry' },
     });
     expect(res.ok()).toBeTruthy();
@@ -32,7 +33,7 @@ test.describe('Web Client Entry & Connection (UC-ENT-1)', () => {
     request,
   }) => {
     // The machine settings are reached once the machine is onboarded.
-    await request.post('http://127.0.0.1:7420/mock/scenario', {
+    await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
       data: { scenario: 'entry-device-lifecycle' },
     });
     await page.goto('/settings');
@@ -48,7 +49,7 @@ test.describe('Web Client Entry & Connection (UC-ENT-1)', () => {
   });
 
   test('offers the credential entry on the loopback connection', async ({ page, request }) => {
-    await request.post('http://127.0.0.1:7420/mock/scenario', {
+    await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
       data: { scenario: 'entry-device-lifecycle' },
     });
     await page.goto('/settings');

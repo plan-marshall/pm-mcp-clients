@@ -707,7 +707,7 @@
     padding: var(--space-1) var(--space-3);
     border-radius: var(--radius-full);
     background-color: var(--color-success-subtle);
-    color: var(--color-success);
+    color: var(--color-success-text);
     font-weight: 700;
     font-size: var(--text-base);
   }
@@ -850,7 +850,7 @@
 
   .notice-alert--success {
     background-color: var(--color-success-subtle);
-    color: var(--color-success);
+    color: var(--color-success-text);
   }
 
   .notice-alert--danger {

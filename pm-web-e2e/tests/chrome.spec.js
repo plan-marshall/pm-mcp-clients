@@ -14,9 +14,7 @@ test.describe('Web chrome, navigation and action advisories', () => {
 
   test.afterAll(async ({ request }) => {
     try {
-      await request.post('http://127.0.0.1:7420/mock/scenario', {
-        data: { scenario: 'web-pairing' },
-      });
+      await switchScenario(request, 'web-pairing');
     } catch {
       // Best-effort cleanup.
     }

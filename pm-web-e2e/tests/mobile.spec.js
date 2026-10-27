@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 
 /**
  * The critical journeys at phone width (WEB-1): the onboarding wizard and the running-work
@@ -14,7 +15,7 @@ const PHONES = [
 ];
 
 async function useScenario(request, scenario) {
-  const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+  const res = await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
     data: { scenario },
   });
   expect(res.ok()).toBeTruthy();
@@ -119,7 +120,7 @@ test.describe('Mobile viewports (WEB-1)', () => {
 
   test.afterAll(async ({ request }) => {
     try {
-      await request.post('http://127.0.0.1:7420/mock/scenario', {
+      await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
         data: { scenario: 'web-pairing' },
       });
     } catch {

@@ -1,9 +1,10 @@
 import { test, expect } from '@playwright/test';
+import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 
 test.describe('Web Client Pairing Flow', () => {
   test.beforeEach(async ({ page, request }) => {
     // A pairing code is single use, so each test starts from a fresh scenario.
-    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+    const res = await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
       data: { scenario: 'web-pairing' },
     });
     expect(res.ok()).toBeTruthy();
@@ -97,7 +98,7 @@ test.describe('Web Client Pairing Flow', () => {
     await page.goto('/#code=KXQB-MRTN');
     await expect(page.locator('.app-header__machine')).toContainText('Machine:');
 
-    const issued = await request.post('http://127.0.0.1:7420/mock/pairing');
+    const issued = await request.post(`${MOCK_RUNTIME_URL}/mock/pairing`);
     expect(issued.ok()).toBeTruthy();
     const { code } = await issued.json();
     expect(code).toBeTruthy();

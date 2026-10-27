@@ -1,15 +1,16 @@
 import { test, expect } from '@playwright/test';
+import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 
-const BASE = 'http://127.0.0.1:7420';
+const BASE = MOCK_RUNTIME_URL;
 
 test.describe('Decisions, Waivers, Own Words & Quorum Voting (UC-PLN-2)', () => {
   test.beforeEach(async ({ page, request }) => {
     // Switch mock runtime to decisions scenario
-    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+    const res = await request.post(`${BASE}/mock/scenario`, {
       data: { scenario: 'decisions' },
     });
     expect(res.ok()).toBeTruthy();
-    const reset = await request.post('http://127.0.0.1:7420/mock/reset', { data: {} });
+    const reset = await request.post(`${BASE}/mock/reset`, { data: {} });
     expect(reset.ok()).toBeTruthy();
 
     // Clear localStorage and pair with code

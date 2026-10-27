@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 
 /**
  * The fully-onboarded showroom: one machine that is onboarded and whose every operator domain is
@@ -7,7 +8,7 @@ import { test, expect } from '@playwright/test';
  */
 test.describe('Fully onboarded showroom', () => {
   test.beforeEach(async ({ page, request }) => {
-    const res = await request.post('http://127.0.0.1:7420/mock/scenario', {
+    const res = await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
       data: { scenario: 'fully-onboarded' },
     });
     expect(res.ok()).toBeTruthy();
@@ -20,7 +21,7 @@ test.describe('Fully onboarded showroom', () => {
 
   test.afterAll(async ({ request }) => {
     try {
-      await request.post('http://127.0.0.1:7420/mock/scenario', {
+      await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
         data: { scenario: 'web-pairing' },
       });
     } catch {
