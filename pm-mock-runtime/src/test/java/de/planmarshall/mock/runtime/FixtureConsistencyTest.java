@@ -10,6 +10,7 @@
 package de.planmarshall.mock.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -192,7 +194,7 @@ class FixtureConsistencyTest {
                     while (matcher.find()) {
                         found.add(matcher.group(1));
                     }
-                    assertTrue(!found.isEmpty(), stateId + " names no role count");
+                    assertFalse(found.isEmpty(), stateId + " names no role count");
                     for (var count : found) {
                         assertEquals(expected, count, stateId + " names a role count of its own");
                     }

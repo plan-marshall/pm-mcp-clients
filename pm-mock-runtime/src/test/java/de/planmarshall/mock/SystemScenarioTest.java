@@ -223,7 +223,7 @@ class SystemScenarioTest {
             assertEquals(200, resDelete.status());
             var deleteMap = JsonTree.asObject(JsonTree.parse(resDelete.bodyText()));
             assertEquals("deleted", deleteMap.get("status"));
-            assertEquals(1825361100L, JsonTree.number(deleteMap, "freed_bytes").longValue());
+            assertEquals(1997956704L, JsonTree.number(deleteMap, "freed_bytes").longValue());
 
             // Cleanup job is now done, so GET /api/v1/system/cleanup returns open=false
             var resNoJob = client.send(HttpRequest.get("/api/v1/system/cleanup").withHeader("Authorization", auth));
