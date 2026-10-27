@@ -4,7 +4,7 @@
 
 ## START HERE
 
-**Resume anchor**: PLAN-01, PLAN-03, PLAN-05 launched (runbook lane, opencode); all 3 slots full. Next: /plan-orchestrator analyze slug=ui-improvements on each landing message, then refill freed slots with next.
+**Resume anchor**: PLAN-01, PLAN-03, PLAN-05 launched; PLAN-76 (shared-port-assignment) emitted by operator instruction as a 4th plan, awaiting start confirmation. Hold every spec with a port block until PLAN-76 has landed. Next: /plan-orchestrator analyze slug=ui-improvements on each landing message, then next.
 **Phase**: orchestrating
 **Parked**:
 - PLAN-32 (WS-04)
@@ -78,6 +78,7 @@
 67. PLAN-73 (WS-03)
 68. PLAN-74 (WS-03)
 69. PLAN-75 (WS-03)
+70. PLAN-76 (WS-01)
 - PLAN-01 (WS-02) — status: launched
 - PLAN-02 (WS-04) — plan=02-cli-pty-dialogue-harness — PR 232 — landing=landings/PLAN-02.md — status: shipped
 - PLAN-03 (WS-01) — status: launched
@@ -161,3 +162,4 @@
 | 71 | PLAN-73 | WS-03 | staged | pm-api/src/main/resources/messages/common.de.properties; pm-api/src/main/resources/messages/common.en.properties; pm-web-app/src/lib/views/; pm-web-e2e/tests/helpers/textGuard.js; pm-web-e2e/tests/text-guard-baseline.json; pm-web-e2e/tests/theme-readability.spec.js | runbook |
 | 72 | PLAN-74 | WS-03 | staged | doc/design/web-app/README.adoc; doc/design/web-app/brand-mark.adoc; doc/design/web-app/components.adoc; doc/design/web-app/interaction-affordances.adoc; doc/design/web-app/theme-readability.adoc; doc/design/web-app/view-density-and-filtering.adoc | runbook |
 | 73 | PLAN-75 | WS-03 | staged | doc/claude_review/README.adoc; doc/claude_review/verification-results/verify-web-final.adoc; pm-web-e2e/tests/mobile.spec.js; pm-web-e2e/tests/visual.spec.js | plan-marshall |
+| 74 | PLAN-76 | WS-01 | staged | AGENTS.md; README.md; doc/design/terminal-client/27-tui-testing.adoc; pm-mock-runtime/README.adoc; pm-mock-runtime/scripts/; pm-mock-runtime/src/main/java/de/planmarshall/mock/cli/MockRuntimeCli.java; pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java; pm-mock-runtime/src/test/java/de/planmarshall/mock/; pm-mock-runtime/start.sh; pm-mock-runtime/stop.sh; pm-operator/src/main/java/de/planmarshall/operator/WebCommand.java; pm-operator/src/test/java/de/planmarshall/operator/; pm-operator/src/test/resources/transcript/; pm-web-app/scripts/; pm-web-app/start.sh; pm-web-app/stop.sh; pm-web-app/vite.config.ts; pm-web-e2e/global-setup.js; pm-web-e2e/playwright.config.js; pm-web-e2e/pom.xml; pm-web-e2e/tests/ | runbook |

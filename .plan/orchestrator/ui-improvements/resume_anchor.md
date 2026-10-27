@@ -1,1 +1,1 @@
-PLAN-01, PLAN-03, PLAN-05 launched (runbook lane, opencode); all 3 slots full. Next: /plan-orchestrator analyze slug=ui-improvements on each landing message, then refill freed slots with next.
+PLAN-01, PLAN-03, PLAN-05 launched; PLAN-76 (shared-port-assignment) emitted by operator instruction as a 4th plan, awaiting start confirmation. Hold every spec with a port block until PLAN-76 has landed. Next: /plan-orchestrator analyze slug=ui-improvements on each landing message, then next.

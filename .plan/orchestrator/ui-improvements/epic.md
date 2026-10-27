@@ -48,6 +48,9 @@ plan spec names the plan, proposal and finding documents it comes from.
   right (CLI-UC-P-07).
 - PLAN-08 (`use-case-documents`) gates PLAN-46 (command palette), PLAN-49 (attention inbox) and
   PLAN-36 (`needs`): UC-PLN-7 and UC-PLN-8 must be agreed first.
+- PLAN-76 (`shared-port-assignment`) gates every staged plan that names a port block: those specs pass
+  their ports (`PM_MOCK_WEB_PORT`, `PM_WEB_PORT`, `--web-port`, `-p`) only once PLAN-76 has landed, and
+  each lists it under Depends on. Emit none of them before it lands.
 - Cross-repo plans — PLAN-08 and PLAN-24 land their main change in `plan-marshall-documentation`; their
   Expected Surface names only the files of this repository.
 
@@ -121,6 +124,19 @@ plan spec names the plan, proposal and finding documents it comes from.
   web specs (PLAN-01 running and PLAN-04 shipped left as they are). The files PLAN-04 touched beyond its
   declared surface (`lib/theme.ts`, `routeTitles.test.ts`, the `plan_view`/`epic_view`/`start` message
   areas, `workspace.spec.js`, five design docs) collided with nothing in flight.
+- 2026-10-27 — Port collisions between concurrent plans (operator report: the mock, the app and the
+  terminal client connecting to the mock block each other's ports). Staged PLAN-76
+  (`shared-port-assignment`, WS-01).
+  - The caller passes the ports. The defaults `7420`/`5173` stay for the operator's own loop.
+  - Every staged spec that starts the mock, the app or the e2e suite (56 specs) names its own block: mock
+    `20000 + 10 × NN`, app `+1`. Its build commands and browser-check procedure pass these ports, and it
+    depends on PLAN-76.
+  - Specs that are in flight or shipped (PLAN-01 to PLAN-05) are left as they are. Terminal-only specs
+    without a mock start are left too: their PTY harness runs an in-JVM mock with no web port.
+  - Emitted at once by operator instruction, although all three slots are in use (a fourth concurrent
+    plan). It overlaps the in-flight PLAN-01 (`pm-web-e2e/tests/`), PLAN-03 (`MockRuntimeEngine.java`,
+    `pm-mock-runtime/README.adoc`) and PLAN-05 (`pm-operator` tests). The operator chose the emit; the
+    later of each pair rebases.
 
 ## Open Defects
 
