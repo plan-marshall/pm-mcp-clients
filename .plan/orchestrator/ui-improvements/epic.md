@@ -154,6 +154,3 @@ plan spec names the plan, proposal and finding documents it comes from.
 - The e2e suite on `main` has one failing case before any epic change: the `CleanupView` contrast check
   in light at narrow width (seen in PLAN-04's base run at `65973291`). — re-check at PLAN-09
   (changes `CleanupView`) and PLAN-70 (`web-light-theme-pass`).
-- Cleanup owed by PLAN-02 although its landing says `cleanup_owed=false`: the detached worktree
-  `.plan/temp/base-check` (at `65973291`, presumably the before-capture checkout) is still registered.
-  — retire once the operator has removed it.
