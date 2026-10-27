@@ -11,6 +11,7 @@ package de.planmarshall.mock.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -650,6 +651,45 @@ class MockRuntimeEngineTest {
             assertEquals(200, actions.status());
             assertEquals("relay-hardening", actions.json().get("epic_id"));
         }
+    }
+
+    @Test
+    @DisplayName("records the operator acts since the last reset and serves them at /mock/acts")
+    void actLogRecordsActsAndResetEmptiesIt() throws Exception {
+        var auth = Map.of("Authorization", "Bearer test-token");
+        engine.switchScenario(StandardScenarios.FULLY_ONBOARDED);
+
+        send("POST", "/api/v1/plans/fix-relay/pause", auth,
+                "{\"point\":\"after_task\"}".getBytes(StandardCharsets.UTF_8), false);
+        send("POST", "/api/v1/projects/pm-mcp-clients/favourite", auth,
+                "{\"favourite\":true}".getBytes(StandardCharsets.UTF_8), false);
+
+        var acts = send("GET", "/mock/acts", Map.of(), new byte[0], false);
+        assertEquals(200, acts.status());
+        var listed = acts.json().get("acts");
+        assertInstanceOf(List.class, listed, String.valueOf(listed));
+        var list = (List<?>) listed;
+        assertEquals(2, list.size(), String.valueOf(list));
+        var first = JsonTree.asObject(list.getFirst());
+        var second = JsonTree.asObject(list.get(1));
+        assertNotNull(first);
+        assertNotNull(second);
+        assertEquals("POST", first.get("method"));
+        assertEquals("/api/v1/plans/fix-relay/pause", first.get("path"));
+        assertEquals("showroom.active", first.get("state"));
+        assertEquals("POST", second.get("method"));
+        assertEquals("/api/v1/projects/pm-mcp-clients/favourite", second.get("path"));
+
+        var reset = send("POST", "/mock/reset", Map.of(), new byte[0], false);
+        assertEquals(200, reset.status());
+        var emptied = send("GET", "/mock/acts", Map.of(), new byte[0], false);
+        assertTrue(emptied.json().get("acts") instanceof List<?> after && after.isEmpty(),
+                String.valueOf(emptied.json()));
+
+        send("POST", "/mcp", auth, "{}".getBytes(StandardCharsets.UTF_8), false);
+        assertTrue(send("GET", "/mock/acts", Map.of(), new byte[0], false).json().get("acts")
+                instanceof List<?> mcpActs && mcpActs.isEmpty(),
+                "an MCP call is no operator act");
     }
 
     private static String brokenFixtureJson() {

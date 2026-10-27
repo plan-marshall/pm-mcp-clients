@@ -131,6 +131,7 @@ The mock runtime exposes dedicated control endpoints on both listeners for test 
 * `POST /mock/goto/{state}`: Jumps directly to any target state within the active scenario (useful for skipping directly to a specific review or error screen).
 * `POST /mock/broadcast`: Triggers a custom Server-Sent Event broadcast to all connected SSE clients.
 * `POST /mock/pairing`: Returns the currently open pairing code, or issues a fresh one when the previous code was consumed. The development loop has no terminal client to ask for a replacement; the single-use rule is unchanged, so a consumed code never becomes valid again.
+* `GET /mock/acts`: Returns every operator act recorded since the last reset, oldest first, as `{"count": n, "acts": [{"method", "path", "state"}, ...]}`. An act is an authenticated request that is not a read and not a call to the relay's `/mcp` endpoint; one the runtime refuses is recorded as well, so a dialogue test proves what was sent rather than only what the screen says. `POST /mock/reset` and a scenario switch empty the list.
 
 === Testing Usage
 

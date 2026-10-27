@@ -5,6 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/brand-mark.svg" />
     <title>plan-marshall</title>
+    <!--
+      The theme is set before the first paint, so a remembered choice never flashes the other one.
+      This is the inline twin of `src/lib/theme.ts`: the same key, and the same rule that an
+      unreadable, missing or unknown choice follows the system. It keeps no list of the choices:
+      any stored value other than `system` is the theme itself, and the module only ever stores a
+      choice it offers, so a choice added later needs no change here. It cannot import the module
+      because it must run before any script is fetched.
+    -->
+    <script>
+      (function () {
+        var choice = 'system';
+        try {
+          choice = window.localStorage.getItem('pm_theme') || 'system';
+        } catch (error) {
+          choice = 'system';
+        }
+        var prefersDark = false;
+        try {
+          prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        } catch (error) {
+          prefersDark = false;
+        }
+        var theme = choice;
+        if (choice === 'system') {
+          theme = prefersDark ? 'dark' : 'light';
+        }
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
     %sveltekit.head%
   </head>
   <body data-sveltekit-preload-data="hover">

@@ -32,8 +32,8 @@ import org.jline.terminal.impl.ExternalTerminal;
  *
  * <p>The parser understands the subset of ANSI that {@code Display} and the capabilities of an
  * {@code xterm} terminal use: cursor addressing and movement, erase in line and display, SGR
- * (inverse only), the private modes 1049/47/1047 (alternate screen) and 25 (cursor), OSC, and the
- * string introducers. Everything else is skipped.
+ * (inverse, bold, dim, and the basic foreground colours), the private modes 1049/47/1047 (alternate
+ * screen) and 25 (cursor), OSC, and the string introducers. Everything else is skipped.
  */
 public final class VirtualScreenTerminal implements AutoCloseable {
 

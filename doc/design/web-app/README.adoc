@@ -130,7 +130,7 @@ body         the view: a list, a table, a process tree, a form, a dialogue
 live region  polite announcements, visually hidden
 ----
 
-* *Header*: the brand and the machine's name; the entries to the overview, the projects, the explorer, the decisions, the reports (with the unread count), the system, and the machine settings; the language switch (`EN`/`DE`) and the theme switch. The reports entry is present while there are unread reports, with its count; the decisions entry carries the open count.
+* *Header*: the brand and the machine's name; the entries to the overview, the projects, the explorer, the decisions, the reports (with the unread count), the system, and the machine settings; the language switch (`EN`/`DE`) and the theme choice (light, dark, or system). The reports entry is present while there are unread reports, with its count; the decisions entry carries the open count.
 * *Notices*: at most one line per kind, above the view and below the header, never over the body. The progress line of a drain or an upgrade is on every paired device (link:../shared/system.adoc[System]); the offline and listener-closed banners say what the app does about them (link:entry.adoc[Entry]); the arrival line names what arrived and holds the one step to it (link:../shared/reports.adoc#arrival[Reports, On Start], link:../shared/decisions.adoc#announce[Decisions, Announcing a Decision]).
 * *Context*: the view's title, its breadcrumb where it has a path, its actions on the right, and its filter, sort, or grouping controls directly below the title. A dialogue is never a tier of the frame: it opens over the body and keeps the header and the notices in place.
 * *Body*: one scroll container. The page itself does not scroll sideways; a wide table scrolls inside its own wrapper.
@@ -305,7 +305,7 @@ A badge is at most one per kind per row; a row that carries both a state and a h
 [#themes]
 === Light and Dark Themes
 
-The theme follows the operating system on first run (`prefers-color-scheme`) and the header's switch afterwards; the choice is remembered per browser. Every token is defined in both themes, and a view uses only the tokens, so a theme switch never requires a view to change.
+The theme is a choice this browser remembers: light, dark, or system, offered together in the header. `system` follows the operating system (`prefers-color-scheme`) and is what a browser with no choice, no readable storage, or a stored value that names no theme gets. The choice is kept under `pm_theme` and applied before the first paint, so a reload never shows the other theme first. Every token is defined in both themes, and a view uses only the tokens, so a theme switch never requires a view to change.
 
 * *Light*: the app's ground is the lightest step, a card is white, text is the darkest step. The primary, success, warning, and danger roles take their darker variants so that text on a subtle background keeps a contrast ratio of at least `4.5:1`.
 * *Dark*: the ground is the darkest step and a card one step above it, so a card reads as raised, never as a hole. Text is the lightest step; the roles take their lighter variants. A filled control keeps white text on the primary fill.

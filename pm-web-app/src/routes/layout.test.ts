@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import { get } from 'svelte/store';
 import Layout from './+layout.svelte';
 import { apiClient, type ReportsPage, type StatusResponse } from '../lib/api/client';
@@ -100,11 +100,21 @@ describe('the app shell', () => {
     expect(screen.getByTestId('nav-projects-btn')).not.toHaveAttribute('title');
     expect(screen.getByTestId('nav-designer-btn')).not.toHaveAttribute('title');
 
-    // An icon-only control still explains what it does.
-    expect(screen.getByLabelText('Toggle light/dark theme')).toHaveAttribute(
-      'title',
-      'Switch between the light and dark theme',
-    );
+    // The theme offers three explicit choices as one radio group, each with a visible label and
+    // none with a tooltip that would repeat it.
+    const theme = screen.getByRole('group', { name: 'Theme' });
+    expect(
+      within(theme)
+        .getAllByRole('radio')
+        .map((radio) => (radio as HTMLInputElement).labels?.[0]?.textContent?.trim()),
+    ).toEqual(['Light', 'Dark', 'System']);
+    for (const option of within(theme).getAllByRole('radio')) {
+      expect(option as HTMLInputElement).not.toHaveAttribute('title');
+    }
+    // The visible label carries no tooltip either: it says what it does.
+    for (const choice of ['light', 'dark', 'system']) {
+      expect(screen.getByTestId(`theme-${choice}`)).not.toHaveAttribute('title');
+    }
   });
 
   it('shows the project mark in the linked brand beside the visible text', async () => {
