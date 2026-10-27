@@ -58,7 +58,7 @@ class RuntimeStopDialogueIT {
             DialogueHarness.type(session, "9\nq\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
-            assertEquals(2, DialogueHarness.times(session.screenText(), PROMPT), session.screenText());
+            assertEquals(2, DialogueHarness.times(session.rawOutput(), PROMPT), session.screenText());
             harness.assertNoAct();
         }
     }

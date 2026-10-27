@@ -59,7 +59,7 @@ class ProjectSetupDialogueIT {
             DialogueHarness.type(session, "zzz\nq\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
-            assertTrue(DialogueHarness.times(session.screenText(), PROMPT) >= 2, session.screenText());
+            assertTrue(DialogueHarness.times(session.rawOutput(), PROMPT) >= 2, session.screenText());
             harness.assertNoAct();
         }
     }

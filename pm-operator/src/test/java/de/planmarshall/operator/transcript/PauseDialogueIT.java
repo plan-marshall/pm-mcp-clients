@@ -57,7 +57,7 @@ class PauseDialogueIT {
             DialogueHarness.type(session, "9\nq\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
-            assertEquals(2, DialogueHarness.times(session.screenText(), PROMPT), session.screenText());
+            assertEquals(2, DialogueHarness.times(session.rawOutput(), PROMPT), session.screenText());
             assertTrue(session.screenText().contains("1) now"), session.screenText());
             harness.assertNoAct();
         }
