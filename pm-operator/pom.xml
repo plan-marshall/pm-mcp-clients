@@ -226,6 +226,19 @@
                             <skipITs>${skipITs}</skipITs>
                         </configuration>
                     </plugin>
+                    <!-- The parent's coverage profile binds the JaCoCo report to the test phase, before
+                         failsafe runs. With the dialogue ITs measured, their paths must reach the report
+                         and the check; the report is therefore produced after the integration tests. -->
+                    <plugin>
+                        <groupId>org.jacoco</groupId>
+                        <artifactId>jacoco-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <id>report</id>
+                                <phase>verify</phase>
+                            </execution>
+                        </executions>
+                    </plugin>
                 </plugins>
             </build>
         </profile>

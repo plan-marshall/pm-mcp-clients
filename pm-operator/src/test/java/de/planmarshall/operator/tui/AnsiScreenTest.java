@@ -13,11 +13,17 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
+import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 /**
  * The shared ANSI parser: the same subset the full-screen view emits, parsed identically for the
@@ -50,6 +56,33 @@ class AnsiScreenTest {
                             () -> assertEquals(Set.of(0), screen.invertedRows()),
                             () -> assertEquals("", AnsiScreen.parse("abc\u001b[2K", 10, 2).lines().get(0)),
                             () -> assertEquals("", AnsiScreen.parse("abc\u001b[2J", 10, 2).lines().get(0))
+        );
+    }
+
+    @ParameterizedTest(name = "cell attributes of {0}")
+    @MethodSource("cellAttributeCases")
+    void cellAttributes(String ansi, List<String> expected) {
+        var screen = AnsiScreen.parse(ansi, 4, 1);
+
+        var row = screen.cellStyles().getFirst();
+
+        for (int index = 0; index < expected.size(); index++) {
+            var style = expected.get(index);
+            int cell = index;
+            assertEquals(style, row.get(cell).text(), "cell " + cell);
+        }
+    }
+
+    private static Stream<Arguments> cellAttributeCases() {
+        return Stream.of(
+                            arguments("\u001b[1;2;7;31mA\u001b[0mB\u001b[94mC",
+                                                List.of("bdrc1", "-", "c12")),
+                            arguments("\u001b[1mA\u001b[0m\u001b[38;5;1mB",
+                                                List.of("b", "-")),
+                            arguments("\u001b[1mA\u001b[1;mB",
+                                                List.of("b", "-")),
+                            arguments("\u001b[1m\u4e2dB",
+                                                List.of("b", "b"))
         );
     }
 

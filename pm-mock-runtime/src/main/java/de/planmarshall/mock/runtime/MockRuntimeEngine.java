@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -498,6 +499,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * (409) as the real runtime answers it.
      */
     private final Map<String, String> offeredOperatorLinks = new ConcurrentHashMap<>();
+    /**
+     * The operator acts recorded since the last reset: every state-changing request an operator
+     * client sent, in arrival order, with the state it was sent in. {@code GET /mock/acts} serves
+     * them so a dialogue test can prove the act arrived at the runtime rather than only on the
+     * screen (CLI-CC-S-01, CLI-CC-P-07).
+     */
+    private final List<Map<String, Object>> operatorActs = new CopyOnWriteArrayList<>();
     private final DesignerRegistry designer = new DesignerRegistry();
     private final Object devicesLock = new Object();
     private final List<PairedDevice> pairedDevices = new ArrayList<>();
@@ -601,6 +609,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         this.currentPairingCode = scenario.pairingCode();
         this.pairingCounter = 0;
         offeredOperatorLinks.clear();
+        operatorActs.clear();
         initDefaultDevices();
         initDefaultReports();
         initDefaultDecisions();
@@ -622,6 +631,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     public synchronized void reset() {
         offeredOperatorLinks.clear();
+        operatorActs.clear();
         this.currentPairingCode = currentScenario.get().pairingCode();
         this.pairingCounter = 0;
         initDefaultDevices();
@@ -1360,6 +1370,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (!isAuthorized(request, response, isWeb)) {
             return;
         }
+        recordOperatorAct(request);
 
         // 2b. An act against a state left meanwhile is refused before any dynamic route serves it.
         if (handleStaleOperatorLink(request, response)) {
@@ -5671,6 +5682,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleControlBroadcast(request, response);
             return;
         }
+        if ("/mock/acts".equals(path) && "GET".equals(request.method())) {
+            handleControlActs(response);
+            return;
+        }
         // The development loop has no terminal client to ask for a replacement code. This route
         // returns the open code or issues a fresh one; it never makes a consumed code valid again.
         if ("/mock/pairing".equals(path) && "POST".equals(request.method())) {
@@ -5785,6 +5800,38 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         broadcastEvent(event, data);
         response.json(200, Map.of(KEY_STATUS, "broadcasted", KEY_EVENT, event));
+    }
+
+    /**
+     * Records one operator act: an authenticated request that is not a read. A dialogue sends one
+     * when it sends what the operator chose. A request is recorded whether the runtime accepts or
+     * refuses it, so the log proves what was sent, not what took effect. The log is what
+     * {@code GET /mock/acts} serves.
+     *
+     * @param request the authenticated request
+     */
+    private void recordOperatorAct(MockHttpRequest request) {
+        var method = request.method().toUpperCase(Locale.ROOT);
+        if ("GET".equals(method) || "HEAD".equals(method) || "OPTIONS".equals(method)) {
+            return;
+        }
+        if (request.path().startsWith("/mcp")) {
+            // A JSON-RPC call of the relay's MCP endpoint is no operator act.
+            return;
+        }
+        var act = new LinkedHashMap<String, Object>();
+        act.put(KEY_METHOD, method);
+        act.put("path", request.path());
+        act.put(KEY_STATE, currentStateId.get());
+        operatorActs.add(act);
+    }
+
+    private void handleControlActs(MockHttpResponse response) throws IOException {
+        var acts = List.copyOf(operatorActs);
+        var body = new LinkedHashMap<String, Object>();
+        body.put(KEY_COUNT, acts.size());
+        body.put("acts", acts);
+        response.json(200, body);
     }
 
     private void initDefaultOnboarding() {

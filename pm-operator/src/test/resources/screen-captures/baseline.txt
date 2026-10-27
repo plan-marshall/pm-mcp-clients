@@ -1,0 +1,17 @@
+# The baseline capture set: the printed status, the plans view, and the plan view of fix-relay in
+# the showroom, at both documented sizes and in both languages.
+#
+# One capture per line, pipe separated:
+#   name | scenario | states to goto (comma separated, - for none) | command | keys to send | columns x rows | locale | extra environment (KEY=VALUE, comma separated, - for none)
+status-120-en | fully-onboarded | - | status | - | 120x30 | en_US.UTF-8 | -
+status-120-de | fully-onboarded | - | status | - | 120x30 | de_DE.UTF-8 | -
+status-80-en | fully-onboarded | - | status | - | 80x24 | en_US.UTF-8 | -
+status-80-de | fully-onboarded | - | status | - | 80x24 | de_DE.UTF-8 | -
+plans-120-en | fully-onboarded | - | plans | q | 120x30 | en_US.UTF-8 | -
+plans-120-de | fully-onboarded | - | plans | q | 120x30 | de_DE.UTF-8 | -
+plans-80-en | fully-onboarded | - | plans | q | 80x24 | en_US.UTF-8 | -
+plans-80-de | fully-onboarded | - | plans | q | 80x24 | de_DE.UTF-8 | -
+plan-fix-relay-120-en | fully-onboarded | - | plan fix-relay | q | 120x30 | en_US.UTF-8 | -
+plan-fix-relay-120-de | fully-onboarded | - | plan fix-relay | q | 120x30 | de_DE.UTF-8 | -
+plan-fix-relay-80-en | fully-onboarded | - | plan fix-relay | q | 80x24 | en_US.UTF-8 | -
+plan-fix-relay-80-de | fully-onboarded | - | plan fix-relay | q | 80x24 | de_DE.UTF-8 | -
