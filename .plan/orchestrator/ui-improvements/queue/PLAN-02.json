@@ -2,10 +2,10 @@
   "id": "PLAN-02",
   "slug": "cli-pty-dialogue-harness",
   "workstream": "WS-04",
-  "status": "launched",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "02-cli-pty-dialogue-harness",
+  "pr": "232",
+  "landing": "landings/PLAN-02.md",
   "seq": 2
 }

@@ -39,8 +39,11 @@ plan spec names the plan, proposal and finding documents it comes from.
   per area, so cross-track overlap is mostly one file or none.
 - Web chain — the web track is the critical path (17 levels): foundation (PLAN-01 to PLAN-41), shell and
   templates, views, then onboarding, light theme, cleanup, guard in failing mode, docs, final check.
-- PLAN-02 (`cli-pty-dialogue-harness`) — the review expects its PTY tests to fail today. They are
-  committed `@Disabled`, each naming the plan that fixes it, and each fixing plan enables its own.
+- PLAN-02 (`cli-pty-dialogue-harness`) — shipped (PR #232). Its seven `*DialogueIT` classes are
+  `@Disabled`, each naming its fixing plan: PLAN-10 (pause, cancel), PLAN-17 (runtime stop), PLAN-21
+  (answer), PLAN-22 (onboarding, project setup), PLAN-23 (cleanup). Each of these removes its own
+  `@Disabled`. The `pm-operator` coverage bundle stays below 80 % in `-Pcoverage,integration-tests`
+  until they do.
 - PLAN-32 (`cli-config-contract`) — parked: waits on the operator's decision which config contract is
   right (CLI-UC-P-07).
 - PLAN-08 (`use-case-documents`) gates PLAN-46 (command palette), PLAN-49 (attention inbox) and
@@ -101,10 +104,24 @@ plan spec names the plan, proposal and finding documents it comes from.
   outside the tests.
 - 2026-10-25 — `opencode.json` already starts Playwright MCP with `--isolated` and
   `--output-dir .plan/temp/playwright-mcp`; the browser checks name their files there.
+- 2026-10-26 — Round 1 cancelled and re-launched: the runbook lane failed on the opencode install
+  (bundle resolution, `executor-skew`, empty architecture); after the lane fix PLAN-01, PLAN-02 and
+  PLAN-04 were launched again (PRs #226, #229).
+- 2026-10-26 — `orchestrator.use_worktree` switched on (operator request, PR #230): the ledger lives in
+  `.plan/local/worktrees/_orchestrator` on `chore/orchestrator-ledger` and reaches `main` through
+  `land`, so the main checkout stays clean while plans run.
+- 2026-10-27 — PLAN-02 landing analysed (`landings/PLAN-02.md`). The two baseline defects it found (a
+  `-` placeholder in the plan view's task line, a relative "today" in the status header) belong to
+  PLAN-34 (`cli-display-layer`), not to PLAN-04/PLAN-16 as the message says; PLAN-34 already covers
+  them, so nothing is folded. The undeclared files it touched (`pm-mock-runtime/README.adoc`, the
+  test-scope `tui/AnsiScreen*`, `VirtualScreenTerminal`) collided with nothing.
 
 ## Open Defects
 
-- None at staging.
+- 2026-10-27 — Incomplete landing facts: `rb-02-cli-pty-dialogue-harness-001.md` (PLAN-02) reports
+  `missing_keys` `total_tokens` and `plugin_version` (both `unknown` on opencode). It was reconciled as far
+  as its facts go. The runbook lane on opencode cannot measure tokens or read the plugin version, so every
+  opencode landing will repeat this until the lane can.
 
 ## Watches
 
@@ -115,3 +132,14 @@ plan spec names the plan, proposal and finding documents it comes from.
   owns it yet. — re-check at the landing of PLAN-13; stage a web plan if the table lands.
 - The mock limits (`doc/claude_review/README.adoc#limits`) can make view checks `not verified` until
   PLAN-03 and PLAN-11 land. — re-check at the first verification landing.
+- Runbook lane on opencode: `executor-skew` still answers `could_not_check` (the lane text version cannot
+  be derived from the flat install path), and the guard is `none` (unenforced). PLAN-02 proceeded by
+  operator choice. — re-check at every opencode landing; retire when a landing reports `match` and a
+  guard.
+- Build server: the routed `verify -Ppre-commit` of PLAN-02 failed with exit -1 because `marshalld`
+  invoked a bare `mvn` instead of the project's `./mvnw`. The project was enrolled and the daemon
+  upgraded to 0.1.2017 on 2026-10-26, after that run. — re-check at the next landing that routes
+  through the daemon.
+- Cleanup owed by PLAN-02 although its landing says `cleanup_owed=false`: the detached worktree
+  `.plan/temp/base-check` (at `65973291`, presumably the before-capture checkout) is still registered.
+  — retire once the operator has removed it.
