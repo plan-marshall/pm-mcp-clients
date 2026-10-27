@@ -10,7 +10,6 @@
 package de.planmarshall.mock.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -108,7 +107,7 @@ class FixtureConsistencyTest {
                         body(engine, "POST", "/api/v1/system/cleanup/cln-0012/delete", body)));
                 assertNotNull(deleted);
                 assertEquals(JsonTree.number(summary, "freed_bytes").longValue()
-                                - JsonTree.number(entry, "size_bytes").longValue(),
+                        - JsonTree.number(entry, "size_bytes").longValue(),
                         JsonTree.number(deleted, "freed_bytes").longValue(), "freed_bytes");
             }
         }
