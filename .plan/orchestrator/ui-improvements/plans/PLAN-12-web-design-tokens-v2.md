@@ -44,13 +44,13 @@ Source of this plan (read before scoping):
    - Persona: plan-marshall:persona-integration-tester
    - Skills: pm-dev-frontend:javascript
    - Done when:
-     - `./mvnw -pl pm-web-e2e verify -Pintegration-tests` passes with the reset allowlist (evidence order: `none`)
+     - `./mvnw -pl pm-web-e2e verify -Pe2e` passes with the reset allowlist (evidence order: `none`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: every route of the rail/header (overview, plan, epic, projects, decisions, reports, designer, system, cleanup, settings) in dark and light; Inter is the rendered font (`browser_evaluate` of `getComputedStyle(document.body).fontFamily`); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 ## Standing Constraints
 
-- Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `./mvnw -pl pm-web-e2e verify -Pintegration-tests`.
+- Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `./mvnw -pl pm-web-e2e verify -Pe2e`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
 - The font file is the one new asset the operator approved for this plan; no other dependency.
 - Values of VD-P-02 are proposals: a pair that fails the contrast audit is tuned, and the tuned value is recorded in `theme-readability.adoc`.

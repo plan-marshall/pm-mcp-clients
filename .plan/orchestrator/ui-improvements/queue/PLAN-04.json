@@ -2,10 +2,10 @@
   "id": "PLAN-04",
   "slug": "web-theme-and-titles",
   "workstream": "WS-02",
-  "status": "launched",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "04-web-theme-and-titles",
+  "pr": "231",
+  "landing": "landings/PLAN-04.md",
   "seq": 4
 }
