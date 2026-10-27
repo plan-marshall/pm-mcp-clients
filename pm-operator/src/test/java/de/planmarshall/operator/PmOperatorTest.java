@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -29,9 +30,13 @@ import java.util.List;
 import java.util.Map;
 import org.jline.terminal.impl.DumbTerminal;
 
+import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.PmVersion;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.mock.MockRuntime;
+import de.planmarshall.mock.MockRuntimeConfig;
+import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
 import org.junit.jupiter.api.AfterEach;
@@ -380,6 +385,59 @@ class PmOperatorTest {
         void pairRefused() throws Exception {
             runtime((request, response) -> response.send(500, null, ""));
             assertEquals(PmOperator.EXIT_FAILURE, run("web", "pair"));
+        }
+
+        @Test
+        @DisplayName("web pair prints URL returned by runtime on ephemeral port rather than default 7420")
+        void pairPrintsUrlReturnedByRuntimeOnEphemeralPort() throws Exception {
+            try (var mock = MockRuntime.start(MockRuntimeConfig.builder()
+                    .scenario(StandardScenarios.FULLY_ONBOARDED)
+                    .webPort(0)
+                    .build())) {
+                var self = ProcessHandle.current();
+                Files.writeString(mock.paths().runtimeRecord(),
+                        "{\"pid\":" + self.pid() + ",\"start_instant\":\"" + self.info().startInstant().orElseThrow() + "\"}",
+                        StandardCharsets.UTF_8);
+
+                var outWriter = new StringWriter();
+                var errWriter = new StringWriter();
+                var env = Map.of(MachinePaths.ENV_BASE, mock.base().toString());
+                var context = new OperatorContext(
+                        env,
+                        mock.base().getParent(),
+                        true,
+                        ClientEnvironment.capture(env),
+                        () -> null,
+                        null
+                );
+
+                int exitCode = PmOperator.execute(context, new PrintWriter(outWriter), new PrintWriter(errWriter), "web", "pair");
+                assertEquals(0, exitCode);
+
+                int livePort = mock.webPort();
+                assertNotEquals(7420, livePort);
+                String output = outWriter.toString();
+                assertTrue(output.contains("http://127.0.0.1:" + livePort + "/pair#code="),
+                        "Output must contain live port " + livePort + ", but was:\n" + output);
+                assertFalse(output.contains("7420"),
+                        "Output must not contain default port 7420, but was:\n" + output);
+            }
+        }
+
+        @Test
+        @DisplayName("web pair falls back to default port when runtime answer carries no url")
+        void pairFallsBackToDefaultPortWhenRuntimeCarriesNoUrl() throws Exception {
+            runtime((request, response) -> {
+                if ("/api/v1/web/pairings".equals(request.target()) && "POST".equals(request.method())) {
+                    response.json(201, "{\"code\":\"CODE-NOURL\"}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            assertEquals(0, run("web", "pair"));
+            assertTrue(out.toString().contains("✓ Pairing code: CODE-NOURL"));
+            assertTrue(out.toString().contains("http://127.0.0.1:7420/pair#code=CODE-NOURL"));
         }
 
         @Test

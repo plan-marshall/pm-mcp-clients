@@ -101,6 +101,7 @@ class ScreenCaptureIT {
 
     private void capture(Capture capture, Path output) throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                                 .webPort(0)
                                  .scenario(capture.scenario()).build())) {
             MockMachine.recordLiveRuntime(runtime);
             for (var state : capture.states()) {

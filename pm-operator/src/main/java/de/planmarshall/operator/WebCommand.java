@@ -158,8 +158,10 @@ public final class WebCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             if (response.status() == 200 || response.status() == 201) {
                 var json = JsonTree.asObject(JsonTree.parse(response.body()));
-                var code = json != null ? (String) json.get("code") : "CODE";
-                var url = json != null ? (String) json.get("url") : "http://127.0.0.1:7420/pair#code=" + code;
+                var code = json != null && json.get("code") instanceof String c ? c : "CODE";
+                var url = json != null && json.get("url") instanceof String u && !u.isBlank()
+                        ? u
+                        : "http://127.0.0.1:" + DEFAULT_PORT + "/pair#code=" + code;
                 var validUntil = LocalTime.now(ZoneId.systemDefault()).plusMinutes(10).format(TIME_FORMATTER);
 
                 var locale = localeFor(context);
