@@ -81,9 +81,7 @@ final class DialogueHarness implements AutoCloseable {
         try {
             MockMachine.recordLiveRuntime(runtime);
             return new DialogueHarness(runtime);
-        }
-        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (IOException | RuntimeException e) {
+        } catch (IOException e) {
             runtime.close();
             throw e;
         }
@@ -99,9 +97,7 @@ final class DialogueHarness implements AutoCloseable {
         try {
             runtime.goToState(stateId);
             return this;
-        }
-        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (RuntimeException e) {
+        } catch (IllegalArgumentException e) {
             runtime.close();
             throw e;
         }
