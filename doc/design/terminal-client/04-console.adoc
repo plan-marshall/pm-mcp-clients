@@ -156,7 +156,8 @@ created on entry.
 * The console lends its terminal to the nested command for the dispatch, runs the command, and takes
   the terminal back in a `finally`. A nested command never closes the console's terminal.
 * While the view is open, the notices the runtime pushes are held rather than printed above the
-  prompt; when the view leaves, the console prints one coalesced meanwhile line
+  prompt; when the view leaves, one coalesced meanwhile line is printed, by the view itself on the
+  console's own writer
   (xref:15-overview.adoc#full-screen-live[The Overview, Live, and Leaving]).
 * `--json` runs the verb normally: no view, no notice hold, and JSON on stdout.
 * A verb that cannot open the view on this terminal prints one catalogue line naming the reason,

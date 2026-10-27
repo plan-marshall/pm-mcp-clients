@@ -108,6 +108,8 @@ class StartScriptTest {
                                                 Files.readString(pidFile()))
         );
         ProcessHandle.of(Long.parseLong(Files.readString(pidFile()).strip()))
+                            .filter(handle -> handle.info().commandLine()
+                                                .map(line -> line.contains("PmOperator")).orElse(false))
                             .ifPresent(ProcessHandle::destroy);
     }
 

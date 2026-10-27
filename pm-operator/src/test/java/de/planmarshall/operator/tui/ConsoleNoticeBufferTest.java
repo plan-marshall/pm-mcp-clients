@@ -77,7 +77,7 @@ class ConsoleNoticeBufferTest {
     }
 
     @Test
-    @DisplayName("nothing arrived means no line at all")
+    @DisplayName("the summary is empty when nothing was held, and the leaving line says so")
     void emptySummary() {
         assertAll(
                             () -> assertEquals("", new ConsoleNoticeBuffer().drain("en").summary()),

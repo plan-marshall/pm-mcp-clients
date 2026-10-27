@@ -289,19 +289,21 @@ public final class OverviewFullScreenApp {
      * @return the localized place
      */
     String leavingPlace() {
-        var lvl = stack.level();
-        if (lvl == null || lvl.kind() == TuiLevel.Kind.OVERVIEW) {
-            return ConsoleNoticeBuffer.overviewPlace(locale);
-        }
-        var title = lvl.title();
-        if (lvl.kind() == TuiLevel.Kind.PLAN) {
-            var view = currentPlanView.get();
-            if (view != null) {
-                var selected = stack.selected();
-                title = view.breadcrumb(locale, selected != null ? selected.id() : null);
+        synchronized (this) {
+            var lvl = stack.level();
+            if (lvl == null || lvl.kind() == TuiLevel.Kind.OVERVIEW) {
+                return ConsoleNoticeBuffer.overviewPlace(locale);
             }
+            var title = lvl.title();
+            if (lvl.kind() == TuiLevel.Kind.PLAN) {
+                var view = currentPlanView.get();
+                if (view != null) {
+                    var selected = stack.selected();
+                    title = view.breadcrumb(locale, selected != null ? selected.id() : null);
+                }
+            }
+            return title.isBlank() ? ConsoleNoticeBuffer.overviewPlace(locale) : title;
         }
-        return title.isBlank() ? ConsoleNoticeBuffer.overviewPlace(locale) : title;
     }
 
     /**

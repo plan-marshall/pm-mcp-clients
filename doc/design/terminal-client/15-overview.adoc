@@ -394,7 +394,7 @@ before it starts a `LineReader` dialogue, and re-enters it when the dialogue ret
 === Live, and Leaving
 
 * The view follows the runtime's events and redraws only what changed; the selection stays on the selected item, wherever its row moves. A notice that would be printed above the prompt is held while the view is open.
-* *Leaving* (`q`) restores the screen the operator left and prints one line of what arrived meanwhile, then the prompt:
+* *Leaving* (`q`) restores the screen the operator left and prints one line of what arrived meanwhile, then the prompt. The line names the place the operator was in — `the overview`, or the header of the level that was left — and it is printed whether or not something arrived: nothing arrived is said as well, so the operator is told where they were and that nothing waits.
 
 [source,text]
 ----
@@ -402,6 +402,16 @@ pm › plans
   (the full-screen view, until q)
 While the overview was open: 1 decision arrived (Q-014, plan fix-relay), 2 new reports (reports).
 pm [1 question] ›
+----
+
+Leaving a view where nothing arrived reads the same sentence with the other event:
+
+[source,text]
+----
+pm › plans
+  (the full-screen view, until q)
+While the overview was open: nothing arrived.
+pm ›
 ----
 
 [#full-screen-build]
@@ -548,8 +558,16 @@ The texts of the rows are those of link:../shared/plan-overview.adoc#texts[Plan 
 |verbunden
 
 |`operator.overview.meanwhile`
-|While the overview was open: {events}.
-|Während die Übersicht offen war: {events}.
+|While {where} was open: {events}.
+|Während {where} offen war: {events}.
+
+|`operator.overview.meanwhile.nothing`
+|nothing arrived
+|nichts kam
+
+|`operator.overview.where.overview`
+|the overview
+|die Übersicht
 
 |`operator.overview.too_narrow`
 |The terminal is too narrow for the overview; here is the tree.

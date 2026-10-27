@@ -53,13 +53,14 @@ class SummaryLineIT {
     private static final Duration TIMEOUT = Duration.ofSeconds(20);
     private static final String SCRIPT = "/usr/bin/script";
     private static final String OVERVIEW_PREFIX = "While the overview was open: ";
+    private static final String PROMPT = "pm \u203a";
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
                         MachinePaths.class, CommandLine.class, JsonFactory.class,
                         Terminal.class, LineReader.class, QrCode.class);
 
     @Test
-    @DisplayName("plans then q prints the line for the overview")
+    @DisplayName("plans then q prints the line for the overview, once")
     void plansThenQPrintsTheLine() throws Exception {
         try (var runtime = start(StandardScenarios.RUNNING_WORK);
              var session = open(runtime, "plans")) {
@@ -72,6 +73,31 @@ class SummaryLineIT {
             var leaving = leavingLine(session.rawOutput());
             assertTrue(leaving.startsWith(OVERVIEW_PREFIX), leaving);
             assertTrue(leaving.endsWith("."), leaving);
+            assertEquals(1, DialogueHarness.times(session.rawOutput(), OVERVIEW_PREFIX),
+                                "the view prints one line, not one per bracket");
+        }
+    }
+
+    @Test
+    @DisplayName("the console hand-off prints the same single line")
+    void consoleHandOffPrintsOneLine() throws Exception {
+        try (var runtime = start(StandardScenarios.RUNNING_WORK);
+             var session = open(runtime)) {
+            assertTrue(session.awaitText(PROMPT, TIMEOUT), session.rawOutput());
+
+            session.send("plans\n");
+            assertTrue(session.awaitText("Running work", TIMEOUT), session.rawOutput());
+
+            session.send("q");
+            assertTrue(session.awaitText(PROMPT, TIMEOUT), session.rawOutput());
+
+            var leaving = leavingLine(session.rawOutput());
+            assertTrue(leaving.startsWith(OVERVIEW_PREFIX), leaving);
+            assertEquals(1, DialogueHarness.times(session.rawOutput(), OVERVIEW_PREFIX),
+                                "the view and the console must not print the line twice");
+
+            session.send("exit\n");
+            assertTrue(session.awaitExit(TIMEOUT), session.rawOutput());
         }
     }
 
