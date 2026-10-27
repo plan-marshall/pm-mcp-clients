@@ -707,7 +707,7 @@
           </div>
           <div class="detail-row">
             <span class="detail-label">{$t('decision.waiver.its_reason')}:</span>
-            <span class="detail-value">{dec.waiver_reason || dec.description || ''}</span>
+            <span class="detail-value" data-model-text>{dec.waiver_reason || dec.description || ''}</span>
           </div>
         </div>
 
@@ -769,7 +769,7 @@
         </header>
 
         {#if dec.description}
-          <p class="decision-description">{dec.description}</p>
+          <p class="decision-description" data-model-text>{dec.description}</p>
         {/if}
 
         {#if revisedNotices[dec.id]}
