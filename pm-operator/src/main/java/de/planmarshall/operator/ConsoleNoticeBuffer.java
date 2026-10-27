@@ -32,6 +32,9 @@ import de.planmarshall.api.message.MessageCatalogue;
  */
 public final class ConsoleNoticeBuffer {
 
+    /** The message parameter name of the place the operator was in, shared by its three uses. */
+    private static final String WHERE = "where";
+
     /** What kind of item arrived while the view was open. */
     public enum Category {
         /** A decision or waiver request. */
@@ -142,6 +145,19 @@ public final class ConsoleNoticeBuffer {
      * @return the meanwhile summary and the verbatim lines
      */
     public synchronized Drained drain(String locale) {
+        return drain(locale, overviewPlace(locale));
+    }
+
+    /**
+     * Builds the one line of what arrived while the operator was at {@code where}, returns the
+     * verbatim lines, and clears the buffer in the same transition.
+     *
+     * @param locale the interface locale
+     * @param where  the localized place the operator was in, as the view's own header names it
+     * @return the meanwhile summary and the verbatim lines
+     */
+    public synchronized Drained drain(String locale, String where) {
+        Objects.requireNonNull(where, WHERE);
         var parts = new ArrayList<String>();
         if (decisions > 0) {
             parts.add(MessageCatalogue.format(locale, "operator.overview.meanwhile.decisions",
@@ -156,7 +172,7 @@ public final class ConsoleNoticeBuffer {
                                 Map.of("count", needs)));
         }
         var lines = List.copyOf(deferred);
-        var summary = summarize(locale, parts);
+        var summary = summarize(locale, parts, where);
         decisions = 0;
         reports = 0;
         needs = 0;
@@ -175,14 +191,47 @@ public final class ConsoleNoticeBuffer {
     /**
      * @param locale the interface locale
      * @param parts  the already localized item summaries
+     * @param where  the localized place the operator was in
      * @return the composed meanwhile line, or an empty string when there is nothing to say
      */
-    public static String summarize(String locale, List<String> parts) {
+    public static String summarize(String locale, List<String> parts, String where) {
         if (parts == null || parts.isEmpty()) {
             return "";
         }
-        var events = String.join(", ", parts);
+        return meanwhile(locale, where, String.join(", ", parts));
+    }
+
+    /**
+     * The one line a view leaves behind when nothing arrived meanwhile: the same sentence as the
+     * summary, so the operator always reads where they were and what is new, also when nothing is
+     * ({@code doc/design/terminal-client/15-overview.adoc#full-screen-live}).
+     *
+     * @param locale the interface locale
+     * @param where  the localized place the operator was in, as the view's own header names it
+     * @return the line to print after leaving the view
+     */
+    public static String leavingLine(String locale, String where) {
+        var events = MessageCatalogue.format(locale, "operator.overview.meanwhile.nothing", Map.of());
+        return meanwhile(locale, where, events);
+    }
+
+    /**
+     * @param locale the interface locale
+     * @param where  the localized place the operator was in
+     * @param events the localized "what arrived" part of the line
+     * @return the meanwhile line
+     */
+    private static String meanwhile(String locale, String where, String events) {
+        Objects.requireNonNull(where, WHERE);
         return MessageCatalogue.format(locale, "operator.overview.meanwhile",
-                            Map.of("events", events));
+                            Map.of(WHERE, where, "events", events));
+    }
+
+    /**
+     * @param locale the interface locale
+     * @return the place the overview itself names, used when no level names a narrower one
+     */
+    public static String overviewPlace(String locale) {
+        return MessageCatalogue.format(locale, "operator.overview.where.overview", Map.of());
     }
 }

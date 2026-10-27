@@ -108,6 +108,8 @@ class OverviewCatalogueTest {
                 "operator.overview.more_below",
                 "operator.overview.connected",
                 "operator.overview.meanwhile",
+                "operator.overview.meanwhile.nothing",
+                "operator.overview.where.overview",
                 "operator.overview.too_narrow",
                 "operator.overview.keys.actions",
                 "operator.overview.keys.ended",

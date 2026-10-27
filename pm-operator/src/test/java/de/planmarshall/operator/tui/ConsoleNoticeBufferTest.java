@@ -77,12 +77,15 @@ class ConsoleNoticeBufferTest {
     }
 
     @Test
-    @DisplayName("nothing arrived means no line at all")
+    @DisplayName("the summary is empty when nothing was held")
     void emptySummary() {
+        var buffer = new ConsoleNoticeBuffer();
         assertAll(
-                            () -> assertEquals("", new ConsoleNoticeBuffer().drain("en").summary()),
-                            () -> assertEquals("", ConsoleNoticeBuffer.summarize("en", List.of())),
-                            () -> assertEquals("", ConsoleNoticeBuffer.summarize("en", null))
+                            () -> assertEquals("", buffer.drain("en").summary()),
+                            () -> assertEquals("", ConsoleNoticeBuffer.summarize("en", List.of(),
+                                                ConsoleNoticeBuffer.overviewPlace("en"))),
+                            () -> assertEquals("", ConsoleNoticeBuffer.summarize("en", null,
+                                                ConsoleNoticeBuffer.overviewPlace("en")))
         );
     }
 
@@ -129,10 +132,38 @@ class ConsoleNoticeBufferTest {
     }
 
     @Test
-    @DisplayName("the meanwhile text is the one the design names")
-    void textKeyExists() {
-        var text = MessageCatalogue.format("en", "operator.overview.meanwhile",
-                            Map.of("events", "1 decision arrived"));
-        assertEquals("While the overview was open: 1 decision arrived.", text);
+    @DisplayName("the meanwhile text names the place the operator was in")
+    void textNamesThePlace() {
+        assertAll(
+                            () -> assertEquals("While the overview was open: 1 decision arrived.",
+                                                MessageCatalogue.format("en", "operator.overview.meanwhile",
+                                                                    Map.of("where", "the overview",
+                                                                                        "events", "1 decision arrived"))),
+                            () -> assertEquals("While fix-relay was open: 1 decision arrived.",
+                                                MessageCatalogue.format("en", "operator.overview.meanwhile",
+                                                                    Map.of("where", "fix-relay",
+                                                                                        "events", "1 decision arrived")))
+        );
+    }
+
+    @Test
+    @DisplayName("a drain names the place it is given, and the overview by default")
+    void drainNamesThePlace() {
+        var buffer = new ConsoleNoticeBuffer();
+        buffer.activate();
+        buffer.hold(ConsoleNoticeBuffer.Category.DECISION);
+        assertAll(
+                            () -> assertEquals("While fix-relay was open: 1 decision arrived.",
+                                                buffer.drain("en", "fix-relay").summary()),
+                            () -> assertEquals("", buffer.drain("en").summary()),
+                            () -> assertEquals("While the overview was open: nothing arrived.",
+                                                ConsoleNoticeBuffer.leavingLine("en",
+                                                                    ConsoleNoticeBuffer.overviewPlace("en"))),
+                            () -> assertEquals("While fix-relay was open: nothing arrived.",
+                                                ConsoleNoticeBuffer.leavingLine("en", "fix-relay")),
+                            () -> assertEquals("W\u00e4hrend die \u00dcbersicht offen war: nichts kam.",
+                                                ConsoleNoticeBuffer.leavingLine("de",
+                                                                    ConsoleNoticeBuffer.overviewPlace("de")))
+        );
     }
 }
