@@ -1,1 +1,1 @@
-PLAN-02 shipped (PR #232). PLAN-01 and PLAN-04 launched (PR #231 open); PLAN-03 emitted, awaiting the operator's start confirmation to mark it launched. Next: /plan-orchestrator analyze slug=ui-improvements on each landing message; refill freed slots with next. Open: parallelization_scope in marshal.json is 1 (operator stated 3); leftover worktree .plan/temp/base-check.
+PLAN-01, PLAN-03, PLAN-05 launched (runbook lane, opencode); all 3 slots full. Next: /plan-orchestrator analyze slug=ui-improvements on each landing message, then refill freed slots with next.

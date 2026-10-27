@@ -115,13 +115,20 @@ plan spec names the plan, proposal and finding documents it comes from.
   PLAN-34 (`cli-display-layer`), not to PLAN-04/PLAN-16 as the message says; PLAN-34 already covers
   them, so nothing is folded. The undeclared files it touched (`pm-mock-runtime/README.adoc`, the
   test-scope `tui/AnsiScreen*`, `VirtualScreenTerminal`) collided with nothing.
+- 2026-10-27 — PLAN-04 landing analysed (`landings/PLAN-04.md`). Spec correction across the corpus: the
+  standing constraint named `./mvnw -pl pm-web-e2e verify -Pintegration-tests`, which activates no profile
+  in `pm-web-e2e` and skips Playwright silently; the suite's profile is `-Pe2e`. Replaced in the 27 staged
+  web specs (PLAN-01 running and PLAN-04 shipped left as they are). The files PLAN-04 touched beyond its
+  declared surface (`lib/theme.ts`, `routeTitles.test.ts`, the `plan_view`/`epic_view`/`start` message
+  areas, `workspace.spec.js`, five design docs) collided with nothing in flight.
 
 ## Open Defects
 
 - 2026-10-27 — Incomplete landing facts: `rb-02-cli-pty-dialogue-harness-001.md` (PLAN-02) reports
   `missing_keys` `total_tokens` and `plugin_version` (both `unknown` on opencode). It was reconciled as far
   as its facts go. The runbook lane on opencode cannot measure tokens or read the plugin version, so every
-  opencode landing will repeat this until the lane can.
+  opencode landing will repeat this until the lane can. Recurrence 2026-10-27:
+  `rb-04-web-theme-and-titles-001.md` (PLAN-04), same two keys.
 
 ## Watches
 
@@ -135,11 +142,15 @@ plan spec names the plan, proposal and finding documents it comes from.
 - Runbook lane on opencode: `executor-skew` still answers `could_not_check` (the lane text version cannot
   be derived from the flat install path), and the guard is `none` (unenforced). PLAN-02 proceeded by
   operator choice. — re-check at every opencode landing; retire when a landing reports `match` and a
-  guard.
+  guard. Recurrence: PLAN-04 (same `could_not_check`, guard `none`).
 - Build server: the routed `verify -Ppre-commit` of PLAN-02 failed with exit -1 because `marshalld`
   invoked a bare `mvn` instead of the project's `./mvnw`. The project was enrolled and the daemon
-  upgraded to 0.1.2017 on 2026-10-26, after that run. — re-check at the next landing that routes
-  through the daemon.
-- Cleanup owed by PLAN-02 although its landing says `cleanup_owed=false`: the detached worktree
-  `.plan/temp/base-check` (at `65973291`, presumably the before-capture checkout) is still registered.
-  — retire once the operator has removed it.
+  upgraded to 0.1.2017 on 2026-10-26, after that run. Recurrence: PLAN-04's one routed build failed the
+  same way (`mvn` not on the daemon's PATH). — re-check at the next landing that routes through the
+  daemon.
+- Tab titles name the identifier (`drop-legacy-api`), not the display title (PLAN-04 residue). No
+  staged plan owns a title store for the shell. — decide when PLAN-09 (`web-display-layer`) is emitted,
+  or at the PLAN-29 verification (`CC-V-04`).
+- The e2e suite on `main` has one failing case before any epic change: the `CleanupView` contrast check
+  in light at narrow width (seen in PLAN-04's base run at `65973291`). — re-check at PLAN-09
+  (changes `CleanupView`) and PLAN-70 (`web-light-theme-pass`).
