@@ -297,6 +297,7 @@ const GUARD_JOURNEYS = [
       await expect(card).toBeVisible();
       await card.locator('.action-btn--detail').click();
       await expect(page.locator('.completion-report')).toBeVisible();
+      await expect(page.locator('.report-title')).toBeVisible();
       await record('CompletionReportView');
     },
   },
@@ -346,6 +347,7 @@ const GUARD_JOURNEYS = [
       await page.locator('.app-header').getByRole('button', { name: LABELS.settings }).click();
       await expect(page.getByTestId('settings-view')).toBeVisible();
       await expect(page.getByTestId('listener-bar')).toBeVisible({ timeout: 15000 });
+      await expect(page.locator('.loading-text')).toHaveCount(0, { timeout: 15000 });
       await record('SettingsView');
 
       await page.getByTestId('machine-settings-button').click();

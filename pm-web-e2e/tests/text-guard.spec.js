@@ -79,10 +79,19 @@ test.describe('Text guard rules', () => {
     expect(violations.map((violation) => violation.word).sort()).toEqual(['fertig', 'läuft']);
   });
 
-  test('reads a form control placeholder and value as visible text', async ({ page }) => {
-    await page.setContent(
-      '<!doctype html><html lang="de"><head><title>Start</title></head><body><input placeholder="done" value="busy" /></body></html>',
-    );
+  test('reads a control placeholder and the value a control displays', async ({ page }) => {
+    await page.setContent(`<!doctype html>
+<html lang="de">
+  <head><title>Start</title></head>
+  <body>
+    <input placeholder="done" value="busy" />
+    <input type="radio" name="option" value="waiting_for_you" />
+    <span>Übernehmen</span>
+    <select>
+      <option value="landing.pull-request" selected>Einen Pull Request übernehmen</option>
+    </select>
+  </body>
+</html>`);
 
     const violations = await collectTextGuardViolations(page, { locale: 'de' });
 

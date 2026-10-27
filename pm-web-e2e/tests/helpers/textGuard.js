@@ -154,28 +154,42 @@ function collectInPage({ foreignWords, isoPlaceholder }) {
     scan(text, { context: describe(element), inChip: isChipOrCode(element) });
   }
 
-  // A rendered control shows its placeholder and its value as text, though neither is a text node.
-  for (const control of document.querySelectorAll('input, textarea, select')) {
-    if (!isRendered(control) || control.closest(SKIPPED_SUBTREES)) {
-      continue;
+  // A rendered control shows its placeholder and, for the controls that display it, its value as
+  // text. A radio's value is an internal key the operator never sees, so a select contributes the
+  // selected option's label, never the option value.
+  const VALUE_DISPLAYING_TYPES = new Set([
+    'date',
+    'datetime-local',
+    'email',
+    'month',
+    'number',
+    'password',
+    'search',
+    'tel',
+    'text',
+    'time',
+    'url',
+    'week',
+  ]);
+  function displayedValue(control) {
+    const tag = control.tagName.toLowerCase();
+    if (tag === 'select') {
+      return control.selectedOptions?.[0]?.textContent ?? null;
     }
-    const context = describe(control);
-    const inChip = isChipOrCode(control);
-    for (const text of [control.getAttribute('placeholder'), control.value]) {
-      if (text) {
-        scan(String(text), { context, inChip });
-      }
+    if (tag === 'textarea') {
+      return control.value;
     }
+    const type = (control.getAttribute('type') ?? 'text').toLowerCase();
+    return VALUE_DISPLAYING_TYPES.has(type) ? control.value : null;
   }
-
-  // A rendered control shows its placeholder and its value as text, though neither is a text node.
   for (const control of document.querySelectorAll('input, textarea, select')) {
     if (!isRendered(control) || control.closest(SKIPPED_SUBTREES)) {
       continue;
     }
     const context = describe(control);
     const inChip = isChipOrCode(control);
-    for (const text of [control.getAttribute('placeholder'), control.value]) {
+    const texts = [control.getAttribute('placeholder'), displayedValue(control)];
+    for (const text of texts) {
       if (text) {
         scan(String(text), { context, inChip });
       }
