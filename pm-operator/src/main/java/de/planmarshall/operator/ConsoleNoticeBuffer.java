@@ -192,13 +192,10 @@ public final class ConsoleNoticeBuffer {
      * @return the composed meanwhile line, or an empty string when there is nothing to say
      */
     public static String summarize(String locale, List<String> parts, String where) {
-        Objects.requireNonNull(where, "where");
         if (parts == null || parts.isEmpty()) {
             return "";
         }
-        var events = String.join(", ", parts);
-        return MessageCatalogue.format(locale, "operator.overview.meanwhile",
-                            Map.of("where", where, "events", events));
+        return meanwhile(locale, where, String.join(", ", parts));
     }
 
     /**
@@ -211,8 +208,18 @@ public final class ConsoleNoticeBuffer {
      * @return the line to print after leaving the view
      */
     public static String leavingLine(String locale, String where) {
-        Objects.requireNonNull(where, "where");
         var events = MessageCatalogue.format(locale, "operator.overview.meanwhile.nothing", Map.of());
+        return meanwhile(locale, where, events);
+    }
+
+    /**
+     * @param locale the interface locale
+     * @param where  the localized place the operator was in
+     * @param events the localized "what arrived" part of the line
+     * @return the meanwhile line
+     */
+    private static String meanwhile(String locale, String where, String events) {
+        Objects.requireNonNull(where, "where");
         return MessageCatalogue.format(locale, "operator.overview.meanwhile",
                             Map.of("where", where, "events", events));
     }
