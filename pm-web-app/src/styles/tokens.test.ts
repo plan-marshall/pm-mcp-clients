@@ -6,8 +6,8 @@ import path from 'path';
  * The design system v2 contract of `tokens.css` (VD-P-02, VD-P-03, VD-P-04).
  *
  * The file is read as text and asserted declaration by declaration, so a token that is renamed,
- * retyped or dropped fails here instead of quietly falling back in the browser. Every colour pair
- * the interface renders is audited for WCAG 2.1 AA in both themes.
+ * retyped or dropped fails here instead of quietly falling back in the browser. The colour pairs
+ * the interface renders as text or as a state dot are audited for WCAG 2.1 AA in both themes.
  */
 
 const TOKENS_PATH = path.resolve(__dirname, 'tokens.css');
@@ -371,19 +371,27 @@ describe('tokens.css: the design system v2 contract', () => {
 
     it('keeps the set of theme-varying tokens identical in light, dark and the system-dark block', () => {
       const themed = new Set([...Object.keys(COLOUR_TOKENS), '--focus-ring', ...ELEVATION_TOKENS]);
-      const inLight = [...declaredNames(blockOf(withoutComments(css), "[data-theme='light']"))].filter(
-        (name) => themed.has(name),
-      );
-      const inDark = [...declaredNames(blockOf(withoutComments(css), "[data-theme='dark']"))].filter(
-        (name) => themed.has(name),
-      );
-      const inMediaDark = [
-        ...declaredNames(blockOf(blockOf(withoutComments(css), '@media (prefers-color-scheme: dark)'), ':root')),
-      ].filter((name) => themed.has(name));
+      const isThemedName = (name: string): boolean =>
+        name.startsWith('--color-') || name.startsWith('--shadow-') || name === '--focus-ring';
+      const stylesheet = withoutComments(css);
 
-      expect(inLight.sort()).toEqual([...themed].sort());
-      expect(inDark.sort()).toEqual([...themed].sort());
-      expect(inMediaDark.sort()).toEqual([...themed].sort());
+      const rootThemed = [...declaredNames(blockOf(stylesheet, ':root'))].filter(isThemedName);
+      expect(rootThemed.filter((name) => !themed.has(name) && !(name in ALIASES))).toEqual([]);
+
+      for (const [label, block] of [
+        ['light', blockOf(stylesheet, "[data-theme='light']")],
+        ['dark', blockOf(stylesheet, "[data-theme='dark']")],
+        ['media-dark', blockOf(blockOf(stylesheet, '@media (prefers-color-scheme: dark)'), ':root')],
+      ] as const) {
+        const declared = [...declaredNames(block)];
+        expect(declared.filter(isThemedName).sort(), `${label} is missing a palette token`).toEqual(
+          [...themed].sort(),
+        );
+        expect(
+          declared.filter((name) => isThemedName(name) && !themed.has(name)),
+          `${label} declares a themed token no other theme has`,
+        ).toEqual([]);
+      }
     });
 
     it('keeps every old token name as an alias of its v2 token', () => {

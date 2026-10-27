@@ -546,6 +546,8 @@ export const CONTRAST_ALLOWLIST = [];
 function isExempt(failure) {
   return CONTRAST_ALLOWLIST.some(
     (entry) =>
+      typeof entry.selector === 'string' &&
+      entry.selector.trim().length > 0 &&
       typeof entry.reason === 'string' &&
       entry.reason.trim().length > 0 &&
       failure.selector.includes(entry.selector),
@@ -588,12 +590,16 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
     { name: 'narrow', width: 320, height: 568 },
   ];
 
-  test('every contrast allowlist entry carries its reason', () => {
-    const unreasoned = CONTRAST_ALLOWLIST.filter(
-      (entry) => typeof entry.reason !== 'string' || entry.reason.trim().length === 0,
+  test('every contrast allowlist entry carries its selector and its reason', () => {
+    const incomplete = CONTRAST_ALLOWLIST.filter(
+      (entry) =>
+        typeof entry.selector !== 'string' ||
+        entry.selector.trim().length === 0 ||
+        typeof entry.reason !== 'string' ||
+        entry.reason.trim().length === 0,
     );
 
-    expect(unreasoned).toEqual([]);
+    expect(incomplete).toEqual([]);
   });
 
   for (const theme of THEMES) {

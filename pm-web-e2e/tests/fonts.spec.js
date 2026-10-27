@@ -59,4 +59,13 @@ test.describe('Self-hosted Inter (VD-P-03)', () => {
     expect(licence.ok()).toBe(true);
     expect(await licence.text()).toContain('SIL OPEN FONT LICENSE');
   });
+
+  test('serves a real woff2 stream from the app origin', async ({ request }) => {
+    const font = await request.get('/fonts/InterVariable.woff2');
+    const body = await font.body();
+
+    expect(font.ok()).toBe(true);
+    expect(body.length).toBeGreaterThan(100_000);
+    expect(body.subarray(0, 4).toString('latin1')).toBe('wOF2');
+  });
 });
