@@ -1,0 +1,10 @@
+# PLAN-05 (05-cli-summary-line-and-start-script) capture set: the summary line after q from the
+# overview, on the running-work scenario the plan names, at both documented sizes and in both
+# languages (CLI-CC-S-05, CLI-CC-P-06).
+#
+# One capture per line, pipe separated:
+#   name | scenario | states to goto (comma separated, - for none) | command | keys to send | columns x rows | locale | extra environment (KEY=VALUE, comma separated, - for none)
+summary-line-120-en | running-work | - | plans | q | 120x30 | en_US.UTF-8 | -
+summary-line-120-de | running-work | - | plans | q | 120x30 | de_DE.UTF-8 | -
+summary-line-80-en | running-work | - | plans | q | 80x24 | en_US.UTF-8 | -
+summary-line-80-de | running-work | - | plans | q | 80x24 | de_DE.UTF-8 | -

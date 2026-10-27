@@ -142,6 +142,19 @@ public final class ConsoleNoticeBuffer {
      * @return the meanwhile summary and the verbatim lines
      */
     public synchronized Drained drain(String locale) {
+        return drain(locale, overviewPlace(locale));
+    }
+
+    /**
+     * Builds the one line of what arrived while the operator was at {@code where}, returns the
+     * verbatim lines, and clears the buffer in the same transition.
+     *
+     * @param locale the interface locale
+     * @param where  the localized place the operator was in, as the view's own header names it
+     * @return the meanwhile summary and the verbatim lines
+     */
+    public synchronized Drained drain(String locale, String where) {
+        Objects.requireNonNull(where, "where");
         var parts = new ArrayList<String>();
         if (decisions > 0) {
             parts.add(MessageCatalogue.format(locale, "operator.overview.meanwhile.decisions",
@@ -156,7 +169,7 @@ public final class ConsoleNoticeBuffer {
                                 Map.of("count", needs)));
         }
         var lines = List.copyOf(deferred);
-        var summary = summarize(locale, parts);
+        var summary = summarize(locale, parts, where);
         decisions = 0;
         reports = 0;
         needs = 0;
@@ -178,11 +191,46 @@ public final class ConsoleNoticeBuffer {
      * @return the composed meanwhile line, or an empty string when there is nothing to say
      */
     public static String summarize(String locale, List<String> parts) {
+        return summarize(locale, parts, overviewPlace(locale));
+    }
+
+    /**
+     * @param locale the interface locale
+     * @param parts  the already localized item summaries
+     * @param where  the localized place the operator was in
+     * @return the composed meanwhile line, or an empty string when there is nothing to say
+     */
+    public static String summarize(String locale, List<String> parts, String where) {
+        Objects.requireNonNull(where, "where");
         if (parts == null || parts.isEmpty()) {
             return "";
         }
         var events = String.join(", ", parts);
         return MessageCatalogue.format(locale, "operator.overview.meanwhile",
-                            Map.of("events", events));
+                            Map.of("where", where, "events", events));
+    }
+
+    /**
+     * The one line a view leaves behind when nothing arrived meanwhile: the same sentence as the
+     * summary, so the operator always reads where they were and what is new, also when nothing is
+     * ({@code doc/design/terminal-client/15-overview.adoc#full-screen-live}).
+     *
+     * @param locale the interface locale
+     * @param where  the localized place the operator was in, as the view's own header names it
+     * @return the line to print after leaving the view
+     */
+    public static String leavingLine(String locale, String where) {
+        Objects.requireNonNull(where, "where");
+        var events = MessageCatalogue.format(locale, "operator.overview.meanwhile.nothing", Map.of());
+        return MessageCatalogue.format(locale, "operator.overview.meanwhile",
+                            Map.of("where", where, "events", events));
+    }
+
+    /**
+     * @param locale the interface locale
+     * @return the place the overview itself names, used when no level names a narrower one
+     */
+    public static String overviewPlace(String locale) {
+        return MessageCatalogue.format(locale, "operator.overview.where.overview", Map.of());
     }
 }

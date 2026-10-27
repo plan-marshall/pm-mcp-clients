@@ -269,15 +269,39 @@ public final class OverviewFullScreenApp {
             sseThread.interrupt();
             saveState();
             noticeBuffer.deactivate();
-            var drained = noticeBuffer.drain(locale);
-            if (!drained.summary().isEmpty()) {
-                out.println(drained.summary());
-            }
+            var where = leavingPlace();
+            var drained = noticeBuffer.drain(locale, where);
+            out.println(drained.summary().isEmpty()
+                                ? ConsoleNoticeBuffer.leavingLine(locale, where)
+                                : drained.summary());
             for (var line : drained.lines()) {
                 out.println(line);
             }
             out.flush();
         }
+    }
+
+    /**
+     * Names where the operator was when the view closed, so the line the view leaves behind says
+     * where and not only what arrived: the header of the level the operator left, or the overview
+     * itself when no level names a narrower place.
+     *
+     * @return the localized place
+     */
+    String leavingPlace() {
+        var lvl = stack.level();
+        if (lvl == null || lvl.kind() == TuiLevel.Kind.OVERVIEW) {
+            return ConsoleNoticeBuffer.overviewPlace(locale);
+        }
+        var title = lvl.title();
+        if (lvl.kind() == TuiLevel.Kind.PLAN) {
+            var view = currentPlanView.get();
+            if (view != null) {
+                var selected = stack.selected();
+                title = view.breadcrumb(locale, selected != null ? selected.id() : null);
+            }
+        }
+        return title.isBlank() ? ConsoleNoticeBuffer.overviewPlace(locale) : title;
     }
 
     /**

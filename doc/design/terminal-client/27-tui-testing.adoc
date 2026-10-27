@@ -197,7 +197,13 @@ Every capture writes three files below `target/screens/{set}/` (or `-Dpm.screens
   `b` (bold), `d` (dim), `r` (reverse) and `c{n}` (the foreground colour index), `-` for none. The
   rows are numbered from 1 as the screen shows them; the cell runs count from 0, left to right.
 * `{name}.stdout.txt` — the raw output, which is how a printed verb (rather than a full-screen
-  view) is read.
+  view) is read. A capture that types keys writes the whole output, the part after the keys
+  included, so what a verb prints when it leaves a view (`q`) is read here.
+
+The screen is captured only once something was drawn: a full-screen view enters the alternate
+screen after JLine's terminal probe is answered, so a quiet stretch before that is not a settled
+screen. A capture whose verb prints instead of drawing settles on the quiet window after two
+seconds.
 
 Without `-Dpm.screens` the class is skipped, so the integration-test lane pays nothing for it. The
 child's environment is cleared and rebuilt like every PTY test (`PM-SEC-3`): the operator gate

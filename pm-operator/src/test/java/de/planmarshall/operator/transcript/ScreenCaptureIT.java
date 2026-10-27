@@ -65,6 +65,7 @@ class ScreenCaptureIT {
     private static final String RESOURCE_DIR = "screen-captures";
     private static final String OUTPUT_DIR = "screens";
     private static final Duration SETTLE = Duration.ofMillis(600);
+    private static final Duration MIN_WAIT = Duration.ofSeconds(2);
     private static final Duration READY_TIMEOUT = Duration.ofSeconds(20);
     private static final Duration POLL = Duration.ofMillis(50);
 
@@ -115,11 +116,17 @@ class ScreenCaptureIT {
                                     String.join("\n", screen.lines()) + "\n", StandardCharsets.UTF_8);
                 Files.writeString(output.resolve(capture.name() + ".attrs.txt"),
                                     attributes(screen), StandardCharsets.UTF_8);
-                Files.writeString(output.resolve(capture.name() + ".stdout.txt"),
-                                    raw, StandardCharsets.UTF_8);
-                if (!capture.keys().isEmpty()) {
+                if (capture.keys().isEmpty()) {
+                    Files.writeString(output.resolve(capture.name() + ".stdout.txt"),
+                                        raw, StandardCharsets.UTF_8);
+                } else {
                     DialogueHarness.type(session, capture.keys());
-                    session.awaitExit(READY_TIMEOUT);
+                    assertTrue(session.awaitExit(READY_TIMEOUT),
+                                        capture.name() + " did not exit within " + READY_TIMEOUT);
+                    // The whole output, the keys' part included: what a verb prints on leaving a
+                    // view (`q`) is read here, the three files above are the view itself.
+                    Files.writeString(output.resolve(capture.name() + ".stdout.txt"),
+                                        session.rawOutput(), StandardCharsets.UTF_8);
                 }
             }
         }
@@ -142,15 +149,20 @@ class ScreenCaptureIT {
     }
 
     /**
-     * Waits until the process has written nothing new for the settle window, so a capture is taken
-     * of a drawn screen rather than of a half-drawn one.
+     * Waits until the process has written nothing new for the settle window and a drawn screen can
+     * be captured: a full-screen view enters the alternate screen only after JLine's terminal probe
+     * has been answered, which on a slow start takes longer than the settle window, so a quiet
+     * stretch before the view drew is not a settled screen. A capture whose verb prints instead of
+     * drawing has no alternate screen, so it settles on the quiet window alone once
+     * {@link #MIN_WAIT} has passed.
      *
      * @param session the running session
      * @return {@code true} when the screen settled before the deadline
      * @throws InterruptedException if interrupted
      */
     private static boolean awaitQuiet(PtySession session) throws InterruptedException {
-        var deadline = System.nanoTime() + READY_TIMEOUT.toNanos();
+        var start = System.nanoTime();
+        var deadline = start + READY_TIMEOUT.toNanos();
         var lastLength = 0;
         var quietSince = 0L;
         while (System.nanoTime() < deadline) {
@@ -158,7 +170,9 @@ class ScreenCaptureIT {
             if (length > 0 && length == lastLength) {
                 if (quietSince == 0L) {
                     quietSince = System.nanoTime();
-                } else if (System.nanoTime() - quietSince >= SETTLE.toNanos()) {
+                } else if (System.nanoTime() - quietSince >= SETTLE.toNanos()
+                                    && (session.screen().alternateScreenActive()
+                                                        || System.nanoTime() - start >= MIN_WAIT.toNanos())) {
                     return true;
                 }
             } else {
