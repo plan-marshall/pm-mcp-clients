@@ -23,7 +23,7 @@ The web app supports both light and dark themes, chosen in the header as light, 
 [#token-contract]
 == The Design Token Contract
 
-The tokens of design system v2 are declared in `pm-web-app/src/styles/tokens.css`, following link:../../claude_review/visual-design/proposals.adoc#VD-P-02[VD-P-02] to link:../../claude_review/visual-design/proposals.adoc#VD-P-04[VD-P-04]. `:root` carries the scale every theme shares and the light palette as the default; `@media (prefers-color-scheme: dark) :root`, `[data-theme="light"]` and `[data-theme="dark"]` override the palette. All four blocks declare the same set of theme-varying keys, and `pm-web-app/src/styles/tokens.test.ts` asserts that parity.
+The tokens of design system v2 are declared in `pm-web-app/src/styles/tokens.css`, following link:../../claude_review/visual-design/proposals.adoc#VD-P-02[VD-P-02] to link:../../claude_review/visual-design/proposals.adoc#VD-P-04[VD-P-04]. `:root` carries the scale every theme shares and the light palette as the default; `@media (prefers-color-scheme: dark) :root`, `[data-theme="light"]` and `[data-theme="dark"]` override the palette. The three theme blocks declare the same set of theme-varying keys and `:root` holds every one of them, and `pm-web-app/src/styles/tokens.test.ts` asserts both directions.
 
 === Colour Tokens
 

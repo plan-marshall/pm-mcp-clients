@@ -157,19 +157,19 @@ live region  polite announcements, visually hidden
 
 |`--space-1` … `--space-6`
 |`0.25rem` … `1.5rem`
-|The only spacing steps. `--space-1`/`--space-2` inside a control, `--space-3`/`--space-4` between the parts of a row, `--space-6` around a card or a view's body.
+|The steps inside a view. `--space-1`/`--space-2` inside a control, `--space-3`/`--space-4` between the parts of a row, `--space-6` around a card or a view's body.
 
-|`--space-8`, `--space-10`
-|`2rem`, `2.5rem`
-|The gap between sections of a long view, and the inset of a choice screen.
+|`--space-8`, `--space-10`, `--space-12`, `--space-16`
+|`2rem`, `2.5rem`, `3rem`, `4rem`
+|The gap between sections of a long view, the inset of a choice screen, and the wide steps a page and a page's section take.
 
 |`--radius-sm` … `--radius-full`
-|`4px` … `9999px`
-|Controls and badges take `--radius-sm`; cards `--radius-lg`; counts and pills `--radius-full`. A badge is never a card and a card never a pill.
+|`6px`, `8px`, `12px`, `9999px`
+|Controls and chips take `--radius-sm`; buttons `--radius-md`; cards and dialogues `--radius-lg`; counts and pills `--radius-full`. A badge is never a card and a card never a pill.
 
-|`--shadow-sm`, `--shadow-md`
-|two steps
-|A card at rest takes `--shadow-sm`; a dialogue or a popover takes `--shadow-md`. A view's body has no shadow of its own.
+|`--shadow-1`, `--shadow-2`, `--shadow-overlay`
+|three steps
+|A card at rest takes `--shadow-1`; a popover takes `--shadow-2`; a dialogue takes `--shadow-overlay`. In dark, elevation is the surface step and the shadows stay faint.
 |===
 
 The content column is centred and bounded: a reading view (a form, a dialogue, a list of one column) at `480px`, a table or a card grid at `1000px`, the explorer and the reports list at `1200px`, and the process views (plan, epic, designer) at the full width of the window minus `--space-6` on each side. A view picks one of these bounds; it never sets an arbitrary width.

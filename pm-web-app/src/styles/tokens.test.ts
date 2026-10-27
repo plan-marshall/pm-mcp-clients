@@ -7,7 +7,8 @@ import path from 'path';
  *
  * The file is read as text and asserted declaration by declaration, so a token that is renamed,
  * retyped or dropped fails here instead of quietly falling back in the browser. The colour pairs
- * the interface renders as text or as a state dot are audited for WCAG 2.1 AA in both themes.
+ * listed below — every text-on-surface and state-dot-on-surface pair the views render, and the
+ * documented exceptions such as ink on a brand fill — are audited for WCAG 2.1 AA in both themes.
  */
 
 const TOKENS_PATH = path.resolve(__dirname, 'tokens.css');
@@ -163,8 +164,12 @@ const TEXT_PAIRS: Array<[string, string]> = [
     ),
   ),
   ['--color-brand', '--color-bg-app'],
+  ['--color-brand', '--color-bg-rail'],
   ['--color-brand', '--color-bg-surface'],
+  ['--color-brand', '--color-bg-raised'],
   ['--color-brand', '--color-brand-subtle'],
+  ['--color-text-primary', '--color-brand-subtle'],
+  ['--color-text-primary', '--color-danger-subtle'],
   ['--color-on-brand', '--color-brand'],
   ['--color-on-brand', '--color-brand-hover'],
   ['--color-on-brand', '--color-danger'],
@@ -375,8 +380,10 @@ describe('tokens.css: the design system v2 contract', () => {
         name.startsWith('--color-') || name.startsWith('--shadow-') || name === '--focus-ring';
       const stylesheet = withoutComments(css);
 
-      const rootThemed = [...declaredNames(blockOf(stylesheet, ':root'))].filter(isThemedName);
+      const rootNames = declaredNames(blockOf(stylesheet, ':root'));
+      const rootThemed = [...rootNames].filter(isThemedName);
       expect(rootThemed.filter((name) => !themed.has(name) && !(name in ALIASES))).toEqual([]);
+      expect([...themed].filter((name) => !rootNames.has(name))).toEqual([]);
 
       for (const [label, block] of [
         ['light', blockOf(stylesheet, "[data-theme='light']")],
@@ -387,10 +394,6 @@ describe('tokens.css: the design system v2 contract', () => {
         expect(declared.filter(isThemedName).sort(), `${label} is missing a palette token`).toEqual(
           [...themed].sort(),
         );
-        expect(
-          declared.filter((name) => isThemedName(name) && !themed.has(name)),
-          `${label} declares a themed token no other theme has`,
-        ).toEqual([]);
       }
     });
 
