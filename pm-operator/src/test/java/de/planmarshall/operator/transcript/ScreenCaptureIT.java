@@ -36,6 +36,7 @@ import de.planmarshall.operator.tui.AnsiScreen;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
@@ -55,6 +56,7 @@ import picocli.CommandLine;
  */
 @DisplayName("pm-operator screen captures on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnabledIfSystemProperty(named = "pm.screens", matches = "(?s).*\\P{javaWhitespace}.*")
 class ScreenCaptureIT {
 
     private static final String SCRIPT = "/usr/bin/script";

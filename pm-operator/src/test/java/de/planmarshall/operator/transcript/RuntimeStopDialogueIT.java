@@ -23,14 +23,14 @@ import org.junit.jupiter.api.condition.OS;
 /**
  * The runtime stop dialogue on a real pseudo-terminal (CLI-CC-S-01): {@code q} sends nothing, an
  * unknown input re-asks, and {@code 1} sends the stop. The {@code k} case (keep it running) belongs
- * to the confirmation the fixing plan adds.
+ * to the confirmation the fixing plan adds, together with the wording of its question.
  */
 @DisplayName("pm-operator runtime stop dialogue on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 @Disabled("PLAN-17-cli-runtime-act-confirm confirms the runtime acts")
 class RuntimeStopDialogueIT {
 
-    private static final String PROMPT = "runtime";
+    private static final String PROMPT = "1) stop it now";
 
     @Test
     @DisplayName("q first: the dialogue leaves and sends nothing")
@@ -58,7 +58,7 @@ class RuntimeStopDialogueIT {
             DialogueHarness.type(session, "9\nq\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
-            assertTrue(DialogueHarness.times(session.screenText(), PROMPT) >= 2, session.screenText());
+            assertEquals(2, DialogueHarness.times(session.screenText(), PROMPT), session.screenText());
             harness.assertNoAct();
         }
     }
