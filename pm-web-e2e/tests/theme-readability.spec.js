@@ -984,6 +984,20 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
       expect(Object.keys(baseline.views).sort()).toEqual(DECLARED_VIEWS.slice().sort());
     });
 
+    test('the guard covers every locale the application declares', () => {
+      const source = fs.readFileSync(
+        path.resolve(__dirname, '../../pm-web-app/src/lib/i18n/index.ts'),
+        'utf8',
+      );
+      const declaration = source.match(/export type Locale\s*=\s*([^;]+);/);
+      expect(
+        declaration,
+        'the application declares its interface locales as `export type Locale = ...`',
+      ).not.toBeNull();
+      const declared = [...declaration[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
+      expect(GUARD_LOCALES.slice().sort()).toEqual(declared.sort());
+    });
+
     for (const locale of GUARD_LOCALES) {
       test.describe(`collected interface text in ${locale}`, () => {
         for (const journey of GUARD_JOURNEYS) {

@@ -274,16 +274,22 @@ export async function collectTextGuardViolations(page, options) {
   let quietWindows = 0;
   for (let attempt = 0; attempt < SETTLE_ATTEMPTS; attempt += 1) {
     await page.waitForTimeout(SETTLE_INTERVAL_MS);
-    const { seen } = await countChanges();
+    const { seen, observing } = await countChanges();
     const current = await read();
     const unchanged = JSON.stringify(current) === JSON.stringify(previous);
     previous = current;
-    if (seen > 0) {
+    if (!observing) {
+      // A navigation replaced the document and with it the observer; watch the new one.
+      await startObserving();
+      quietWindows = 0;
+      continue;
+    }
+    if (seen > 0 || !unchanged) {
       quietWindows = 0;
       continue;
     }
     quietWindows += 1;
-    if (unchanged && quietWindows >= SETTLE_QUIET_WINDOWS) {
+    if (quietWindows >= SETTLE_QUIET_WINDOWS) {
       await page.evaluate(() => window.__textGuardObserver?.disconnect());
       return current;
     }
