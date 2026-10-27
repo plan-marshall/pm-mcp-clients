@@ -30,12 +30,20 @@ import de.planmarshall.api.process.TaskStatus;
 import de.planmarshall.api.system.WorkerState;
 
 /**
- * Guards the shared display vocabulary: every state value a client can receive has a display word
- * in both locales, and every workflow unit id has a plain name.
+ * Guards the shared display vocabulary: every state value the clients can receive has a display
+ * word in both locales, and every workflow unit id has a plain name.
  * <p>
  * The {@code state.<kind>.<value>} family is what both clients render a server value through
  * (design: Texts and Languages). A value without a key would reach the operator as a raw enum, a
  * state id or a placeholder, so the build fails here instead.
+ * <p>
+ * Two sources feed the families. The closed lists the contract carries are read from their enums,
+ * so a new constant fails this test until its word exists. The values the six primary mock
+ * scenarios ({@code onboarding}, {@code running-work}, {@code projects-and-start},
+ * {@code reports-and-system}, {@code designer}, {@code fully-onboarded}) serve for fields the
+ * contract leaves as a plain {@code String} are listed here, because {@code pm-api} cannot read
+ * another module's resources: those lists track the scenarios by hand, and a scenario that gains a
+ * value does not fail this test.
  */
 class StateWordsCompletenessTest {
 
@@ -46,9 +54,20 @@ class StateWordsCompletenessTest {
     private static final List<String> LOCALES = List.of("en", "de");
 
     /**
+     * The landing's own state ({@code AlongsideLanding.state}) and the terminal status of a placing
+     * ({@code UnitPlacingResult}) travel as plain strings; the mock serves
+     * {@code alongside_landings[].state} as running or failed and a placing result as landed.
+     */
+    private static final List<String> LANDING_VALUES = List.of(
+            "running",
+            "failed",
+            UnitPlacingResult.STATUS_WRITTEN,
+            UnitPlacingResult.STATUS_COMMITTED,
+            UnitPlacingResult.STATUS_LANDED);
+
+    /**
      * Workflow unit ids that the mock scenarios serve but no {@code pm-api} constant names: the
-     * project workflows of {@code designer.json} (lines 53, 82, 237, 279) and the custom landing of
-     * its placing result (line 483).
+     * project workflows of {@code designer.json} and the custom landing of its placing result.
      */
     private static final List<String> SCENARIO_UNIT_IDS = List.of(
             "git.commit_and_push",
@@ -68,7 +87,7 @@ class StateWordsCompletenessTest {
         families.put("decision", wire(Reversibility.values(), Reversibility::value));
         families.put("signal", wire(OffTrackSignal.values(), OffTrackSignal::value));
 
-        var missing = missingKeys(families, STATE_PREFIX);
+        var missing = missingStateWords(families);
 
         assertTrue(missing.isEmpty(),
                 "Every contract enum value needs a state word in en and de: " + missing);
@@ -78,29 +97,25 @@ class StateWordsCompletenessTest {
     @DisplayName("should have a display word for every scenario state value in both locales")
     void shouldHaveDisplayWordForEveryScenarioStateValue() {
         var families = new LinkedHashMap<String, List<String>>();
-        // `phase_state` values the primary scenarios carry that PlanActivity does not name
-        // (running-work.json lines 823 and 2753).
+        // `phase_state` values the scenarios carry that PlanActivity does not name.
         families.put("plan", List.of("staged", "ended"));
-        // The closed set of the epic's state (EpicResource, `state`), normalised to the wire
-        // spelling the scenarios use (running-work.json line 1727, "epics_by_state").
+        // The closed set of the epic's state (EpicResource, `state`), in the wire spelling the
+        // scenarios use for `epics_by_state`.
         families.put("epic", List.of("running", "waiting_for_you", "held", "landing", "ended"));
-        // The status column the system view derives from a model's counts: `ok` with none,
-        // otherwise the retry and error badges, and "not measured" when no call was measured
-        // (SystemView.svelte lines 1082-1098).
+        // The status of a model row, which the system view derives from the row's counts: `ok`
+        // with none, otherwise the retry and error badges, and "not measured" when nothing was
+        // measured. It is derived, not carried: ModelMetric has no status field.
         families.put("model", List.of("ok", "retry", "error", "not_measured"));
-        // The landing's own state (AlongsideLanding, `state`) and the terminal status of a placing
-        // (UnitPlacingResult) — running-work.json line 238, designer.json line 485.
-        families.put("landing", List.of("running", "failed",
-                UnitPlacingResult.STATUS_WRITTEN, UnitPlacingResult.STATUS_COMMITTED,
-                UnitPlacingResult.STATUS_LANDED));
-        // The item kinds of a cleanup run (CleanupItemEntry, `kind`, and CleanupKeptItem, `kind`),
-        // as reports-and-system.json serves them (lines 738, 3249, 3257, 3265).
+        families.put("landing", LANDING_VALUES);
+        // The item kinds of a cleanup run (CleanupItemEntry and CleanupKeptItem, `kind`). The
+        // cleanup *job* state (CleanupJobState) is a different axis and is not in this family.
         families.put("cleanup", List.of("plan", "epic", "read_reports", "unenrolled_project"));
-        // The gate kinds of a waiver request, from the `waiver_gate` values of running-work.json
-        // (lines 2309 and 2333), which carry the kind before the scope separator.
+        // The kind before the scope separator of a waiver request's `waiver_gate`
+        // (`ci_check:integration-tests`, `coverage:pm-api`). The field is free-form, so these two
+        // are the kinds the scenarios use, not a closed set.
         families.put("gate", List.of("ci_check", "coverage"));
 
-        var missing = missingKeys(families, STATE_PREFIX);
+        var missing = missingStateWords(families);
 
         assertTrue(missing.isEmpty(),
                 "Every state value of the scenarios needs a display word in en and de: " + missing);
@@ -120,12 +135,17 @@ class StateWordsCompletenessTest {
                 PlanDefaults.ASK_QUESTIONS_ONLY));
         ids.addAll(SCENARIO_UNIT_IDS);
 
-        var families = new LinkedHashMap<String, List<String>>();
-        for (var id : ids) {
-            families.put(id, List.of(""));
+        var missing = new ArrayList<String>();
+        for (var locale : LOCALES) {
+            var messages = MessageCatalogue.getMessages(locale, "all");
+            for (var id : ids) {
+                var key = UNIT_PREFIX + id;
+                var text = messages.get(key);
+                if (text == null || text.isBlank()) {
+                    missing.add(locale + ":" + key);
+                }
+            }
         }
-
-        var missing = missingKeys(families, UNIT_PREFIX, true);
 
         assertTrue(missing.isEmpty(),
                 "Every workflow unit id needs a plain name in en and de: " + missing);
@@ -142,29 +162,16 @@ class StateWordsCompletenessTest {
     }
 
     /**
-     * @param families kind (or unit id) to its values
-     * @param prefix   the key prefix, {@code state.} or {@code unit.}
+     * @param families kind to the values it covers
      * @return the missing keys, as {@code locale:key}, empty when every key exists and is not blank
      */
-    private static List<String> missingKeys(Map<String, List<String>> families, String prefix) {
-        return missingKeys(families, prefix, false);
-    }
-
-    /**
-     * @param families   kind (or unit id) to its values
-     * @param prefix     the key prefix, {@code state.} or {@code unit.}
-     * @param idOnly     whether a family key is the whole key rather than a {@code <kind>.<value>}
-     * @return the missing keys, as {@code locale:key}, empty when every key exists and is not blank
-     */
-    private static List<String> missingKeys(Map<String, List<String>> families, String prefix, boolean idOnly) {
+    private static List<String> missingStateWords(Map<String, List<String>> families) {
         var missing = new ArrayList<String>();
         for (var locale : LOCALES) {
             var messages = MessageCatalogue.getMessages(locale, "all");
             for (var family : families.entrySet()) {
                 for (var value : family.getValue()) {
-                    var key = idOnly
-                            ? prefix + family.getKey()
-                            : prefix + family.getKey() + "." + value;
+                    var key = STATE_PREFIX + family.getKey() + "." + value;
                     var text = messages.get(key);
                     if (text == null || text.isBlank()) {
                         missing.add(locale + ":" + key);

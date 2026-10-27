@@ -90,7 +90,7 @@ A word not in the glossary is translated. A new domain word is added here before
 [#keys]
 == Keys and Packs
 
-* *Key*: `<area>.<use case or view>.<state or element>[.<part>]`, at least three parts, for example `onboard.harness.choose.title`, `onboard.harness.choose.action.check`, `common.consent.no`. The area is the pack the key lives in.
+* *Key*: `<area>.<use case or view>.<state or element>[.<part>]`, at least three parts, for example `onboard.harness.choose.title`, `onboard.harness.choose.action.check`, `common.consent.no`. The area is the pack the key lives in. Two families are exempt, because both clients read them everywhere and neither belongs to one view: `state.<kind>.<value>`, the display word of a server value (<<titles>>, <<time>>), and `unit.<id>`, a workflow unit's plain name (<<titles>>). They live in `common`, their leading parts name a kind and a value rather than a view, a display word carries no argument because it is a chip, and a unit id with no dot of its own keeps the two-part key (`unit.epic`).
 * *Areas*, each a pack; a client loads only the areas it shows, and the web app loads `common` and `web` at start and every other area when it first opens a view of it:
 ** `common`: texts every view uses, among them the texts of the consent states (link:consents.adoc#texts[Consents, Texts]) and of a setting changed meanwhile (link:work-actions-texts.adoc#texts-conflict[Changed Meanwhile]);
 ** `onboard`: the onboarding of the machine and its later changes in the machine settings (`onboard.settings.*`, link:../terminal-client/23-texts-settings.adoc#texts-settings[Terminal Client, Texts: Machine Settings]);
@@ -108,6 +108,7 @@ A word not in the glossary is translated. A new domain word is added here before
 ** `operator`: the verbs of `pm-operator`;
 ** `relay`: `pm-mcp`.
 * *Files*: `messages/<area>.<locale>.properties`, UTF-8, ICU message syntax (arguments, `plural` with `one`, `other`, exact `=n` cases and `#`, `select` with `other`), which `pm-api` evaluates itself; no formatting library is used. English (`en`) is complete and the base; German (`de`) ships from the start.
+* *One word per value*: where an area pack still carries its own word for a value the shared `state.*` family names, the shared key is the authority. The area key stays only until the view that reads it moves to the shared key, and is removed then.
 * *Build checks*: a pack that lacks a key of the English pack fails the build, as does a key that exists in a pack but not in English, an argument that differs from the English one, and a glossary term translated in a German text (checked against the glossary above).
 * *Delivery*: the command-line binaries carry the packs as resources of `pm-api`; the runtime serves `GET /api/v1/messages/{locale}/{area}` with an entity tag, so a browser keeps a loaded pack until the release changes it, and `GET /api/v1/messages` with the locales that have a pack and their areas; both without a device secret, so the pairing page has its texts. The pack shown is that of the machine's interface language; the locale the client sends counts only while none is set.
 
@@ -118,14 +119,14 @@ A value is named by its title; the id is what the operator types, not what the o
 
 * *The title first.* A plan, an epic, a project, a task, a step, and a workflow unit are named by their title in every view of both clients: a list, a detail, a report, a completion message, a prompt.
 * *The id beside it.* The id follows the title, dim in the terminal and as a chip in the web app (`Fix Relay Transport  fix-relay`), and only where the operator types it or matches on it: a search, a filter, a command line, the detail an action is taken from. A view that never needs the id shows none, and no view shows the id to fill space.
-* *Never the id alone.* A value without a title is a defect of the data, never a reason to fall back to the id. A step id or a link name with no catalogue text is a build failure, not a fallback.
+* *Never the id alone.* A value without a title is a defect of the data, never a reason to fall back to the id. The display layer's build check fails on a step id or a link name that has no catalogue text, so a raw id cannot reach the operator.
 * *Ended work.* Ended work follows the rule as running work does, with the same words for the same state.
-* *A unit id.* A workflow unit id renders the plain name of its catalogue key (`landing.pull-request` reads "Pull request"), with the id as a chip beside it where the operator needs it.
+* *A unit id.* A workflow unit id renders the plain name of its `unit.<id>` key: the id `landing.pull-request` reads "Pull request" through `unit.landing.pull-request`, with the id as a chip beside it where the operator needs it.
 
 [#time]
 == Time and Duration
 
-Every instant and every duration is shown in one format, defined here and nowhere else, as <<numbers>> defines counts of tokens. The runtime sends the exact value — the instant, the span in milliseconds — and a client only formats it: the terminal client through `Display.time` and `Display.duration` of `pm-api`, the web app through its display layer, which produces the same strings. One rule, one implementation per client, and no second way of writing a time in either.
+Every instant and every duration is shown in one format, defined here and nowhere else, as <<numbers>> defines counts of tokens. The runtime sends the exact value — the instant, the span in milliseconds — and a client only formats it: the terminal client through `Display.time` and `Display.duration`, which `pm-api` gains with the display layer; the web app through its own display layer, which produces the same strings. One rule, one implementation per client, and no second way of writing a time in either once the display layer replaces the inline formatters.
 
 [cols="2,2,2",options="header"]
 |===
@@ -166,7 +167,7 @@ Every instant and every duration is shown in one format, defined here and nowher
 
 * *No ISO string, ever.* No ISO-8601 instant (`2026-10-27T16:18:35Z`), date, or duration (`PT2H10M`) reaches a text, a title, a chip, a hover, or an error message. An ISO string is a transport value: it is read from the server, formatted once, and never shown.
 * *One clock.* The age of a plan comes from its start and the age in its phase from the phase start; both views show the same two values, and neither derives one from the other.
-* *Words are texts, figures are data.* The words that frame a figure — _today_, _since_, _yesterday_, _ago_ — are catalogue texts, so both clients say the same word; the unit marks (`s`, `min`, `h`, and `d`, `T` for the day in German) are fixed in the packs as `k`, `M`, `Tsd.`, and `Mio.` are (<<numbers>>). The weekday, the month, and the figure itself come from the language's own date and number data, never from a table written by hand.
+* *Words are texts, figures are data.* The words that frame a figure — _today_, _since_, _yesterday_, _ago_ — are catalogue texts, so both clients say the same word; the unit marks (`s`, `min`, `h`, and `d`, `T` for the day in German) are fixed in the packs as `k`, `M`, `Tsd.`, and `Mio.` are (<<numbers>>), added with the display layer like those. The weekday, the month, and the figure itself come from the language's own date and number data, never from a table written by hand.
 * *Three styles, one rule.* The web app renders a moment in three styles — `relative`, `short`, and `clock`. They are renderings of this rule, not a second format: each takes its words and its figures from it, and no view writes a moment in two of them at once.
 
 [cols="1,2,2",options="header"]
@@ -186,7 +187,7 @@ Every instant and every duration is shown in one format, defined here and nowher
 |the activity stream, with the date on the first row of each day
 |===
 
-A duration has one rendering in both clients — `Display.duration` in `pm-api`, `formatDuration` in the web app — and the three duration rows above are its only outputs.
+A duration has one rendering in both clients — `Display.duration` in `pm-api` and `formatDuration` in the web app, as the display layer introduces them — and the three duration rows above are its only outputs.
 
 [#numbers]
 == Numbers: Tokens
