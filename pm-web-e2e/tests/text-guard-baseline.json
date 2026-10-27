@@ -448,6 +448,10 @@
           "word": "🖥"
         },
         {
+          "rule": "foreign-word",
+          "word": "done"
+        },
+        {
           "rule": "raw-enum",
           "word": "commit_and_push"
         },
@@ -465,7 +469,15 @@
         },
         {
           "rule": "state-id",
+          "word": "axis.landing"
+        },
+        {
+          "rule": "state-id",
           "word": "git.stage-and-commit"
+        },
+        {
+          "rule": "state-id",
+          "word": "landing.open"
         },
         {
           "rule": "state-id",
@@ -499,7 +511,15 @@
         },
         {
           "rule": "state-id",
+          "word": "axis.landing"
+        },
+        {
+          "rule": "state-id",
           "word": "git.stage-and-commit"
+        },
+        {
+          "rule": "state-id",
+          "word": "landing.open"
         },
         {
           "rule": "state-id",

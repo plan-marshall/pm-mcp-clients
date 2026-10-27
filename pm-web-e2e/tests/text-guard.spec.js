@@ -28,11 +28,11 @@ const SKIPPED_AND_READ = `<!doctype html>
   <head><title>Start</title></head>
   <body>
     <p>running</p>
-    <p data-model-text>running done failed</p>
-    <span class="badge">waiting_for_you</span>
-    <code>landing.pull-request</code>
+    <p data-model-text>paused</p>
+    <span class="badge">for_you</span>
+    <code>plan_not_found</code>
     <div class="stage">waiting_for_you</div>
-    <p hidden>running</p>
+    <p hidden>failed</p>
   </body>
 </html>`;
 
@@ -77,5 +77,15 @@ test.describe('Text guard rules', () => {
 
     expect(violations.filter((violation) => violation.rule === 'foreign-word')).toHaveLength(2);
     expect(violations.map((violation) => violation.word).sort()).toEqual(['fertig', 'läuft']);
+  });
+
+  test('reads a form control placeholder and value as visible text', async ({ page }) => {
+    await page.setContent(
+      '<!doctype html><html lang="de"><head><title>Start</title></head><body><input placeholder="done" value="busy" /></body></html>',
+    );
+
+    const violations = await collectTextGuardViolations(page, { locale: 'de' });
+
+    expect(violations.map((violation) => violation.word).sort()).toEqual(['busy', 'done']);
   });
 });

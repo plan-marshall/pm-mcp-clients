@@ -45,8 +45,11 @@ const FOREIGN_INTERFACE_WORDS = Object.freeze({
 const ISO_TIME_PLACEHOLDER = '<iso-time>';
 
 /** How often the guard re-reads a page that is still filling, and how long it waits between reads. */
-const SETTLE_ATTEMPTS = 12;
+const SETTLE_ATTEMPTS = 20;
 const SETTLE_INTERVAL_MS = 150;
+
+/** How many quiet windows in a row a page has to show before its text is taken. */
+const SETTLE_QUIET_WINDOWS = 3;
 
 /**
  * Reads every accepted text node of the page in the browser and collects the violations.
@@ -91,6 +94,7 @@ function collectInPage({ foreignWords, isoPlaceholder }) {
       return element.checkVisibility({
         visibilityProperty: true,
         contentVisibilityAuto: true,
+        opacityProperty: true,
       });
     }
     return element.offsetParent !== null;
@@ -150,6 +154,34 @@ function collectInPage({ foreignWords, isoPlaceholder }) {
     scan(text, { context: describe(element), inChip: isChipOrCode(element) });
   }
 
+  // A rendered control shows its placeholder and its value as text, though neither is a text node.
+  for (const control of document.querySelectorAll('input, textarea, select')) {
+    if (!isRendered(control) || control.closest(SKIPPED_SUBTREES)) {
+      continue;
+    }
+    const context = describe(control);
+    const inChip = isChipOrCode(control);
+    for (const text of [control.getAttribute('placeholder'), control.value]) {
+      if (text) {
+        scan(String(text), { context, inChip });
+      }
+    }
+  }
+
+  // A rendered control shows its placeholder and its value as text, though neither is a text node.
+  for (const control of document.querySelectorAll('input, textarea, select')) {
+    if (!isRendered(control) || control.closest(SKIPPED_SUBTREES)) {
+      continue;
+    }
+    const context = describe(control);
+    const inChip = isChipOrCode(control);
+    for (const text of [control.getAttribute('placeholder'), control.value]) {
+      if (text) {
+        scan(String(text), { context, inChip });
+      }
+    }
+  }
+
   return violations.sort((left, right) => {
     if (left.rule !== right.rule) {
       return left.rule < right.rule ? -1 : 1;
@@ -182,15 +214,17 @@ function compareEntries(left, right) {
 /**
  * Collects the text-guard violations of the page that is open.
  *
- * A view fills asynchronously, so the page is read until two consecutive reads agree: the
- * violations a report lists are the ones the settled page shows, never the ones of a half
- * rendered list.
+ * A view fills asynchronously, so the page is read until the document has stopped changing: a
+ * mutation observer counts DOM changes, and the violations are taken once three consecutive
+ * windows are quiet and the lists agree. A page that never quiets down is an error, not a
+ * silent partial read.
  *
  * @param {import('@playwright/test').Page} page the page to read
  * @param {{ locale: 'de' | 'en' }} options the interface locale the page is shown in; words of
  *   the other language are reported in it
  * @returns {Promise<Array<{ rule: string, word: string, context: string }>>} the violations
  * @throws {TypeError} when the locale is neither `de` nor `en`
+ * @throws {Error} when the page did not settle within the read budget
  */
 export async function collectTextGuardViolations(page, options) {
   const { locale } = options;
@@ -200,17 +234,50 @@ export async function collectTextGuardViolations(page, options) {
   }
   const read = () =>
     page.evaluate(collectInPage, { foreignWords, isoPlaceholder: ISO_TIME_PLACEHOLDER });
+  const countChanges = () =>
+    page.evaluate(() => {
+      const observer = window.__textGuardObserver;
+      const seen = window.__textGuardChanges;
+      window.__textGuardChanges = 0;
+      return { seen, observing: Boolean(observer) };
+    });
+  const startObserving = () =>
+    page.evaluate(() => {
+      window.__textGuardObserver?.disconnect();
+      window.__textGuardChanges = 0;
+      window.__textGuardObserver = new MutationObserver((records) => {
+        window.__textGuardChanges += records.length;
+      });
+      window.__textGuardObserver.observe(document.body, {
+        subtree: true,
+        childList: true,
+        characterData: true,
+      });
+    });
 
+  await startObserving();
   let previous = await read();
+  let quietWindows = 0;
   for (let attempt = 0; attempt < SETTLE_ATTEMPTS; attempt += 1) {
     await page.waitForTimeout(SETTLE_INTERVAL_MS);
+    const { seen } = await countChanges();
     const current = await read();
-    if (JSON.stringify(current) === JSON.stringify(previous)) {
+    const unchanged = JSON.stringify(current) === JSON.stringify(previous);
+    previous = current;
+    if (seen > 0) {
+      quietWindows = 0;
+      continue;
+    }
+    quietWindows += 1;
+    if (unchanged && quietWindows >= SETTLE_QUIET_WINDOWS) {
+      await page.evaluate(() => window.__textGuardObserver?.disconnect());
       return current;
     }
-    previous = current;
   }
-  return previous;
+  await page.evaluate(() => window.__textGuardObserver?.disconnect());
+  throw new Error(
+    `The page did not settle in ${SETTLE_ATTEMPTS} reads of ${SETTLE_INTERVAL_MS} ms; its text is still changing.`,
+  );
 }
 
 /**

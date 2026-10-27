@@ -97,7 +97,11 @@ function writeGuardBaselineEntry(baseline, view, locale, violations) {
       }
     }
   }
-  fs.writeFileSync(GUARD_BASELINE_FILE, `${JSON.stringify(ordered, null, 2)}\n`);
+  // Written beside the target and renamed, so an interrupted write can never leave half a
+  // baseline behind.
+  const scratch = `${GUARD_BASELINE_FILE}.tmp`;
+  fs.writeFileSync(scratch, `${JSON.stringify(ordered, null, 2)}\n`);
+  fs.renameSync(scratch, GUARD_BASELINE_FILE);
 }
 
 /**
@@ -250,6 +254,7 @@ const GUARD_JOURNEYS = [
     async walk(page, record) {
       await page.locator('.app-header').getByRole('button', { name: LABELS.overview }).click();
       await expect(page.locator('.overview')).toBeVisible();
+      await expect(page.locator('[data-testid="plan-card"]').first()).toBeVisible();
       await record('OverviewView');
 
       await page.getByRole('radio', { name: LABELS.byEpic }).click({ force: true });
@@ -271,6 +276,8 @@ const GUARD_JOURNEYS = [
       await expect(page.locator('.overview')).toBeVisible();
       await page.locator('[data-testid="plan-card"]').first().click();
       await expect(page.getByTestId('plan-view')).toBeVisible();
+      await expect(page.getByTestId('plan-loading')).toHaveCount(0, { timeout: 15000 });
+      await expect(page.getByTestId('plan-title')).toBeVisible();
       await record('PlanView');
     },
   },
@@ -283,6 +290,7 @@ const GUARD_JOURNEYS = [
     async walk(page, record) {
       await page.locator('.app-header').getByRole('button', { name: LABELS.reports }).click();
       await expect(page.locator('.reports-view')).toBeVisible();
+      await expect(page.locator('.report-card').first()).toBeVisible({ timeout: 15000 });
       await record('ReportsView');
 
       const card = page.locator('.report-card', { hasText: 'fix-relay' });
@@ -301,6 +309,9 @@ const GUARD_JOURNEYS = [
     async walk(page, record) {
       await page.locator('.app-header').getByRole('button', { name: LABELS.decisions }).click();
       await expect(page.locator('.decisions-view')).toBeVisible();
+      await expect(page.locator('.decision-card, .standard-decision-card').first()).toBeVisible({
+        timeout: 15000,
+      });
       await record('DecisionView');
     },
   },
@@ -313,6 +324,9 @@ const GUARD_JOURNEYS = [
     async walk(page, record) {
       await page.locator('.app-header').getByRole('button', { name: LABELS.system }).click();
       await expect(page.getByTestId('system-view')).toBeVisible();
+      await expect(page.locator('[data-testid="system-view"] .card').first()).toBeVisible({
+        timeout: 15000,
+      });
       await record('SystemView');
 
       const review = page.getByRole('button', { name: LABELS.review });
@@ -331,6 +345,7 @@ const GUARD_JOURNEYS = [
     async walk(page, record) {
       await page.locator('.app-header').getByRole('button', { name: LABELS.settings }).click();
       await expect(page.getByTestId('settings-view')).toBeVisible();
+      await expect(page.getByTestId('listener-bar')).toBeVisible({ timeout: 15000 });
       await record('SettingsView');
 
       await page.getByTestId('machine-settings-button').click();
@@ -351,6 +366,7 @@ const GUARD_JOURNEYS = [
     },
     async walk(page, record) {
       await expect(page.getByTestId('project-explorer-view')).toBeVisible();
+      await expect(page.getByTestId('section-all-projects')).toBeVisible({ timeout: 15000 });
       await record('ProjectExplorerView');
 
       const add = page.getByTestId('add-project-btn');
@@ -371,6 +387,7 @@ const GUARD_JOURNEYS = [
       await openProjectOverview(page, 'pm-mcp-clients');
       await page.getByRole('button', { name: LABELS.startPlan }).click();
       await expect(page.getByTestId('start-view')).toBeVisible();
+      await expect(page.getByTestId('start-loading')).toHaveCount(0, { timeout: 15000 });
       await record('StartView');
 
       await page.getByTestId('choose-recipe').click();
@@ -434,6 +451,7 @@ const GUARD_JOURNEYS = [
     async walk(page, record) {
       await expect(page).toHaveURL(/\/onboarding$/);
       await expect(page.getByTestId('onboarding-view')).toBeVisible();
+      await expect(page.getByTestId('steps-overview')).toBeVisible({ timeout: 15000 });
       await record('OnboardingView');
     },
   },
@@ -504,6 +522,7 @@ const GUARD_JOURNEYS = [
     },
     async walk(page, record) {
       await expect(page.getByTestId('epic-decomposition')).toBeVisible();
+      await expect(page.getByTestId('decomposition-title')).toBeVisible({ timeout: 15000 });
       await record('EpicDecompositionView');
     },
   },
@@ -953,6 +972,14 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
     test('every declared view is reached by exactly one journey', () => {
       const reached = GUARD_JOURNEYS.flatMap((journey) => journey.views);
       expect(reached.slice().sort()).toEqual(DECLARED_VIEWS.slice().sort());
+    });
+
+    test('the baseline holds every declared view and no retired one', () => {
+      if (process.env.TEXT_GUARD_BOOTSTRAP === '1') {
+        return;
+      }
+      const baseline = readGuardBaseline();
+      expect(Object.keys(baseline.views).sort()).toEqual(DECLARED_VIEWS.slice().sort());
     });
 
     for (const locale of GUARD_LOCALES) {
