@@ -57,11 +57,12 @@ The tokens of design system v2 are declared in `pm-web-app/src/styles/tokens.css
 |`--color-overlay` |`rgb(0 0 0 / 0.7)` |`rgb(15 23 42 / 0.5)` |The scrim behind a dialog.
 |===
 
-Every value above is the proposal of VD-P-02 except two tuned values and one added token:
+Every value above is the proposal of VD-P-02 except the two tuned dark brand values and the two tokens the proposal does not name:
 
 * `--color-brand`, dark: `#7C6CF6` → `#8B7EF9`. At the proposed value the brand reached 4.39:1 as link text on `--color-bg-surface` and 3.94:1 on `--color-bg-subtle`, below the 4.5:1 normal-text threshold.
 * `--color-brand-hover`, dark: `#8F82F8` → `#A093FB`, which keeps the hover a visible step above the tuned brand.
-* `--color-on-brand` is the ink on a brand-coloured fill, which the proposal does not name: white in light, the app background in dark.
+* `--color-on-brand`, which the proposal does not name, is the ink on a brand-coloured fill: white in light, the app background in dark.
+* `--color-overlay`, which the proposal does not name, is the scrim behind a dialog: a faint dark veil in light, a deeper one in dark.
 
 === Type Scale
 

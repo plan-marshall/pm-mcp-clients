@@ -28,7 +28,7 @@ const ALLOWLISTED_COLOR_LITERAL_FILES = new Set([
   path.normalize('lib/components/PairingQr.svelte'), // High-contrast black/white scannable QR modules
 ]);
 
-/** The colour palette of VD-P-02: the proposal's two values per token, with the tuned brand values and the added ink of a brand fill documented in `theme-readability.adoc`. */
+/** The colour palette of VD-P-02, with the two tuned brand values and the two tokens the proposal does not name documented in `theme-readability.adoc`. */
 const COLOUR_TOKENS: Record<string, { dark: string; light: string }> = {
   '--color-bg-app': { dark: '#0E1116', light: '#F7F7F5' },
   '--color-bg-rail': { dark: '#12161D', light: '#EFEFEB' },
