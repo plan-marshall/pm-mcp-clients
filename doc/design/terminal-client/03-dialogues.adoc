@@ -273,8 +273,129 @@ A refused request is printed as a `✗` line with the text of its error code fro
 === The Terminal Itself
 
 * *Width*: content is laid out for 80 columns; a wider terminal (`COLUMNS`) gives long values more room, a narrower one wraps fields below their names. Nothing is cut that `?` cannot show.
-* *Colour*: `✓` green, `✗` red, the preselection bold, the step line bold; never the only carrier of a meaning. No colour when standard output is not a terminal, with `NO_COLOR` set (not empty), or with `TERM=dumb`.
-* *Characters*: `✓ ✗ ← ✎ · → …` and the spinner need a UTF-8 locale; without one the client prints `ok`, `x`, `<-`, `*`, `-`, `->`, `...` and a spinner of `|/-\`.
+* *Colour roles and weights*: the client uses five colour roles and two weights. Each role maps to one of the 16 ANSI colours, never to a 256-colour or true-colour value. The terminal's theme picks the shade, so the client looks right on dark and light backgrounds and respects the operator's palette:
+
+[cols="1,1,3",options="header"]
+|===
+|Role |ANSI |Used for
+
+|`attention`
+|yellow (33)
+|`!` marker and its kind; `waiting for you`; the badges of the prompt; `⚠ off track`
+
+|`running`
+|cyan (36)
+|`▶ running`; the connection dot `● connected`; the selected-row marker `▶`
+
+|`done`
+|green (32)
+|`✓`, `merged`, `completed`, `ready`
+
+|`danger`
+|red (31)
+|`✗`, `failed`, `landing failed`, the line of an act that cannot be undone
+
+|`muted`
+|dim (2)
+|details lines, ages, ids next to titles, the footer keys' descriptions
+
+|`place`
+|bold (1)
+|the header, group titles, the step line, the primary act in a prompt
+
+|`selection`
+|reverse (7)
+|the selected row
+|===
+
+* *Rules for colour*:
+** *Meaning never by colour alone*: every coloured thing also has a word or a glyph (the design rule of <<dialogue>>).
+** *No background colours*, except the reverse of the selection.
+** *Switching colour off*: no colour without a TTY, with `NO_COLOR` set (not empty), with `TERM=dumb`, or with `console.colour=false`. Bold and reverse stay unless `TERM=dumb`.
+** *One place*: one `Style` class (role → SGR) used by the views, the printed trees, and the dialogues.
+* *Characters and the ASCII fallback*: if the locale is not UTF-8 (`LC_ALL`, `LC_CTYPE`, `LANG`), the client writes ASCII only. Line drawing keeps the terminal's line set. A `Glyphs` class holds both tables; every view takes glyphs from it:
+
+[cols="1,1,2",options="header"]
+|===
+|UTF-8 |ASCII |Description / used for
+
+|`▸`
+|`>`
+|collapsed tree node
+
+|`▾`
+|`v`
+|expanded tree node
+
+|`◇`
+|`<>`
+|decision node
+
+|`▶`
+|`>`
+|running state, selected-row marker
+
+|`○`
+|`o`
+|planned / pending state
+
+|`✓`
+|`ok`
+|completed / ready / success check
+
+|`✗`
+|`x`
+|failed check, error
+
+|`★`
+|`*`
+|favourite / starred
+
+|`⚠`
+|`!`
+|warning, off track
+
+|`≥`
+|`>=`
+|greater than or equal
+
+|`·`
+|`-`
+|separator dot
+
+|`…`
+|`...`
+|truncation ellipsis
+
+|`↳`
+|`\->`
+|sub-item / child link
+
+|`●`
+|`*`
+|connection dot
+
+|`›`
+|`>`
+|prompt symbol
+
+|`←`
+|`<-`
+|proposal / preselection marker
+
+|`→`
+|`->`
+|fix recommendation
+
+|`✎`
+|`*`
+|changed line marker
+
+|`⠹` (spinner)
+|`\|/-\`
+|progress spinner
+|===
+
 * *Copying*: `web copy` and `web copy ssh` write the terminal's clipboard sequence (OSC 52), which reaches the clipboard of the operator's own computer also over SSH; on a local terminal the platform's clipboard tool where one is found (`pbcopy`, `wl-copy`, `xclip`). Whether a terminal honours OSC 52 cannot be detected, so after a copy the client says `Copied, if your terminal allows it; the text is above.` and the text stays on the screen to select. Where neither path exists (no terminal for OSC 52, no tool locally) the command says so and the text stays on the screen.
 
 [#language]

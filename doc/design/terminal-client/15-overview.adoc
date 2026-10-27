@@ -23,7 +23,7 @@ What the overview of running work shows and in which order is link:../shared/pla
 === Layout
 
 ----
- Running work · projects                                          ● connected
+ plan-marshall  Running work · projects                           ● connected
  ─────────────────────────────────────────────────────────────────────────────
  ! 2  pm-mcp-clients      3 plans · 1 epic                    2 min ago
 ▶     pm-mcp-core         2 plans                                     9 min ago
@@ -33,10 +33,53 @@ What the overview of running work shows and in which order is link:../shared/pla
  ↑↓ move   Enter open   E ended work   R 5 reports   / filter   ? help   q leave
 ----
 
-* *Header*: where the operator is (`projects`, or the project and its view) and the connection to the runtime.
-* *List*: one row per project, plan, or epic, the selected one marked `▶` and drawn inverted; it scrolls when it is longer than the screen, with `↑ 3 more` and `↓ 5 more` at its edges.
-* *Footer*: the keys that apply here; `?` shows all of them.
+* *Header*: the full-screen header starts with the product name in bold (`plan-marshall`), then the place (`projects`, or the project and its view), and the connection to the runtime (<<full-screen-brand>>).
+* *List*: one row per project, plan, or epic, the selected one marked `▶` and drawn inverted; it scrolls when it is longer than the screen, with `↑ 3 more` and `↓ 5 more` at its edges. Rows follow a single column grid (<<full-screen-grid>>).
+* *Footer*: the keys that apply here; every footer shows `? help` and `q leave` at its end.
 * The view opens on the terminal's alternate screen, so the scrollback and the prompt are as they were when it is left.
+
+[#full-screen-brand]
+=== The Brand Line
+
+* *Header*: the full-screen header starts with the product name in bold, then the place:
+  `plan-marshall  Running work · pm-mcp-clients · by plan                ● connected`.
+* *Greeting*: the console greeting starts with `plan-marshall <version> · runtime running`.
+* *Prompt*: the prompt stays `pm ›`, which is short and typed often.
+* *Mark*: no logo in the terminal. The brand is the name, the colour roles, and the calm layout.
+
+[#full-screen-grid]
+=== One Column Grid for Rows
+
+Every row of the overview, the plan view, the reports, and the system view follows one shared column grid at 100 columns or more:
+
+[cols="1,1,4",options="header"]
+|===
+|Column |Width |Content
+
+|marker
+|2
+|`▶` for the selection, else blank
+
+|need
+|14
+|`! decision`, `! landing` (the kind, cut to 12), else blank
+
+|state
+|12
+|`▶ running`, `✓ done`, `○ planned`, `‖ paused`
+
+|kind and title
+|flexible, 40 at least
+|`▸ Fix Relay Transport`, `phase execute`, `TASK-003 implement`
+
+|facts
+|rest
+|`execute · 2 of 3 tasks · 25 min · #214`, dim except the number that matters
+|===
+
+* *Task rows* use the same state column as phase rows.
+* *System view*: the system view gets a label column (10) and a sub-label column (12).
+* *Truncation*: truncation cuts the title last and the facts first; ids are never cut.
 
 [#full-screen-project]
 === A Project
@@ -44,7 +87,7 @@ What the overview of running work shows and in which order is link:../shared/pla
 By plan:
 
 ----
- Running work · pm-mcp-clients · by plan                          ● connected
+ plan-marshall  Running work · pm-mcp-clients · by plan           ● connected
  ─────────────────────────────────────────────────────────────────────────────
  ! decision  ▸ plan  Console history of answers       refine · waiting for you
                      running 40 min · in refine 12 min · 0 of 0 tasks
@@ -58,13 +101,13 @@ By plan:
  ! landing failed    landing remediation.ci-failure   failed
                      removing 2 moved documents from git   running
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   Enter open   a actions   e epic   ! what waits   Tab by epic   E ended work   Esc back
+ ↑↓ move   Enter open   a actions   e epic   ! what waits   Tab by epic   E ended work   Esc back   ? help   q leave
 ----
 
 By epic:
 
 ----
- Running work · pm-mcp-clients · by epic                  ● connected
+ plan-marshall  Running work · pm-mcp-clients · by epic           ● connected
  ─────────────────────────────────────────────────────────────────────────────
 ▶            ◇ epic  client work          2 running · 3 staged
                      running 3 d · 4 of 9 plans
@@ -73,7 +116,7 @@ By epic:
    without epic
  ! decision  ▸ plan  Console history of answers       refine · waiting for you
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   Enter open   a actions   ! what waits   Tab by plan   E ended work   Esc back
+ ↑↓ move   Enter open   a actions   ! what waits   Tab by plan   E ended work   Esc back   ? help   q leave
 ----
 
 * Each row is the plan's or epic's first line (kind, title, phase and state) and below it its details (times, progress, the epic it belongs to). On a terminal narrower than 100 columns the details line is left out and `?` on the row shows it; below 60 columns the view does not open and `status` prints instead.
@@ -463,7 +506,7 @@ What ended work lists is link:../shared/plan-overview.adoc#ended[Plan Overview, 
 * *`status --ended [--project <project_id>]`* prints it into the scrollback; without `--project`, the project of the working directory, else every project with ended work, newest first.
 
 ----
- Ended work · pm-mcp-clients                                      ● connected
+ plan-marshall  Ended work · pm-mcp-clients                       ● connected
  ─────────────────────────────────────────────────────────────────────────────
 ▶ ▸ plan  Relay drops events on reconnect   merged      #211 · 2 d ago
   ▸ plan  Fix the relay's event loss        cancelled   2 d ago
@@ -472,7 +515,7 @@ What ended work lists is link:../shared/plan-overview.adoc#ended[Plan Overview, 
   ▸ plan  Message catalogue v0              abandoned   3 weeks ago
             superseded by the shared texts
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   Enter open   a actions   / filter   Esc back
+ ↑↓ move   Enter open   a actions   / filter   Esc back   ? help   q leave
 ----
 
 [source,text]
