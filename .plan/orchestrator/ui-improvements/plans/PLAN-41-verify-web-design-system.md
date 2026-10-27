@@ -8,7 +8,7 @@ workstream: WS-02
 
 ## Objective
 
-Run the design-system checks against the merged code and record the result. Every check below comes from the verification documents of the review (`doc/claude_review/`); each one is run as written there, against the mock runtime (`pm-mock-runtime/start.sh --scenario <name> --web-port 7420`, `POST /mock/goto/<state>`), in Chrome for the web app (both locales, both themes, 1440 px and 390 px), and for the terminal client through the screen capture harness `ScreenCaptureIT` of `cli-pty-dialogue-harness` (`en_US.UTF-8` and `de_DE.UTF-8`, 120 × 30 and 80 × 24) — never by running `pm-operator` in the agent's own shell, which the operator gate refuses by design (`PM-SEC-3`); a check that needs a person at a real terminal asks the operator. Plus the Maven test runs the check names.
+Run the design-system checks against the merged code and record the result. Every check below comes from the verification documents of the review (`doc/claude_review/`); each one is run as written there, against the mock runtime (`pm-mock-runtime/start.sh --scenario <name> --web-port 20410`, `POST /mock/goto/<state>`), in Chrome for the web app (both locales, both themes, 1440 px and 390 px), and for the terminal client through the screen capture harness `ScreenCaptureIT` of `cli-pty-dialogue-harness` (`en_US.UTF-8` and `de_DE.UTF-8`, 120 × 30 and 80 × 24) — never by running `pm-operator` in the agent's own shell, which the operator gate refuses by design (`PM-SEC-3`); a check that needs a person at a real terminal asks the operator. Plus the Maven test runs the check names.
 
 ## Deliverables
 
@@ -37,6 +37,7 @@ Run the design-system checks against the merged code and record the result. Ever
 
 ## Standing Constraints
 
+- Ports of this plan: mock web port `20410`, app port `20411` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Verification only: no change to production code, tests, or design documents. A defect is reported, never fixed in this plan; a check that cannot run is `not verified` with its reason, never `pass`.
 - Run every check of deliverable 1; a check is never dropped or narrowed. Mock limits (`doc/claude_review/README.adoc#limits`) are named where they decide a verdict.
 - A check that asks for the operator or for a second person records their answer, or `not verified` when they were not available.
@@ -53,7 +54,7 @@ Run the design-system checks against the merged code and record the result. Ever
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-12` (`web-design-tokens-v2`), `PLAN-19` (`web-ui-icon-set`), `PLAN-25` (`web-core-components-controls`), `PLAN-31` (`web-core-components-containers`), `PLAN-35` (`web-data-components`), `PLAN-27` (`web-brand`), `PLAN-37` (`web-accessibility-baseline`)
+- Depends on: `PLAN-12` (`web-design-tokens-v2`), `PLAN-19` (`web-ui-icon-set`), `PLAN-25` (`web-core-components-controls`), `PLAN-31` (`web-core-components-containers`), `PLAN-35` (`web-data-components`), `PLAN-27` (`web-brand`), `PLAN-37` (`web-accessibility-baseline`), `PLAN-76` (`shared-port-assignment`)
 - Overlaps with: other verification plans may update the same analysis matrix (one shared file)
 - Adjacent to: the plans verified; their code stays untouched
 
