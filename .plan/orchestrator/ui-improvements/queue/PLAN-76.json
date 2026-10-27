@@ -2,10 +2,10 @@
   "id": "PLAN-76",
   "slug": "shared-port-assignment",
   "workstream": "WS-01",
-  "status": "launched",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "76-shared-port-assignment",
+  "pr": "243",
+  "landing": "landings/PLAN-76.md",
   "seq": 76
 }
