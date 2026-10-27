@@ -77,12 +77,15 @@ class ConsoleNoticeBufferTest {
     }
 
     @Test
-    @DisplayName("the summary is empty when nothing was held, and the leaving line says so")
+    @DisplayName("the summary is empty when nothing was held")
     void emptySummary() {
+        var buffers = new ConsoleNoticeBuffer();
         assertAll(
-                            () -> assertEquals("", new ConsoleNoticeBuffer().drain("en").summary()),
-                            () -> assertEquals("", ConsoleNoticeBuffer.summarize("en", List.of())),
-                            () -> assertEquals("", ConsoleNoticeBuffer.summarize("en", null))
+                            () -> assertEquals("", buffers.drain("en").summary()),
+                            () -> assertEquals("", ConsoleNoticeBuffer.summarize("en", List.of(),
+                                                ConsoleNoticeBuffer.overviewPlace("en"))),
+                            () -> assertEquals("", ConsoleNoticeBuffer.summarize("en", null,
+                                                ConsoleNoticeBuffer.overviewPlace("en")))
         );
     }
 

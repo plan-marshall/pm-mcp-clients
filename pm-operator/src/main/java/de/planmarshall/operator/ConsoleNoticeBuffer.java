@@ -188,15 +188,6 @@ public final class ConsoleNoticeBuffer {
     /**
      * @param locale the interface locale
      * @param parts  the already localized item summaries
-     * @return the composed meanwhile line, or an empty string when there is nothing to say
-     */
-    public static String summarize(String locale, List<String> parts) {
-        return summarize(locale, parts, overviewPlace(locale));
-    }
-
-    /**
-     * @param locale the interface locale
-     * @param parts  the already localized item summaries
      * @param where  the localized place the operator was in
      * @return the composed meanwhile line, or an empty string when there is nothing to say
      */

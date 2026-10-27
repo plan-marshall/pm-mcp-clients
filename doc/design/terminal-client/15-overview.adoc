@@ -605,3 +605,7 @@ The texts of the rows are those of link:../shared/plan-overview.adoc#texts[Plan 
 |Runtime {version}, running since {time} · {workers, plural, one {# worker} other {# workers}} · {slots} of {total} build slots in use
 |Runtime {version}, läuft seit {time} · {workers, plural, one {# Worker} other {# Worker}} · {slots} von {total} Build-Slots belegt
 |===
+
+Two values above are fragments rather than lines: `operator.overview.where.overview` is the
+`{where}` of `operator.overview.meanwhile` when the operator left the overview itself, and
+`operator.overview.meanwhile.nothing` is its `{events}` when nothing arrived meanwhile.
