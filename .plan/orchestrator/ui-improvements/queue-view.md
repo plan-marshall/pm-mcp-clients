@@ -4,85 +4,85 @@
 
 ## START HERE
 
-**Resume anchor**: PLAN-76 shipped (PR #243); port blocks in effect. In flight: PLAN-03 (default ports). Emitted, awaiting start confirmation: PLAN-06, PLAN-07, PLAN-12. Next: /plan-orchestrator analyze slug=ui-improvements on each landing message, then next; check terminal-check targets per deliverable before emitting a terminal spec.
+**Resume anchor**: In flight (runbook lane): PLAN-03 (mock-scenario-states, default ports 7420/5173, predates port blocks), PLAN-06 (shared-display-vocabulary, ports 20060/20061), PLAN-07 (cli-terminal-design-docs, docs only), PLAN-12 (web-design-tokens-v2, ports 20120/20121); 4 in flight, one above N=3 by operator request. Shipped: PLAN-01, 02, 04, 05, 76. On resume: /plan-orchestrator resume slug=ui-improvements, then /plan-orchestrator analyze slug=ui-improvements to drain landing messages, then next. Ready next once slots free: PLAN-08 (use-case-documents), PLAN-10/13/14 (share operator.{de,en}.properties — one at a time), PLAN-15 (after PLAN-07, shares 15-overview.adoc). Before emitting a terminal spec, check each Terminal check clause against its deliverable (epic Watches). Ledger lives in .plan/local/worktrees/_orchestrator (use_worktree on); land via /plan-orchestrator land or the snapshot/PR/resync sequence.
 **Phase**: orchestrating
 **Parked**:
 - PLAN-32 (WS-04)
 **Queue** (staged, in order):
-1. PLAN-06 (WS-01)
-2. PLAN-07 (WS-05)
-3. PLAN-08 (WS-01)
-4. PLAN-09 (WS-02)
-5. PLAN-10 (WS-04)
-6. PLAN-11 (WS-01)
-7. PLAN-12 (WS-02)
-8. PLAN-13 (WS-04)
-9. PLAN-14 (WS-05)
-10. PLAN-15 (WS-05)
-11. PLAN-16 (WS-02)
-12. PLAN-17 (WS-04)
-13. PLAN-18 (WS-01)
-14. PLAN-19 (WS-02)
-15. PLAN-20 (WS-04)
-16. PLAN-21 (WS-04)
-17. PLAN-22 (WS-04)
-18. PLAN-23 (WS-04)
-19. PLAN-24 (WS-05)
-20. PLAN-25 (WS-02)
-21. PLAN-26 (WS-04)
-22. PLAN-27 (WS-02)
-23. PLAN-28 (WS-04)
-24. PLAN-29 (WS-02)
-25. PLAN-30 (WS-05)
-26. PLAN-31 (WS-02)
-27. PLAN-33 (WS-04)
-28. PLAN-34 (WS-05)
-29. PLAN-35 (WS-02)
-30. PLAN-36 (WS-05)
-31. PLAN-37 (WS-02)
-32. PLAN-38 (WS-05)
-33. PLAN-39 (WS-03)
-34. PLAN-40 (WS-05)
-35. PLAN-41 (WS-02)
-36. PLAN-42 (WS-05)
-37. PLAN-43 (WS-03)
-38. PLAN-44 (WS-05)
-39. PLAN-45 (WS-03)
-40. PLAN-46 (WS-03)
-41. PLAN-47 (WS-03)
-42. PLAN-48 (WS-05)
-43. PLAN-49 (WS-03)
-44. PLAN-50 (WS-05)
-45. PLAN-51 (WS-03)
-46. PLAN-52 (WS-03)
-47. PLAN-53 (WS-03)
-48. PLAN-54 (WS-03)
-49. PLAN-55 (WS-03)
-50. PLAN-56 (WS-05)
-51. PLAN-57 (WS-03)
-52. PLAN-58 (WS-03)
-53. PLAN-59 (WS-03)
-54. PLAN-60 (WS-03)
-55. PLAN-61 (WS-03)
-56. PLAN-62 (WS-03)
-57. PLAN-63 (WS-05)
-58. PLAN-64 (WS-03)
-59. PLAN-65 (WS-03)
-60. PLAN-66 (WS-03)
-61. PLAN-67 (WS-03)
-62. PLAN-68 (WS-03)
-63. PLAN-69 (WS-03)
-64. PLAN-70 (WS-03)
-65. PLAN-71 (WS-03)
-66. PLAN-72 (WS-03)
-67. PLAN-73 (WS-03)
-68. PLAN-74 (WS-03)
-69. PLAN-75 (WS-03)
+1. PLAN-08 (WS-01)
+2. PLAN-09 (WS-02)
+3. PLAN-10 (WS-04)
+4. PLAN-11 (WS-01)
+5. PLAN-13 (WS-04)
+6. PLAN-14 (WS-05)
+7. PLAN-15 (WS-05)
+8. PLAN-16 (WS-02)
+9. PLAN-17 (WS-04)
+10. PLAN-18 (WS-01)
+11. PLAN-19 (WS-02)
+12. PLAN-20 (WS-04)
+13. PLAN-21 (WS-04)
+14. PLAN-22 (WS-04)
+15. PLAN-23 (WS-04)
+16. PLAN-24 (WS-05)
+17. PLAN-25 (WS-02)
+18. PLAN-26 (WS-04)
+19. PLAN-27 (WS-02)
+20. PLAN-28 (WS-04)
+21. PLAN-29 (WS-02)
+22. PLAN-30 (WS-05)
+23. PLAN-31 (WS-02)
+24. PLAN-33 (WS-04)
+25. PLAN-34 (WS-05)
+26. PLAN-35 (WS-02)
+27. PLAN-36 (WS-05)
+28. PLAN-37 (WS-02)
+29. PLAN-38 (WS-05)
+30. PLAN-39 (WS-03)
+31. PLAN-40 (WS-05)
+32. PLAN-41 (WS-02)
+33. PLAN-42 (WS-05)
+34. PLAN-43 (WS-03)
+35. PLAN-44 (WS-05)
+36. PLAN-45 (WS-03)
+37. PLAN-46 (WS-03)
+38. PLAN-47 (WS-03)
+39. PLAN-48 (WS-05)
+40. PLAN-49 (WS-03)
+41. PLAN-50 (WS-05)
+42. PLAN-51 (WS-03)
+43. PLAN-52 (WS-03)
+44. PLAN-53 (WS-03)
+45. PLAN-54 (WS-03)
+46. PLAN-55 (WS-03)
+47. PLAN-56 (WS-05)
+48. PLAN-57 (WS-03)
+49. PLAN-58 (WS-03)
+50. PLAN-59 (WS-03)
+51. PLAN-60 (WS-03)
+52. PLAN-61 (WS-03)
+53. PLAN-62 (WS-03)
+54. PLAN-63 (WS-05)
+55. PLAN-64 (WS-03)
+56. PLAN-65 (WS-03)
+57. PLAN-66 (WS-03)
+58. PLAN-67 (WS-03)
+59. PLAN-68 (WS-03)
+60. PLAN-69 (WS-03)
+61. PLAN-70 (WS-03)
+62. PLAN-71 (WS-03)
+63. PLAN-72 (WS-03)
+64. PLAN-73 (WS-03)
+65. PLAN-74 (WS-03)
+66. PLAN-75 (WS-03)
 - PLAN-01 (WS-02) — plan=01-web-text-guard-report — PR 237 — landing=landings/PLAN-01.md — status: shipped
 - PLAN-02 (WS-04) — plan=02-cli-pty-dialogue-harness — PR 232 — landing=landings/PLAN-02.md — status: shipped
 - PLAN-03 (WS-01) — status: launched
 - PLAN-04 (WS-02) — plan=04-web-theme-and-titles — PR 231 — landing=landings/PLAN-04.md — status: shipped
 - PLAN-05 (WS-05) — plan=05-cli-summary-line-and-start-script — PR 238 — landing=landings/PLAN-05.md — status: shipped
+- PLAN-06 (WS-01) — status: launched
+- PLAN-07 (WS-05) — status: launched
+- PLAN-12 (WS-02) — status: launched
 - PLAN-76 (WS-01) — plan=76-shared-port-assignment — PR 243 — landing=landings/PLAN-76.md — status: shipped
 
 ## Ordered Queue
@@ -90,13 +90,13 @@
 | # | Plan | Workstream | Status | Surface (expected) | Lane |
 |---|------|------------|--------|--------------------|------|
 | 1 | PLAN-03 | WS-01 | launched | pm-mock-runtime/README.adoc; pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java; pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/StartRegistry.java; pm-mock-runtime/src/main/resources/scenarios/fully-onboarded.json; pm-mock-runtime/src/main/resources/scenarios/projects-and-start.json; pm-mock-runtime/src/main/resources/scenarios/reports-and-system.json; pm-mock-runtime/src/main/resources/scenarios/running-work.json; pm-mock-runtime/src/test/java/de/planmarshall/mock/runtime/FixtureConsistencyTest.java; pm-mock-runtime/src/test/java/de/planmarshall/mock/runtime/ScenarioStateContractTest.java | runbook |
-| 2 | PLAN-06 | WS-01 | staged | doc/design/shared/texts-and-languages.adoc; pm-api/src/main/resources/messages/common.de.properties; pm-api/src/main/resources/messages/common.en.properties; pm-api/src/test/java/de/planmarshall/api/message/StateWordsCompletenessTest.java | runbook |
-| 3 | PLAN-07 | WS-05 | staged | doc/design/terminal-client/03-dialogues.adoc; doc/design/terminal-client/09-texts-common.adoc; doc/design/terminal-client/15-overview.adoc | runbook |
+| 2 | PLAN-06 | WS-01 | launched | doc/design/shared/texts-and-languages.adoc; pm-api/src/main/resources/messages/common.de.properties; pm-api/src/main/resources/messages/common.en.properties; pm-api/src/test/java/de/planmarshall/api/message/StateWordsCompletenessTest.java | runbook |
+| 3 | PLAN-07 | WS-05 | launched | doc/design/terminal-client/03-dialogues.adoc; doc/design/terminal-client/09-texts-common.adoc; doc/design/terminal-client/15-overview.adoc | runbook |
 | 4 | PLAN-08 | WS-01 | staged | doc/design/README.adoc; doc/design/shared/plan-overview.adoc | runbook |
 | 5 | PLAN-09 | WS-02 | staged | pm-api/src/main/resources/messages/onboarding.de.properties; pm-api/src/main/resources/messages/onboarding.en.properties; pm-api/src/main/resources/messages/overview.de.properties; pm-api/src/main/resources/messages/overview.en.properties; pm-api/src/main/resources/messages/plan_view.de.properties; pm-api/src/main/resources/messages/plan_view.en.properties; pm-api/src/main/resources/messages/settings.de.properties; pm-api/src/main/resources/messages/settings.en.properties; pm-api/src/main/resources/messages/start.de.properties; pm-api/src/main/resources/messages/start.en.properties; pm-api/src/main/resources/messages/system.de.properties; pm-api/src/main/resources/messages/system.en.properties; pm-web-app/src/lib/display/enumFields.ts; pm-web-app/src/lib/display/enumGuard.test.ts; pm-web-app/src/lib/display/index.test.ts; pm-web-app/src/lib/display/index.ts; pm-web-app/src/lib/views/CleanupView.svelte; pm-web-app/src/lib/views/CompletionReportView.svelte; pm-web-app/src/lib/views/EpicView.svelte; pm-web-app/src/lib/views/MachineSettingsView.svelte; pm-web-app/src/lib/views/OverviewView.svelte; pm-web-app/src/lib/views/PlanView.svelte; pm-web-app/src/lib/views/ReportsView.svelte; pm-web-app/src/lib/views/StartView.svelte; pm-web-app/src/lib/views/SystemView.svelte; pm-web-e2e/tests/text-guard-baseline.json | runbook |
 | 6 | PLAN-10 | WS-04 | staged | pm-api/src/main/resources/messages/control.de.properties; pm-api/src/main/resources/messages/control.en.properties; pm-api/src/main/resources/messages/operator.de.properties; pm-api/src/main/resources/messages/operator.en.properties; pm-operator/src/main/java/de/planmarshall/operator/WorkActionDialogue.java; pm-operator/src/main/java/de/planmarshall/operator/dialogue/ChoicePrompt.java; pm-operator/src/main/java/de/planmarshall/operator/dialogue/package-info.java; pm-operator/src/test/java/de/planmarshall/operator/ControlDialoguesTest.java; pm-operator/src/test/java/de/planmarshall/operator/dialogue/ChoicePromptTest.java; pm-operator/src/test/java/de/planmarshall/operator/transcript/PauseDialogueIT.java | runbook |
 | 7 | PLAN-11 | WS-01 | staged | pm-mock-runtime/README.adoc; pm-mock-runtime/src/main/java/de/planmarshall/mock/http/; pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/MockRuntimeEngine.java; pm-mock-runtime/src/main/resources/scenarios/reports-and-system.json; pm-mock-runtime/src/test/java/de/planmarshall/mock/runtime/ | runbook |
-| 8 | PLAN-12 | WS-02 | staged | doc/design/web-app/README.adoc; doc/design/web-app/theme-readability.adoc; pm-web-app/src/styles/base.css; pm-web-app/src/styles/tokens.css; pm-web-app/src/styles/tokens.test.ts; pm-web-app/static/fonts/; pm-web-e2e/tests/theme-readability.spec.js | runbook |
+| 8 | PLAN-12 | WS-02 | launched | doc/design/web-app/README.adoc; doc/design/web-app/theme-readability.adoc; pm-web-app/src/styles/base.css; pm-web-app/src/styles/tokens.css; pm-web-app/src/styles/tokens.test.ts; pm-web-app/static/fonts/; pm-web-e2e/tests/theme-readability.spec.js | runbook |
 | 9 | PLAN-13 | WS-04 | staged | doc/design/terminal-client/04-console.adoc; pm-api/src/main/java/de/planmarshall/api/event/; pm-api/src/main/java/de/planmarshall/api/event/EventName.java; pm-api/src/main/resources/messages/operator.de.properties; pm-api/src/main/resources/messages/operator.en.properties; pm-operator/src/main/java/de/planmarshall/operator/ConsoleNotice.java; pm-operator/src/main/java/de/planmarshall/operator/ConsoleNoticeBuffer.java; pm-operator/src/main/java/de/planmarshall/operator/ConsolePrompt.java; pm-operator/src/test/java/de/planmarshall/operator/ConsoleNoticeTest.java; pm-operator/src/test/java/de/planmarshall/operator/transcript/ConsoleNoticeIT.java | runbook |
 | 10 | PLAN-14 | WS-05 | staged | pm-api/src/main/resources/messages/operator.de.properties; pm-api/src/main/resources/messages/operator.en.properties; pm-operator/src/main/java/de/planmarshall/operator/OperatorContext.java; pm-operator/src/main/java/de/planmarshall/operator/OperatorGate.java; pm-operator/src/main/java/de/planmarshall/operator/PmConsole.java; pm-operator/src/main/java/de/planmarshall/operator/PmOperator.java; pm-operator/src/test/java/de/planmarshall/operator/OperatorGateScopeTest.java; pm-operator/src/test/java/de/planmarshall/operator/OperatorGateTest.java; pm-operator/src/test/java/de/planmarshall/operator/transcript/PtySession.java | runbook |
 | 11 | PLAN-15 | WS-05 | staged | doc/design/terminal-client/15-overview.adoc; pm-operator/src/main/java/de/planmarshall/operator/tui/TuiKeyRegistry.java; pm-operator/src/main/java/de/planmarshall/operator/tui/TuiLayout.java; pm-operator/src/main/java/de/planmarshall/operator/tui/TuiScreen.java; pm-operator/src/main/java/de/planmarshall/operator/tui/TuiScreenDriver.java; pm-operator/src/test/java/de/planmarshall/operator/transcript/TuiCapabilityIT.java; pm-operator/src/test/java/de/planmarshall/operator/tui/TuiKeyRegistryTest.java; pm-operator/src/test/java/de/planmarshall/operator/tui/TuiScreenTest.java | runbook |
