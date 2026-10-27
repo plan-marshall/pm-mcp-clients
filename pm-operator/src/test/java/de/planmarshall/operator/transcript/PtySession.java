@@ -147,6 +147,20 @@ public final class PtySession implements AutoCloseable {
     }
 
     /**
+     * Waits for the output reader to finish, so a snapshot taken afterwards holds every byte the
+     * child wrote. {@link #awaitExit(Duration)} joins the reader for two seconds only; a capture
+     * that reads the output for its record calls this instead of trusting that bound.
+     *
+     * @param timeout the maximum wait
+     * @return {@code true} when the reader finished before the deadline
+     * @throws InterruptedException if interrupted while waiting
+     */
+    public boolean awaitReader(Duration timeout) throws InterruptedException {
+        reader.join(timeout.toMillis());
+        return !reader.isAlive();
+    }
+
+    /**
      * @return the child's exit code, or {@code null} while it still runs
      */
     public Integer exitCode() {

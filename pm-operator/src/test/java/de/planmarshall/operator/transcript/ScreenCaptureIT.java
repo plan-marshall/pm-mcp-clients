@@ -123,8 +123,8 @@ class ScreenCaptureIT {
                     DialogueHarness.type(session, capture.keys());
                     assertTrue(session.awaitExit(READY_TIMEOUT),
                                         capture.name() + " did not exit within " + READY_TIMEOUT);
-                    assertTrue(awaitQuiet(session, false),
-                                        capture.name() + "'s output did not settle after the exit");
+                    assertTrue(session.awaitReader(READY_TIMEOUT),
+                                        capture.name() + "'s output reader did not finish");
                     // The whole output, the keys' part included: what a verb prints on leaving a
                     // view (`q`) is read here, the three files above are the view itself.
                     Files.writeString(output.resolve(capture.name() + ".stdout.txt"),
