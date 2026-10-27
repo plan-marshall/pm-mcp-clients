@@ -57,7 +57,7 @@
         {#each turns as turn}
           <li class="chat-panel__turn" data-testid="chat-turn" class:untrusted={turn.untrusted}>
             <span class="chat-panel__turn-role">{turn.role}</span>
-            <span class="chat-panel__turn-text">{turn.text}</span>
+            <span class="chat-panel__turn-text" data-model-text>{turn.text}</span>
           </li>
         {/each}
       </ol>
@@ -68,9 +68,11 @@
             {$t('start.chat.proposed', { change: 'addition' })}
           </h3>
           {#if proposal.before}
-            <p class="chat-panel__before">{proposal.before}</p>
+            <p class="chat-panel__before" data-model-text>{proposal.before}</p>
           {/if}
-          <p class="chat-panel__after" data-testid="chat-proposal-after">{proposal.after}</p>
+          <p class="chat-panel__after" data-testid="chat-proposal-after" data-model-text>
+            {proposal.after}
+          </p>
           <div class="chat-panel__proposal-actions">
             <button type="button" data-testid="chat-reject" disabled={busy} on:click={onReject}>
               {rejectLabel || $t('start.decomposition.discard')}
