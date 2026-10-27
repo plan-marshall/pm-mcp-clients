@@ -156,6 +156,16 @@ plan spec names the plan, proposal and finding documents it comes from.
     It is sensible because the port blocks remove the collision that motivated the limit.
   - Not chosen: PLAN-08 (same track as PLAN-06); PLAN-10, PLAN-13 and PLAN-14, which share
     `operator.{de,en}.properties` with each other; PLAN-15, which shares `15-overview.adoc` with PLAN-07.
+- 2026-10-27 — PLAN-07 landing analysed (`landings/PLAN-07.md`). Emitted PLAN-10 (`cli-choice-prompt-pause`)
+  into the terminal slot it freed. It comes first in order among the ready terminal plans and gates PLAN-20
+  and PLAN-28.
+  - Corrected before the emit, under the terminal-check watch: deliverable 1 (`ChoicePrompt`) gets no
+    terminal check of its own, because it reaches the screen only through deliverable 2's dialogues.
+  - Deliverable 2 now enables `CancelDialogueIT` as well as `PauseDialogueIT` (both name PLAN-10 since
+    PLAN-02), and its capture covers the cancel dialogue.
+  - Expected Surface: `PauseDialogueIT` relabelled present, `CancelDialogueIT` added.
+  - Not chosen: PLAN-13 and PLAN-14 (share the operator catalogue with PLAN-10); PLAN-15 (next terminal
+    candidate); PLAN-08 (Sonar watch open).
 
 ## Open Defects
 
@@ -168,7 +178,8 @@ plan spec names the plan, proposal and finding documents it comes from.
   opencode landing that carries `plugin_version` (`0.1.2017`, read at landing time). Recurrence 2026-10-27:
   `rb-01-web-text-guard-report-001.md` (PLAN-01), only `total_tokens` missing. Recurrence 2026-10-27:
   `rb-76-shared-port-assignment-001.md` (PLAN-76, harness `antigravity`), `total_tokens`, `model` and
-  `effort` missing.
+  `effort` missing. Recurrence 2026-10-27: `rb-07-cli-terminal-design-docs-001.md` (PLAN-07, antigravity),
+  only `total_tokens` missing.
 
 ## Watches
 
@@ -187,7 +198,8 @@ plan spec names the plan, proposal and finding documents it comes from.
   invoked a bare `mvn` instead of the project's `./mvnw`. The project was enrolled and the daemon
   upgraded to 0.1.2017 on 2026-10-26, after that run. Recurrence: PLAN-04's one routed build failed the
   same way (`mvn` not on the daemon's PATH), and so did PLAN-05's (job log `8d16de87…`) and PLAN-01's two
-  (`9798359b`, `e497dbb4`). — re-check at the next landing that routes through the
+  (`9798359b`, `e497dbb4`). First success: PLAN-07's routed gate ran on the daemon (2140 tests, after one
+  timeout at the learned 876 s bound during `npm ci`). — retire after one more routed success; re-check at the next landing that routes through the
   daemon.
 - Tab titles name the identifier (`drop-legacy-api`), not the display title (PLAN-04 residue). No
   staged plan owns a title store for the shell. — decide when PLAN-09 (`web-display-layer`) is emitted,
@@ -204,7 +216,12 @@ plan spec names the plan, proposal and finding documents it comes from.
 - First landing from the `antigravity` harness (PLAN-76): `model` and `effort` are `unknown`. Its message
   was thinner than the lane asks: no operator questions, no build-server section, no rule-break account.
   Its skew question named executor `0.1.0`, against `0.1.2017` in the facts. — re-check at the next
-  antigravity landing. — re-check at PLAN-09
+  antigravity landing. PLAN-07 (antigravity) reported its model and a full message, but
+  `plugin_version=0.1.0` again.
+- Sonar gate on documentation-only plans: CI skips `sonar-build` when only documents change, so the read is
+  `undecidable`. PLAN-07 merged on operator authorization. — decide before emitting PLAN-08, PLAN-24 or
+  PLAN-74: state in those specs that a skipped analysis is the expected `undecidable`, or run the analysis
+  in CI. — re-check at PLAN-09
   (changes `CleanupView`) and PLAN-70 (`web-light-theme-pass`).
 - PLAN-04 was run a second time after it shipped (2026-10-27 about 12:00, opencode). The run found the spec
   already merged (`099a3b40`) and stopped with no commit and no PR. It left the worktree

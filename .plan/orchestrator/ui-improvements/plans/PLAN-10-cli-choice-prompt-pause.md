@@ -24,14 +24,14 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
    - Done when:
      - `ChoicePromptTest` covers each rule (evidence order: `test-first`)
-     - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` → `control.pause`: the pause dialogue after `q`, after `9`, after Enter; each option with its consequence; before and after captures recorded (evidence order: `none`)
+     - No terminal check of its own: `ChoicePrompt` reaches the screen only through the dialogues of deliverable 2, whose terminal check shows it (orchestrator correction 2026-10-27, epic Watches → terminal-check targets)
 2. **Pause, cancel, abandon**
    - What: `WorkActionDialogue.pause`, `cancel`, `abandon` use it; `default -> "task"` goes; each pause point shows its consequence from the plan's actions resource.
    - Persona: plan-marshall:persona-integration-tester
    - Skills: pm-dev-java:junit-integration, pm-dev-java:junit-core
    - Done when:
-     - `PauseDialogueIT` enabled: `q` sends nothing; `9` re-asks; Enter takes the preselection (evidence order: `test-first`)
-     - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` → `control.pause`: the pause dialogue after `q`, after `9`, after Enter; each option with its consequence; before and after captures recorded (evidence order: `none`)
+     - `PauseDialogueIT` and `CancelDialogueIT` enabled (both `@Disabled` naming this plan since PLAN-02): `q` sends nothing; `9` re-asks; Enter takes the preselection (evidence order: `test-first`)
+     - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` → `control.pause` and the cancel dialogue: each after `q`, after `9`, after Enter; each option with its consequence; before and after captures recorded (evidence order: `none`)
      - Browser regression check (Playwright MCP) on `fully-onboarded` and `running-work`: the web views that render the changed catalogue areas (control) show the new texts with no missing or raw key; snapshots and screenshots recorded (evidence order: `none`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
@@ -59,7 +59,8 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/dialogue/package-info.java` — absent at HEAD c4dc9bb4; created by this plan
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WorkActionDialogue.java` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/dialogue/ChoicePromptTest.java` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/PauseDialogueIT.java` — absent at HEAD c4dc9bb4; created by this plan
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/PauseDialogueIT.java` — present at HEAD 426cfe3f (created `@Disabled` by PLAN-02)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/CancelDialogueIT.java` — present at HEAD 426cfe3f (created `@Disabled` by PLAN-02)
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ControlDialoguesTest.java` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/operator.en.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/operator.de.properties` — present at HEAD c4dc9bb4
