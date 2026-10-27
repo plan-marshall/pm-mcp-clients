@@ -530,6 +530,28 @@ const GUARD_JOURNEYS = [
   },
 ];
 
+/**
+ * The elements exempt from the contrast audit.
+ *
+ * Every entry names the selector it exempts and the reason the pair behind it cannot meet the
+ * WCAG threshold. The list is empty: the audit judges every text and state pair the views render.
+ * An entry without a reason fails the guard test below, so a future exemption cannot stay silent.
+ */
+export const CONTRAST_ALLOWLIST = [];
+
+/**
+ * @param failure one contrast failure of the audit
+ * @returns whether an allowlist entry that states its reason exempts the failure
+ */
+function isExempt(failure) {
+  return CONTRAST_ALLOWLIST.some(
+    (entry) =>
+      typeof entry.reason === 'string' &&
+      entry.reason.trim().length > 0 &&
+      failure.selector.includes(entry.selector),
+  );
+}
+
 async function auditView(page, testInfo, { view, theme, viewport }, options = {}) {
   auditedViews.add(view);
   try {
@@ -545,7 +567,8 @@ async function auditView(page, testInfo, { view, theme, viewport }, options = {}
     // Non-fatal cache write
   }
   const result = await auditViewContrast(page, testInfo, { view, theme, viewport }, options);
-  expect(result.failures).toEqual([]);
+  const failures = result.failures.filter((failure) => !isExempt(failure));
+  expect(failures).toEqual([]);
   return result;
 }
 
@@ -564,6 +587,14 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
     { name: 'mobile', width: 375, height: 667 },
     { name: 'narrow', width: 320, height: 568 },
   ];
+
+  test('every contrast allowlist entry carries its reason', () => {
+    const unreasoned = CONTRAST_ALLOWLIST.filter(
+      (entry) => typeof entry.reason !== 'string' || entry.reason.trim().length === 0,
+    );
+
+    expect(unreasoned).toEqual([]);
+  });
 
   for (const theme of THEMES) {
     test.describe(`Reported Flow: Findings Review ("Prüfen") in ${theme} mode`, () => {
