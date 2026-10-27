@@ -107,7 +107,7 @@ class ScreenCaptureIT {
                 runtime.goToState(state);
             }
             try (var session = start(runtime, capture)) {
-                assertTrue(awaitQuiet(session),
+                assertTrue(awaitQuiet(session, !capture.keys().isEmpty()),
                                     capture.name() + " did not settle within " + READY_TIMEOUT);
                 var screen = session.screen();
                 var raw = session.rawOutput();
@@ -123,6 +123,8 @@ class ScreenCaptureIT {
                     DialogueHarness.type(session, capture.keys());
                     assertTrue(session.awaitExit(READY_TIMEOUT),
                                         capture.name() + " did not exit within " + READY_TIMEOUT);
+                    assertTrue(awaitQuiet(session, false),
+                                        capture.name() + "'s output did not settle after the exit");
                     // The whole output, the keys' part included: what a verb prints on leaving a
                     // view (`q`) is read here, the three files above are the view itself.
                     Files.writeString(output.resolve(capture.name() + ".stdout.txt"),
@@ -149,18 +151,18 @@ class ScreenCaptureIT {
     }
 
     /**
-     * Waits until the process has written nothing new for the settle window and a drawn screen can
-     * be captured: a full-screen view enters the alternate screen only after JLine's terminal probe
-     * has been answered, which on a slow start takes longer than the settle window, so a quiet
-     * stretch before the view drew is not a settled screen. A capture whose verb prints instead of
-     * drawing has no alternate screen, so it settles on the quiet window alone once
-     * {@link #MIN_WAIT} has passed.
+     * Waits until the process has written nothing new for the settle window and the screen can be
+     * captured. A capture that types keys expects a full-screen view, so it waits for the alternate
+     * screen itself: a full-screen view enters it only after JLine's terminal probe is answered, and
+     * a quiet stretch before that is not a drawn view. A capture whose verb prints instead has no
+     * alternate screen, so the quiet window decides once {@link #MIN_WAIT} has passed.
      *
-     * @param session the running session
+     * @param session     the running session
+     * @param expectsView whether the capture types keys and therefore expects a full-screen view
      * @return {@code true} when the screen settled before the deadline
      * @throws InterruptedException if interrupted
      */
-    private static boolean awaitQuiet(PtySession session) throws InterruptedException {
+    private static boolean awaitQuiet(PtySession session, boolean expectsView) throws InterruptedException {
         var start = System.nanoTime();
         var deadline = start + READY_TIMEOUT.toNanos();
         var lastLength = 0;
@@ -171,8 +173,9 @@ class ScreenCaptureIT {
                 if (quietSince == 0L) {
                     quietSince = System.nanoTime();
                 } else if (System.nanoTime() - quietSince >= SETTLE.toNanos()
-                                    && (session.screen().alternateScreenActive()
-                                    || System.nanoTime() - start >= MIN_WAIT.toNanos())) {
+                                    && (expectsView
+                                    ? session.screen().alternateScreenActive()
+                                    : System.nanoTime() - start >= MIN_WAIT.toNanos())) {
                     return true;
                 }
             } else {

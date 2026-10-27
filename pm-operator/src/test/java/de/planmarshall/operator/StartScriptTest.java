@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -139,8 +140,13 @@ class StartScriptTest {
      * @throws InterruptedException if interrupted while waiting
      */
     private static String await(Process process) throws IOException, InterruptedException {
+        if (!process.waitFor(TIMEOUT.toSeconds(), TimeUnit.SECONDS)) {
+            process.destroyForcibly();
+            fail("start.sh did not finish within " + TIMEOUT);
+        }
+        // The script's output is a handful of lines, far below the pipe buffer, so reading after the
+        // exit cannot deadlock the child and the timeout above really bounds the call.
         var output = new String(process.getInputStream().readAllBytes(), UTF_8);
-        assertTrue(process.waitFor(TIMEOUT.toSeconds(), TimeUnit.SECONDS), "start.sh did not finish");
         assertEquals(0, process.exitValue(), output);
         return output;
     }

@@ -283,8 +283,8 @@ public final class OverviewFullScreenApp {
 
     /**
      * Names where the operator was when the view closed, so the line the view leaves behind says
-     * where and not only what arrived: the header of the level the operator left, or the overview
-     * itself when no level names a narrower place.
+     * where and not only what arrived: the live header of the level the operator left, or the
+     * overview itself when no level names a narrower place.
      *
      * @return the localized place
      */
@@ -294,16 +294,78 @@ public final class OverviewFullScreenApp {
             if (lvl == null || lvl.kind() == TuiLevel.Kind.OVERVIEW) {
                 return ConsoleNoticeBuffer.overviewPlace(locale);
             }
-            var title = lvl.title();
-            if (lvl.kind() == TuiLevel.Kind.PLAN) {
-                var view = currentPlanView.get();
-                if (view != null) {
-                    var selected = stack.selected();
-                    title = view.breadcrumb(locale, selected != null ? selected.id() : null);
-                }
-            }
+            var selected = stack.selected();
+            var title = levelBreadcrumb(lvl, selected != null ? selected.id() : null);
             return title.isBlank() ? ConsoleNoticeBuffer.overviewPlace(locale) : title;
         }
+    }
+
+    /**
+     * The header the level shows, recomputed from the live model: a report count or a system
+     * window can change while the view is open, so the pushed level title may be stale.
+     *
+     * @param lvl        the level, or {@code null}
+     * @param selectedId the selected row, or {@code null}
+     * @return the header, empty when there is no level
+     */
+    private String levelBreadcrumb(@Nullable TuiLevel lvl, @Nullable String selectedId) {
+        if (lvl == null) {
+            return "";
+        }
+        var kind = lvl.kind();
+        if (kind == TuiLevel.Kind.PLAN) {
+            var view = currentPlanView.get();
+            return view != null ? view.breadcrumb(locale, selectedId) : lvl.title();
+        }
+        if (kind == TuiLevel.Kind.PLAN_ACTIVITY) {
+            var view = currentActivity.get();
+            return view != null ? view.breadcrumb() : lvl.title();
+        }
+        if (kind == TuiLevel.Kind.PLAN_COMPLETION) {
+            var view = currentCompletion.get();
+            return view != null ? view.breadcrumb(locale) : lvl.title();
+        }
+        if (kind == TuiLevel.Kind.EPIC) {
+            var view = currentEpicView.get();
+            return view != null ? view.level(locale).title() : lvl.title();
+        }
+        if (kind == TuiLevel.Kind.REPORTS) {
+            var view = currentReports.get();
+            return view != null ? view.breadcrumb(locale) : lvl.title();
+        }
+        if (kind == TuiLevel.Kind.SYSTEM) {
+            var view = currentSystem.get();
+            return view != null
+                                ? view.breadcrumb(locale, SystemLevel.sectionOf(lvl.id()))
+                                : lvl.title();
+        }
+        return lvl.title();
+    }
+
+    /**
+     * @param lvl the level, or {@code null}
+     * @return the footer the level shows, or {@code null} when it has none
+     */
+    private @Nullable String levelFooter(@Nullable TuiLevel lvl) {
+        if (lvl == null) {
+            return null;
+        }
+        var kind = lvl.kind();
+        if (kind == TuiLevel.Kind.PLAN) {
+            var view = currentPlanView.get();
+            return view != null ? view.footer(locale) : null;
+        }
+        if (kind == TuiLevel.Kind.EPIC) {
+            var view = currentEpicView.get();
+            return view != null ? view.footer(locale) : null;
+        }
+        if (kind == TuiLevel.Kind.SYSTEM) {
+            var view = currentSystem.get();
+            if (view != null && SystemLevel.sectionOf(lvl.id()) == SystemLevel.Section.ROOT) {
+                return view.footer(locale);
+            }
+        }
+        return null;
     }
 
     /**
@@ -708,45 +770,8 @@ public final class OverviewFullScreenApp {
         var kind = lvl != null ? lvl.kind() : TuiLevel.Kind.OVERVIEW;
         var selected = stack.selected();
         var selectedId = selected != null ? selected.id() : null;
-        var breadcrumb = lvl != null ? lvl.title() : "";
-        String footer = null;
-        if (kind == TuiLevel.Kind.PLAN) {
-            var view = currentPlanView.get();
-            if (view != null) {
-                breadcrumb = view.breadcrumb(locale, selectedId);
-                footer = view.footer(locale);
-            }
-        } else if (kind == TuiLevel.Kind.PLAN_ACTIVITY) {
-            var view = currentActivity.get();
-            if (view != null) {
-                breadcrumb = view.breadcrumb();
-            }
-        } else if (kind == TuiLevel.Kind.PLAN_COMPLETION) {
-            var view = currentCompletion.get();
-            if (view != null) {
-                breadcrumb = view.breadcrumb(locale);
-            }
-        } else if (kind == TuiLevel.Kind.EPIC) {
-            var view = currentEpicView.get();
-            if (view != null) {
-                breadcrumb = view.level(locale).title();
-                footer = view.footer(locale);
-            }
-        } else if (kind == TuiLevel.Kind.REPORTS) {
-            var view = currentReports.get();
-            if (view != null) {
-                breadcrumb = view.breadcrumb(locale);
-            }
-        } else if (kind == TuiLevel.Kind.SYSTEM) {
-            var view = currentSystem.get();
-            if (view != null) {
-                var section = SystemLevel.sectionOf(lvl != null ? lvl.id() : null);
-                breadcrumb = view.breadcrumb(locale, section);
-                if (section == SystemLevel.Section.ROOT) {
-                    footer = view.footer(locale);
-                }
-            }
-        }
+        var breadcrumb = levelBreadcrumb(lvl, selectedId);
+        var footer = levelFooter(lvl);
         var rows = stack.visibleRows();
         if (statusMessage != null && !statusMessage.isBlank()) {
             var withStatus = new ArrayList<TuiRow>(rows.size() + 1);
