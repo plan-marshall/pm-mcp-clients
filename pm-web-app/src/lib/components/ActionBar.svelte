@@ -13,8 +13,8 @@
    * importance rather than by markup.
    *
    * The overflow is a menu in the sense the role promises: opening it moves the focus to its first
-   * entry, the arrow keys and Home/End move within it, Tab leaves it, and Escape closes it and
-   * returns the focus to the button that opened it.
+   * enabled entry, the arrow keys and Home/End move within it, Tab closes it and puts the focus back
+   * on the button, and Escape does the same.
    */
   interface ActionBarAct {
     /** The act's id, reported to `onAct`. */
@@ -50,9 +50,16 @@
     return host?.querySelector<HTMLButtonElement>('[data-testid="action-bar-overflow"]') ?? null;
   }
 
-  /** @returns the menu's entries, in the order they render */
+  /**
+   * @returns the entries a person can focus: a disabled act stays visible but cannot be reached
+   */
   function menuItems(): HTMLButtonElement[] {
-    return host ? Array.from(host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')) : [];
+    if (!host) {
+      return [];
+    }
+    return Array.from(host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).filter(
+      (item) => !item.disabled,
+    );
   }
 
   /** Opens the menu and puts the focus on its first entry. */
@@ -75,9 +82,14 @@
 
   /**
    * @param id the chosen act's id
+   * @param fromMenu whether the act came from the overflow menu, whose focus goes back to the button
    */
-  async function choose(id: string): Promise<void> {
-    await closeMenu(true);
+  async function choose(id: string, fromMenu = false): Promise<void> {
+    if (fromMenu) {
+      await closeMenu(true);
+    } else {
+      open = false;
+    }
     onAct(id);
   }
 
@@ -90,7 +102,11 @@
       return;
     }
     if (event.key === 'Tab') {
-      open = false;
+      // The entries are not in the tab sequence, so letting the default run from a node that the
+      // close is about to remove would drop the focus on the body. Put it back on the button and
+      // let the next Tab continue from there.
+      event.preventDefault();
+      void closeMenu(true);
       return;
     }
     if (event.key === 'Home') {
@@ -181,7 +197,7 @@
               class="action-bar__item"
               disabled={busy || act.disabled}
               title={act.disabled ? (act.disabledReason ?? act.advisory) : act.advisory}
-              on:click={() => choose(act.id)}
+              on:click={() => choose(act.id, true)}
             >
               {act.label}
             </button>

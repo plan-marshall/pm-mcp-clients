@@ -44,9 +44,7 @@
   on:click={copy}
 >
   <span class="chip__value">{value}</span>
-  {#if copied}
-    <span class="chip__state" aria-live="polite">{$t('web.common.copied')}</span>
-  {/if}
+  <span class="chip__state" aria-live="polite">{copied ? $t('web.common.copied') : ''}</span>
 </button>
 
 <style>
@@ -80,5 +78,11 @@
   .chip__state {
     font-family: var(--font-sans);
     color: var(--color-text-muted);
+  }
+
+  /* The live region stays in the document, so it announces a confirmation that appears later; an
+     empty one takes no room beside the value. */
+  .chip__state:empty {
+    display: none;
   }
 </style>

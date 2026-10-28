@@ -88,7 +88,20 @@ describe('the development route exclusion', () => {
   it('is registered in the production build', () => {
     const config = fs.readFileSync(path.resolve(__dirname, '../../../vite.config.ts'), 'utf-8');
 
-    expect(config).toContain('devRouteExclusion()');
+    expect(config).toContain('devRouteExclusion(),');
+  });
+
+  it('rewrites the development page import of a generated node, and only that', () => {
+    const plugin = devRouteExclusion() as {
+      transform: (code: string, id: string) => { code: string } | null;
+    };
+    const nodePath =
+      '/repo/pm-web-app/.svelte-kit/generated/build/client-optimized/nodes/5.js';
+    const node =
+      'export { default as component } from "../../../../../src/routes/dev/components/+page.svelte";';
+
+    expect(plugin.transform(node, nodePath)?.code).toContain(EMPTY_DEV_PAGE_ID);
+    expect(plugin.transform(node, '/repo/pm-web-app/src/routes/overview/+page.svelte')).toBeNull();
   });
 
   it('points the development route node at the empty component', () => {

@@ -8,7 +8,9 @@
    * and a disabled state that says why.
    *
    * `variant`, `type`, `loading` and the click forwarding are the surface the views already use;
-   * the sizes, the icon and the disabled reason are additive, so no call site has to change.
+   * the sizes, the icon and the disabled reason are additive, so no call site changes its markup.
+   * The `small` spelling the views already pass draws the `sm` size — before this change it was an
+   * inert attribute, so those ten buttons shrink to the small size they asked for.
    * `danger` belongs inside a danger dialog, where the consequence is named beside the act.
    */
   export let variant: 'primary' | 'secondary' | 'danger' | 'ghost' = 'secondary';

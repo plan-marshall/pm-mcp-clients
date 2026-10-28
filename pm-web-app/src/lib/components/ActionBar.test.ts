@@ -38,13 +38,14 @@ describe('ActionBar', () => {
     expect(screen.queryByTestId('action-bar-overflow')).not.toBeInTheDocument();
   });
 
-  it('reports the act a person chose', async () => {
+  it('keeps the focus on the act a person chose outside the menu', async () => {
     const onAct = vi.fn();
     render(ActionBar, { props: { acts: FIVE_ACTS, onAct } });
 
     await fireEvent.click(screen.getByText('Pause'));
 
     expect(onAct).toHaveBeenCalledWith('pause');
+    expect(document.activeElement).not.toBe(screen.getByTestId('action-bar-overflow'));
   });
 
   it('reports an act chosen from the overflow menu, and closes the menu', async () => {
@@ -113,5 +114,60 @@ describe('ActionBar', () => {
     await fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
     expect(document.activeElement).toBe(overflow);
+  });
+
+  it('skips an entry that cannot run, so the menu stays reachable', async () => {
+    render(ActionBar, {
+      props: {
+        acts: [
+          { id: 'next', label: 'Next' },
+          { id: 'pause', label: 'Pause' },
+          { id: 'chat', label: 'Chat' },
+          { id: 'settings', label: 'Settings' },
+          { id: 'archive', label: 'Archive' },
+          { id: 'later', label: 'Later', disabled: true, disabledReason: 'Not yet' },
+        ],
+      },
+    });
+
+    await fireEvent.click(screen.getByTestId('action-bar-overflow'));
+
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Archive' }));
+    await fireEvent.keyDown(screen.getByRole('menu'), { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Archive' }));
+  });
+
+  it('closes on Tab and gives the focus back to the button', async () => {
+    render(ActionBar, { props: { acts: FIVE_ACTS } });
+    const overflow = screen.getByTestId('action-bar-overflow');
+
+    await fireEvent.click(overflow);
+    await fireEvent.keyDown(screen.getByRole('menu'), { key: 'Tab' });
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(overflow);
+  });
+
+  it('moves to the first and the last entry with Home and End', async () => {
+    render(ActionBar, {
+      props: {
+        acts: [
+          { id: 'next', label: 'Next' },
+          { id: 'pause', label: 'Pause' },
+          { id: 'chat', label: 'Chat' },
+          { id: 'settings', label: 'Settings' },
+          { id: 'archive', label: 'Archive' },
+          { id: 'copy', label: 'Copy' },
+          { id: 'retry', label: 'Retry' },
+        ],
+      },
+    });
+    await fireEvent.click(screen.getByTestId('action-bar-overflow'));
+
+    await fireEvent.keyDown(screen.getByRole('menu'), { key: 'End' });
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Retry' }));
+
+    await fireEvent.keyDown(screen.getByRole('menu'), { key: 'Home' });
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Archive' }));
   });
 });

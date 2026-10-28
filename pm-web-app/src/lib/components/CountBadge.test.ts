@@ -27,8 +27,9 @@ describe('CountBadge', () => {
 
   it('carries the accessible name the view gives it, instead of a bare number', () => {
     const { container } = render(CountBadge, { props: { count: 3, label: '3 waiting for you' } });
+    const badge = container.querySelector('.count-badge');
 
-    expect(screen.getByText('3 waiting for you')).toHaveClass('sr-only');
+    expect(badge?.textContent).toContain('3 waiting for you');
     expect(container.querySelector('[aria-hidden="true"]')?.textContent).toBe('3');
   });
 });

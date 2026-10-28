@@ -28,13 +28,19 @@
   /** An id, as a chip carries one; a fixture value, not a runtime one. */
   const CHIP_VALUE = 'plan-marshall/relay@36e3fc5c';
 
-  /** The five acts the bar gets: one primary, three secondary, one in the overflow. */
+  /** The six acts the bar gets: one primary, three secondary, two in the overflow. */
   $: acts = [
     { id: 'save', label: $t('web.common.save') },
     { id: 'cancel', label: $t('web.common.cancel') },
     { id: 'copy', label: $t('web.common.copy'), advisory: $t('web.common.copy.title') },
     { id: 'back', label: $t('common.actions.back'), advisory: $t('common.actions.back.title') },
     { id: 'retry', label: $t('web.common.retry') },
+    {
+      id: 'archive',
+      label: $t('web.frame.nav.system'),
+      disabled: true,
+      disabledReason: $t('dev.disabled_reason'),
+    },
   ];
 </script>
 
@@ -106,7 +112,7 @@
       </div>
       <div class="dev__row">
         <CountBadge count={3} />
-        <CountBadge count={2} attention />
+        <CountBadge count={2} attention label={$t('state.plan.waiting_for_you')} />
         <Chip value={CHIP_VALUE} />
       </div>
 
