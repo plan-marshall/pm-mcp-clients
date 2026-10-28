@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -299,6 +300,18 @@ class ChoicePromptTest {
     }
 
     @Test
+    @DisplayName("rule 9c: a single choice offers '1', and an unknown item explanation says there is nothing")
+    void singleChoiceOffersOneAndExplainsNothing() {
+        var out = new StringWriter();
+        var prompt = createPrompt("?9\n9\n1\n", out, "en");
+        prompt.addChoice("only", "Only one");
+
+        assertEquals("only", prompt.ask().key());
+        assertTrue(out.toString().contains("Nothing more is explained here"), out.toString());
+        assertTrue(out.toString().contains("9 is not offered here: 1, q"), out.toString());
+    }
+
+    @Test
     @DisplayName("rule 11: consent accepts y, j and n, and nothing else")
     void consentAcceptedKeys() {
         var out1 = new StringWriter();
@@ -317,6 +330,101 @@ class ChoicePromptTest {
         var prompt4 = createPrompt("r\nn\n", out4, "en");
         assertFalse(prompt4.askConsent());
         assertTrue(out4.toString().contains("r is not offered here: y, n, q"), out4.toString());
+    }
+
+    @Test
+    @DisplayName("rule 11b: a consent with an explanation offers ? and explains it")
+    void consentWithExplanationOffersQuestionMark() {
+        var out = new StringWriter();
+        var prompt = createPrompt("?\ny\n", out, "en");
+        prompt.explanation("Saying yes ends the work now.");
+
+        assertTrue(prompt.askConsent());
+        assertTrue(out.toString().contains("y) yes   n) no   q) leave   ?   \u203a "), out.toString());
+        assertTrue(out.toString().contains("Saying yes ends the work now."), out.toString());
+    }
+
+    @Test
+    @DisplayName("rule 11c: q leaves a consent, and an unknown German input offers the German keys")
+    void consentLeavesAndOffersGermanKeys() {
+        var leaving = new StringWriter();
+        var quit = createPrompt("q\n", leaving, "en");
+        assertThrows(StartPrompt.StartLeftException.class, quit::askConsent);
+        assertTrue(leaving.toString().contains("Left control.pause. Nothing was sent."), leaving.toString());
+
+        var out = new StringWriter();
+        var prompt = createPrompt("x\nj\n", out, "de");
+        assertTrue(prompt.askConsent());
+        assertTrue(out.toString().contains("x wird hier nicht angeboten: j, n, v"), out.toString());
+    }
+
+    @Test
+    @DisplayName("rule 11d: an empty stream leaves the consent instead of blocking")
+    void consentLeavesOnEndOfStream() {
+        var out = new StringWriter();
+        var prompt = createPrompt("", out, "en");
+
+        assertThrows(StartPrompt.StartLeftException.class, prompt::askConsent);
+        assertTrue(out.toString().contains("Nothing was sent."), out.toString());
+    }
+
+    @Test
+    @DisplayName("rule 3b: an empty stream leaves the choice prompt")
+    void leavesOnEndOfStream() {
+        var out = new StringWriter();
+        var prompt = createPrompt("", out, "en").leaveLabel("the pause");
+        prompt.addChoice("now", "now");
+
+        assertThrows(StartPrompt.StartLeftException.class, prompt::ask);
+        assertTrue(out.toString().contains("Left the pause. Nothing was sent."), out.toString());
+    }
+
+    @Test
+    @DisplayName("rule 3c: a read failure is reported, never swallowed")
+    void readFailureIsReported() {
+        var reader = new BufferedReader(new StringReader("")) {
+            @Override
+            public String readLine() throws IOException {
+                throw new IOException("terminal gone");
+            }
+        };
+        var prompt = new ChoicePrompt(reader, new PrintWriter(new StringWriter()), "en", STATE);
+        prompt.addChoice("now", "now");
+
+        var failure = assertThrows(IllegalStateException.class, prompt::ask);
+        assertTrue(failure.getMessage().contains("terminal gone"), failure.getMessage());
+    }
+
+    @Test
+    @DisplayName("rule 13: multi-selection toggles keys, ranges and numbers, and re-asks an unknown input")
+    void multiSelectionTogglesAndReAsks() {
+        var out = new StringWriter();
+        var prompt = createPrompt("opt1\n9\n2 2\n3-3\na-b\nEnter\n", out, "en");
+        prompt.addChoice("opt1", "Option 1");
+        prompt.addChoice("opt2", "Option 2");
+        prompt.addChoice("opt3", "Option 3");
+
+        var results = prompt.askMulti();
+        assertEquals(2, results.size());
+        assertEquals("opt1", results.get(0).key());
+        assertEquals("opt3", results.get(1).key());
+        assertTrue(out.toString().contains("9 is not offered here: 1-3, q"), out.toString());
+        assertTrue(out.toString().contains("a-b is not offered here: 1-3, q"), out.toString());
+    }
+
+    @Test
+    @DisplayName("rule 13b: multi-selection starts from its preselection, explains, and leaves on q")
+    void multiSelectionPreselectionExplanationAndLeave() {
+        var out = new StringWriter();
+        var prompt = createPrompt("?\nq\n", out, "en").leaveLabel("the pause");
+        prompt.explanation("Pick the plans to keep.");
+        prompt.addChoice("now", "now", null, null, true);
+        prompt.addChoice("task", "after the current task");
+
+        assertThrows(StartPrompt.StartLeftException.class, prompt::askMulti);
+        assertTrue(out.toString().contains("[\u2713] now"), out.toString());
+        assertTrue(out.toString().contains("Pick the plans to keep."), out.toString());
+        assertTrue(out.toString().contains("Left the pause. Nothing was sent."), out.toString());
     }
 
     @Test
