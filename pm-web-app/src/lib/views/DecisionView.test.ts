@@ -175,6 +175,7 @@ describe('DecisionView component', () => {
 
     // Open own words
     const ownWordsToggle = screen.getByText('in my own words');
+    expect(ownWordsToggle.closest('button')?.querySelector('[data-icon="act.edit"]')).not.toBeNull();
     await fireEvent.click(ownWordsToggle);
 
     const textarea = screen.getByPlaceholderText('State your decision in your own words…');

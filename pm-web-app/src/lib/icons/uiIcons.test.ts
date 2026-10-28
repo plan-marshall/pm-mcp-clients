@@ -59,6 +59,7 @@ describe('UI icon registry', () => {
       const svg = readFileSync(file, 'utf8');
 
       expect(svg, file).toMatch(/<svg\s[^>]*viewBox="0 0 24 24"/);
+      expect(svg, file).toContain('xmlns="http://www.w3.org/2000/svg"');
       expect(svg, file).toContain('fill="none"');
       expect(svg, file).toContain('stroke="currentColor"');
       expect(svg, file).toContain('stroke-width="1.5"');

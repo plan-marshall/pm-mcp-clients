@@ -57,6 +57,20 @@
   }
 
   /**
+   * The harness's fetched icon, where the runtime serves one from a same-origin path.
+   *
+   * An absolute URL is refused: the browser must never load an icon from a maker's server, so a
+   * harness that carries one keeps its monogram instead.
+   *
+   * @param row the harness row
+   * @returns the path to draw, or an empty string when the row carries none
+   */
+  function harnessIconPath(row: HarnessRow): string {
+    const path = row.icon_url?.trim() ?? '';
+    return path.startsWith('/') && !path.startsWith('//') ? path : '';
+  }
+
+  /**
    * The monogram of a harness without a fetched icon: the initial letters of up to two words,
    * in the rounded square the harness icon specification draws.
    *
@@ -64,7 +78,7 @@
    * @returns one or two upper-case letters
    */
   function monogram(row: HarnessRow): string {
-    const words = (row.name || row.harness_id).trim().split(/\s+/).filter(Boolean);
+    const words = (row.name?.trim() || row.harness_id).trim().split(/\s+/).filter(Boolean);
     if (words.length === 0) {
       return '?';
     }
@@ -110,10 +124,10 @@
           data-testid={`harness-toggle-${harness.harness_id}`}
         />
 
-        {#if harness.icon_url}
+        {#if harnessIconPath(harness)}
           <img
             class="choice-screen__icon"
-            src={harness.icon_url}
+            src={harnessIconPath(harness)}
             alt=""
             aria-hidden="true"
             data-testid={`harness-icon-${harness.harness_id}`}

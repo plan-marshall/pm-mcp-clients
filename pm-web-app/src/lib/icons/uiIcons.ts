@@ -2,10 +2,11 @@
  * The delivered UI icons and the names that resolve to them.
  *
  * The iconography proposal VD-P-06 of `doc/claude_review/visual-design/proposals.adoc` is the
- * set's authority, drawn on the contract of `doc/design/web-app/workflow-visual-language.adoc`:
- * a 24 px grid, a 1.5 px stroke, round caps, and `currentColor` only. Every name has one SVG under
- * `ui/`, named by the name with dots replaced by hyphens. A view resolves a name here and never
- * builds an asset path of its own.
+ * set's authority. It draws on the contract of
+ * `doc/design/web-app/workflow-visual-language.adoc` — the 24 px grid, round caps, `currentColor`
+ * only, no fill beyond a dot — at the 1.5 px stroke VD-P-06 sets for the interface. Every name has
+ * one SVG under `ui/`, named by the name with dots replaced by hyphens. A view resolves a name
+ * here and never builds an asset path of its own.
  */
 
 import actBackUrl from './ui/act-back.svg?url';

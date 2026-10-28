@@ -41,4 +41,21 @@ describe('HarnessChoice monograms', () => {
     expect(icon?.getAttribute('src')).toBe('/api/v1/harness-icons/claude.svg');
     expect(queryByTestId('harness-monogram-claude')).toBeNull();
   });
+
+  it('refuses an icon from a maker server and keeps the monogram', () => {
+    const { container, getByTestId } = render(HarnessChoice, {
+      props: { harnesses: [harness({ icon_url: 'https://example.invalid/claude.svg' })] },
+    });
+
+    expect(container.querySelector('img.choice-screen__icon')).toBeNull();
+    expect(getByTestId('harness-monogram-claude').textContent?.trim()).toBe('CC');
+  });
+
+  it('falls back to the harness id when the name carries no letter', () => {
+    const { getByTestId } = render(HarnessChoice, {
+      props: { harnesses: [harness({ name: '   ' })] },
+    });
+
+    expect(getByTestId('harness-monogram-claude').textContent?.trim()).toBe('C');
+  });
 });
