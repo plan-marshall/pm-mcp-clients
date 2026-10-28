@@ -71,9 +71,9 @@ final class CleanupFixtures {
             return null;
         }
         return new CleanupKeptItem(id, kind, label,
-                text(entry, KEY_REASON),
-                text(entry, KEY_KEPT_AT),
-                text(entry, KEY_KEPT_BY));
+                JsonTree.string(entry, KEY_REASON),
+                JsonTree.string(entry, KEY_KEPT_AT),
+                JsonTree.string(entry, KEY_KEPT_BY));
     }
 
     private static CleanupResidue residue(Map<String, Object> entry) {
@@ -84,7 +84,7 @@ final class CleanupFixtures {
         var bytes = JsonTree.number(entry, KEY_BYTES);
         var count = JsonTree.integer(entry, KEY_COUNT);
         return new CleanupResidue(step, count != null ? count : 0,
-                bytes != null ? bytes.longValue() : 0L, text(entry, KEY_LAST_RUN));
+                bytes != null ? bytes.longValue() : 0L, JsonTree.string(entry, KEY_LAST_RUN));
     }
 
     private static String text(Map<String, Object> entry, String key) {

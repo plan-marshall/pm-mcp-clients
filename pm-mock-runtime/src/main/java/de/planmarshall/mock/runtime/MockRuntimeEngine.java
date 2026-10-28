@@ -1090,8 +1090,16 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (fixture != null) {
             validateFixtureMembers(fixture);
         }
+        var previousStateId = this.fixtureStateId.get();
         this.fixtureStateId.set(stateId);
-        seedStateFixtures();
+        try {
+            seedStateFixtures();
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (IllegalStateException failure) {
+            this.fixtureStateId.set(previousStateId);
+            seedStateFixtures();
+            throw failure;
+        }
         transitionTo(stateId);
     }
 
@@ -4447,11 +4455,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             HoldResolutionResult result;
             if (ending) {
-                controlHolds.remove(holdKey(planId, holdId));
+                clearHoldsOf(planId);
                 controlPlanStates.put(planId, "ended");
                 controlPlanPausePoints.remove(planId);
-                broadcastEvent(HoldChangedEvent.EVENT_CLEARED, new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED,
-                        hold.holdId(), hold.subjectId(), hold.subjectKind(), null, null).toMap());
                 var endReason = resolution.reason();
                 if (endReason == null) {
                     endReason = ACTION_ABORT.equals(act) ? "Integrity pause aborted" : "Ended by operator";
@@ -4479,6 +4485,27 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 result = new HoldResolutionResult(holdId, false, updated.cause(), planId);
             }
             response.json(200, result.toMap());
+        }
+    }
+
+    /**
+     * Clears every hold the plan carries, because ending the plan ends all of them.
+     *
+     * @param planId the plan being ended
+     */
+    private void clearHoldsOf(String planId) {
+        var cleared = new ArrayList<HoldRecord>();
+        var iterator = controlHolds.values().iterator();
+        while (iterator.hasNext()) {
+            var candidate = iterator.next();
+            if (planId.equals(candidate.subjectId())) {
+                cleared.add(candidate);
+                iterator.remove();
+            }
+        }
+        for (var done : cleared) {
+            broadcastEvent(HoldChangedEvent.EVENT_CLEARED, new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED,
+                    done.holdId(), done.subjectId(), done.subjectKind(), null, null).toMap());
         }
     }
 
@@ -5838,6 +5865,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             ));
         } catch (IllegalArgumentException e) {
             response.json(404, Map.of(KEY_ERROR, "state_not_found", KEY_MESSAGE, e.getMessage()));
+        } catch (IllegalStateException e) {
+            response.json(500, Map.of(KEY_ERROR, "state_fixture_invalid", KEY_MESSAGE, e.getMessage()));
         }
     }
 
@@ -6082,7 +6111,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             summaries.put("2", "Claude Code 2.4.1 (default), OpenCode 1.9.0");
         }
         if (upTo >= 3) {
-            summaries.put("3", "3 models on 2 harnesses");
+            summaries.put("3", "4 models on 2 harnesses");
         }
         if (upTo >= 4) {
             summaries.put("4", "31 roles assigned");

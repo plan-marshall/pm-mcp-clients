@@ -204,8 +204,8 @@ test.describe('Controlling work (UC-CTL-1..5)', () => {
     await expect(page.getByTestId('workstream-WS-1')).toContainText('Reconnect');
     await expect(page.getByTestId('epic-row-relay-cursor-order')).toBeVisible();
     await expect(page.getByTestId('epic-sources')).toContainText('2 documents');
-    await expect(page.getByTestId('epic-landing-count')).toContainText('1 landing');
-    await expect(page.getByTestId('epic-findings')).toContainText('0 new');
+    await expect(page.getByTestId('epic-landing-count')).toHaveText('1 landing');
+    await expect(page.getByTestId('epic-findings')).toHaveText(/0 new · \d+ open · \d+ kept/);
     await expect(page.getByTestId('epic-watches')).toContainText('4 open');
     await expect(page.getByTestId('epic-own-tokens')).toBeVisible();
     await expect(page.getByTestId('epic-events')).toContainText('relay-auth-v2 asks a decision');
