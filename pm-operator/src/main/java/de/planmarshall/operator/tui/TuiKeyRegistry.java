@@ -162,6 +162,16 @@ public final class TuiKeyRegistry {
      * @return the footer line, without a leading or trailing separator
      */
     public static String footer(TuiLevel.Kind kind, String locale, int reportsCount) {
+        return String.join(FOOTER_SEPARATOR, footerCells(kind, locale, reportsCount));
+    }
+
+    /**
+     * @param kind         the kind of level
+     * @param locale       the interface locale
+     * @param reportsCount the number of unread reports
+     * @return the cells of the footer, in the order they are drawn
+     */
+    private static List<String> footerCells(TuiLevel.Kind kind, String locale, int reportsCount) {
         var parts = new ArrayList<String>();
         for (var entry : footerEntries(kind)) {
             if (entry.action() == TuiKeyAction.REPORTS && kind == TuiLevel.Kind.OVERVIEW
@@ -171,7 +181,7 @@ public final class TuiKeyRegistry {
             }
             parts.add(entry.display() + ' ' + label(entry.action(), kind, locale, reportsCount));
         }
-        return String.join(FOOTER_SEPARATOR, parts);
+        return List.copyOf(parts);
     }
 
     /**
@@ -186,15 +196,7 @@ public final class TuiKeyRegistry {
      * @return the footer line, without a leading or trailing separator
      */
     public static String footer(TuiLevel.Kind kind, String locale, int reportsCount, int width) {
-        var parts = new ArrayList<String>();
-        for (var entry : footerEntries(kind)) {
-            if (entry.action() == TuiKeyAction.REPORTS && kind == TuiLevel.Kind.OVERVIEW
-                                && reportsCount == 0) {
-                continue;
-            }
-            parts.add(entry.display() + ' ' + label(entry.action(), kind, locale, reportsCount));
-        }
-        return fit(parts, width, locale);
+        return fit(footerCells(kind, locale, reportsCount), width, locale);
     }
 
     /**
@@ -326,9 +328,8 @@ public final class TuiKeyRegistry {
      * not fit whole beside the {@code ? more} cell, the help cell is replaced by that cell, and the
      * line ends with it. A key is never cut in the middle.
      *
-     * <p>A line too narrow even for one cell beside {@code ? more} keeps its cells unchanged, so
-     * the caller's own truncation cuts it: a footer of only {@code ? more} would name an overlay
-     * for keys the line does not show at all.
+     * <p>A line too narrow even for one cell beside {@code ? more} carries that cell alone: it is
+     * whole, and it names the overlay that lists every key the line cannot show.
      *
      * @param cells  the cells, in the order they are kept
      * @param width  the columns the footer may use
@@ -343,9 +344,7 @@ public final class TuiKeyRegistry {
         var more = moreCell(locale);
         var kept = keepCells(cells, width, helpCell(locale), more);
         if (kept.isEmpty()) {
-            // Not even one cell fits beside ? more: the line keeps its text, and the layout's own
-            // truncation cuts it; a bare ? more would name an overlay for a footer that shows none.
-            return joined;
+            return more;
         }
         kept.add(more);
         return String.join(FOOTER_SEPARATOR, kept);

@@ -329,8 +329,9 @@ level.
 
 * *Priority*: each binding carries a priority in the registry. The footer keeps its cells in that
   order — move first, then open, back, the level's own act on its row, `? help` and `q leave`, then
-  the rest in the order the level declares them — so a narrow terminal drops the tail of the line
-  and never a key that matters more.
+  the level's own row and view jumps (epic, completion report, project), and finally the remaining
+  keys in the order the level declares them — so a narrow terminal drops the tail of the line and
+  never a key that matters more.
 
 * *Fill*: the footer fills the terminal's width and never cuts a key in the middle. When the next
   cell does not fit whole, the line stops there and ends with `? more`, the same key that opens the
@@ -632,6 +633,22 @@ The texts of the rows are those of link:../shared/plan-overview.adoc#texts[Plan 
 |`operator.overview.keys.leave`
 |leave
 |verlasse
+
+|`operator.overview.keys.more`
+|more
+|mehr
+
+|`operator.overview.help.close`
+|close
+|schließen
+
+|`operator.overview.help.title`
+|keys
+|Tasten
+
+|`operator.overview.help.views`
+|views
+|Ansichten
 
 |`operator.overview.keys.reload`
 |reload

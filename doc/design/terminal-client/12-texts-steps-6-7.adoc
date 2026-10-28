@@ -13,7 +13,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts].
 
 [#texts-onboard-providers]
-== 6 Providers
+== Providers — step 6
 
 [cols="3,3,3",options="header"]
 |===
@@ -177,7 +177,7 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 |===
 
 [#texts-onboard-plans]
-== 7 Plans
+== Plans — step 7
 
 [cols="3,3,3",options="header"]
 |===

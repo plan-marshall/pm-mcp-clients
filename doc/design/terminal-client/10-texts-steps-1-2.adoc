@@ -13,7 +13,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts].
 
 [#texts-onboard-language]
-== 1 Language
+== Language — step 1
 
 [cols="3,3,3",options="header"]
 |===
@@ -83,7 +83,7 @@ The conventions of the texts are those of xref:09-texts-common.adoc#texts[Texts]
 The names of the languages are each written in their own language, in every pack, so the operator finds their own.
 
 [#texts-onboard-harness]
-== 2 Harnesses
+== Harnesses — step 2
 
 [cols="3,3,3",options="header"]
 |===
