@@ -637,9 +637,8 @@ public final class PlanCommand implements Callable<Integer> {
         /**
          * @param out the verb's output
          * @return the point the pause takes, or {@code null} when {@code --no-input} met a question
-         * @throws IOException on transport failure
          */
-        private @Nullable String point(PrintWriter out) throws IOException {
+        private @Nullable String point(PrintWriter out) {
             if (now) {
                 return AFTER_NOW;
             }

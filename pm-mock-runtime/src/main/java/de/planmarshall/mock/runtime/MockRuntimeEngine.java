@@ -244,7 +244,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String SEGMENT_ENTRY_CHAT_END = "/chat/end";
     private static final String SEGMENT_ENTRY_CHAT_PROPOSAL = SEGMENT_ENTRY_CHAT + "/proposal/";
     private static final String ACTION_ACCEPT = "accept";
-    private static final String ACTION_RETRY = "retry";
+    private static final String ACTION_PAUSE = "pause";
+    private static final String ACTION_ABANDON = "abandon";
+    private static final String ACTION_COMMON_FILES = "common_files";
+    private static final String ACTION_ARCHIVE = "archive";    private static final String ACTION_RETRY = "retry";
     private static final String ACTION_ABORT = "abort";
     private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT = SEGMENT_ENTRY_CHAT_PROPOSAL + ACTION_ACCEPT;
     private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT = SEGMENT_ENTRY_CHAT_PROPOSAL + "reject";
@@ -4059,12 +4062,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             case "paused" -> {
                 actions.add(ActionAvailability.enabled("start"));
-                actions.add(ActionAvailability.enabled("abandon"));
+                actions.add(ActionAvailability.enabled(ACTION_ABANDON));
                 addChatAndSettings(planId, actions);
             }
             case "ended" -> actions.add(ActionAvailability.enabled("chat"));
             default -> {
-                actions.add(ActionAvailability.enabled("pause"));
+                actions.add(ActionAvailability.enabled(ACTION_PAUSE));
                 actions.add(ActionAvailability.enabled("cancel"));
                 addChatAndSettings(planId, actions);
             }
@@ -4091,15 +4094,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
         } else {
             actions.add(ActionAvailability.enabled("next"));
             actions.add(ActionAvailability.enabled("auto"));
-            actions.add(ActionAvailability.enabled("common_files"));
+            actions.add(ActionAvailability.enabled(ACTION_COMMON_FILES));
             actions.add(ActionAvailability.enabled("decompose"));
             actions.add(ActionAvailability.enabled(FIELD_FINDINGS));
             actions.add(ActionAvailability.enabled("watches"));
             actions.add(ActionAvailability.enabled("chat"));
             if ("landing".equals(state)) {
-                actions.add(ActionAvailability.disabled("archive", "the ledger is landing"));
+                actions.add(ActionAvailability.disabled(ACTION_ARCHIVE, "the ledger is landing"));
             } else {
-                actions.add(ActionAvailability.enabled("archive"));
+                actions.add(ActionAvailability.enabled(ACTION_ARCHIVE));
             }
             actions.add(ActionAvailability.enabled("cancel"));
         }
@@ -4137,10 +4140,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 var slash = sub.indexOf('/');
                 if (slash > 0 && sub.indexOf('/', slash + 1) < 0) {
                     var candidate = sub.substring(slash + 1);
-                    if (isPlan && Set.of("pause", "start", "cancel", "abandon").contains(candidate)) {
+                    if (isPlan && Set.of(ACTION_PAUSE, "start", "cancel", ACTION_ABANDON).contains(candidate)) {
                         subjectId = sub.substring(0, slash);
                         action = candidate;
-                    } else if (isEpic && Set.of("auto", "common_files", "cancel", "next", "archive").contains(candidate)) {
+                    } else if (isEpic && Set.of("auto", ACTION_COMMON_FILES, "cancel", "next",
+                                        ACTION_ARCHIVE).contains(candidate)) {
                         subjectId = sub.substring(0, slash);
                         action = candidate;
                     }
@@ -4238,20 +4242,24 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private Map<String, Object> readBodyMap(MockHttpRequest request) {
-        if (request.body() == null || request.body().length == 0) {
-            return new LinkedHashMap<>();
-        }
-        try {
-            var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
+        var body = request.body();
+        if (body != null && body.length > 0) {
+            var parsed = parseBody(body);
             if (parsed != null) {
                 return parsed;
             }
         }
+        return new LinkedHashMap<>();
+    }
+
+    private @Nullable Map<String, Object> parseBody(byte[] body) {
+        try {
+            return JsonTree.asObject(JsonTree.parse(body));
+        }
         /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         catch (IOException | RuntimeException _) {
-            // an unreadable body is an empty payload
+            return null;
         }
-        return new LinkedHashMap<>();
     }
 
     private @Nullable HoldRecord holdFor(String planId) {
@@ -4299,7 +4307,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             switch (action) {
-                case "pause" -> {
+                case ACTION_PAUSE -> {
                     var point = actionRequest.point() != null ? actionRequest.point() : "task";
                     controlPlanStates.put(planId, "pausing");
                     controlPlanPausePoints.put(planId, point);
@@ -4312,7 +4320,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     broadcastEvent(PlanControlEvent.EVENT_RESUMED, new PlanControlEvent(
                             PlanControlEvent.EVENT_RESUMED, planId, "running", null, null).toMap());
                 }
-                case "cancel", "abandon" -> {
+                case "cancel", ACTION_ABANDON -> {
                     controlPlanStates.put(planId, "ended");
                     controlPlanPausePoints.remove(planId);
                     removeHolds(planId);
@@ -4362,7 +4370,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         }
                     }
                 }
-                case "common_files" -> {
+                case ACTION_COMMON_FILES -> {
                     var value = actionRequest.extra().get("count");
                     if (value instanceof Number number) {
                         controlEpicOverlap.put(epicId, number.intValue());

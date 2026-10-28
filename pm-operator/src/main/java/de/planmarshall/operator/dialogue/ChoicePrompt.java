@@ -204,23 +204,28 @@ public final class ChoicePrompt {
             if (isQuit(line)) {
                 throw left();
             }
-            if (explained(line)) {
-                continue;
-            }
-            if (line.isEmpty()) {
-                var preselected = preselectedChoice();
-                if (preselected != null) {
-                    return echoed(preselected);
+            if (!explained(line)) {
+                var chosen = choiceFor(line);
+                if (chosen != null) {
+                    return echoed(chosen);
                 }
+            }
+        }
+    }
+
+    private @Nullable Choice choiceFor(String line) {
+        if (line.isEmpty()) {
+            var preselected = preselectedChoice();
+            if (preselected == null) {
                 printLine("operator.dialogue.enter_no_default", Map.of());
-                continue;
             }
-            var matched = match(line);
-            if (matched != null) {
-                return echoed(matched);
-            }
+            return preselected;
+        }
+        var matched = match(line);
+        if (matched == null) {
             printNotOffered(line);
         }
+        return matched;
     }
 
     /**
@@ -238,17 +243,20 @@ public final class ChoicePrompt {
             if (isQuit(line)) {
                 throw left();
             }
-            if (explained(line)) {
-                continue;
+            if (!explained(line)) {
+                var answer = consentAnswer(line);
+                if (answer != null) {
+                    return answer;
+                }
+                rejectConsent(line);
             }
-            if (line.isEmpty()) {
-                printLine("operator.dialogue.consent.type_yn", Map.of());
-                continue;
-            }
-            var answer = consentAnswer(line);
-            if (answer != null) {
-                return answer;
-            }
+        }
+    }
+
+    private void rejectConsent(String line) {
+        if (line.isEmpty()) {
+            printLine("operator.dialogue.consent.type_yn", Map.of());
+        } else {
             printNotOffered(line, consentOffered());
         }
     }
