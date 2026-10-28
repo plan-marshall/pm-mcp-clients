@@ -6489,7 +6489,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (stateId == null) {
             return null;
         }
-        var state = currentScenario.get().state(stateId);
+        var scenario = currentScenario.get();
+        if (scenario == null) {
+            return null;
+        }
+        var state = scenario.state(stateId);
         var representation = state != null ? JsonTree.asObject(state.representation()) : null;
         return representation != null
                 ? JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS))
