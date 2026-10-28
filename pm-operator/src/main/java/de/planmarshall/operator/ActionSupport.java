@@ -105,15 +105,15 @@ final class ActionSupport {
         pause.addChoice("now", MessageCatalogue.format(locale, "operator.actions.pause.now", Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.consequence.now", Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.explain.now", Map.of()),
-                            false, null);
+                            false);
         pause.addChoice("task", MessageCatalogue.format(locale, "operator.actions.pause.task", Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.consequence.task", Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.explain.task", Map.of()),
-                            true, null);
+                            true);
         pause.addChoice("phase", MessageCatalogue.format(locale, "operator.actions.pause.phase", Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.consequence.phase", Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.explain.phase", Map.of()),
-                            false, null);
+                            false);
         if (epicId != null) {
             pause.epicTold(MessageCatalogue.format(locale, "operator.actions.end.told", Map.of("epic", epicId)));
         }
@@ -137,8 +137,7 @@ final class ActionSupport {
                         @Nullable String entryId) {
         var question = MessageCatalogue.format(prompt.locale(), "operator.actions.end.reason", Map.of());
         var reason = prompt.askRaw(question, state, question, entryId);
-        if ("q".equalsIgnoreCase(reason) || (prompt.locale().toLowerCase(Locale.ROOT).startsWith("de")
-                            && "v".equalsIgnoreCase(reason))) {
+        if (ChoicePrompt.isLeave(prompt.locale(), reason)) {
             prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.dialogue.left",
                                 Map.of("state", leaveLabel)));
             throw new StartPrompt.StartLeftException();

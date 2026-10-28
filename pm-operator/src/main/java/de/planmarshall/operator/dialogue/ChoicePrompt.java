@@ -21,9 +21,7 @@ import java.util.Objects;
 import java.util.Set;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
-import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
-import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.message.MessageCatalogue;
@@ -47,24 +45,24 @@ import de.planmarshall.operator.StartPrompt;
 public final class ChoicePrompt {
 
     private static final String PRESELECT_ARROW = " \u2190";
+    private static final int MAX_ROW = 80;
+    private static final int MIN_CONSEQUENCE_COLUMN = 20;
 
     /**
      * One option in a choice prompt.
      *
-     * @param key             the option key or identifier
-     * @param label           the human-readable option label
-     * @param consequence     what happens if this option is chosen (optional)
-     * @param explanation     the detailed explanation for {@code ?n} (optional)
-     * @param preselected     whether this option is taken on Enter
-     * @param preselectReason reason for preselection (optional, e.g. "recommended")
+     * @param key         the option key or identifier
+     * @param label       the human-readable option label
+     * @param consequence what happens if this option is chosen (optional)
+     * @param explanation the detailed explanation for {@code ?n} (optional)
+     * @param preselected whether this option is taken on Enter
      */
     public record Choice(
     String key,
     String label,
     @Nullable String consequence,
     @Nullable String explanation,
-    boolean preselected,
-    @Nullable String preselectReason
+    boolean preselected
     ) {
         public Choice {
             Objects.requireNonNull(key, "key");
@@ -72,15 +70,11 @@ public final class ChoicePrompt {
         }
 
         public static Choice of(String key, String label) {
-            return new Choice(key, label, null, null, false, null);
+            return new Choice(key, label, null, null, false);
         }
 
         public static Choice preselected(String key, String label) {
-            return new Choice(key, label, null, null, true, null);
-        }
-
-        public static Choice preselected(String key, String label, String reason) {
-            return new Choice(key, label, null, null, true, reason);
+            return new Choice(key, label, null, null, true);
         }
     }
 
@@ -116,19 +110,6 @@ public final class ChoicePrompt {
         this.out = Objects.requireNonNull(out, "out");
         this.locale = Objects.requireNonNull(locale, "locale");
         this.stateId = Objects.requireNonNull(stateId, "stateId");
-    }
-
-    /**
-     * Creates a choice prompt over a JLine {@link Terminal}.
-     *
-     * @param terminal the terminal
-     * @param out      the output writer
-     * @param locale   the interface locale
-     * @param stateId  the state identifier
-     */
-    public ChoicePrompt(Terminal terminal, PrintWriter out, String locale, String stateId) {
-        this(LineReaderBuilder.builder().terminal(Objects.requireNonNull(terminal, "terminal")).build(),
-                            out, locale, stateId);
     }
 
     /**
@@ -206,9 +187,8 @@ public final class ChoicePrompt {
     }
 
     public ChoicePrompt addChoice(String key, String label, @Nullable String consequence,
-                        @Nullable String explanation, boolean preselected,
-                        @Nullable String preselectReason) {
-        return addChoice(new Choice(key, label, consequence, explanation, preselected, preselectReason));
+                        @Nullable String explanation, boolean preselected) {
+        return addChoice(new Choice(key, label, consequence, explanation, preselected));
     }
 
     /**
@@ -452,12 +432,10 @@ public final class ChoicePrompt {
         for (var i = 0; i < choices.size(); i++) {
             var c = choices.get(i);
             var arrow = c.preselected() ? PRESELECT_ARROW : "";
-            var reason = c.preselected() && c.preselectReason() != null
-                                ? " " + c.preselectReason() : "";
-            var left = "  " + (i + 1) + ") " + c.label() + arrow + reason;
+            var left = "  " + (i + 1) + ") " + c.label() + arrow;
 
             if (hasConsequences && c.consequence() != null) {
-                out.printf("%-" + labelWidth + "s%s%n", left, c.consequence());
+                printTwoColumn(left, c.consequence(), labelWidth);
             } else {
                 out.println(left);
             }
@@ -468,6 +446,39 @@ public final class ChoicePrompt {
                                 + "   " + epicTold);
         }
         out.flush();
+    }
+
+    /**
+     * Draws one option with its consequence in the second column and wraps the consequence into the
+     * column rather than past {@link #MAX_ROW}, so a narrow terminal never breaks a word.
+     *
+     * @param left        the rendered option
+     * @param consequence the consequence
+     * @param labelWidth  the width of the first column
+     */
+    private void printTwoColumn(String left, String consequence, int labelWidth) {
+        var lines = wrap(consequence, Math.max(MAX_ROW - labelWidth, MIN_CONSEQUENCE_COLUMN));
+        out.printf("%-" + labelWidth + "s%s%n", left, lines.getFirst());
+        for (var line : lines.subList(1, lines.size())) {
+            out.printf("%-" + labelWidth + "s%s%n", "", line);
+        }
+    }
+
+    private static List<String> wrap(String text, int width) {
+        var lines = new ArrayList<String>();
+        var current = new StringBuilder();
+        for (var word : text.split(" ")) {
+            if (current.length() > 0 && current.length() + 1 + word.length() > width) {
+                lines.add(current.toString());
+                current.setLength(0);
+            }
+            if (current.length() > 0) {
+                current.append(' ');
+            }
+            current.append(word);
+        }
+        lines.add(current.toString());
+        return lines;
     }
 
     private void renderMultiFrame(Set<Integer> selected) {
@@ -506,10 +517,19 @@ public final class ChoicePrompt {
     }
 
     private boolean isQuit(String line) {
+        return isLeave(locale, line);
+    }
+
+    /**
+     * @param locale the interface locale
+     * @param line   the operator's line
+     * @return whether the line leaves the dialogue: {@code q}, and {@code v} in German
+     */
+    public static boolean isLeave(String locale, String line) {
         if ("q".equalsIgnoreCase(line)) {
             return true;
         }
-        return isGerman() && "v".equalsIgnoreCase(line);
+        return locale.toLowerCase(Locale.ROOT).startsWith("de") && "v".equalsIgnoreCase(line);
     }
 
     private boolean isGerman() {

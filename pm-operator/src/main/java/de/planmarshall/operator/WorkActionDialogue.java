@@ -220,12 +220,12 @@ final class WorkActionDialogue {
                                                 Map.of()), null,
                             MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_with_explain",
                                                 Map.of()),
-                            false, null);
+                            false);
         plans.addChoice("keep_plans", MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_keep",
                                                 Map.of()), null,
                             MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_keep_explain",
                                                 Map.of()),
-                            false, null);
+                            false);
         var withPlans = "with_plans".equals(plans.ask().key());
         var reason = ActionSupport.askEndReason(prompt, STATE_ID, dialogueLabel("cancel"), id);
         if (reason == null) {

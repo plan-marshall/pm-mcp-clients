@@ -595,6 +595,26 @@ class ControlDialoguesTest {
     }
 
     @Test
+    @DisplayName("cancelling an epic can let its plans run on")
+    void workActionCancelEpicKeepsPlans() throws Exception {
+        var body = new String[1];
+        serve((request, response) -> {
+            if (request.target().endsWith("/actions/cancel")) {
+                body[0] = request.bodyText();
+                response.json(200, EPIC_ACTIONS);
+            } else if (request.target().endsWith("/actions")) {
+                response.json(200, EPIC_ACTIONS);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("2\nbecause the scope moved\ny\n");
+        assertEquals(0, dialogue("epic", "e", "cancel"), out.toString());
+        assertNotNull(body[0], out.toString());
+        assertTrue(body[0].contains("\"with_plans\":false"), body[0]);
+    }
+
+    @Test
     @DisplayName("an archive that does not pass names what to decide")
     void workActionArchiveNotPassed() throws Exception {
         serve((request, response) -> {

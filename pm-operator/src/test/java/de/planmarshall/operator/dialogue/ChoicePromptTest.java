@@ -56,8 +56,8 @@ class ChoicePromptTest {
     void picksByKey() {
         var out = new StringWriter();
         var prompt = createPrompt("now\n", out, "en");
-        prompt.addChoice("now", "now", "stop now", "immediately", false, null);
-        prompt.addChoice("task", "after the current task", "after task", "after current task finishes", true, null);
+        prompt.addChoice("now", "now", "stop now", "immediately", false);
+        prompt.addChoice("task", "after the current task", "after task", "after current task finishes", true);
 
         var result = prompt.ask();
         assertNotNull(result);
@@ -69,9 +69,9 @@ class ChoicePromptTest {
     void picksByNumber() {
         var out = new StringWriter();
         var prompt = createPrompt("2\n", out, "en");
-        prompt.addChoice("now", "now", "stop now", null, false, null);
-        prompt.addChoice("task", "after the current task", "finish task", null, false, null);
-        prompt.addChoice("phase", "after the current phase", "finish phase", null, false, null);
+        prompt.addChoice("now", "now", "stop now", null, false);
+        prompt.addChoice("task", "after the current task", "finish task", null, false);
+        prompt.addChoice("phase", "after the current phase", "finish phase", null, false);
 
         var result = prompt.ask();
         assertNotNull(result);
@@ -83,8 +83,8 @@ class ChoicePromptTest {
     void echoesTheAnswer() {
         var out = new StringWriter();
         var prompt = createPrompt("\n", out, "en");
-        prompt.addChoice("now", "now", null, null, false, null);
-        prompt.addChoice("task", "after the current task", null, null, true, null);
+        prompt.addChoice("now", "now", null, null, false);
+        prompt.addChoice("task", "after the current task", null, null, true);
 
         prompt.ask();
         assertTrue(out.toString().contains("Chosen: after the current task"), out.toString());
@@ -122,9 +122,9 @@ class ChoicePromptTest {
     void enterTakesDeclaredPreselection() {
         var out = new StringWriter();
         var prompt = createPrompt("\n", out, "en");
-        prompt.addChoice("now", "now", "stop now", null, false, null);
-        prompt.addChoice("task", "after the current task", "finish task", null, true, "recommended");
-        prompt.addChoice("phase", "after the current phase", "finish phase", null, false, null);
+        prompt.addChoice("now", "now", "stop now", null, false);
+        prompt.addChoice("task", "after the current task", "finish task", null, true);
+        prompt.addChoice("phase", "after the current phase", "finish phase", null, false);
 
         var result = prompt.ask();
         assertNotNull(result);
@@ -168,8 +168,8 @@ class ChoicePromptTest {
         var out = new StringWriter();
         // First ?2, then valid choice "2"
         var prompt = createPrompt("?2\n2\n", out, "en");
-        prompt.addChoice("now", "now", "immediate stop", "Withdraws running jobs immediately", false, null);
-        prompt.addChoice("task", "after the current task", "clean boundary", "Lets active task finish its build", true, null);
+        prompt.addChoice("now", "now", "immediate stop", "Withdraws running jobs immediately", false);
+        prompt.addChoice("task", "after the current task", "clean boundary", "Lets active task finish its build", true);
 
         var result = prompt.ask();
         assertEquals("task", result.key());
@@ -199,6 +199,34 @@ class ChoicePromptTest {
         assertThrows(StartPrompt.StartLeftException.class, prompt::ask);
         var output = out.toString();
         assertTrue(output.contains("Verlassen: control.pause. Es wurde nichts gesendet."), output);
+    }
+
+    @Test
+    @DisplayName("rule 8c: the German leave message names the human label")
+    void vLeavesGermanWithLabel() {
+        var out = new StringWriter();
+        var prompt = createPrompt("v\n", out, "de").leaveLabel("Das Abbrechen");
+        prompt.addChoice("1", "erstes");
+
+        assertThrows(StartPrompt.StartLeftException.class, prompt::ask);
+        assertTrue(out.toString().contains("Verlassen: Das Abbrechen. Es wurde nichts gesendet."), out.toString());
+    }
+
+    @Test
+    @DisplayName("rule 12b: a long consequence wraps into its column and never exceeds 80 columns")
+    void wrapsLongConsequenceIntoItsColumn() {
+        var out = new StringWriter();
+        var prompt = createPrompt("1\n", out, "en");
+        prompt.addChoice("now", "now",
+                            "laufende Arbeit wird sofort zurueckgezogen; sie laeuft beim Start wieder", null, false);
+        prompt.addChoice("task", "after the current task", "der laufende Task schliesst ab, dann haelt der Plan an",
+                            null, true);
+
+        prompt.ask();
+        for (var line : out.toString().split("\n")) {
+            assertTrue(line.length() <= 80, line.length() + ": " + line);
+        }
+        assertTrue(out.toString().contains("laeuft beim Start wieder"), out.toString());
     }
 
     @Test
@@ -297,15 +325,16 @@ class ChoicePromptTest {
         var out = new StringWriter();
         var prompt = createPrompt("1\n", out, "en");
         prompt.title("Pause fix-relay?");
-        prompt.addChoice("now", "now", "2 tasks withdrawn, 1 job stopped; they run again on start", null, false, null);
-        prompt.addChoice("task", "after the current task", "implement · 4 min, build · 2 min finish", null, true, null);
-        prompt.addChoice("phase", "after the current phase", "execute runs to its end: 3 of 7 tasks left", null, false, null);
+        prompt.addChoice("now", "now", "2 tasks withdrawn, 1 job stopped; they run again on start", null, false);
+        prompt.addChoice("task", "after the current task", "implement · 4 min, build · 2 min finish", null, true);
+        prompt.addChoice("phase", "after the current phase", "execute runs to its end: 3 of 7 tasks left", null, false);
 
         prompt.ask();
         var output = out.toString();
         assertTrue(output.contains("1) now"), output);
         assertTrue(output.contains("2) after the current task \u2190"), output);
-        assertTrue(output.contains("2 tasks withdrawn, 1 job stopped; they run again on start"), output);
+        assertTrue(output.contains("2 tasks withdrawn, 1 job stopped;"), output);
+        assertTrue(output.contains("on start"), output);
         assertTrue(output.contains("implement \u00b7 4 min, build \u00b7 2 min finish"), output);
     }
 }

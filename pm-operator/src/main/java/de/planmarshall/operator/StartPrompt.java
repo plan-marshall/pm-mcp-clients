@@ -185,10 +185,6 @@ public final class StartPrompt {
         }
     }
 
-    private String readLine() {
-        return read(reader());
-    }
-
     /**
      * Reads one line and trims it. The reader is handed in so the caller opens it — and answers
      * JLine's terminal probe — before it draws its question, never after the operator started typing.

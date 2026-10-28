@@ -78,27 +78,38 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 ----
 pm › plan cancel fix-relay
 Cancel fix-relay?
-  What ends      the running work: 1 job, 2 tasks
-  Pull request   #214 https://github.com/plan-marshall/pm-mcp-clients/pull/214 is open
-                 1) close it, with the reason ←   2) leave it open
   Its epic       relay-hardening is told
   Afterwards     the plan is archived as cancelled; its branch stays
   Reason         › the approach is replaced by plan relay-v2
+  Reason         the approach is replaced by plan relay-v2
 Cancel the plan? y) yes   n) no   q) leave   ?   › y
-✓ fix-relay cancelled and archived; #214 closed; relay-hardening told
+✓ fix-relay cancelled and archived
 pm ›
+----
+
+Across the menu, `x  Cancel…` adds the pull request between the reason and the consent, and neither
+answer is preselected:
+
+[source,text]
+----
+  Pull request
+  1) close it, with the reason
+  2) leave it open
+  › 1
+Chosen: close it, with the reason
 ----
 
 [source,text]
 ----
 pm › plan pause fix-relay
 Pause fix-relay?
-  1) now                       2 tasks withdrawn, 1 job stopped; they run again on start
-  2) after the current task ←  implement · 4 min, build · 2 min finish
-  3) after the current phase   execute runs to its end: 3 of 7 tasks left
+  1) now                       running work is withdrawn at once; it runs again on start
+  2) after the current task ←  the running task finishes, then the plan holds
+  3) after the current phase   the running phase finishes, then the plan holds
   Its epic   relay-hardening is told
 › ⏎
-✓ fix-relay pausing after the task; relay-hardening told
+Chosen: after the current task
+✓ fix-relay pausing after the task
 …
 ✓ fix-relay paused
 pm ›
