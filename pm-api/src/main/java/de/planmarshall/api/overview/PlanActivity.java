@@ -13,13 +13,18 @@ import org.jspecify.annotations.Nullable;
 
 /**
  * Closed enumeration of a plan's operational activity states.
+ * <p>
+ * {@link #STAGED} and {@link #ENDED} are the two values the plan's {@code phase_state} also
+ * carries: a staged plan is cut and not started, an ended plan has finished its phases.
  */
 public enum PlanActivity {
     RUNNING("running"),
     PAUSING("pausing"),
     PAUSED("paused"),
     WAITING_FOR_YOU("waiting_for_you"),
-    HELD("held");
+    HELD("held"),
+    STAGED("staged"),
+    ENDED("ended");
 
     private final String value;
 
