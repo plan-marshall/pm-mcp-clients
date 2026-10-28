@@ -4458,21 +4458,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             switch (action) {
-                case ACTION_AUTO -> {
-                    var enabled = actionRequest.extra().get(FIELD_ENABLED);
-                    if (enabled instanceof Boolean flag) {
-                        controlEpicAuto.put(epicId, flag);
-                    } else {
-                        var mode = actionRequest.extra().get("mode");
-                        if (mode != null) {
-                            controlEpicAuto.put(epicId, "on".equalsIgnoreCase(String.valueOf(mode)));
-                        }
-                    }
-                    var commonFiles = actionRequest.extra().get(ACTION_COMMON_FILES);
-                    if (commonFiles instanceof Number number) {
-                        controlEpicOverlap.put(epicId, number.intValue());
-                    }
-                }
+                case ACTION_AUTO -> applyAuto(epicId, actionRequest);
                 case ACTION_COMMON_FILES -> {
                     var value = actionRequest.extra().get("count");
                     if (value instanceof Number number) {
@@ -4490,6 +4476,22 @@ public final class MockRuntimeEngine implements AutoCloseable {
             resp.put("overlap_max_files", controlEpicOverlap.getOrDefault(epicId, 0));
             resp.putAll(buildEpicActions(epicId).toMap());
             response.json(200, resp);
+        }
+    }
+
+    private void applyAuto(String epicId, PlanActionRequest actionRequest) {
+        var enabled = actionRequest.extra().get(FIELD_ENABLED);
+        if (enabled instanceof Boolean flag) {
+            controlEpicAuto.put(epicId, flag);
+        } else {
+            var mode = actionRequest.extra().get("mode");
+            if (mode != null) {
+                controlEpicAuto.put(epicId, "on".equalsIgnoreCase(String.valueOf(mode)));
+            }
+        }
+        var commonFiles = actionRequest.extra().get(ACTION_COMMON_FILES);
+        if (commonFiles instanceof Number number) {
+            controlEpicOverlap.put(epicId, number.intValue());
         }
     }
 
