@@ -6453,7 +6453,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
      *
      * @param facts the seeding state's operator facts
      */
-    private void applyCleanupFacts(Map<String, Object> facts) {
+    private void applyCleanupFacts(@Nullable Map<String, Object> facts) {
+        if (facts == null) {
+            return;
+        }
         if (Boolean.FALSE.equals(JsonTree.bool(facts, "open"))) {
             activeCleanupJob = null;
         }
