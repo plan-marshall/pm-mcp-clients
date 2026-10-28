@@ -126,6 +126,11 @@ public final class TuiKeyRegistry {
     private static final String TAB = "\t";
     private static final String FOOTER_SEPARATOR = "   ";
 
+    private static final String ENTER_LABEL = "Enter";
+    private static final String ESC_LABEL = "Esc";
+    private static final String TAB_LABEL = "Tab";
+    private static final String MOVE_LABEL = "\u2191\u2193";
+
     /**
      * The separator between two footer cells, so that a caller which fits its own footer line
      * splits it the way the registry joins it.
@@ -281,9 +286,9 @@ public final class TuiKeyRegistry {
      */
     public static String displayOf(String trigger) {
         return switch (trigger) {
-            case ENTER, NEWLINE -> "Enter";
-            case ESC -> "Esc";
-            case TAB -> "Tab";
+            case ENTER, NEWLINE -> ENTER_LABEL;
+            case ESC -> ESC_LABEL;
+            case TAB -> TAB_LABEL;
             case PAGE_UP -> "PgUp";
             case PAGE_DOWN -> "PgDn";
             default -> trigger;
@@ -570,13 +575,13 @@ public final class TuiKeyRegistry {
         overviewNavigation.add(new Binding("S", TuiKeyAction.SYSTEM));
         overviewNavigation.add(new Binding("R", TuiKeyAction.REPORTS));
         registry.put(TuiLevel.Kind.OVERVIEW, level(overviewNavigation,
-                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
+                            footer(MOVE_LABEL, TuiKeyAction.MOVE_UP), footer(ENTER_LABEL, TuiKeyAction.OPEN),
                             footer("E", TuiKeyAction.ENDED), footer("R", TuiKeyAction.REPORTS),
                             footer("/", TuiKeyAction.FILTER), footer("?", TuiKeyAction.HELP),
                             footer("q", TuiKeyAction.LEAVE)));
 
         registry.put(TuiLevel.Kind.PROJECTS, level(projectsNavigation(),
-                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
+                            footer(MOVE_LABEL, TuiKeyAction.MOVE_UP), footer(ENTER_LABEL, TuiKeyAction.OPEN),
                             footer("*", TuiKeyAction.FAVOURITE), footer("s", TuiKeyAction.SORT),
                             footer("/", TuiKeyAction.FILTER), footer("+", TuiKeyAction.ADD_PROJECT),
                             footer("?", TuiKeyAction.HELP), footer("q", TuiKeyAction.LEAVE)));
@@ -591,43 +596,43 @@ public final class TuiKeyRegistry {
         projectNavigation.add(new Binding("R", TuiKeyAction.REPORTS));
 
         registry.put(TuiLevel.Kind.PROJECT_BY_PLAN, level(projectNavigation,
-                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
+                            footer(MOVE_LABEL, TuiKeyAction.MOVE_UP), footer(ENTER_LABEL, TuiKeyAction.OPEN),
                             footer("a", TuiKeyAction.ACTIONS), footer("e", TuiKeyAction.EPIC),
-                            footer("!", TuiKeyAction.WAITS), footer("Tab", TuiKeyAction.SWITCH_VIEW),
-                            footer("E", TuiKeyAction.ENDED), footer("Esc", TuiKeyAction.BACK),
+                            footer("!", TuiKeyAction.WAITS), footer(TAB_LABEL, TuiKeyAction.SWITCH_VIEW),
+                            footer("E", TuiKeyAction.ENDED), footer(ESC_LABEL, TuiKeyAction.BACK),
                             footer("?", TuiKeyAction.HELP), footer("q", TuiKeyAction.LEAVE)));
 
         var epicNavigation = new ArrayList<>(projectNavigation);
         epicNavigation.removeIf(binding -> binding.action() == TuiKeyAction.EPIC);
         registry.put(TuiLevel.Kind.PROJECT_BY_EPIC, level(epicNavigation,
-                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
+                            footer(MOVE_LABEL, TuiKeyAction.MOVE_UP), footer(ENTER_LABEL, TuiKeyAction.OPEN),
                             footer("a", TuiKeyAction.ACTIONS), footer("!", TuiKeyAction.WAITS),
-                            footer("Tab", TuiKeyAction.SWITCH_VIEW), footer("E", TuiKeyAction.ENDED),
-                            footer("Esc", TuiKeyAction.BACK), footer("?", TuiKeyAction.HELP),
+                            footer(TAB_LABEL, TuiKeyAction.SWITCH_VIEW), footer("E", TuiKeyAction.ENDED),
+                            footer(ESC_LABEL, TuiKeyAction.BACK), footer("?", TuiKeyAction.HELP),
                             footer("q", TuiKeyAction.LEAVE)));
 
         var planNavigation = planNavigation();
         registry.put(TuiLevel.Kind.PLAN, level(planNavigation,
-                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
+                            footer(MOVE_LABEL, TuiKeyAction.MOVE_UP), footer(ENTER_LABEL, TuiKeyAction.OPEN),
                             footer("→", TuiKeyAction.OPEN), footer("←", TuiKeyAction.CLOSE),
                             footer(".", TuiKeyAction.WHERE), footer("*", TuiKeyAction.EXPAND_ALL),
                             footer("n", TuiKeyAction.NON_LANE), footer("t", TuiKeyAction.TOKENS),
                             footer("p", TuiKeyAction.PROJECT), footer("e", TuiKeyAction.EPIC),
                             footer("c", TuiKeyAction.COMPLETION), footer("a", TuiKeyAction.ACTIONS),
-                            footer("Esc", TuiKeyAction.BACK), footer("q", TuiKeyAction.LEAVE)));
+                            footer(ESC_LABEL, TuiKeyAction.BACK), footer("q", TuiKeyAction.LEAVE)));
 
         var activityNavigation = new ArrayList<>(navigation);
         activityNavigation.add(new Binding("a", TuiKeyAction.ACTIONS));
         activityNavigation.add(new Binding("S", TuiKeyAction.SYSTEM));
         activityNavigation.add(new Binding("R", TuiKeyAction.REPORTS));
         registry.put(TuiLevel.Kind.PLAN_ACTIVITY, level(activityNavigation,
-                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
-                            footer("Esc", TuiKeyAction.BACK), footer("a", TuiKeyAction.ACTIONS),
+                            footer(MOVE_LABEL, TuiKeyAction.MOVE_UP), footer(ENTER_LABEL, TuiKeyAction.OPEN),
+                            footer(ESC_LABEL, TuiKeyAction.BACK), footer("a", TuiKeyAction.ACTIONS),
                             footer("?", TuiKeyAction.HELP), footer("q", TuiKeyAction.LEAVE)));
 
         registry.put(TuiLevel.Kind.PLAN_COMPLETION, level(activityNavigation,
-                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
-                            footer("Esc", TuiKeyAction.BACK), footer("a", TuiKeyAction.ACTIONS),
+                            footer(MOVE_LABEL, TuiKeyAction.MOVE_UP), footer(ENTER_LABEL, TuiKeyAction.OPEN),
+                            footer(ESC_LABEL, TuiKeyAction.BACK), footer("a", TuiKeyAction.ACTIONS),
                             footer("?", TuiKeyAction.HELP), footer("q", TuiKeyAction.LEAVE)));
 
         var epicLevel = new ArrayList<>(navigation);
@@ -636,10 +641,10 @@ public final class TuiKeyRegistry {
         epicLevel.add(new Binding("!", TuiKeyAction.WAITS));
         epicLevel.add(new Binding("*", TuiKeyAction.EXPAND_ALL));
         registry.put(TuiLevel.Kind.EPIC, level(epicLevel,
-                            footer("\u2191\u2193", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
+                            footer("\u2191\u2193", TuiKeyAction.MOVE_UP), footer(ENTER_LABEL, TuiKeyAction.OPEN),
                             footer("a", TuiKeyAction.ACTIONS), footer("p", TuiKeyAction.PROJECT),
                             footer("!", TuiKeyAction.WAITS),
-                            footer("Esc", TuiKeyAction.BACK), footer("?", TuiKeyAction.HELP),
+                            footer(ESC_LABEL, TuiKeyAction.BACK), footer("?", TuiKeyAction.HELP),
                             footer("q", TuiKeyAction.LEAVE)));
 
         var endedNavigation = new ArrayList<>(navigation);
@@ -647,9 +652,9 @@ public final class TuiKeyRegistry {
         endedNavigation.add(new Binding("S", TuiKeyAction.SYSTEM));
         endedNavigation.add(new Binding("R", TuiKeyAction.REPORTS));
         registry.put(TuiLevel.Kind.ENDED, level(endedNavigation,
-                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
+                            footer(MOVE_LABEL, TuiKeyAction.MOVE_UP), footer(ENTER_LABEL, TuiKeyAction.OPEN),
                             footer("a", TuiKeyAction.ACTIONS), footer("/", TuiKeyAction.FILTER),
-                            footer("Esc", TuiKeyAction.BACK), footer("?", TuiKeyAction.HELP),
+                            footer(ESC_LABEL, TuiKeyAction.BACK), footer("?", TuiKeyAction.HELP),
                             footer("q", TuiKeyAction.LEAVE)));
 
         var reportsNavigation = new ArrayList<>(navigation);
@@ -659,11 +664,11 @@ public final class TuiKeyRegistry {
         reportsNavigation.add(new Binding("p", TuiKeyAction.PROJECT));
         reportsNavigation.add(new Binding("e", TuiKeyAction.EPIC));
         registry.put(TuiLevel.Kind.REPORTS, level(reportsNavigation,
-                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
+                            footer(MOVE_LABEL, TuiKeyAction.MOVE_UP), footer(ENTER_LABEL, TuiKeyAction.OPEN),
                             footer("m", TuiKeyAction.MARK_READ),
                             footer("M", TuiKeyAction.MARK_ALL_READ),
                             footer("p", TuiKeyAction.PROJECT), footer("e", TuiKeyAction.EPIC),
-                            footer("Esc", TuiKeyAction.BACK), footer("?", TuiKeyAction.HELP),
+                            footer(ESC_LABEL, TuiKeyAction.BACK), footer("?", TuiKeyAction.HELP),
                             footer("q", TuiKeyAction.LEAVE)));
 
         var systemNavigation = new ArrayList<>(navigation);
@@ -673,7 +678,7 @@ public final class TuiKeyRegistry {
         systemNavigation.add(new Binding("b", TuiKeyAction.GROUP_BY));
         systemNavigation.add(new Binding("p", TuiKeyAction.PER_PROJECT));
         registry.put(TuiLevel.Kind.SYSTEM, level(systemNavigation,
-                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
+                            footer(MOVE_LABEL, TuiKeyAction.MOVE_UP), footer(ENTER_LABEL, TuiKeyAction.OPEN),
                             footer("w", TuiKeyAction.WINDOW), footer("b", TuiKeyAction.GROUP_BY),
                             footer("p", TuiKeyAction.PER_PROJECT), footer("a", TuiKeyAction.ACTIONS),
                             footer("?", TuiKeyAction.HELP), footer("q", TuiKeyAction.LEAVE)));
