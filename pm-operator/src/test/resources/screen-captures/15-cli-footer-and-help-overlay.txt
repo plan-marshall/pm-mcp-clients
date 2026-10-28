@@ -75,3 +75,6 @@ back-120-en | running-work | - | plan fix-relay | q | 120x30 | en_US.UTF-8 | - |
 back-120-de | running-work | - | plan fix-relay | q | 120x30 | de_DE.UTF-8 | - | \n\e
 back-80-en | running-work | - | plan fix-relay | q | 80x24 | en_US.UTF-8 | - | \n\e
 back-80-de | running-work | - | plan fix-relay | q | 80x24 | de_DE.UTF-8 | - | \n\e
+project-by-plan-80-en | running-work | - | plans | q | 80x24 | en_US.UTF-8 | - | \n
+project-by-epic-80-en | running-work | - | plans | q | 80x24 | en_US.UTF-8 | - | \n\t
+project-by-plan-120-en | running-work | - | plans | q | 120x30 | en_US.UTF-8 | - | \n

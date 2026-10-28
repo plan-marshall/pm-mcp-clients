@@ -1,6 +1,9 @@
 = Terminal Client: Projects
 :toc: left
 :toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
 :nofooter:
 
 link:README.adoc[Terminal Client] » Projects
@@ -51,7 +54,7 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
     legacy-portal     released                                     2 months ago
     …
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   Enter actions   * favourite   s sort   / filter   + add   q leave
+ ↑↓ move   Enter actions   * favourite   s sort   / filter   + add   ? help   q leave
 ----
 
 * *Being added*: a project's onboarding that has not reached its enrolment yet, by the path of its checkout and the step it waits at; it has no id yet. Once enrolled, the project is listed by its id like every other, with `setup needs: …` until it is ready.

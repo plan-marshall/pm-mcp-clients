@@ -1,6 +1,9 @@
 = Terminal Client: The Console
 :toc: left
 :toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
 :nofooter:
 
 link:README.adoc[Terminal Client] » The Console
@@ -153,17 +156,21 @@ created on entry.
   (xref:15-overview.adoc#full-screen[The Overview, The Full-Screen View]). `plan <id>`, `projects`,
   and `system` hand off the same way. The verb keeps its trailing arguments, so `tui --by epic` is
   `plans --by epic`.
+
 * The console lends its terminal to the nested command for the dispatch, runs the command, and takes
   the terminal back in a `finally`. A nested command never closes the console's terminal.
+
 * While the view is open, the notices the runtime pushes are held rather than printed above the
   prompt; when the view leaves, one coalesced meanwhile line is printed, by the view itself on the
   console's own writer
   (xref:15-overview.adoc#full-screen-live[The Overview, Live, and Leaving]).
+
 * `--json` runs the verb normally: no view, no notice hold, and JSON on stdout.
 * A verb that cannot open the view on this terminal prints one catalogue line naming the reason,
   prints its scrollback instead, and returns the prompt
   (xref:15-overview.adoc#full-screen-not-available[The Overview, Why the View Does Not Open]). The
   greeting's hint is printed only when the view can open.
+
 * After `q` the console redraws its prompt and stays usable; `exit` at the prompt then leaves with
   code `0`. The restoration is asserted on a real pseudo-terminal
   (xref:27-tui-testing.adoc[The TUI's Tests]).
@@ -177,6 +184,7 @@ view hands off), the view:
 
 1. restores the cursor and leaves the alternate screen, so the dialogue is printed into the normal
    scrollback and scrolls, copies, and reads with a screen reader like every other dialogue;
+
 2. runs the dialogue on the console's own `LineReader`, with its prompts and its notice handling;
 3. on a normal return, enters the alternate screen again, reads a fresh snapshot, and draws the
    level it left, with the selection it had.

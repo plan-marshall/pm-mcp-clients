@@ -1,6 +1,9 @@
 = Terminal Client: The Overview
 :toc: left
 :toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
 :nofooter:
 
 link:README.adoc[Terminal Client] » The Overview
@@ -30,12 +33,12 @@ What the overview of running work shows and in which order is link:../shared/pla
       plan-marshall-mcp   1 epic                              1 h ago
  ! 1  plan-marshall       setup needs you
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   Enter open   E ended work   R 5 reports   / filter   ? help   q leave
+ ↑↓ move   Enter open   ? help   q leave   E ended work   R 5 reports   / filter
 ----
 
 * *Header*: the full-screen header starts with the product name in bold (`plan-marshall`), then the place (`projects`, or the project and its view), and the connection to the runtime (<<full-screen-brand>>).
 * *List*: one row per project, plan, or epic, the selected one marked `▶` and drawn inverted; it scrolls when it is longer than the screen, with `↑ 3 more` and `↓ 5 more` at its edges. Rows follow a single column grid (<<full-screen-grid>>).
-* *Footer*: the keys that apply here; every footer shows `? help` and `q leave` at its end.
+* *Footer*: the keys that apply here, filled by priority and ending with `? help` and `q leave` (`<<full-screen-footer>>`).
 * The view opens on the terminal's alternate screen, so the scrollback and the prompt are as they were when it is left.
 
 [#full-screen-brand]
@@ -43,6 +46,7 @@ What the overview of running work shows and in which order is link:../shared/pla
 
 * *Header*: the full-screen header starts with the product name in bold, then the place:
   `plan-marshall  Running work · pm-mcp-clients · by plan                ● connected`.
+
 * *Greeting*: the console greeting starts with `plan-marshall <version> · runtime running`.
 * *Prompt*: the prompt stays `pm ›`, which is short and typed often.
 * *Mark*: no logo in the terminal. The brand is the name, the colour roles, and the calm layout.
@@ -101,7 +105,7 @@ By plan:
  ! landing failed    landing remediation.ci-failure   failed
                      removing 2 moved documents from git   running
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   Enter open   a actions   e epic   ! what waits   Tab by epic   E ended work   Esc back   ? help   q leave
+ ↑↓ move   Enter open   Esc back   a actions   ? help   q leave   e epic   ! what waits   Tab by epic   E ended work
 ----
 
 By epic:
@@ -116,7 +120,7 @@ By epic:
    without epic
  ! decision  ▸ plan  Console history of answers       refine · waiting for you
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   Enter open   a actions   ! what waits   Tab by plan   E ended work   Esc back   ? help   q leave
+ ↑↓ move   Enter open   Esc back   a actions   ? help   q leave   ! what waits   Tab by plan   E ended work
 ----
 
 * Each row is the plan's or epic's first line (kind, title, phase and state) and below it its details (times, progress, the epic it belongs to). On a terminal narrower than 100 columns the details line is left out and `?` on the row shows it; below 60 columns the view does not open and `status` prints instead.
@@ -177,7 +181,7 @@ The keys follow the conventions of `k9s`, `lazygit`, and `tig`; they are the sam
 |read everything again from the runtime
 
 |`?`
-|all keys, and the details of the selected row
+|a box with all keys of the level, grouped, and the details of the selected row (<<full-screen-footer>>)
 
 |`q`
 |leave the view to the prompt
@@ -235,6 +239,7 @@ stack and has no level below it.
 * `Esc` pops exactly one level. It first clears an open `/` filter or closes the `?` overlay; only a
   second `Esc` pops. A level opened by `S`, `R`, or `E` returns to the level it was opened from, not
   to a root, so the operator never loses the row they were on.
+
 * `q` leaves the whole view from any level and returns to the prompt.
 * The stack belongs to the model, not to the drawing: a level is a record of its kind, its parent,
   and its selection by row id (`TuiViewStack`). The drawing library never owns navigation state.
@@ -316,6 +321,37 @@ A key the registry does not bind on a level is not drawn in that level's footer.
 `TuiKeyRegistryTest` fails for a footer key without a binding and for two bindings of one key on one
 level.
 
+[#full-screen-footer]
+=== The Footer and the Help Overlay
+
+* *Priority*: each binding carries a priority in the registry. The footer keeps its cells in that
+  order — move first, then open, back, the level's own act on its row, `? help` and `q leave`, then
+  the rest in the order the level declares them — so a narrow terminal drops the tail of the line
+  and never a key that matters more.
+
+* *Fill*: the footer fills the terminal's width and never cuts a key in the middle. When the next
+  cell does not fit whole, the line stops there and ends with `? more`, the same key that opens the
+  overlay which shows every binding the width left out.
+
+* *The overlay*: `?` draws a box over the view with every binding of the level, grouped as move,
+  open, actions, views and leave, and the details of the selected row. While it is open the footer
+  shows `Esc close`; the first `Esc` closes the box and leaves the level where it was, and only a
+  second `Esc` goes back one level.
+
+[source,text]
+----
+┌ keys ─────────────────────────────────────────────────────────────┐
+│move     ↑ k   ↓ j   PgUp   PgDn   g   G                          │
+│open     Enter → l   ← h                                          │
+│actions  E   S   R   /   r                                        │
+│views    ?                                                        │
+│leave    Esc ← h   q                                              │
+│                                                                  │
+│▶ ! 2  pm-mcp-clients   3 plans · 1 epic            11 days ago    │
+│  running 2 h 10 min · in execute 25 min · 7 of 12 tasks           │
+└──────────────────────────────────────────────────────────────────┘
+----
+
 [#full-screen-narrow]
 === Narrow Terminals
 
@@ -332,7 +368,8 @@ The same thresholds hold in every view of the terminal:
 |row line only; the details line is left out, and `?` on the row prints it
 
 |`>= 60` and `< 80`
-|row line only, truncated to the width; the footer keeps the keys that apply
+|row line only, truncated to the width; the footer keeps the keys that apply, by priority, and ends
+with `? more` when it does not hold them all (<<full-screen-footer>>)
 
 |`< 60` columns
 |the view does not open: the command names the reason (`operator.tui.unavailable.too_narrow`) and
@@ -342,8 +379,10 @@ The same thresholds hold in every view of the terminal:
 * Every cell is truncated to the terminal's column width without splitting a surrogate pair or a
   wide glyph; a truncated cell ends in `…` (`U+2026`). A cell's display width is its number of
   columns, not its number of `char`s.
+
 * `?` always shows the full row details, whatever the width, and the same text the details line
   would show on a wide terminal.
+
 * A window resize (`WINCH`) redraws at the new width; crossing a threshold changes the shape of the
   screen as the table says, without leaving the level.
 
@@ -358,8 +397,10 @@ on the terminal the console already owns
   draws on that terminal and never opens a second one. JLine's first system terminal owns the
   process terminal, so a second `TerminalBuilder` would fall back to a dumb terminal with no size,
   and the view would refuse without saying why.
+
 * The console brackets the dispatch: notices are held while the view is open, and one meanwhile line
   is printed after `q` (<<full-screen-live>>). A notice never corrupts the alternate screen.
+
 * `--json` runs without the view and without the notice hold; stdout stays JSON.
 * After `q` the console redraws its prompt and remains usable; `exit` then leaves with code `0`.
 * A full-screen verb the console cannot open prints the refusal line
@@ -395,10 +436,13 @@ checked in this order, and the first applicable one is named (`FullScreenAvailab
 * A requested `plans`, `plan`, `projects`, or `system` prints one catalogue line naming the reason
   to stderr, then the scrollback it would otherwise print, and exits `0`. Under `--json` it prints no
   reason; stdout stays the JSON.
+
 * The greeting's hint (`operator.console.hint.tui`) is printed only when the verdict is available,
   so it never names a verb that falls back.
+
 * `plans` below 60 columns refuses before it draws: no alternate screen is entered, the reason is
   named, and the tree is printed as `status` does.
+
 * A `dumb` terminal or `console.full_screen=false` is a verdict of the terminal or the machine
   configuration, not a broken view; the tree is complete.
 
@@ -410,10 +454,12 @@ The header's right side is the connection to the runtime:
 * `● connected` (`operator.overview.connected`) while the event stream is open.
 * `○ reconnecting` (`operator.console.badge.reconnecting`) while it is not; the last snapshot stays
   on screen and no row is removed for being unreachable.
+
 * On reconnect the client reads the whole snapshot again (the open levels' pages, the needs
   counters, and the reports count) and redraws once; it never replays the missed events as notices,
   because a restarted runtime holds no events to replay. The selection stays on its row id, or on
   the nearest row when the id is gone.
+
 * `q` while disconnected leaves the view as usual; the console then prints the reconnecting state at
   its prompt (xref:04-console.adoc#connection[The Console, Connection]).
 
@@ -425,11 +471,14 @@ before it starts a `LineReader` dialogue, and re-enters it when the dialogue ret
 
 * The view first draws the cursor normally and leaves the alternate screen
   (`exit_ca_mode`), so the dialogue runs on the ordinary scrollback as every dialogue does.
+
 * When the dialogue returns, the view enters the alternate screen again, reads a fresh snapshot
   (because the dialogue may have changed what it shows), and redraws the same level with the same
   selection.
+
 * A notice that arrives while the dialogue runs is printed by the dialogue's own notice handling,
   not held by the view; the view's notice buffer is inactive while it is suspended.
+
 * An exception in the dialogue is the dialogue's to report; the view still restores the terminal in
   its `finally` and re-enters the alternate screen only on a normal return.
 
@@ -515,7 +564,7 @@ What ended work lists is link:../shared/plan-overview.adoc#ended[Plan Overview, 
   ▸ plan  Message catalogue v0              abandoned   3 weeks ago
             superseded by the shared texts
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   Enter open   a actions   / filter   Esc back   ? help   q leave
+ ↑↓ move   Enter open   Esc back   a actions   ? help   q leave   / filter
 ----
 
 [source,text]

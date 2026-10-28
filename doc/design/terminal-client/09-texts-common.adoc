@@ -1,6 +1,9 @@
 = Terminal Client: Texts: Common, Frame, Automatic Run
 :toc: left
 :toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
 :nofooter:
 
 link:README.adoc[Terminal Client] » Texts: Common, Frame, Automatic Run

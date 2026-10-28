@@ -1,6 +1,9 @@
 = Terminal Client: Transcripts: Steps 4 to 7
 :toc: left
 :toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
 :nofooter:
 
 link:README.adoc[Terminal Client] » Transcripts: Steps 4 to 7
@@ -326,6 +329,7 @@ Save these choices? [Enter]   change: 1-8   b) back   ?   › ⏎
 ----
   Posture   9) Not set: each plan asks ←   10) Minimal   11) Standard   12) Full
 ----
+
 * `defaults.validate` that refuses a line reprints the state with the line marked `✗ <reason>` and the prompt naming it.
 * At the machine level it checks only what the machine knows: whether a provider is available for a pull request; the machine default is never checked against a repository. Whether a base branch is protected is checked where a project is known: the landing the project's team chooses in its setup, and a plan's start, which refuse _Commit on the base branch_ on a protected branch with the reason. A machine default that does not fit a project is refused for that project there, and the project or the plan chooses another.
 
