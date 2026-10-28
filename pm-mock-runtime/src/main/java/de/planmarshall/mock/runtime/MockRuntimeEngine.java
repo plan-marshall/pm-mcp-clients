@@ -247,7 +247,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ACTION_PAUSE = "pause";
     private static final String ACTION_ABANDON = "abandon";
     private static final String ACTION_COMMON_FILES = "common_files";
-    private static final String ACTION_ARCHIVE = "archive";    private static final String ACTION_RETRY = "retry";
+    private static final String ACTION_ARCHIVE = "archive";
+    private static final String ACTION_RETRY = "retry";
     private static final String ACTION_ABORT = "abort";
     private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT = SEGMENT_ENTRY_CHAT_PROPOSAL + ACTION_ACCEPT;
     private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT = SEGMENT_ENTRY_CHAT_PROPOSAL + "reject";
@@ -4144,7 +4145,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         subjectId = sub.substring(0, slash);
                         action = candidate;
                     } else if (isEpic && Set.of("auto", ACTION_COMMON_FILES, "cancel", "next",
-                                        ACTION_ARCHIVE).contains(candidate)) {
+                            ACTION_ARCHIVE).contains(candidate)) {
                         subjectId = sub.substring(0, slash);
                         action = candidate;
                     }
