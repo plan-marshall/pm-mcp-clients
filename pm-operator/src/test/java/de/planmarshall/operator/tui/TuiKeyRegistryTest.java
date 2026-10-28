@@ -151,8 +151,7 @@ class TuiKeyRegistryTest {
         assertAll(
                             () -> assertTrue(wide.size() > narrow.size(), wide.toString()),
                             () -> assertEquals(narrowKeys, wideWithoutHelp.subList(0, narrowKeys.size())),
-                            () -> assertTrue(narrow.getLast().equals(TuiKeyRegistry.moreCell("en")),
-                                                narrow.toString())
+                            () -> assertEquals(narrow.getLast(), TuiKeyRegistry.moreCell("en"), narrow.toString())
         );
     }
 
@@ -219,7 +218,8 @@ class TuiKeyRegistryTest {
 
     @Test
     @DisplayName("the key set of a level is closed over its footer")
-    void footersUseTheClosedSet() {        Set<TuiKeyAction> seen = new HashSet<>();
+    void footersUseTheClosedSet() {
+        Set<TuiKeyAction> seen = new HashSet<>();
         for (var kind : TuiLevel.Kind.values()) {
             for (var entry : TuiKeyRegistry.footerEntries(kind)) {
                 seen.add(entry.action());

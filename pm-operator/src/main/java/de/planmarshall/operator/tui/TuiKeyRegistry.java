@@ -10,6 +10,7 @@
 package de.planmarshall.operator.tui;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -728,7 +729,7 @@ public final class TuiKeyRegistry {
         var ordered = new ArrayList<>(List.of(footer));
         // The footer is drawn in priority order, so that a narrower terminal drops the last cell
         // first and the key that matters most is never the one it loses.
-        ordered.sort(java.util.Comparator.comparingInt(entry -> priorityOf(entry.action())));
+        ordered.sort(Comparator.comparingInt(entry -> priorityOf(entry.action())));
         return new LevelKeys(List.copyOf(bindings), List.copyOf(ordered));
     }
 }

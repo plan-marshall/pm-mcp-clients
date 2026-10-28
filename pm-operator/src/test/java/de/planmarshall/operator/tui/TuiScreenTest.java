@@ -39,7 +39,7 @@ class TuiScreenTest {
         try (var virtual = VirtualScreenTerminal.create(COLUMNS, ROWS)) {
             var overview = new TuiScreen("Running work \u00b7 projects", TuiLevel.Kind.OVERVIEW,
                                 List.of(TuiRow.openable("project-a", "OVERVIEW-ROW-a project",
-                                                    "details of the project row"),
+                                                                        "details of the project row"),
                                                     TuiRow.openable("project-b", "OVERVIEW-ROW-b project",
                                                                         "details of the second project")),
                                 0, "", false, true, 7);

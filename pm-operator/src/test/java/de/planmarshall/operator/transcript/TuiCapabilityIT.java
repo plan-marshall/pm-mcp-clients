@@ -149,7 +149,8 @@ class TuiCapabilityIT {
 
     @Test
     @DisplayName("plan fix-relay opens the plan view and q restores the terminal")
-    void planViewOpens() throws Exception {        try (var session = start(List.of("plan", "fix-relay"), Map.of(), 120, 30)) {
+    void planViewOpens() throws Exception {
+        try (var session = start(List.of("plan", "fix-relay"), Map.of(), 120, 30)) {
             assertTrue(session.awaitText("fix-relay", TIMEOUT), session.rawOutput());
             assertTrue(session.alternateScreenActive(), session.screenText());
 
