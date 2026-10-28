@@ -365,8 +365,11 @@ public final class TuiScreenDriver {
         var rendered = layout.render(screen, columns, rows);
         // A level that loses or gains rows (a closed node, a hidden token panel) must redraw every
         // line: Display's diff only moves the tail and would leave the old, longer body in place.
-        // A reset makes the next update a full frame.
-        if (previous == null || previous.rows().size() != screen.rows().size()
+        // The same holds for a level change: the new level's rows, footer and header have nothing
+        // in common with the previous one, so the whole frame is written again. A reset makes the
+        // next update a full frame.
+        if (previous == null || previous.kind() != screen.kind()
+                            || previous.rows().size() != screen.rows().size()
                             || !Objects.equals(previous.menu(), screen.menu())) {
             display.reset();
         }

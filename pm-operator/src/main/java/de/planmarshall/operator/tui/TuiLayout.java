@@ -174,7 +174,9 @@ public final class TuiLayout {
                             : screen.footerText() != null
                             ? screen.footerText()
                             : TuiKeyRegistry.footer(screen.kind(), locale, screen.reportsCount());
-        return new AttributedString(truncate(text, width));
+        // Padded like every other row: a shorter footer must not leave the tail of a longer one on
+        // the cells the terminal already holds.
+        return new AttributedString(pad(text, width));
     }
 
     private List<AttributedString> body(TuiScreen screen, int width, int columns, int height) {

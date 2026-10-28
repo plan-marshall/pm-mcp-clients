@@ -188,6 +188,11 @@ separated:
 
 |environment
 |Extra `KEY=VALUE` pairs, comma separated (`-` for none)
+
+|keys before the capture (optional)
+|Keys typed once the screen has settled, so that the capture shows the state they opened
+(`\n` for Enter, `\t` for Tab, `\e` for Esc, `-` for none). The fifth field's keys are then typed
+after the capture, and they end the process.
 |===
 
 Every capture writes three files below `target/screens/{set}/` (or `-Dpm.screens.out`):
@@ -199,6 +204,8 @@ Every capture writes three files below `target/screens/{set}/` (or `-Dpm.screens
 * `{name}.stdout.txt` — the raw output, which is how a printed verb (rather than a full-screen
   view) is read. A capture that types keys writes the whole output, the part after the keys
   included, so what a verb prints when it leaves a view (`q`) is read here.
+* `{name}.after.txt` and `{name}.after.attrs.txt` — a capture whose line names the optional keys
+  before the capture also writes the screen those keys opened, in the same two shapes.
 
 The screen is captured only once something was drawn: a full-screen view enters the alternate
 screen after JLine's terminal probe is answered, so a quiet stretch before that is not a settled
@@ -214,8 +221,9 @@ set runs before the change into `.plan/temp/terminal/{plan}/before/` and after i
 [#flake]
 == Flake Control
 
-* Every wait is a condition (`awaitText`) with a generous timeout (15 to 20 seconds), never a fixed
-  sleep for the main assertion.
+* Every wait is a condition (`awaitText`) with a generous timeout (40 seconds in the capture
+  harness, where each capture starts a mock runtime and a process; 15 to 20 seconds in the
+  capability suite), never a fixed sleep for the main assertion.
 * A failed assertion carries the raw output (`session.rawOutput()`, `session.screenText()`), so a
   failure shows the screen the process actually drew.
 * Every session and runtime is closed in a `finally` (try-with-resources); no child is left on the

@@ -1,0 +1,77 @@
+# PLAN-15 (15-cli-footer-and-help-overlay) capture set: the overview, the plan view and the
+# activity of the running-work scenario at both documented sizes and in both languages, with the
+# key states of CLI-UX-S-01 and CLI-UX-S-02 (CLI-UX-P-02): the frame of each level, the help
+# overlay `?` opens, the level a first `Esc` leaves behind, and the levels `E`, `R`, `S` and `a`
+# open. A capture's own screen is the one the verb opens; its `.after` files are the screen its
+# keys opened.
+#
+# One capture per line, pipe separated:
+#   name | scenario | states to goto (comma separated, - for none) | command | keys to send after the capture | columns x rows | locale | extra environment (KEY=VALUE, comma separated, - for none) | keys to send before the capture (optional, \n for Enter, \e for Esc)
+overview-120-en | running-work | - | plans | q | 120x30 | en_US.UTF-8 | -
+overview-120-en-E | running-work | - | plans | q | 120x30 | en_US.UTF-8 | - | E
+overview-120-en-R | running-work | - | plans | q | 120x30 | en_US.UTF-8 | - | R
+overview-120-en-S | running-work | - | plans | q | 120x30 | en_US.UTF-8 | - | S
+overview-120-en-help | running-work | - | plans | q | 120x30 | en_US.UTF-8 | - | ?
+overview-120-en-help-esc | running-work | - | plans | q | 120x30 | en_US.UTF-8 | - | ?\e
+overview-120-de | running-work | - | plans | q | 120x30 | de_DE.UTF-8 | -
+overview-120-de-E | running-work | - | plans | q | 120x30 | de_DE.UTF-8 | - | E
+overview-120-de-R | running-work | - | plans | q | 120x30 | de_DE.UTF-8 | - | R
+overview-120-de-S | running-work | - | plans | q | 120x30 | de_DE.UTF-8 | - | S
+overview-120-de-help | running-work | - | plans | q | 120x30 | de_DE.UTF-8 | - | ?
+overview-120-de-help-esc | running-work | - | plans | q | 120x30 | de_DE.UTF-8 | - | ?\e
+overview-80-en | running-work | - | plans | q | 80x24 | en_US.UTF-8 | -
+overview-80-en-E | running-work | - | plans | q | 80x24 | en_US.UTF-8 | - | E
+overview-80-en-R | running-work | - | plans | q | 80x24 | en_US.UTF-8 | - | R
+overview-80-en-S | running-work | - | plans | q | 80x24 | en_US.UTF-8 | - | S
+overview-80-en-help | running-work | - | plans | q | 80x24 | en_US.UTF-8 | - | ?
+overview-80-en-help-esc | running-work | - | plans | q | 80x24 | en_US.UTF-8 | - | ?\e
+overview-80-de | running-work | - | plans | q | 80x24 | de_DE.UTF-8 | -
+overview-80-de-E | running-work | - | plans | q | 80x24 | de_DE.UTF-8 | - | E
+overview-80-de-R | running-work | - | plans | q | 80x24 | de_DE.UTF-8 | - | R
+overview-80-de-S | running-work | - | plans | q | 80x24 | de_DE.UTF-8 | - | S
+overview-80-de-help | running-work | - | plans | q | 80x24 | de_DE.UTF-8 | - | ?
+overview-80-de-help-esc | running-work | - | plans | q | 80x24 | de_DE.UTF-8 | - | ?\e
+plan-120-en | running-work | - | plan fix-relay | q | 120x30 | en_US.UTF-8 | -
+plan-120-en-a | running-work | - | plan fix-relay | aq | 120x30 | en_US.UTF-8 | - | a
+plan-120-en-help | running-work | - | plan fix-relay | q | 120x30 | en_US.UTF-8 | - | ?
+plan-120-en-help-esc | running-work | - | plan fix-relay | q | 120x30 | en_US.UTF-8 | - | ?\e
+plan-120-de | running-work | - | plan fix-relay | q | 120x30 | de_DE.UTF-8 | -
+plan-120-de-a | running-work | - | plan fix-relay | aq | 120x30 | de_DE.UTF-8 | - | a
+plan-120-de-help | running-work | - | plan fix-relay | q | 120x30 | de_DE.UTF-8 | - | ?
+plan-120-de-help-esc | running-work | - | plan fix-relay | q | 120x30 | de_DE.UTF-8 | - | ?\e
+plan-80-en | running-work | - | plan fix-relay | q | 80x24 | en_US.UTF-8 | -
+plan-80-en-a | running-work | - | plan fix-relay | aq | 80x24 | en_US.UTF-8 | - | a
+plan-80-en-help | running-work | - | plan fix-relay | q | 80x24 | en_US.UTF-8 | - | ?
+plan-80-en-help-esc | running-work | - | plan fix-relay | q | 80x24 | en_US.UTF-8 | - | ?\e
+plan-80-de | running-work | - | plan fix-relay | q | 80x24 | de_DE.UTF-8 | -
+plan-80-de-a | running-work | - | plan fix-relay | aq | 80x24 | de_DE.UTF-8 | - | a
+plan-80-de-help | running-work | - | plan fix-relay | q | 80x24 | de_DE.UTF-8 | - | ?
+plan-80-de-help-esc | running-work | - | plan fix-relay | q | 80x24 | de_DE.UTF-8 | - | ?\e
+activity-120-en | running-work | - | plan fix-relay | q | 120x30 | en_US.UTF-8 | - | \n
+activity-120-en-a | running-work | - | plan fix-relay | aq | 120x30 | en_US.UTF-8 | - | \na
+activity-120-en-R | running-work | - | plan fix-relay | q | 120x30 | en_US.UTF-8 | - | \nR
+activity-120-en-S | running-work | - | plan fix-relay | q | 120x30 | en_US.UTF-8 | - | \nS
+activity-120-en-help | running-work | - | plan fix-relay | q | 120x30 | en_US.UTF-8 | - | \n?
+activity-120-en-help-esc | running-work | - | plan fix-relay | q | 120x30 | en_US.UTF-8 | - | \n?\e
+activity-120-de | running-work | - | plan fix-relay | q | 120x30 | de_DE.UTF-8 | - | \n
+activity-120-de-a | running-work | - | plan fix-relay | aq | 120x30 | de_DE.UTF-8 | - | \na
+activity-120-de-R | running-work | - | plan fix-relay | q | 120x30 | de_DE.UTF-8 | - | \nR
+activity-120-de-S | running-work | - | plan fix-relay | q | 120x30 | de_DE.UTF-8 | - | \nS
+activity-120-de-help | running-work | - | plan fix-relay | q | 120x30 | de_DE.UTF-8 | - | \n?
+activity-120-de-help-esc | running-work | - | plan fix-relay | q | 120x30 | de_DE.UTF-8 | - | \n?\e
+activity-80-en | running-work | - | plan fix-relay | q | 80x24 | en_US.UTF-8 | - | \n
+activity-80-en-a | running-work | - | plan fix-relay | aq | 80x24 | en_US.UTF-8 | - | \na
+activity-80-en-R | running-work | - | plan fix-relay | q | 80x24 | en_US.UTF-8 | - | \nR
+activity-80-en-S | running-work | - | plan fix-relay | q | 80x24 | en_US.UTF-8 | - | \nS
+activity-80-en-help | running-work | - | plan fix-relay | q | 80x24 | en_US.UTF-8 | - | \n?
+activity-80-en-help-esc | running-work | - | plan fix-relay | q | 80x24 | en_US.UTF-8 | - | \n?\e
+activity-80-de | running-work | - | plan fix-relay | q | 80x24 | de_DE.UTF-8 | - | \n
+activity-80-de-a | running-work | - | plan fix-relay | aq | 80x24 | de_DE.UTF-8 | - | \na
+activity-80-de-R | running-work | - | plan fix-relay | q | 80x24 | de_DE.UTF-8 | - | \nR
+activity-80-de-S | running-work | - | plan fix-relay | q | 80x24 | de_DE.UTF-8 | - | \nS
+activity-80-de-help | running-work | - | plan fix-relay | q | 80x24 | de_DE.UTF-8 | - | \n?
+activity-80-de-help-esc | running-work | - | plan fix-relay | q | 80x24 | de_DE.UTF-8 | - | \n?\e
+back-120-en | running-work | - | plan fix-relay | q | 120x30 | en_US.UTF-8 | - | \n\e
+back-120-de | running-work | - | plan fix-relay | q | 120x30 | de_DE.UTF-8 | - | \n\e
+back-80-en | running-work | - | plan fix-relay | q | 80x24 | en_US.UTF-8 | - | \n\e
+back-80-de | running-work | - | plan fix-relay | q | 80x24 | de_DE.UTF-8 | - | \n\e
