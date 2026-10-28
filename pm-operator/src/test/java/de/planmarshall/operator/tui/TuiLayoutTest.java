@@ -186,17 +186,47 @@ class TuiLayoutTest {
                             true, true, 0);
         var lines = layout.render(help, 120, 20).stream().map(Object::toString).toList();
         var text = String.join("\n", lines);
+        var box = lines.stream().filter(line -> line.startsWith("\u250c") || line.startsWith("\u2502")
+                            || line.startsWith("\u2514")).toList();
         assertAll(
                             () -> assertTrue(text.contains("\u250c keys "), text),
-                            () -> assertTrue(text.contains("\u2502move"), text),
-                            () -> assertTrue(text.contains("\u2502open"), text),
-                            () -> assertTrue(text.contains("\u2502actions"), text),
-                            () -> assertTrue(text.contains("\u2502views"), text),
-                            () -> assertTrue(text.contains("\u2502leave"), text),
+                            () -> assertTrue(text.contains("\u2502 move"), text),
+                            () -> assertTrue(text.contains("\u2502 open"), text),
+                            () -> assertTrue(text.contains("\u2502 actions"), text),
+                            () -> assertTrue(text.contains("\u2502 views"), text),
+                            () -> assertTrue(text.contains("\u2502 leave"), text),
                             () -> assertTrue(text.contains("details of row 0"), text),
-                            () -> assertTrue(text.contains("\u2514"), text),
-                            () -> assertEquals(TuiKeyRegistry.helpFooter("en"), lines.getLast().strip()),
-                            () -> assertTrue(lines.stream().noneMatch(line -> line.contains("\u2026 more")), text)
+                            () -> assertTrue(box.size() >= 7, text),
+                            () -> box.forEach(line -> assertEquals(119, TuiLayout.displayWidth(line), line)),
+                            () -> assertEquals(TuiKeyRegistry.helpFooter("en"), lines.getLast().strip())
+        );
+    }
+
+    @Test
+    @DisplayName("at 80 columns every level's footer keeps its priority keys and names ? help or ? more")
+    void footersAtEightyColumns() {
+        var overview = layout.render(new TuiScreen("Running work", TuiLevel.Kind.OVERVIEW,
+                            screen(0, 3).rows(), 0, "", false, true, 5), 80, 24).getLast().toString().strip();
+        var activity = layout.render(new TuiScreen("fix-relay", TuiLevel.Kind.PLAN_ACTIVITY,
+                            screen(0, 3).rows(), 0, "", false, true, 0), 80, 24).getLast().toString().strip();
+        var plan = layout.render(new TuiScreen("fix-relay", TuiLevel.Kind.PLAN, screen(0, 3).rows(),
+                                                0, "", false, true, 0, TuiKeyRegistry.footer(TuiLevel.Kind.PLAN, "en", 0)),
+                            80, 24).getLast().toString().strip();
+
+        assertAll(
+                            () -> assertTrue(overview.contains("? help"), overview),
+                            () -> assertTrue(overview.contains("q leave"), overview),
+                            () -> assertTrue(activity.contains("Enter open"), activity),
+                            () -> assertTrue(activity.contains("a actions"), activity),
+                            () -> assertTrue(activity.contains("? help"), activity),
+                            () -> assertTrue(plan.contains("Enter open"), plan),
+                            () -> assertTrue(plan.contains("Esc back"), plan),
+                            () -> assertTrue(plan.contains("a actions"), plan),
+                            () -> assertTrue(plan.contains("q leave"), plan),
+                            () -> assertTrue(plan.endsWith("? more"), plan),
+                            () -> assertFalse(plan.contains("\u2026"), plan),
+                            () -> assertFalse(overview.contains("\u2026"), overview),
+                            () -> assertFalse(activity.contains("\u2026"), activity)
         );
     }
 

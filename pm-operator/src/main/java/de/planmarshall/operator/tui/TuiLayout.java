@@ -283,10 +283,10 @@ public final class TuiLayout {
     /**
      * @param content the cell's text
      * @param width   the line width
-     * @return one line of the help overlay's interior
+     * @return one line of the help overlay's interior, exactly {@code width} columns wide
      */
     private static String boxMiddle(String content, int width) {
-        return CELL_START + pad(content, Math.max(0, width - 4)) + CELL_END;
+        return CELL_START + " " + pad(content, Math.max(0, width - 4)) + " " + CELL_END;
     }
 
     /**

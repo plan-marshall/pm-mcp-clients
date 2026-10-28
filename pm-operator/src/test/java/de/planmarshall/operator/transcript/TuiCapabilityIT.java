@@ -19,10 +19,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
@@ -175,21 +177,24 @@ class TuiCapabilityIT {
             assertTrue(session.awaitText("\u250c keys ", TIMEOUT), session.screenText());
             var overlay = session.screenText();
             var box = overlay.lines().filter(line -> line.startsWith("\u2502")).toList();
-            var boxed = String.join("\n", box);
+            var tokens = box.stream()
+                                .flatMap(line -> Arrays.stream(line.replace("\u2502", " ").split("\\s+")))
+                                .filter(token -> !token.isEmpty())
+                                .collect(Collectors.toSet());
 
             assertAll(
                                 () -> assertTrue(overlay.contains("\u250c keys "), overlay),
                                 () -> assertTrue(overlay.contains("\u2514"), overlay),
-                                () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502move")), overlay),
-                                () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502open")), overlay),
-                                () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502actions")),
+                                () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502 move")), overlay),
+                                () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502 open")), overlay),
+                                () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502 actions")),
                                                     overlay),
-                                () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502views")), overlay),
-                                () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502leave")), overlay),
-                                () -> assertTrue(boxed.contains("PgUp"), overlay),
+                                () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502 views")), overlay),
+                                () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502 leave")), overlay),
+                                () -> assertTrue(tokens.contains("PgUp"), overlay),
                                 () -> TuiKeyRegistry.bindings(kind).stream()
                                                     .map(binding -> TuiKeyRegistry.displayOf(binding.trigger()))
-                                                    .forEach(display -> assertTrue(boxed.contains(display),
+                                                    .forEach(display -> assertTrue(tokens.contains(display),
                                                                         "the overlay does not name " + display + ":\n" + overlay))
             );
 
@@ -229,9 +234,11 @@ class TuiCapabilityIT {
                                 .filter(line -> line.contains("move") || line.contains("leave"))
                                 .findFirst()
                                 .orElse("");
+            var omitted = kind == TuiLevel.Kind.PLAN;
             assertAll(
                                 () -> assertTrue(footer.contains("move"), session.screenText()),
-                                () -> assertTrue(footer.contains("? more") || footer.contains("? help"), footer),
+                                () -> assertTrue(footer.contains(omitted ? "? more" : "? help"), footer),
+                                () -> assertFalse(footer.contains(omitted ? "? help" : "? more"), footer),
                                 () -> assertFalse(footer.contains("Esc close"), footer),
                                 () -> assertFalse(footer.contains("views"), footer),
                                 () -> assertFalse(footer.contains("\u2502"), footer),

@@ -202,7 +202,7 @@ separated:
 after the capture, and they end the process.
 |===
 
-Every capture writes three files below `target/screens/{set}/` (or `-Dpm.screens.out`):
+Every capture writes its files below `target/screens/{set}/` (or `-Dpm.screens.out`):
 
 * `{name}.txt` — the visible screen, one line per row.
 * `{name}.attrs.txt` — per row, the runs of cells that share their attributes: `start-end`, then

@@ -121,9 +121,9 @@ class TuiKeyRegistryTest {
     }
 
     @Test
-    @DisplayName("at 80 columns the footer keeps move, open, back, actions, help and leave and ends ? more")
+    @DisplayName("at 80 columns the rendered footer keeps move, open, back, actions, help and leave and ends ? more")
     void footerKeepsThePriorityKeysAt80Columns() {
-        var footer = TuiKeyRegistry.footer(TuiLevel.Kind.PLAN, "en", 0, 79);
+        var footer = TuiKeyRegistry.footer(TuiLevel.Kind.PROJECT_BY_PLAN, "en", 0, 79);
         var cells = cells(footer);
 
         assertAll(

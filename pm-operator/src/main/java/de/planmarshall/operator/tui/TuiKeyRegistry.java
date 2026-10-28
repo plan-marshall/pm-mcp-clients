@@ -247,10 +247,15 @@ public final class TuiKeyRegistry {
     static HelpGroup groupOf(TuiKeyAction action) {
         return switch (action) {
             case MOVE_UP, MOVE_DOWN, PAGE_UP, PAGE_DOWN, FIRST, LAST -> HelpGroup.MOVE;
-            case OPEN, CLOSE, EXPAND_ALL, WHERE, NON_LANE, TOKENS, PROJECT, COMPLETION -> HelpGroup.OPEN;
+            case OPEN, CLOSE -> HelpGroup.OPEN;
             case BACK, LEAVE -> HelpGroup.LEAVE;
             case HELP, SWITCH_VIEW, EPIC -> HelpGroup.VIEWS;
-            default -> HelpGroup.ACT;
+            // Every remaining action acts on the selected row or the view; there is no default, so
+            // an action added later has to be classified before the build passes.
+            case ACTIONS, WAITS, ENDED, SYSTEM, REPORTS, MARK_READ, MARK_ALL_READ, WINDOW, GROUP_BY,
+                PER_PROJECT, FAVOURITE, MOVE_FAVOURITE_UP, MOVE_FAVOURITE_DOWN, SORT, ADD_PROJECT,
+                ADD_EPIC, ADD_PLAN, RUNNING_WORK, SETUP, CONTINUE, ABANDON, ENROL_AGAIN, FILTER,
+                RELOAD, EXPAND_ALL, WHERE, NON_LANE, TOKENS, PROJECT, COMPLETION -> HelpGroup.ACT;
         };
     }
 
@@ -332,6 +337,11 @@ public final class TuiKeyRegistry {
                 break;
             }
             kept.add(cell);
+        }
+        if (kept.isEmpty()) {
+            // Not even one cell fits beside ? more: the line keeps its text, and the layout's own
+            // truncation cuts it; a bare ? more would name an overlay for a footer that shows none.
+            return joined;
         }
         kept.add(more);
         return String.join(FOOTER_SEPARATOR, kept);
@@ -585,11 +595,13 @@ public final class TuiKeyRegistry {
         activityNavigation.add(new Binding("S", TuiKeyAction.SYSTEM));
         activityNavigation.add(new Binding("R", TuiKeyAction.REPORTS));
         registry.put(TuiLevel.Kind.PLAN_ACTIVITY, level(activityNavigation,
-                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Esc", TuiKeyAction.BACK),
+                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
+                            footer("Esc", TuiKeyAction.BACK), footer("a", TuiKeyAction.ACTIONS),
                             footer("?", TuiKeyAction.HELP), footer("q", TuiKeyAction.LEAVE)));
 
         registry.put(TuiLevel.Kind.PLAN_COMPLETION, level(activityNavigation,
-                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Esc", TuiKeyAction.BACK),
+                            footer("↑↓", TuiKeyAction.MOVE_UP), footer("Enter", TuiKeyAction.OPEN),
+                            footer("Esc", TuiKeyAction.BACK), footer("a", TuiKeyAction.ACTIONS),
                             footer("?", TuiKeyAction.HELP), footer("q", TuiKeyAction.LEAVE)));
 
         var epicLevel = new ArrayList<>(navigation);
@@ -726,10 +738,25 @@ public final class TuiKeyRegistry {
     }
 
     private static LevelKeys level(List<Binding> bindings, FooterEntry... footer) {
+        var listed = List.copyOf(bindings);
         var ordered = new ArrayList<>(List.of(footer));
         // The footer is drawn in priority order, so that a narrower terminal drops the last cell
-        // first and the key that matters most is never the one it loses.
-        ordered.sort(Comparator.comparingInt(entry -> priorityOf(entry.action())));
-        return new LevelKeys(List.copyOf(bindings), List.copyOf(ordered));
+        // first and the key that matters most is never the one it loses. A cell takes the priority
+        // of the binding that carries its action on this level, so a level may raise one of them.
+        ordered.sort(Comparator.comparingInt(entry -> entryPriority(listed, entry)));
+        return new LevelKeys(listed, List.copyOf(ordered));
+    }
+
+    /**
+     * @param bindings the level's bindings
+     * @param entry    the footer cell
+     * @return the priority of the cell: the lowest one among the bindings that carry its action
+     */
+    private static int entryPriority(List<Binding> bindings, FooterEntry entry) {
+        return bindings.stream()
+                            .filter(binding -> binding.action() == entry.action())
+                            .mapToInt(Binding::priority)
+                            .min()
+                            .orElse(priorityOf(entry.action()));
     }
 }

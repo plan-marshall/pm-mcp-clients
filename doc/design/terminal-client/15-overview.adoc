@@ -38,7 +38,9 @@ What the overview of running work shows and in which order is link:../shared/pla
 
 * *Header*: the full-screen header starts with the product name in bold (`plan-marshall`), then the place (`projects`, or the project and its view), and the connection to the runtime (<<full-screen-brand>>).
 * *List*: one row per project, plan, or epic, the selected one marked `▶` and drawn inverted; it scrolls when it is longer than the screen, with `↑ 3 more` and `↓ 5 more` at its edges. Rows follow a single column grid (<<full-screen-grid>>).
-* *Footer*: the keys that apply here, filled by priority and ending with `? help` and `q leave` (`<<full-screen-footer>>`).
+* *Footer*: the keys that apply here, filled by priority: `? help` and `q leave` are kept before the
+  level's remaining keys, and the line ends with `? more` when it has to leave cells out
+  (<<full-screen-footer>>).
 * The view opens on the terminal's alternate screen, so the scrollback and the prompt are as they were when it is left.
 
 [#full-screen-brand]
@@ -333,10 +335,11 @@ level.
   cell does not fit whole, the line stops there and ends with `? more`, the same key that opens the
   overlay which shows every binding the width left out.
 
-* *The overlay*: `?` draws a box over the view with every binding of the level, grouped as move,
-  open, actions, views and leave, and the details of the selected row. While it is open the footer
-  shows `Esc close`; the first `Esc` closes the box and leaves the level where it was, and only a
-  second `Esc` goes back one level.
+* *The overlay*: `?` draws a box over the view with the level's bindings, grouped as move, open,
+  actions, views and leave, and the details of the selected row; a body too short for all of it keeps
+  the groups first and leaves the details out from the end. While it is open the footer shows
+  `Esc close`; the first `Esc` closes the box and leaves the level where it was, and only a second
+  `Esc` goes back one level.
 
 [source,text]
 ----
@@ -380,8 +383,9 @@ with `? more` when it does not hold them all (<<full-screen-footer>>)
   wide glyph; a truncated cell ends in `…` (`U+2026`). A cell's display width is its number of
   columns, not its number of `char`s.
 
-* `?` always shows the full row details, whatever the width, and the same text the details line
-  would show on a wide terminal.
+* `?` shows the row's details as the overlay has room for them, whatever the width: the same text
+  the details line would show on a wide terminal, cut to the box's width, and its tail left out of a
+  body too short to hold it.
 
 * A window resize (`WINCH`) redraws at the new width; crossing a threshold changes the shape of the
   screen as the table says, without leaving the level.

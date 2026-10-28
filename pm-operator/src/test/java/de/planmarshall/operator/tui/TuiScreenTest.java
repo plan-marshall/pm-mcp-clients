@@ -45,7 +45,9 @@ class TuiScreenTest {
                                 0, "", false, true, 7);
             var activity = new TuiScreen("fix-relay \u203a TASK-003", TuiLevel.Kind.PLAN_ACTIVITY,
                                 List.of(TuiRow.openable("step-a", "ACTIVITY-ROW-a step",
-                                                    "details of the activity row")),
+                                                                        "details of the activity row"),
+                                                    TuiRow.openable("step-b", "ACTIVITY-ROW-b step",
+                                                                        "details of the second step")),
                                 0, "", false, true, 0);
             var shown = new AtomicReference<>(overview);
             var thread = new Thread(() -> {
