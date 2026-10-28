@@ -174,7 +174,7 @@ class ScreenCaptureIT {
                 if (quietSince == 0L) {
                     quietSince = System.nanoTime();
                 } else if (System.nanoTime() - quietSince >= SETTLE.toNanos()
-                                    && (session.screen().alternateScreenActive()
+                                    && (!expectsView || session.screen().alternateScreenActive()
                                     || System.nanoTime() - start >= MIN_WAIT.toNanos())) {
                     return true;
                 }

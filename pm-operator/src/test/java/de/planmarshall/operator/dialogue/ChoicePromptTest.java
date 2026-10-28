@@ -35,7 +35,6 @@ import org.junit.jupiter.api.Test;
  *   <li>{@code ?n} prints item explanation without sending or changing state</li>
  *   <li>{@code q} (and German {@code v}) leaves with "Left &lt;state&gt;. Nothing was sent."</li>
  *   <li>Unknown input re-asks with offered keys</li>
- *   <li>Answer is echoed on prompt line</li>
  *   <li>Consent and irreversible acts have no Enter default</li>
  *   <li>Options with consequences render in aligned two-column layout with {@code ←}</li>
  * </ul>
