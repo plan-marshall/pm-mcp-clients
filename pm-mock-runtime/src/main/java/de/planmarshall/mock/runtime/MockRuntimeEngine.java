@@ -6472,75 +6472,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         if (facts.containsKey("kept")) {
             keptItems.clear();
-            keptItems.addAll(keptItemsOf(facts));
+            keptItems.addAll(CleanupFixtures.keptItems(fixtureObjects(facts, "kept", "facts.kept")));
         }
         if (facts.containsKey(FIXTURE_RESIDUE)) {
             cleanupResidues.clear();
-            cleanupResidues.addAll(residuesOf(facts));
+            cleanupResidues.addAll(CleanupFixtures.residues(
+                    fixtureObjects(facts, FIXTURE_RESIDUE, "facts." + FIXTURE_RESIDUE)));
         }
-    }
-
-    /**
-     * @param facts the state's operator facts
-     * @return the kept items the fixture names
-     */
-    private static List<CleanupKeptItem> keptItemsOf(Map<String, Object> facts) {
-        return fixtureObjects(facts, "kept", "facts.kept").stream()
-                .map(MockRuntimeEngine::keptItemOf)
-                .filter(Objects::nonNull)
-                .toList();
-    }
-
-    /**
-     * @param kept one fixture entry
-     * @return the kept item it names, or {@code null} when the entry lacks a required member
-     */
-    private static @Nullable CleanupKeptItem keptItemOf(Map<String, Object> kept) {
-        var id = text(kept, "item_id");
-        var kind = text(kept, "kind");
-        var label = text(kept, KEY_LABEL);
-        if (id.isBlank() || kind.isBlank() || label.isBlank()) {
-            return null;
-        }
-        return new CleanupKeptItem(id, kind, label,
-                text(kept, KEY_REASON),
-                text(kept, "kept_at"),
-                text(kept, "kept_by"));
-    }
-
-    /**
-     * @param facts the state's operator facts
-     * @return the cleanup residues the fixture names; an entry without a step is skipped
-     */
-    private static List<CleanupResidue> residuesOf(Map<String, Object> facts) {
-        return fixtureObjects(facts, FIXTURE_RESIDUE, "facts." + FIXTURE_RESIDUE).stream()
-                .map(MockRuntimeEngine::residueOf)
-                .filter(Objects::nonNull)
-                .toList();
-    }
-
-    /**
-     * @param residue one fixture entry
-     * @return the residue it names, or {@code null} when the entry lacks a step
-     */
-    private static @Nullable CleanupResidue residueOf(Map<String, Object> residue) {
-        var step = text(residue, "step");
-        if (step.isBlank()) {
-            return null;
-        }
-        var bytes = JsonTree.number(residue, "bytes");
-        return new CleanupResidue(step, intMember(residue, "count"),
-                bytes != null ? bytes.longValue() : 0L, text(residue, "last_run"));
-    }
-
-    /**
-     * @param map the fixture entry
-     * @param key the member to read
-     * @return the member's text, or the empty string when it is absent
-     */
-    private static String text(Map<String, Object> map, String key) {
-        var value = JsonTree.string(map, key);
-        return value != null ? value : "";
     }
 
     /**
