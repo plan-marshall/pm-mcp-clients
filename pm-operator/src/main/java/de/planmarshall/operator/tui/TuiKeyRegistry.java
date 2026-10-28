@@ -333,8 +333,8 @@ public final class TuiKeyRegistry {
      * not fit whole beside the {@code ? more} cell, the help cell is replaced by that cell, and the
      * line ends with it. A key is never cut in the middle.
      *
-     * <p>A line too narrow even for one cell beside {@code ? more} carries that cell alone: it is
-     * whole, and it names the overlay that lists every key the line cannot show.
+     * <p>A line too narrow even for one cell beside {@code ? more} carries that cell alone when it
+     * fits, and is empty when even it does not: the line never ends in a cut key.
      *
      * @param cells  the cells, in the order they are kept
      * @param width  the columns the footer may use
@@ -349,7 +349,9 @@ public final class TuiKeyRegistry {
         var more = moreCell(locale);
         var kept = keepCells(cells, width, helpCell(locale), more);
         if (kept.isEmpty()) {
-            return more;
+            // Only the overflow cell is left, and only when it fits: a narrower line shows nothing
+            // rather than a cut key.
+            return displayWidth(more) <= width ? more : "";
         }
         kept.add(more);
         return String.join(FOOTER_SEPARATOR, kept);
@@ -641,7 +643,7 @@ public final class TuiKeyRegistry {
         epicLevel.add(new Binding("!", TuiKeyAction.WAITS));
         epicLevel.add(new Binding("*", TuiKeyAction.EXPAND_ALL));
         registry.put(TuiLevel.Kind.EPIC, level(epicLevel,
-                            footer("\u2191\u2193", TuiKeyAction.MOVE_UP), footer(ENTER_LABEL, TuiKeyAction.OPEN),
+                            footer(MOVE_LABEL, TuiKeyAction.MOVE_UP), footer(ENTER_LABEL, TuiKeyAction.OPEN),
                             footer("a", TuiKeyAction.ACTIONS), footer("p", TuiKeyAction.PROJECT),
                             footer("!", TuiKeyAction.WAITS),
                             footer(ESC_LABEL, TuiKeyAction.BACK), footer("?", TuiKeyAction.HELP),
