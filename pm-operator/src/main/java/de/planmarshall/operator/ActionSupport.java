@@ -103,21 +103,15 @@ final class ActionSupport {
                             MessageCatalogue.format(locale, "operator.dialogue.label.pause", Map.of()));
         pause.title(MessageCatalogue.format(locale, "operator.actions.pause.where", Map.of("plan", planId)));
         pause.explanation(MessageCatalogue.format(locale, "operator.actions.pause.explain", Map.of()));
-        pause.addChoice(PausePoint.NOW.value(), MessageCatalogue.format(locale, "operator.actions.pause.now",
-                                                Map.of()),
-                            MessageCatalogue.format(locale, "operator.actions.pause.consequence.now", Map.of()),
-                            MessageCatalogue.format(locale, "operator.actions.pause.explain.now", Map.of()),
-                            false);
-        pause.addChoice(PausePoint.AFTER_TASK.value(), MessageCatalogue.format(locale,
-                                                "operator.actions.pause.task", Map.of()),
-                            MessageCatalogue.format(locale, "operator.actions.pause.consequence.task", Map.of()),
-                            MessageCatalogue.format(locale, "operator.actions.pause.explain.task", Map.of()),
-                            true);
-        pause.addChoice(PausePoint.AFTER_PHASE.value(), MessageCatalogue.format(locale,
-                                                "operator.actions.pause.phase", Map.of()),
-                            MessageCatalogue.format(locale, "operator.actions.pause.consequence.phase", Map.of()),
-                            MessageCatalogue.format(locale, "operator.actions.pause.explain.phase", Map.of()),
-                            false);
+        for (var point : PausePoint.values()) {
+            var key = point.value();
+            pause.addChoice(key,
+                                MessageCatalogue.format(locale, "operator.actions.pause." + key, Map.of()),
+                                MessageCatalogue.format(locale, "operator.actions.pause.consequence." + key,
+                                                    Map.of()),
+                                MessageCatalogue.format(locale, "operator.actions.pause.explain." + key, Map.of()),
+                                point == PausePoint.AFTER_TASK);
+        }
         if (epicId != null) {
             pause.epicTold(MessageCatalogue.format(locale, "operator.actions.end.told", Map.of("epic", epicId)));
         }
