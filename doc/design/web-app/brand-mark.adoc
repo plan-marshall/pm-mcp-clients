@@ -31,7 +31,7 @@ It replaces the character `✦`, which read as a generic sparkle rather than as 
 |`24 × 24` coordinate space, drawing inside `2..22` on both axes. No part relies on the rendered size.
 
 |Colour
-|One colour, `currentColor`, in both the fills and the stroke. No gradient, no baked-in hex, no shadow.
+|One colour, `currentColor`, in both the fills and the stroke of the in-app drawing. No gradient, no baked-in hex, no shadow; the standalone tab copies are the one exception (<<theme>>).
 
 |Sheets
 |Three filled plan sheets rising left to right, each with a slanted top edge and a vertical outer edge. Their heights step up: the first ends above the baseline, the second higher, the third highest.
@@ -43,7 +43,57 @@ It replaces the character `✦`, which read as a generic sparkle rather than as 
 |One small filled dot at the leading edge of the third sheet, where the baton points.
 
 |Silhouette
-|One readable outline at `20` and `24` px. The shapes are told apart by the silhouette, not by colour; there is no text, no letter, and no four-point sparkle in the drawing.
+|One readable outline at `20`, `24` and `64` px. The shapes are told apart by the silhouette, not by colour; there is no text, no letter, and no four-point sparkle in the drawing.
+|===
+
+[#brand-colour]
+== The Brand Colour
+
+The mark is drawn in the brand colour, the token `--color-brand` of `pm-web-app/src/styles/tokens.css`:
+
+[cols="1,1,2",options="header"]
+|===
+|Theme |Value |Reading
+
+|Light
+|`#5B4BDB`
+|The delivered colour: a saturated blue-violet, dark enough for text and glyphs on the light surfaces.
+
+|Dark
+|`#8B7EF9`
+|The same hue lifted for the dark surfaces, so the mark keeps its contrast there.
+
+|On the brand plate
+|`--color-on-brand`
+|The mark inside the rail head's brand-coloured square is drawn in the on-brand colour, not in the brand colour itself.
+|===
+
+In the app the mark inherits `currentColor`, so a surface that needs the brand colour sets it on the
+mark's container (`--color-brand` in the rail head and on the pairing page). A standalone SVG has no
+page context for `currentColor`, so the two tab copies bake their colours; <<theme>> names them.
+
+[#uses]
+== Where the Mark Is Used
+
+[cols="1,2,2",options="header"]
+|===
+|Use |Drawing |Where
+
+|Rail head
+|`24` px in a `28` px brand-coloured square, in the on-brand colour; the wordmark `plan-marshall` at `--text-md`, weight `600`
+|`BrandMark` with `plate`, beside the visible wordmark (`web-app-shell`).
+
+|Pairing page
+|`64` px, in the brand colour; the wordmark, the pairing code at `--text-3xl` in monospace, and the QR code
+|The first screen a buyer sees (`PairingView`).
+
+|Empty states
+|`24` px in `--color-text-muted`
+|The empty states of the views; the mark is the surface's illustration, never its only text.
+
+|Browser tab
+|`24` px, in the baked light-theme brand colour; with a small attention dot while the attention count is above zero
+|The favicon of `app.html`, applied by `src/lib/favicon.ts`.
 |===
 
 [#meaning]
@@ -72,26 +122,52 @@ It replaces the character `✦`, which read as a generic sparkle rather than as 
 * *Original.* The geometry was drawn from this brief. It is not traced, auto-vectorised, resampled, embedded, or otherwise derived from `planmarshall.png`, and the PNG is never shipped with the app.
 * *No third-party mark.* No vendor logo, icon-font glyph, stock icon, or remote asset is copied or referenced. The baton is a plan document's rod, not a brand's device; the mark deliberately avoids the four-point sparkle that reads as another assistant's logo.
 * *Licence.* The drawing is the project's own, under the repository's licence, like the generated workflow icons (link:workflow-visual-language.adoc#provenance[Workflow Visual Language, Provenance]).
-* *Recorded source.* The delivered vector is `pm-web-app/src/lib/icons/brand/plan-marshall-mark.svg`. The browser-tab copy is `pm-web-app/static/brand-mark.svg`.
+* *Recorded source.* The delivered vector is `pm-web-app/src/lib/icons/brand/plan-marshall-mark.svg`; the component carries the same paths inline. The two browser-tab copies are `pm-web-app/static/brand-mark.svg` and `pm-web-app/static/brand-mark-attention.svg`.
 
 [#implementation]
 == Implementation
 
-`pm-web-app/src/lib/components/BrandMark.svelte` renders the delivered file as a CSS mask, the same pattern as `WorkflowIcon`:
+`pm-web-app/src/lib/components/BrandMark.svelte` draws the delivered geometry as an inline SVG:
 
-* `background-color: currentColor`, so the mark follows the surrounding text colour.
-* `inline-size` and `block-size` from the `size` prop: `24` in the header, `20` on a compact surface.
+* `size`: `20`, `24` or `64` — the drawn width and height, and the `data-size` the tests read.
+* `plate`: draws the `24` px mark inside the rail head's `28` px square, in `--color-brand` with the
+  mark in `--color-on-brand`. A rail head therefore reads `<BrandMark size={24} plate />`.
+* `currentColor` in every fill and stroke, so the mark follows the surrounding text colour; the rail
+  head, the pairing page and the empty states each supply the colour their use needs.
 * `aria-hidden="true"` by default; a `label` turns it into `role="img"` with that accessible name.
-* `data-testid="brand-mark"`.
+* `data-testid="brand-mark"`, and `data-testid="brand-mark-plate"` on the square.
 
-The header keeps its `app-header__logo` wrapper (spacing, `color: var(--color-primary)`) and the brand text beside the mark. The linked and the inert brand both carry the mark; only the wrapper differs.
+The header keeps its `app-header__logo` wrapper (spacing, `color: var(--color-primary)`), the brand
+text beside the mark, and the `<BrandMark size={24} />` it already carried. The linked and the inert
+brand both carry the mark; only the wrapper differs. The rail head arrives with the app shell and
+takes the `plate` form.
+
+[#favicon]
+== The Browser Tab
+
+`src/app.html` links `brand-mark.svg`; `pm-web-app/src/lib/favicon.ts` keeps that link in step with
+the attention count:
+
+* `faviconHref(count)` answers `brand-mark-attention.svg` while the count is above zero and
+  `brand-mark.svg` otherwise.
+* `applyFavicon(count)` writes the answer onto the document's icon link; a document without one keeps
+  the icon its markup gave it.
+* The layout calls it with the count the header badge and the tab title already carry, so the three
+  never disagree. The attention inbox feeds the same count once it exists.
 
 [#theme]
 == Theme and Contrast
 
-`currentColor` inherits `--color-primary` in the header, so the mark is the primary blue in both themes and the theme switch needs no separate asset. The mark is a solid silhouette of a saturated colour, so its contrast against the surface is well above the `3:1` a graphical object needs; the check is visual in both themes, and the mark is never the only carrier of a meaning.
+`currentColor` inherits `--color-brand` on the rail head and on the pairing page, so the mark keeps
+the brand colour in both themes and the theme switch needs no separate asset. The mark is a solid
+silhouette of a saturated colour, so its contrast against the surface is well above the `3:1` a
+graphical object needs; the check is visual in both themes, and the mark is never the only carrier of
+a meaning.
 
-The browser-tab copy bakes in the light-theme primary (`#2563eb`) because a standalone SVG has no page context for `currentColor`. That makes the tab legible on a light and a dark tab strip; the in-app mark keeps `currentColor`.
+The two tab copies bake their colours, because a standalone SVG has no page context: the mark in the
+light-theme brand colour `#5B4BDB`, the attention dot `#B86E00` (the light-theme `--color-attention`)
+inside a white ring, so the dot stays legible against the mark's third sheet. That makes the tab
+legible on a light and a dark tab strip; the in-app mark keeps `currentColor`.
 
 [#accessibility]
 == Accessibility
@@ -103,7 +179,7 @@ The browser-tab copy bakes in the light-theme primary (`#2563eb`) because a stan
 [#usage]
 == Usage Rules
 
-* Use the delivered file; do not redraw, recolour, rotate, or add a background plate to it.
-* Keep the `24` px size in the header and do not scale the mark above `24` px in the interface; a larger use needs a reviewed asset.
+* Use the delivered geometry; do not redraw, recolour, rotate, or add a shadow to it.
+* Keep the delivered sizes: `20` on a compact surface, `24` in the header and in the rail head's `28` px square, `64` on the pairing page. Any other size is a new use and is recorded here first.
 * Keep the visible brand text beside the mark. The mark never stands alone as the only identifier of the project.
 * Record a new size or a new surface in this document before shipping it.
