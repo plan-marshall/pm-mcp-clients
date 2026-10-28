@@ -217,12 +217,12 @@ final class WorkActionDialogue {
         plans.title(MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans", Map.of()));
         plans.explanation(MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_explain", Map.of()));
         plans.addChoice("with_plans", MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_with",
-                            Map.of()), null,
+                                                Map.of()), null,
                             MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_with_explain",
                                                 Map.of()),
                             false, null);
         plans.addChoice("keep_plans", MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_keep",
-                            Map.of()), null,
+                                                Map.of()), null,
                             MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_keep_explain",
                                                 Map.of()),
                             false, null);
@@ -248,7 +248,6 @@ final class WorkActionDialogue {
     private String dialogueLabel(String action) {
         return MessageCatalogue.format(prompt.locale(), "operator.dialogue.label." + action, Map.of());
     }
-
 
 
     private int chat(@Nullable EpicResource epic) throws IOException {

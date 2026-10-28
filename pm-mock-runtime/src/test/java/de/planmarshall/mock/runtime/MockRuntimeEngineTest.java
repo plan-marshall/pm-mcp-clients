@@ -448,7 +448,7 @@ class MockRuntimeEngineTest {
         var auth = Map.of("Authorization", "Bearer test-token");
 
         var paused = send("POST", "/api/v1/plans/fix-relay/pause", auth,
-                            "{\"point\":\"now\"}".getBytes(StandardCharsets.UTF_8), false);
+                "{\"point\":\"now\"}".getBytes(StandardCharsets.UTF_8), false);
         assertEquals(200, paused.status());
         assertEquals("pausing", paused.json().get("state"));
         assertEquals("now", paused.json().get("pausing_point"));
@@ -458,7 +458,7 @@ class MockRuntimeEngineTest {
         assertEquals("running", started.json().get("state"));
 
         var cancelled = send("POST", "/api/v1/plans/fix-relay/cancel", auth,
-                            "{\"reason\":\"replaced\",\"close_pr\":true}".getBytes(StandardCharsets.UTF_8), false);
+                "{\"reason\":\"replaced\",\"close_pr\":true}".getBytes(StandardCharsets.UTF_8), false);
         assertEquals(200, cancelled.status());
         assertEquals("ended", cancelled.json().get("state"));
     }
