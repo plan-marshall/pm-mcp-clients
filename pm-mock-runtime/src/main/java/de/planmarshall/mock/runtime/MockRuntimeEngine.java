@@ -54,9 +54,9 @@ import de.planmarshall.api.control.HoldChangedEvent;
 import de.planmarshall.api.control.HoldRecord;
 import de.planmarshall.api.control.HoldResolutionRequest;
 import de.planmarshall.api.control.HoldResolutionResult;
+import de.planmarshall.api.control.PlanAction;
 import de.planmarshall.api.control.PlanActionRequest;
 import de.planmarshall.api.control.PlanControlEvent;
-import de.planmarshall.api.control.PlanAction;
 import de.planmarshall.api.control.PlanSettingsRecord;
 import de.planmarshall.api.control.PlanSettingsUpdateRequest;
 import de.planmarshall.api.control.PlanSettingsUpdateResult;
@@ -275,8 +275,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ACTION_NEXT = "next";
     private static final String ACTION_AUTO = "auto";
     private static final Set<String> PLAN_CONTROL_ACTIONS = Set.of(
-                        PlanAction.PAUSE.value(), PlanAction.START.value(),
-                        PlanAction.CANCEL.value(), PlanAction.ABANDON.value());
+            PlanAction.PAUSE.value(), PlanAction.START.value(),
+            PlanAction.CANCEL.value(), PlanAction.ABANDON.value());
     private static final Set<String> EPIC_FLAT_ACTIONS = Set.of(ACTION_AUTO);
     private static final String ACTION_RETRY = "retry";
     private static final String ACTION_ABORT = "abort";
@@ -4251,7 +4251,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 if (slash > 0 && sub.indexOf('/', slash + 1) < 0) {
                     var candidate = sub.substring(slash + 1);
                     var controlAction = (isPlan && PLAN_CONTROL_ACTIONS.contains(candidate))
-                                        || (isEpic && EPIC_FLAT_ACTIONS.contains(candidate));
+                            || (isEpic && EPIC_FLAT_ACTIONS.contains(candidate));
                     if (controlAction) {
                         subjectId = sub.substring(0, slash);
                         action = candidate;
