@@ -207,7 +207,7 @@ class TuiLayoutTest {
     @Test
     @DisplayName("at 60 columns the help overlay wraps its groups instead of cutting a key")
     void helpOverlayAtSixtyColumns() {
-        var help = new TuiScreen("Running work", TuiLevel.Kind.PROJECT_BY_PLAN, screen(0, 3).rows(),
+        var help = new TuiScreen("All projects", TuiLevel.Kind.PROJECTS, screen(0, 3).rows(),
                             0, "", true, true, 0);
         var lines = layout.render(help, 60, 24).stream().map(Object::toString).toList();
         var box = lines.stream().filter(line -> line.startsWith("\u2502")).toList();
@@ -217,13 +217,29 @@ class TuiLayoutTest {
                             .collect(Collectors.toSet());
 
         assertAll(
-                            () -> assertTrue(box.size() > 7, String.join("\n", box)),
                             () -> assertTrue(box.stream().noneMatch(line -> line.contains("\u2026")),
                                                 String.join("\n", box)),
-                            () -> TuiKeyRegistry.bindings(TuiLevel.Kind.PROJECT_BY_PLAN).stream()
+                            () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502     ")),
+                                                "no group wrapped:\n" + String.join("\n", box)),
+                            () -> TuiKeyRegistry.bindings(TuiLevel.Kind.PROJECTS).stream()
                                                 .map(binding -> TuiKeyRegistry.displayOf(binding.trigger()))
                                                 .forEach(display -> assertTrue(tokens.contains(display),
                                                                     "the overlay does not name " + display))
+        );
+    }
+
+    @Test
+    @DisplayName("the help overlay renders on a terminal narrower than its continuation indent")
+    void helpOverlayAtATinyWidth() {
+        var help = new TuiScreen("All projects", TuiLevel.Kind.PROJECTS, screen(0, 3).rows(),
+                            0, "", true, true, 0);
+
+        var lines = layout.render(help, 12, 10);
+
+        assertAll(
+                            () -> assertEquals(10, lines.size()),
+                            () -> assertTrue(lines.stream().anyMatch(line -> line.toString().contains("\u250c")),
+                                                String.join("\n", lines.toString()))
         );
     }
 

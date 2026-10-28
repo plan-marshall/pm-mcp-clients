@@ -744,8 +744,8 @@ public final class TuiKeyRegistry {
         var listed = List.copyOf(bindings);
         var ordered = new ArrayList<>(List.of(footer));
         // The footer is drawn in priority order, so that a narrower terminal drops the last cell
-        // first and the key that matters most is never the one it loses. A cell takes the priority
-        // of the binding that carries its action on this level, so a level may raise one of them.
+        // first and the key that matters most is never the one it loses: a cell takes the priority
+        // of the binding that carries its action on this level.
         ordered.sort(Comparator.comparingInt(entry -> entryPriority(listed, entry)));
         return new LevelKeys(listed, List.copyOf(ordered));
     }

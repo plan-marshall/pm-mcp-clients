@@ -338,8 +338,8 @@ level.
 
 * *The overlay*: `?` draws a box over the view with the level's bindings, grouped as move, open,
   actions, views and leave, and the details of the selected row; a narrow box wraps a group's keys
-  under them, and a body too short for all of it drops from the end: the groups first, then the
-  details. While it is open the footer shows `Esc close`; the first `Esc` closes the box and leaves
+  under them, and a body too short for all of it drops from the end: the details first, then the
+  groups. While it is open the footer shows `Esc close`; the first `Esc` closes the box and leaves
   the level where it was, and only a second `Esc` goes back one level.
 
 [source,text]

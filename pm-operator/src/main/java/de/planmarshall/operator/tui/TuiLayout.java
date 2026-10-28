@@ -56,6 +56,8 @@ public final class TuiLayout {
     private static final String CELL_START = "\u2502";
     private static final String CELL_END = "\u2502";
     private static final String CELL_BOTTOM_START = "\u2514";
+    /** How far a wrapped line of the help overlay is indented under the group's keys. */
+    private static final int CONTINUATION_INDENT = 4;
     private static final String CELL_BOTTOM_END = "\u2518";
     private static final String CONNECTED = "\u25cf ";
     private static final String DISCONNECTED = "\u25cb ";
@@ -263,10 +265,14 @@ public final class TuiLayout {
      */
     private static List<String> wrap(String text, int width) {
         var lines = new ArrayList<String>();
+        if (width <= CONTINUATION_INDENT + 8) {
+            // Too narrow to wrap meaningfully: the caller's truncation shows what fits.
+            return List.of(text);
+        }
         var rest = text;
-        while (displayWidth(rest) > width) {
+        while (displayWidth(rest) > width && !rest.isBlank()) {
             int used = 0;
-            int cut = 0;
+            int end = 0;
             for (int index = 0; index < rest.length(); ) {
                 int codePoint = rest.codePointAt(index);
                 int cells = Math.max(0, WCWidth.wcwidth(codePoint));
@@ -274,18 +280,20 @@ public final class TuiLayout {
                     break;
                 }
                 used += cells;
-                cut = index + Character.charCount(codePoint);
-                index = cut;
+                end = index + Character.charCount(codePoint);
+                index = end;
             }
-            int space = rest.lastIndexOf(' ', Math.max(0, cut - 1));
-            if (space > 0) {
-                cut = space;
-            }
-            if (cut <= 0) {
+            if (end == 0) {
                 break;
             }
-            lines.add(rest.substring(0, cut).stripTrailing());
-            rest = "    " + rest.substring(cut).stripLeading();
+            int space = rest.lastIndexOf(' ', end - 1);
+            int cut = space > 0 ? space : end;
+            var head = rest.substring(0, cut).stripTrailing();
+            if (head.isEmpty()) {
+                break;
+            }
+            lines.add(head);
+            rest = " ".repeat(CONTINUATION_INDENT) + rest.substring(cut).stripLeading();
         }
         lines.add(rest);
         return List.copyOf(lines);
