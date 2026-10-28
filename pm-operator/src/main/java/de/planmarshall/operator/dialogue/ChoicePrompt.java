@@ -112,7 +112,7 @@ public final class ChoicePrompt {
     private boolean allowRemember;
     private boolean multiSelect;
     private boolean noInput;
-
+    private @Nullable String leaveLabel;
     /**
      * Creates a choice prompt over a JLine {@link LineReader}.
      *
@@ -209,6 +209,18 @@ public final class ChoicePrompt {
         return this;
     }
 
+    /**
+     * Names the dialogue in the leave message; without it the state identifier is named. A caller
+     * that shows the operator a screen passes a human label, never a state identifier.
+     *
+     * @param leaveLabel the human label of the dialogue
+     * @return this prompt
+     */
+    public ChoicePrompt leaveLabel(String leaveLabel) {
+        this.leaveLabel = Objects.requireNonNull(leaveLabel, "leaveLabel");
+        return this;
+    }
+
     public ChoicePrompt addChoice(Choice choice) {
         choices.add(Objects.requireNonNull(choice, "choice"));
         return this;
@@ -264,7 +276,7 @@ public final class ChoicePrompt {
             if (line.isEmpty()) {
                 var preselected = choices.stream().filter(Choice::preselected).findFirst().orElse(null);
                 if (preselected != null) {
-                    return preselected;
+                    return echoed(preselected);
                 }
                 printNotOffered(line);
                 continue;
@@ -274,7 +286,7 @@ public final class ChoicePrompt {
             try {
                 var num = Integer.parseInt(line);
                 if (num >= 1 && num <= choices.size()) {
-                    return choices.get(num - 1);
+                    return echoed(choices.get(num - 1));
                 }
             } catch (NumberFormatException _) {
                 // Not an integer, fall through to key check
@@ -283,12 +295,18 @@ public final class ChoicePrompt {
             // Check key selection
             for (var choice : choices) {
                 if (choice.key().equalsIgnoreCase(line)) {
-                    return choice;
+                    return echoed(choice);
                 }
             }
 
             printNotOffered(line);
         }
+    }
+
+    private Choice echoed(Choice choice) {
+        out.println(MessageCatalogue.format(locale, "operator.dialogue.answer", Map.of("answer", choice.label())));
+        out.flush();
+        return choice;
     }
 
     /**
@@ -477,7 +495,8 @@ public final class ChoicePrompt {
         }
 
         if (epicTold != null) {
-            out.println("  Its epic   " + epicTold);
+            out.println("  " + MessageCatalogue.format(locale, "operator.actions.end.its_epic", Map.of())
+                                + "   " + epicTold);
         }
         out.flush();
     }
@@ -495,16 +514,8 @@ public final class ChoicePrompt {
     }
 
     private String renderConsentPrompt() {
-        var isGerman = isGerman();
-        var leaveKey = isGerman ? "v) verlassen" : "q) leave";
-        if (isGerman) {
-            return allowRemember
-                                ? "j) ja   m) ja, und merken   n) nicht jetzt   " + leaveKey + "   ?   \u203a "
-                                : "j) ja   n) nein   " + leaveKey + "   ?   \u203a ";
-        }
-        return allowRemember
-                            ? "y) yes   r) yes, and don't ask again   n) not now   " + leaveKey + "   ?   \u203a "
-                            : "y) yes   n) no   " + leaveKey + "   ?   \u203a ";
+        var key = allowRemember ? "operator.dialogue.consent.prompt_yrn" : "operator.dialogue.consent.prompt_yn";
+        return MessageCatalogue.format(locale, key, Map.of()) + "   \u203a ";
     }
 
     private @Nullable String readLine() {
@@ -535,7 +546,8 @@ public final class ChoicePrompt {
     }
 
     private void leave() {
-        out.println(MessageCatalogue.format(locale, "operator.dialogue.left", Map.of("state", stateId)));
+        out.println(MessageCatalogue.format(locale, "operator.dialogue.left",
+                            Map.of("state", leaveLabel != null ? leaveLabel : stateId)));
         out.flush();
         throw new StartPrompt.StartLeftException();
     }

@@ -122,10 +122,12 @@ final class ActionSupport {
                 } catch (EndOfFileException | UserInterruptException _) {
                     reason = null;
                 }
+                var leaveLabel = MessageCatalogue.format(locale,
+                                    "operator.dialogue.label." + actionVerb.toLowerCase(Locale.ROOT), Map.of());
                 if (reason == null || "q".equalsIgnoreCase(reason) || (locale.toLowerCase(Locale.ROOT).startsWith("de")
                                     && "v".equalsIgnoreCase(reason))) {
                     out.println(MessageCatalogue.format(locale, "operator.dialogue.left",
-                                        Map.of("state", "control.action")));
+                                        Map.of("state", leaveLabel)));
                     out.flush();
                     return 0;
                 }
@@ -140,7 +142,7 @@ final class ActionSupport {
                                     + "         " + effectiveReason);
                 out.flush();
 
-                var confirmPrompt = new ChoicePrompt(prompt, "control.action").consent(false);
+                var confirmPrompt = new ChoicePrompt(prompt, "control.action").consent(false).leaveLabel(leaveLabel);
                 var confirmTitle = MessageCatalogue.format(locale, "operator.actions.cancel.confirm",
                                     Map.of("action", actionVerb)) + "?";
                 confirmPrompt.title(confirmTitle);

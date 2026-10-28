@@ -153,10 +153,11 @@ class ScreenCaptureIT {
 
     /**
      * Waits until the process has written nothing new for the settle window and the screen can be
-     * captured. A capture that types keys expects a full-screen view, so it waits for the alternate
-     * screen itself: a full-screen view enters it only after JLine's terminal probe is answered, and
-     * a quiet stretch before that is not a drawn view. A capture whose verb prints instead has no
-     * alternate screen, so the quiet window decides once {@link #MIN_WAIT} has passed.
+     * captured. A capture that types keys expects a view: a full-screen view enters the alternate
+     * screen only after JLine's terminal probe is answered, and a quiet stretch before that is not a
+     * drawn view, so it waits for the alternate screen. A line dialogue never enters the alternate
+     * screen, so for it the quiet window decides once {@link #MIN_WAIT} has passed. A capture whose
+     * verb prints and types nothing is settled by the quiet window alone.
      *
      * @param session     the running session
      * @param expectsView whether the capture types keys and therefore expects a full-screen view

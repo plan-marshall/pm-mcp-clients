@@ -622,7 +622,8 @@ public final class PlanCommand implements Callable<Integer> {
                 if (context.isInteractiveTerminal()) {
                     var locale = context.clientEnvironment().locale();
                     var prompt = new StartPrompt(context, out, locale, false);
-                    var choicePrompt = new ChoicePrompt(prompt, "control.pause");
+                    var choicePrompt = new ChoicePrompt(prompt, "control.pause").leaveLabel(
+                                        MessageCatalogue.format(locale, "operator.dialogue.label.pause", Map.of()));
                     choicePrompt.title(MessageCatalogue.format(locale, "operator.actions.pause.where",
                                         Map.of("plan", planId)));
                     var cNow = MessageCatalogue.format(locale, "operator.actions.pause.consequence.now", Map.of());

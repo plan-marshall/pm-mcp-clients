@@ -143,7 +143,7 @@ final class WorkActionDialogue {
     }
 
     private int pause(WorkActions actions) throws IOException {
-        var choicePrompt = new ChoicePrompt(prompt, STATE_ID);
+        var choicePrompt = new ChoicePrompt(prompt, STATE_ID).leaveLabel(dialogueLabel("pause"));
         var where = MessageCatalogue.format(prompt.locale(), "operator.actions.pause.where", Map.of("plan", id));
         choicePrompt.title(where);
         var cNow = MessageCatalogue.format(prompt.locale(), "operator.actions.pause.consequence.now", Map.of());
@@ -190,15 +190,22 @@ final class WorkActionDialogue {
                             Map.of("outcome", "abort".equals(outcome) ? "aborted"
                                                 : "cancel".equals(action) ? "cancelled"
                                                 : "abandoned")));
-        var reason = askReason();
+        var reason = askReason(action);
         if (reason == null) {
             return 0;
         }
         prompt.raw("  " + MessageCatalogue.format(prompt.locale(), "operator.actions.end.reason", Map.of())
                             + "         " + reason);
+        var pullRequest = new ChoicePrompt(prompt, STATE_ID).leaveLabel(dialogueLabel(action));
+        pullRequest.title(MessageCatalogue.format(prompt.locale(), "operator.actions.end.pull_request", Map.of()));
+        pullRequest.addChoice("close", MessageCatalogue.format(prompt.locale(), "operator.actions.end.pr_close",
+                            Map.of()));
+        pullRequest.addChoice("keep", MessageCatalogue.format(prompt.locale(), "operator.actions.end.pr_keep",
+                            Map.of()));
+        var closePr = "close".equals(pullRequest.ask().key());
         var confirmTitle = MessageCatalogue.format(prompt.locale(), "operator.actions.cancel.confirm",
                             Map.of("action", outcome)) + "?";
-        var consent = new ChoicePrompt(prompt, STATE_ID).consent(false);
+        var consent = new ChoicePrompt(prompt, STATE_ID).consent(false).leaveLabel(dialogueLabel(action));
         consent.title(confirmTitle);
         var consentResult = consent.askConsent();
         if (!consentResult.confirmed()) {
@@ -206,7 +213,7 @@ final class WorkActionDialogue {
         }
         var payload = new LinkedHashMap<String, Object>();
         payload.put("reason", reason);
-        payload.put("close_pr", true);
+        payload.put("close_pr", closePr);
         client.perform(kind, id, action, payload);
         prompt.line("operator.actions.result.ended",
                             Map.of("plan", id, "outcome", "cancel".equals(action) ? "cancelled"
@@ -231,11 +238,11 @@ final class WorkActionDialogue {
                                                 "operator.actions.epic.cancel.with_plans", Map.of()), STATE_ID,
                             MessageCatalogue.format(prompt.locale(), "operator.actions.epic.cancel.plans", Map.of()),
                             id);
-        var reason = askReason();
+        var reason = askReason("cancel");
         if (reason == null) {
             return 0;
         }
-        var consent = new ChoicePrompt(prompt, STATE_ID).consent(false);
+        var consent = new ChoicePrompt(prompt, STATE_ID).consent(false).leaveLabel(dialogueLabel("cancel"));
         consent.title(MessageCatalogue.format(prompt.locale(), "operator.actions.epic.cancel.title",
                             Map.of("epic", id)));
         var consentResult = consent.askConsent();
@@ -250,7 +257,11 @@ final class WorkActionDialogue {
         return 0;
     }
 
-    private @Nullable String askReason() {
+    private String dialogueLabel(String action) {
+        return MessageCatalogue.format(prompt.locale(), "operator.dialogue.label." + action, Map.of());
+    }
+
+    private @Nullable String askReason(String action) {
         var question = MessageCatalogue.format(prompt.locale(), "operator.actions.end.reason", Map.of())
                             + StartPrompt.SUFFIX;
         String reason;
@@ -262,7 +273,7 @@ final class WorkActionDialogue {
         if (reason == null || "q".equalsIgnoreCase(reason) || (prompt.locale().toLowerCase(Locale.ROOT).startsWith("de")
                             && "v".equalsIgnoreCase(reason))) {
             prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.dialogue.left",
-                                Map.of("state", STATE_ID)));
+                                Map.of("state", dialogueLabel(action))));
             throw new StartPrompt.StartLeftException();
         }
         reason = reason.trim();

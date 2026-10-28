@@ -35,6 +35,7 @@ import org.junit.jupiter.api.Test;
  *   <li>{@code ?n} prints item explanation without sending or changing state</li>
  *   <li>{@code q} (and German {@code v}) leaves with "Left &lt;state&gt;. Nothing was sent."</li>
  *   <li>Unknown input re-asks with offered keys</li>
+ *   <li>The chosen answer is echoed</li>
  *   <li>Consent and irreversible acts have no Enter default</li>
  *   <li>Options with consequences render in aligned two-column layout with {@code ←}</li>
  * </ul>
@@ -75,6 +76,30 @@ class ChoicePromptTest {
         var result = prompt.ask();
         assertNotNull(result);
         assertEquals("task", result.key());
+    }
+
+    @Test
+    @DisplayName("rule 2: the chosen answer is echoed")
+    void echoesTheAnswer() {
+        var out = new StringWriter();
+        var prompt = createPrompt("\n", out, "en");
+        prompt.addChoice("now", "now", null, null, false, null);
+        prompt.addChoice("task", "after the current task", null, null, true, null);
+
+        prompt.ask();
+        assertTrue(out.toString().contains("Chosen: after the current task"), out.toString());
+    }
+
+    @Test
+    @DisplayName("rule 7: the leave message names the human label, never the state id")
+    void leaveNamesTheLabel() {
+        var out = new StringWriter();
+        var prompt = createPrompt("q\n", out, "en").leaveLabel("the pause");
+        prompt.addChoice("now", "now");
+
+        assertThrows(StartPrompt.StartLeftException.class, prompt::ask);
+        assertTrue(out.toString().contains("Left the pause. Nothing was sent."), out.toString());
+        assertFalse(out.toString().contains(STATE), out.toString());
     }
 
     @Test
