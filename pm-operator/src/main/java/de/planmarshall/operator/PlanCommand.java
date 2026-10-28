@@ -25,6 +25,7 @@ import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.HoldResolutionResult;
+import de.planmarshall.api.control.PausePoint;
 import de.planmarshall.api.control.PlanSettingsRecord;
 import de.planmarshall.api.control.PlanSettingsUpdateResult;
 import de.planmarshall.api.http.HttpRequest;
@@ -83,9 +84,6 @@ public final class PlanCommand implements Callable<Integer> {
 
     private static final String KIND = "plan";
     private static final String PLANS_API = "/api/v1/plans/";
-    private static final String AFTER_NOW = "now";
-    private static final String AFTER_TASK = "after_task";
-    private static final String AFTER_PHASE = "after_phase";
 
     private final OperatorContext context;
 
@@ -623,10 +621,11 @@ public final class PlanCommand implements Callable<Integer> {
             var response = context.runtime(true).send(
                                 HttpRequest.json("POST", endpoint, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
-                if (AFTER_NOW.equals(point)) {
+                if (PausePoint.NOW.value().equals(point)) {
                     out.printf("✓ %s paused%n", planId);
                 } else {
-                    out.printf("✓ %s pausing after the %s%n", planId, AFTER_PHASE.equals(point) ? "phase" : "task");
+                    out.printf("✓ %s pausing after the %s%n", planId,
+                                        PausePoint.AFTER_PHASE.value().equals(point) ? "phase" : "task");
                 }
                 out.flush();
                 return 0;
@@ -636,19 +635,20 @@ public final class PlanCommand implements Callable<Integer> {
 
         /**
          * @param out the verb's output
-         * @return the point the pause takes, or {@code null} when {@code --no-input} met a question
+         * @return the point the pause takes, or {@code null} when nothing may be asked and no point
+         *         was given
          */
         private @Nullable String point(PrintWriter out) {
             if (now) {
-                return AFTER_NOW;
+                return PausePoint.NOW.value();
             }
             if (afterPhase) {
-                return AFTER_PHASE;
+                return PausePoint.AFTER_PHASE.value();
             }
             if (afterTask) {
-                return AFTER_TASK;
+                return PausePoint.AFTER_TASK.value();
             }
-            if (noInput) {
+            if (noInput || !context.isInteractiveTerminal()) {
                 out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                                     "operator.actions.pause.stopped", Map.of()));
                 out.flush();
@@ -658,16 +658,11 @@ public final class PlanCommand implements Callable<Integer> {
         }
 
         private String askedPoint(PrintWriter out) {
-            if (!context.isInteractiveTerminal()) {
-                return AFTER_TASK;
-            }
             var locale = context.clientEnvironment().locale();
             var prompt = new StartPrompt(context, out, locale, false);
             var choice = ActionSupport.pausePrompt(prompt, planId, null).ask();
-            if (AFTER_NOW.equals(choice.key())) {
-                return AFTER_NOW;
-            }
-            return "phase".equals(choice.key()) ? AFTER_PHASE : AFTER_TASK;
+            var point = PausePoint.fromValue(choice.key());
+            return point != null ? point.value() : PausePoint.AFTER_TASK.value();
         }
     }
 

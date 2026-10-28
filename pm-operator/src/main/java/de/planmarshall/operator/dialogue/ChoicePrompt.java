@@ -85,6 +85,7 @@ public final class ChoicePrompt {
     private final String locale;
     private final String stateId;
     private final List<Choice> choices = new ArrayList<>();
+    private @Nullable StartPrompt startPrompt;
 
     private @Nullable String title;
     private @Nullable String explanation;
@@ -129,14 +130,30 @@ public final class ChoicePrompt {
     }
 
     /**
-     * Creates a choice prompt over an existing {@link StartPrompt}.
+     * Creates a choice prompt over an existing {@link StartPrompt}. The line reader is opened on the
+     * first question, never in the constructor: a {@code --no-input} run has to stop with the missing
+     * input before it ever touches a terminal.
      *
      * @param prompt  the start prompt
      * @param stateId the state identifier
      */
     public ChoicePrompt(StartPrompt prompt, String stateId) {
-        this(prompt.reader(), prompt.out(), prompt.locale(), stateId);
+        this.input = promptText -> prompt.reader().readLine(promptText);
+        this.out = prompt.out();
+        this.locale = prompt.locale();
+        this.stateId = stateId;
         this.noInput = !prompt.asks();
+        this.startPrompt = prompt;
+    }
+
+    /**
+     * Opens the line reader (and answers JLine's terminal probe) before the prompt draws itself, so
+     * the operator never types into a terminal the reader has not taken over yet.
+     */
+    private void prepare() {
+        if (startPrompt != null) {
+            startPrompt.reader();
+        }
     }
 
     public ChoicePrompt title(String title) {
@@ -198,6 +215,7 @@ public final class ChoicePrompt {
         if (noInput) {
             throw new StartPrompt.MissingInputException(stateId, neededChoice(), null);
         }
+        prepare();
         while (true) {
             renderFrame();
             var line = nextLine();
@@ -237,6 +255,7 @@ public final class ChoicePrompt {
         if (noInput) {
             throw new StartPrompt.MissingInputException(stateId, "consent", null);
         }
+        prepare();
         while (true) {
             printTitle();
             var line = nextLine(renderConsentPrompt());
@@ -270,6 +289,7 @@ public final class ChoicePrompt {
         if (noInput) {
             throw new StartPrompt.MissingInputException(stateId, "multi-selection", null);
         }
+        prepare();
         var selected = new LinkedHashSet<Integer>();
         addPreselected(selected);
         while (true) {
@@ -374,12 +394,11 @@ public final class ChoicePrompt {
         if (start == null || end == null) {
             return false;
         }
+        var last = Math.min(end, choices.size());
         var valid = false;
-        for (var k = start; k <= end; k++) {
-            if (k >= 1 && k <= choices.size()) {
-                toggle(selected, k - 1);
-                valid = true;
-            }
+        for (var k = Math.max(start, 1); k <= last; k++) {
+            toggle(selected, k - 1);
+            valid = true;
         }
         return valid;
     }

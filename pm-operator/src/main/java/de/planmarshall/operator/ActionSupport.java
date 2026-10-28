@@ -19,6 +19,7 @@ import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.ChatReadBackResource;
+import de.planmarshall.api.control.PausePoint;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
@@ -102,15 +103,18 @@ final class ActionSupport {
                             MessageCatalogue.format(locale, "operator.dialogue.label.pause", Map.of()));
         pause.title(MessageCatalogue.format(locale, "operator.actions.pause.where", Map.of("plan", planId)));
         pause.explanation(MessageCatalogue.format(locale, "operator.actions.pause.explain", Map.of()));
-        pause.addChoice("now", MessageCatalogue.format(locale, "operator.actions.pause.now", Map.of()),
+        pause.addChoice(PausePoint.NOW.value(), MessageCatalogue.format(locale, "operator.actions.pause.now",
+                            Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.consequence.now", Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.explain.now", Map.of()),
                             false);
-        pause.addChoice("task", MessageCatalogue.format(locale, "operator.actions.pause.task", Map.of()),
+        pause.addChoice(PausePoint.AFTER_TASK.value(), MessageCatalogue.format(locale,
+                            "operator.actions.pause.task", Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.consequence.task", Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.explain.task", Map.of()),
                             true);
-        pause.addChoice("phase", MessageCatalogue.format(locale, "operator.actions.pause.phase", Map.of()),
+        pause.addChoice(PausePoint.AFTER_PHASE.value(), MessageCatalogue.format(locale,
+                            "operator.actions.pause.phase", Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.consequence.phase", Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.explain.phase", Map.of()),
                             false);

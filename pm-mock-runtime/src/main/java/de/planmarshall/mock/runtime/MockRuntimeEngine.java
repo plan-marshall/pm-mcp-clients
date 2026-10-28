@@ -275,8 +275,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ACTION_AUTO = "auto";
     private static final Set<String> PLAN_CONTROL_ACTIONS =
             Set.of(ACTION_PAUSE, ACTION_START, ACTION_CANCEL, ACTION_ABANDON);
-    private static final Set<String> EPIC_CONTROL_ACTIONS =
-            Set.of(ACTION_AUTO, ACTION_COMMON_FILES, ACTION_CANCEL, ACTION_NEXT, ACTION_ARCHIVE);
     private static final String ACTION_RETRY = "retry";
     private static final String ACTION_ABORT = "abort";
     private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT = SEGMENT_ENTRY_CHAT_PROPOSAL + ACTION_ACCEPT;
@@ -4249,8 +4247,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 var slash = sub.indexOf('/');
                 if (slash > 0 && sub.indexOf('/', slash + 1) < 0) {
                     var candidate = sub.substring(slash + 1);
-                    var controlAction = (isPlan && PLAN_CONTROL_ACTIONS.contains(candidate))
-                            || (isEpic && EPIC_CONTROL_ACTIONS.contains(candidate));
+                    var controlAction = isPlan && PLAN_CONTROL_ACTIONS.contains(candidate);
                     if (controlAction) {
                         subjectId = sub.substring(0, slash);
                         action = candidate;
@@ -4470,6 +4467,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         if (mode != null) {
                             controlEpicAuto.put(epicId, "on".equalsIgnoreCase(String.valueOf(mode)));
                         }
+                    }
+                    var commonFiles = actionRequest.extra().get(ACTION_COMMON_FILES);
+                    if (commonFiles instanceof Number number) {
+                        controlEpicOverlap.put(epicId, number.intValue());
                     }
                 }
                 case ACTION_COMMON_FILES -> {
