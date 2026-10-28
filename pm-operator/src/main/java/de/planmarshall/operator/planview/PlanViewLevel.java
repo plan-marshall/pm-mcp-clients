@@ -190,24 +190,26 @@ public final class PlanViewLevel {
      */
     public String footer(String locale) {
         var parts = new ArrayList<String>();
+        // Priority order: a narrower terminal drops the tail, never a key that matters more.
         parts.add("\u2191\u2193 " + TuiKeyRegistry.label(TuiKeyAction.MOVE_UP, TuiLevel.Kind.PLAN, locale, 0));
         parts.add("Enter " + MessageCatalogue.format(locale, "operator.plan.keys.details", Map.of()));
         parts.add("\u2192 " + MessageCatalogue.format(locale, "operator.plan.keys.open", Map.of()));
-        parts.add("\u2190 " + MessageCatalogue.format(locale, "operator.plan.keys.close", Map.of()));
-        parts.add(". " + MessageCatalogue.format(locale, "operator.plan.keys.where", Map.of()));
-        parts.add("* " + MessageCatalogue.format(locale, "operator.plan.keys.all", Map.of()));
-        parts.add("n " + MessageCatalogue.format(locale, "operator.plan.keys.not_in_plan", Map.of()));
-        parts.add("t " + MessageCatalogue.format(locale, "operator.plan.keys.tokens", Map.of()));
-        parts.add("p " + MessageCatalogue.format(locale, "operator.plan.keys.project", Map.of()));
+        parts.add("Esc " + MessageCatalogue.format(locale, "operator.overview.keys.back", Map.of()));
+        parts.add("a " + MessageCatalogue.format(locale, "operator.plan.keys.actions", Map.of()));
+        parts.add("? " + MessageCatalogue.format(locale, "operator.overview.keys.help", Map.of()));
+        parts.add("q " + MessageCatalogue.format(locale, "operator.overview.keys.leave", Map.of()));
         if (tree.epic() != null) {
             parts.add("e " + MessageCatalogue.format(locale, "operator.plan.keys.epic", Map.of()));
         }
         if (ended != null) {
             parts.add("c " + MessageCatalogue.format(locale, "operator.plan.keys.completion", Map.of()));
         }
-        parts.add("a " + MessageCatalogue.format(locale, "operator.plan.keys.actions", Map.of()));
-        parts.add("Esc " + MessageCatalogue.format(locale, "operator.overview.keys.back", Map.of()));
-        parts.add("q " + MessageCatalogue.format(locale, "operator.overview.keys.leave", Map.of()));
+        parts.add("p " + MessageCatalogue.format(locale, "operator.plan.keys.project", Map.of()));
+        parts.add("\u2190 " + MessageCatalogue.format(locale, "operator.plan.keys.close", Map.of()));
+        parts.add(". " + MessageCatalogue.format(locale, "operator.plan.keys.where", Map.of()));
+        parts.add("* " + MessageCatalogue.format(locale, "operator.plan.keys.all", Map.of()));
+        parts.add("n " + MessageCatalogue.format(locale, "operator.plan.keys.not_in_plan", Map.of()));
+        parts.add("t " + MessageCatalogue.format(locale, "operator.plan.keys.tokens", Map.of()));
         return String.join("   ", parts);
     }
 

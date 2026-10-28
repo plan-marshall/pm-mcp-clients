@@ -1,6 +1,9 @@
 = Terminal Client: The Plan View
 :toc: left
 :toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
 :nofooter:
 
 link:README.adoc[Terminal Client] » The Plan View
@@ -37,7 +40,7 @@ What the plan view shows, level by level, is link:../shared/plan-view.adoc[Plan 
      ○ envelope-close                               planned
  ▸ ○ phase  finalize                                planned
  ─────────────────────────────────────────────────────────────────────────────
- ↑↓ move   → open   ← close   Enter details   . where it is   p project   e epic   a actions   Esc back
+ ↑↓ move   Enter details   → open   Esc back   a actions   ? help   q leave   e epic   p project   ← close   . where it is
 ----
 
 * The plan view is a tree: `▸` a closed node, `▾` an open one; `→` (`l`) opens the selected node one level, `←` (`h`) closes it or moves to its parent.

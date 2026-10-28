@@ -1,6 +1,9 @@
 = Terminal Client: Transcripts: Steps 4 to 7
 :toc: left
 :toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
 :nofooter:
 
 link:README.adoc[Terminal Client] » Transcripts: Steps 4 to 7
@@ -10,7 +13,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
 [#t-roles]
-== 4 Roles
+== Roles — step 4
 
 [#t-roles-review]
 === The Overview (`roles.load`, `roles.default`, `roles.review`, `roles.validate`, `roles.write`, `roles.done`)
@@ -108,7 +111,7 @@ Use these roles? [Enter]   e) adjust roles   d) reset to default   ?   ›
 * `roles.validate` that finds an invalid role returns to the list with the role marked `⚠ <reason>` and the prompt naming it.
 
 [#t-credentials]
-== 5 Credentials
+== Credentials — step 5
 
 [#t-store-choose]
 === Choose (`store.detect`, `store.choose`, `store.consent`, `store.check`, `store.record`, `store.done`)
@@ -211,7 +214,7 @@ Move 7 tokens? [Enter]   b) back   ?   › ⏎
 * The new store is checked first (`store.check`); `store.confirm-move` asks for the move with the count, and `store.move` writes each token to the new store and reads it back. The enrolment integrity key moves last of all, once the enrolments verify under it in the new store (`onboard.store.move.key_moved`); only then is the new store recorded (`store.record`), and only after that are the tokens deleted from the old store. A copy that fails or a token that does not read back from the new store stops the move: that token is marked ✗ with its cause, every entry this move wrote to the new store is deleted, a partly written one included, and every token stays in the old one, which stays the recorded store (`onboard.store.move.failed`); the state is then `store.unavailable` with its cause, `l) check again` and `o) choose another store` (<<t-store-unavailable>>).
 
 [#t-providers]
-== 6 Providers
+== Providers — step 6
 
 [#t-providers-select]
 === Consent, Scan, Select (`providers.consent`, `providers.scan`, `providers.select`)
@@ -292,7 +295,7 @@ Continue without SonarCloud? [Enter]   b) back   › ⏎
 * `providers.failed` is the operator's choice: `Enter` (_fix credential_) returns to `providers.credentials`, `l` runs `providers.verify` again, `k` records the provider as not available after its confirmation.
 
 [#t-defaults]
-== 7 Plans (`defaults.load`, `defaults.review`, `defaults.validate`, `defaults.record`, `defaults.done`)
+== Plans — step 7 (`defaults.load`, `defaults.review`, `defaults.validate`, `defaults.record`, `defaults.done`)
 
 [source,text]
 ----
@@ -326,6 +329,7 @@ Save these choices? [Enter]   change: 1-8   b) back   ?   › ⏎
 ----
   Posture   9) Not set: each plan asks ←   10) Minimal   11) Standard   12) Full
 ----
+
 * `defaults.validate` that refuses a line reprints the state with the line marked `✗ <reason>` and the prompt naming it.
 * At the machine level it checks only what the machine knows: whether a provider is available for a pull request; the machine default is never checked against a repository. Whether a base branch is protected is checked where a project is known: the landing the project's team chooses in its setup, and a plan's start, which refuse _Commit on the base branch_ on a protected branch with the reason. A machine default that does not fit a project is refused for that project there, and the project or the plan chooses another.
 

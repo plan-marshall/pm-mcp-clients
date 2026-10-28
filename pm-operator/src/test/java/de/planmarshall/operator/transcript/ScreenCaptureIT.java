@@ -48,7 +48,8 @@ import picocli.CommandLine;
  * Runs a named screen-capture set on a real pseudo-terminal (CLI-CC-S-01): every non-blank,
  * non-comment line of {@code src/test/resources/screen-captures/{set}.txt} is one capture, and the
  * test writes the screen text, the cell attributes and the raw output below
- * {@code target/screens/{set}/} or, with {@code -Dpm.screens.out}, below that directory.
+ * {@code target/screens/{set}/} or, with {@code -Dpm.screens.out}, below that directory. A capture
+ * that names keys to type before its read also writes the screen those keys opened.
  *
  * <p>It is selected by {@code -Dpm.screens={set}} and skipped without it, so the ordinary
  * integration-test lane pays nothing for it. The command line is documented in
@@ -65,13 +66,21 @@ class ScreenCaptureIT {
     private static final String RESOURCE_DIR = "screen-captures";
     private static final String OUTPUT_DIR = "screens";
     private static final Duration SETTLE = Duration.ofMillis(600);
+    private static final Duration EXIT_PAUSE = Duration.ofMillis(500);
     private static final Duration MIN_WAIT = Duration.ofSeconds(2);
-    private static final Duration READY_TIMEOUT = Duration.ofSeconds(20);
+    private static final Duration READY_TIMEOUT = Duration.ofSeconds(40);
     private static final Duration POLL = Duration.ofMillis(50);
 
-    /** One capture line of the set. */
+    /**
+     * One capture line of the set.
+     *
+     * @param keys       the keys typed after the capture, usually {@code q} to leave the view
+     * @param beforeKeys the keys typed before the capture, so that the captured screen shows their
+     *                   state; empty when the capture is the screen the verb opens
+     */
     private record Capture(String name, String scenario, List<String> states, List<String> command,
-    String keys, int columns, int rows, String locale, Map<String, String> environment) {
+    String keys, int columns, int rows, String locale, Map<String, String> environment,
+    String beforeKeys) {
     }
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
@@ -117,6 +126,20 @@ class ScreenCaptureIT {
                                     String.join("\n", screen.lines()) + "\n", StandardCharsets.UTF_8);
                 Files.writeString(output.resolve(capture.name() + ".attrs.txt"),
                                     attributes(screen), StandardCharsets.UTF_8);
+                if (!capture.beforeKeys().isEmpty()) {
+                    var drawn = session.rawOutput().length();
+                    DialogueHarness.type(session, capture.beforeKeys());
+                    assertTrue(awaitRedraw(session, drawn),
+                                        capture.name() + " did not redraw after its keys within " + READY_TIMEOUT);
+                    var after = session.screen();
+                    Files.writeString(output.resolve(capture.name() + ".after.txt"),
+                                        String.join("\n", after.lines()) + "\n", StandardCharsets.UTF_8);
+                    Files.writeString(output.resolve(capture.name() + ".after.attrs.txt"),
+                                        attributes(after), StandardCharsets.UTF_8);
+                    // The exit keys follow the capture: a short pause keeps a lone Esc in the keys
+                    // that opened this state from being read together with the exit key.
+                    LockSupport.parkNanos(EXIT_PAUSE.toNanos());
+                }
                 if (capture.keys().isEmpty()) {
                     Files.writeString(output.resolve(capture.name() + ".stdout.txt"),
                                         raw, StandardCharsets.UTF_8);
@@ -191,6 +214,41 @@ class ScreenCaptureIT {
         return false;
     }
 
+    /**
+     * Waits until the keys drew something new and the screen settled again: the capture must show
+     * the state the keys opened, never the one they replaced. The wait is a condition (new output,
+     * then the settle window), never a fixed sleep.
+     *
+     * @param session the running session
+     * @param drawn   the output length before the keys were typed
+     * @return {@code true} when the screen was redrawn and settled before the deadline
+     * @throws InterruptedException if interrupted
+     */
+    private static boolean awaitRedraw(PtySession session, int drawn) throws InterruptedException {
+        var start = System.nanoTime();
+        var deadline = start + READY_TIMEOUT.toNanos();
+        var lastLength = drawn;
+        var quietSince = 0L;
+        while (System.nanoTime() < deadline) {
+            var length = session.rawOutput().length();
+            if (length > drawn && length == lastLength) {
+                if (quietSince == 0L) {
+                    quietSince = System.nanoTime();
+                } else if (System.nanoTime() - quietSince >= SETTLE.toNanos()) {
+                    return true;
+                }
+            } else {
+                lastLength = length;
+                quietSince = 0L;
+            }
+            LockSupport.parkNanos(POLL.toNanos());
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
+        }
+        return false;
+    }
+
     private static String attributes(AnsiScreen screen) {
         var text = new StringBuilder();
         for (int row = 0; row < screen.cellStyles().size(); row++) {
@@ -236,8 +294,9 @@ class ScreenCaptureIT {
 
     private static Capture parse(String line) {
         var fields = line.split("\\|", -1);
-        if (fields.length != 8) {
-            throw new IllegalArgumentException("A capture line names 8 fields, got " + fields.length + ": " + line);
+        if (fields.length != 8 && fields.length != 9) {
+            throw new IllegalArgumentException(
+                                "A capture line names 8 fields and an optional 9th, got " + fields.length + ": " + line);
         }
         var size = fields[5].strip().split("x");
         if (size.length != 2) {
@@ -267,15 +326,17 @@ class ScreenCaptureIT {
             }
             environment.put(pair.substring(0, split), pair.substring(split + 1));
         }
+        var beforeKeys = fields.length == 9 ? keys(fields[8].strip()) : "";
         return new Capture(fields[0].strip(), fields[1].strip(), List.copyOf(states), List.copyOf(command),
                             keys(fields[4].strip()), Integer.parseInt(size[0].strip()),
-                            Integer.parseInt(size[1].strip()), fields[6].strip(), Map.copyOf(environment));
+                            Integer.parseInt(size[1].strip()), fields[6].strip(), Map.copyOf(environment),
+                            beforeKeys);
     }
 
     private static String keys(String raw) {
         if (raw.isEmpty() || "-".equals(raw)) {
             return "";
         }
-        return raw.replace("\\n", "\n").replace("\\t", "\t");
+        return raw.replace("\\n", "\n").replace("\\t", "\t").replace("\\e", "\u001b");
     }
 }

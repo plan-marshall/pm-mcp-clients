@@ -313,16 +313,17 @@ public final class SystemLevel {
         var byTarget = GROUP_MODEL.equals(groupBy) ? GROUP_ROLE : GROUP_MODEL;
         var projectKey = projectId == null
                             ? "operator.system.keys.per_project" : "operator.system.keys.all_projects";
+        // Priority order: a narrower terminal drops the tail, never a key that matters more.
         return String.join(FOOTER_SEPARATOR,
                             key(locale, "↑↓", "operator.overview.keys.move"),
                             key(locale, "Enter", "operator.overview.keys.open"),
+                            key(locale, "a", "operator.overview.keys.actions"),
+                            key(locale, "?", "operator.overview.keys.help"),
+                            key(locale, "q", "operator.overview.keys.leave"),
                             key(locale, "w", "operator.system.keys.window"),
                             "b " + MessageCatalogue.format(locale, "operator.system.keys.by",
                                                 Map.of("by", byTarget)),
-                            key(locale, "p", projectKey),
-                            key(locale, "a", "operator.overview.keys.actions"),
-                            key(locale, "?", "operator.overview.keys.help"),
-                            key(locale, "q", "operator.overview.keys.leave"));
+                            key(locale, "p", projectKey));
     }
 
     private static String key(String locale, String display, String textKey) {

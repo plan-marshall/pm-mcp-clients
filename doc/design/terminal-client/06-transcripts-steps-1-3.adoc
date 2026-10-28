@@ -1,6 +1,9 @@
 = Terminal Client: Transcripts: Steps 1 to 3
 :toc: left
 :toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
 :nofooter:
 
 link:README.adoc[Terminal Client] » Transcripts: Steps 1 to 3
@@ -10,7 +13,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
 [#t-language]
-== 1 Language (`language.detect`, `language.choose`, `language.record`, `language.done`)
+== Language — step 1 (`language.detect`, `language.choose`, `language.record`, `language.done`)
 
 The system's locale is `de_DE` and a German pack exists, so the state opens in German (xref:03-dialogues.adoc#language[Language of the Terminal]):
 
@@ -48,7 +51,7 @@ Verwende Deutsch hier, English für Modelle? [Enter]   anders: 1-5   ?   › ⏎
 * The state opens in the system's language where a pack exists (`LC_ALL`, `LC_MESSAGES`, `LANG`), else in English. A change of the interface language takes effect once it is recorded (`language.record`), from the next text on; a change of the model language marks the line `✎` and changes nothing else (xref:03-dialogues.adoc#language[Language of the Terminal]).
 
 [#t-harness]
-== 2 Harnesses
+== Harnesses — step 2
 
 One scan finds every harness the profiles know; the operator chooses the ones to enrol and one of them as the default, on which the steward of the later steps runs with the model its profile maps to the tier `standard`, outside the model catalogue (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4]). Every consent state is the shared pattern (link:../shared/consents.adoc#pattern[Consents, The Pattern]; xref:03-dialogues.adoc#consent[Consent]).
 
@@ -294,7 +297,7 @@ Install it? [Enter]   b) back   ?   › ⏎
 * A field of the draft is asked as a line with its current value in brackets; `Enter` keeps it. A known harness found nowhere is added by its path only: its shipped settings are used and not asked.
 
 [#t-models]
-== 3 Models (`catalogue.consent`, `catalogue.models`, `catalogue.advise`, `catalogue.select`, `catalogue.record`, `catalogue.done`)
+== Models — step 3 (`catalogue.consent`, `catalogue.models`, `catalogue.advise`, `catalogue.select`, `catalogue.record`, `catalogue.done`)
 
 The harnesses are enrolled in step 2; this step only asks them for their models and records the allowed ones (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5]).
 
