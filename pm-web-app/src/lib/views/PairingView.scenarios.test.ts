@@ -159,14 +159,7 @@ describe('PairingView against the mock runtime scenarios', () => {
     expect(get(runtimeStore).isRevoked).toBe(false);
   });
 
-  it('presents the pairing URL as a QR code on the network listener', async () => {
-    vi.spyOn(window, 'location', 'get').mockReturnValue({
-      ...window.location,
-      hostname: '192.168.1.20',
-      origin: 'https://192.168.1.20:7421',
-      pathname: '/pair',
-    } as Location);
-
+  it('presents the pairing URL as a QR code once the code is complete', async () => {
     render(PairingView);
     await fireEvent.input(screen.getByLabelText(/code/i), { target: { value: 'KXQBM-RTN' } });
 
