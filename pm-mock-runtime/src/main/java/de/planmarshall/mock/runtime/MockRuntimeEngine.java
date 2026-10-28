@@ -6496,16 +6496,16 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @return the kept item it names, or {@code null} when the entry lacks a required member
      */
     private static @Nullable CleanupKeptItem keptItemOf(Map<String, Object> kept) {
-        var id = JsonTree.string(kept, "item_id");
-        var kind = JsonTree.string(kept, "kind");
-        var label = JsonTree.string(kept, KEY_LABEL);
-        if (id == null || kind == null || label == null) {
+        var id = text(kept, "item_id");
+        var kind = text(kept, "kind");
+        var label = text(kept, KEY_LABEL);
+        if (id.isBlank() || kind.isBlank() || label.isBlank()) {
             return null;
         }
         return new CleanupKeptItem(id, kind, label,
-                JsonTree.string(kept, KEY_REASON),
-                JsonTree.string(kept, "kept_at"),
-                JsonTree.string(kept, "kept_by"));
+                text(kept, KEY_REASON),
+                text(kept, "kept_at"),
+                text(kept, "kept_by"));
     }
 
     /**
@@ -6524,13 +6524,23 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @return the residue it names, or {@code null} when the entry lacks a step
      */
     private static @Nullable CleanupResidue residueOf(Map<String, Object> residue) {
-        var step = JsonTree.string(residue, "step");
-        if (step == null) {
+        var step = text(residue, "step");
+        if (step.isBlank()) {
             return null;
         }
         var bytes = JsonTree.number(residue, "bytes");
         return new CleanupResidue(step, intMember(residue, "count"),
-                bytes != null ? bytes.longValue() : 0L, JsonTree.string(residue, "last_run"));
+                bytes != null ? bytes.longValue() : 0L, text(residue, "last_run"));
+    }
+
+    /**
+     * @param map the fixture entry
+     * @param key the member to read
+     * @return the member's text, or the empty string when it is absent
+     */
+    private static String text(Map<String, Object> map, String key) {
+        var value = JsonTree.string(map, key);
+        return value != null ? value : "";
     }
 
     /**
