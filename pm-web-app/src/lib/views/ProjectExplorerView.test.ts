@@ -174,7 +174,9 @@ describe('ProjectExplorerView component', () => {
     expect(screen.getByText('step 2 of 10: Identity')).toBeInTheDocument();
 
     expect(screen.getByTestId('project-card-pm-mcp-clients')).toBeInTheDocument();
-    expect(screen.getByTestId('star-btn-pm-mcp-clients')).toHaveTextContent('★');
+    expect(
+      screen.getByTestId('star-btn-pm-mcp-clients').querySelector('[data-icon="act.favourite-on"]'),
+    ).not.toBeNull();
 
     expect(screen.getByTestId('project-card-plan-marshall')).toBeInTheDocument();
     expect(screen.getByText('setup needs: credential sonar')).toBeInTheDocument();

@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
+  import Icon from '../components/Icon.svelte';
   import Spinner from '../components/Spinner.svelte';
   import {
     apiClient,
@@ -584,7 +585,11 @@
           {@const state = stepState(step)}
           <li class="upgrade-step upgrade-step--{state}" data-testid={`upgrade-step-${step}`}>
             <span class="upgrade-step__glyph" aria-hidden="true">
-              {state === 'done' ? '✓' : state === 'running' ? '◐' : '·'}
+              {#if state === 'done'}<Icon name="state.check" size={16} />{:else if state ===
+                'running'}<Icon name="state.clock" size={16} />{:else}<Icon
+                  name="state.dot"
+                  size={16}
+                />{/if}
             </span>
             {$t('system.upgrade.step', {
               step,
@@ -685,7 +690,9 @@
     {#if snapshot.cleanup && (snapshot.cleanup.plans_count > 0 || snapshot.cleanup.epics_count > 0 || snapshot.cleanup.logs_count > 0)}
       <div class="cleanup-banner" role="region" aria-label={$t('system.cleanup.region')}>
         <div class="cleanup-banner__info">
-          <span class="cleanup-banner__badge">🧹 {$t('system.cleanup.title')}</span>
+          <span class="cleanup-banner__badge"
+            ><Icon name="act.clean" size={16} /> {$t('system.cleanup.title')}</span
+          >
           <span class="cleanup-banner__text">
             {$t('system.cleanup.line_due', {
               what: `${snapshot.cleanup.plans_count} plans · ${snapshot.cleanup.epics_count} epics · ${snapshot.cleanup.logs_count} logs`,
@@ -1137,13 +1144,13 @@
         <h3 class="modal-section-title">{$t('system.upgrade.check.title')}</h3>
         <ul class="upgrade-check-list" data-testid="upgrade-check-list">
           <li class="upgrade-check">
-            <span class="upgrade-step__glyph" aria-hidden="true">✓</span>
+            <span class="upgrade-step__glyph" aria-hidden="true"><Icon name="state.check" size={16} /></span>
             {$t('system.upgrade.check.running_workers', {
               count: snapshot.workers.filter((w) => w.state.toLowerCase() === 'busy').length,
             })}
           </li>
           <li class="upgrade-check">
-            <span class="upgrade-step__glyph" aria-hidden="true">✓</span>
+            <span class="upgrade-step__glyph" aria-hidden="true"><Icon name="state.check" size={16} /></span>
             {$t('system.upgrade.check.active_builds', {
               count: snapshot.jobs.build?.slots_used ?? 0,
             })}
@@ -1151,13 +1158,16 @@
           <li class="upgrade-check">
             {#if snapshot.runtime.dirty_worktrees !== null && snapshot.runtime.dirty_worktrees !== undefined}
               <span class="upgrade-step__glyph" aria-hidden="true">
-                {snapshot.runtime.dirty_worktrees === 0 ? '✓' : '✗'}
+                <Icon
+                  name={snapshot.runtime.dirty_worktrees === 0 ? 'state.check' : 'state.error'}
+                  size={16}
+                />
               </span>
               {$t('system.upgrade.check.dirty_worktrees', {
                 count: snapshot.runtime.dirty_worktrees,
               })}
             {:else}
-              <span class="upgrade-step__glyph" aria-hidden="true">?</span>
+              <span class="upgrade-step__glyph" aria-hidden="true"><Icon name="state.dot" size={16} /></span>
               {$t('system.upgrade.check.dirty_reported')}
             {/if}
           </li>

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
+  import Icon from '../components/Icon.svelte';
   import Spinner from '../components/Spinner.svelte';
   import { apiClient, type PlanCompletionReport } from '../api/client';
   import { formatTokens, formatSplit } from '../utils/tokenFormat';
@@ -38,15 +39,8 @@
     }
   }
 
-  function getDeliverableMark(state: string): string {
-    switch (state?.toLowerCase()) {
-      case 'done':
-        return '✓';
-      case 'dropped':
-        return '–';
-      default:
-        return '○';
-    }
+  function getDeliverableIcon(state: string): 'state.check' | 'state.dot' {
+    return state?.toLowerCase() === 'done' ? 'state.check' : 'state.dot';
   }
 
   function formatDecisionBy(d: { by: string; channel?: string; device?: string }): string {
@@ -186,7 +180,7 @@
             {#each data.deliverables as d}
               <li class="deliverable-item deliverable-item--{d.state?.toLowerCase()}">
                 <span class="deliverable-mark" aria-hidden="true"
-                  >{getDeliverableMark(d.state)}</span
+                  ><Icon name={getDeliverableIcon(d.state)} size={16} /></span
                 >
                 <span class="deliverable-state mono">{d.state}</span>
                 <span class="deliverable-title">{d.name || d.title}</span>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '../i18n';
+  import Icon from '../components/Icon.svelte';
   import type {
     DecompositionCheckFinding,
     EpicDecomposition,
@@ -127,7 +128,7 @@
             {#each rowsOf(stream) as plan (plan.plan_id)}
               <li class="decomposition-review__row" data-testid={`plan-${plan.plan_id}`}>
                 <span class="decomposition-review__mark" aria-hidden="true">
-                  {failed(plan.plan_id) ? '✗' : '✓'}
+                  <Icon name={failed(plan.plan_id) ? 'state.error' : 'state.check'} size={16} />
                 </span>
                 <span class="decomposition-review__plan-title">{plan.title}</span>
                 {#if plan.objective}

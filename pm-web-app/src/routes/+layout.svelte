@@ -31,6 +31,7 @@
   import LessonSourceModal from '../lib/components/LessonSourceModal.svelte';
   import GitSourceIntakeModal from '../lib/components/GitSourceIntakeModal.svelte';
   import BrandMark from '../lib/components/BrandMark.svelte';
+  import Icon from '../lib/components/Icon.svelte';
   import { lessonSourceModalStore, closeLessonSource } from '../lib/stores/lessonSource';
   import { gitSourceModalStore, closeGitSource } from '../lib/stores/gitSource';
 
@@ -324,14 +325,16 @@
           onclick={() => navigateTo('designer')}
           data-testid="nav-designer-btn"
         >
-          ✎ <span class="header-action-btn__text">{$t('web.frame.nav.designer')}</span>
+          <Icon name="nav.designer" size={16} />
+          <span class="header-action-btn__text">{$t('web.frame.nav.designer')}</span>
         </button>
         <button
           class="header-action-btn"
           aria-label={$t('system.view.title')}
           onclick={() => navigateTo('system')}
         >
-          🖥 <span class="header-action-btn__text">{$t('system.view.title')}</span>
+          <Icon name="nav.system" size={16} />
+          <span class="header-action-btn__text">{$t('system.view.title')}</span>
         </button>
         <button
           class="header-action-btn"
@@ -339,7 +342,8 @@
           data-advisory={$t('web.frame.settings.title')}
           onclick={() => navigateTo('settings')}
         >
-          ⚙ <span class="header-action-btn__text">{$t('web.frame.settings')}</span>
+          <Icon name="nav.settings" size={16} />
+          <span class="header-action-btn__text">{$t('web.frame.settings')}</span>
         </button>
       {/if}
 

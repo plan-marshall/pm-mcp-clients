@@ -31,7 +31,9 @@ test.describe('Projects Explorer Flow (UC-PRJ-1..3)', () => {
     const favourites = page.getByTestId('section-favourites');
     await expect(favourites).toBeVisible();
     await expect(favourites.getByTestId('project-card-pm-mcp-clients')).toBeVisible();
-    await expect(favourites.getByTestId('star-btn-pm-mcp-clients')).toHaveText('★');
+    await expect(
+      favourites.getByTestId('star-btn-pm-mcp-clients').locator('[data-icon="act.favourite-on"]'),
+    ).toHaveAttribute('style', /--ui-icon-url: url\(/);
 
     const recent = page.getByTestId('section-recent');
     await expect(recent).toBeVisible();

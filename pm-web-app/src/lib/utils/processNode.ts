@@ -1,36 +1,31 @@
 import type { ProcessNode } from '../api/client';
+import type { UiIconId } from '../icons/uiIcons';
 
 /** A catalogue look-up, as the `t` store hands one to a component or a helper. */
 export type Translate = (key: string, params?: Record<string, string | number>) => string;
 
 /**
- * The glyph of a process state.
+ * The icon of a process state.
  *
- * The tree and the node narrative read the same mapping, so a state never shows one glyph in
+ * The tree and the node narrative read the same mapping, so a state never shows one icon in
  * the tree and another in the narrative.
  *
  * @param state the process state, from the runtime's closed list
- * @returns the glyph of that state
+ * @returns the icon name of that state
  */
-export function getNodeGlyph(state: string): string {
+export function getNodeStateIcon(state: string): UiIconId {
   switch (state?.toLowerCase()) {
     case 'done':
-      return '✓';
+      return 'state.check';
     case 'running':
-      return '▶';
+      return 'act.start';
     case 'waiting':
     case 'waiting_for_you':
-      return '!';
+      return 'state.alert';
     case 'failed':
-      return '✗';
-    case 'planned':
-      return '○';
-    case 'not_taken':
-      return '–';
-    case 'not_in_plan':
-      return '·';
+      return 'state.error';
     default:
-      return '○';
+      return 'state.dot';
   }
 }
 

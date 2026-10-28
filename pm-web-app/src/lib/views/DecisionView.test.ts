@@ -174,7 +174,8 @@ describe('DecisionView component', () => {
     });
 
     // Open own words
-    const ownWordsToggle = screen.getByText('✎ in my own words');
+    const ownWordsToggle = screen.getByText('in my own words');
+    expect(ownWordsToggle.closest('button')?.querySelector('[data-icon="act.edit"]')).not.toBeNull();
     await fireEvent.click(ownWordsToggle);
 
     const textarea = screen.getByPlaceholderText('State your decision in your own words…');
@@ -539,7 +540,7 @@ describe('DecisionView component', () => {
       expect(screen.getByText('Where does the data live?')).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getAllByText('✎ in my own words')[0]);
+    await fireEvent.click(screen.getAllByText('in my own words')[0]);
     await fireEvent.input(screen.getByPlaceholderText('State your decision in your own words…'), {
       target: { value: 'Use a file per plan' },
     });

@@ -4,14 +4,6 @@
     "OverviewView": {
       "de": [
         {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
-        {
           "rule": "foreign-word",
           "word": "ago"
         },
@@ -30,14 +22,6 @@
       ],
       "en": [
         {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
-        {
           "rule": "state-id",
           "word": "remediation.ci-failure"
         }
@@ -45,22 +29,6 @@
     },
     "PlanView": {
       "de": [
-        {
-          "rule": "emoji",
-          "word": "▶"
-        },
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "⚠"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
         {
           "rule": "foreign-word",
           "word": "done"
@@ -103,22 +71,6 @@
         }
       ],
       "en": [
-        {
-          "rule": "emoji",
-          "word": "▶"
-        },
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "⚠"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
         {
           "rule": "iso-time",
           "word": "<iso-time>"
@@ -152,77 +104,20 @@
     "EpicView": {
       "de": [
         {
-          "rule": "emoji",
-          "word": "⏸"
-        },
-        {
-          "rule": "emoji",
-          "word": "▶"
-        },
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
-        {
           "rule": "foreign-word",
           "word": "paused"
         }
       ],
-      "en": [
-        {
-          "rule": "emoji",
-          "word": "⏸"
-        },
-        {
-          "rule": "emoji",
-          "word": "▶"
-        },
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ]
+      "en": []
     },
     "ReportsView": {
       "de": [
-        {
-          "rule": "emoji",
-          "word": "▪"
-        },
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
         {
           "rule": "iso-time",
           "word": "<iso-time>"
         }
       ],
       "en": [
-        {
-          "rule": "emoji",
-          "word": "▪"
-        },
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
         {
           "rule": "iso-time",
           "word": "<iso-time>"
@@ -231,14 +126,6 @@
     },
     "CompletionReportView": {
       "de": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
         {
           "rule": "foreign-word",
           "word": "done"
@@ -254,14 +141,6 @@
       ],
       "en": [
         {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
-        {
           "rule": "iso-time",
           "word": "<iso-time>"
         },
@@ -274,14 +153,6 @@
     "DecisionView": {
       "de": [
         {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
-        {
           "rule": "iso-time",
           "word": "<iso-time>"
         },
@@ -291,14 +162,6 @@
         }
       ],
       "en": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
         {
           "rule": "iso-time",
           "word": "<iso-time>"
@@ -311,18 +174,6 @@
     },
     "SystemView": {
       "de": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
-        {
-          "rule": "emoji",
-          "word": "🧹"
-        },
         {
           "rule": "foreign-word",
           "word": "busy"
@@ -346,91 +197,27 @@
       ],
       "en": [
         {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
-        {
-          "rule": "emoji",
-          "word": "🧹"
-        },
-        {
           "rule": "raw-enum",
           "word": "for_you"
         }
       ]
     },
     "CleanupView": {
-      "de": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ],
-      "en": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ]
+      "de": [],
+      "en": []
     },
     "SettingsView": {
-      "de": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ],
-      "en": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ]
+      "de": [],
+      "en": []
     },
     "MachineSettingsView": {
       "de": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
         {
           "rule": "iso-time",
           "word": "<iso-time>"
         }
       ],
       "en": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
         {
           "rule": "iso-time",
           "word": "<iso-time>"
@@ -439,14 +226,6 @@
     },
     "ProcessDesigner": {
       "de": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
         {
           "rule": "foreign-word",
           "word": "done"
@@ -485,14 +264,6 @@
         }
       ],
       "en": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
         {
           "rule": "raw-enum",
           "word": "commit_and_push"
@@ -530,14 +301,6 @@
     "ProjectExplorerView": {
       "de": [
         {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
-        {
           "rule": "state-id",
           "word": "de.cuioss"
         },
@@ -547,14 +310,6 @@
         }
       ],
       "en": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        },
         {
           "rule": "state-id",
           "word": "de.cuioss"
@@ -566,70 +321,16 @@
       ]
     },
     "StartView": {
-      "de": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ],
-      "en": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ]
+      "de": [],
+      "en": []
     },
     "OnboardingView": {
-      "de": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ],
-      "en": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ]
+      "de": [],
+      "en": []
     },
     "ProjectOnboardingView": {
-      "de": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ],
-      "en": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ]
+      "de": [],
+      "en": []
     },
     "PairingView": {
       "de": [],
@@ -640,114 +341,24 @@
       "en": []
     },
     "ListenerOffView": {
-      "de": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ],
-      "en": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ]
+      "de": [],
+      "en": []
     },
     "EpicDecompositionView": {
-      "de": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ],
-      "en": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ]
+      "de": [],
+      "en": []
     },
     "DecompositionReviewView": {
-      "de": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ],
-      "en": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ]
+      "de": [],
+      "en": []
     },
     "EpicAdoptView": {
-      "de": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ],
-      "en": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ]
+      "de": [],
+      "en": []
     },
     "RecipeReadyView": {
-      "de": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ],
-      "en": [
-        {
-          "rule": "emoji",
-          "word": "⚙"
-        },
-        {
-          "rule": "emoji",
-          "word": "🖥"
-        }
-      ]
+      "de": [],
+      "en": []
     }
   }
 }

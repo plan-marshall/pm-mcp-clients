@@ -17,6 +17,8 @@ const TOKENS_PATH = path.resolve(__dirname, 'tokens.css');
  * Allowlisted local custom properties that are component-scoped and dynamically bound in templates.
  */
 const ALLOWLISTED_LOCAL_TOKENS = new Set([
+  '--ui-icon-size', // Component-local size bound inline on Icon
+  '--ui-icon-url', // Component-local mask-image URL bound inline on Icon
   '--workflow-icon-size', // Component-local size bound inline on WorkflowIcon
   '--workflow-icon-url', // Component-local mask-image URL bound inline on WorkflowIcon
 ]);
