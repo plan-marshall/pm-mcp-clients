@@ -26,7 +26,7 @@ Source of this plan (read before scoping):
      - A mock test asks for two plan ids and an unknown id and gets two different plans and a `404 plan_not_found` (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `/plans/<unknown id>` shows not found; `reports-and-system` → `system.draining` shows the draining lifecycle; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **Routes and lifecycle state**
-   - What: `/api/v1/plans` answers in every scenario (an empty list on purpose where the scenario has none); `/api/v1/status` carries `lifecycle_state` for the `system.*` states (`draining`, `restarting`, `stopped`).
+   - What: `/api/v1/plans` answers in every scenario (an empty list on purpose where the scenario has none); `/api/v1/status` carries `lifecycle_state` for the `system.*` states (`draining`, `restarting`, `stopped`). Re-grounded at HEAD cc5794c9: `mock-scenario-states` already made `goto` apply `lifecycle_state` (`reports-and-system.json` carries `running`, `draining`, `stopped`, `upgrading` and `stopping`; `MockRuntimeEngine` reads it from a state's facts), so this plan adds only what a read of the mock at HEAD still lacks: check `restarting` first, and that `/api/v1/status` serves the value in each state. Also fold in a residue of `mock-scenario-states`: `MockRuntimeEngine.java:7663` writes a kept cleanup item with `kind` `item`, which is outside the closed set `CleanupKind` (`plan`, `epic`, `logs`, `read_reports`, `unenrolled_project`) — write a member of that set.
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
    - Done when:
@@ -51,7 +51,9 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/use-cases/plan.adoc#CLI-UC-S-09`, `doc/claude_review/cli/use-cases/proposals.adoc#CLI-UC-P-08` — read at `doc/claude_review/cli/use-cases/plan.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/cli/use-cases/plan.adoc:92 [#CLI-UC-S-09] Mock Fixes; proposals.adoc:137 [#CLI-UC-P-08] exist
 - HYPOTHESIS: the mock returns the same plan for every plan id and has no routes for `/api/v1/config/<aspect>` and `/api/v1/roles` — confirm/refute at `pm-mock-runtime/src/main/java/de/planmarshall/mock/http/` (verify-at-outline)
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: MockRuntimeEngine.java:8263-8275 serves the fix-relay process copy for any plan id; no /api/v1/config or /api/v1/roles route in pm-mock-runtime/src/main (git grep empty)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
@@ -61,6 +63,8 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/reports-and-system.json` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-mock-runtime/README.adoc` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/runtime/` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-web-e2e/tests/plan-view.spec.js` — present at HEAD cc5794c9; it asserts mock fixture values (`mock-scenario-states` had to edit it for that reason), so a plan detail that differs per id can change what it reads; touched only if an assertion it holds changes
+- OBSERVED: `pm-web-e2e/tests/system.spec.js` — present at HEAD cc5794c9; it exercises the system view's lifecycle modal on the mock, so a lifecycle state the mock newly serves can change what it reads; touched only if an assertion it holds changes
 
 ## Dependencies and Sequencing
 

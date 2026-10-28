@@ -2,10 +2,10 @@
   "id": "PLAN-15",
   "slug": "cli-footer-and-help-overlay",
   "workstream": "WS-05",
-  "status": "launched",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "15-cli-footer-and-help-overlay",
+  "pr": "256",
+  "landing": "landings/PLAN-15.md",
   "seq": 15
 }

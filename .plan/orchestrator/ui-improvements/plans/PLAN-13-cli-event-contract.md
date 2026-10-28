@@ -51,8 +51,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/use-cases/plan.adoc#CLI-UC-S-05`, `doc/claude_review/cli/use-cases/proposals.adoc#CLI-UC-P-04` — read at `doc/claude_review/cli/use-cases/plan.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/cli/use-cases/plan.adoc:51-52 [#CLI-UC-S-05] The Event Contract; proposals.adoc:79 [#CLI-UC-P-04]
 - OBSERVED: `pm-api/src/main/java/de/planmarshall/api/event/EventName.java` exists — read at `pm-api/src/main/java/de/planmarshall/api/event/`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: git ls-tree origin/main: pm-api/src/main/java/de/planmarshall/api/event/EventName.java exists
 - HYPOTHESIS: the console reads `type` from the event data and the runtime sends none — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/ConsoleNotice.java` § `fromEventMap` (verify-at-outline)
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ConsoleNotice.java:297 reads event.getOrDefault(type, getOrDefault(event, '')); PmConsole.java:448 passes only eventMap, SSE name unused; mock broadcast adds no type (Engine:5921)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

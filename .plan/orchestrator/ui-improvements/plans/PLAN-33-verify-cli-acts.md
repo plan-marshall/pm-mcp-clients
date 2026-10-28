@@ -44,6 +44,7 @@ Run the checks of answering, notices, onboarding, cleanup, the system model and 
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cli/use-cases/verification.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main: doc/claude_review/cli/use-cases/verification.adoc has CLI-UC-V-04 (l.46) to V-09 (l.78), the six checks the plan names
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
 
 ## Expected Surface

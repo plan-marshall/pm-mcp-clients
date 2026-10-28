@@ -25,7 +25,7 @@ Source of this plan (read before scoping):
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
    - Done when:
-     - `LiteralTextGuardTest` (extended) scans for literals passed to `print`, `println`, `printf`, `readLine`, `askRaw` and fails on one (evidence order: `test-first`)
+     - `LiteralTextGuardTest` (extended) scans for literals passed to `print`, `println`, `printf`, `readLine`, `askRaw` and fails on one (evidence order: `test-first`). Re-grounded at HEAD cc5794c9: its render-call pattern already includes `prompt.askRaw` (`LiteralTextGuardTest.java:61-81`) and its guarded list already names `StartDialogue`, `ChatDialogue`, `WorkActionDialogue` and `HoldDialogue`, so the extension is the guarded list, not the pattern: add `AnswerCommand`, `CleanupCommand` and `RuntimeCommand` (and the sub-packages) to it, and clear what it then finds.
      - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` in `de_DE.UTF-8` and `en_US.UTF-8`: `answer Q-999 1`, `plan nope`, `bogus`, `pm-operator -h`, with exit codes; before and after captures recorded (evidence order: `none`)
 2. **RefusalRenderer**
    - What: `OperatorRefusedException` carries the `pm-api` error code; `RefusalRenderer` prints `✗` line, cause, `→ fix` from `operator.refusal.<code>`; unknown code "The runtime refused: <message>"; never an HTTP status, a JSON body or an exception class.
@@ -62,8 +62,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/cross-cutting/plan.adoc#CLI-CC-S-03`, `doc/claude_review/cli/ux/plan.adoc#CLI-UX-S-03` — read at `doc/claude_review/cli/cross-cutting/plan.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/cli/cross-cutting/plan.adoc:31-32 [#CLI-CC-S-03] and cli/ux/plan.adoc:28-29 [#CLI-UX-S-03] exist
 - OBSERVED: `LiteralTextGuardTest` exists in `pm-operator` — read at `pm-operator/src/test/java/de/planmarshall/operator/LiteralTextGuardTest.java`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: git ls-tree origin/main: pm-operator/src/test/java/de/planmarshall/operator/LiteralTextGuardTest.java exists
 - HYPOTHESIS: `LiteralTextGuardTest` does not cover dialogues and `askRaw` — confirm/refute at its source (verify-at-outline)
+  - verdict: contradicted | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: yes | evidence: LiteralTextGuardTest.java:61-81 RENDER_CALL includes prompt.askRaw; GUARDED lists StartDialogue, ChatDialogue, WorkActionDialogue, HoldDialogue. Uncovered: AnswerCommand, CleanupCommand, RuntimeCommand, sub-packages. D1 now names the guarded list as the extension
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

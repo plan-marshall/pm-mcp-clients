@@ -62,8 +62,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cross-cutting/plan.adoc#CC-S-02`, `doc/claude_review/cross-cutting/proposals.adoc#CC-P-01` — read at `doc/claude_review/cross-cutting/plan.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/cross-cutting/plan.adoc:22-27 states CC-S-02 (CC-P-01, CC-P-02); proposals.adoc:10 [#CC-P-01], :26 [#CC-P-02]
 - HYPOTHESIS: views put API fields into the markup and no single display function exists — confirm/refute at `pm-web-app/src/lib/views/SystemView.svelte` (verify-at-outline)
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-web-app/src/lib/views/SystemView.svelte:951,955-956 print w.role and w.state.toLowerCase() raw; git grep displayState|displayError|displayUnit in pm-web-app/src finds nothing; no lib/display dir
 - HYPOTHESIS: the strings of CC-F-05 live in the shared catalogue, not in the views — confirm/refute by searching `pm-api/src/main/resources/messages/` for `entfernen` and `Frage mich nach` (verify-at-outline)
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: Strings sit in the catalogue: start.de.properties:176 'r) entfernen'; settings.de.properties:100 web.settings.cleanup.remind (spelled 'Früge mich nach'); view only composes keys at MachineSettingsView.svelte:335-336
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

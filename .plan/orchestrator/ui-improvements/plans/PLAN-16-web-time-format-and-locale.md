@@ -56,7 +56,9 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cross-cutting/plan.adoc#CC-S-04`, `doc/claude_review/cross-cutting/proposals.adoc#CC-P-04` — read at `doc/claude_review/cross-cutting/plan.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/cross-cutting/plan.adoc:34-38 states CC-S-04 (CC-P-04, CC-P-05); proposals.adoc:46 [#CC-P-04] and :58 [#CC-P-05] exist
 - HYPOTHESIS: `lib/i18n/index.ts` caches catalogues in `localStorage` (`pm_i18n_messages_<locale>`) and a stale cache causes CC-F-10 — confirm/refute at `pm-web-app/src/lib/i18n/index.ts` (verify-at-outline)
+  - verdict: unverifiable | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-web-app/src/lib/i18n/index.ts:9 pm_i18n_messages_ and :169 localStorage hold; that the stale cache causes CC-F-10 needs a runtime repro (findings.adoc:172 itself says 'likely')
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
