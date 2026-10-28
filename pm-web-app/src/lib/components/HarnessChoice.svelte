@@ -67,7 +67,12 @@
    */
   function harnessIconPath(row: HarnessRow): string {
     const path = row.icon_url?.trim() ?? '';
-    return path.startsWith('/') && !path.startsWith('//') ? path : '';
+    // `//host` and a backslash both leave the origin in a browser's normalisation, so neither is
+    // a same-origin path however much it looks like one.
+    if (!path.startsWith('/') || path.startsWith('//') || path.includes('\\')) {
+      return '';
+    }
+    return path;
   }
 
   /**

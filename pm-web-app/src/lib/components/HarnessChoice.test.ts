@@ -44,11 +44,17 @@ describe('HarnessChoice monograms', () => {
 
   it('refuses an icon from a maker server and keeps the monogram', () => {
     const { container, getByTestId } = render(HarnessChoice, {
-      props: { harnesses: [harness({ icon_url: 'https://example.invalid/claude.svg' })] },
+      props: {
+        harnesses: [
+          harness({ icon_url: 'https://example.invalid/claude.svg' }),
+          harness({ harness_id: 'codex', name: 'Codex', icon_url: '/\\maker.example/i.svg' }),
+        ],
+      },
     });
 
     expect(container.querySelector('img.choice-screen__icon')).toBeNull();
     expect(getByTestId('harness-monogram-claude').textContent?.trim()).toBe('CC');
+    expect(getByTestId('harness-monogram-codex').textContent?.trim()).toBe('C');
   });
 
   it('falls back to the harness id when the name carries no letter', () => {
