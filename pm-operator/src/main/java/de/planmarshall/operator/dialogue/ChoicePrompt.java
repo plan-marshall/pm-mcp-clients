@@ -113,6 +113,7 @@ public final class ChoicePrompt {
     private boolean multiSelect;
     private boolean noInput;
     private @Nullable String leaveLabel;
+
     /**
      * Creates a choice prompt over a JLine {@link LineReader}.
      *
