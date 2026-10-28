@@ -375,7 +375,7 @@ class ReportsFullScreenTest {
             await(() -> shows(virtual, "\u25b8 fix-relay"));
             await(() -> shows(virtual, "\u25aa project"));
             await(() -> shows(virtual,
-                                "\u2191\u2193 move   Enter details   m read   M read all shown   p project   e epic   Esc back"));
+                                "\u2191\u2193 move   Enter details   Esc back   e epic   p project   m read   M read all shown"));
             await(() -> selectedRow(virtual).contains("\u25b8 fix-relay"));
             assertTrue(shows(virtual, "Reports \u00b7 4 unread"), virtual.screen().lines().toString());
 

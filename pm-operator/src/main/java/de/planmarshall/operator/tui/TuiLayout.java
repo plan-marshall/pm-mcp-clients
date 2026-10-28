@@ -172,8 +172,9 @@ public final class TuiLayout {
         var text = screen.menu() != null
                             ? MessageCatalogue.format(locale, "operator.actions.menu.footer", Map.of())
                             : screen.footerText() != null
-                            ? screen.footerText()
-                            : TuiKeyRegistry.footer(screen.kind(), locale, screen.reportsCount());
+                            ? TuiKeyRegistry.fit(List.of(screen.footerText().split(TuiKeyRegistry.SEPARATOR)),
+                                                width, locale)
+                            : TuiKeyRegistry.footer(screen.kind(), locale, screen.reportsCount(), width);
         // Padded like every other row: a shorter footer must not leave the tail of a longer one on
         // the cells the terminal already holds.
         return new AttributedString(pad(text, width));

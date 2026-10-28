@@ -33,14 +33,17 @@ public final class TuiKeyRegistry {
     /**
      * One trigger of an action.
      *
-     * @param trigger the character or terminal sequence that triggers the action
-     * @param action  the action
+     * @param trigger  the character or terminal sequence that triggers the action
+     * @param action   the action
+     * @param priority how early the entry is kept when the footer has to leave keys out; a lower
+     *                 value is kept earlier
      */
-    public record Binding(String trigger, TuiKeyAction action) {
+    public record Binding(String trigger, TuiKeyAction action, int priority) {
 
         /**
          * @param trigger the trigger sequence
          * @param action  the action
+         * @param priority the priority of the action's footer entry
          */
         public Binding {
             Objects.requireNonNull(trigger, "trigger");
@@ -48,6 +51,14 @@ public final class TuiKeyRegistry {
             if (trigger.isEmpty()) {
                 throw new IllegalArgumentException("a binding needs a trigger");
             }
+        }
+
+        /**
+         * @param trigger the trigger sequence
+         * @param action  the action
+         */
+        public Binding(String trigger, TuiKeyAction action) {
+            this(trigger, action, priorityOf(action));
         }
     }
 
@@ -82,6 +93,12 @@ public final class TuiKeyRegistry {
     private static final String PAGE_UP = "\u001b[5~";
     private static final String PAGE_DOWN = "\u001b[6~";
     private static final String FOOTER_SEPARATOR = "   ";
+
+    /**
+     * The separator between two footer cells, so that a caller which fits its own footer line
+     * splits it the way the registry joins it.
+     */
+    public static final String SEPARATOR = FOOTER_SEPARATOR;
 
     private static final Map<TuiLevel.Kind, LevelKeys> REGISTRY = build();
 
@@ -123,6 +140,121 @@ public final class TuiKeyRegistry {
             parts.add(entry.display() + ' ' + label(entry.action(), kind, locale, reportsCount));
         }
         return String.join(FOOTER_SEPARATOR, parts);
+    }
+
+    /**
+     * Renders the footer of a level into the width the terminal offers: the entries are kept in
+     * priority order until the next one would not fit whole, and the line then ends with the
+     * {@code ? more} cell that names the keys the overlay adds. A key is never cut in the middle.
+     *
+     * @param kind         the kind of level
+     * @param locale       the interface locale
+     * @param reportsCount the number of unread reports, for the {@code R} entry
+     * @param width        the columns the footer may use
+     * @return the footer line, without a leading or trailing separator
+     */
+    public static String footer(TuiLevel.Kind kind, String locale, int reportsCount, int width) {
+        var parts = new ArrayList<String>();
+        for (var entry : footerEntries(kind)) {
+            if (entry.action() == TuiKeyAction.REPORTS && kind == TuiLevel.Kind.OVERVIEW
+                                && reportsCount == 0) {
+                continue;
+            }
+            parts.add(entry.display() + ' ' + label(entry.action(), kind, locale, reportsCount));
+        }
+        return fit(parts, width, locale);
+    }
+
+    /**
+     * @param locale the interface locale
+     * @return the footer cell the help key is drawn with while nothing is left out
+     */
+    public static String helpCell(String locale) {
+        return "? " + MessageCatalogue.format(locale, "operator.overview.keys.help", Map.of());
+    }
+
+    /**
+     * @param locale the interface locale
+     * @return the footer cell that stands for the keys the width left out
+     */
+    public static String moreCell(String locale) {
+        return "? " + MessageCatalogue.format(locale, "operator.overview.keys.more", Map.of());
+    }
+
+    /**
+     * @param locale the interface locale
+     * @return the footer of an open help overlay
+     */
+    public static String helpFooter(String locale) {
+        return "Esc " + MessageCatalogue.format(locale, "operator.overview.help.close", Map.of());
+    }
+
+    /**
+     * Fills a footer of already rendered cells into the width the terminal offers. All cells fit
+     * when their line does; otherwise the cells are kept in their order until the next one would
+     * not fit whole beside the {@code ? more} cell, the help cell is replaced by that cell, and the
+     * line ends with it. A key is never cut in the middle.
+     *
+     * @param cells  the cells, in the order they are kept
+     * @param width  the columns the footer may use
+     * @param locale the interface locale, for the help and {@code more} cells
+     * @return the footer line, without a leading or trailing separator
+     */
+    public static String fit(List<String> cells, int width, String locale) {
+        var joined = String.join(FOOTER_SEPARATOR, cells);
+        if (displayWidth(joined) <= width) {
+            return joined;
+        }
+        var help = helpCell(locale);
+        var more = moreCell(locale);
+        var kept = new ArrayList<String>();
+        for (var cell : cells) {
+            if (help.equals(cell)) {
+                // The trailing ? more names the overlay the help key opens; the same key, once.
+                continue;
+            }
+            var candidate = new ArrayList<>(kept);
+            candidate.add(cell);
+            candidate.add(more);
+            if (displayWidth(String.join(FOOTER_SEPARATOR, candidate)) > width) {
+                break;
+            }
+            kept.add(cell);
+        }
+        kept.add(more);
+        return String.join(FOOTER_SEPARATOR, kept);
+    }
+
+    /**
+     * @param text the text
+     * @return the number of terminal columns the text occupies
+     */
+    private static int displayWidth(String text) {
+        return TuiLayout.displayWidth(text);
+    }
+
+    /**
+     * The order in which a footer keeps its keys when the width does not hold all of them: the
+     * movement first, then open, back, the level's primary act, help, and leave; every other key
+     * follows in the order the level declares it.
+     *
+     * @param action the action
+     * @return the priority of the action's footer entry, a lower value kept earlier
+     */
+    static int priorityOf(TuiKeyAction action) {
+        return switch (action) {
+            case MOVE_UP, MOVE_DOWN -> 10;
+            case OPEN -> 20;
+            case BACK -> 30;
+            case ACTIONS -> 40;
+            case HELP -> 50;
+            case LEAVE -> 60;
+            // The level's own acts on its row are kept before the generic tree keys.
+            case EPIC -> 70;
+            case COMPLETION -> 75;
+            case PROJECT -> 78;
+            default -> 100;
+        };
     }
 
     /**
@@ -478,6 +610,10 @@ public final class TuiKeyRegistry {
     }
 
     private static LevelKeys level(List<Binding> bindings, FooterEntry... footer) {
-        return new LevelKeys(List.copyOf(bindings), List.of(footer));
+        var ordered = new ArrayList<>(List.of(footer));
+        // The footer is drawn in priority order, so that a narrower terminal drops the last cell
+        // first and the key that matters most is never the one it loses.
+        ordered.sort(java.util.Comparator.comparingInt(entry -> priorityOf(entry.action())));
+        return new LevelKeys(List.copyOf(bindings), List.copyOf(ordered));
     }
 }
