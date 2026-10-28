@@ -15,7 +15,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -180,14 +182,92 @@ class TuiLayoutTest {
     }
 
     @Test
-    @DisplayName("the help overlay shows the selected row's details and the keys")
+    @DisplayName("the help overlay is a box with the grouped keys, the row's details and an Esc close footer")
     void helpOverlay() {
         var help = new TuiScreen("Running work", TuiLevel.Kind.OVERVIEW, screen(0, 3).rows(), 0, "",
                             true, true, 0);
-        var text = String.join("\n", layout.render(help, 120, 12).stream().map(Object::toString).toList());
+        var lines = layout.render(help, 120, 20).stream().map(Object::toString).toList();
+        var text = String.join("\n", lines);
+        var box = lines.stream().filter(line -> line.startsWith("\u250c") || line.startsWith("\u2502")
+                            || line.startsWith("\u2514")).toList();
         assertAll(
+                            () -> assertTrue(text.contains("\u250c keys "), text),
+                            () -> assertTrue(text.contains("\u2502 move"), text),
+                            () -> assertTrue(text.contains("\u2502 open"), text),
+                            () -> assertTrue(text.contains("\u2502 actions"), text),
+                            () -> assertTrue(text.contains("\u2502 views"), text),
+                            () -> assertTrue(text.contains("\u2502 leave"), text),
                             () -> assertTrue(text.contains("details of row 0"), text),
-                            () -> assertTrue(text.contains("help"), text)
+                            () -> assertTrue(box.size() >= 7, text),
+                            () -> box.forEach(line -> assertEquals(119, TuiLayout.displayWidth(line), line)),
+                            () -> assertEquals(TuiKeyRegistry.helpFooter("en"), lines.getLast().strip())
+        );
+    }
+
+    @Test
+    @DisplayName("at 60 columns the help overlay wraps its groups instead of cutting a key")
+    void helpOverlayAtSixtyColumns() {
+        var help = new TuiScreen("All projects", TuiLevel.Kind.PROJECTS, screen(0, 3).rows(),
+                            0, "", true, true, 0);
+        var lines = layout.render(help, 60, 24).stream().map(Object::toString).toList();
+        var box = lines.stream().filter(line -> line.startsWith("\u2502")).toList();
+        var tokens = box.stream()
+                            .flatMap(line -> Arrays.stream(line.replace("\u2502", " ").split("\\s+")))
+                            .filter(token -> !token.isEmpty())
+                            .collect(Collectors.toSet());
+
+        assertAll(
+                            () -> assertTrue(box.stream().noneMatch(line -> line.contains("\u2026")),
+                                                String.join("\n", box)),
+                            () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502     ")),
+                                                "no group wrapped:\n" + String.join("\n", box)),
+                            () -> TuiKeyRegistry.bindings(TuiLevel.Kind.PROJECTS).stream()
+                                                .map(binding -> TuiKeyRegistry.displayOf(binding.trigger()))
+                                                .forEach(display -> assertTrue(tokens.contains(display),
+                                                                    "the overlay does not name " + display))
+        );
+    }
+
+    @Test
+    @DisplayName("the help overlay renders on a terminal narrower than its continuation indent")
+    void helpOverlayAtATinyWidth() {
+        var help = new TuiScreen("All projects", TuiLevel.Kind.PROJECTS, screen(0, 3).rows(),
+                            0, "", true, true, 0);
+
+        var lines = layout.render(help, 12, 10);
+
+        assertAll(
+                            () -> assertEquals(10, lines.size()),
+                            () -> assertTrue(lines.stream().anyMatch(line -> line.toString().contains("\u250c")),
+                                                String.join("\n", lines.toString()))
+        );
+    }
+
+    @Test
+    @DisplayName("at 80 columns every level's footer keeps its priority keys and names ? help or ? more")
+    void footersAtEightyColumns() {
+        var overview = layout.render(new TuiScreen("Running work", TuiLevel.Kind.OVERVIEW,
+                            screen(0, 3).rows(), 0, "", false, true, 5), 80, 24).getLast().toString().strip();
+        var activity = layout.render(new TuiScreen("fix-relay", TuiLevel.Kind.PLAN_ACTIVITY,
+                            screen(0, 3).rows(), 0, "", false, true, 0), 80, 24).getLast().toString().strip();
+        var plan = layout.render(new TuiScreen("fix-relay", TuiLevel.Kind.PLAN, screen(0, 3).rows(),
+                                                0, "", false, true, 0, TuiKeyRegistry.footer(TuiLevel.Kind.PLAN, "en", 0)),
+                            80, 24).getLast().toString().strip();
+
+        assertAll(
+                            () -> assertTrue(overview.contains("? help"), overview),
+                            () -> assertTrue(overview.contains("q leave"), overview),
+                            () -> assertTrue(activity.contains("Enter open"), activity),
+                            () -> assertTrue(activity.contains("a actions"), activity),
+                            () -> assertTrue(activity.contains("? help"), activity),
+                            () -> assertTrue(plan.contains("Enter open"), plan),
+                            () -> assertTrue(plan.contains("Esc back"), plan),
+                            () -> assertTrue(plan.contains("a actions"), plan),
+                            () -> assertTrue(plan.contains("q leave"), plan),
+                            () -> assertTrue(plan.endsWith("? more"), plan),
+                            () -> assertFalse(plan.contains("\u2026"), plan),
+                            () -> assertFalse(overview.contains("\u2026"), overview),
+                            () -> assertFalse(activity.contains("\u2026"), activity)
         );
     }
 

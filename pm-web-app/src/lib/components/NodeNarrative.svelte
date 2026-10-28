@@ -3,7 +3,8 @@
   import type { LeafTask, ProcessNode, ProcessTree } from '../api/client';
   import { formatDurationSeconds, formatTokens } from '../utils/tokenFormat';
   import { stripControlSequences } from '../utils/outputSafety';
-  import { getNodeGlyph, getNodeStateText } from '../utils/processNode';
+  import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
+  import Icon from './Icon.svelte';
 
   interface Props {
     node: ProcessNode;
@@ -89,7 +90,9 @@
             onclick={() => onSelectTask(task.task_id)}
             data-testid="node-child-task-{task.task_id}"
           >
-            <span class="child-task__glyph" aria-hidden="true">{getNodeGlyph(task.status)}</span>
+            <span class="child-task__glyph" aria-hidden="true"
+              ><Icon name={getNodeStateIcon(task.status)} size={16} /></span
+            >
             <span class="child-task__id mono font-semibold"
               >{stripControlSequences(task.task_id)}</span
             >
@@ -139,7 +142,8 @@
               aria-label={`${stripControlSequences(subNode.title)} — ${$t('plan.node.select')}`}
               data-testid="node-child-node-{subNode.node_id}"
             >
-              <span class="child-node__glyph" aria-hidden="true">{getNodeGlyph(subNode.state)}</span
+              <span class="child-node__glyph" aria-hidden="true"
+                ><Icon name={getNodeStateIcon(subNode.state)} size={16} /></span
               >
               <span class="child-node__title">{stripControlSequences(subNode.title)}</span>
               <span class="child-node__kind">{subNode.kind}</span>

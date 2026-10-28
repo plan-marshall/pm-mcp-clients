@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
+  import Icon from '../components/Icon.svelte';
   import Spinner from '../components/Spinner.svelte';
   import ChatPanel from '../components/ChatPanel.svelte';
   import FilterInput from '../components/FilterInput.svelte';
@@ -942,7 +943,7 @@
                       }
                     }}
                   >
-                    ✎ {$t('decision.answer.own_words')}
+                    <Icon name="act.edit" size={16} /> {$t('decision.answer.own_words')}
                   </button>
 
                   {#if ownWordsMode[keyOf(dec, part, pIdx)]}

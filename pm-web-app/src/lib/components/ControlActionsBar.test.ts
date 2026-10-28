@@ -214,6 +214,18 @@ describe('ControlActionsBar component', () => {
     await fireEvent.click(screen.getByTestId('action-archive'));
     expect(screen.getByTestId('archive-title')).toHaveTextContent('Archive relay-hardening?');
     expect(screen.getByTestId('archive-line-control.archive.open_findings')).toBeInTheDocument();
+    expect(
+      screen
+        .getByTestId('archive-line-control.archive.open_findings')
+        .querySelector('[role="img"]')
+        ?.getAttribute('aria-label'),
+    ).toBe('not met');
+    expect(
+      screen
+        .getByTestId('archive-line-control.archive.no_plan_active')
+        .querySelector('[role="img"]')
+        ?.getAttribute('aria-label'),
+    ).toBe('passed');
     expect(screen.getByTestId('archive-carried')).toHaveTextContent('3 kept findings');
     expect(screen.getByTestId('archive-confirm')).toBeDisabled();
 

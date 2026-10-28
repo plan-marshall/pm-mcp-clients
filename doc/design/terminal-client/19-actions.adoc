@@ -1,6 +1,9 @@
 = Terminal Client: Actions on Plans and Epics
 :toc: left
 :toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
 :nofooter:
 
 link:README.adoc[Terminal Client] » Actions on Plans and Epics

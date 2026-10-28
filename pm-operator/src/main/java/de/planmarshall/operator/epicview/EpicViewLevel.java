@@ -190,13 +190,15 @@ public final class EpicViewLevel {
      */
     public String footer(String locale) {
         var parts = new ArrayList<String>();
+        // Priority order: a narrower terminal drops the tail, never a key that matters more.
         parts.add("\u2191\u2193 " + MessageCatalogue.format(locale, "operator.overview.keys.move", Map.of()));
         parts.add("Enter/\u2192 " + MessageCatalogue.format(locale, "operator.epic.keys.open", Map.of()));
-        parts.add("\u2190 " + MessageCatalogue.format(locale, "operator.epic.keys.close", Map.of()));
-        parts.add("a " + MessageCatalogue.format(locale, "operator.epic.keys.actions", Map.of()));
-        parts.add("p " + MessageCatalogue.format(locale, "operator.epic.keys.project", Map.of()));
         parts.add("Esc " + MessageCatalogue.format(locale, "operator.overview.keys.back", Map.of()));
+        parts.add("a " + MessageCatalogue.format(locale, "operator.epic.keys.actions", Map.of()));
+        parts.add("? " + MessageCatalogue.format(locale, "operator.overview.keys.help", Map.of()));
         parts.add("q " + MessageCatalogue.format(locale, "operator.overview.keys.leave", Map.of()));
+        parts.add("p " + MessageCatalogue.format(locale, "operator.epic.keys.project", Map.of()));
+        parts.add("\u2190 " + MessageCatalogue.format(locale, "operator.epic.keys.close", Map.of()));
         return String.join("   ", parts);
     }
 

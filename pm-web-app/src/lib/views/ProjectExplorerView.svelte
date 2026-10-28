@@ -3,6 +3,7 @@
   import { t } from '../i18n';
   import { runtimeStore, navigateTo, openProjectOnboarding } from '../stores/runtime';
   import Button from '../components/Button.svelte';
+  import Icon from '../components/Icon.svelte';
   import Spinner from '../components/Spinner.svelte';
   import {
     apiClient,
@@ -471,7 +472,7 @@
               filter = '';
             }}
           >
-            ✕
+            <Icon name="act.cancel" size={16} />
           </button>
         {/if}
       </div>
@@ -545,7 +546,10 @@
                     onclick={() => handleToggleFavourite(project)}
                     data-testid="star-btn-{project.project_id}"
                   >
-                    {project.is_favourite ? '★' : '☆'}
+                    <Icon
+                      name={project.is_favourite ? 'act.favourite-on' : 'act.favourite'}
+                      size={16}
+                    />
                   </button>
                   <div class="project-card__identity">
                     <h3 class="project-name">{project.display_name}</h3>
@@ -706,7 +710,9 @@
       <!-- 2. Favourites Section -->
       {#if explorer.favourites.length > 0}
         <section class="explorer-section" data-testid="section-favourites">
-          <h2 class="section-title">★ {$t('project.explorer.favourites')}</h2>
+          <h2 class="section-title">
+            <Icon name="act.favourite-on" size={16} /> {$t('project.explorer.favourites')}
+          </h2>
           <div class="project-grid">
             {#each explorer.favourites as project, index (project.project_id)}
               <article
@@ -747,7 +753,7 @@
                     onclick={() => handleToggleFavourite(project)}
                     data-testid="star-btn-{project.project_id}"
                   >
-                    ★
+                    <Icon name="act.favourite-on" size={16} />
                   </button>
                   <div class="project-card__identity">
                     <h3 class="project-name">{project.display_name}</h3>
@@ -876,7 +882,7 @@
                     onclick={() => handleToggleFavourite(project)}
                     data-testid="star-btn-{project.project_id}"
                   >
-                    ☆
+                    <Icon name="act.favourite" size={16} />
                   </button>
                   <div class="project-card__identity">
                     <h3 class="project-name">{project.display_name}</h3>
@@ -1015,7 +1021,10 @@
                     onclick={() => handleToggleFavourite(project)}
                     data-testid="star-btn-{project.project_id}"
                   >
-                    {project.is_favourite ? '★' : '☆'}
+                    <Icon
+                      name={project.is_favourite ? 'act.favourite-on' : 'act.favourite'}
+                      size={16}
+                    />
                   </button>
                   <div class="project-card__identity">
                     <h3 class="project-name">{project.display_name}</h3>

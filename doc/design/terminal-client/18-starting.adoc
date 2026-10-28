@@ -1,6 +1,9 @@
 = Terminal Client: Starting Work
 :toc: left
 :toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
 :nofooter:
 
 link:README.adoc[Terminal Client] » Starting Work

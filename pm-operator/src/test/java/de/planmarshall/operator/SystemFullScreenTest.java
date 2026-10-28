@@ -268,7 +268,8 @@ class SystemFullScreenTest {
             await(() -> shows(virtual, "Jobs      build  1 of 2 slots"));
             await(() -> shows(virtual, "Models    Last hour"));
             await(() -> shows(virtual, "Cleanup   due: 12 plans"));
-            await(() -> shows(virtual, "w window   b by role   p per project   a actions   ? help   q leave"));
+            await(() -> shows(virtual,
+                                "\u2191\u2193 move   Enter open   a actions   ? help   q leave   w window   b by role   p per project"));
 
             assertTrue(shows(virtual, "memory 412 MB in use of 1 GB"), virtual.screen().lines().toString());
             assertTrue(systemTargets.stream().anyMatch(target -> target.contains("window=hour")),

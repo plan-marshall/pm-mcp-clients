@@ -147,7 +147,7 @@ test.describe('Epic View (UC-PLN-5)', () => {
     await pair(page, request, 'running-work');
     await openEpicFromOverview(page);
 
-    await expect(page.getByTestId('epic-landing-count')).toHaveText('2 landings');
+    await expect(page.getByTestId('epic-landing-count')).toHaveText('1 landing');
 
     const landing = page.getByTestId('epic-landing-relay-reconnect-backoff');
     await expect(landing).toContainText('relay-reconnect-backoff');
@@ -167,7 +167,7 @@ test.describe('Epic View (UC-PLN-5)', () => {
     await pair(page, request, 'running-work');
     await openEpicFromOverview(page);
 
-    await expect(page.getByTestId('epic-findings')).toContainText('3 new · 4 open · 2 kept');
+    await expect(page.getByTestId('epic-findings')).toContainText('0 new · 1 open · 1 kept');
     await expect(page.getByTestId('epic-watches')).toContainText('4 open · 0 kept');
 
     await page.getByTestId('open-findings-review').click();

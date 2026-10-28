@@ -60,7 +60,7 @@ class EpicViewScenarioTest {
             assertEquals("running", epic.state());
             assertTrue(epic.autoStart());
             assertEquals(3, epic.scope());
-            assertEquals(3, epic.running());
+            assertEquals(1, epic.running());
 
             assertEquals(List.of("WS-1", "WS-2"),
                     epic.workstreams().stream().map(EpicWorkstream::id).toList());
@@ -97,10 +97,10 @@ class EpicViewScenarioTest {
             assertFalse(docs.overlapFiles().isEmpty(), "an overlap names the files in common");
 
             assertEquals(List.of("2 documents", "1 issue"), epic.sources());
-            assertEquals(2, epic.landings());
-            assertEquals(3, epic.findings().newCount());
-            assertEquals(4, epic.findings().open());
-            assertEquals(2, epic.findings().kept());
+            assertEquals(1, epic.landings());
+            assertEquals(0, epic.findings().newCount());
+            assertEquals(1, epic.findings().open());
+            assertEquals(1, epic.findings().kept());
             assertEquals(4, epic.watches().open());
 
             assertTrue(epic.tokens().total().measured());

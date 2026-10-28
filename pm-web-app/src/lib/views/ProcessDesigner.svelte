@@ -4,6 +4,7 @@
   import Button from '../components/Button.svelte';
   import BlockPalette from '../components/BlockPalette.svelte';
   import WorkflowIcon from '../components/WorkflowIcon.svelte';
+  import Icon from '../components/Icon.svelte';
   import WorkflowValidationResults from '../components/WorkflowValidationResults.svelte';
   import {
     apiClient,
@@ -1163,7 +1164,7 @@
               tabindex="-1"
               onclick={() => selectLine(index + 1)}
             >
-              {#if findingLines[index + 1]}✗{/if}{index + 1}
+              {#if findingLines[index + 1]}<Icon name="state.error" size={16} />{/if}{index + 1}
             </button>
           {/each}
         </div>
@@ -1523,7 +1524,7 @@
         <ul class="designer__landing" data-testid="designer-landing">
           {#each landingSteps as step}
             <li class="designer__landing-step">
-              <span aria-hidden="true">✓</span>
+              <span aria-hidden="true"><Icon name="state.check" size={16} /></span>
               {$t('designer.place.step', {
                 step,
                 path: targetPath(),

@@ -31,6 +31,12 @@ Every icon is one drawing on the same grid, so the set reads as a family even wh
 * *No decoration*: no gradients, shadows, duplicate strokes, or ornamental detail that disappears at `16` px.
 * *Light and dark*: one drawing serves both themes; `currentColor` makes it follow the surrounding text.
 
+The *UI icon set* of VD-P-06 (`link:../../claude_review/visual-design/proposals.adoc#VD-P-06[VD-P-06]`)
+draws on this contract in the interface: the same grid, caps, joins, `currentColor` rule and fill rule, at
+the `1.5` px stroke that proposal sets, delivered under `pm-web-app/src/lib/icons/ui/` and mirrored by
+`uiIcons.ts`. It is not part of the workflow catalogue: no unit carries a UI icon id, and no view resolves
+one from the runtime.
+
 [#families]
 == Semantic Families
 
@@ -124,6 +130,10 @@ The Git icon is our own trunk-commit-branch metaphor, not the Git logo. Harness 
 |===
 
 A future blend appends a row here before its SVG is committed. An icon without a completed row stays out of the delivered set.
+
+The UI icon set of `pm-web-app/src/lib/icons/ui/` is part of the same delivery and the same row above: it is
+original line art drawn for this project, with no source file, no third-party glyph, and no attribution
+required. A blend in either set appends its own row here first.
 
 [#accessibility]
 == Accessibility and Usage

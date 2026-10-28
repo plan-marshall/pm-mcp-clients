@@ -10,6 +10,7 @@
 package de.planmarshall.operator.tui;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -104,6 +105,71 @@ class TuiKeyRegistryTest {
     void bindingNeedsTrigger() {
         assertThrows(IllegalArgumentException.class,
                             () -> new TuiKeyRegistry.Binding("", TuiKeyAction.OPEN));
+    }
+
+    @Test
+    @DisplayName("a binding carries the priority of its action")
+    void bindingCarriesPriority() {
+        assertAll(
+                            () -> assertEquals(TuiKeyRegistry.priorityOf(TuiKeyAction.MOVE_UP),
+                                                new TuiKeyRegistry.Binding("j", TuiKeyAction.MOVE_UP).priority()),
+                            () -> assertTrue(TuiKeyRegistry.priorityOf(TuiKeyAction.MOVE_UP)
+                                                < TuiKeyRegistry.priorityOf(TuiKeyAction.LEAVE)),
+                            () -> assertTrue(TuiKeyRegistry.priorityOf(TuiKeyAction.LEAVE)
+                                                < TuiKeyRegistry.priorityOf(TuiKeyAction.PAGE_UP))
+        );
+    }
+
+    @Test
+    @DisplayName("at 80 columns the rendered footer keeps move, open, back, actions, help and leave and ends ? more")
+    void footerKeepsThePriorityKeysAt80Columns() {
+        var footer = TuiKeyRegistry.footer(TuiLevel.Kind.PROJECT_BY_PLAN, "en", 0, 79);
+        var cells = cells(footer);
+
+        assertAll(
+                            () -> assertTrue(cells.contains("\u2191\u2193 move"), footer),
+                            () -> assertTrue(cells.contains("Enter open"), footer),
+                            () -> assertTrue(cells.contains("Esc back"), footer),
+                            () -> assertTrue(cells.contains("a actions"), footer),
+                            () -> assertTrue(cells.contains("q leave"), footer),
+                            () -> assertTrue(footer.endsWith(TuiKeyRegistry.moreCell("en")), footer),
+                            () -> assertFalse(footer.contains("\u2026"), footer),
+                            () -> assertTrue(footer.indexOf("q leave") < footer.indexOf("? more"), footer)
+        );
+    }
+
+    @Test
+    @DisplayName("a wider footer shows more keys and keeps the narrower one's order")
+    void widerFooterShowsMoreKeysInPriorityOrder() {
+        var narrow = cells(TuiKeyRegistry.footer(TuiLevel.Kind.PLAN, "en", 0, 79));
+        var wide = cells(TuiKeyRegistry.footer(TuiLevel.Kind.PLAN, "en", 0, 118));
+        var narrowKeys = narrow.subList(0, narrow.size() - 1);
+        var wideWithoutHelp = wide.stream()
+                            .filter(cell -> !cell.equals(TuiKeyRegistry.helpCell("en")))
+                            .toList();
+
+        assertAll(
+                            () -> assertTrue(wide.size() > narrow.size(), wide.toString()),
+                            () -> assertEquals(narrowKeys, wideWithoutHelp.subList(0, narrowKeys.size())),
+                            () -> assertEquals(narrow.getLast(), TuiKeyRegistry.moreCell("en"), narrow.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("the footer of a level that fits keeps every key and no ? more")
+    void footerWithoutOmissionsKeepsEveryKey() {
+        var footer = TuiKeyRegistry.footer(TuiLevel.Kind.OVERVIEW, "en", 7, 200);
+
+        assertAll(
+                            () -> assertEquals(TuiKeyRegistry.footer(TuiLevel.Kind.OVERVIEW, "en", 7), footer),
+                            () -> assertTrue(footer.contains(TuiKeyRegistry.helpCell("en")), footer),
+                            () -> assertTrue(footer.contains("q leave"), footer),
+                            () -> assertFalse(footer.contains(TuiKeyRegistry.moreCell("en")), footer)
+        );
+    }
+
+    private static List<String> cells(String footer) {
+        return List.of(footer.split(TuiKeyRegistry.SEPARATOR));
     }
 
     /**

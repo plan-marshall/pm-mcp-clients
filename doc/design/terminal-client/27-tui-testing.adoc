@@ -1,6 +1,9 @@
 = Terminal Client: The TUI's Tests
 :toc: left
 :toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
 :nofooter:
 
 link:README.adoc[Terminal Client] » The TUI's Tests
@@ -76,14 +79,18 @@ that a direct `plans` does close the one it created.
 
 * `script(1)` allocates the terminal: on macOS `/usr/bin/script -q /dev/null /bin/sh -c ...`, on
   Linux `/usr/bin/script -q -e -c ... /dev/null`.
+
 * `stty rows R cols C` pins the size before the process starts, so the layout does not depend on the
   machine that runs the test. `TERM`, sent to the child, is part of the test case.
+
 * stdin stays open, so `send("plans\n")` and `send("q")` type into the running process; a reader
   thread accumulates the output.
+
 * `awaitText(text, timeout)` polls the parsed screen. A bare fixed sleep is never the assertion.
 * `screen()`, `rawOutput()`, `alternateScreenEntries()`, `alternateScreenExits()`,
   `alternateScreenActive()`, `cursorVisible()`, `awaitExit(...)`, and `exitCode()` are what a test
   asserts.
+
 * The child's exit status is written to a side file, because the macOS `script` does not propagate
   it; `close()` destroys the child, closes the streams, and deletes the side file, idempotently.
 
@@ -188,17 +195,26 @@ separated:
 
 |environment
 |Extra `KEY=VALUE` pairs, comma separated (`-` for none)
+
+|keys before the capture (optional)
+|Keys typed once the screen has settled, so that the capture shows the state they opened
+(`\n` for Enter, `\t` for Tab, `\e` for Esc, `-` for none). The fifth field's keys are then typed
+after the capture, and they end the process.
 |===
 
-Every capture writes three files below `target/screens/{set}/` (or `-Dpm.screens.out`):
+Every capture writes its files below `target/screens/{set}/` (or `-Dpm.screens.out`):
 
 * `{name}.txt` — the visible screen, one line per row.
 * `{name}.attrs.txt` — per row, the runs of cells that share their attributes: `start-end`, then
   `b` (bold), `d` (dim), `r` (reverse) and `c{n}` (the foreground colour index), `-` for none. The
   rows are numbered from 1 as the screen shows them; the cell runs count from 0, left to right.
+
 * `{name}.stdout.txt` — the raw output, which is how a printed verb (rather than a full-screen
   view) is read. A capture that types keys writes the whole output, the part after the keys
   included, so what a verb prints when it leaves a view (`q`) is read here.
+
+* `{name}.after.txt` and `{name}.after.attrs.txt` — a capture whose line names the optional keys
+  before the capture also writes the screen those keys opened, in the same two shapes.
 
 The screen is captured only once something was drawn: a full-screen view enters the alternate
 screen after JLine's terminal probe is answered, so a quiet stretch before that is not a settled
@@ -215,14 +231,19 @@ set runs before the change into `.plan/temp/terminal/{plan}/before/` and after i
 [#flake]
 == Flake Control
 
-* Every wait is a condition (`awaitText`) with a generous timeout (15 to 20 seconds), never a fixed
-  sleep for the main assertion.
+* Every wait is a condition (`awaitText`) with a generous timeout (40 seconds in the capture
+  harness, where each capture starts a mock runtime and a process; 15 to 20 seconds in the
+  capability suite), never a fixed sleep for the main assertion.
+
 * A failed assertion carries the raw output (`session.rawOutput()`, `session.screenText()`), so a
   failure shows the screen the process actually drew.
+
 * Every session and runtime is closed in a `finally` (try-with-resources); no child is left on the
   test machine.
+
 * The size and `TERM` are pinned per case, so the suite does not depend on the terminal that started
   Maven.
+
 * Java tests and ITs that start a mock web listener bind ephemeral ports (`webPort(0)`) and read
   the live bound port from the runtime, avoiding fixed port 7420 and eliminating cross-session or
   cross-worktree port collisions.

@@ -1,6 +1,9 @@
 = Terminal Client: Command Model
 :toc: left
 :toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
 :nofooter:
 
 link:README.adoc[Terminal Client] » Command Model
@@ -140,8 +143,10 @@ Command names, options, option values, aspect names, consent kinds, state ids, a
 
 . It sends the request that starts the run of the aspect.
 . In a server state (`[S]`) or a model state (`[M]`) it shows the progress and waits for the next state (xref:03-dialogues.adoc#waiting[Waiting, Progress, and a Model at Work]).
+
 . In a choice state (`[O]`) it looks for an answer among the arguments: an option of the aspect for a choice, `--consent <kind>` for a consent state of that kind, `--no-icons` and `--no-advice` for the no of an optional consent, `--yes` for a confirmation of a displayed change (`harness.confirm`, `harness.add-confirm`, the move of `config credentials`). An answer the state accepts is sent as its link; the state is printed as one line with the answer (`✓ Interface language  Deutsch   (--interface de)`).
 . A choice state without an answer among the arguments is shown as the dialogue and asks; with `--no-input` the client stops there instead (xref:03-dialogues.adoc#no-input[Without Prompts]).
+
 . It ends when the sub-workflow reaches its done state (`language.done` and the others) or the onboarding rests in `onboard.completed`.
 
 An argument the state does not accept (a locale without a pack, a model the catalogue does not allow) is not sent: the client shows the state with the refusal in place of the preselection and asks, or with `--no-input` stops with exit code `3` and the refusal. An argument that no state of the run asked for is reported after the run (`--landing main was not used: the landing is set by the project's team`), never silently dropped.

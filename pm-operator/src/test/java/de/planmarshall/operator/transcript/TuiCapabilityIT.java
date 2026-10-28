@@ -9,7 +9,9 @@
  */
 package de.planmarshall.operator.transcript;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.nayuki.qrcodegen.QrCode;
@@ -17,10 +19,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.LockSupport;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
 
@@ -31,6 +37,8 @@ import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.operator.PmOperator;
+import de.planmarshall.operator.tui.TuiKeyRegistry;
+import de.planmarshall.operator.tui.TuiLevel;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
@@ -39,6 +47,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import com.fasterxml.jackson.core.JsonFactory;
 
@@ -151,6 +162,142 @@ class TuiCapabilityIT {
             assertEquals(0, session.exitCode(), session.rawOutput());
             assertTrue(session.cursorVisible(), session.screenText());
         }
+    }
+
+    @ParameterizedTest(name = "the help overlay of the {0} names every key, groups them, and closes on the first Esc")
+    @MethodSource("levels")
+    @DisplayName("? opens the help overlay as a box over every level, and the first Esc closes it without residue")
+    void helpOverlayShowsAllKeys(String level, List<String> arguments, String toLevel, String startMark,
+                        String mark, TuiLevel.Kind kind) throws Exception {
+        try (var session = start(arguments, Map.of(), 80, 24)) {
+            assertTrue(session.awaitText(startMark, TIMEOUT), session.screenText());
+            enterLevel(session, toLevel, mark);
+
+            session.send("?");
+            assertTrue(session.awaitText("Esc close", TIMEOUT), session.screenText());
+            assertTrue(session.awaitText("\u250c keys ", TIMEOUT), session.screenText());
+            var overlay = session.screenText();
+            var box = overlay.lines().filter(line -> line.startsWith("\u2502")).toList();
+            var tokens = box.stream()
+                                .flatMap(line -> Arrays.stream(line.replace("\u2502", " ").split("\\s+")))
+                                .filter(token -> !token.isEmpty())
+                                .collect(Collectors.toSet());
+
+            assertAll(
+                                () -> assertTrue(overlay.contains("\u250c keys "), overlay),
+                                () -> assertTrue(overlay.contains("\u2514"), overlay),
+                                () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502 move")), overlay),
+                                () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502 open")), overlay),
+                                () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502 actions")),
+                                                    overlay),
+                                () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502 views")), overlay),
+                                () -> assertTrue(box.stream().anyMatch(line -> line.startsWith("\u2502 leave")), overlay),
+                                () -> assertTrue(tokens.contains("PgUp"), overlay),
+                                () -> TuiKeyRegistry.bindings(kind).stream()
+                                                    .map(binding -> TuiKeyRegistry.displayOf(binding.trigger()))
+                                                    .forEach(display -> assertTrue(tokens.contains(display),
+                                                                        "the overlay does not name " + display + ":\n" + overlay))
+            );
+
+            session.send("\u001b");
+            assertTrue(awaitGone(session, "Esc close"), session.screenText());
+            var closed = session.screenText();
+            assertAll(
+                                () -> assertFalse(closed.contains("\u250c"), closed),
+                                () -> assertFalse(closed.contains("\u2514"), closed),
+                                () -> assertFalse(closed.contains("Esc close"), closed),
+                                () -> assertFalse(closed.contains("views"), closed),
+                                () -> assertTrue(closed.contains("move"), closed),
+                                () -> assertTrue(closed.contains(mark), closed)
+            );
+
+            session.send("q");
+            assertTrue(session.awaitExit(TIMEOUT), session.rawOutput());
+            assertEquals(0, session.exitCode(), session.rawOutput());
+        }
+    }
+
+    @ParameterizedTest(name = "the {0} shows no residue of the help overlay's footer")
+    @MethodSource("levels")
+    @DisplayName("the footer of every level ends without a fragment of the overlay's Esc close")
+    void footerHasNoResidue(String level, List<String> arguments, String toLevel, String startMark,
+                        String mark, TuiLevel.Kind kind) throws Exception {
+        try (var session = start(arguments, Map.of(), 80, 24)) {
+            assertTrue(session.awaitText(startMark, TIMEOUT), session.screenText());
+            enterLevel(session, toLevel, mark);
+
+            session.send("?");
+            assertTrue(session.awaitText("Esc close", TIMEOUT), session.screenText());
+            session.send("?");
+            assertTrue(awaitGone(session, "Esc close"), session.screenText());
+
+            var footer = session.screenText().lines()
+                                .filter(line -> line.contains("move") || line.contains("leave"))
+                                .findFirst()
+                                .orElse("");
+            var omitted = kind == TuiLevel.Kind.PLAN;
+            assertAll(
+                                () -> assertTrue(footer.contains("move"), session.screenText()),
+                                () -> assertTrue(footer.contains(omitted ? "? more" : "? help"), footer),
+                                () -> assertFalse(footer.contains(omitted ? "? help" : "? more"), footer),
+                                () -> assertFalse(footer.contains("Esc close"), footer),
+                                () -> assertFalse(footer.contains("views"), footer),
+                                () -> assertFalse(footer.contains("\u2502"), footer),
+                                () -> assertFalse(footer.contains("\u2026"), footer)
+            );
+
+            session.send("q");
+            assertTrue(session.awaitExit(TIMEOUT), session.rawOutput());
+        }
+    }
+
+    /**
+     * The three levels a plan's work is read on, each with the mark that proves the level is the
+     * one under test: the command that opens it, the keys that reach it from there, and its text.
+     *
+     * @return the cases of the two help-overlay tests
+     */
+    static Stream<Arguments> levels() {
+        return Stream.of(
+                            Arguments.of("overview", List.of("plans"), "", "Running work", "Running work",
+                                                TuiLevel.Kind.OVERVIEW),
+                            Arguments.of("plan view", List.of("plan", "fix-relay"), "", "tokens so far",
+                                                "tokens so far", TuiLevel.Kind.PLAN),
+                            Arguments.of("activity", List.of("plan", "fix-relay"), "\n", "tokens so far",
+                                                "off track", TuiLevel.Kind.PLAN_ACTIVITY)
+        );
+    }
+
+    /**
+     * Moves the view one level down, once the level below is drawn: the row the selection sits on
+     * is loaded after the view's first frame, so the case waits for it before it types the key.
+     *
+     * @param session the running view
+     * @param keys    the key that opens the next level, or the empty string
+     * @param mark    the text that proves the level under test is shown
+     * @throws InterruptedException if the wait is interrupted
+     */
+    private static void enterLevel(PtySession session, String keys, String mark) throws Exception {
+        if (keys.isEmpty()) {
+            return;
+        }
+        assertTrue(session.awaitText("TASK-003", TIMEOUT), session.screenText());
+        session.send(keys);
+        assertTrue(session.awaitText(mark, TIMEOUT), session.screenText());
+    }
+
+    private static boolean awaitGone(PtySession session, String text) throws InterruptedException {
+        var deadline = System.nanoTime() + TIMEOUT.toNanos();
+        while (System.nanoTime() < deadline) {
+            if (!session.screenText().contains(text)) {
+                return true;
+            }
+            LockSupport.parkNanos(25_000_000L);
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
+        }
+        return false;
     }
 
     @Test

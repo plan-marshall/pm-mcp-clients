@@ -51,6 +51,14 @@ public final class TuiLayout {
     private static final String DETAIL_INDENT = "    ";
     private static final String ELLIPSIS = "\u2026";
     private static final String RULE = "\u2500";
+    private static final String RULE_START = "\u250c";
+    private static final String RULE_END = "\u2510";
+    private static final String CELL_START = "\u2502";
+    private static final String CELL_END = "\u2502";
+    private static final String CELL_BOTTOM_START = "\u2514";
+    /** How far a wrapped line of the help overlay is indented under the group's keys. */
+    private static final int CONTINUATION_INDENT = 4;
+    private static final String CELL_BOTTOM_END = "\u2518";
     private static final String CONNECTED = "\u25cf ";
     private static final String DISCONNECTED = "\u25cb ";
 
@@ -169,17 +177,35 @@ public final class TuiLayout {
     }
 
     private AttributedString footer(TuiScreen screen, int width) {
-        var text = screen.menu() != null
-                            ? MessageCatalogue.format(locale, "operator.actions.menu.footer", Map.of())
-                            : screen.footerText() != null
-                            ? screen.footerText()
-                            : TuiKeyRegistry.footer(screen.kind(), locale, screen.reportsCount());
-        return new AttributedString(truncate(text, width));
+        // Padded like every other row: a shorter footer must not leave the tail of a longer one on
+        // the cells the terminal already holds.
+        return new AttributedString(pad(footerText(screen, width), width));
+    }
+
+    /**
+     * @param screen the screen
+     * @param width  the columns the footer may use
+     * @return the footer's text: the overlay's own, the menu's, the level's, or the registry's
+     */
+    private String footerText(TuiScreen screen, int width) {
+        if (screen.help()) {
+            return TuiKeyRegistry.helpFooter(locale);
+        }
+        if (screen.menu() != null) {
+            return MessageCatalogue.format(locale, "operator.actions.menu.footer", Map.of());
+        }
+        if (screen.footerText() != null) {
+            return TuiKeyRegistry.fit(List.of(screen.footerText().split(TuiKeyRegistry.SEPARATOR)),
+                                width, locale);
+        }
+        return TuiKeyRegistry.footer(screen.kind(), locale, screen.reportsCount(), width);
     }
 
     private List<AttributedString> body(TuiScreen screen, int width, int columns, int height) {
-        var lines = screen.help() ? helpLines(screen, width) : rowLines(screen, width, columns);
-        return viewport(lines, screen, width, height);
+        if (screen.help()) {
+            return helpBox(screen, width, height);
+        }
+        return viewport(rowLines(screen, width, columns), screen, width, height);
     }
 
     private static final class BodyLine {
@@ -192,24 +218,154 @@ public final class TuiLayout {
         }
     }
 
-    private List<BodyLine> helpLines(TuiScreen screen, int width) {
-        var lines = new ArrayList<BodyLine>();
+    /**
+     * The help overlay: a box over the view that names the level's keys, grouped, and the selected
+     * row with its details. It is a page of its own, so it takes the body's lines instead of
+     * scrolling: the groups come first (wrapped, so no key is cut), the row's details after them,
+     * and a body too short for all of it drops from the end rather than cutting the box.
+     *
+     * @param screen the screen, with its help flag set
+     * @param width  the line width
+     * @param height the body's lines
+     * @return exactly {@code height} lines
+     */
+    private List<AttributedString> helpBox(TuiScreen screen, int width, int height) {
+        var blank = new AttributedString(" ".repeat(Math.max(0, width)));
+        var lines = new ArrayList<AttributedString>(height);
+        if (height < 3) {
+            while (lines.size() < height) {
+                lines.add(blank);
+            }
+            return List.copyOf(lines);
+        }
+        var content = new ArrayList<String>();
+        var interior = Math.max(1, width - 4);
+        for (var group : TuiKeyRegistry.helpGroups(screen.kind(), locale)) {
+            content.addAll(wrap(group, interior));
+        }
+        var details = rowDetails(screen);
+        var room = height - 2;
+        if (!details.isEmpty() && room > content.size() + 1) {
+            content.add("");
+            content.addAll(details);
+        } else if (!details.isEmpty() && room > content.size()) {
+            content.addAll(details);
+        }
+        if (content.size() > room) {
+            content = new ArrayList<>(content.subList(0, room));
+        }
+        lines.add(new AttributedString(pad(boxTop(width), width)));
+        for (var text : content) {
+            lines.add(new AttributedString(pad(boxMiddle(text, width), width)));
+        }
+        lines.add(new AttributedString(pad(boxBottom(width), width)));
+        while (lines.size() < height) {
+            lines.add(blank);
+        }
+        return List.copyOf(lines);
+    }
+
+    /**
+     * Wraps one line of the help overlay onto the interior's width at a space, so that a narrow
+     * terminal still names every key of a group instead of cutting the line with an ellipsis. A
+     * continuation line is indented under the group's keys.
+     *
+     * @param text    the line
+     * @param width   the interior's columns
+     * @return the line as one or more lines
+     */
+    private static List<String> wrap(String text, int width) {
+        var lines = new ArrayList<String>();
+        if (width <= CONTINUATION_INDENT + 8) {
+            // Too narrow to wrap meaningfully: the caller's truncation shows what fits.
+            return List.of(text);
+        }
+        var rest = text;
+        while (displayWidth(rest) > width && !rest.isBlank()) {
+            int end = endIndexForWidth(rest, width);
+            int space = rest.lastIndexOf(' ', Math.max(0, end - 1));
+            int cut = space > 0 ? space : end;
+            var head = rest.substring(0, Math.min(cut, rest.length())).stripTrailing();
+            if (head.isEmpty()) {
+                break;
+            }
+            lines.add(head);
+            rest = " ".repeat(CONTINUATION_INDENT)
+                                + rest.substring(Math.min(cut, rest.length())).stripLeading();
+        }
+        lines.add(rest);
+        return List.copyOf(lines);
+    }
+
+    /**
+     * @param text  the text
+     * @param width the columns
+     * @return the index after the longest prefix that fits into {@code width} columns
+     */
+    private static int endIndexForWidth(String text, int width) {
+        int used = 0;
+        int index = 0;
+        int end = 0;
+        while (index < text.length()) {
+            int codePoint = text.codePointAt(index);
+            int cells = Math.max(0, WCWidth.wcwidth(codePoint));
+            if (used + cells > width) {
+                break;
+            }
+            used += cells;
+            index += Character.charCount(codePoint);
+            end = index;
+        }
+        return end;
+    }
+
+    /**
+     * @param screen the screen
+     * @return the selected row's line and details, or an empty list when nothing is selected
+     */
+    private static List<String> rowDetails(TuiScreen screen) {
         var selected = screen.selected();
-        if (selected != null) {
-            lines.add(new BodyLine(new AttributedString(pad(INDENT + selected.line(), width)), 0));
-            if (selected.details() != null) {
-                for (var detail : selected.details().split("\n", -1)) {
-                    lines.add(new BodyLine(new AttributedString(pad(DETAIL_INDENT + detail, width)), 0));
-                }
+        if (selected == null) {
+            return List.of();
+        }
+        var details = new ArrayList<String>();
+        details.add(selected.line());
+        if (selected.details() != null) {
+            for (var detail : selected.details().split("\n", -1)) {
+                details.add("  " + detail);
             }
         }
-        var footer = screen.menu() != null
-                            ? MessageCatalogue.format(locale, "operator.actions.menu.footer", Map.of())
-                            : screen.footerText() != null
-                            ? screen.footerText()
-                            : TuiKeyRegistry.footer(screen.kind(), locale, screen.reportsCount());
-        lines.add(new BodyLine(new AttributedString(pad(footer, width)), 0));
-        return lines;
+        return List.copyOf(details);
+    }
+
+    /**
+     * @param width the line width
+     * @return the top border of the help overlay, with its title
+     */
+    private String boxTop(int width) {
+        var head = " " + TuiKeyRegistry.helpTitle(locale) + " ";
+        var room = width - displayWidth(head) - 2;
+        if (room < 0) {
+            return RULE.repeat(Math.max(0, width));
+        }
+        return RULE_START + head + RULE.repeat(room) + RULE_END;
+    }
+
+    /**
+     * @param content the cell's text
+     * @param width   the line width
+     * @return one line of the help overlay's interior, exactly {@code width} columns wide
+     */
+    private static String boxMiddle(String content, int width) {
+        return CELL_START + " " + pad(content, Math.max(0, width - 4)) + " " + CELL_END;
+    }
+
+    /**
+     * @param width the line width
+     * @return the bottom border of the help overlay
+     */
+    private static String boxBottom(int width) {
+        return CELL_BOTTOM_START + RULE.repeat(Math.max(0, width - 2)) + CELL_BOTTOM_END;
     }
 
     private List<BodyLine> rowLines(TuiScreen screen, int width, int columns) {

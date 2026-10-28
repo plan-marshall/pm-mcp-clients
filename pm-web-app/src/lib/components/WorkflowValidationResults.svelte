@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '../i18n';
   import Button from './Button.svelte';
+  import Icon from './Icon.svelte';
   import type { WorkflowValidationResult } from '../api/client';
 
   export let result: WorkflowValidationResult | null = null;
@@ -9,10 +10,10 @@
   export let onPreview: () => void = () => {};
   export let onSelectLine: (line: number) => void = () => {};
 
-  function statusGlyph(status: string): string {
-    if (status === 'passed') return '✓';
-    if (status === 'failed') return '✗';
-    return '–';
+  function statusIcon(status: string): 'state.check' | 'state.error' | 'state.dot' {
+    if (status === 'passed') return 'state.check';
+    if (status === 'failed') return 'state.error';
+    return 'state.dot';
   }
 
   function statusLabel(status: string): string {
@@ -28,7 +29,9 @@
           class="validation__stage validation__stage--{stage.status}"
           data-testid={`validation-stage-${stage.name}`}
         >
-          <span class="validation__glyph" aria-hidden="true">{statusGlyph(stage.status)}</span>
+          <span class="validation__glyph" aria-hidden="true"
+            ><Icon name={statusIcon(stage.status)} size={16} /></span
+          >
           <span class="validation__stage-name">
             {$t('designer.validate.stage', { stage: stage.name, project: projectLabel })}
           </span>
@@ -45,7 +48,7 @@
       </p>
     {:else if result.valid}
       <div class="validation__valid" data-testid="validation-valid">
-        <span class="validation__glyph" aria-hidden="true">✓</span>
+        <span class="validation__glyph" aria-hidden="true"><Icon name="state.check" size={16} /></span>
         <span>{$t('designer.validate.valid')}</span>
         {#if result.composed}
           <Button variant="ghost" on:click={onPreview} data-testid="preview-button">

@@ -1,6 +1,9 @@
 = Terminal Client: Texts of Projects
 :toc: left
-:toclevels: 2
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
 :nofooter:
 
 link:README.adoc[Terminal Client] » Texts: Projects
