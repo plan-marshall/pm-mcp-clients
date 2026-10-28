@@ -146,7 +146,6 @@ final class ActionSupport {
             prompt.line("operator.actions.end.reason_required", Map.of());
             return null;
         }
-        prompt.raw("  " + question + "         " + reason);
         return reason;
     }
 

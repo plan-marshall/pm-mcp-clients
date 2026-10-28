@@ -608,8 +608,9 @@ class ControlDialoguesTest {
                 response.send(404, null, "");
             }
         });
-        virtual.type("2\nbecause the scope moved\ny\n");
+        virtual.type("9\n2\nbecause the scope moved\ny\n");
         assertEquals(0, dialogue("epic", "e", "cancel"), out.toString());
+        assertTrue(out.toString().contains("9 is not offered here: 1-2, q, ?"), out.toString());
         assertNotNull(body[0], out.toString());
         assertTrue(body[0].contains("\"with_plans\":false"), body[0]);
     }

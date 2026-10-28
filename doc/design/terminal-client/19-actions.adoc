@@ -76,37 +76,33 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 
 [source,text]
 ----
-pm › plan cancel fix-relay
+pm › x  (the menu's Cancel…)
 Cancel fix-relay?
   Its epic       relay-hardening is told
   Afterwards     the plan is archived as cancelled; its branch stays
   Reason         › the approach is replaced by plan relay-v2
-  Reason         the approach is replaced by plan relay-v2
-Cancel the plan? y) yes   n) no   q) leave   ?   › y
-✓ fix-relay cancelled and archived
-pm ›
-----
-
-Across the menu, `x  Cancel…` adds the pull request between the reason and the consent, and neither
-answer is preselected:
-
-[source,text]
-----
   Pull request
   1) close it, with the reason
   2) leave it open
   › 1
 Chosen: close it, with the reason
+Cancel the plan?
+y) yes   n) no   q) leave   ?   › y
+✓ fix-relay cancelled and archived
+✓ relay-hardening told
+pm ›
 ----
+
+`plan cancel <plan>` on its own asks the same reason and the same consent, without the epic and
+afterwards lines and without the pull request, whose answer there is `--close-pr` or `--keep-pr`.
 
 [source,text]
 ----
 pm › plan pause fix-relay
-Pause fix-relay?
+Where does fix-relay hold?
   1) now                       running work is withdrawn at once; it runs again on start
   2) after the current task ←  the running task finishes, then the plan holds
   3) after the current phase   the running phase finishes, then the plan holds
-  Its epic   relay-hardening is told
 › ⏎
 Chosen: after the current task
 ✓ fix-relay pausing after the task

@@ -72,10 +72,6 @@ public final class ChoicePrompt {
         public static Choice of(String key, String label) {
             return new Choice(key, label, null, null, false);
         }
-
-        public static Choice preselected(String key, String label) {
-            return new Choice(key, label, null, null, true);
-        }
     }
 
     @FunctionalInterface

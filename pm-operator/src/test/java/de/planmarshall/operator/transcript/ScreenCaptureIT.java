@@ -31,6 +31,7 @@ import de.planmarshall.api.testsupport.BinaryUnderTest;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.operator.PmOperator;
+import de.planmarshall.operator.StartPrompt;
 import de.planmarshall.operator.tui.AnsiScreen;
 
 import org.junit.jupiter.api.Assumptions;
@@ -153,14 +154,15 @@ class ScreenCaptureIT {
 
     /**
      * Waits until the process has written nothing new for the settle window and the screen can be
-     * captured. A capture that types keys expects a view: a full-screen view enters the alternate
-     * screen only after JLine's terminal probe is answered, and a quiet stretch before that is not a
-     * drawn view, so it waits for the alternate screen. A line dialogue never enters the alternate
-     * screen, so for it the quiet window decides once {@link #MIN_WAIT} has passed. A capture whose
-     * verb prints and types nothing is settled by the quiet window alone.
+     * captured. A capture that types keys expects something to answer: a full-screen view enters the
+     * alternate screen only after JLine's terminal probe is answered, and a quiet stretch before that
+     * is not a drawn view, so the wait holds until the alternate screen is active. A line dialogue
+     * never enters the alternate screen; it is recognised by the prompt suffix it printed, and the
+     * quiet window decides once {@link #MIN_WAIT} has passed. A capture whose verb prints and types
+     * nothing is settled by the quiet window alone.
      *
      * @param session     the running session
-     * @param expectsView whether the capture types keys and therefore expects a full-screen view
+     * @param expectsView whether the capture types keys and therefore expects an answer
      * @return {@code true} when the screen settled before the deadline
      * @throws InterruptedException if interrupted
      */
@@ -170,13 +172,13 @@ class ScreenCaptureIT {
         var lastLength = 0;
         var quietSince = 0L;
         while (System.nanoTime() < deadline) {
-            var length = session.rawOutput().length();
+            var raw = session.rawOutput();
+            var length = raw.length();
             if (length > 0 && length == lastLength) {
                 if (quietSince == 0L) {
                     quietSince = System.nanoTime();
                 } else if (System.nanoTime() - quietSince >= SETTLE.toNanos()
-                                    && (!expectsView || session.screen().alternateScreenActive()
-                                    || System.nanoTime() - start >= MIN_WAIT.toNanos())) {
+                                    && (!expectsView || settled(session, raw, start))) {
                     return true;
                 }
             } else {
@@ -189,6 +191,21 @@ class ScreenCaptureIT {
             }
         }
         return false;
+    }
+
+    /**
+     * @param session the running session
+     * @param raw     the raw output so far
+     * @param start   when the wait started, in {@link System#nanoTime()} terms
+     * @return whether what the capture waits for has happened: a line dialogue answered by its
+     *         prompt suffix and past {@link #MIN_WAIT}, or a full-screen view that entered the
+     *         alternate screen
+     */
+    private static boolean settled(PtySession session, String raw, long start) {
+        if (raw.contains(StartPrompt.SUFFIX)) {
+            return System.nanoTime() - start >= MIN_WAIT.toNanos();
+        }
+        return session.screen().alternateScreenActive();
     }
 
     private static String attributes(AnsiScreen screen) {
