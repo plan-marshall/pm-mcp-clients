@@ -308,7 +308,7 @@ class PlanCommandTest {
         int code = execute("plan", "pause", "p-001", "--after-task");
         assertEquals(0, code);
         var req = server.awaitRequest(Duration.ofSeconds(1));
-        assertTrue(req.bodyText().contains("\"point\":\"after_task\""));
+        assertTrue(req.bodyText().contains("\"point\":\"task\""));
     }
 
     @Test
