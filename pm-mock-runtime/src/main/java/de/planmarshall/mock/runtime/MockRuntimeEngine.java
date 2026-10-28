@@ -6487,16 +6487,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static List<CleanupKeptItem> keptItemsOf(Map<String, Object> facts) {
         var out = new ArrayList<CleanupKeptItem>();
         for (var kept : fixtureObjects(facts, "kept", "facts.kept")) {
-            if (kept == null) {
-                continue;
+            if (kept != null) {
+                var id = JsonTree.string(kept, "item_id");
+                var kind = JsonTree.string(kept, "kind");
+                var label = JsonTree.string(kept, KEY_LABEL);
+                if (id != null && kind != null && label != null) {
+                    out.add(new CleanupKeptItem(id, kind, label,
+                            JsonTree.string(kept, KEY_REASON),
+                            JsonTree.string(kept, "kept_at"),
+                            JsonTree.string(kept, "kept_by")));
+                }
             }
-            out.add(new CleanupKeptItem(
-                    JsonTree.string(kept, "item_id"),
-                    JsonTree.string(kept, "kind"),
-                    JsonTree.string(kept, KEY_LABEL),
-                    JsonTree.string(kept, KEY_REASON),
-                    JsonTree.string(kept, "kept_at"),
-                    JsonTree.string(kept, "kept_by")));
         }
         return out;
     }
@@ -6508,16 +6509,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static List<CleanupResidue> residuesOf(Map<String, Object> facts) {
         var out = new ArrayList<CleanupResidue>();
         for (var residue : fixtureObjects(facts, FIXTURE_RESIDUE, "facts." + FIXTURE_RESIDUE)) {
-            if (residue == null) {
-                continue;
+            if (residue != null) {
+                var step = JsonTree.string(residue, "step");
+                if (step != null) {
+                    var bytes = JsonTree.number(residue, "bytes");
+                    out.add(new CleanupResidue(step, intMember(residue, "count"),
+                            bytes != null ? bytes.longValue() : 0L, JsonTree.string(residue, "last_run")));
+                }
             }
-            var step = JsonTree.string(residue, "step");
-            if (step == null) {
-                continue;
-            }
-            var bytes = JsonTree.number(residue, "bytes");
-            out.add(new CleanupResidue(step, intMember(residue, "count"),
-                    bytes != null ? bytes.longValue() : 0L, JsonTree.string(residue, "last_run")));
         }
         return out;
     }
