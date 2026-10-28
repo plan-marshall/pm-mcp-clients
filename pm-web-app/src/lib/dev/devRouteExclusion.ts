@@ -23,9 +23,6 @@ export const EMPTY_DEV_PAGE_ID = '/@dev-route-exclusion/EmptyDevPage.svelte';
 /** The generated client manifests: the development one and the ones a build generates. */
 const CLIENT_MANIFEST = /generated[\\/](?:[^\\/]+[\\/])?client(?:-optimized)?[\\/]app\.js$/;
 
-/** One entry of the generated route dictionary. */
-const DICTIONARY_ENTRY = /^\s*"(\/[^"]*)":\s*\[([^\]]*)\]\s*,?\s*$/;
-
 /** A generated route node module. */
 const GENERATED_NODE = /generated[\\/][^\\/]+[\\/]client(?:-optimized)?[\\/]nodes[\\/]\d+\.js$/;
 
@@ -34,6 +31,47 @@ const DEV_PAGE_IMPORT = /(['"])([^'"]*src[\\/]routes[\\/]dev[\\/][^'"]*\.svelte)
 
 /** One lazy node import of the generated manifest. */
 const NODE_IMPORT = /\(\)\s*=>\s*import\('\.\/nodes\/(\d+)'\)/g;
+
+/** One entry of the generated route dictionary, as the build parses it. */
+interface DictionaryEntry {
+  path: string;
+  indices: number[];
+}
+
+/**
+ * Parses one line of the generated route dictionary, `"/path": [1, 2],`.
+ *
+ * The line is walked character by character rather than matched by a regular expression: the
+ * expression this replaced could backtrack super-linearly on a long line, and SvelteKit writes the
+ * dictionary from whatever route names the checkout holds.
+ *
+ * @param line one line of the generated manifest
+ * @returns the entry it writes, or null for a line that writes none
+ */
+function parseDictionaryEntry(line: string): DictionaryEntry | null {
+  const text = line.trim();
+  if (!text.startsWith('"')) {
+    return null;
+  }
+  const separator = text.indexOf('":');
+  if (separator < 2) {
+    return null;
+  }
+  const path = text.slice(1, separator);
+  const list = text.slice(separator + 2).trim();
+  const closing = list.lastIndexOf(']');
+  if (!list.startsWith('[') || closing < 0) {
+    return null;
+  }
+  const indices = list
+    .slice(1, closing)
+    .split(',')
+    .map((part) => part.trim())
+    .filter((part) => part !== '')
+    .map((part) => Number(part))
+    .filter((index) => Number.isInteger(index));
+  return { path, indices };
+}
 
 /**
  * @param path a route path of the generated dictionary
@@ -70,18 +108,10 @@ export function isGeneratedNode(id: string): boolean {
  * @returns the source with the development page replaced
  */
 export function stripDevPageImports(code: string): string {
-  return code.replace(DEV_PAGE_IMPORT, (_match, quote: string) => `${quote}${EMPTY_DEV_PAGE_ID}${quote}`);
-}
-
-/**
- * @param list the node indices of one dictionary entry
- * @returns the indices it names, in their written order
- */
-function indicesOf(list: string): number[] {
-  return list
-    .split(',')
-    .map((part) => Number(part.trim()))
-    .filter((index) => Number.isInteger(index));
+  return code.replace(
+    DEV_PAGE_IMPORT,
+    (_match, quote: string) => `${quote}${EMPTY_DEV_PAGE_ID}${quote}`,
+  );
 }
 
 /**
@@ -100,14 +130,14 @@ export function stripDevRoutes(source: string): string {
   const devNodes: number[] = [];
 
   for (const line of source.split('\n')) {
-    const entry = DICTIONARY_ENTRY.exec(line);
-    if (entry && isDevRoute(entry[1])) {
-      devNodes.push(...indicesOf(entry[2]));
+    const entry = parseDictionaryEntry(line);
+    if (entry && isDevRoute(entry.path)) {
+      devNodes.push(...entry.indices);
       continue;
     }
     kept.push(line);
     if (entry) {
-      for (const index of indicesOf(entry[2])) {
+      for (const index of entry.indices) {
         referenced.add(index);
       }
     }

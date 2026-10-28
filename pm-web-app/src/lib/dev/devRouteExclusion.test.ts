@@ -67,6 +67,34 @@ describe('the development route exclusion', () => {
     expect(stripDevRoutes(withRoot)).not.toContain('"/dev"');
   });
 
+  it('reads the last entry, which carries no trailing comma', () => {
+    const source = `export const nodes = [
+\t() => import('./nodes/1'),
+\t() => import('./nodes/2')
+];
+
+export const dictionary = {
+\t\t"/": [1],
+\t\t"/dev/components": [2]
+};
+`;
+
+    const stripped = stripDevRoutes(source);
+
+    expect(stripped).not.toContain('/dev/components');
+    expect(stripped).not.toContain("import('./nodes/2')");
+    expect(stripped).toContain('"/": [1]');
+  });
+
+  it('names no node for an entry that lists none', () => {
+    const source = MANIFEST.replace('"/dev/components": [1, 3]', '"/dev/empty": []');
+
+    const stripped = stripDevRoutes(source);
+
+    expect(stripped).not.toContain('/dev/empty');
+    expect(stripped).toContain("import('./nodes/3')");
+  });
+
   it('applies to the production build only', () => {
     expect(devRouteExclusion().apply).toBe('build');
   });
