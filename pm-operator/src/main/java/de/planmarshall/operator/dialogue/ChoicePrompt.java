@@ -196,68 +196,31 @@ public final class ChoicePrompt {
      */
     public Choice ask() {
         if (noInput) {
-            var need = choices.stream().filter(Choice::preselected).findFirst()
-                                .map(Choice::label).orElse("choice");
-            throw new StartPrompt.MissingInputException(stateId, need, null);
+            throw new StartPrompt.MissingInputException(stateId, neededChoice(), null);
         }
-
         while (true) {
             renderFrame();
-            var line = readLine();
-            if (line == null) {
-                leave();
-            }
-            line = line.trim();
-
+            var line = nextLine();
             if (isQuit(line)) {
-                leave();
+                throw left();
             }
-
-            if ("?".equals(line)) {
-                printExplanation();
+            if (explained(line)) {
                 continue;
             }
-
-            if (line.startsWith("?") && line.length() > 1) {
-                var target = line.substring(1).trim();
-                printItemExplanation(target);
-                continue;
-            }
-
             if (line.isEmpty()) {
-                var preselected = choices.stream().filter(Choice::preselected).findFirst().orElse(null);
+                var preselected = preselectedChoice();
                 if (preselected != null) {
                     return echoed(preselected);
                 }
                 printLine("operator.dialogue.enter_no_default", Map.of());
                 continue;
             }
-
-            // Check number selection
-            try {
-                var num = Integer.parseInt(line);
-                if (num >= 1 && num <= choices.size()) {
-                    return echoed(choices.get(num - 1));
-                }
-            } catch (NumberFormatException _) {
-                // Not an integer, fall through to key check
+            var matched = match(line);
+            if (matched != null) {
+                return echoed(matched);
             }
-
-            // Check key selection
-            for (var choice : choices) {
-                if (choice.key().equalsIgnoreCase(line)) {
-                    return echoed(choice);
-                }
-            }
-
             printNotOffered(line);
         }
-    }
-
-    private Choice echoed(Choice choice) {
-        out.println(MessageCatalogue.format(locale, "operator.dialogue.answer", Map.of("answer", choice.label())));
-        out.flush();
-        return choice;
     }
 
     /**
@@ -269,50 +232,25 @@ public final class ChoicePrompt {
         if (noInput) {
             throw new StartPrompt.MissingInputException(stateId, "consent", null);
         }
-
         while (true) {
-            if (title != null) {
-                out.println(title);
-                out.flush();
-            }
-            var promptLine = renderConsentPrompt();
-            var line = readLineWithPrompt(promptLine);
-            if (line == null) {
-                leave();
-            }
-            line = line.trim();
-
+            printTitle();
+            var line = nextLine(renderConsentPrompt());
             if (isQuit(line)) {
-                leave();
+                throw left();
             }
-
-            if ("?".equals(line)) {
-                printExplanation();
+            if (explained(line)) {
                 continue;
             }
-
             if (line.isEmpty()) {
                 printLine("operator.dialogue.consent.type_yn", Map.of());
                 continue;
             }
-
-            if ("y".equalsIgnoreCase(line) || "j".equalsIgnoreCase(line)) {
-                return true;
+            var answer = consentAnswer(line);
+            if (answer != null) {
+                return answer;
             }
-            if ("n".equalsIgnoreCase(line)) {
-                return false;
-            }
-
             printNotOffered(line, consentOffered());
         }
-    }
-
-    private String consentOffered() {
-        var offered = new StringBuilder(isGerman() ? "j" : "y").append(", n, ").append(isGerman() ? "v" : "q");
-        if (hasExplanation()) {
-            offered.append(", ?");
-        }
-        return offered.toString();
     }
 
     /**
@@ -324,79 +262,143 @@ public final class ChoicePrompt {
         if (noInput) {
             throw new StartPrompt.MissingInputException(stateId, "multi-selection", null);
         }
-
         var selected = new LinkedHashSet<Integer>();
-        // Initialize with preselected
+        addPreselected(selected);
+        while (true) {
+            renderMultiFrame(selected);
+            var line = nextLine();
+            if (isQuit(line)) {
+                throw left();
+            }
+            if (line.isEmpty() || "Enter".equalsIgnoreCase(line)) {
+                return selected.stream().map(choices::get).toList();
+            }
+            if (explained(line)) {
+                continue;
+            }
+            if (!toggleTokens(selected, line)) {
+                printNotOffered(line);
+            }
+        }
+    }
+
+    private String neededChoice() {
+        return choices.stream().filter(Choice::preselected).findFirst()
+                            .map(Choice::label).orElse("choice");
+    }
+
+    private @Nullable Boolean consentAnswer(String line) {
+        if ("y".equalsIgnoreCase(line) || "j".equalsIgnoreCase(line)) {
+            return Boolean.TRUE;
+        }
+        if ("n".equalsIgnoreCase(line)) {
+            return Boolean.FALSE;
+        }
+        return null;
+    }
+
+    private @Nullable Choice preselectedChoice() {
+        return choices.stream().filter(Choice::preselected).findFirst().orElse(null);
+    }
+
+    private @Nullable Choice match(String line) {
+        var number = numberOf(line);
+        if (number != null) {
+            return choices.get(number - 1);
+        }
+        for (var choice : choices) {
+            if (choice.key().equalsIgnoreCase(line)) {
+                return choice;
+            }
+        }
+        return null;
+    }
+
+    private @Nullable Integer numberOf(String line) {
+        try {
+            var num = Integer.parseInt(line);
+            return num >= 1 && num <= choices.size() ? num : null;
+        } catch (NumberFormatException _) {
+            return null;
+        }
+    }
+
+    private Choice echoed(Choice choice) {
+        out.println(MessageCatalogue.format(locale, "operator.dialogue.answer", Map.of("answer", choice.label())));
+        out.flush();
+        return choice;
+    }
+
+    private void addPreselected(Set<Integer> selected) {
         for (var i = 0; i < choices.size(); i++) {
             if (choices.get(i).preselected()) {
                 selected.add(i);
             }
         }
+    }
 
-        while (true) {
-            renderMultiFrame(selected);
-            var line = readLine();
-            if (line == null) {
-                leave();
-            }
-            line = line.trim();
+    private boolean toggleTokens(Set<Integer> selected, String line) {
+        var valid = false;
+        for (var part : line.split("[\\s,]+")) {
+            valid = toggleToken(selected, part) || valid;
+        }
+        return valid;
+    }
 
-            if (isQuit(line)) {
-                leave();
-            }
+    private boolean toggleToken(Set<Integer> selected, String part) {
+        if (part.contains("-")) {
+            return toggleRange(selected, part);
+        }
+        var number = integerOf(part);
+        if (number != null) {
+            return toggleNumber(selected, number);
+        }
+        return toggleKey(selected, part);
+    }
 
-            if ("?".equals(line)) {
-                printExplanation();
-                continue;
+    private boolean toggleRange(Set<Integer> selected, String part) {
+        var range = part.split("-");
+        if (range.length != 2) {
+            return false;
+        }
+        var start = integerOf(range[0].trim());
+        var end = integerOf(range[1].trim());
+        if (start == null || end == null) {
+            return false;
+        }
+        var valid = false;
+        for (var k = start; k <= end; k++) {
+            if (k >= 1 && k <= choices.size()) {
+                toggle(selected, k - 1);
+                valid = true;
             }
+        }
+        return valid;
+    }
 
-            if (line.isEmpty() || "Enter".equalsIgnoreCase(line)) {
-                return selected.stream().map(choices::get).toList();
-            }
+    private boolean toggleNumber(Set<Integer> selected, int number) {
+        if (number < 1 || number > choices.size()) {
+            return false;
+        }
+        toggle(selected, number - 1);
+        return true;
+    }
 
-            // Parse toggle numbers or ranges e.g. "1-2" or "1 3"
-            var parts = line.split("[\\s,]+");
-            var valid = false;
-            for (var part : parts) {
-                if (part.contains("-")) {
-                    var range = part.split("-");
-                    if (range.length == 2) {
-                        try {
-                            var start = Integer.parseInt(range[0].trim());
-                            var end = Integer.parseInt(range[1].trim());
-                            for (var k = start; k <= end; k++) {
-                                if (k >= 1 && k <= choices.size()) {
-                                    toggle(selected, k - 1);
-                                    valid = true;
-                                }
-                            }
-                        } catch (NumberFormatException _) {
-                            // invalid range
-                        }
-                    }
-                } else {
-                    try {
-                        var num = Integer.parseInt(part.trim());
-                        if (num >= 1 && num <= choices.size()) {
-                            toggle(selected, num - 1);
-                            valid = true;
-                        }
-                    } catch (NumberFormatException _) {
-                        // try key match
-                        for (var i = 0; i < choices.size(); i++) {
-                            if (choices.get(i).key().equalsIgnoreCase(part)) {
-                                toggle(selected, i);
-                                valid = true;
-                                break;
-                            }
-                        }
-                    }
-                }
+    private boolean toggleKey(Set<Integer> selected, String part) {
+        for (var i = 0; i < choices.size(); i++) {
+            if (choices.get(i).key().equalsIgnoreCase(part)) {
+                toggle(selected, i);
+                return true;
             }
+        }
+        return false;
+    }
 
-            if (!valid) {
-                printNotOffered(line);
-            }
+    private static @Nullable Integer integerOf(String text) {
+        try {
+            return Integer.parseInt(text);
+        } catch (NumberFormatException _) {
+            return null;
         }
     }
 
@@ -407,41 +409,38 @@ public final class ChoicePrompt {
     }
 
     private void renderFrame() {
-        if (title != null) {
-            out.println(title);
-        }
-
-        var hasConsequences = choices.stream().anyMatch(c -> c.consequence() != null);
-        var labelWidth = 0;
-        if (hasConsequences) {
-            for (var i = 0; i < choices.size(); i++) {
-                var c = choices.get(i);
-                var arrow = c.preselected() ? PRESELECT_ARROW : "";
-                var width = ("  " + (i + 1) + ") " + c.label() + arrow).length();
-                if (width > labelWidth) {
-                    labelWidth = width;
-                }
-            }
-            labelWidth = Math.max(labelWidth + 2, 30);
-        }
-
+        printTitle();
+        var labelWidth = labelWidth();
         for (var i = 0; i < choices.size(); i++) {
-            var c = choices.get(i);
-            var arrow = c.preselected() ? PRESELECT_ARROW : "";
-            var left = "  " + (i + 1) + ") " + c.label() + arrow;
-
-            if (hasConsequences && c.consequence() != null) {
-                printTwoColumn(left, c.consequence(), labelWidth);
-            } else {
-                out.println(left);
-            }
+            printChoice(i, labelWidth);
         }
-
-        if (epicTold != null) {
-            out.println("  " + MessageCatalogue.format(locale, "operator.actions.end.its_epic", Map.of())
-                                + "   " + epicTold);
-        }
+        printEpicTold();
         out.flush();
+    }
+
+    private int labelWidth() {
+        if (choices.stream().noneMatch(choice -> choice.consequence() != null)) {
+            return 0;
+        }
+        var width = 0;
+        for (var i = 0; i < choices.size(); i++) {
+            width = Math.max(width, optionLine(i).length());
+        }
+        return Math.max(width + 2, 30);
+    }
+
+    private void printChoice(int index, int labelWidth) {
+        var choice = choices.get(index);
+        if (labelWidth == 0 || choice.consequence() == null) {
+            out.println(optionLine(index));
+            return;
+        }
+        printTwoColumn(optionLine(index), Objects.requireNonNull(choice.consequence()), labelWidth);
+    }
+
+    private String optionLine(int index) {
+        var choice = choices.get(index);
+        return "  " + (index + 1) + ") " + choice.label() + (choice.preselected() ? PRESELECT_ARROW : "");
     }
 
     /**
@@ -454,21 +453,25 @@ public final class ChoicePrompt {
      */
     private void printTwoColumn(String left, String consequence, int labelWidth) {
         var lines = wrap(consequence, Math.max(MAX_ROW - labelWidth, MIN_CONSEQUENCE_COLUMN));
-        out.printf("%-" + labelWidth + "s%s%n", left, lines.getFirst());
+        out.println(pad(left, labelWidth) + lines.getFirst());
         for (var line : lines.subList(1, lines.size())) {
-            out.printf("%-" + labelWidth + "s%s%n", "", line);
+            out.println(pad("", labelWidth) + line);
         }
+    }
+
+    private static String pad(String text, int width) {
+        return text.length() >= width ? text : text + " ".repeat(width - text.length());
     }
 
     private static List<String> wrap(String text, int width) {
         var lines = new ArrayList<String>();
         var current = new StringBuilder();
         for (var word : text.split(" ")) {
-            if (current.length() > 0 && current.length() + 1 + word.length() > width) {
+            if (!current.isEmpty() && current.length() + 1 + word.length() > width) {
                 lines.add(current.toString());
                 current.setLength(0);
             }
-            if (current.length() > 0) {
+            if (!current.isEmpty()) {
                 current.append(' ');
             }
             current.append(word);
@@ -478,15 +481,25 @@ public final class ChoicePrompt {
     }
 
     private void renderMultiFrame(Set<Integer> selected) {
+        printTitle();
+        for (var i = 0; i < choices.size(); i++) {
+            var mark = selected.contains(i) ? "[\u2713] " : "[ ] ";
+            out.println("  " + (i + 1) + ") " + mark + choices.get(i).label());
+        }
+        out.flush();
+    }
+
+    private void printEpicTold() {
+        if (epicTold != null) {
+            out.println("  " + MessageCatalogue.format(locale, "operator.actions.end.its_epic", Map.of())
+                                + "   " + epicTold);
+        }
+    }
+
+    private void printTitle() {
         if (title != null) {
             out.println(title);
         }
-        for (var i = 0; i < choices.size(); i++) {
-            var c = choices.get(i);
-            var mark = selected.contains(i) ? "[\u2713] " : "[ ] ";
-            out.println("  " + (i + 1) + ") " + mark + c.label());
-        }
-        out.flush();
     }
 
     private String renderConsentPrompt() {
@@ -497,16 +510,23 @@ public final class ChoicePrompt {
         return question + "   \u203a ";
     }
 
-    private @Nullable String readLine() {
-        return readLineWithPrompt(StartPrompt.SUFFIX);
+    private String nextLine() {
+        return nextLine(StartPrompt.SUFFIX);
     }
 
-    private @Nullable String readLineWithPrompt(String prompt) {
+    private String nextLine(String prompt) {
+        var line = readLine(prompt);
+        if (line == null) {
+            throw left();
+        }
+        return line.trim();
+    }
+
+    private @Nullable String readLine(String prompt) {
         try {
             return input.readLine(prompt);
         } catch (EndOfFileException | UserInterruptException _) {
-            leave();
-            return null;
+            throw left();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to read input: " + e.getMessage(), e);
         }
@@ -532,15 +552,27 @@ public final class ChoicePrompt {
         return locale.toLowerCase(Locale.ROOT).startsWith("de");
     }
 
-    private void leave() {
+    private StartPrompt.StartLeftException left() {
         out.println(MessageCatalogue.format(locale, "operator.dialogue.left",
                             Map.of("state", leaveLabel != null ? leaveLabel : stateId)));
         out.flush();
-        throw new StartPrompt.StartLeftException();
+        return new StartPrompt.StartLeftException();
     }
 
     private boolean hasExplanation() {
         return explanation != null || choices.stream().anyMatch(choice -> choice.explanation() != null);
+    }
+
+    private boolean explained(String line) {
+        if ("?".equals(line)) {
+            printExplanation();
+            return true;
+        }
+        if (line.startsWith("?") && line.length() > 1) {
+            printItemExplanation(line.substring(1).trim());
+            return true;
+        }
+        return false;
     }
 
     private void printExplanation() {
@@ -553,27 +585,26 @@ public final class ChoicePrompt {
     }
 
     private void printItemExplanation(String target) {
-        Choice matched = null;
-        try {
-            var num = Integer.parseInt(target);
-            if (num >= 1 && num <= choices.size()) {
-                matched = choices.get(num - 1);
-            }
-        } catch (NumberFormatException _) {
-            for (var c : choices) {
-                if (c.key().equalsIgnoreCase(target)) {
-                    matched = c;
-                    break;
-                }
-            }
-        }
-
+        var matched = item(target);
         if (matched != null && matched.explanation() != null) {
             out.println("  " + matched.explanation());
         } else {
             printLine("operator.dialogue.no_explanation", Map.of());
         }
         out.flush();
+    }
+
+    private @Nullable Choice item(String target) {
+        var number = numberOf(target);
+        if (number != null) {
+            return choices.get(number - 1);
+        }
+        for (var choice : choices) {
+            if (choice.key().equalsIgnoreCase(target)) {
+                return choice;
+            }
+        }
+        return null;
     }
 
     private void printLine(String key, Map<String, ?> args) {
@@ -591,6 +622,14 @@ public final class ChoicePrompt {
         out.flush();
     }
 
+    private String consentOffered() {
+        var offered = new StringBuilder(isGerman() ? "j" : "y").append(", n, ").append(isGerman() ? "v" : "q");
+        if (hasExplanation()) {
+            offered.append(", ?");
+        }
+        return offered.toString();
+    }
+
     private String formatOffered() {
         var sb = new StringBuilder();
         if (!choices.isEmpty()) {
@@ -601,7 +640,7 @@ public final class ChoicePrompt {
             }
         }
         var leaveKey = isGerman() ? "v" : "q";
-        if (sb.length() > 0) {
+        if (!sb.isEmpty()) {
             sb.append(", ");
         }
         sb.append(leaveKey);

@@ -403,6 +403,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String REASON_LESSON_RETIRED = "lesson_retired";
     private static final String REASON_LESSON_PREMISE_BROKEN = "lesson_premise_broken";
     private static final String PATH_PLANS_PREFIX = "/api/v1/plans/";
+    private static final String SEGMENT_ACTIONS = "/actions";
+    private static final String SEGMENT_HOLDS = "/holds";
+    private static final String SEGMENT_HOLDS_PATH = "/holds/";
+    private static final String SEGMENT_DECOMPOSITION = "/decomposition";
     private static final String PATH_EPICS_PREFIX = "/api/v1/epics/";
     private static final String SUFFIX_INTENT = "/intent";
     private static final String SUFFIX_OUTLINE = "/outline";
@@ -4111,11 +4115,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return false;
         }
 
-        if ("GET".equals(method) && path.endsWith("/actions")) {
+        if ("GET".equals(method) && path.endsWith(SEGMENT_ACTIONS)) {
             if (isPlan) {
-                handleGetPlanActions(response, controlSubjectId(path, PATH_PLANS_PREFIX, "/actions"));
+                handleGetPlanActions(response, controlSubjectId(path, PATH_PLANS_PREFIX, SEGMENT_ACTIONS));
             } else {
-                handleGetEpicActions(response, controlSubjectId(path, PATH_EPICS_PREFIX, "/actions"));
+                handleGetEpicActions(response, controlSubjectId(path, PATH_EPICS_PREFIX, SEGMENT_ACTIONS));
             }
             return true;
         }
@@ -4125,10 +4129,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var sub = path.substring(prefix.length());
             String subjectId = null;
             String action = null;
-            var marker = sub.indexOf("/actions/");
+            var marker = sub.indexOf(SEGMENT_ACTIONS + "/");
             if (marker >= 0) {
                 subjectId = sub.substring(0, marker);
-                action = sub.substring(marker + "/actions/".length());
+                action = sub.substring(marker + SEGMENT_ACTIONS.length() + 1);
             } else {
                 var slash = sub.indexOf('/');
                 if (slash > 0 && sub.indexOf('/', slash + 1) < 0) {
@@ -4152,16 +4156,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
 
-        if (isPlan && "GET".equals(method) && path.endsWith("/holds")) {
-            handleListHolds(response, controlSubjectId(path, PATH_PLANS_PREFIX, "/holds"));
+        if (isPlan && "GET".equals(method) && path.endsWith(SEGMENT_HOLDS)) {
+            handleListHolds(response, controlSubjectId(path, PATH_PLANS_PREFIX, SEGMENT_HOLDS));
             return true;
         }
 
-        if (isPlan && "POST".equals(method) && path.contains("/holds/") && path.endsWith("/resolve")) {
+        if (isPlan && "POST".equals(method) && path.contains(SEGMENT_HOLDS_PATH)
+                            && path.endsWith("/resolve")) {
             var sub = path.substring(PATH_PLANS_PREFIX.length());
-            var marker = sub.indexOf("/holds/");
+            var marker = sub.indexOf(SEGMENT_HOLDS_PATH);
             var subjectId = sub.substring(0, marker);
-            var holdId = sub.substring(marker + "/holds/".length(), sub.length() - "/resolve".length());
+            var holdId = sub.substring(marker + SEGMENT_HOLDS_PATH.length(),
+                                sub.length() - "/resolve".length());
             handleResolveHold(request, response, subjectId, holdId);
             return true;
         }
@@ -4189,8 +4195,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        if ("GET".equals(method) && isEpic && path.endsWith("/decomposition")) {
-            handleGetControlDecomposition(response, controlSubjectId(path, PATH_EPICS_PREFIX, "/decomposition"));
+        if ("GET".equals(method) && isEpic && path.endsWith(SEGMENT_DECOMPOSITION)) {
+            handleGetControlDecomposition(response,
+                                controlSubjectId(path, PATH_EPICS_PREFIX, SEGMENT_DECOMPOSITION));
             return true;
         }
 
@@ -4236,12 +4243,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         try {
             var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
-            return parsed != null ? parsed : new LinkedHashMap<>();
+            if (parsed != null) {
+                return parsed;
+            }
         }
         /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         catch (IOException | RuntimeException _) {
-            return new LinkedHashMap<>();
+            // an unreadable body is an empty payload
         }
+        return new LinkedHashMap<>();
     }
 
     private @Nullable HoldRecord holdFor(String planId) {

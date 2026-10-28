@@ -41,6 +41,7 @@ final class WorkActionDialogue {
     private static final String STATE_ID = "control.action";
     private static final String PLAN = "plan";
     private static final String EPIC = "epic";
+    private static final String WITH_PLANS = "with_plans";
     private static final Set<String> HOLD_ACTS = Set.of("retry", "recycle", "grant", "add_credential",
                         "raise_budget", "accept", "abort", "end_plan", "cancel_epic", "show_pr",
                         "give_up_removal");
@@ -216,7 +217,7 @@ final class WorkActionDialogue {
         var plans = new ChoicePrompt(prompt, STATE_ID).leaveLabel(dialogueLabel("cancel"));
         plans.title(MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans", Map.of()));
         plans.explanation(MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_explain", Map.of()));
-        plans.addChoice("with_plans", MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_with",
+        plans.addChoice(WITH_PLANS, MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_with",
                                                 Map.of()), null,
                             MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_with_explain",
                                                 Map.of()),
@@ -226,7 +227,7 @@ final class WorkActionDialogue {
                             MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_keep_explain",
                                                 Map.of()),
                             false);
-        var withPlans = "with_plans".equals(plans.ask().key());
+        var withPlans = WITH_PLANS.equals(plans.ask().key());
         var reason = ActionSupport.askEndReason(prompt, STATE_ID, dialogueLabel("cancel"), id);
         if (reason == null) {
             return 0;
@@ -239,7 +240,7 @@ final class WorkActionDialogue {
         }
         var payload = new LinkedHashMap<String, Object>();
         payload.put("reason", reason);
-        payload.put("with_plans", withPlans);
+        payload.put(WITH_PLANS, withPlans);
         client.perform(EPIC, id, "cancel", payload);
         prompt.line("operator.actions.epic.cancel.done", Map.of("epic", id));
         return 0;

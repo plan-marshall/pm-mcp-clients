@@ -116,11 +116,11 @@ public final class StartPrompt {
      */
     String ask(String key, Map<String, ?> args, String state, String need, @Nullable String entryId) {
         requireAsk(state, need, entryId);
-        var reader = reader();
+        var lineReader = reader();
         var question = MessageCatalogue.format(locale, key, args);
         out.print(question + SUFFIX);
         out.flush();
-        return read(reader);
+        return read(lineReader);
     }
 
     /**
@@ -134,10 +134,10 @@ public final class StartPrompt {
      */
     String askRaw(String question, String state, String need, @Nullable String entryId) {
         requireAsk(state, need, entryId);
-        var reader = reader();
+        var lineReader = reader();
         out.print(question + SUFFIX);
         out.flush();
-        return read(reader);
+        return read(lineReader);
     }
 
     /**
@@ -151,10 +151,10 @@ public final class StartPrompt {
      */
     String askInline(String rendered, String state, String need, @Nullable String entryId) {
         requireAsk(state, need, entryId);
-        var reader = reader();
+        var lineReader = reader();
         out.print(rendered);
         out.flush();
-        return read(reader);
+        return read(lineReader);
     }
 
     /**

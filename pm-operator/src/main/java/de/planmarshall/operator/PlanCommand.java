@@ -47,7 +47,6 @@ import de.planmarshall.api.report.TokenComponentRecord;
 import de.planmarshall.api.report.TokenFormat;
 import de.planmarshall.api.report.TokenUsageRecord;
 import de.planmarshall.api.start.EntryKind;
-import de.planmarshall.operator.dialogue.ChoicePrompt.Choice;
 import de.planmarshall.operator.overview.OverviewFullScreenApp;
 import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiScreenDriver;
@@ -84,6 +83,9 @@ public final class PlanCommand implements Callable<Integer> {
 
     private static final String KIND = "plan";
     private static final String PLANS_API = "/api/v1/plans/";
+    private static final String AFTER_NOW = "now";
+    private static final String AFTER_TASK = "after_task";
+    private static final String AFTER_PHASE = "after_phase";
 
     private final OperatorContext context;
 
@@ -606,29 +608,14 @@ public final class PlanCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
-            String point = "after_task";
-            if (now) {
-                point = "now";
-            } else if (afterPhase) {
-                point = "after_phase";
-            } else if (!afterTask) {
-                if (noInput) {
-                    out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                        "operator.actions.pause.stopped", Map.of()));
-                    out.flush();
-                    return 3;
-                }
-                if (context.isInteractiveTerminal()) {
-                    var locale = context.clientEnvironment().locale();
-                    var prompt = new StartPrompt(context, out, locale, false);
-                    Choice choice;
-                    try {
-                        choice = ActionSupport.pausePrompt(prompt, planId, null).ask();
-                    } catch (StartPrompt.StartLeftException _) {
-                        return 0;
-                    }
-                    point = "now".equals(choice.key()) ? "now" : "phase".equals(choice.key()) ? "after_phase" : "after_task";
-                }
+            String point;
+            try {
+                point = point(out);
+            } catch (StartPrompt.StartLeftException _) {
+                return 0;
+            }
+            if (point == null) {
+                return 3;
             }
 
             var payload = Map.of("point", point);
@@ -636,15 +623,52 @@ public final class PlanCommand implements Callable<Integer> {
             var response = context.runtime(true).send(
                                 HttpRequest.json("POST", endpoint, JsonTree.write(payload)));
             if (response.status() == 200 || response.status() == 202) {
-                if ("now".equals(point)) {
+                if (AFTER_NOW.equals(point)) {
                     out.printf("✓ %s paused%n", planId);
                 } else {
-                    out.printf("✓ %s pausing after the %s%n", planId, "after_phase".equals(point) ? "phase" : "task");
+                    out.printf("✓ %s pausing after the %s%n", planId, AFTER_PHASE.equals(point) ? "phase" : "task");
                 }
                 out.flush();
                 return 0;
             }
             throw new OperatorRefusedException("plan pause", response);
+        }
+
+        /**
+         * @param out the verb's output
+         * @return the point the pause takes, or {@code null} when {@code --no-input} met a question
+         * @throws IOException on transport failure
+         */
+        private @Nullable String point(PrintWriter out) throws IOException {
+            if (now) {
+                return AFTER_NOW;
+            }
+            if (afterPhase) {
+                return AFTER_PHASE;
+            }
+            if (afterTask) {
+                return AFTER_TASK;
+            }
+            if (noInput) {
+                out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                    "operator.actions.pause.stopped", Map.of()));
+                out.flush();
+                return null;
+            }
+            return askedPoint(out);
+        }
+
+        private String askedPoint(PrintWriter out) {
+            if (!context.isInteractiveTerminal()) {
+                return AFTER_TASK;
+            }
+            var locale = context.clientEnvironment().locale();
+            var prompt = new StartPrompt(context, out, locale, false);
+            var choice = ActionSupport.pausePrompt(prompt, planId, null).ask();
+            if (AFTER_NOW.equals(choice.key())) {
+                return AFTER_NOW;
+            }
+            return "phase".equals(choice.key()) ? AFTER_PHASE : AFTER_TASK;
         }
     }
 
