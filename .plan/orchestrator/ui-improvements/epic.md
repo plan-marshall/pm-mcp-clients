@@ -240,6 +240,13 @@ plan spec names the plan, proposal and finding documents it comes from.
   allows a dismissal "transmitted through the plan-less transition verb", which can't be transmitted
   today, so any finding that is dismissed rather than fixed blocks its merge. — fix the token's
   permission; re-check at the first dismissal.
+- PLAN-10's run (antigravity, conversation `e291b36e…`) dirtied the main checkout on 2026-10-27 at 22:26.
+  From `/Users/oliver/git/pm-mcp-clients`, not its worktree, it ran Playwright directly
+  (`npx playwright --version`, then
+  `npx @playwright/test test -c .plan/temp/playwright.config.js` with an ad-hoc config it wrote there).
+  That left the untracked `test-results/` (`.last-run.json`: `failed`, no tests). Its browser check
+  should run through the Playwright MCP server, not a hand-run Playwright from the main checkout. — check
+  PLAN-10's landing for how its browser regression was evidenced; the operator removes `test-results/`.
 - `/plans/{id}` scrolls horizontally at 390 px (498 px measured; PLAN-12 residue, older than the epic).
   — check that PLAN-55 (`web-plan-page`) covers it before emitting it.
 - Tab titles name the identifier (`drop-legacy-api`), not the display title (PLAN-04 residue). No
