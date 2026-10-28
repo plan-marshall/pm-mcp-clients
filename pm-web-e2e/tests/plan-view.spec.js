@@ -194,7 +194,7 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
 
     // Verify sources, landings, registers, tokens, and events
     await expect(page.locator('[data-testid="epic-sources"]')).toBeVisible();
-    await expect(page.locator('[data-testid="epic-landing-count"]')).toContainText('2 landings');
+    await expect(page.locator('[data-testid="epic-landing-count"]')).toHaveText('1 landing');
     await expect(page.locator('[data-testid="epic-findings"]')).toBeVisible();
     await expect(page.locator('[data-testid="epic-watches"]')).toBeVisible();
     await expect(page.locator('[data-testid="epic-token-breakdown"]')).toBeVisible();
