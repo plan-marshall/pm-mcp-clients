@@ -2,10 +2,10 @@
   "id": "PLAN-12",
   "slug": "web-design-tokens-v2",
   "workstream": "WS-02",
-  "status": "launched",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "12-web-design-tokens-v2",
+  "pr": "247",
+  "landing": "landings/PLAN-12.md",
   "seq": 12
 }
