@@ -25,7 +25,7 @@ describe('CountBadge', () => {
     );
   });
 
-  it('carries the accessible name the view gives it, instead of a bare number', () => {
+  it('reads the name it is given, with the number hidden from a screen reader', () => {
     const { container } = render(CountBadge, { props: { count: 3, label: '3 waiting for you' } });
     const badge = container.querySelector('.count-badge');
 

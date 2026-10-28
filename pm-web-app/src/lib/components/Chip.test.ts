@@ -32,6 +32,13 @@ describe('Chip', () => {
     expect(chip.textContent).toContain('plan-marshall/relay@a0f80a3f');
   });
 
+  it('keeps its live region in place before it has anything to say', () => {
+    const { container } = render(Chip, { props: { value: 'a0f80a3f' } });
+
+    expect(container.querySelector('[aria-live="polite"]')).not.toBeNull();
+    expect(container.querySelector('[aria-live="polite"]')?.textContent).toBe('');
+  });
+
   it('copies the value on click and says so', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     stubClipboard(writeText);

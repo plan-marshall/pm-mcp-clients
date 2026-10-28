@@ -83,12 +83,18 @@
   /**
    * @param id the chosen act's id
    * @param fromMenu whether the act came from the overflow menu, whose focus goes back to the button
+   * @param target the control that was clicked outside the menu, which keeps the focus
    */
-  async function choose(id: string, fromMenu = false): Promise<void> {
+  async function choose(
+    id: string,
+    fromMenu = false,
+    target?: HTMLElement | null,
+  ): Promise<void> {
     if (fromMenu) {
       await closeMenu(true);
     } else {
       open = false;
+      target?.focus();
     }
     onAct(id);
   }
@@ -156,7 +162,7 @@
       disabled={busy || primary.disabled}
       disabledReason={primary.disabledReason}
       title={primary.advisory}
-      on:click={() => choose(primary.id)}
+      on:click={(event) => choose(primary.id, false, event.currentTarget as HTMLElement | null)}
     >
       {primary.label}
     </Button>
@@ -168,7 +174,7 @@
       disabled={busy || act.disabled}
       disabledReason={act.disabledReason}
       title={act.advisory}
-      on:click={() => choose(act.id)}
+      on:click={(event) => choose(act.id, false, event.currentTarget as HTMLElement | null)}
     >
       {act.label}
     </Button>
@@ -188,7 +194,7 @@
       />
       {#if open}
         <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-        <div class="action-bar__menu" role="menu" on:keydown={onMenuKeydown}>
+        <div class="action-bar__menu" role="menu" tabindex="-1" on:keydown={onMenuKeydown}>
           {#each overflow as act (act.id)}
             <button
               type="button"

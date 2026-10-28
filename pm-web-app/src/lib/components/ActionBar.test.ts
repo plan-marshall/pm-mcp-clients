@@ -41,11 +41,12 @@ describe('ActionBar', () => {
   it('keeps the focus on the act a person chose outside the menu', async () => {
     const onAct = vi.fn();
     render(ActionBar, { props: { acts: FIVE_ACTS, onAct } });
+    const pause = screen.getByRole('button', { name: 'Pause' });
 
-    await fireEvent.click(screen.getByText('Pause'));
+    await fireEvent.click(pause);
 
     expect(onAct).toHaveBeenCalledWith('pause');
-    expect(document.activeElement).not.toBe(screen.getByTestId('action-bar-overflow'));
+    expect(document.activeElement).toBe(pause);
   });
 
   it('reports an act chosen from the overflow menu, and closes the menu', async () => {
@@ -124,8 +125,8 @@ describe('ActionBar', () => {
           { id: 'pause', label: 'Pause' },
           { id: 'chat', label: 'Chat' },
           { id: 'settings', label: 'Settings' },
-          { id: 'archive', label: 'Archive' },
           { id: 'later', label: 'Later', disabled: true, disabledReason: 'Not yet' },
+          { id: 'archive', label: 'Archive' },
         ],
       },
     });

@@ -51,7 +51,6 @@
   .chip {
     display: inline-flex;
     align-items: center;
-    gap: var(--space-1);
     max-inline-size: 100%;
     padding: var(--space-1) var(--space-2);
     border: 1px solid transparent;
@@ -80,9 +79,9 @@
     color: var(--color-text-muted);
   }
 
-  /* The live region stays in the document, so it announces a confirmation that appears later; an
-     empty one takes no room beside the value. */
-  .chip__state:empty {
-    display: none;
+  /* The live region stays in the document and out of the layout while empty, so a confirmation that
+     arrives later is an update the screen reader announces, not a region it never saw. */
+  .chip__state:not(:empty) {
+    margin-inline-start: var(--space-1);
   }
 </style>

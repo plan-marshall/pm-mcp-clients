@@ -37,7 +37,7 @@
     { id: 'retry', label: $t('web.common.retry') },
     {
       id: 'archive',
-      label: $t('web.frame.nav.system'),
+      label: $t('control.epic.archive'),
       disabled: true,
       disabledReason: $t('dev.disabled_reason'),
     },
@@ -112,7 +112,7 @@
       </div>
       <div class="dev__row">
         <CountBadge count={3} />
-        <CountBadge count={2} attention label={$t('state.plan.waiting_for_you')} />
+        <CountBadge count={2} attention label={$t('dev.badge.needs_you', { count: 2 })} />
         <Chip value={CHIP_VALUE} />
       </div>
 

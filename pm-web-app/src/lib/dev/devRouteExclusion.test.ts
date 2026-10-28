@@ -87,8 +87,11 @@ describe('the development route exclusion', () => {
 
   it('is registered in the production build', () => {
     const config = fs.readFileSync(path.resolve(__dirname, '../../../vite.config.ts'), 'utf-8');
+    const registered = config
+      .split('\n')
+      .some((line) => line.trim() === 'devRouteExclusion(),');
 
-    expect(config).toContain('devRouteExclusion(),');
+    expect(registered).toBe(true);
   });
 
   it('rewrites the development page import of a generated node, and only that', () => {
