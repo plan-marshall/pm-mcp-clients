@@ -104,17 +104,17 @@ final class ActionSupport {
         pause.title(MessageCatalogue.format(locale, "operator.actions.pause.where", Map.of("plan", planId)));
         pause.explanation(MessageCatalogue.format(locale, "operator.actions.pause.explain", Map.of()));
         pause.addChoice(PausePoint.NOW.value(), MessageCatalogue.format(locale, "operator.actions.pause.now",
-                            Map.of()),
+                                                Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.consequence.now", Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.explain.now", Map.of()),
                             false);
         pause.addChoice(PausePoint.AFTER_TASK.value(), MessageCatalogue.format(locale,
-                            "operator.actions.pause.task", Map.of()),
+                                                "operator.actions.pause.task", Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.consequence.task", Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.explain.task", Map.of()),
                             true);
         pause.addChoice(PausePoint.AFTER_PHASE.value(), MessageCatalogue.format(locale,
-                            "operator.actions.pause.phase", Map.of()),
+                                                "operator.actions.pause.phase", Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.consequence.phase", Map.of()),
                             MessageCatalogue.format(locale, "operator.actions.pause.explain.phase", Map.of()),
                             false);
