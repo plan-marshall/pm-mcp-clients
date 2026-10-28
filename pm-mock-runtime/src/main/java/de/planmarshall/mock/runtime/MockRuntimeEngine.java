@@ -207,6 +207,27 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_MESSAGE = "message";
     private static final String KEY_STATE = "state";
     private static final String KEY_SCENARIO = "scenario";
+
+    /** The cleanup item kinds the delete counts report separately. */
+    private static final String CLEANUP_KIND_PLAN = "plan";
+    private static final String CLEANUP_KIND_EPIC = "epic";
+
+    /** The default sweep coordinates every cleanup fixture carries. */
+    private static final String SWEEP_TODAY = "today 03:00";
+    private static final String SWEEP_TOMORROW = "tomorrow 03:00";
+
+    /** The member the cleanup resources report the freed size under. */
+    private static final String FIELD_FREED_BYTES = "freed_bytes";
+
+    /** The fixture member the cleanup residues are read from. */
+    private static final String FIXTURE_RESIDUE = "residue";
+
+    /** The fixture members the cleanup job and its sweep durations are read from. */
+    private static final String FIXTURE_JOB = "job";
+    private static final String FIXTURE_DURATIONS = "durations";
+
+    /** The prefix that names a fixture member inside the operator facts, for failure messages. */
+    private static final String PATH_FACTS = "facts.";
     private static final String KEY_STATUS = "status";
     private static final String KEY_LOOPBACK = "loopback";
     private static final String KEY_DEVICE_ID = "device_id";
@@ -320,6 +341,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String FIXTURE_ONBOARD = "onboard";
     private static final String FIXTURE_SUMMARY = "summary";
     private static final String FIXTURE_LAN_CONFLICT = "lan_conflict";
+    /** The runtime snapshot representation a system state shows. */
+    private static final String FIXTURE_SNAPSHOT = "snapshot";
     /** The state-specific route overrides a state's runtime fixture may carry ("METHOD /path"). */
     private static final String FIXTURE_ROUTES = "routes";
     /** The state whose runtime fixture is the base every other state of the scenario inherits. */
@@ -492,6 +515,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final AtomicReference<Scenario> currentScenario = new AtomicReference<>();
     private final AtomicReference<String> currentStateId = new AtomicReference<>();
     /**
+     * The state whose operator fixture seeds the engine's domain state: the scenario's start state
+     * until a jump enters another state, then the state the jump entered (UC-S-01).
+     */
+    private final AtomicReference<String> fixtureStateId = new AtomicReference<>();
+    /**
      * The operator links offered by the states entered so far, as {@code METHOD href} to the state id
      * that offered it. A request that matches no link of the current state but one of these, offered by
      * a state left meanwhile, is an act against a state left meanwhile, answered {@code act_not_available}
@@ -518,6 +546,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private volatile RuntimeLifecycleState lifecycleState = RuntimeLifecycleState.RUNNING;
     private volatile String drainingBy;
     private volatile boolean canWithdrawStop;
+    /** The snapshot representation the seeding state shows, or {@code null} for the engine default. */
+    private @Nullable Map<String, Object> systemSnapshotFixture;
     private CleanupJob activeCleanupJob;
     private final List<CleanupKeptItem> keptItems = new ArrayList<>();
     private CleanupDurations cleanupDurations;
@@ -606,21 +636,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
         // the active scenario and every stateful fixture untouched.
         validateRuntimeFixture(scenario);
         this.currentScenario.set(scenario);
+        this.currentStateId.set(scenario.start());
+        this.fixtureStateId.set(scenario.start());
         this.currentPairingCode = scenario.pairingCode();
         this.pairingCounter = 0;
         offeredOperatorLinks.clear();
         operatorActs.clear();
-        initDefaultDevices();
-        initDefaultReports();
-        initDefaultDecisions();
-        initDefaultSystem();
-        initDefaultProjects();
-        initDefaultEnrolment();
-        initDefaultControl();
-        initDefaultOnboarding();
-        initDefaultStart();
-        initDefaultDecomposition();
-        initDefaultLessonSource();
+        seedStateFixtures();
         designer.init(scenario);
         transitionTo(scenario.start());
         broadcastReset();
@@ -634,6 +656,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
         operatorActs.clear();
         this.currentPairingCode = currentScenario.get().pairingCode();
         this.pairingCounter = 0;
+        this.fixtureStateId.set(currentScenario.get().start());
+        seedStateFixtures();
+        designer.init(currentScenario.get());
+        transitionTo(currentScenario.get().start());
+        broadcastReset();
+    }
+
+    /**
+     * Seeds every engine-owned domain store from the current fixture state, so the state's operator
+     * facts reach the resources that are served from the engine rather than from a scenario route
+     * (UC-S-01).
+     */
+    private void seedStateFixtures() {
         initDefaultDevices();
         initDefaultReports();
         initDefaultDecisions();
@@ -645,9 +680,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
         initDefaultStart();
         initDefaultDecomposition();
         initDefaultLessonSource();
-        designer.init(currentScenario.get());
-        transitionTo(currentScenario.get().start());
-        broadcastReset();
     }
 
     private void initDefaultDevices() {
@@ -675,13 +707,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @return {@code true} when the state fixture seeded the devices
      */
     private boolean seedDevicesFromStateFixture() {
-        var runtime = stateRuntimeFixture(currentScenario.get().start());
+        var fixtureState = fixtureStateId.get();
+        var runtime = stateRuntimeFixture(fixtureState);
         if (runtime == null || !runtime.containsKey(FIXTURE_DEVICES)) {
             return false;
         }
         if (!(runtime.get(FIXTURE_DEVICES) instanceof List<?> devices)) {
             throw new IllegalStateException("facts.runtime.devices in state '"
-                    + currentScenario.get().start() + "' is no array");
+                    + fixtureState + "' is no array");
         }
         try {
             var list = DeviceListResource.fromTree(devices);
@@ -699,7 +732,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         catch (IOException | RuntimeException e) {
             throw new IllegalStateException("Malformed facts.runtime.devices in state '"
-                    + currentScenario.get().start() + "'", e);
+                    + fixtureState + "'", e);
         }
     }
 
@@ -741,7 +774,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * object keeps the default of an open listener on {@link #DEFAULT_LAN_PORT}.
      */
     private void seedListenerFromStatus() {
-        var runtime = stateRuntimeFixture(currentScenario.get().start());
+        var runtime = stateRuntimeFixture(fixtureStateId.get());
         var web = runtime != null ? JsonTree.asObject(runtime.get(FIXTURE_WEB)) : null;
         if (web == null) {
             var route = currentScenario.get().route("GET", "/api/v1/status");
@@ -802,15 +835,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     /**
-     * The engine-only fixture of the state the scenario starts in, merged over the scenario's base
+     * The engine-only fixture of the state that seeds the engine, merged over the scenario's base
      * fixture so a case state declares only what differs. The base is the {@code running_work.active}
      * state of the consolidated running-work scenario; a scenario that has no such state is seeded
-     * by its start state alone.
+     * by its own fixture state alone.
      *
      * @return the merged fixture, or {@code null} when neither the state nor the base carries one
      */
     private @Nullable Map<String, Object> startRuntimeFixture() {
-        return startRuntimeFixtureOf(currentScenario.get());
+        return mergedRuntimeFixture(currentScenario.get(), fixtureStateId.get());
     }
 
     /**
@@ -821,8 +854,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @return the merged fixture, or {@code null} when neither state carries one
      */
     private static @Nullable Map<String, Object> startRuntimeFixtureOf(Scenario scenario) {
+        return mergedRuntimeFixture(scenario, scenario.start());
+    }
+
+    /**
+     * @param scenario the scenario
+     * @param stateId  the state whose fixture seeds the engine
+     * @return that state's runtime fixture merged over the scenario's base fixture, or {@code null}
+     *         when neither carries one
+     */
+    private static @Nullable Map<String, Object> mergedRuntimeFixture(Scenario scenario,
+            @Nullable String stateId) {
         var base = runtimeFixtureOf(scenario, BASE_FIXTURE_STATE);
-        var own = runtimeFixtureOf(scenario, scenario.start());
+        var own = runtimeFixtureOf(scenario, stateId);
         if (base == null || own == null || own == base) {
             return own != null ? own : base;
         }
@@ -1035,6 +1079,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     /**
      * Jumps directly to a state within the current scenario.
+     * <p>
+     * The jump is a re-seed, not only a move: the domain stores — plans, epics, holdings, settings,
+     * chats, reviews, decisions, reports, projects, start entries, the system lifecycle with its
+     * cleanup job, and the paired devices — are wiped and re-seeded from the state's runtime
+     * fixture, so operator-made state does not survive it.
      *
      * @param stateId the state identifier
      * @throws IllegalArgumentException if the state does not exist in the current scenario
@@ -1044,7 +1093,48 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (!scenario.states().containsKey(stateId)) {
             throw new IllegalArgumentException("State '" + stateId + "' does not exist in scenario '" + scenario.name() + "'");
         }
+        var fixture = mergedRuntimeFixture(scenario, stateId);
+        if (fixture != null) {
+            validateFixtureMembers(fixture);
+        }
+        validateStateFacts(scenario, stateId);
+        var previousStateId = this.fixtureStateId.get();
+        this.fixtureStateId.set(stateId);
+        try {
+            seedStateFixtures();
+            // cui-rewrite:disable InvalidExceptionUsageRecipe
+        } catch (IllegalStateException failure) {
+            this.fixtureStateId.set(previousStateId);
+            seedStateFixtures();
+            throw failure;
+        }
         transitionTo(stateId);
+    }
+
+    /**
+     * Decodes the state's operator facts before any store is touched, so a malformed fixture fails
+     * the jump instead of leaving the engine seeded for a state it never entered.
+     *
+     * @param scenario the active scenario
+     * @param stateId  the state being entered
+     */
+    private void validateStateFacts(Scenario scenario, String stateId) {
+        var state = scenario.state(stateId);
+        var representation = state != null ? JsonTree.asObject(state.representation()) : null;
+        var facts = representation != null
+                ? JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS))
+                : null;
+        if (facts == null) {
+            return;
+        }
+        var job = JsonTree.object(facts, FIXTURE_JOB);
+        if (job != null) {
+            readFixture(() -> CleanupJob.fromMap(job), PATH_FACTS + FIXTURE_JOB);
+        }
+        var durations = JsonTree.object(facts, FIXTURE_DURATIONS);
+        if (durations != null) {
+            readFixture(() -> CleanupDurations.fromMap(durations), PATH_FACTS + FIXTURE_DURATIONS);
+        }
     }
 
     private synchronized void transitionTo(String nextStateId) {
@@ -2580,6 +2670,16 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (fixture == null) {
             return;
         }
+        validateFixtureMembers(fixture);
+    }
+
+    /**
+     * Refuses one runtime fixture's malformed members, so a jump can be validated before it seeds
+     * the engine.
+     *
+     * @param fixture the merged runtime fixture
+     */
+    private static void validateFixtureMembers(Map<String, Object> fixture) {
         var control = fixtureObject(fixture, FIXTURE_CONTROL);
         if (control != null) {
             readControlSeed(control);
@@ -2643,7 +2743,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             localChangePreviews.clear();
             capturedProjects.clear();
         }
-        startRegistry.init(currentScenario.get());
+        startRegistry.init(currentScenario.get(), fixtureStateId.get());
     }
 
     private void initDefaultLessonSource() {
@@ -4396,11 +4496,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             HoldResolutionResult result;
             if (ending) {
-                controlHolds.remove(holdKey(planId, holdId));
+                clearHoldsOf(planId);
                 controlPlanStates.put(planId, "ended");
                 controlPlanPausePoints.remove(planId);
-                broadcastEvent(HoldChangedEvent.EVENT_CLEARED, new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED,
-                        hold.holdId(), hold.subjectId(), hold.subjectKind(), null, null).toMap());
                 var endReason = resolution.reason();
                 if (endReason == null) {
                     endReason = ACTION_ABORT.equals(act) ? "Integrity pause aborted" : "Ended by operator";
@@ -4428,6 +4526,27 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 result = new HoldResolutionResult(holdId, false, updated.cause(), planId);
             }
             response.json(200, result.toMap());
+        }
+    }
+
+    /**
+     * Clears every hold the plan carries, because ending the plan ends all of them.
+     *
+     * @param planId the plan being ended
+     */
+    private void clearHoldsOf(String planId) {
+        var cleared = new ArrayList<HoldRecord>();
+        var iterator = controlHolds.values().iterator();
+        while (iterator.hasNext()) {
+            var candidate = iterator.next();
+            if (planId.equals(candidate.subjectId())) {
+                cleared.add(candidate);
+                iterator.remove();
+            }
+        }
+        for (var done : cleared) {
+            broadcastEvent(HoldChangedEvent.EVENT_CLEARED, new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED,
+                    done.holdId(), done.subjectId(), done.subjectKind(), null, null).toMap());
         }
     }
 
@@ -5787,6 +5906,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             ));
         } catch (IllegalArgumentException e) {
             response.json(404, Map.of(KEY_ERROR, "state_not_found", KEY_MESSAGE, e.getMessage()));
+        } catch (IllegalStateException e) {
+            response.json(500, Map.of(KEY_ERROR, "state_fixture_invalid", KEY_MESSAGE, e.getMessage()));
         }
     }
 
@@ -6031,10 +6152,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
             summaries.put("2", "Claude Code 2.4.1 (default), OpenCode 1.9.0");
         }
         if (upTo >= 3) {
-            summaries.put("3", "3 models on 2 harnesses");
+            summaries.put("3", "4 models on 2 harnesses");
         }
         if (upTo >= 4) {
-            summaries.put("4", "36 roles assigned");
+            summaries.put("4", "31 roles assigned");
         }
         if (upTo >= 5) {
             summaries.put("5", "macOS Keychain");
@@ -6111,7 +6232,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         onboardingAuto = true;
         synchronized (this) {
             if (currentScenario.get().states().containsKey("auto.consent")) {
-                goToState("auto.consent");
+                transitionTo("auto.consent");
             }
         }
         handleOnboardingState(response);
@@ -6335,11 +6456,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
             cleanupDurations = new CleanupDurations(30, 30, 30, 30, 30, 3);
             cleanupResidues.clear();
-            cleanupResidues.add(new CleanupResidue("temporary_files", 214, 356515840L, "today 03:00"));
-            cleanupResidues.add(new CleanupResidue("worker_directories", 18, 1288490188L, "today 03:00"));
-            cleanupResidues.add(new CleanupResidue("stale_locks", 3, 0L, "today 03:00"));
-            cleanupResidues.add(new CleanupResidue("old_workspace_rows", 612, 0L, "today 03:00"));
-            cleanupResidues.add(new CleanupResidue("retired_lessons", 4, 0L, "today 03:00"));
+            cleanupResidues.add(new CleanupResidue("temporary_files", 214, 356515840L, SWEEP_TODAY));
+            cleanupResidues.add(new CleanupResidue("worker_directories", 18, 1288490188L, SWEEP_TODAY));
+            cleanupResidues.add(new CleanupResidue("stale_locks", 3, 0L, SWEEP_TODAY));
+            cleanupResidues.add(new CleanupResidue("old_workspace_rows", 612, 0L, SWEEP_TODAY));
+            cleanupResidues.add(new CleanupResidue("retired_lessons", 4, 0L, SWEEP_TODAY));
 
             var clientsEntries = List.of(
                     new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged (#214)", "ended 12 Sep", 88080384L, 6, 0, null),
@@ -6363,7 +6484,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             );
 
             var summary = new CleanupSummary(
-                    12, 2, 40, 5, 1, 1932735283L, 4, "today 03:00", "tomorrow 03:00"
+                    12, 2, 40, 5, 1, 1997956704L, 4, SWEEP_TODAY, SWEEP_TOMORROW
             );
 
             var links = Map.of(
@@ -6375,12 +6496,90 @@ public final class MockRuntimeEngine implements AutoCloseable {
             activeCleanupJob = new CleanupJob(
                     "cln-0012",
                     CleanupJobState.OPEN,
-                    "today 03:00",
+                    SWEEP_TODAY,
                     summary,
                     projectItems,
                     links
             );
+
+            applySystemStateFacts();
         }
+    }
+
+    /**
+     * Applies the seeding state's system facts: the lifecycle the state stands for, the runtime
+     * snapshot it shows, and the cleanup job and sweep state it describes (UC-S-01). A state that
+     * declares none of them keeps the engine's default world.
+     */
+    private void applySystemStateFacts() {
+        systemSnapshotFixture = null;
+        var facts = stateFacts(fixtureStateId.get());
+        if (facts == null) {
+            return;
+        }
+        lifecycleState = RuntimeLifecycleState.fromValue(JsonTree.string(facts, "lifecycle_state"));
+        canWithdrawStop = Boolean.TRUE.equals(JsonTree.bool(facts, "can_withdraw_stop"));
+        drainingBy = JsonTree.string(facts, "draining_by");
+        var runtime = JsonTree.object(facts, FIXTURE_RUNTIME);
+        systemSnapshotFixture = runtime != null ? JsonTree.asObject(runtime.get(FIXTURE_SNAPSHOT)) : null;
+        applyCleanupFacts(facts);
+    }
+
+    /**
+     * Applies the cleanup facts a state declares: whether a job is open, the job itself, the sweep
+     * durations, the kept items, and the residues. A fact the state does not declare keeps the
+     * engine's default.
+     *
+     * @param facts the seeding state's operator facts
+     */
+    private void applyCleanupFacts(@Nullable Map<String, Object> facts) {
+        if (facts == null) {
+            return;
+        }
+        if (Boolean.FALSE.equals(JsonTree.bool(facts, "open"))) {
+            activeCleanupJob = null;
+        }
+        var job = JsonTree.object(facts, FIXTURE_JOB);
+        if (job != null) {
+            activeCleanupJob = readFixture(() -> CleanupJob.fromMap(job), PATH_FACTS + FIXTURE_JOB);
+        }
+        if (JsonTree.object(facts, "progress") != null && activeCleanupJob != null) {
+            var running = activeCleanupJob;
+            activeCleanupJob = new CleanupJob(running.jobId(), CleanupJobState.DELETING, running.dueSince(),
+                    running.summary(), running.projectItems(), running.links());
+        }
+        var durations = JsonTree.object(facts, FIXTURE_DURATIONS);
+        if (durations != null) {
+            cleanupDurations = readFixture(() -> CleanupDurations.fromMap(durations), PATH_FACTS + FIXTURE_DURATIONS);
+        }
+        if (facts.containsKey("kept")) {
+            keptItems.clear();
+            keptItems.addAll(CleanupFixtures.keptItems(fixtureObjects(facts, "kept", "facts.kept")));
+        }
+        if (facts.containsKey(FIXTURE_RESIDUE)) {
+            cleanupResidues.clear();
+            cleanupResidues.addAll(CleanupFixtures.residues(
+                    fixtureObjects(facts, FIXTURE_RESIDUE, PATH_FACTS + FIXTURE_RESIDUE)));
+        }
+    }
+
+    /**
+     * @param stateId a state of the active scenario, may be {@code null}
+     * @return that state's operator facts, or {@code null} when the state or its facts are absent
+     */
+    private @Nullable Map<String, Object> stateFacts(@Nullable String stateId) {
+        if (stateId == null) {
+            return null;
+        }
+        var scenario = currentScenario.get();
+        if (scenario == null) {
+            return null;
+        }
+        var state = scenario.state(stateId);
+        var representation = state != null ? JsonTree.asObject(state.representation()) : null;
+        return representation != null
+                ? JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS))
+                : null;
     }
 
     private void initDefaultProjects() {
@@ -7129,6 +7328,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleGetSystem(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var query = request.query() != null ? request.query() : "";
+        Map<String, Object> snapshotFixture;
+        synchronized (systemLock) {
+            snapshotFixture = systemSnapshotFixture;
+        }
+        if (snapshotFixture != null && query.isBlank()) {
+            response.json(200, snapshotFixture);
+            return;
+        }
         SystemWindow window = SystemWindow.HOUR;
         String projectFilter = null;
         for (var part : query.split("&")) {
@@ -7222,20 +7429,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         boolean hasOpenJob;
+        CleanupSummary cleanupSummary;
         synchronized (systemLock) {
             hasOpenJob = activeCleanupJob != null && activeCleanupJob.isOpen();
+            cleanupSummary = hasOpenJob
+                    ? activeCleanupJob.summary()
+                    : new CleanupSummary(0, 0, 0, 0, 0, 0L, keptItems.size(), SWEEP_TODAY, SWEEP_TOMORROW);
         }
-        var cleanupSummary = new CleanupSummary(
-                hasOpenJob ? 12 : 0,
-                hasOpenJob ? 2 : 0,
-                hasOpenJob ? 40 : 0,
-                hasOpenJob ? 5 : 0,
-                hasOpenJob ? 1 : 0,
-                hasOpenJob ? 1932735283L : 0L,
-                keptItems.size(),
-                "today 03:00",
-                "tomorrow 03:00"
-        );
 
         var snapshot = new SystemSnapshot(runtimeMetrics, workMetrics, workers, jobs, models, cleanupSummary, window, projectFilter);
         response.json(200, snapshot.toMap());
@@ -7411,10 +7611,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
             } else {
                 var resp = new LinkedHashMap<String, Object>();
                 resp.put("open", false);
-                resp.put("next_check_at", "tomorrow 03:00");
+                resp.put("next_check_at", SWEEP_TOMORROW);
                 resp.put("kept_count", keptItems.size());
-                resp.put("durations", cleanupDurations.toMap());
-                resp.put("residue", cleanupResidues.stream().map(CleanupResidue::toMap).toList());
+                resp.put(FIXTURE_DURATIONS, cleanupDurations.toMap());
+                resp.put(FIXTURE_RESIDUE, cleanupResidues.stream().map(CleanupResidue::toMap).toList());
                 response.json(200, resp);
             }
         }
@@ -7434,11 +7634,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             if (activeCleanupJob.state() == CleanupJobState.DONE) {
+                var done = activeCleanupJob.summary();
                 response.json(200, Map.of(
                         KEY_STATUS, "deleted",
                         "job_id", jobId,
                         CONST_DECISION, "delete",
-                        "freed_bytes", 1825361100L,
+                        FIELD_FREED_BYTES, done.freedBytes(),
                         "kept_count", keptItems.size()
                 ));
                 return;
@@ -7471,27 +7672,47 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     activeCleanupJob.links()
             );
 
+            var decided = activeCleanupJob.summary();
+            var freedBytes = decided.freedBytes();
+            var deletedPlans = decided.plansCount();
+            var deletedEpics = decided.epicsCount();
+            var deletedLogs = decided.logsCount();
+            for (var projectItem : activeCleanupJob.projectItems()) {
+                for (var entry : projectItem.items()) {
+                    if (!unchecked.contains(entry.id())) {
+                        continue;
+                    }
+                    freedBytes -= entry.sizeBytes();
+                    deletedLogs -= entry.logsCount();
+                    if (CLEANUP_KIND_PLAN.equals(entry.kind())) {
+                        deletedPlans--;
+                    } else if (CLEANUP_KIND_EPIC.equals(entry.kind())) {
+                        deletedEpics--;
+                    }
+                }
+            }
+
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
                     CONST_DECISION, "delete",
                     "by", "operator",
                     "channel", isWeb ? "web" : "cli",
                     "device", isWeb ? "iPad" : KEY_TERMINAL,
-                    "freed_bytes", 1825361100L
+                    FIELD_FREED_BYTES, freedBytes
             ));
             broadcastEvent("cleanup.done", Map.of(
                     "job_id", jobId,
-                    "freed_bytes", 1825361100L,
-                    "deleted_plans", 11,
-                    "deleted_epics", 2,
-                    "deleted_logs", 29
+                    FIELD_FREED_BYTES, freedBytes,
+                    "deleted_plans", deletedPlans,
+                    "deleted_epics", deletedEpics,
+                    "deleted_logs", deletedLogs
             ));
 
             response.json(200, Map.of(
                     KEY_STATUS, "deleted",
                     "job_id", jobId,
                     CONST_DECISION, "delete",
-                    "freed_bytes", 1825361100L,
+                    FIELD_FREED_BYTES, freedBytes,
                     "kept_count", keptItems.size()
             ));
         }

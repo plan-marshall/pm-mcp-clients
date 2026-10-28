@@ -38,7 +38,7 @@ class StartRegistryTest {
         registry.init(scenario(
                 Map.of("start", Map.of("recipes", List.of(Map.of("key", "base-recipe", "name", "base-recipe")))),
                 Map.of("start", Map.of("project_id", "p", "kind", "plan", "state", "start.sources",
-                        "entry_id", "ent-test", "sources", List.of()))));
+                        "entry_id", "ent-test", "sources", List.of()))), START_STATE);
 
         var entry = registry.find("ent-test");
         assertNotNull(entry);
@@ -56,7 +56,7 @@ class StartRegistryTest {
                 Map.of("start", Map.of("project_id", "p", "kind", "plan", "state", "start.sources",
                         "entry_id", "ent-test")),
                 Map.of("GET /api/v1/recipes", RouteDefinition.of(Map.of("recipes",
-                        List.of(Map.of("key", "route-recipe", "name", "route-recipe")))))));
+                        List.of(Map.of("key", "route-recipe", "name", "route-recipe")))))), START_STATE);
 
         assertNotNull(registry.find("ent-test"));
         assertEquals("route-recipe", registry.recipes("p").getFirst().key());

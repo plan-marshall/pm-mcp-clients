@@ -1,7 +1,7 @@
 {
   "format_version": 1,
   "name": "running-work",
-  "description": "Overview of running work across projects, plans, and epics, a plan's process and intent, decisions, and the control of plans and epics (UC-PLN-1..6, UC-DEC-1..3, UC-CTL-1..7)",
+  "description": "Overview of running work across projects, plans, and epics, a plan's process and intent, decisions, and the control of plans and epics (UC-PLN-1..6, UC-CTL-1..5)",
   "start": "running_work.active",
   "pairing_code": "KXQB-MRTN",
   "routes": {
@@ -146,7 +146,7 @@
             "id": "relay-hardening",
             "title": "Relay Hardening",
             "project": "pm-mcp-clients",
-            "running_plans_count": 3,
+            "running_plans_count": 1,
             "staged_plans_count": 3
           },
           {
@@ -209,7 +209,7 @@
             "epic_id": "relay-hardening",
             "title": "Relay Hardening",
             "running_since": "2026-10-13T15:38:00Z",
-            "running_plans_count": 3,
+            "running_plans_count": 1,
             "staged_plans_count": 3,
             "plans_done": 4,
             "plans_total": 9,
@@ -1465,7 +1465,7 @@
                   "state": "running",
                   "auto_start": true,
                   "scope": 3,
-                  "running": 3,
+                  "running": 1,
                   "overlap_max_files": 0,
                   "resource": {
                     "epic_id": "relay-hardening",
@@ -1475,7 +1475,7 @@
                     "auto_start": true,
                     "overlap_max_files": 0,
                     "scope": 3,
-                    "running": 3,
+                    "running": 1,
                     "workstreams": [
                       {
                         "id": "WS-1",
@@ -1548,11 +1548,11 @@
                       "2 documents",
                       "1 issue"
                     ],
-                    "landings": 2,
+                    "landings": 1,
                     "findings": {
-                      "new": 3,
-                      "open": 4,
-                      "kept": 2
+                      "new": 0,
+                      "open": 1,
+                      "kept": 1
                     },
                     "watches": {
                       "new": 1,
@@ -2776,7 +2776,7 @@
                     "epic_id": "relay-hardening",
                     "title": "Relay Hardening",
                     "running_since": "2026-10-13T15:38:00Z",
-                    "running_plans_count": 3,
+                    "running_plans_count": 1,
                     "staged_plans_count": 3,
                     "plans_done": 4,
                     "plans_total": 9,
@@ -6023,7 +6023,82 @@
           "state_id": "control.holds"
         },
         "facts": {
-          "summary": "The five closed hold kinds and their acts"
+          "summary": "The five closed hold kinds and their acts",
+          "runtime": {
+            "control": {
+              "holds": [
+                {
+                  "hold_id": "H-0001",
+                  "subject_id": "relay-cursor-order",
+                  "subject_kind": "plan",
+                  "kind": "integrity_pause",
+                  "cause": "the plan's store file references.json changed outside the runtime",
+                  "attempts": 0,
+                  "file_path": "references.json",
+                  "recorded_size": 4812,
+                  "recorded_digest": "3f9a6b2cc21e",
+                  "current_size": 5034,
+                  "current_digest": "b70d41aa9a44",
+                  "acts": [
+                    "retry",
+                    "accept",
+                    "abort"
+                  ]
+                },
+                {
+                  "hold_id": "H-0002",
+                  "subject_id": "relay-docs",
+                  "subject_kind": "plan",
+                  "kind": "held",
+                  "cause": "waits: overlap with relay-auth-v2 (2 files)",
+                  "attempts": 1,
+                  "last_tried_at": "2026-10-16T10:14:00Z",
+                  "acts": [
+                    "retry",
+                    "end_plan"
+                  ]
+                },
+                {
+                  "hold_id": "H-1001",
+                  "subject_id": "fix-relay",
+                  "subject_kind": "plan",
+                  "kind": "stalled",
+                  "cause": "no progress for twenty minutes",
+                  "attempts": 0,
+                  "acts": [
+                    "retry",
+                    "end_plan"
+                  ]
+                },
+                {
+                  "hold_id": "H-1002",
+                  "subject_id": "fix-relay",
+                  "subject_kind": "plan",
+                  "kind": "condition",
+                  "cause": "waits for the base branch to carry the relay fix",
+                  "attempts": 2,
+                  "last_tried_at": "2026-10-16T09:14:00Z",
+                  "acts": [
+                    "retry",
+                    "end_plan"
+                  ]
+                },
+                {
+                  "hold_id": "H-1003",
+                  "subject_id": "fix-relay",
+                  "subject_kind": "plan",
+                  "kind": "landing_failed",
+                  "cause": "the landing failed: checks_fail",
+                  "attempts": 1,
+                  "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+                  "acts": [
+                    "retry",
+                    "end_plan"
+                  ]
+                }
+              ]
+            }
+          }
         },
         "links": []
       },
@@ -6039,7 +6114,58 @@
           "state_id": "control.settings"
         },
         "facts": {
-          "summary": "A plan's settings and their revision guard"
+          "summary": "A plan's settings and their revision guard",
+          "runtime": {
+            "control": {
+              "settings": [
+                {
+                  "plan_id": "fix-relay",
+                  "revision": 7,
+                  "values": [
+                    {
+                      "aspect": "landing",
+                      "value": "landing.pull-request",
+                      "origin": "project",
+                      "choices": [
+                        "landing.pull-request",
+                        "landing.main",
+                        "landing.files"
+                      ]
+                    },
+                    {
+                      "aspect": "method",
+                      "value": "method.test-first",
+                      "origin": "machine",
+                      "choices": [
+                        "method.test-first",
+                        "method.tests-after"
+                      ]
+                    },
+                    {
+                      "aspect": "asking",
+                      "value": "ask.questions-only",
+                      "origin": "plan",
+                      "choices": [
+                        "ask.every-phase",
+                        "ask.key-points",
+                        "ask.questions-only"
+                      ]
+                    },
+                    {
+                      "aspect": "posture",
+                      "value": "standard",
+                      "origin": "plan"
+                    },
+                    {
+                      "aspect": "base",
+                      "value": "main",
+                      "origin": "plan"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
         },
         "links": []
       },

@@ -100,7 +100,7 @@ class RunningWorkScenarioTest {
 
                 var epic = detail.epics().getFirst();
                 assertEquals("relay-hardening", epic.epicId());
-                assertEquals(3, epic.runningPlansCount());
+                assertEquals(1, epic.runningPlansCount());
                 assertEquals(3, epic.stagedPlansCount());
                 assertEquals(1, epic.plans().size());
 
