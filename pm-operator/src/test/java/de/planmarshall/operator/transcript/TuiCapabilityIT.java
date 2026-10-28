@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.LockSupport;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.jline.reader.LineReader;
@@ -281,13 +282,8 @@ class TuiCapabilityIT {
             return;
         }
         assertTrue(session.awaitText("TASK-003", TIMEOUT), session.screenText());
-        delay(200L);
         session.send(keys);
         assertTrue(session.awaitText(mark, TIMEOUT), session.screenText());
-    }
-
-    private static void delay(long millis) throws InterruptedException {
-        Thread.sleep(millis);
     }
 
     private static boolean awaitGone(PtySession session, String text) throws InterruptedException {
@@ -296,7 +292,10 @@ class TuiCapabilityIT {
             if (!session.screenText().contains(text)) {
                 return true;
             }
-            Thread.sleep(25L);
+            LockSupport.parkNanos(25_000_000L);
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
         }
         return false;
     }

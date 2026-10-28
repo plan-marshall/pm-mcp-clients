@@ -177,17 +177,28 @@ public final class TuiLayout {
     }
 
     private AttributedString footer(TuiScreen screen, int width) {
-        var text = screen.help()
-                            ? TuiKeyRegistry.helpFooter(locale)
-                            : screen.menu() != null
-                            ? MessageCatalogue.format(locale, "operator.actions.menu.footer", Map.of())
-                            : screen.footerText() != null
-                            ? TuiKeyRegistry.fit(List.of(screen.footerText().split(TuiKeyRegistry.SEPARATOR)),
-                            width, locale)
-                            : TuiKeyRegistry.footer(screen.kind(), locale, screen.reportsCount(), width);
         // Padded like every other row: a shorter footer must not leave the tail of a longer one on
         // the cells the terminal already holds.
-        return new AttributedString(pad(text, width));
+        return new AttributedString(pad(footerText(screen, width), width));
+    }
+
+    /**
+     * @param screen the screen
+     * @param width  the columns the footer may use
+     * @return the footer's text: the overlay's own, the menu's, the level's, or the registry's
+     */
+    private String footerText(TuiScreen screen, int width) {
+        if (screen.help()) {
+            return TuiKeyRegistry.helpFooter(locale);
+        }
+        if (screen.menu() != null) {
+            return MessageCatalogue.format(locale, "operator.actions.menu.footer", Map.of());
+        }
+        if (screen.footerText() != null) {
+            return TuiKeyRegistry.fit(List.of(screen.footerText().split(TuiKeyRegistry.SEPARATOR)),
+                                width, locale);
+        }
+        return TuiKeyRegistry.footer(screen.kind(), locale, screen.reportsCount(), width);
     }
 
     private List<AttributedString> body(TuiScreen screen, int width, int columns, int height) {
@@ -271,32 +282,41 @@ public final class TuiLayout {
         }
         var rest = text;
         while (displayWidth(rest) > width && !rest.isBlank()) {
-            int used = 0;
-            int end = 0;
-            for (int index = 0; index < rest.length(); ) {
-                int codePoint = rest.codePointAt(index);
-                int cells = Math.max(0, WCWidth.wcwidth(codePoint));
-                if (used + cells > width) {
-                    break;
-                }
-                used += cells;
-                end = index + Character.charCount(codePoint);
-                index = end;
-            }
-            if (end == 0) {
-                break;
-            }
-            int space = rest.lastIndexOf(' ', end - 1);
+            int end = endIndexForWidth(rest, width);
+            int space = rest.lastIndexOf(' ', Math.max(0, end - 1));
             int cut = space > 0 ? space : end;
-            var head = rest.substring(0, cut).stripTrailing();
+            var head = rest.substring(0, Math.min(cut, rest.length())).stripTrailing();
             if (head.isEmpty()) {
                 break;
             }
             lines.add(head);
-            rest = " ".repeat(CONTINUATION_INDENT) + rest.substring(cut).stripLeading();
+            rest = " ".repeat(CONTINUATION_INDENT)
+                                + rest.substring(Math.min(cut, rest.length())).stripLeading();
         }
         lines.add(rest);
         return List.copyOf(lines);
+    }
+
+    /**
+     * @param text  the text
+     * @param width the columns
+     * @return the index after the longest prefix that fits into {@code width} columns
+     */
+    private static int endIndexForWidth(String text, int width) {
+        int used = 0;
+        int index = 0;
+        int end = 0;
+        while (index < text.length()) {
+            int codePoint = text.codePointAt(index);
+            int cells = Math.max(0, WCWidth.wcwidth(codePoint));
+            if (used + cells > width) {
+                break;
+            }
+            used += cells;
+            index += Character.charCount(codePoint);
+            end = index;
+        }
+        return end;
     }
 
     /**

@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
 
 import org.junit.jupiter.api.DisplayName;
@@ -89,7 +90,10 @@ class TuiScreenTest {
             if (System.nanoTime() > deadline) {
                 fail("the view did not reach the expected state in time");
             }
-            Thread.sleep(20L);
+            LockSupport.parkNanos(20_000_000L);
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
         }
     }
 }

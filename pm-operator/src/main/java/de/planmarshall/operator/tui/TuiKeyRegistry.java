@@ -123,6 +123,7 @@ public final class TuiKeyRegistry {
     private static final String LEFT = "\u2190";
     private static final String PAGE_UP = "\u001b[5~";
     private static final String PAGE_DOWN = "\u001b[6~";
+    private static final String TAB = "\t";
     private static final String FOOTER_SEPARATOR = "   ";
 
     /**
@@ -206,14 +207,39 @@ public final class TuiKeyRegistry {
      * @return the group lines, without a box; empty when the level binds nothing
      */
     public static List<String> helpGroups(TuiLevel.Kind kind, String locale) {
-        var labels = new ArrayList<String>();
-        var keys = new ArrayList<String>();
+        var cells = new LinkedHashMap<HelpGroup, String>();
         for (var group : HelpGroup.values()) {
-            var actions = new ArrayList<String>();
-            for (var action : TuiKeyAction.values()) {
-                if (groupOf(action) != group) {
-                    continue;
-                }
+            var actions = groupKeys(kind, group);
+            if (!actions.isEmpty()) {
+                cells.put(group, String.join("   ", actions));
+            }
+        }
+        if (cells.isEmpty()) {
+            return List.of();
+        }
+        var labels = cells.keySet().stream()
+                            .map(group -> MessageCatalogue.format(locale, group.labelKey(), Map.of()))
+                            .toList();
+        var labelWidth = labels.stream().mapToInt(TuiLayout::displayWidth).max().orElse(0);
+        var lines = new ArrayList<String>();
+        int index = 0;
+        for (var keys : cells.values()) {
+            var label = labels.get(index++);
+            lines.add(label + " ".repeat(Math.max(1, labelWidth - TuiLayout.displayWidth(label) + 2))
+                                + keys);
+        }
+        return List.copyOf(lines);
+    }
+
+    /**
+     * @param kind  the kind of level
+     * @param group the group
+     * @return the keys the level reaches the group with, one cell per action
+     */
+    private static List<String> groupKeys(TuiLevel.Kind kind, HelpGroup group) {
+        var actions = new ArrayList<String>();
+        for (var action : TuiKeyAction.values()) {
+            if (groupOf(action) == group) {
                 var displays = new LinkedHashSet<String>();
                 for (var binding : bindings(kind)) {
                     if (binding.action() == action) {
@@ -224,19 +250,8 @@ public final class TuiKeyRegistry {
                     actions.add(String.join(" ", displays));
                 }
             }
-            if (!actions.isEmpty()) {
-                labels.add(MessageCatalogue.format(locale, group.labelKey(), Map.of()));
-                keys.add(String.join("   ", actions));
-            }
         }
-        var labelWidth = labels.stream().mapToInt(TuiLayout::displayWidth).max().orElse(0);
-        var lines = new ArrayList<String>();
-        for (int index = 0; index < labels.size(); index++) {
-            var label = labels.get(index);
-            lines.add(label + " ".repeat(Math.max(1, labelWidth - TuiLayout.displayWidth(label) + 2))
-                                + keys.get(index));
-        }
-        return List.copyOf(lines);
+        return List.copyOf(actions);
     }
 
     /**
@@ -264,11 +279,11 @@ public final class TuiKeyRegistry {
      */
     public static String displayOf(String trigger) {
         return switch (trigger) {
-            case "\r", "\n" -> "Enter";
-            case "\u001b" -> "Esc";
-            case "\t" -> "Tab";
-            case "\u001b[5~" -> "PgUp";
-            case "\u001b[6~" -> "PgDn";
+            case ENTER, NEWLINE -> "Enter";
+            case ESC -> "Esc";
+            case TAB -> "Tab";
+            case PAGE_UP -> "PgUp";
+            case PAGE_DOWN -> "PgDn";
             default -> trigger;
         };
     }
@@ -325,22 +340,8 @@ public final class TuiKeyRegistry {
         if (displayWidth(joined) <= width) {
             return joined;
         }
-        var help = helpCell(locale);
         var more = moreCell(locale);
-        var kept = new ArrayList<String>();
-        for (var cell : cells) {
-            if (help.equals(cell)) {
-                // The trailing ? more names the overlay the help key opens; the same key, once.
-                continue;
-            }
-            var candidate = new ArrayList<>(kept);
-            candidate.add(cell);
-            candidate.add(more);
-            if (displayWidth(String.join(FOOTER_SEPARATOR, candidate)) > width) {
-                break;
-            }
-            kept.add(cell);
-        }
+        var kept = keepCells(cells, width, helpCell(locale), more);
         if (kept.isEmpty()) {
             // Not even one cell fits beside ? more: the line keeps its text, and the layout's own
             // truncation cuts it; a bare ? more would name an overlay for a footer that shows none.
@@ -348,6 +349,29 @@ public final class TuiKeyRegistry {
         }
         kept.add(more);
         return String.join(FOOTER_SEPARATOR, kept);
+    }
+
+    /**
+     * @param cells the cells, in the order they are kept
+     * @param width the columns the footer may use
+     * @param help  the help cell, which the {@code more} cell replaces
+     * @param more  the cell that names what was left out
+     * @return the cells that fit beside {@code more}, in their order
+     */
+    private static List<String> keepCells(List<String> cells, int width, String help, String more) {
+        var kept = new ArrayList<String>();
+        for (var cell : cells) {
+            if (!help.equals(cell)) {
+                var candidate = new ArrayList<>(kept);
+                candidate.add(cell);
+                candidate.add(more);
+                if (displayWidth(String.join(FOOTER_SEPARATOR, candidate)) > width) {
+                    return kept;
+                }
+                kept.add(cell);
+            }
+        }
+        return kept;
     }
 
     /**
