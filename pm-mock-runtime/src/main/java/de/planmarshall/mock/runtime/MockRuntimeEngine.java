@@ -6485,21 +6485,27 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @return the kept items the fixture names
      */
     private static List<CleanupKeptItem> keptItemsOf(Map<String, Object> facts) {
-        var out = new ArrayList<CleanupKeptItem>();
-        for (var kept : fixtureObjects(facts, "kept", "facts.kept")) {
-            if (kept != null) {
-                var id = JsonTree.string(kept, "item_id");
-                var kind = JsonTree.string(kept, "kind");
-                var label = JsonTree.string(kept, KEY_LABEL);
-                if (id != null && kind != null && label != null) {
-                    out.add(new CleanupKeptItem(id, kind, label,
-                            JsonTree.string(kept, KEY_REASON),
-                            JsonTree.string(kept, "kept_at"),
-                            JsonTree.string(kept, "kept_by")));
-                }
-            }
+        return fixtureObjects(facts, "kept", "facts.kept").stream()
+                .map(MockRuntimeEngine::keptItemOf)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    /**
+     * @param kept one fixture entry
+     * @return the kept item it names, or {@code null} when the entry lacks a required member
+     */
+    private static @Nullable CleanupKeptItem keptItemOf(Map<String, Object> kept) {
+        var id = JsonTree.string(kept, "item_id");
+        var kind = JsonTree.string(kept, "kind");
+        var label = JsonTree.string(kept, KEY_LABEL);
+        if (id == null || kind == null || label == null) {
+            return null;
         }
-        return out;
+        return new CleanupKeptItem(id, kind, label,
+                JsonTree.string(kept, KEY_REASON),
+                JsonTree.string(kept, "kept_at"),
+                JsonTree.string(kept, "kept_by"));
     }
 
     /**
@@ -6507,18 +6513,24 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @return the cleanup residues the fixture names; an entry without a step is skipped
      */
     private static List<CleanupResidue> residuesOf(Map<String, Object> facts) {
-        var out = new ArrayList<CleanupResidue>();
-        for (var residue : fixtureObjects(facts, FIXTURE_RESIDUE, "facts." + FIXTURE_RESIDUE)) {
-            if (residue != null) {
-                var step = JsonTree.string(residue, "step");
-                if (step != null) {
-                    var bytes = JsonTree.number(residue, "bytes");
-                    out.add(new CleanupResidue(step, intMember(residue, "count"),
-                            bytes != null ? bytes.longValue() : 0L, JsonTree.string(residue, "last_run")));
-                }
-            }
+        return fixtureObjects(facts, FIXTURE_RESIDUE, "facts." + FIXTURE_RESIDUE).stream()
+                .map(MockRuntimeEngine::residueOf)
+                .filter(Objects::nonNull)
+                .toList();
+    }
+
+    /**
+     * @param residue one fixture entry
+     * @return the residue it names, or {@code null} when the entry lacks a step
+     */
+    private static @Nullable CleanupResidue residueOf(Map<String, Object> residue) {
+        var step = JsonTree.string(residue, "step");
+        if (step == null) {
+            return null;
         }
-        return out;
+        var bytes = JsonTree.number(residue, "bytes");
+        return new CleanupResidue(step, intMember(residue, "count"),
+                bytes != null ? bytes.longValue() : 0L, JsonTree.string(residue, "last_run"));
     }
 
     /**
