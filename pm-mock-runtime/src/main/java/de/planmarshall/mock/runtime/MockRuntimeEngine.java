@@ -4162,12 +4162,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         if (isPlan && "POST".equals(method) && path.contains(SEGMENT_HOLDS_PATH)
-                            && path.endsWith("/resolve")) {
+                && path.endsWith("/resolve")) {
             var sub = path.substring(PATH_PLANS_PREFIX.length());
             var marker = sub.indexOf(SEGMENT_HOLDS_PATH);
             var subjectId = sub.substring(0, marker);
             var holdId = sub.substring(marker + SEGMENT_HOLDS_PATH.length(),
-                                sub.length() - "/resolve".length());
+                    sub.length() - "/resolve".length());
             handleResolveHold(request, response, subjectId, holdId);
             return true;
         }
@@ -4197,7 +4197,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         if ("GET".equals(method) && isEpic && path.endsWith(SEGMENT_DECOMPOSITION)) {
             handleGetControlDecomposition(response,
-                                controlSubjectId(path, PATH_EPICS_PREFIX, SEGMENT_DECOMPOSITION));
+                    controlSubjectId(path, PATH_EPICS_PREFIX, SEGMENT_DECOMPOSITION));
             return true;
         }
 
