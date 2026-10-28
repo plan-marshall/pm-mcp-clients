@@ -36,7 +36,7 @@ Source of this plan (read before scoping):
    - Persona: plan-marshall:persona-documenter
    - Skills: pm-documents:ref-asciidoc, pm-documents:ref-documentation
    - Done when:
-     - The document passes `doc-review` (evidence order: `none`)
+     - The document passes `doc-review` (under the runbook lane its checker `trace.py` does not run, so `pm-documents:ref-documentation` `docs review` and `pm-documents:ref-asciidoc` `validate` and `verify-links` stand in for it, clean, as PLAN-06 and PLAN-07 ran them) (evidence order: `none`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 ## Standing Constraints
