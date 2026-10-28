@@ -157,6 +157,9 @@ export const dictionary = {
         '/repo/pm-web-app/.svelte-kit/generated/build/client-optimized/nodes/5.js',
       ),
     ).toBe(true);
+    expect(
+      isGeneratedNode('/repo/pm-web-app/.svelte-kit/generated/client-optimized/nodes/5.js'),
+    ).toBe(true);
     expect(isGeneratedNode('/repo/pm-web-app/src/lib/components/Button.svelte')).toBe(false);
   });
 });

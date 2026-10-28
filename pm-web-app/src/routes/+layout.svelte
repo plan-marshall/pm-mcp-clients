@@ -42,9 +42,11 @@
   let { children }: Props = $props();
 
   // The development page draws components, not a view of the app: it is outside the route model,
-  // so the shell neither rewrites its address nor replaces it with the stored route. The boundary
-  // check keeps `/device` or `/developer` out of this branch.
+  // so the shell neither rewrites its address nor replaces it with the stored route. The branch is
+  // compiled out of a production build, where the page's route does not exist either, and its
+  // boundary check keeps `/device` or `/developer` out of it.
   const devRoute =
+    import.meta.env.DEV &&
     typeof window !== 'undefined' &&
     (window.location.pathname === '/dev' || window.location.pathname.startsWith('/dev/'));
 

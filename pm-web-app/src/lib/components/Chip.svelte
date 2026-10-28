@@ -20,16 +20,57 @@
   let copied = false;
   let resetTimer: ReturnType<typeof setTimeout> | undefined;
 
-  async function copy(): Promise<void> {
+  /**
+   * Copies a value, with the fallback the browser offers outside a secure context.
+   *
+   * `navigator.clipboard` exists only in a secure context, and the app is also opened over plain
+   * HTTP on the machine's LAN address. The selection-based copy is the one that still works there,
+   * so a phone gets a working chip instead of nothing.
+   *
+   * @param text the value to copy
+   * @returns whether either path copied
+   */
+  async function writeToClipboard(text: string): Promise<boolean> {
     try {
-      await navigator.clipboard.writeText(value);
-      copied = true;
-      clearTimeout(resetTimer);
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {
+      // A refused or missing permission falls through to the selection-based copy.
+    }
+    return copyBySelection(text);
+  }
+
+  /**
+   * @param text the value to copy
+   * @returns whether the browser copied the selected text
+   */
+  function copyBySelection(text: string): boolean {
+    const field = document.createElement('textarea');
+    field.value = text;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.opacity = '0';
+    document.body.appendChild(field);
+    field.select();
+    try {
+      return document.execCommand('copy');
+    } catch {
+      return false;
+    } finally {
+      field.remove();
+    }
+  }
+
+  async function copy(): Promise<void> {
+    const done = await writeToClipboard(value);
+    copied = done;
+    clearTimeout(resetTimer);
+    if (done) {
       resetTimer = setTimeout(() => {
         copied = false;
       }, COPIED_MS);
-    } catch {
-      copied = false;
     }
   }
 

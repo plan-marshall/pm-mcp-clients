@@ -9,11 +9,16 @@ import Chip from './Chip.svelte';
  */
 
 const originalClipboard = navigator.clipboard;
+const originalExecCommand = document.execCommand;
 
 afterEach(() => {
   vi.useRealTimers();
   Object.defineProperty(navigator, 'clipboard', {
     value: originalClipboard,
+    configurable: true,
+  });
+  Object.defineProperty(document, 'execCommand', {
+    value: originalExecCommand,
     configurable: true,
   });
 });
@@ -63,6 +68,31 @@ describe('Chip', () => {
     await tick();
     expect(screen.queryByText('Copied')).not.toBeInTheDocument();
     vi.useRealTimers();
+  });
+
+  it('falls back to the selection copy outside a secure context', async () => {
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    const exec = vi.fn().mockReturnValue(true);
+    Object.defineProperty(document, 'execCommand', { value: exec, configurable: true });
+    render(Chip, { props: { value: 'a0f80a3f' } });
+
+    await fireEvent.click(screen.getByRole('button'));
+
+    expect(exec).toHaveBeenCalledWith('copy');
+    expect(screen.getByText('Copied')).toBeInTheDocument();
+  });
+
+  it('says nothing when neither path can copy', async () => {
+    Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    Object.defineProperty(document, 'execCommand', {
+      value: vi.fn().mockReturnValue(false),
+      configurable: true,
+    });
+    render(Chip, { props: { value: 'a0f80a3f' } });
+
+    await fireEvent.click(screen.getByRole('button'));
+
+    expect(screen.queryByText('Copied')).not.toBeInTheDocument();
   });
 
   it('claims nothing when the clipboard refuses', async () => {
