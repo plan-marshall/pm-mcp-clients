@@ -202,8 +202,9 @@ Every capture writes three files below `target/screens/{set}/` (or `-Dpm.screens
 
 The screen is captured only once something was drawn: a full-screen view enters the alternate
 screen after JLine's terminal probe is answered, so a quiet stretch before that is not a settled
-screen. A capture whose verb prints instead of drawing settles on the quiet window after two
-seconds.
+screen. A line dialogue that types keys is the third case: like a printed verb it never enters the
+alternate screen, so it settles on the quiet window, and the state after its keys (`q`, an unknown
+key, `Enter`) is read from `{name}.stdout.txt`, not from the screen.
 
 Without `-Dpm.screens` the class is skipped, so the integration-test lane pays nothing for it. The
 child's environment is cleared and rebuilt like every PTY test (`PM-SEC-3`): the operator gate

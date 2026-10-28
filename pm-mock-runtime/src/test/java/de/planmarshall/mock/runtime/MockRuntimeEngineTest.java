@@ -442,6 +442,42 @@ class MockRuntimeEngineTest {
     }
 
     @Test
+    @DisplayName("handles the flat plan control routes the operator verbs post to")
+    void flatPlanControlRoutes() throws Exception {
+        engine.switchScenario(StandardScenarios.FULLY_ONBOARDED);
+        var auth = Map.of("Authorization", "Bearer test-token");
+
+        var paused = send("POST", "/api/v1/plans/fix-relay/pause", auth,
+                            "{\"point\":\"now\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, paused.status());
+        assertEquals("pausing", paused.json().get("state"));
+        assertEquals("now", paused.json().get("pausing_point"));
+
+        var started = send("POST", "/api/v1/plans/fix-relay/start", auth, new byte[0], false);
+        assertEquals(200, started.status());
+        assertEquals("running", started.json().get("state"));
+
+        var cancelled = send("POST", "/api/v1/plans/fix-relay/cancel", auth,
+                            "{\"reason\":\"replaced\",\"close_pr\":true}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, cancelled.status());
+        assertEquals("ended", cancelled.json().get("state"));
+    }
+
+    @Test
+    @DisplayName("the flat plan control routes refuse an unknown plan and a bare verb")
+    void flatPlanControlRoutesRefuse() throws Exception {
+        engine.switchScenario(StandardScenarios.FULLY_ONBOARDED);
+        var auth = Map.of("Authorization", "Bearer test-token");
+
+        var unknown = send("POST", "/api/v1/plans/no-such-plan/pause", auth, new byte[0], false);
+        assertEquals(404, unknown.status());
+        assertEquals("plan_not_found", unknown.json().get("error"));
+
+        var notAnAction = send("POST", "/api/v1/plans/fix-relay/archive", auth, new byte[0], false);
+        assertEquals(404, notAnAction.status());
+    }
+
+    @Test
     @DisplayName("handles link with refusal status >= 400")
     void errorLinkRefusal() throws Exception {
         var errorLink = new LinkDefinition("start", "POST", "/api/v1/fail", 0, 409, "locked_keychain");

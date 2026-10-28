@@ -31,8 +31,8 @@ import org.junit.jupiter.api.Test;
  *   <li>Choice selection by key, number, and range</li>
  *   <li>Enter takes preselection only when declared</li>
  *   <li>Enter without preselection re-asks and never falls through</li>
- *   <li>{@code ?} prints dialogue explanation without sending or changing state</li>
- *   <li>{@code ?n} prints item explanation without sending or changing state</li>
+ *   <li>{@code ?} prints the dialogue explanation and {@code ?n} the item's explanation, both only
+ *       where an explanation is declared</li>
  *   <li>{@code q} (and German {@code v}) leaves with "Left &lt;state&gt;. Nothing was sent."</li>
  *   <li>Unknown input re-asks with offered keys</li>
  *   <li>The chosen answer is echoed</li>
@@ -107,7 +107,6 @@ class ChoicePromptTest {
     void picksMultiSelectionRanges() {
         var out = new StringWriter();
         var prompt = createPrompt("1-2\nEnter\n", out, "en");
-        prompt.multiSelect(true);
         prompt.addChoice("opt1", "Option 1");
         prompt.addChoice("opt2", "Option 2");
         prompt.addChoice("opt3", "Option 3");
@@ -145,7 +144,7 @@ class ChoicePromptTest {
         var result = prompt.ask();
         assertEquals("opt1", result.key());
         var output = out.toString();
-        assertTrue(output.contains("not offered here"), output);
+        assertTrue(output.contains("Enter does nothing here; type one of the keys."), output);
     }
 
     @Test
@@ -199,7 +198,7 @@ class ChoicePromptTest {
 
         assertThrows(StartPrompt.StartLeftException.class, prompt::ask);
         var output = out.toString();
-        assertTrue(output.contains("control.pause verlassen. Es wurde nichts gesendet."), output);
+        assertTrue(output.contains("Verlassen: control.pause. Es wurde nichts gesendet."), output);
     }
 
     @Test
@@ -214,74 +213,82 @@ class ChoicePromptTest {
         var result = prompt.ask();
         assertEquals("now", result.key());
         var output = out.toString();
-        assertTrue(output.contains("9 is not offered here: 1-2, q, ?"), output);
+        assertTrue(output.contains("9 is not offered here: 1-2, q"), output);
     }
 
     @Test
-    @DisplayName("rule 10a: consent has no Enter default and prints 'Type y, r or n.' when remember allowed")
-    void consentEnterPromptsTypeYrn() {
+    @DisplayName("rule 9b: ? is only offered where something is explained, and never promises what it cannot tell")
+    void questionMarkOfferedOnlyWithExplanation() {
+        var without = new StringWriter();
+        var plain = createPrompt("?\n1\n", without, "en");
+        plain.addChoice("now", "now");
+        assertEquals("now", plain.ask().key());
+        assertFalse(without.toString().contains("q, ?"), without.toString());
+        assertTrue(without.toString().contains("Nothing more is explained here"), without.toString());
+
+        var with = new StringWriter();
+        var explained = createPrompt("9\n\n?\n1\n", with, "en");
+        explained.explanation("The pause keeps the work ready to resume.");
+        explained.addChoice("now", "now");
+        assertEquals("now", explained.ask().key());
+        assertTrue(with.toString().contains("9 is not offered here: 1, q, ?"), with.toString());
+        assertTrue(with.toString().contains("Enter does nothing here"), with.toString());
+        assertTrue(with.toString().contains("The pause keeps the work ready to resume."), with.toString());
+    }
+
+    @Test
+    @DisplayName("rule 10a: consent has no Enter default and prints 'Type y or n.' when Enter is typed")
+    void consentEnterPromptsTypeYn() {
         var out = new StringWriter();
         // First Enter (rejected), then y
         var prompt = createPrompt("\ny\n", out, "en");
-        prompt.consent(true); // allow remember
 
-        var result = prompt.askConsent();
-        assertTrue(result.confirmed());
-        var output = out.toString();
-        assertTrue(output.contains("Type y, r or n."), output);
-    }
-
-    @Test
-    @DisplayName("rule 10b: consent has no Enter default and prints 'Type y or n.' when remember not allowed")
-    void consentEnterPromptsTypeYn() {
-        var out = new StringWriter();
-        // First Enter (rejected), then n
-        var prompt = createPrompt("\nn\n", out, "en");
-        prompt.consent(false); // do not allow remember
-
-        var result = prompt.askConsent();
-        assertFalse(result.confirmed());
+        assertTrue(prompt.askConsent());
         var output = out.toString();
         assertTrue(output.contains("Type y or n."), output);
     }
 
     @Test
-    @DisplayName("rule 10c: consent Enter in German prints 'Gib j, m oder n ein.' / 'Gib j oder n ein.'")
+    @DisplayName("rule 10b: a consent without explanation offers no ?")
+    void consentWithoutExplanationOffersNoQuestionMark() {
+        var out = new StringWriter();
+        var prompt = createPrompt("\ny\n", out, "en");
+
+        assertTrue(prompt.askConsent());
+        assertTrue(out.toString().contains("y) yes   n) no   q) leave   \u203a "), out.toString());
+    }
+
+    @Test
+    @DisplayName("rule 10c: consent Enter in German prints 'Gib j oder n ein.'")
     void consentGermanEnter() {
         var out = new StringWriter();
         // First Enter (rejected), then j
         var prompt = createPrompt("\nj\n", out, "de");
-        prompt.consent(true);
 
-        var result = prompt.askConsent();
-        assertTrue(result.confirmed());
+        assertTrue(prompt.askConsent());
         var output = out.toString();
-        assertTrue(output.contains("Gib j, m oder n ein."), output);
+        assertTrue(output.contains("Gib j oder n ein."), output);
     }
 
     @Test
-    @DisplayName("rule 11: consent accepts y, n, and r (and German j, n, m)")
+    @DisplayName("rule 11: consent accepts y, j and n, and nothing else")
     void consentAcceptedKeys() {
         var out1 = new StringWriter();
-        var prompt1 = createPrompt("r\n", out1, "en");
-        prompt1.consent(true);
-        var res1 = prompt1.askConsent();
-        assertTrue(res1.confirmed());
-        assertTrue(res1.remember());
+        var prompt1 = createPrompt("y\n", out1, "en");
+        assertTrue(prompt1.askConsent());
 
         var out2 = new StringWriter();
-        var prompt2 = createPrompt("m\n", out2, "de");
-        prompt2.consent(true);
-        var res2 = prompt2.askConsent();
-        assertTrue(res2.confirmed());
-        assertTrue(res2.remember());
+        var prompt2 = createPrompt("j\n", out2, "de");
+        assertTrue(prompt2.askConsent());
 
         var out3 = new StringWriter();
         var prompt3 = createPrompt("n\n", out3, "de");
-        prompt3.consent(false);
-        var res3 = prompt3.askConsent();
-        assertFalse(res3.confirmed());
-        assertFalse(res3.remember());
+        assertFalse(prompt3.askConsent());
+
+        var out4 = new StringWriter();
+        var prompt4 = createPrompt("r\nn\n", out4, "en");
+        assertFalse(prompt4.askConsent());
+        assertTrue(out4.toString().contains("r is not offered here: y, n, q"), out4.toString());
     }
 
     @Test

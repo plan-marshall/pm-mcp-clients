@@ -17,8 +17,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import org.jline.reader.EndOfFileException;
-import org.jline.reader.UserInterruptException;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.ArchiveCheckLine;
@@ -143,23 +141,7 @@ final class WorkActionDialogue {
     }
 
     private int pause(WorkActions actions) throws IOException {
-        var choicePrompt = new ChoicePrompt(prompt, STATE_ID).leaveLabel(dialogueLabel("pause"));
-        var where = MessageCatalogue.format(prompt.locale(), "operator.actions.pause.where", Map.of("plan", id));
-        choicePrompt.title(where);
-        var cNow = MessageCatalogue.format(prompt.locale(), "operator.actions.pause.consequence.now", Map.of());
-        var cTask = MessageCatalogue.format(prompt.locale(), "operator.actions.pause.consequence.task", Map.of());
-        var cPhase = MessageCatalogue.format(prompt.locale(), "operator.actions.pause.consequence.phase", Map.of());
-        choicePrompt.addChoice("now", MessageCatalogue.format(prompt.locale(), "operator.actions.pause.now", Map.of()),
-                            cNow, null, false, null);
-        choicePrompt.addChoice("task", MessageCatalogue.format(prompt.locale(), "operator.actions.pause.task", Map.of()),
-                            cTask, null, true, null);
-        choicePrompt.addChoice("phase", MessageCatalogue.format(prompt.locale(), "operator.actions.pause.phase", Map.of()),
-                            cPhase, null, false, null);
-        if (actions.epicId() != null) {
-            choicePrompt.epicTold(MessageCatalogue.format(prompt.locale(), "operator.actions.end.told",
-                                Map.of("epic", actions.epicId())));
-        }
-        var choice = choicePrompt.ask();
+        var choice = ActionSupport.pausePrompt(prompt, id, actions.epicId()).ask();
         var point = choice.key();
         client.perform(kind, id, "pause", Map.of("point", point));
         if ("now".equals(point)) {
@@ -190,14 +172,14 @@ final class WorkActionDialogue {
                             Map.of("outcome", "abort".equals(outcome) ? "aborted"
                                                 : "cancel".equals(action) ? "cancelled"
                                                 : "abandoned")));
-        var reason = askReason(action);
+        var reason = ActionSupport.askEndReason(prompt, STATE_ID, dialogueLabel(action), id);
         if (reason == null) {
             return 0;
         }
-        prompt.raw("  " + MessageCatalogue.format(prompt.locale(), "operator.actions.end.reason", Map.of())
-                            + "         " + reason);
         var pullRequest = new ChoicePrompt(prompt, STATE_ID).leaveLabel(dialogueLabel(action));
         pullRequest.title(MessageCatalogue.format(prompt.locale(), "operator.actions.end.pull_request", Map.of()));
+        pullRequest.explanation(MessageCatalogue.format(prompt.locale(), "operator.actions.end.pr_explain",
+                            Map.of()));
         pullRequest.addChoice("close", MessageCatalogue.format(prompt.locale(), "operator.actions.end.pr_close",
                             Map.of()));
         pullRequest.addChoice("keep", MessageCatalogue.format(prompt.locale(), "operator.actions.end.pr_keep",
@@ -205,10 +187,11 @@ final class WorkActionDialogue {
         var closePr = "close".equals(pullRequest.ask().key());
         var confirmTitle = MessageCatalogue.format(prompt.locale(), "operator.actions.cancel.confirm",
                             Map.of("action", outcome)) + "?";
-        var consent = new ChoicePrompt(prompt, STATE_ID).consent(false).leaveLabel(dialogueLabel(action));
+        var consent = new ChoicePrompt(prompt, STATE_ID).leaveLabel(dialogueLabel(action));
         consent.title(confirmTitle);
-        var consentResult = consent.askConsent();
-        if (!consentResult.confirmed()) {
+        consent.explanation(MessageCatalogue.format(prompt.locale(), "operator.actions.end.consent_explain",
+                            Map.of()));
+        if (!consent.askConsent()) {
             return 0;
         }
         var payload = new LinkedHashMap<String, Object>();
@@ -225,33 +208,38 @@ final class WorkActionDialogue {
     }
 
     private int endEpic() throws IOException {
-        prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.actions.epic.cancel.title",
-                            Map.of("epic", id)));
-        prompt.raw("  " + MessageCatalogue.format(prompt.locale(), "operator.actions.epic.cancel.plans", Map.of())
-                            + "   " + MessageCatalogue.format(prompt.locale(),
-                            "operator.actions.epic.cancel.with_plans", Map.of()));
-        prompt.raw("  " + MessageCatalogue.format(prompt.locale(), "operator.actions.epic.cancel.afterwards",
-                            Map.of())
-                            + "   " + MessageCatalogue.format(prompt.locale(),
-                            "operator.actions.epic.cancel.afterwards_text", Map.of()));
-        var plans = prompt.askRaw(MessageCatalogue.format(prompt.locale(),
-                                                "operator.actions.epic.cancel.with_plans", Map.of()), STATE_ID,
-                            MessageCatalogue.format(prompt.locale(), "operator.actions.epic.cancel.plans", Map.of()),
-                            id);
-        var reason = askReason("cancel");
+        var locale = prompt.locale();
+        prompt.raw(MessageCatalogue.format(locale, "operator.actions.epic.cancel.title", Map.of("epic", id)));
+        prompt.raw("  " + MessageCatalogue.format(locale, "operator.actions.epic.cancel.afterwards", Map.of())
+                            + "   " + MessageCatalogue.format(locale, "operator.actions.epic.cancel.afterwards_text",
+                            Map.of()));
+        var plans = new ChoicePrompt(prompt, STATE_ID).leaveLabel(dialogueLabel("cancel"));
+        plans.title(MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans", Map.of()));
+        plans.explanation(MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_explain", Map.of()));
+        plans.addChoice("with_plans", MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_with",
+                            Map.of()), null,
+                            MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_with_explain",
+                                                Map.of()),
+                            false, null);
+        plans.addChoice("keep_plans", MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_keep",
+                            Map.of()), null,
+                            MessageCatalogue.format(locale, "operator.actions.epic.cancel.plans_keep_explain",
+                                                Map.of()),
+                            false, null);
+        var withPlans = "with_plans".equals(plans.ask().key());
+        var reason = ActionSupport.askEndReason(prompt, STATE_ID, dialogueLabel("cancel"), id);
         if (reason == null) {
             return 0;
         }
-        var consent = new ChoicePrompt(prompt, STATE_ID).consent(false).leaveLabel(dialogueLabel("cancel"));
-        consent.title(MessageCatalogue.format(prompt.locale(), "operator.actions.epic.cancel.title",
-                            Map.of("epic", id)));
-        var consentResult = consent.askConsent();
-        if (!consentResult.confirmed()) {
+        var consent = new ChoicePrompt(prompt, STATE_ID).leaveLabel(dialogueLabel("cancel"));
+        consent.title(MessageCatalogue.format(locale, "operator.actions.epic.cancel.title", Map.of("epic", id)));
+        consent.explanation(MessageCatalogue.format(locale, "operator.actions.end.consent_explain", Map.of()));
+        if (!consent.askConsent()) {
             return 0;
         }
         var payload = new LinkedHashMap<String, Object>();
         payload.put("reason", reason);
-        payload.put("with_plans", !"2".equals(plans));
+        payload.put("with_plans", withPlans);
         client.perform(EPIC, id, "cancel", payload);
         prompt.line("operator.actions.epic.cancel.done", Map.of("epic", id));
         return 0;
@@ -261,28 +249,7 @@ final class WorkActionDialogue {
         return MessageCatalogue.format(prompt.locale(), "operator.dialogue.label." + action, Map.of());
     }
 
-    private @Nullable String askReason(String action) {
-        var question = MessageCatalogue.format(prompt.locale(), "operator.actions.end.reason", Map.of())
-                            + StartPrompt.SUFFIX;
-        String reason;
-        try {
-            reason = prompt.reader().readLine(question);
-        } catch (EndOfFileException | UserInterruptException _) {
-            reason = null;
-        }
-        if (reason == null || "q".equalsIgnoreCase(reason) || (prompt.locale().toLowerCase(Locale.ROOT).startsWith("de")
-                            && "v".equalsIgnoreCase(reason))) {
-            prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.dialogue.left",
-                                Map.of("state", dialogueLabel(action))));
-            throw new StartPrompt.StartLeftException();
-        }
-        reason = reason.trim();
-        if (reason.isBlank()) {
-            prompt.line("operator.actions.end.reason_required", Map.of());
-            return null;
-        }
-        return reason;
-    }
+
 
     private int chat(@Nullable EpicResource epic) throws IOException {
         var description = WorkChatDialogue.run(context, out, kind, id, false, !prompt.asks());

@@ -36,10 +36,11 @@ import de.planmarshall.operator.StartPrompt;
  * <ul>
  *   <li>Options can be chosen by key, 1-based number, or range (in multi-choice mode)</li>
  *   <li>Enter takes the preselection only where declared; otherwise it re-asks and never falls through</li>
- *   <li>{@code ?} prints dialogue explanation; {@code ?n} prints item n's explanation without changing state</li>
+ *   <li>{@code ?} prints the dialogue explanation and {@code ?n} the explanation of item n, both only
+ *       where an explanation was declared; without one the prompt says so and offers no {@code ?}</li>
  *   <li>{@code q} (or German {@code v}) leaves with {@code "Left <state>. Nothing was sent."}</li>
  *   <li>Unknown input re-asks with offered keys; never falls through to a default</li>
- *   <li>Consent and irreversible acts have no Enter default (re-prompts with {@code "Type y, r or n."})</li>
+ *   <li>Consent and irreversible acts have no Enter default (re-prompts with {@code "Type y or n."})</li>
  *   <li>Options with consequences render in an aligned two-column layout with {@code ←} on preselection</li>
  * </ul>
  */
@@ -83,15 +84,6 @@ public final class ChoicePrompt {
         }
     }
 
-    /**
-     * The result of a consent choice prompt.
-     *
-     * @param confirmed whether consent was granted
-     * @param remember  whether consent should be remembered
-     */
-    public record ConsentResult(boolean confirmed, boolean remember) {
-    }
-
     @FunctionalInterface
     interface LineInput {
         @Nullable
@@ -106,11 +98,7 @@ public final class ChoicePrompt {
 
     private @Nullable String title;
     private @Nullable String explanation;
-    private @Nullable String promptText;
     private @Nullable String epicTold;
-    private boolean consent;
-    private boolean allowRemember;
-    private boolean multiSelect;
     private boolean noInput;
     private @Nullable String leaveLabel;
 
@@ -179,34 +167,20 @@ public final class ChoicePrompt {
         return this;
     }
 
+    /**
+     * Declares the dialogue explanation behind {@code ?}. Without a dialogue or item explanation the
+     * prompt does not offer {@code ?} and answers it by saying that there is nothing to explain.
+     *
+     * @param explanation the explanation
+     * @return this prompt
+     */
     public ChoicePrompt explanation(String explanation) {
         this.explanation = explanation;
         return this;
     }
 
-    public ChoicePrompt promptText(String promptText) {
-        this.promptText = promptText;
-        return this;
-    }
-
     public ChoicePrompt epicTold(String epicTold) {
         this.epicTold = epicTold;
-        return this;
-    }
-
-    public ChoicePrompt consent(boolean allowRemember) {
-        this.consent = true;
-        this.allowRemember = allowRemember;
-        return this;
-    }
-
-    public ChoicePrompt multiSelect(boolean multiSelect) {
-        this.multiSelect = multiSelect;
-        return this;
-    }
-
-    public ChoicePrompt noInput(boolean noInput) {
-        this.noInput = noInput;
         return this;
     }
 
@@ -279,7 +253,7 @@ public final class ChoicePrompt {
                 if (preselected != null) {
                     return echoed(preselected);
                 }
-                printNotOffered(line);
+                printLine("operator.dialogue.enter_no_default", Map.of());
                 continue;
             }
 
@@ -311,16 +285,15 @@ public final class ChoicePrompt {
     }
 
     /**
-     * Runs a consent prompt ({@code y/n} or {@code y/r/n}, German {@code j/n} or {@code j/m/n}).
+     * Runs a consent prompt ({@code y/n}, German {@code j/n}).
      *
-     * @return the consent result
+     * @return {@code true} when consent was granted
      */
-    public ConsentResult askConsent() {
+    public boolean askConsent() {
         if (noInput) {
             throw new StartPrompt.MissingInputException(stateId, "consent", null);
         }
 
-        var isGerman = isGerman();
         while (true) {
             if (title != null) {
                 out.println(title);
@@ -343,32 +316,27 @@ public final class ChoicePrompt {
             }
 
             if (line.isEmpty()) {
-                var key = allowRemember
-                                    ? "operator.dialogue.consent.type_yrn"
-                                    : "operator.dialogue.consent.type_yn";
-                out.println(MessageCatalogue.format(locale, key, Map.of()));
-                out.flush();
+                printLine("operator.dialogue.consent.type_yn", Map.of());
                 continue;
             }
 
             if ("y".equalsIgnoreCase(line) || "j".equalsIgnoreCase(line)) {
-                return new ConsentResult(true, false);
-            }
-            if (allowRemember && ("r".equalsIgnoreCase(line) || "m".equalsIgnoreCase(line))) {
-                return new ConsentResult(true, true);
+                return true;
             }
             if ("n".equalsIgnoreCase(line)) {
-                return new ConsentResult(false, false);
+                return false;
             }
 
-            // Unknown input in consent
-            var offered = isGerman
-                                ? (allowRemember ? "j, m, n, v, ?" : "j, n, v, ?")
-                                : (allowRemember ? "y, r, n, q, ?" : "y, n, q, ?");
-            out.println(MessageCatalogue.format(locale, "operator.dialogue.not_offered",
-                                Map.of("input", line, "offered", offered)));
-            out.flush();
+            printNotOffered(line, consentOffered());
         }
+    }
+
+    private String consentOffered() {
+        var offered = new StringBuilder(isGerman() ? "j" : "y").append(", n, ").append(isGerman() ? "v" : "q");
+        if (hasExplanation()) {
+            offered.append(", ?");
+        }
+        return offered.toString();
     }
 
     /**
@@ -515,13 +483,15 @@ public final class ChoicePrompt {
     }
 
     private String renderConsentPrompt() {
-        var key = allowRemember ? "operator.dialogue.consent.prompt_yrn" : "operator.dialogue.consent.prompt_yn";
-        return MessageCatalogue.format(locale, key, Map.of()) + "   \u203a ";
+        var question = MessageCatalogue.format(locale, "operator.dialogue.consent.prompt_yn", Map.of());
+        if (hasExplanation()) {
+            question = question + "   ?";
+        }
+        return question + "   \u203a ";
     }
 
     private @Nullable String readLine() {
-        var prompt = promptText != null ? (promptText + StartPrompt.SUFFIX) : StartPrompt.SUFFIX;
-        return readLineWithPrompt(prompt);
+        return readLineWithPrompt(StartPrompt.SUFFIX);
     }
 
     private @Nullable String readLineWithPrompt(String prompt) {
@@ -553,9 +523,15 @@ public final class ChoicePrompt {
         throw new StartPrompt.StartLeftException();
     }
 
+    private boolean hasExplanation() {
+        return explanation != null || choices.stream().anyMatch(choice -> choice.explanation() != null);
+    }
+
     private void printExplanation() {
         if (explanation != null) {
             out.println("  " + explanation);
+        } else {
+            printLine("operator.dialogue.no_explanation", Map.of());
         }
         out.flush();
     }
@@ -578,12 +554,22 @@ public final class ChoicePrompt {
 
         if (matched != null && matched.explanation() != null) {
             out.println("  " + matched.explanation());
+        } else {
+            printLine("operator.dialogue.no_explanation", Map.of());
         }
         out.flush();
     }
 
+    private void printLine(String key, Map<String, ?> args) {
+        out.println(MessageCatalogue.format(locale, key, args));
+        out.flush();
+    }
+
     private void printNotOffered(String line) {
-        var offered = formatOffered();
+        printNotOffered(line, formatOffered());
+    }
+
+    private void printNotOffered(String line, String offered) {
         out.println(MessageCatalogue.format(locale, "operator.dialogue.not_offered",
                             Map.of("input", line, "offered", offered)));
         out.flush();
@@ -602,7 +588,10 @@ public final class ChoicePrompt {
         if (sb.length() > 0) {
             sb.append(", ");
         }
-        sb.append(leaveKey).append(", ?");
+        sb.append(leaveKey);
+        if (hasExplanation()) {
+            sb.append(", ?");
+        }
         return sb.toString();
     }
 }

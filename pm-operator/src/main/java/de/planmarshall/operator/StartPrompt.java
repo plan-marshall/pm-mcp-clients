@@ -116,10 +116,11 @@ public final class StartPrompt {
      */
     String ask(String key, Map<String, ?> args, String state, String need, @Nullable String entryId) {
         requireAsk(state, need, entryId);
+        var reader = reader();
         var question = MessageCatalogue.format(locale, key, args);
         out.print(question + SUFFIX);
         out.flush();
-        return readLine();
+        return read(reader);
     }
 
     /**
@@ -133,9 +134,10 @@ public final class StartPrompt {
      */
     String askRaw(String question, String state, String need, @Nullable String entryId) {
         requireAsk(state, need, entryId);
+        var reader = reader();
         out.print(question + SUFFIX);
         out.flush();
-        return readLine();
+        return read(reader);
     }
 
     /**
@@ -149,9 +151,10 @@ public final class StartPrompt {
      */
     String askInline(String rendered, String state, String need, @Nullable String entryId) {
         requireAsk(state, need, entryId);
+        var reader = reader();
         out.print(rendered);
         out.flush();
-        return readLine();
+        return read(reader);
     }
 
     /**
@@ -183,8 +186,19 @@ public final class StartPrompt {
     }
 
     private String readLine() {
+        return read(reader());
+    }
+
+    /**
+     * Reads one line and trims it. The reader is handed in so the caller opens it — and answers
+     * JLine's terminal probe — before it draws its question, never after the operator started typing.
+     *
+     * @param reader the open line reader
+     * @return the trimmed answer
+     */
+    private static String read(LineReader reader) {
         try {
-            return Objects.requireNonNullElse(reader().readLine(), EMPTY).trim();
+            return Objects.requireNonNullElse(reader.readLine(), EMPTY).trim();
         } catch (EndOfFileException | UserInterruptException _) {
             throw new StartLeftException();
         }

@@ -16,8 +16,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import org.jline.reader.EndOfFileException;
-import org.jline.reader.UserInterruptException;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.ChatReadBackResource;
@@ -25,6 +23,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.start.EntryKind;
+import de.planmarshall.operator.actions.WorkActionsClient;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 import picocli.CommandLine.Model.CommandSpec;
@@ -88,6 +87,91 @@ final class ActionSupport {
     static final String CANCEL = "cancel";
 
     /**
+     * Builds the pause choice of both entry points: the console's {@code pause} act and the direct
+     * {@code plan pause} verb show the same three points, the same consequences, and the same
+     * explanation, so the two can never drift apart.
+     *
+     * @param prompt the dialogue's prompt
+     * @param planId the plan
+     * @param epicId the plan's epic, or {@code null}
+     * @return the configured pause choice
+     */
+    static ChoicePrompt pausePrompt(StartPrompt prompt, String planId, @Nullable String epicId) {
+        var locale = prompt.locale();
+        var pause = new ChoicePrompt(prompt, "control.pause").leaveLabel(
+                            MessageCatalogue.format(locale, "operator.dialogue.label.pause", Map.of()));
+        pause.title(MessageCatalogue.format(locale, "operator.actions.pause.where", Map.of("plan", planId)));
+        pause.explanation(MessageCatalogue.format(locale, "operator.actions.pause.explain", Map.of()));
+        pause.addChoice("now", MessageCatalogue.format(locale, "operator.actions.pause.now", Map.of()),
+                            MessageCatalogue.format(locale, "operator.actions.pause.consequence.now", Map.of()),
+                            MessageCatalogue.format(locale, "operator.actions.pause.explain.now", Map.of()),
+                            false, null);
+        pause.addChoice("task", MessageCatalogue.format(locale, "operator.actions.pause.task", Map.of()),
+                            MessageCatalogue.format(locale, "operator.actions.pause.consequence.task", Map.of()),
+                            MessageCatalogue.format(locale, "operator.actions.pause.explain.task", Map.of()),
+                            true, null);
+        pause.addChoice("phase", MessageCatalogue.format(locale, "operator.actions.pause.phase", Map.of()),
+                            MessageCatalogue.format(locale, "operator.actions.pause.consequence.phase", Map.of()),
+                            MessageCatalogue.format(locale, "operator.actions.pause.explain.phase", Map.of()),
+                            false, null);
+        if (epicId != null) {
+            pause.epicTold(MessageCatalogue.format(locale, "operator.actions.end.told", Map.of("epic", epicId)));
+        }
+        return pause;
+    }
+
+    /**
+     * Asks the reason of an act that cannot be undone, echoes it, and lets {@code q}/{@code v} leave
+     * the dialogue with nothing sent. A blank answer is reported and answered with {@code null}, so
+     * the caller stops without sending; the reading goes through the prompt, which stops a
+     * {@code --no-input} run instead of blocking on a terminal nobody watches.
+     *
+     * @param prompt     the dialogue's prompt
+     * @param state      the state id named when {@code --no-input} stops the run
+     * @param leaveLabel the human label of the dialogue
+     * @param entryId    the entry named when {@code --no-input} stops the run
+     * @return the trimmed reason, or {@code null} when it was blank
+     * @throws StartPrompt.StartLeftException when the operator left the dialogue
+     */
+    static @Nullable String askEndReason(StartPrompt prompt, String state, String leaveLabel,
+                        @Nullable String entryId) {
+        var question = MessageCatalogue.format(prompt.locale(), "operator.actions.end.reason", Map.of());
+        var reason = prompt.askRaw(question, state, question, entryId);
+        if ("q".equalsIgnoreCase(reason) || (prompt.locale().toLowerCase(Locale.ROOT).startsWith("de")
+                            && "v".equalsIgnoreCase(reason))) {
+            prompt.raw(MessageCatalogue.format(prompt.locale(), "operator.dialogue.left",
+                                Map.of("state", leaveLabel)));
+            throw new StartPrompt.StartLeftException();
+        }
+        if (reason.isBlank()) {
+            prompt.line("operator.actions.end.reason_required", Map.of());
+            return null;
+        }
+        prompt.raw("  " + question + "         " + reason);
+        return reason;
+    }
+
+    /**
+     * Names the act the runtime performs in the subject's state: a plan held by an integrity pause is
+     * aborted, not cancelled. The act resource is read first, and the verb the operator typed stands
+     * in only where the runtime does not answer it.
+     *
+     * @param context    the operator context
+     * @param kind       {@code plan} or {@code epic}
+     * @param id         the subject
+     * @param actionVerb the verb the operator typed
+     * @return {@code abort}, or the typed verb
+     */
+    static String endOutcome(OperatorContext context, String kind, String id, String actionVerb) {
+        try {
+            var actions = new WorkActionsClient(context).actions(kind, id);
+            return "integrity_pause".equals(actions.holdKind()) ? "abort" : actionVerb;
+        } catch (IOException _) {
+            return actionVerb;
+        }
+    }
+
+    /**
      * Executes work cancellation or abandonment (plan, epic).
      *
      * @param context    the operator context
@@ -114,44 +198,19 @@ final class ActionSupport {
             if (context.isInteractiveTerminal()) {
                 var locale = context.clientEnvironment().locale();
                 var prompt = new StartPrompt(context, out, locale, false);
-                var reasonPrompt = MessageCatalogue.format(locale, "operator.actions.end.reason", Map.of())
-                                    + StartPrompt.SUFFIX;
-                String reason;
-                try {
-                    reason = prompt.reader().readLine(reasonPrompt);
-                } catch (EndOfFileException | UserInterruptException _) {
-                    reason = null;
-                }
                 var leaveLabel = MessageCatalogue.format(locale,
                                     "operator.dialogue.label." + actionVerb.toLowerCase(Locale.ROOT), Map.of());
-                if (reason == null || "q".equalsIgnoreCase(reason) || (locale.toLowerCase(Locale.ROOT).startsWith("de")
-                                    && "v".equalsIgnoreCase(reason))) {
-                    out.println(MessageCatalogue.format(locale, "operator.dialogue.left",
-                                        Map.of("state", leaveLabel)));
-                    out.flush();
+                String reason;
+                try {
+                    reason = askEndReason(prompt, "control.action", leaveLabel, id);
+                } catch (StartPrompt.StartLeftException _) {
                     return 0;
                 }
-                reason = reason.trim();
-                if (reason.isBlank()) {
-                    out.println(MessageCatalogue.format(locale, "operator.actions.end.reason_required", Map.of()));
-                    out.flush();
+                if (reason == null) {
                     return 1;
                 }
                 effectiveReason = reason;
-                out.println("  " + MessageCatalogue.format(locale, "operator.actions.end.reason", Map.of())
-                                    + "         " + effectiveReason);
-                out.flush();
-
-                var confirmPrompt = new ChoicePrompt(prompt, "control.action").consent(false).leaveLabel(leaveLabel);
-                var confirmTitle = MessageCatalogue.format(locale, "operator.actions.cancel.confirm",
-                                    Map.of("action", actionVerb)) + "?";
-                confirmPrompt.title(confirmTitle);
-                try {
-                    var consent = confirmPrompt.askConsent();
-                    if (!consent.confirmed()) {
-                        return 0;
-                    }
-                } catch (StartPrompt.StartLeftException _) {
+                if (!confirmEnd(context, prompt, kind, id, actionVerb, leaveLabel)) {
                     return 0;
                 }
             } else {
@@ -173,6 +232,20 @@ final class ActionSupport {
             return 0;
         }
         throw new OperatorRefusedException(kind + " " + actionVerb, response);
+    }
+
+    private static boolean confirmEnd(OperatorContext context, StartPrompt prompt, String kind, String id,
+                        String actionVerb, String leaveLabel) {
+        var consent = new ChoicePrompt(prompt, "control.action").leaveLabel(leaveLabel);
+        consent.title(MessageCatalogue.format(prompt.locale(), "operator.actions.cancel.confirm",
+                            Map.of("action", endOutcome(context, kind, id, actionVerb))) + "?");
+        consent.explanation(MessageCatalogue.format(prompt.locale(), "operator.actions.end.consent_explain",
+                            Map.of()));
+        try {
+            return consent.askConsent();
+        } catch (StartPrompt.StartLeftException _) {
+            return false;
+        }
     }
 
     /**

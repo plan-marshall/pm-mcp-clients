@@ -47,7 +47,6 @@ import de.planmarshall.api.report.TokenComponentRecord;
 import de.planmarshall.api.report.TokenFormat;
 import de.planmarshall.api.report.TokenUsageRecord;
 import de.planmarshall.api.start.EntryKind;
-import de.planmarshall.operator.dialogue.ChoicePrompt;
 import de.planmarshall.operator.dialogue.ChoicePrompt.Choice;
 import de.planmarshall.operator.overview.OverviewFullScreenApp;
 import de.planmarshall.operator.tui.TuiLayout;
@@ -622,22 +621,9 @@ public final class PlanCommand implements Callable<Integer> {
                 if (context.isInteractiveTerminal()) {
                     var locale = context.clientEnvironment().locale();
                     var prompt = new StartPrompt(context, out, locale, false);
-                    var choicePrompt = new ChoicePrompt(prompt, "control.pause").leaveLabel(
-                                        MessageCatalogue.format(locale, "operator.dialogue.label.pause", Map.of()));
-                    choicePrompt.title(MessageCatalogue.format(locale, "operator.actions.pause.where",
-                                        Map.of("plan", planId)));
-                    var cNow = MessageCatalogue.format(locale, "operator.actions.pause.consequence.now", Map.of());
-                    var cTask = MessageCatalogue.format(locale, "operator.actions.pause.consequence.task", Map.of());
-                    var cPhase = MessageCatalogue.format(locale, "operator.actions.pause.consequence.phase", Map.of());
-                    choicePrompt.addChoice("now", MessageCatalogue.format(locale, "operator.actions.pause.now", Map.of()),
-                                        cNow, null, false, null);
-                    choicePrompt.addChoice("task", MessageCatalogue.format(locale, "operator.actions.pause.task", Map.of()),
-                                        cTask, null, true, null);
-                    choicePrompt.addChoice("phase", MessageCatalogue.format(locale, "operator.actions.pause.phase", Map.of()),
-                                        cPhase, null, false, null);
                     Choice choice;
                     try {
-                        choice = choicePrompt.ask();
+                        choice = ActionSupport.pausePrompt(prompt, planId, null).ask();
                     } catch (StartPrompt.StartLeftException _) {
                         return 0;
                     }

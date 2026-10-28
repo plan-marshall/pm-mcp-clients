@@ -886,7 +886,7 @@ class ControlDialoguesTest {
                 response.send(404, null, "");
             }
         });
-        virtual.type("the approach changed\n1\ny\n");
+        virtual.type("the approach changed\ny\n");
         var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()),
                             "plan", "cancel", "p");
         assertEquals(0, code, out.toString());
