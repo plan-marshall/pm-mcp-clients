@@ -20,6 +20,8 @@
     token_detail?: string;
     default?: boolean;
     reason?: string;
+    /** The icon the runtime fetched from the maker, served by the runtime itself. */
+    icon_url?: string;
   }
 
   export let harnesses: HarnessRow[] = [];
@@ -52,6 +54,24 @@
     if (chosen.includes(id)) {
       defaultId = id;
     }
+  }
+
+  /**
+   * The monogram of a harness without a fetched icon: the initial letters of up to two words,
+   * in the rounded square the harness icon specification draws.
+   *
+   * @param row the harness row
+   * @returns one or two upper-case letters
+   */
+  function monogram(row: HarnessRow): string {
+    const words = (row.name || row.harness_id).trim().split(/\s+/).filter(Boolean);
+    if (words.length === 0) {
+      return '?';
+    }
+    return words
+      .slice(0, 2)
+      .map((word) => [...word][0]?.toUpperCase() ?? '')
+      .join('');
   }
 
   function tokenState(row: HarnessRow): string {
@@ -89,6 +109,22 @@
           onchange={() => toggle(harness.harness_id)}
           data-testid={`harness-toggle-${harness.harness_id}`}
         />
+
+        {#if harness.icon_url}
+          <img
+            class="choice-screen__icon"
+            src={harness.icon_url}
+            alt=""
+            aria-hidden="true"
+            data-testid={`harness-icon-${harness.harness_id}`}
+          />
+        {:else}
+          <span
+            class="choice-screen__monogram"
+            aria-hidden="true"
+            data-testid={`harness-monogram-${harness.harness_id}`}>{monogram(harness)}</span
+          >
+        {/if}
 
         <div class="choice-screen__row-main">
           <span class="choice-screen__row-title">
