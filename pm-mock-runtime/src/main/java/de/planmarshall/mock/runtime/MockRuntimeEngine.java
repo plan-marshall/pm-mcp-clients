@@ -1090,6 +1090,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (fixture != null) {
             validateFixtureMembers(fixture);
         }
+        validateStateFacts(scenario, stateId);
         var previousStateId = this.fixtureStateId.get();
         this.fixtureStateId.set(stateId);
         try {
@@ -1101,6 +1102,33 @@ public final class MockRuntimeEngine implements AutoCloseable {
             throw failure;
         }
         transitionTo(stateId);
+        broadcastReset();
+    }
+
+    /**
+     * Decodes the state's operator facts before any store is touched, so a malformed fixture fails
+     * the jump instead of leaving the engine seeded for a state it never entered.
+     *
+     * @param scenario the active scenario
+     * @param stateId  the state being entered
+     */
+    private void validateStateFacts(Scenario scenario, String stateId) {
+        var state = scenario.state(stateId);
+        var representation = state != null ? JsonTree.asObject(state.representation()) : null;
+        var facts = representation != null
+                ? JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS))
+                : null;
+        if (facts == null) {
+            return;
+        }
+        var job = JsonTree.object(facts, "job");
+        if (job != null) {
+            readFixture(() -> CleanupJob.fromMap(job), "facts.job");
+        }
+        var durations = JsonTree.object(facts, "durations");
+        if (durations != null) {
+            readFixture(() -> CleanupDurations.fromMap(durations), "facts.durations");
+        }
     }
 
     private synchronized void transitionTo(String nextStateId) {
