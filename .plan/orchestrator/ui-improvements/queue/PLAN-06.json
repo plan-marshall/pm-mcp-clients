@@ -2,10 +2,10 @@
   "id": "PLAN-06",
   "slug": "shared-display-vocabulary",
   "workstream": "WS-01",
-  "status": "launched",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "06-shared-display-vocabulary",
+  "pr": "249",
+  "landing": "landings/PLAN-06.md",
   "seq": 6
 }

@@ -36,6 +36,18 @@ Everything else the web app shows is designed once for both clients in the share
 * *Web and terminal say the same.* Both render the same state with the same texts from the same catalogue (link:../shared/texts-and-languages.adoc[Texts and Languages]); a link is a button in the web app and a key or a numbered choice in the terminal. Where the web app shows a table, the terminal shows a list, with the same columns as fields.
 * *First run and later change look alike.* A later run of one aspect opens the same screen with the current values filled in and the step bar showing only that aspect.
 
+[#operator-decisions]
+== Decisions of the Operator
+
+The operator of the visual redesign decided on 2026-10-25:
+
+* *Inter, self-hosted.* The interface typeface is Inter, delivered as a variable `woff2` file in `pm-web-app/static/fonts/` with its SIL Open Font License file; the app never fetches a font from a font service (link:theme-readability.adoc[Theme Readability]).
+* *The project's own UI icon set.* The interface icons are the project's own set on link:workflow-visual-language.adoc[Workflow Visual Language]; no open icon library enters the build.
+* *axe-core in `pm-web-e2e`.* The automated accessibility audit of the built app runs with axe-core in the end-to-end suite.
+* *stylelint in `pm-web-app`.* The token rules — no raw colour literal and no old token name in a view or a component — are enforced with stylelint in the Maven build.
+
+Each decision is carried out by the step of the visual redesign that needs it; this section records the decision itself, not the state of its implementation.
+
 [#structure]
 == Structure and Navigation
 
@@ -145,19 +157,19 @@ live region  polite announcements, visually hidden
 
 |`--space-1` … `--space-6`
 |`0.25rem` … `1.5rem`
-|The only spacing steps. `--space-1`/`--space-2` inside a control, `--space-3`/`--space-4` between the parts of a row, `--space-6` around a card or a view's body.
+|The steps inside a view. `--space-1`/`--space-2` inside a control, `--space-3`/`--space-4` between the parts of a row, `--space-6` around a card or a view's body.
 
-|`--space-8`, `--space-10`
-|`2rem`, `2.5rem`
-|The gap between sections of a long view, and the inset of a choice screen.
+|`--space-8`, `--space-10`, `--space-12`, `--space-16`
+|`2rem`, `2.5rem`, `3rem`, `4rem`
+|The gap between sections of a long view, the inset of a choice screen, and the wide steps a page and a page's section take.
 
 |`--radius-sm` … `--radius-full`
-|`4px` … `9999px`
-|Controls and badges take `--radius-sm`; cards `--radius-lg`; counts and pills `--radius-full`. A badge is never a card and a card never a pill.
+|`6px`, `8px`, `12px`, `9999px`
+|Controls and chips take `--radius-sm`; buttons `--radius-md`; cards and dialogues `--radius-lg`; counts and pills `--radius-full`. A badge is never a card and a card never a pill.
 
-|`--shadow-sm`, `--shadow-md`
-|two steps
-|A card at rest takes `--shadow-sm`; a dialogue or a popover takes `--shadow-md`. A view's body has no shadow of its own.
+|`--shadow-1`, `--shadow-2`, `--shadow-overlay`
+|three steps
+|A card at rest takes `--shadow-1`; a popover takes `--shadow-2`; a dialogue takes `--shadow-overlay`. In dark, elevation is the surface step and the shadows stay faint.
 |===
 
 The content column is centred and bounded: a reading view (a form, a dialogue, a list of one column) at `480px`, a table or a card grid at `1000px`, the explorer and the reports list at `1200px`, and the process views (plan, epic, designer) at the full width of the window minus `--space-6` on each side. A view picks one of these bounds; it never sets an arbitrary width.
@@ -172,15 +184,15 @@ Two-column views (a list beside a detail, the process tree beside the inspector,
 |Name |Width |Rules
 
 |Desktop
-|`>= 1024px`
+|`>= 1280px`
 |The frame in one header row; two-column views side by side; tables show every column; the header entries show their labels.
 
 |Tablet
-|`640px` to `1023px`
+|`768px` to `1279px`
 |The header wraps to a second row; two-column views keep both columns but at `1fr 1fr`; a wide table may drop its least important column, never its identifying one; the process tree and the inspector stack when the tree is narrower than `360px`.
 
 |Phone
-|< `640px`
+|< `768px`
 |One column throughout; the header keeps the icons and hides the words of the system and settings entries; breadcrumbs shorten in the middle; a table becomes a list of rows, each row a labelled pair (the terminal's field list, link:../terminal-client/03-dialogues.adoc#content[Terminal Client, Content]); a dialogue takes the whole body; a badge stays visible but never widens its row.
 |===
 
@@ -194,35 +206,47 @@ The layout is usable down to `320px` without horizontal scrolling. A touch targe
 |Token |Size |Face |Use
 
 |`--text-xs`
-|`0.75rem`
+|`0.75rem` (12 px)
 |sans
 |Badges, counts, timestamps, the machine's name in the header.
 
 |`--text-sm`
-|`0.875rem`
+|`0.8125rem` (13 px)
 |sans
 |Table cells, secondary lines, the explanation under a title, a notice.
 
 |`--text-base`
-|`1rem`
+|`0.875rem` (14 px)
 |sans
 |Body copy, a button's label, the default of a form control.
 
-|`--text-lg`
-|`1.125rem`
+|`--text-md`
+|`1rem` (16 px)
 |sans
-|A card's or a section's title.
+|A row's title, a card's title.
+
+|`--text-lg`
+|`1.125rem` (18 px)
+|sans
+|A section's title.
 
 |`--text-xl`
-|`1.25rem`
+|`1.375rem` (22 px)
 |sans
-|A view's title where it is not the page's only `<h1>`.
+|A panel's or a dialog's title.
 
 |`--text-2xl`
-|`1.5rem`
+|`1.75rem` (28 px)
 |sans
-|The page's `<h1>`, and the figure of a summary.
+|The page's `<h1>`.
+
+|`--text-3xl`
+|`2.25rem` (36 px)
+|sans
+|The figure of a dashboard, the inbox count, the pairing code.
 |===
+
+Each size carries its line height as `--line-height-xs` to `--line-height-3xl` and its weight as `--weight-regular` (400), `--weight-medium` (500) or `--weight-semibold` (600), in the scale of link:../../claude_review/visual-design/proposals.adoc#VD-P-03[VD-P-03]. The interface runs on Inter, self-hosted as a variable `woff2` in `pm-web-app/static/fonts/` with its SIL Open Font License; the system stack follows it as the fallback, and `font-feature-settings` turns on tabular numerals (`tnum`) and the single-storey `a` (`cv11`).
 
 `--font-sans` is the face of every word of the interface. `--font-mono` (at `0.9em`) is the face of every identifier, path, digest, branch, commit, model id, version, count of tokens, diff line, and log line: anything the operator may compare character by character or copy. A view switches the face, never the words: a value is not translated, an identifier is never emphasised by a colour alone.
 
@@ -238,35 +262,49 @@ The palette is semantic: a view names the role, not the hue. The tokens are defi
 |Role |Tokens |Where
 
 |Ground
-|`--color-bg-app`, `--color-bg-surface`, `--color-bg-subtle`, `--color-bg-inset`
-|The page, a card, a table header and a hover, an inset field.
+|`--color-bg-app`, `--color-bg-rail`, `--color-bg-surface`, `--color-bg-raised`, `--color-bg-subtle`
+|The page, the navigation rail, a card, a popover or a dialog, a table header and a hover.
 
 |Line
-|`--color-border`, `--color-border-subtle`
-|The edge of a card or a control, and the rule between rows.
+|`--color-border`, `--color-border-strong`
+|The edge of a card or a control, the rule between rows, and a focus-adjacent edge.
 
 |Text
-|`--color-text-primary`, `--color-text-secondary`, `--color-text-muted`, `--color-text-inverse`
-|Body, a secondary line, a hint or a timestamp, text on a filled control.
+|`--color-text-primary`, `--color-text-secondary`, `--color-text-muted`, `--color-on-brand`
+|Body, a secondary line, a hint or a timestamp, and the label on a brand-coloured fill.
 
-|Primary
-|`--color-primary`, `--color-primary-hover`, `--color-primary-subtle`, `--color-primary-text`
-|The one action of a view, a link, the selected tab or view switch, a count badge.
+|Brand
+|`--color-brand`, `--color-brand-hover`, `--color-brand-subtle`
+|The one action of a view, a link, the selected row, the brand mark.
+
+|Attention
+|`--color-attention`, `--color-attention-subtle`, `--color-attention-text`
+|The dot and edge of a thing that needs the operator, the attention strip, and its text.
+
+|Running
+|`--color-running`
+|The dot of running work and a progress bar.
 
 |Success
-|`--color-success`, `--color-success-subtle`, `--color-success-border`
-|A finished check, a ready project, a plan that landed.
-
-|Warning
-|`--color-warning`, `--color-warning-subtle`, `--color-warning-border`
-|Something waits for the operator, a drain runs, an aspect needs a look.
+|`--color-success`
+|The dot of a finished check, a ready project, a plan that landed.
 
 |Danger
-|`--color-danger`, `--color-danger-subtle`, `--color-danger-border`
-|A failure, an irreversible action, a revoked device, a refused step.
+|`--color-danger`, `--color-danger-subtle`
+|The dot of a failure or a hold, the confirm button of a danger dialog, an error block.
+
+|Neutral
+|`--color-neutral`
+|The dot of planned, paused or staged work.
+
+|Epic
+|`--color-epic`
+|The epic glyph, never a fill.
 |===
 
-A colour never carries a meaning alone: every state also has its word and, where it stands in a row, its badge glyph or icon. `--color-primary` marks exactly one primary action per screen; every other action is secondary or a plain link. A danger control is filled only for the irreversible act of its dialogue; the entry that opens the dialogue is a plain danger-coloured link.
+The names of design system v1 (`--color-primary`, `--color-warning`, `--color-bg-inset` and the rest) stay declared as aliases of these tokens until link:../../claude_review/visual-design/plan.adoc#VD-S-08[VD-S-08] removes them; a view may still name one, and it renders the v2 value of its theme.
+
+A colour never carries a meaning alone: every state also has its word and, where it stands in a row, its badge glyph or icon. `--color-brand` marks exactly one primary action per screen; every other action is secondary or a plain link. A danger control is filled only for the irreversible act of its dialogue; the entry that opens the dialogue is a plain danger-coloured link.
 
 [#states]
 === States and Attention
@@ -308,7 +346,7 @@ A badge is at most one per kind per row; a row that carries both a state and a h
 The theme is a choice this browser remembers: light, dark, or system, offered together in the header. `system` follows the operating system (`prefers-color-scheme`) and is what a browser with no choice, no readable storage, or a stored value that names no theme gets. The choice is kept under `pm_theme` and applied before the first paint, so a reload never shows the other theme first. Every token is defined in both themes, and a view uses only the tokens, so a theme switch never requires a view to change.
 
 * *Light*: the app's ground is the lightest step, a card is white, text is the darkest step. The primary, success, warning, and danger roles take their darker variants so that text on a subtle background keeps a contrast ratio of at least `4.5:1`.
-* *Dark*: the ground is the darkest step and a card one step above it, so a card reads as raised, never as a hole. Text is the lightest step; the roles take their lighter variants. A filled control keeps white text on the primary fill.
+* *Dark*: the ground is the darkest step and a card one step above it, so a card reads as raised, never as a hole. Text is the lightest step; the roles take their lighter variants. A filled control takes `--color-on-brand` on the brand fill: white in light, the app ground in dark.
 * *Never inverted*: a colour that carries meaning is not swapped between the themes (danger stays red, success stays green), and no view hard-codes a hex value. An identifier in `--font-mono` keeps the same contrast as body text; a diff keeps its added and removed roles in both themes.
 
 [#reports-layout]

@@ -23,42 +23,78 @@ The web app supports both light and dark themes, chosen in the header as light, 
 [#token-contract]
 == The Design Token Contract
 
-The design token system is declared in `pm-web-app/src/styles/tokens.css`. It establishes strict key parity between `:root`, `[data-theme="light"]`, `@media (prefers-color-scheme: dark)`, and `[data-theme="dark"]`.
+The tokens of design system v2 are declared in `pm-web-app/src/styles/tokens.css`, following link:../../claude_review/visual-design/proposals.adoc#VD-P-02[VD-P-02] to link:../../claude_review/visual-design/proposals.adoc#VD-P-04[VD-P-04]. `:root` carries the scale every theme shares and the light palette as the default; `@media (prefers-color-scheme: dark) :root`, `[data-theme="light"]` and `[data-theme="dark"]` override the palette. The three theme blocks declare the same set of theme-varying keys and `:root` holds every one of them, and `pm-web-app/src/styles/tokens.test.ts` asserts both directions.
 
-=== Token Taxonomy
+=== Colour Tokens
 
-[cols="1,2,2",options="header"]
+[cols="2,1,1,3",options="header"]
 |===
-|Token Role |Light Palette |Dark Palette
+|Token |Dark |Light |Use
 
-|Surface Base
-|`--color-bg-app: #f8fafc`, `--color-bg-surface: #ffffff`, `--color-bg-base: #f8fafc`
-|`--color-bg-app: #0b0f19`, `--color-bg-surface: #131b2e`, `--color-bg-base: #0b0f19`
-
-|Subtle & Inset
-|`--color-bg-subtle: #f1f5f9`, `--color-bg-subtle-hover: #e2e8f0`, `--color-bg-inset: #e2e8f0`
-|`--color-bg-subtle: #1e293b`, `--color-bg-subtle-hover: #334155`, `--color-bg-inset: #0f172a`
-
-|Text Hierarchy
-|`--color-text-primary: #0f172a`, `--color-text-secondary: #334155`, `--color-text-muted: #475569`, `--color-text-inverse: #ffffff`
-|`--color-text-primary: #f8fafc`, `--color-text-secondary: #cbd5e1`, `--color-text-muted: #94a3b8`, `--color-text-inverse: #0f172a`
-
-|Primary & Accent
-|`--color-primary: #2563eb`, `--color-primary-hover: #1d4ed8`, `--color-primary-subtle: #eff6ff`, `--color-primary-text: #ffffff`, `--color-accent: #2563eb`, `--color-accent-hover: #1d4ed8`
-|`--color-primary: #60a5fa`, `--color-primary-hover: #93c5fd`, `--color-primary-subtle: #172554`, `--color-primary-text: #0b0f19`, `--color-accent: #60a5fa`, `--color-accent-hover: #93c5fd`
-
-|Semantic Feedback Text
-|`--color-success-text: #166534`, `--color-warning-text: #92400e`, `--color-danger-text: #991b1b`, `--color-epic-text: #6b21a8`
-|`--color-success-text: #86efac`, `--color-warning-text: #fde68a`, `--color-danger-text: #fca5a5`, `--color-epic-text: #d8b4fe`
-
-|Semantic Feedback Subtle
-|`--color-success-subtle: #f0fdf4`, `--color-warning-subtle: #fffbeb`, `--color-danger-subtle: #fef2f2`, `--color-epic-subtle: #f3e8ff`
-|`--color-success-subtle: #052e16`, `--color-warning-subtle: #451a03`, `--color-danger-subtle: #450a0a`, `--color-epic-subtle: #3b0764`
-
-|Specialty Roles
-|`--color-epic: #7e22ce`, `--color-star: #ca8a04`, `--color-overlay: rgba(15, 23, 42, 0.5)`, `--color-danger-contrast: #ffffff`
-|`--color-epic: #c084fc`, `--color-star: #eab308`, `--color-overlay: rgba(0, 0, 0, 0.7)`, `--color-danger-contrast: #0b0f19`
+|`--color-bg-app` |`#0E1116` |`#F7F7F5` |The page.
+|`--color-bg-rail` |`#12161D` |`#EFEFEB` |The navigation rail.
+|`--color-bg-surface` |`#161B22` |`#FFFFFF` |Cards, panels, tables.
+|`--color-bg-raised` |`#1C2230` |`#FFFFFF` + `--shadow-2` |Popovers, dialogs, the selected row.
+|`--color-bg-subtle` |`#1E2433` |`#F0F0EC` |Hover, table head, inset blocks.
+|`--color-border` |`#2A3140` |`#E3E3DE` |Inputs, the edge between equal surfaces.
+|`--color-border-strong` |`#3A4356` |`#CFCFC8` |Secondary buttons, focus-adjacent edges.
+|`--color-text-primary` |`#E6EAF2` |`#16181D` |Titles, body.
+|`--color-text-secondary` |`#AEB6C4` |`#3E4450` |Secondary lines.
+|`--color-text-muted` |`#8B95A7` |`#5F6672` |Meta, time, hints.
+|`--color-brand` |`#8B7EF9` |`#5B4BDB` |Primary act, selection, focus, brand mark.
+|`--color-brand-hover` |`#A093FB` |`#4A3BC4` |Hover of the primary act.
+|`--color-brand-subtle` |`#1E2240` |`#EEEBFF` |Selected row, recommendation block.
+|`--color-attention` |`#F2A93B` |`#B86E00` |Dot and edge for "needs you".
+|`--color-attention-subtle` |`#2A2112` |`#FFF4E0` |The attention strip.
+|`--color-attention-text` |`#F6C46B` |`#8A5200` |Text on the attention strip.
+|`--color-running` |`#4C9AFF` |`#1F5FBF` |Dot for running, progress bars.
+|`--color-danger` |`#F25F5C` |`#C0362F` |Dot for failed and held; the confirm button in a danger dialog.
+|`--color-danger-subtle` |`#2C1517` |`#FDECEA` |Error state block.
+|`--color-success` |`#3FB37F` |`#1E7A4E` |Dot for done, merged, ready.
+|`--color-neutral` |`#8B95A7` |`#7A808B` |Dot for planned, paused, staged.
+|`--color-epic` |`#B58CFF` |`#7A3FD1` |The epic glyph only (never a fill).
+|`--color-on-brand` |`#0E1116` |`#FFFFFF` |The label on a brand-coloured fill.
+|`--color-overlay` |`rgb(0 0 0 / 0.7)` |`rgb(15 23 42 / 0.5)` |The scrim behind a dialog.
 |===
+
+Every value above is the proposal of VD-P-02 except the two tuned dark brand values and the two tokens the proposal does not name:
+
+* `--color-brand`, dark: `#7C6CF6` → `#8B7EF9`. At the proposed value the brand reached 4.39:1 as link text on `--color-bg-surface` and 3.94:1 on `--color-bg-subtle`, below the 4.5:1 normal-text threshold.
+* `--color-brand-hover`, dark: `#8F82F8` → `#A093FB`, which keeps the hover a visible step above the tuned brand.
+* `--color-on-brand`, which the proposal does not name, is the ink on a brand-coloured fill: white in light, the app background in dark.
+* `--color-overlay`, which the proposal does not name, is the scrim behind a dialog: a faint dark veil in light, a deeper one in dark.
+
+=== Type Scale
+
+The scale of VD-P-03 is declared as size, line height and weight. The sizes are the px of the proposal as rem equivalents at the 16 px root, so a larger browser font size scales the interface.
+
+[cols="1,1,1,1,3",options="header"]
+|===
+|Token |Size |Line |Weight |Use
+
+|`--text-xs` |12 px |16 px |500 |Counts, chips, overline labels
+|`--text-sm` |13 px |18 px |400 |Meta lines, table secondary text
+|`--text-base` |14 px |20 px |400 |Body, table cells, buttons
+|`--text-md` |16 px |24 px |500 |Row titles, card titles
+|`--text-lg` |18 px |26 px |600 |Section titles
+|`--text-xl` |22 px |28 px |600 |Panel titles, dialog titles
+|`--text-2xl` |28 px |34 px |600 |Page titles
+|`--text-3xl` |36 px |42 px |600 |Dashboard figures, the inbox count, the pairing code
+|===
+
+Each size carries its line height as `--line-height-xs` to `--line-height-3xl`; the weights are `--weight-regular` (400), `--weight-medium` (500) and `--weight-semibold` (600). The interface runs on the self-hosted Inter variable font (`pm-web-app/static/fonts/InterVariable.woff2`, its SIL Open Font License beside it as `OFL.txt`), with `font-feature-settings: "tnum" 1, "cv11" 1` for tabular numerals. Inter is named first in `--font-sans`, and the system stack follows as the fallback.
+
+=== Spacing, Radius, Elevation, Motion and Breakpoints
+
+* *Spacing*: `--space-1` to `--space-16` on the 4 px scale of VD-P-04, including the new 48 px (`--space-12`) and 64 px (`--space-16`).
+* *Radius*: `--radius-sm` 6 px, `--radius-md` 8 px, `--radius-lg` 12 px, `--radius-full`.
+* *Elevation*: `--shadow-1` (cards in light), `--shadow-2` (popovers), `--shadow-overlay` (dialogs). In dark, elevation is the surface step and the shadows stay faint; each of the three is declared per theme.
+* *Motion*: `--duration-fast` 120 ms, `--duration-base` 200 ms and `--ease-standard` `cubic-bezier(0.2, 0, 0, 1)`; `prefers-reduced-motion: reduce` sets both durations to `0ms`, so everything that takes its duration from a token stops, and `base.css` turns off smooth scrolling. A component that still hard-codes a duration is migrated to the motion tokens in VD-S-06.
+* *Breakpoints*: `--breakpoint-tablet` 768 px and `--breakpoint-desktop` 1280 px name the three widths of the proposal: phone below 768 px, tablet 768–1279 px, desktop from 1280 px.
+
+=== Old Token Names as Aliases
+
+During the migration every v1 token name stays declared once in `:root` as `var(--<v2 token>)`, so a view that still names `--color-primary`, `--color-warning`, `--shadow-sm` or any other v1 name renders the v2 value of its theme. The two mappings the proposal states are `--color-primary: var(--color-brand)` and `--color-warning: var(--color-attention)`; a pair of the same kind exists for every v1 name. `--color-star` maps onto `--color-attention-text`, because the favourite star renders as text and the attention dot colour does not meet the normal-text threshold on a light surface. `pm-web-app/src/styles/tokens.test.ts` asserts every mapping; VD-S-08 removes them.
 
 === Base Reset Invariant
 
@@ -124,13 +160,17 @@ Only one reasoned, functional exception is permitted to use hard-coded color lit
 
 All other components and views must reference defined tokens in `tokens.css`. Static scans in `tokens.test.ts` enforce zero unexpected color literals across `pm-web-app/src/lib/`.
 
+The contrast audit itself exempts nothing: `CONTRAST_ALLOWLIST` in `pm-web-e2e/tests/theme-readability.spec.js` is empty, so every text and state pair a view renders is judged. An entry added later names the selector it exempts and the reason the pair cannot meet the threshold; a guard test in the same file fails an entry that states no reason.
+
 [#verification-matrix]
 == Automated Verification Matrix
 
 The test pyramid enforces theme readability across three automated tiers:
 
 . **Static & Token Unit Tests (`pm-web-app/src/styles/tokens.test.ts`):**
-  * Verifies exact key parity between `:root`, `[data-theme="light"]`, `@media (prefers-color-scheme: dark)`, and `[data-theme="dark"]`.
+  * Verifies exact key parity between `:root`, `[data-theme="light"]`, `@media (prefers-color-scheme: dark)`, and `[data-theme="dark"]` for every token of VD-P-02.
+  * Asserts the type scale of VD-P-03, the spacing, radius, elevation, motion and breakpoint tokens of VD-P-04, and every old token name as an alias of its v2 token.
+  * Audits the WCAG 2.1 AA contrast of the declared pairs in both themes: every text pair at 4.5:1 or above, every state dot at 3:1 or above.
   * Parses all `.svelte` and `.css` files to ensure every `var(--...)` reference exists in the token catalogue.
   * Static regex scanner asserting zero hard-coded `#hex`, `rgb()`, or `hsl()` literals outside the documented `PairingQr.svelte` allowlist.
 
@@ -139,7 +179,9 @@ The test pyramid enforces theme readability across three automated tiers:
   * Asserts computed token styles, classes, and explicit readability on the "Prüfen" action button and modal dialogs.
 
 . **Playwright E2E Theme Matrix (`pm-web-e2e/tests/theme-readability.spec.js`):**
-  * 20 automated tests running against the live `pm-mock-runtime`.
-  * Verifies both light and dark themes across desktop (1280×800) and mobile (375×667) viewports.
-  * Audits every visible element's computed contrast ratio across `OverviewView`, `EpicView`, `PlanView`, `ReportsView`, `DecisionView`, `SystemView`, `SettingsView`, `MachineSettingsView`, `ProcessDesigner`, and `ProjectExplorerView`.
+  * Runs against the live `pm-mock-runtime`.
+  * Verifies both light and dark themes across desktop (1280×800), mobile (375×667) and narrow (320×568) viewports.
+  * Audits every visible element's computed contrast ratio across `OverviewView`, `EpicView`, `PlanView`, `ReportsView`, `DecisionView`, `SystemView`, `CleanupView`, `SettingsView`, `MachineSettingsView`, `ProcessDesigner`, `ProjectExplorerView`, the onboarding views, the entry views and the decomposition views.
   * Captures passing visual evidence and screenshots for both themes.
+
+The self-hosted face has its own tier in `pm-web-e2e/tests/fonts.spec.js`: the browser fetches Inter from the app's own origin, requests no font service, and reads the SIL Open Font License beside the file.

@@ -166,6 +166,34 @@ plan spec names the plan, proposal and finding documents it comes from.
   - Expected Surface: `PauseDialogueIT` relabelled present, `CancelDialogueIT` added.
   - Not chosen: PLAN-13 and PLAN-14 (share the operator catalogue with PLAN-10); PLAN-15 (next terminal
     candidate); PLAN-08 (Sonar watch open).
+- 2026-10-28 — PLAN-06 landing analysed (`landings/PLAN-06.md`). Two operator decisions in its run change
+  the shared contract, and later plans build on them:
+  - The `state.<kind>.<value>` and `unit.<id>` keys are a documented carve-out from the three-part key
+    rule of `texts-and-languages.adoc`.
+  - `pm-api` gained the closed sets `EpicState`, `LandingState`, `CleanupKind`, `ModelStatus` and
+    `GateKind`, and `PlanActivity` gained `STAGED`/`ENDED`. Before, five of the eleven state kinds existed
+    only as literals in the mock and the views.
+
+  The display layers PLAN-09 and PLAN-34 read these enums; their specs predate them, so each is checked
+  against them before it is emitted.
+- 2026-10-28 — `doc-review` under the runbook lane: its checker (`trace.py`, in the sibling documentation
+  repository) does not run through the executor. PLAN-06's operator accepted an equivalent review. The
+  five staged runbook specs that ask for it (PLAN-15, 42, 48, 70, 74) now name that equivalent:
+  `docs review` plus `asciidoc validate`/`verify-links`, clean. The 13 verification specs run on the
+  `plan-marshall` lane, where the skill runs, and are unchanged.
+- 2026-10-28 — Emitted PLAN-15 (`cli-footer-and-help-overlay`) into the slot PLAN-06 freed (four in
+  flight, as before).
+  - The terminal-check watch applied: deliverables 2 (footer by priority) and 3 (help overlay) had the
+    plan's shared residue target, which shows neither change. Each now names its own observable: the
+    80-column footer keeping `a`, `Enter`, `Esc`, `?`, `q` and ending `? more`; and `?` opening the
+    grouped box with `Esc close`.
+  - Not chosen: PLAN-08 (the docs-only Sonar watch needs the operator's decision); PLAN-09 (check
+    against the new enums and decide the tab-title watch first); PLAN-11 (5 files shared with the
+    in-flight PLAN-03); PLAN-13 and PLAN-14 (share the operator catalogue with PLAN-10).
+- 2026-10-28 — PLAN-12 landing analysed (`landings/PLAN-12.md`). Emitted PLAN-19 (`web-ui-icon-set`) into
+  the web slot it freed. Its dependencies PLAN-12 and PLAN-76 are shipped, it is disjoint from PLAN-03,
+  PLAN-10 and PLAN-15, and it carries PLAN-12's emoji residue. PLAN-09 was not chosen: the PLAN-06 enum
+  check and the tab-title watch must be settled before its emit.
 
 ## Open Defects
 
@@ -179,7 +207,9 @@ plan spec names the plan, proposal and finding documents it comes from.
   `rb-01-web-text-guard-report-001.md` (PLAN-01), only `total_tokens` missing. Recurrence 2026-10-27:
   `rb-76-shared-port-assignment-001.md` (PLAN-76, harness `antigravity`), `total_tokens`, `model` and
   `effort` missing. Recurrence 2026-10-27: `rb-07-cli-terminal-design-docs-001.md` (PLAN-07, antigravity),
-  only `total_tokens` missing.
+  only `total_tokens` missing. Recurrence 2026-10-28: `rb-06-shared-display-vocabulary-001.md` (PLAN-06,
+  opencode), `total_tokens` and `plugin_version` missing. Recurrence 2026-10-28:
+  `rb-12-web-design-tokens-v2-001.md` (PLAN-12, opencode), same two keys.
 
 ## Watches
 
@@ -194,13 +224,31 @@ plan spec names the plan, proposal and finding documents it comes from.
   be derived from the flat install path), and the guard is `none` (unenforced). PLAN-02 proceeded by
   operator choice. — re-check at every opencode landing; retire when a landing reports `match` and a
   guard. Recurrence: PLAN-04 (same `could_not_check`, guard `none`).
-- Build server: the routed `verify -Ppre-commit` of PLAN-02 failed with exit -1 because `marshalld`
-  invoked a bare `mvn` instead of the project's `./mvnw`. The project was enrolled and the daemon
-  upgraded to 0.1.2017 on 2026-10-26, after that run. Recurrence: PLAN-04's one routed build failed the
-  same way (`mvn` not on the daemon's PATH), and so did PLAN-05's (job log `8d16de87…`) and PLAN-01's two
-  (`9798359b`, `e497dbb4`). First success: PLAN-07's routed gate ran on the daemon (2140 tests, after one
-  timeout at the learned 876 s bound during `npm ci`). — retire after one more routed success; re-check at the next landing that routes through the
-  daemon.
+- Build server: the bare-`mvn` failure (PLAN-02, 04, 05, 01) is gone: PLAN-07's and every one of PLAN-06's
+  routed builds ran on the daemon. What remains is the learned timeout bound. It expired below a full
+  `verify -Ppre-commit` in both runs (876 s during `npm ci` for PLAN-07, 752 s for PLAN-06, against runs of
+  663–793 s), and the lanes then passed `--timeout 1800`/`2400` by hand. But PLAN-12, running in the same
+  hours, fell back to in-process for every build (`maven_not_on_daemon_path`, bare `mvn`), so the fix is
+  not reliable. — re-check at the next routed landing, compare the daemon's PATH between runs, and raise
+  both the PATH and the timeout bound with the build server.
+- Playwright MCP browser shared between parallel sessions (PLAN-12): another session took over its tabs,
+  and a tab left open on the app port broke one e2e run. The port blocks separate the mock and the app,
+  not the browser. — re-check at the next landings of browser-checking plans running side by side. If it
+  recurs, give each opencode session its own Playwright MCP profile or output directory, or run only one
+  browser-checking plan at a time.
+- The Sonar credential cannot transition an issue (HTTP 400, PLAN-12). The Sonar clause of every spec
+  allows a dismissal "transmitted through the plan-less transition verb", which can't be transmitted
+  today, so any finding that is dismissed rather than fixed blocks its merge. — fix the token's
+  permission; re-check at the first dismissal.
+- PLAN-10's run (antigravity, conversation `e291b36e…`) dirtied the main checkout on 2026-10-27 at 22:26.
+  From `/Users/oliver/git/pm-mcp-clients`, not its worktree, it ran Playwright directly
+  (`npx playwright --version`, then
+  `npx @playwright/test test -c .plan/temp/playwright.config.js` with an ad-hoc config it wrote there).
+  That left the untracked `test-results/` (`.last-run.json`: `failed`, no tests). Its browser check
+  should run through the Playwright MCP server, not a hand-run Playwright from the main checkout. — check
+  PLAN-10's landing for how its browser regression was evidenced; the operator removes `test-results/`.
+- `/plans/{id}` scrolls horizontally at 390 px (498 px measured; PLAN-12 residue, older than the epic).
+  — check that PLAN-55 (`web-plan-page`) covers it before emitting it.
 - Tab titles name the identifier (`drop-legacy-api`), not the display title (PLAN-04 residue). No
   staged plan owns a title store for the shell. — decide when PLAN-09 (`web-display-layer`) is emitted,
   or at the PLAN-29 verification (`CC-V-04`).
@@ -208,7 +256,8 @@ plan spec names the plan, proposal and finding documents it comes from.
   light at narrow width (seen in PLAN-04's base run at `65973291`). PLAN-01 saw the same case for
   `SystemView`, failing on `origin/main` and green on re-run, so it may be flaky rather than failing.
   PLAN-76 changed `CleanupView`'s success colour to `--color-success-text` (not stated in its landing);
-  that may fix the `CleanupView` case.
+  that may fix the `CleanupView` case. — re-check at PLAN-09 (changes `CleanupView`) and PLAN-70
+  (`web-light-theme-pass`).
 - PLAN-76's deliverable 1 browser check is not evidenced. It asked for the system view showing
   `127.0.0.1:20760` while a second mock runs on `7420`; no Playwright file and no progress line exist.
   The behaviour is covered by `MockRuntimeTest` and the concurrency run. — check it in PLAN-18
@@ -221,8 +270,13 @@ plan spec names the plan, proposal and finding documents it comes from.
 - Sonar gate on documentation-only plans: CI skips `sonar-build` when only documents change, so the read is
   `undecidable`. PLAN-07 merged on operator authorization. — decide before emitting PLAN-08, PLAN-24 or
   PLAN-74: state in those specs that a skipped analysis is the expected `undecidable`, or run the analysis
-  in CI. — re-check at PLAN-09
-  (changes `CleanupView`) and PLAN-70 (`web-light-theme-pass`).
+  in CI.
+- `EpicProcessPlan` documents `phase_state` as `running/staged/planned/done` (`EpicProcessPlan.java:26`),
+  but the scenarios serve `staged`/`ended` and `PlanActivity.parse("done")` throws (PLAN-06 residue).
+  — fix in PLAN-34 (`cli-display-layer`), the next plan on the `pm-api` display contract; check before
+  emitting it.
+- The mock writes a kept cleanup item with `kind="item"` (`MockRuntimeEngine:7462`), outside
+  `CleanupKind` (PLAN-06 residue). — fix in PLAN-11 (`mock-cli-fixes`); check before emitting it.
 - PLAN-04 was run a second time after it shipped (2026-10-27 about 12:00, opencode). The run found the spec
   already merged (`099a3b40`) and stopped with no commit and no PR. It left the worktree
   `.plan/local/worktrees/04-web-theme-and-titles` and the branch `feature/04-web-theme-and-titles`,

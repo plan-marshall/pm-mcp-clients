@@ -31,20 +31,20 @@ Source of this plan (read before scoping):
    - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
    - Done when:
      - `TuiKeyRegistryTest`: at 80 columns `a`, `Enter`, `Esc`, `?`, `q` stay (evidence order: `test-first`)
-     - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` at 120 × 30 and 80 × 24: overview → plan view → activity → back, `E`, `R`, `S`, `a`, `?` and `Esc` on each level — footer and rows without residue; before and after captures recorded (evidence order: `none`)
+     - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` at 80 × 24 on the overview, the plan view and the activity: the footer keeps `a`, `Enter`, `Esc`, `?` and `q`, ends with `? more`, and cuts no key; at 120 × 30 it shows more bindings in priority order; before and after captures recorded (evidence order: `none`)
 3. **Help overlay**
    - What: A box with grouped bindings (move, open, act, views, leave) and the row details; the first `Esc` closes it; the footer shows `Esc close`.
    - Persona: plan-marshall:persona-integration-tester
    - Skills: pm-dev-java:junit-integration, pm-dev-java:junit-core
    - Done when:
      - `TuiCapabilityIT.helpOverlayShowsAllKeys` and `footerHasNoResidue` per level (evidence order: `test-first`)
-     - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` at 120 × 30 and 80 × 24: overview → plan view → activity → back, `E`, `R`, `S`, `a`, `?` and `Esc` on each level — footer and rows without residue; before and after captures recorded (evidence order: `none`)
+     - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` at 120 × 30 and 80 × 24: `?` on the overview, the plan view and the activity opens the box with the bindings grouped as move, open, act, views, leave, and the footer shows `Esc close`; the first `Esc` closes it and leaves no residue; before and after captures recorded (evidence order: `none`)
 4. **Mockups**
    - What: Every footer mockup of `15-overview.adoc` shows `? help` and `q leave`.
    - Persona: plan-marshall:persona-documenter
    - Skills: pm-documents:ref-asciidoc, pm-documents:ref-documentation
    - Done when:
-     - The document passes `doc-review` (evidence order: `none`)
+     - The document passes `doc-review` (under the runbook lane its checker `trace.py` does not run, so `pm-documents:ref-documentation` `docs review` and `pm-documents:ref-asciidoc` `validate` and `verify-links` stand in for it, clean, as PLAN-06 and PLAN-07 ran them) (evidence order: `none`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 ## Standing Constraints
