@@ -7597,7 +7597,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 resp.put("open", false);
                 resp.put("next_check_at", SWEEP_TOMORROW);
                 resp.put("kept_count", keptItems.size());
-                resp.put("durations", cleanupDurations.toMap());
+                resp.put(FIXTURE_DURATIONS, cleanupDurations.toMap());
                 resp.put(FIXTURE_RESIDUE, cleanupResidues.stream().map(CleanupResidue::toMap).toList());
                 response.json(200, resp);
             }
