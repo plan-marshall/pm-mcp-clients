@@ -51,6 +51,12 @@ public final class TuiLayout {
     private static final String DETAIL_INDENT = "    ";
     private static final String ELLIPSIS = "\u2026";
     private static final String RULE = "\u2500";
+    private static final String RULE_START = "\u250c";
+    private static final String RULE_END = "\u2510";
+    private static final String CELL_START = "\u2502";
+    private static final String CELL_END = "\u2502";
+    private static final String CELL_BOTTOM_START = "\u2514";
+    private static final String CELL_BOTTOM_END = "\u2518";
     private static final String CONNECTED = "\u25cf ";
     private static final String DISCONNECTED = "\u25cb ";
 
@@ -169,7 +175,9 @@ public final class TuiLayout {
     }
 
     private AttributedString footer(TuiScreen screen, int width) {
-        var text = screen.menu() != null
+        var text = screen.help()
+                            ? TuiKeyRegistry.helpFooter(locale)
+                            : screen.menu() != null
                             ? MessageCatalogue.format(locale, "operator.actions.menu.footer", Map.of())
                             : screen.footerText() != null
                             ? TuiKeyRegistry.fit(List.of(screen.footerText().split(TuiKeyRegistry.SEPARATOR)),
@@ -181,8 +189,10 @@ public final class TuiLayout {
     }
 
     private List<AttributedString> body(TuiScreen screen, int width, int columns, int height) {
-        var lines = screen.help() ? helpLines(screen, width) : rowLines(screen, width, columns);
-        return viewport(lines, screen, width, height);
+        if (screen.help()) {
+            return helpBox(screen, width, height);
+        }
+        return viewport(rowLines(screen, width, columns), screen, width, height);
     }
 
     private static final class BodyLine {
@@ -195,24 +205,96 @@ public final class TuiLayout {
         }
     }
 
-    private List<BodyLine> helpLines(TuiScreen screen, int width) {
-        var lines = new ArrayList<BodyLine>();
+    /**
+     * The help overlay: a box over the view that names every key of the level, grouped, and the
+     * selected row with its details. It is a page of its own, so it takes the body's lines instead
+     * of scrolling: the groups come first, the row's details after them, and what does not fit is
+     * dropped from the end rather than cut by the viewport.
+     *
+     * @param screen the screen, with its help flag set
+     * @param width  the line width
+     * @param height the body's lines
+     * @return exactly {@code height} lines
+     */
+    private List<AttributedString> helpBox(TuiScreen screen, int width, int height) {
+        var blank = new AttributedString(" ".repeat(Math.max(0, width)));
+        var lines = new ArrayList<AttributedString>(height);
+        if (height < 3) {
+            while (lines.size() < height) {
+                lines.add(blank);
+            }
+            return List.copyOf(lines);
+        }
+        var content = new ArrayList<>(TuiKeyRegistry.helpGroups(screen.kind(), locale));
+        var details = rowDetails(screen);
+        var room = height - 2;
+        if (!details.isEmpty() && room > content.size() + 1) {
+            content.add("");
+            content.addAll(details);
+        } else if (!details.isEmpty() && room > content.size()) {
+            content.addAll(details);
+        }
+        if (content.size() > room) {
+            content = new ArrayList<>(content.subList(0, room));
+        }
+        lines.add(new AttributedString(pad(boxTop(width), width)));
+        for (var text : content) {
+            lines.add(new AttributedString(pad(boxMiddle(text, width), width)));
+        }
+        lines.add(new AttributedString(pad(boxBottom(width), width)));
+        while (lines.size() < height) {
+            lines.add(blank);
+        }
+        return List.copyOf(lines);
+    }
+
+    /**
+     * @param screen the screen
+     * @return the selected row's line and details, or an empty list when nothing is selected
+     */
+    private static List<String> rowDetails(TuiScreen screen) {
         var selected = screen.selected();
-        if (selected != null) {
-            lines.add(new BodyLine(new AttributedString(pad(INDENT + selected.line(), width)), 0));
-            if (selected.details() != null) {
-                for (var detail : selected.details().split("\n", -1)) {
-                    lines.add(new BodyLine(new AttributedString(pad(DETAIL_INDENT + detail, width)), 0));
-                }
+        if (selected == null) {
+            return List.of();
+        }
+        var details = new ArrayList<String>();
+        details.add(selected.line());
+        if (selected.details() != null) {
+            for (var detail : selected.details().split("\n", -1)) {
+                details.add("  " + detail);
             }
         }
-        var footer = screen.menu() != null
-                            ? MessageCatalogue.format(locale, "operator.actions.menu.footer", Map.of())
-                            : screen.footerText() != null
-                            ? screen.footerText()
-                            : TuiKeyRegistry.footer(screen.kind(), locale, screen.reportsCount());
-        lines.add(new BodyLine(new AttributedString(pad(footer, width)), 0));
-        return lines;
+        return List.copyOf(details);
+    }
+
+    /**
+     * @param width the line width
+     * @return the top border of the help overlay, with its title
+     */
+    private String boxTop(int width) {
+        var head = " " + TuiKeyRegistry.helpTitle(locale) + " ";
+        var room = width - displayWidth(head) - 2;
+        if (room < 0) {
+            return RULE.repeat(Math.max(0, width));
+        }
+        return RULE_START + head + RULE.repeat(room) + RULE_END;
+    }
+
+    /**
+     * @param content the cell's text
+     * @param width   the line width
+     * @return one line of the help overlay's interior
+     */
+    private static String boxMiddle(String content, int width) {
+        return CELL_START + pad(content, Math.max(0, width - 4)) + CELL_END;
+    }
+
+    /**
+     * @param width the line width
+     * @return the bottom border of the help overlay
+     */
+    private static String boxBottom(int width) {
+        return CELL_BOTTOM_START + RULE.repeat(Math.max(0, width - 2)) + CELL_BOTTOM_END;
     }
 
     private List<BodyLine> rowLines(TuiScreen screen, int width, int columns) {

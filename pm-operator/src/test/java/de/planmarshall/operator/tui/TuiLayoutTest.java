@@ -180,14 +180,23 @@ class TuiLayoutTest {
     }
 
     @Test
-    @DisplayName("the help overlay shows the selected row's details and the keys")
+    @DisplayName("the help overlay is a box with the grouped keys, the row's details and an Esc close footer")
     void helpOverlay() {
         var help = new TuiScreen("Running work", TuiLevel.Kind.OVERVIEW, screen(0, 3).rows(), 0, "",
                             true, true, 0);
-        var text = String.join("\n", layout.render(help, 120, 12).stream().map(Object::toString).toList());
+        var lines = layout.render(help, 120, 20).stream().map(Object::toString).toList();
+        var text = String.join("\n", lines);
         assertAll(
+                            () -> assertTrue(text.contains("\u250c keys "), text),
+                            () -> assertTrue(text.contains("\u2502move"), text),
+                            () -> assertTrue(text.contains("\u2502open"), text),
+                            () -> assertTrue(text.contains("\u2502actions"), text),
+                            () -> assertTrue(text.contains("\u2502views"), text),
+                            () -> assertTrue(text.contains("\u2502leave"), text),
                             () -> assertTrue(text.contains("details of row 0"), text),
-                            () -> assertTrue(text.contains("help"), text)
+                            () -> assertTrue(text.contains("\u2514"), text),
+                            () -> assertEquals(TuiKeyRegistry.helpFooter("en"), lines.getLast().strip()),
+                            () -> assertTrue(lines.stream().noneMatch(line -> line.contains("\u2026 more")), text)
         );
     }
 

@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -77,6 +78,36 @@ public final class TuiKeyRegistry {
         public FooterEntry {
             Objects.requireNonNull(display, "display");
             Objects.requireNonNull(action, "action");
+        }
+    }
+
+    /**
+     * The groups the help overlay lists the level's bindings in.
+     */
+    public enum HelpGroup {
+
+        /** Moving the selection. */
+        MOVE("operator.overview.keys.move"),
+        /** Opening a row or a node. */
+        OPEN("operator.overview.keys.open"),
+        /** Acting on the selected row or the view. */
+        ACT("operator.overview.keys.actions"),
+        /** Changing the view. */
+        VIEWS("operator.overview.help.views"),
+        /** Leaving the overlay or the view. */
+        LEAVE("operator.overview.keys.leave");
+
+        private final String labelKey;
+
+        HelpGroup(String labelKey) {
+            this.labelKey = labelKey;
+        }
+
+        /**
+         * @return the message-catalogue key of the group's label
+         */
+        public String labelKey() {
+            return labelKey;
         }
     }
 
@@ -163,6 +194,86 @@ public final class TuiKeyRegistry {
             parts.add(entry.display() + ' ' + label(entry.action(), kind, locale, reportsCount));
         }
         return fit(parts, width, locale);
+    }
+
+    /**
+     * The lines of the help overlay, one per group the level binds a key in: the group's label and
+     * the keys that reach it, so that every binding of the level is named, whether the footer had
+     * room for it or not.
+     *
+     * @param kind   the kind of level
+     * @param locale the interface locale
+     * @return the group lines, without a box; empty when the level binds nothing
+     */
+    public static List<String> helpGroups(TuiLevel.Kind kind, String locale) {
+        var labels = new ArrayList<String>();
+        var keys = new ArrayList<String>();
+        for (var group : HelpGroup.values()) {
+            var actions = new ArrayList<String>();
+            for (var action : TuiKeyAction.values()) {
+                if (groupOf(action) != group) {
+                    continue;
+                }
+                var displays = new LinkedHashSet<String>();
+                for (var binding : bindings(kind)) {
+                    if (binding.action() == action) {
+                        displays.add(displayOf(binding.trigger()));
+                    }
+                }
+                if (!displays.isEmpty()) {
+                    actions.add(String.join(" ", displays));
+                }
+            }
+            if (!actions.isEmpty()) {
+                labels.add(MessageCatalogue.format(locale, group.labelKey(), Map.of()));
+                keys.add(String.join("   ", actions));
+            }
+        }
+        var labelWidth = labels.stream().mapToInt(TuiLayout::displayWidth).max().orElse(0);
+        var lines = new ArrayList<String>();
+        for (int index = 0; index < labels.size(); index++) {
+            var label = labels.get(index);
+            lines.add(label + " ".repeat(Math.max(1, labelWidth - TuiLayout.displayWidth(label) + 2))
+                                + keys.get(index));
+        }
+        return List.copyOf(lines);
+    }
+
+    /**
+     * @param action the action
+     * @return the group of the help overlay the action is listed in
+     */
+    static HelpGroup groupOf(TuiKeyAction action) {
+        return switch (action) {
+            case MOVE_UP, MOVE_DOWN, PAGE_UP, PAGE_DOWN, FIRST, LAST -> HelpGroup.MOVE;
+            case OPEN, CLOSE, EXPAND_ALL, WHERE, NON_LANE, TOKENS, PROJECT, COMPLETION -> HelpGroup.OPEN;
+            case BACK, LEAVE -> HelpGroup.LEAVE;
+            case HELP, SWITCH_VIEW, EPIC -> HelpGroup.VIEWS;
+            default -> HelpGroup.ACT;
+        };
+    }
+
+    /**
+     * @param trigger the trigger sequence of a binding
+     * @return how the help overlay names that key
+     */
+    public static String displayOf(String trigger) {
+        return switch (trigger) {
+            case "\r", "\n" -> "Enter";
+            case "\u001b" -> "Esc";
+            case "\t" -> "Tab";
+            case "\u001b[5~" -> "PgUp";
+            case "\u001b[6~" -> "PgDn";
+            default -> trigger;
+        };
+    }
+
+    /**
+     * @param locale the interface locale
+     * @return the title of the help overlay
+     */
+    public static String helpTitle(String locale) {
+        return MessageCatalogue.format(locale, "operator.overview.help.title", Map.of());
     }
 
     /**
