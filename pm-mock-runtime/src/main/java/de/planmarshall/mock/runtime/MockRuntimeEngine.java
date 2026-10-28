@@ -324,6 +324,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ERR_CLI_ONLY = "cli_only";
     private static final String ERR_WEB_LISTENER_CONFLICT = "web_listener_conflict";
     private static final String FIELD_ENABLED = "enabled";
+    private static final String FIELD_OVERLAP_MAX_FILES = "overlap_max_files";
     private static final String FIELD_PAIRED_FROM = "paired_from";
     private static final String FIELD_ONBOARDED = "onboarded";
     private static final String CONST_LAN_HOST = "mbp-oliver.local";
@@ -2602,7 +2603,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             epicAuto.put(epicId, Boolean.TRUE.equals(epic.get("auto_start")));
             epicScope.put(epicId, intMember(epic, "scope"));
             epicRunning.put(epicId, intMember(epic, "running"));
-            epicOverlap.put(epicId, intMember(epic, "overlap_max_files"));
+            epicOverlap.put(epicId, intMember(epic, FIELD_OVERLAP_MAX_FILES));
 
             var resource = fixtureObject(epic, "resource",
                     "facts.runtime.control.epics." + epicId + ".resource");
@@ -4477,7 +4478,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var resp = new LinkedHashMap<String, Object>();
             resp.put(KEY_STATUS, "ok");
             resp.put("auto_enabled", controlEpicAuto.getOrDefault(epicId, true));
-            resp.put("overlap_max_files", controlEpicOverlap.getOrDefault(epicId, 0));
+            resp.put(FIELD_OVERLAP_MAX_FILES, controlEpicOverlap.getOrDefault(epicId, 0));
             resp.putAll(buildEpicActions(epicId).toMap());
             response.json(200, resp);
         }
@@ -4643,7 +4644,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var map = new LinkedHashMap<>(resource.toMap());
             var overlap = controlEpicOverlap.get(epicId);
             if (overlap != null) {
-                map.put("overlap_max_files", overlap);
+                map.put(FIELD_OVERLAP_MAX_FILES, overlap);
             }
             response.json(200, map);
         }
