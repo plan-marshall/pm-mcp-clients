@@ -42,6 +42,7 @@ Run the checks of the plan page and the decisions against the merged code. Every
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/ux/verification.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main:doc/claude_review/ux/verification.adoc exists; table rows UX-S-07 (plan page) and UX-S-08 (decisions) at lines 96-108
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
 
 ## Expected Surface

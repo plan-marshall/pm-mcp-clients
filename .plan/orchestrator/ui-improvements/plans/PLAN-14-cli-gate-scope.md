@@ -54,7 +54,9 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/cross-cutting/plan.adoc#CLI-CC-S-02`, `doc/claude_review/cli/cross-cutting/proposals.adoc#CLI-CC-P-05` — read at `doc/claude_review/cli/cross-cutting/plan.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/cli/cross-cutting/plan.adoc:21-22 [#CLI-CC-S-02] The Gate Scope exists; proposals.adoc:97 [#CLI-CC-P-05]
 - HYPOTHESIS: the client calls the gate on read-only verbs (`questions`, `reports`, `projects --list`, views) — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/OperatorGate.java` and its callers (verify-at-outline)
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: QuestionsCommand.java:54, ReportsCommand.java:65, ProjectsCommand.java:68 each call context.gate().verify() unconditionally, incl. read-only/list paths
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

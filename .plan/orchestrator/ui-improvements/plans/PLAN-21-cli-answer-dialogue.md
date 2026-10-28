@@ -57,7 +57,9 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/use-cases/plan.adoc#CLI-UC-S-04`, `doc/claude_review/cli/use-cases/proposals.adoc#CLI-UC-P-03` — read at `doc/claude_review/cli/use-cases/plan.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/cli/use-cases/plan.adoc:41-42 [#CLI-UC-S-04] The Answer Dialogue; proposals.adoc:61-62 CLI-UC-P-03
 - HYPOTHESIS: `AnswerCommand` closes the console's terminal through try-with-resources and swallows the error — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/AnswerCommand.java` (verify-at-outline)
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: AnswerCommand.java:228 try (var terminal = context.createTerminal()); OperatorContext.java:220-222 returns the console's scoped terminal; catch at ~:240 prints message, returns 1
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

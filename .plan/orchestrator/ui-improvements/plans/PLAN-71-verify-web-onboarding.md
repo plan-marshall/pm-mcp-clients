@@ -41,6 +41,7 @@ Run the checks of the onboarding screen registry and variations against the merg
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/use-cases/verification.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main:doc/claude_review/use-cases/verification.adoc exists; rows for UC-S-02 (lines 37-45) and UC-S-04 (line 54) cover onboarding
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
 
 ## Expected Surface

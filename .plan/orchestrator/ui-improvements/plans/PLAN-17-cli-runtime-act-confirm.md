@@ -50,7 +50,9 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/use-cases/plan.adoc#CLI-UC-S-02`, `doc/claude_review/cli/use-cases/proposals.adoc#CLI-UC-P-05` — read at `doc/claude_review/cli/use-cases/plan.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/cli/use-cases/plan.adoc:21-26 (CLI-UC-S-02, proposals CLI-UC-P-05) and proposals.adoc:96-97 CLI-UC-P-05 exist
 - HYPOTHESIS: `runtime stop` stops without a question — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/RuntimeCommand.java` (verify-at-outline)
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: RuntimeCommand.java:96-130 StopCommand.call(): gate verify then POST /api/v1/runtime/stop, prints 'runtime stopping'; no confirmation prompt
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

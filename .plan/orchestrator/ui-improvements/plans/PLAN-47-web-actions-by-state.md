@@ -65,7 +65,9 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-05)`, `doc/claude_review/ux/proposals.adoc#UX-P-04` — read at `doc/claude_review/ux/plan.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/ux/plan.adoc:40-43 UX-S-05 maps to UX-P-04; ux/proposals.adoc:176-177 '== UX-P-04: One Primary Act per State' exists
 - HYPOTHESIS: the API does not yet send the offered acts for every resource — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/control/` (verify-at-outline)
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-api/.../api/control/WorkActions.java:25,37 carries offered acts for plan and epic only (subject_kind plan|epic); no acts list on system, project, device or decision resources
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

@@ -2,10 +2,10 @@
   "id": "PLAN-19",
   "slug": "web-ui-icon-set",
   "workstream": "WS-02",
-  "status": "launched",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "19-web-ui-icon-set",
+  "pr": "255",
+  "landing": "landings/PLAN-19.md",
   "seq": 19
 }

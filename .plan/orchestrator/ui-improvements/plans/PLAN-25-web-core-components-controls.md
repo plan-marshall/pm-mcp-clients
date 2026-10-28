@@ -18,7 +18,7 @@ Source of this plan (read before scoping):
 ## Deliverables
 
 1. **Button and IconButton**
-   - What: `Button` with `primary`, `secondary`, `ghost`, `danger` (only inside a danger dialog), sizes `sm`/`md`/`lg`, optional icon, disabled with its reason as advisory and `aria-describedby`; `IconButton` square, ghost, tooltip from the `X.title` advisory.
+   - What: `Button` with `primary`, `secondary`, `ghost`, `danger` (only inside a danger dialog), sizes `sm`/`md`/`lg`, optional icon, disabled with its reason as advisory and `aria-describedby`; `IconButton` square, ghost, tooltip from the `X.title` advisory. Re-grounded at HEAD cc5794c9: `Button.svelte` already has the four variants (`primary`, `secondary`, `danger`, `ghost`, line 4) and 18 views import it, so this change is additive — the existing variant names and props keep working, no call site is migrated here, and what is new is the sizes, the optional icon (drawn with `Icon.svelte` of `web-ui-icon-set`) and the disabled reason.
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
    - Done when:
@@ -60,8 +60,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/visual-design/plan.adoc#VD-S-03`, `doc/claude_review/visual-design/proposals.adoc#VD-P-05` — read at `doc/claude_review/visual-design/plan.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/visual-design/plan.adoc:34-37 states VD-S-03 with VD-P-05; proposals.adoc:113-114 '== VD-P-05: Components' exists
 - OBSERVED: `pm-web-app/src/lib/components/Button.svelte` exists today — read at `pm-web-app/src/lib/components/`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main:pm-web-app/src/lib/components/Button.svelte exists; unchanged since c4dc9bb4 (git log c4dc9bb4..origin/main on the file is empty)
 - HYPOTHESIS: today's `Button` is used by few views and has no variants of VD-P-05 — confirm/refute at `pm-web-app/src/lib/components/Button.svelte` (verify-at-outline)
+  - verdict: contradicted | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: yes | evidence: Button.svelte:4 already has variants primary|secondary|danger|ghost; 18 views import it (CleanupView, PlanView, SystemView ...), not few; lacks sizes, icon, disabled-reason/aria-describedby which D1 adds. D1 now states the change is additive
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
