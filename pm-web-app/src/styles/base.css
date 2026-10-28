@@ -1,6 +1,18 @@
 @import './tokens.css';
 @import './choice-screen.css';
 
+/*
+ * Inter, self-hosted (VD-P-03): the file ships with the app under `static/fonts/`, so the browser
+ * never asks a font service for it. The licence travels beside it as `OFL.txt`.
+ */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/InterVariable.woff2') format('woff2');
+}
+
 *,
 *::before,
 *::after {
@@ -9,14 +21,21 @@
   padding: 0;
 }
 
-html,
+html {
+  height: 100%;
+  font-size: 100%;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-app);
+}
+
 body {
   height: 100%;
   font-family: var(--font-sans);
-  font-size: 16px;
-  line-height: 1.5;
-  color: var(--color-text-primary);
-  background-color: var(--color-bg-app);
+  font-size: var(--text-base);
+  line-height: var(--line-height-base);
+  font-feature-settings: var(--font-feature-settings);
+  color: inherit;
+  background-color: inherit;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -27,13 +46,13 @@ body {
 }
 
 a {
-  color: var(--color-primary);
+  color: var(--color-brand);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 a:hover {
-  color: var(--color-primary-hover);
+  color: var(--color-brand-hover);
 }
 
 button,
@@ -101,4 +120,16 @@ kbd {
   white-space: nowrap;
   width: 1px;
   height: 1px;
+}
+
+/*
+ * Honour the person's reduced-motion setting. The motion tokens fall to 0 ms in `tokens.css`, so
+ * everything that takes its duration from them stops; this keeps the page from smooth-scrolling as
+ * well. A component that still hard-codes its own duration is migrated to the motion tokens in
+ * VD-S-06.
+ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
