@@ -2,10 +2,10 @@
   "id": "PLAN-07",
   "slug": "cli-terminal-design-docs",
   "workstream": "WS-05",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "07-cli-terminal-design-docs",
+  "pr": "246",
+  "landing": "landings/PLAN-07.md",
   "seq": 7
 }
