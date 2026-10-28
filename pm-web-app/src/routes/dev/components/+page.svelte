@@ -34,13 +34,13 @@
     { id: 'cancel', label: $t('web.common.cancel') },
     { id: 'copy', label: $t('web.common.copy'), advisory: $t('web.common.copy.title') },
     { id: 'back', label: $t('common.actions.back'), advisory: $t('common.actions.back.title') },
-    { id: 'retry', label: $t('web.common.retry') },
     {
       id: 'archive',
       label: $t('control.epic.archive'),
       disabled: true,
       disabledReason: $t('dev.disabled_reason'),
     },
+    { id: 'retry', label: $t('web.common.retry') },
   ];
 </script>
 
