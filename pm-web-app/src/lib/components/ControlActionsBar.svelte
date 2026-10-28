@@ -311,7 +311,13 @@
               {#each archiveCheck.lines as line (line.label)}
                 <li class="control-actions__check" data-testid={`archive-line-${line.label}`}>
                   <span class="control-actions__check-glyph"
-                    ><Icon name={line.passed ? 'state.check' : 'state.error'} size={16} /></span
+                    ><Icon
+                      name={line.passed ? 'state.check' : 'state.error'}
+                      size={16}
+                      label={$t(
+                        line.passed ? 'control.archive.check.passed' : 'control.archive.check.failed',
+                      )}
+                    /></span
                   >
                   <span>{$t(line.label)}</span>
                   {#if line.note}

@@ -52,60 +52,13 @@ import stateErrorUrl from './ui/state-error.svg?url';
 import stateLockUrl from './ui/state-lock.svg?url';
 
 /**
- * Every delivered UI icon name.
+ * The delivered asset URL of every UI icon name.
  *
  * The families are the ones VD-P-06 groups: the navigation, the acts, the states, and the kinds of
  * thing the interface names. A view names one of these; it never takes an id from the runtime.
+ * These keys are the set, so an id and its asset cannot drift apart.
  */
-export const UI_ICON_IDS = Object.freeze([
-  'nav.inbox',
-  'nav.running',
-  'nav.projects',
-  'nav.decisions',
-  'nav.reports',
-  'nav.system',
-  'nav.designer',
-  'nav.settings',
-  'nav.lessons',
-  'nav.sources',
-  'act.start',
-  'act.pause',
-  'act.cancel',
-  'act.chat',
-  'act.search',
-  'act.copy',
-  'act.more',
-  'act.back',
-  'act.external',
-  'act.edit',
-  'act.refresh',
-  'act.favourite',
-  'act.favourite-on',
-  'act.clean',
-  'state.check',
-  'state.dot',
-  'state.alert',
-  'state.clock',
-  'state.lock',
-  'state.error',
-  'kind.plan',
-  'kind.epic',
-  'kind.decision',
-  'kind.report',
-  'kind.harness',
-  'kind.document',
-  'kind.issue',
-  'kind.pull-request',
-  'kind.lesson',
-  'kind.task',
-  'kind.entity',
-] as const);
-
-/** One delivered UI icon name. */
-export type UiIconId = (typeof UI_ICON_IDS)[number];
-
-/** The delivered asset URL of every name. */
-const ICON_URLS: Readonly<Record<UiIconId, string>> = Object.freeze({
+const ICON_URLS = Object.freeze({
   'nav.inbox': navInboxUrl,
   'nav.running': navRunningUrl,
   'nav.projects': navProjectsUrl,
@@ -147,7 +100,15 @@ const ICON_URLS: Readonly<Record<UiIconId, string>> = Object.freeze({
   'kind.lesson': kindLessonUrl,
   'kind.task': kindTaskUrl,
   'kind.entity': kindEntityUrl,
-});
+} as const);
+
+/** One delivered UI icon name. */
+export type UiIconId = keyof typeof ICON_URLS;
+
+/** Every delivered UI icon name, derived from the registry so the two cannot drift apart. */
+export const UI_ICON_IDS: readonly UiIconId[] = Object.freeze(
+  Object.keys(ICON_URLS) as UiIconId[],
+);
 
 /** @param name a candidate icon name @returns whether the set delivers it */
 export function isUiIconId(name: string): name is UiIconId {

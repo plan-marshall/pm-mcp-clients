@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render } from '@testing-library/svelte';
+import { fireEvent, render } from '@testing-library/svelte';
 import HarnessChoice from './HarnessChoice.svelte';
 
 /**
@@ -48,6 +48,7 @@ describe('HarnessChoice monograms', () => {
         harnesses: [
           harness({ icon_url: 'https://example.invalid/claude.svg' }),
           harness({ harness_id: 'codex', name: 'Codex', icon_url: '/\\maker.example/i.svg' }),
+          harness({ harness_id: 'opencode', name: 'OpenCode', icon_url: '/\t/maker.example/i.svg' }),
         ],
       },
     });
@@ -55,6 +56,20 @@ describe('HarnessChoice monograms', () => {
     expect(container.querySelector('img.choice-screen__icon')).toBeNull();
     expect(getByTestId('harness-monogram-claude').textContent?.trim()).toBe('CC');
     expect(getByTestId('harness-monogram-codex').textContent?.trim()).toBe('C');
+    expect(getByTestId('harness-monogram-opencode').textContent?.trim()).toBe('O');
+  });
+
+  it('falls back to the monogram when the served icon does not load', async () => {
+    const { container, getByTestId, queryByTestId } = render(HarnessChoice, {
+      props: { harnesses: [harness({ icon_url: '/api/v1/harness-icons/claude.svg' })] },
+    });
+
+    const icon = container.querySelector('img.choice-screen__icon') as HTMLImageElement;
+    expect(icon).not.toBeNull();
+    await fireEvent.error(icon);
+
+    expect(queryByTestId('harness-icon-claude')).toBeNull();
+    expect(getByTestId('harness-monogram-claude').textContent?.trim()).toBe('CC');
   });
 
   it('falls back to the harness id when the name carries no letter', () => {
