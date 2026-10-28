@@ -221,6 +221,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     /** The fixture member the cleanup residues are read from. */
     private static final String FIXTURE_RESIDUE = "residue";
+
+    /** The fixture members the cleanup job and its sweep durations are read from. */
+    private static final String FIXTURE_JOB = "job";
+    private static final String FIXTURE_DURATIONS = "durations";
     private static final String KEY_STATUS = "status";
     private static final String KEY_LOOPBACK = "loopback";
     private static final String KEY_DEVICE_ID = "device_id";
@@ -1120,13 +1124,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (facts == null) {
             return;
         }
-        var job = JsonTree.object(facts, "job");
+        var job = JsonTree.object(facts, FIXTURE_JOB);
         if (job != null) {
-            readFixture(() -> CleanupJob.fromMap(job), "facts.job");
+            readFixture(() -> CleanupJob.fromMap(job), "facts." + FIXTURE_JOB);
         }
-        var durations = JsonTree.object(facts, "durations");
+        var durations = JsonTree.object(facts, FIXTURE_DURATIONS);
         if (durations != null) {
-            readFixture(() -> CleanupDurations.fromMap(durations), "facts.durations");
+            readFixture(() -> CleanupDurations.fromMap(durations), "facts." + FIXTURE_DURATIONS);
         }
     }
 
@@ -6516,18 +6520,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (Boolean.FALSE.equals(JsonTree.bool(facts, "open"))) {
             activeCleanupJob = null;
         }
-        var job = JsonTree.object(facts, "job");
+        var job = JsonTree.object(facts, FIXTURE_JOB);
         if (job != null) {
-            activeCleanupJob = readFixture(() -> CleanupJob.fromMap(job), "facts.job");
+            activeCleanupJob = readFixture(() -> CleanupJob.fromMap(job), "facts." + FIXTURE_JOB);
         }
         if (JsonTree.object(facts, "progress") != null && activeCleanupJob != null) {
             var running = activeCleanupJob;
             activeCleanupJob = new CleanupJob(running.jobId(), CleanupJobState.DELETING, running.dueSince(),
                     running.summary(), running.projectItems(), running.links());
         }
-        var durations = JsonTree.object(facts, "durations");
+        var durations = JsonTree.object(facts, FIXTURE_DURATIONS);
         if (durations != null) {
-            cleanupDurations = readFixture(() -> CleanupDurations.fromMap(durations), "facts.durations");
+            cleanupDurations = readFixture(() -> CleanupDurations.fromMap(durations), "facts." + FIXTURE_DURATIONS);
         }
         if (facts.containsKey("kept")) {
             keptItems.clear();
