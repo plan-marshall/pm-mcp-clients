@@ -4244,13 +4244,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private Map<String, Object> readBodyMap(MockHttpRequest request) {
         var body = request.body();
-        if (body != null && body.length > 0) {
-            var parsed = parseBody(body);
-            if (parsed != null) {
-                return parsed;
-            }
-        }
-        return new LinkedHashMap<>();
+        var parsed = body == null || body.length == 0 ? null : parseBody(body);
+        return parsed != null ? parsed : new LinkedHashMap<>();
     }
 
     private @Nullable Map<String, Object> parseBody(byte[] body) {
