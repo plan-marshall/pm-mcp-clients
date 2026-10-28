@@ -70,4 +70,48 @@ describe('ActionBar', () => {
       'Every slot is busy',
     );
   });
+
+  it('carries the advisory of an act, primary included', () => {
+    render(ActionBar, {
+      props: {
+        acts: [
+          { id: 'next', label: 'Next', advisory: 'Start the plan that is staged' },
+          { id: 'pause', label: 'Pause' },
+        ],
+      },
+    });
+
+    expect(screen.getByRole('button', { name: 'Next' }).getAttribute('title')).toBe(
+      'Start the plan that is staged',
+    );
+  });
+
+  it('puts the focus on the first entry, moves it with the arrow keys and gives it back', async () => {
+    render(ActionBar, {
+      props: {
+        acts: [
+          { id: 'next', label: 'Next' },
+          { id: 'pause', label: 'Pause' },
+          { id: 'chat', label: 'Chat' },
+          { id: 'settings', label: 'Settings' },
+          { id: 'archive', label: 'Archive' },
+          { id: 'copy', label: 'Copy' },
+        ],
+      },
+    });
+    const overflow = screen.getByTestId('action-bar-overflow');
+
+    await fireEvent.click(overflow);
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Archive' }));
+
+    await fireEvent.keyDown(screen.getByRole('menu'), { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Copy' }));
+
+    await fireEvent.keyDown(screen.getByRole('menu'), { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Archive' }));
+
+    await fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(document.activeElement).toBe(overflow);
+  });
 });

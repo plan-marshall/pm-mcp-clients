@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
   import { advisory } from '../utils/advisoryTitle';
   import { t } from '../i18n';
 
@@ -8,21 +9,31 @@
    *
    * The value is the visible label, so a chip never says what it copies twice; its advisory names
    * the act. A refused clipboard changes nothing on screen rather than claiming a copy that did not
-   * happen.
+   * happen, and the confirmation clears itself.
    */
   export let value: string;
 
+  /** How long the confirmation stays beside the value. */
+  const COPIED_MS = 2000;
+
   /** Whether the last click copied, for the short confirmation beside the value. */
   let copied = false;
+  let resetTimer: ReturnType<typeof setTimeout> | undefined;
 
   async function copy(): Promise<void> {
     try {
       await navigator.clipboard.writeText(value);
       copied = true;
+      clearTimeout(resetTimer);
+      resetTimer = setTimeout(() => {
+        copied = false;
+      }, COPIED_MS);
     } catch {
       copied = false;
     }
   }
+
+  onDestroy(() => clearTimeout(resetTimer));
 </script>
 
 <button

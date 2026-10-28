@@ -25,9 +25,10 @@ describe('CountBadge', () => {
     );
   });
 
-  it('carries the accessible name the view gives it', () => {
-    render(CountBadge, { props: { count: 3, label: '3 waiting for you' } });
+  it('carries the accessible name the view gives it, instead of a bare number', () => {
+    const { container } = render(CountBadge, { props: { count: 3, label: '3 waiting for you' } });
 
-    expect(screen.getByLabelText('3 waiting for you')).toBeInTheDocument();
+    expect(screen.getByText('3 waiting for you')).toHaveClass('sr-only');
+    expect(container.querySelector('[aria-hidden="true"]')?.textContent).toBe('3');
   });
 });

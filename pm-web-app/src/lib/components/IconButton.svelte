@@ -37,7 +37,7 @@
 
 <button
   {type}
-  class="icon-btn icon-btn--ghost icon-btn--{size}"
+  class="icon-btn icon-btn--{size}"
   aria-label={label}
   disabled={disabled}
   {...$$restProps}

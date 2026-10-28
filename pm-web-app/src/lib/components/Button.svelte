@@ -68,7 +68,6 @@
     align-items: center;
     justify-content: center;
     gap: var(--space-2);
-    min-height: 34px;
     padding: var(--space-2) var(--space-4);
     font-size: var(--text-sm);
     font-weight: 500;

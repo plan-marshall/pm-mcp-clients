@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
+import { tick } from 'svelte';
 import Chip from './Chip.svelte';
 
 /**
@@ -10,6 +11,7 @@ import Chip from './Chip.svelte';
 const originalClipboard = navigator.clipboard;
 
 afterEach(() => {
+  vi.useRealTimers();
   Object.defineProperty(navigator, 'clipboard', {
     value: originalClipboard,
     configurable: true,
@@ -39,6 +41,21 @@ describe('Chip', () => {
 
     expect(writeText).toHaveBeenCalledWith('a0f80a3f');
     expect(await screen.findByText('Copied')).toBeInTheDocument();
+  });
+
+  it('clears the confirmation it gave', async () => {
+    vi.useFakeTimers();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    stubClipboard(writeText);
+    render(Chip, { props: { value: 'a0f80a3f' } });
+
+    await fireEvent.click(screen.getByRole('button'));
+    expect(screen.getByText('Copied')).toBeInTheDocument();
+
+    await vi.advanceTimersByTimeAsync(2000);
+    await tick();
+    expect(screen.queryByText('Copied')).not.toBeInTheDocument();
+    vi.useRealTimers();
   });
 
   it('claims nothing when the clipboard refuses', async () => {

@@ -23,9 +23,6 @@ export const EMPTY_DEV_PAGE_ID = '/@dev-route-exclusion/EmptyDevPage.svelte';
 /** The generated client manifests: the development one and the ones a build generates. */
 const CLIENT_MANIFEST = /generated[\\/](?:[^\\/]+[\\/])?client(?:-optimized)?[\\/]app\.js$/;
 
-/** The source of the development pages, which the build must not carry. */
-const DEV_PAGE = /src[\\/]routes[\\/]dev[\\/].*\.svelte$/;
-
 /** One entry of the generated route dictionary. */
 const DICTIONARY_ENTRY = /^\s*"(\/[^"]*)":\s*\[([^\]]*)\]\s*,?\s*$/;
 
@@ -52,14 +49,6 @@ function isDevRoute(path: string): boolean {
  */
 export function isClientManifest(id: string): boolean {
   return CLIENT_MANIFEST.test(id);
-}
-
-/**
- * @param source an import specifier
- * @returns whether it names a file of the development page
- */
-export function isDevPage(source: string): boolean {
-  return DEV_PAGE.test(source);
 }
 
 /**
@@ -144,12 +133,9 @@ export function devRouteExclusion(): Plugin {
     name: 'dev-route-exclusion',
     apply: 'build',
     resolveId(source) {
-      // The generated route node imports the page by path; pointing that import at an empty
-      // component keeps the fixture's code out of the bundle.
-      if (source === EMPTY_DEV_PAGE_ID) {
-        return source;
-      }
-      return isDevPage(source) ? EMPTY_DEV_PAGE_ID : null;
+      // The node's rewritten import names a module no file provides; claiming it here is what lets
+      // the load hook below hand over the stand-in.
+      return source === EMPTY_DEV_PAGE_ID ? source : null;
     },
     load(id) {
       if (id === EMPTY_DEV_PAGE_ID) {

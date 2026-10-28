@@ -3,7 +3,8 @@
    * A number in a pill (VD-P-05): the attention fill for "needs you", the neutral fill otherwise.
    *
    * It belongs in the rail, in tabs and in group heads — never in a row, where `StatusLabel` names
-   * the state. The view decides what the number counts and may name it for a screen reader.
+   * the state. The view decides what the number counts and should name it for a screen reader: the
+   * number then reads as the name, not as a bare figure beside it.
    */
   export let count: number;
   /** Whether the number names something that waits for the operator. */
@@ -14,10 +15,14 @@
 
 <span
   class="count-badge count-badge--{attention ? 'attention' : 'neutral'}"
-  aria-label={label}
   data-testid="count-badge"
 >
-  {count}
+  {#if label}
+    <span class="sr-only">{label}</span>
+    <span aria-hidden="true">{count}</span>
+  {:else}
+    {count}
+  {/if}
 </span>
 
 <style>
@@ -40,8 +45,10 @@
     color: var(--color-text-secondary);
   }
 
+  /* The attention pair the token set enforces: `--color-attention-text` on its subtle fill carries
+     the contrast a 12 px number owes, where white on the strong attention colour does not. */
   .count-badge--attention {
-    background-color: var(--color-attention);
-    color: var(--color-on-brand);
+    background-color: var(--color-attention-subtle);
+    color: var(--color-attention-text);
   }
 </style>

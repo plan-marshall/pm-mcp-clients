@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   EMPTY_DEV_PAGE_ID,
   devRouteExclusion,
   isClientManifest,
-  isDevPage,
   isGeneratedNode,
   stripDevPageImports,
   stripDevRoutes,
@@ -80,12 +81,14 @@ describe('the development route exclusion', () => {
     expect(isClientManifest('/repo/pm-web-app/src/lib/routes.ts')).toBe(false);
   });
 
-  it('substitutes the development page, so its code stays out of the bundle', () => {
-    expect(isDevPage('../../../../../src/routes/dev/components/+page.svelte')).toBe(true);
-    expect(isDevPage('/repo/pm-web-app/src/routes/dev/components/+page.svelte')).toBe(true);
-    expect(isDevPage('../../../../../src/routes/overview/+page.svelte')).toBe(false);
-    // The stand-in is a Svelte module, so the Svelte compiler handles it like any route component.
+  it('substitutes a real Svelte module, so the compiler handles it like any route component', () => {
     expect(EMPTY_DEV_PAGE_ID.endsWith('.svelte')).toBe(true);
+  });
+
+  it('is registered in the production build', () => {
+    const config = fs.readFileSync(path.resolve(__dirname, '../../../vite.config.ts'), 'utf-8');
+
+    expect(config).toContain('devRouteExclusion()');
   });
 
   it('points the development route node at the empty component', () => {

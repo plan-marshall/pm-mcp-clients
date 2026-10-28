@@ -133,7 +133,6 @@ describe('IconButton', () => {
     const button = buttonIn(container);
 
     expect(button.className).toContain('icon-btn');
-    expect(button.className).toContain('icon-btn--ghost');
     expect(button.getAttribute('aria-label')).toBe('More acts');
     expect(button.getAttribute('title')).toBe('Show the acts that do not fit');
     expect(button.querySelector('.ui-icon')?.getAttribute('data-icon')).toBe('act.more');

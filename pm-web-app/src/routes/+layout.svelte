@@ -42,8 +42,11 @@
   let { children }: Props = $props();
 
   // The development page draws components, not a view of the app: it is outside the route model,
-  // so the shell neither rewrites its address nor replaces it with the stored route.
-  const devRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/dev');
+  // so the shell neither rewrites its address nor replaces it with the stored route. The boundary
+  // check keeps `/device` or `/developer` out of this branch.
+  const devRoute =
+    typeof window !== 'undefined' &&
+    (window.location.pathname === '/dev' || window.location.pathname.startsWith('/dev/'));
 
   // The theme this browser chose. `app.html` already applied it before the first paint; the
   // control reads the same choice so the pressed option and the document agree.
