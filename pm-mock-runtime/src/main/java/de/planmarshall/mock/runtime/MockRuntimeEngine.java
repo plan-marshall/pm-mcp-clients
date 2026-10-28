@@ -274,9 +274,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ACTION_NEXT = "next";
     private static final String ACTION_AUTO = "auto";
     private static final Set<String> PLAN_CONTROL_ACTIONS =
-                        Set.of(ACTION_PAUSE, ACTION_START, ACTION_CANCEL, ACTION_ABANDON);
+            Set.of(ACTION_PAUSE, ACTION_START, ACTION_CANCEL, ACTION_ABANDON);
     private static final Set<String> EPIC_CONTROL_ACTIONS =
-                        Set.of(ACTION_AUTO, ACTION_COMMON_FILES, ACTION_CANCEL, ACTION_NEXT, ACTION_ARCHIVE);
+            Set.of(ACTION_AUTO, ACTION_COMMON_FILES, ACTION_CANCEL, ACTION_NEXT, ACTION_ARCHIVE);
     private static final String ACTION_RETRY = "retry";
     private static final String ACTION_ABORT = "abort";
     private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT = SEGMENT_ENTRY_CHAT_PROPOSAL + ACTION_ACCEPT;
