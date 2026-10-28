@@ -43,6 +43,7 @@ Run the verification checks of the shared foundation plans against the merged co
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/use-cases/verification.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/use-cases/verification.adoc exists: UC-V-01 at line 30, UC-V-09 at line 77
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
 
 ## Expected Surface

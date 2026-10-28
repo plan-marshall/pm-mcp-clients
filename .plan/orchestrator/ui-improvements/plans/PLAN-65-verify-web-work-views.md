@@ -46,6 +46,7 @@ Run the checks of the inbox, running work, start, epic, projects, reports, desig
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/ux/verification.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main:doc/claude_review/ux/verification.adoc exists; check table rows UX-S-01..UX-S-13 (inbox, running-work, decisions, start) at lines 59-132
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
 
 ## Expected Surface

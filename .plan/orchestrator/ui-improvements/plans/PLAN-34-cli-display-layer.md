@@ -51,6 +51,7 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/cross-cutting/plan.adoc#CLI-CC-S-04`, `doc/claude_review/cli/cross-cutting/proposals.adoc#CLI-CC-P-02` — read at `doc/claude_review/cli/cross-cutting/plan.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main: cross-cutting/plan.adoc:40 [#CLI-CC-S-04]; cross-cutting/proposals.adoc:22 [#CLI-CC-P-02] and :40 [#CLI-CC-P-03] (all under doc/claude_review/cli)
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

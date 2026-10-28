@@ -46,6 +46,7 @@ Run the presentation checks and the key-task walk of the terminal client against
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cli/visual-design/verification.adoc`
+  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main: doc/claude_review/cli/visual-design/verification.adoc exists (61 lines); the checks are read there
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
 
 ## Expected Surface

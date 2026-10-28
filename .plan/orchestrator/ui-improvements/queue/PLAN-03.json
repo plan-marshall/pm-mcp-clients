@@ -2,10 +2,10 @@
   "id": "PLAN-03",
   "slug": "mock-scenario-states",
   "workstream": "WS-01",
-  "status": "launched",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "03-mock-scenario-states",
+  "pr": "253",
+  "landing": "landings/PLAN-03.md",
   "seq": 3
 }
