@@ -269,9 +269,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ACTION_ABANDON = "abandon";
     private static final String ACTION_COMMON_FILES = "common_files";
     private static final String ACTION_ARCHIVE = "archive";
-    private static final Set<String> PLAN_CONTROL_ACTIONS = Set.of(ACTION_PAUSE, "start", "cancel", ACTION_ABANDON);
+    private static final String ACTION_START = "start";
+    private static final String ACTION_CANCEL = "cancel";
+    private static final String ACTION_NEXT = "next";
+    private static final String ACTION_AUTO = "auto";
+    private static final Set<String> PLAN_CONTROL_ACTIONS =
+                        Set.of(ACTION_PAUSE, ACTION_START, ACTION_CANCEL, ACTION_ABANDON);
     private static final Set<String> EPIC_CONTROL_ACTIONS =
-            Set.of("auto", ACTION_COMMON_FILES, "cancel", "next", ACTION_ARCHIVE);
+                        Set.of(ACTION_AUTO, ACTION_COMMON_FILES, ACTION_CANCEL, ACTION_NEXT, ACTION_ARCHIVE);
     private static final String ACTION_RETRY = "retry";
     private static final String ACTION_ABORT = "abort";
     private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT = SEGMENT_ENTRY_CHAT_PROPOSAL + ACTION_ACCEPT;
@@ -4160,19 +4165,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var actions = new ArrayList<ActionAvailability>();
         switch (state) {
             case "pausing" -> {
-                actions.add(ActionAvailability.enabled("start"));
-                actions.add(ActionAvailability.enabled("cancel"));
+                actions.add(ActionAvailability.enabled(ACTION_START));
+                actions.add(ActionAvailability.enabled(ACTION_CANCEL));
                 addChatAndSettings(planId, actions);
             }
             case "paused" -> {
-                actions.add(ActionAvailability.enabled("start"));
+                actions.add(ActionAvailability.enabled(ACTION_START));
                 actions.add(ActionAvailability.enabled(ACTION_ABANDON));
                 addChatAndSettings(planId, actions);
             }
             case "ended" -> actions.add(ActionAvailability.enabled("chat"));
             default -> {
                 actions.add(ActionAvailability.enabled(ACTION_PAUSE));
-                actions.add(ActionAvailability.enabled("cancel"));
+                actions.add(ActionAvailability.enabled(ACTION_CANCEL));
                 addChatAndSettings(planId, actions);
             }
         }
@@ -4196,8 +4201,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if ("ended".equals(state)) {
             actions.add(ActionAvailability.enabled("chat"));
         } else {
-            actions.add(ActionAvailability.enabled("next"));
-            actions.add(ActionAvailability.enabled("auto"));
+            actions.add(ActionAvailability.enabled(ACTION_NEXT));
+            actions.add(ActionAvailability.enabled(ACTION_AUTO));
             actions.add(ActionAvailability.enabled(ACTION_COMMON_FILES));
             actions.add(ActionAvailability.enabled("decompose"));
             actions.add(ActionAvailability.enabled(FIELD_FINDINGS));
@@ -4411,13 +4416,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     broadcastEvent(PlanControlEvent.EVENT_PAUSED, new PlanControlEvent(
                             PlanControlEvent.EVENT_PAUSED, planId, "pausing", point, null).toMap());
                 }
-                case "start" -> {
+                case ACTION_START -> {
                     controlPlanStates.put(planId, "running");
                     controlPlanPausePoints.remove(planId);
                     broadcastEvent(PlanControlEvent.EVENT_RESUMED, new PlanControlEvent(
                             PlanControlEvent.EVENT_RESUMED, planId, "running", null, null).toMap());
                 }
-                case "cancel", ACTION_ABANDON -> {
+                case ACTION_CANCEL, ACTION_ABANDON -> {
                     controlPlanStates.put(planId, "ended");
                     controlPlanPausePoints.remove(planId);
                     removeHolds(planId);
@@ -4456,7 +4461,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             switch (action) {
-                case "auto" -> {
+                case ACTION_AUTO -> {
                     var enabled = actionRequest.extra().get(FIELD_ENABLED);
                     if (enabled instanceof Boolean flag) {
                         controlEpicAuto.put(epicId, flag);
@@ -4473,7 +4478,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         controlEpicOverlap.put(epicId, number.intValue());
                     }
                 }
-                case "cancel" -> controlEpicStates.put(epicId, "ended");
+                case ACTION_CANCEL -> controlEpicStates.put(epicId, "ended");
                 default -> {
                     // next, decompose, findings, watches, archive, chat: the epic rests between its events
                 }
