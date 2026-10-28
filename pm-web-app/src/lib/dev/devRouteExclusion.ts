@@ -68,7 +68,7 @@ function parseDictionaryEntry(line: string): DictionaryEntry | null {
     .split(',')
     .map((part) => part.trim())
     .filter((part) => part !== '')
-    .map((part) => Number(part))
+    .map(Number)
     .filter((index) => Number.isInteger(index));
   return { path, indices };
 }
