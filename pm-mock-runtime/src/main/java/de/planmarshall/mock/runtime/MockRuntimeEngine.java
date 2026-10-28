@@ -271,7 +271,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ACTION_ARCHIVE = "archive";
     private static final Set<String> PLAN_CONTROL_ACTIONS = Set.of(ACTION_PAUSE, "start", "cancel", ACTION_ABANDON);
     private static final Set<String> EPIC_CONTROL_ACTIONS =
-                        Set.of("auto", ACTION_COMMON_FILES, "cancel", "next", ACTION_ARCHIVE);
+            Set.of("auto", ACTION_COMMON_FILES, "cancel", "next", ACTION_ARCHIVE);
     private static final String ACTION_RETRY = "retry";
     private static final String ACTION_ABORT = "abort";
     private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT = SEGMENT_ENTRY_CHAT_PROPOSAL + ACTION_ACCEPT;
@@ -4245,7 +4245,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 if (slash > 0 && sub.indexOf('/', slash + 1) < 0) {
                     var candidate = sub.substring(slash + 1);
                     var controlAction = (isPlan && PLAN_CONTROL_ACTIONS.contains(candidate))
-                                        || (isEpic && EPIC_CONTROL_ACTIONS.contains(candidate));
+                            || (isEpic && EPIC_CONTROL_ACTIONS.contains(candidate));
                     if (controlAction) {
                         subjectId = sub.substring(0, slash);
                         action = candidate;
