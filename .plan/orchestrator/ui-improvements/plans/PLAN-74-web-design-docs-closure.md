@@ -29,7 +29,7 @@ Source of this plan (read before scoping):
    - Persona: plan-marshall:persona-documenter
    - Skills: pm-documents:ref-asciidoc, pm-documents:ref-documentation
    - Done when:
-     - The document exists, is linked from the README, and passes `doc-review` (evidence order: `none`)
+     - The document exists, is linked from the README, and passes `doc-review` (under the runbook lane its checker `trace.py` does not run, so `pm-documents:ref-documentation` `docs review` and `pm-documents:ref-asciidoc` `validate` and `verify-links` stand in for it, clean, as PLAN-06 and PLAN-07 ran them) (evidence order: `none`)
 3. **Proposal status**
    - What: Every proposal of `doc/claude_review/{ux,visual-design,cross-cutting,use-cases}/proposals.adoc` is listed as done (with its plan) or dropped (with a reason) in `doc/design/web-app/README.adoc`.
    - Persona: plan-marshall:persona-documenter
