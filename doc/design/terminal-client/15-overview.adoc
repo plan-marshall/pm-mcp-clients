@@ -41,6 +41,7 @@ What the overview of running work shows and in which order is link:../shared/pla
 * *Footer*: the keys that apply here, filled by priority: `? help` and `q leave` are kept before the
   level's remaining keys, and the line ends with `? more` when it has to leave cells out
   (<<full-screen-footer>>).
+
 * The view opens on the terminal's alternate screen, so the scrollback and the prompt are as they were when it is left.
 
 [#full-screen-brand]
@@ -336,23 +337,22 @@ level.
   overlay which shows every binding the width left out.
 
 * *The overlay*: `?` draws a box over the view with the level's bindings, grouped as move, open,
-  actions, views and leave, and the details of the selected row; a body too short for all of it keeps
-  the groups first and leaves the details out from the end. While it is open the footer shows
-  `Esc close`; the first `Esc` closes the box and leaves the level where it was, and only a second
-  `Esc` goes back one level.
+  actions, views and leave, and the details of the selected row; a narrow box wraps a group's keys
+  under them, and a body too short for all of it drops from the end: the groups first, then the
+  details. While it is open the footer shows `Esc close`; the first `Esc` closes the box and leaves
+  the level where it was, and only a second `Esc` goes back one level.
 
 [source,text]
 ----
-┌ keys ─────────────────────────────────────────────────────────────┐
-│move     ↑ k   ↓ j   PgUp   PgDn   g   G                          │
-│open     Enter → l   ← h                                          │
-│actions  E   S   R   /   r                                        │
-│views    ?                                                        │
-│leave    Esc ← h   q                                              │
-│                                                                  │
-│▶ ! 2  pm-mcp-clients   3 plans · 1 epic            11 days ago    │
-│  running 2 h 10 min · in execute 25 min · 7 of 12 tasks           │
-└──────────────────────────────────────────────────────────────────┘
+┌ keys ───────────────────────────────────────────────────────────────────────┐
+│ move     ↑ k   ↓ j   PgUp   PgDn   g   G                                    │
+│ open     Enter → l   ← h                                                    │
+│ actions  *   .   n   t   p   c   a   /   r                                  │
+│ views    e   ?                                                              │
+│ leave    Esc   q                                                            │
+│                                                                             │
+│     ▶ TASK-003 · implement · claude sonnet · attempt 1 · running · - · 6 m… │
+└─────────────────────────────────────────────────────────────────────────────┘
 ----
 
 [#full-screen-narrow]

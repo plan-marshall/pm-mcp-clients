@@ -35,17 +35,14 @@ public final class TuiKeyRegistry {
     /**
      * One trigger of an action.
      *
-     * @param trigger  the character or terminal sequence that triggers the action
-     * @param action   the action
-     * @param priority how early the entry is kept when the footer has to leave keys out; a lower
-     *                 value is kept earlier
+     * @param trigger the character or terminal sequence that triggers the action
+     * @param action  the action
      */
-    public record Binding(String trigger, TuiKeyAction action, int priority) {
+    public record Binding(String trigger, TuiKeyAction action) {
 
         /**
          * @param trigger the trigger sequence
          * @param action  the action
-         * @param priority the priority of the action's footer entry
          */
         public Binding {
             Objects.requireNonNull(trigger, "trigger");
@@ -56,11 +53,13 @@ public final class TuiKeyRegistry {
         }
 
         /**
-         * @param trigger the trigger sequence
-         * @param action  the action
+         * How early the binding's footer entry is kept when the footer has to leave keys out; the
+         * footer is ordered by it, so the priority is a property of the binding, not of the cell.
+         *
+         * @return the priority, a lower value kept earlier
          */
-        public Binding(String trigger, TuiKeyAction action) {
-            this(trigger, action, priorityOf(action));
+        public int priority() {
+            return priorityOf(action);
         }
     }
 
@@ -311,6 +310,10 @@ public final class TuiKeyRegistry {
      * when their line does; otherwise the cells are kept in their order until the next one would
      * not fit whole beside the {@code ? more} cell, the help cell is replaced by that cell, and the
      * line ends with it. A key is never cut in the middle.
+     *
+     * <p>A line too narrow even for one cell beside {@code ? more} keeps its cells unchanged, so
+     * the caller's own truncation cuts it: a footer of only {@code ? more} would name an overlay
+     * for keys the line does not show at all.
      *
      * @param cells  the cells, in the order they are kept
      * @param width  the columns the footer may use

@@ -206,10 +206,10 @@ public final class TuiLayout {
     }
 
     /**
-     * The help overlay: a box over the view that names every key of the level, grouped, and the
-     * selected row with its details. It is a page of its own, so it takes the body's lines instead
-     * of scrolling: the groups come first, the row's details after them, and what does not fit is
-     * dropped from the end rather than cut by the viewport.
+     * The help overlay: a box over the view that names the level's keys, grouped, and the selected
+     * row with its details. It is a page of its own, so it takes the body's lines instead of
+     * scrolling: the groups come first (wrapped, so no key is cut), the row's details after them,
+     * and a body too short for all of it drops from the end rather than cutting the box.
      *
      * @param screen the screen, with its help flag set
      * @param width  the line width
@@ -225,7 +225,11 @@ public final class TuiLayout {
             }
             return List.copyOf(lines);
         }
-        var content = new ArrayList<>(TuiKeyRegistry.helpGroups(screen.kind(), locale));
+        var content = new ArrayList<String>();
+        var interior = Math.max(1, width - 4);
+        for (var group : TuiKeyRegistry.helpGroups(screen.kind(), locale)) {
+            content.addAll(wrap(group, interior));
+        }
         var details = rowDetails(screen);
         var room = height - 2;
         if (!details.isEmpty() && room > content.size() + 1) {
@@ -245,6 +249,45 @@ public final class TuiLayout {
         while (lines.size() < height) {
             lines.add(blank);
         }
+        return List.copyOf(lines);
+    }
+
+    /**
+     * Wraps one line of the help overlay onto the interior's width at a space, so that a narrow
+     * terminal still names every key of a group instead of cutting the line with an ellipsis. A
+     * continuation line is indented under the group's keys.
+     *
+     * @param text    the line
+     * @param width   the interior's columns
+     * @return the line as one or more lines
+     */
+    private static List<String> wrap(String text, int width) {
+        var lines = new ArrayList<String>();
+        var rest = text;
+        while (displayWidth(rest) > width) {
+            int used = 0;
+            int cut = 0;
+            for (int index = 0; index < rest.length(); ) {
+                int codePoint = rest.codePointAt(index);
+                int cells = Math.max(0, WCWidth.wcwidth(codePoint));
+                if (used + cells > width) {
+                    break;
+                }
+                used += cells;
+                cut = index + Character.charCount(codePoint);
+                index = cut;
+            }
+            int space = rest.lastIndexOf(' ', Math.max(0, cut - 1));
+            if (space > 0) {
+                cut = space;
+            }
+            if (cut <= 0) {
+                break;
+            }
+            lines.add(rest.substring(0, cut).stripTrailing());
+            rest = "    " + rest.substring(cut).stripLeading();
+        }
+        lines.add(rest);
         return List.copyOf(lines);
     }
 

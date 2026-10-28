@@ -15,7 +15,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -199,6 +201,29 @@ class TuiLayoutTest {
                             () -> assertTrue(box.size() >= 7, text),
                             () -> box.forEach(line -> assertEquals(119, TuiLayout.displayWidth(line), line)),
                             () -> assertEquals(TuiKeyRegistry.helpFooter("en"), lines.getLast().strip())
+        );
+    }
+
+    @Test
+    @DisplayName("at 60 columns the help overlay wraps its groups instead of cutting a key")
+    void helpOverlayAtSixtyColumns() {
+        var help = new TuiScreen("Running work", TuiLevel.Kind.PROJECT_BY_PLAN, screen(0, 3).rows(),
+                            0, "", true, true, 0);
+        var lines = layout.render(help, 60, 24).stream().map(Object::toString).toList();
+        var box = lines.stream().filter(line -> line.startsWith("\u2502")).toList();
+        var tokens = box.stream()
+                            .flatMap(line -> Arrays.stream(line.replace("\u2502", " ").split("\\s+")))
+                            .filter(token -> !token.isEmpty())
+                            .collect(Collectors.toSet());
+
+        assertAll(
+                            () -> assertTrue(box.size() > 7, String.join("\n", box)),
+                            () -> assertTrue(box.stream().noneMatch(line -> line.contains("\u2026")),
+                                                String.join("\n", box)),
+                            () -> TuiKeyRegistry.bindings(TuiLevel.Kind.PROJECT_BY_PLAN).stream()
+                                                .map(binding -> TuiKeyRegistry.displayOf(binding.trigger()))
+                                                .forEach(display -> assertTrue(tokens.contains(display),
+                                                                    "the overlay does not name " + display))
         );
     }
 
