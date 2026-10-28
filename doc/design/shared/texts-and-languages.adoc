@@ -119,7 +119,7 @@ A value is named by its title; the id is what the operator types, not what the o
 
 * *The title first.* A plan, an epic, a project, a task, a step, and a workflow unit are named by their title in every view of both clients: a list, a detail, a report, a completion message, a prompt.
 * *The id beside it.* The id follows the title, dim in the terminal and as a chip in the web app (`Fix Relay Transport  fix-relay`), and only where the operator types it or matches on it: a search, a filter, a command line, the detail an action is taken from. A view that never needs the id shows none, and no view shows the id to fill space.
-* *Never the id alone.* A value without a title is a defect of the data, never a reason to fall back to the id. The display layer's build check fails on a step id or a link name that has no catalogue text, so a raw id cannot reach the operator.
+* *Never the id alone.* A value without a title is a defect of the data, never a reason to fall back to the id. The display layer brings a build check that fails on a step id or a link name with no catalogue text, so a raw id cannot reach the operator once that layer lands.
 * *Ended work.* Ended work follows the rule as running work does, with the same words for the same state.
 * *A unit id.* A workflow unit id renders the plain name of its `unit.<id>` key: the id `landing.pull-request` reads "Pull request" through `unit.landing.pull-request`, with the id as a chip beside it where the operator needs it.
 

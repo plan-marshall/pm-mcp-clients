@@ -42,10 +42,9 @@ import de.planmarshall.api.system.WorkerState;
  * state id or a placeholder, so the build fails here instead.
  * <p>
  * Each family is read from the {@code pm-api} enum that closes it, so an enum that gains a constant
- * fails this test until its word exists in {@code en} and {@code de}. The six primary mock
- * scenarios ({@code onboarding}, {@code running-work}, {@code projects-and-start},
- * {@code reports-and-system}, {@code designer}, {@code fully-onboarded}) serve values from the same
- * sets; the enums are their closed form, held here rather than read from the mock.
+ * fails this test until its word exists in every supported locale. The six primary mock scenarios
+ * serve values from the same sets; the enums are their closed form, held here rather than read from
+ * the mock, and the unit ids they serve are guarded where they live, in {@code pm-mock-runtime}.
  */
 class StateWordsCompletenessTest {
 
@@ -53,19 +52,21 @@ class StateWordsCompletenessTest {
 
     private static final String UNIT_PREFIX = "unit.";
 
-    private static final List<String> LOCALES = List.of("en", "de");
+    private static final List<String> LOCALES = MessageCatalogue.SUPPORTED_LOCALES.stream().sorted().toList();
 
     /**
-     * Workflow unit ids that the mock scenarios serve but no {@code pm-api} constant names: the
-     * project workflows of {@code designer.json} and the custom landing of its placing result. A
-     * project chooses its own unit ids, so this is an open set and cannot be closed by an enum.
+     * Workflow unit ids the contract names in {@code PlanDefaults}. The ids the mock scenarios serve
+     * are guarded where they live, in {@code pm-mock-runtime}.
      */
-    private static final List<String> SCENARIO_UNIT_IDS = List.of(
-            "git.commit_and_push",
-            "epic",
-            "phase-6-finalize",
-            "remediation.ci-failure",
-            "landing.custom");
+    private static final List<String> CONTRACT_UNIT_IDS = List.of(
+            PlanDefaults.LANDING_PULL_REQUEST,
+            PlanDefaults.LANDING_MAIN,
+            PlanDefaults.LANDING_FILES,
+            PlanDefaults.METHOD_TEST_FIRST,
+            PlanDefaults.METHOD_TESTS_AFTER,
+            PlanDefaults.ASK_EVERY_PHASE,
+            PlanDefaults.ASK_KEY_POINTS,
+            PlanDefaults.ASK_QUESTIONS_ONLY);
 
     @Test
     @DisplayName("should have a display word for every state enum value in both locales")
@@ -90,23 +91,12 @@ class StateWordsCompletenessTest {
     }
 
     @Test
-    @DisplayName("should have a plain name for every workflow unit id in both locales")
+    @DisplayName("should have a plain name for every workflow unit id the contract names")
     void shouldHavePlainNameForEveryWorkflowUnitId() {
-        var ids = new ArrayList<String>(List.of(
-                PlanDefaults.LANDING_PULL_REQUEST,
-                PlanDefaults.LANDING_MAIN,
-                PlanDefaults.LANDING_FILES,
-                PlanDefaults.METHOD_TEST_FIRST,
-                PlanDefaults.METHOD_TESTS_AFTER,
-                PlanDefaults.ASK_EVERY_PHASE,
-                PlanDefaults.ASK_KEY_POINTS,
-                PlanDefaults.ASK_QUESTIONS_ONLY));
-        ids.addAll(SCENARIO_UNIT_IDS);
-
         var missing = new ArrayList<String>();
         for (var locale : LOCALES) {
             var messages = MessageCatalogue.getMessages(locale, "all");
-            for (var id : ids) {
+            for (var id : CONTRACT_UNIT_IDS) {
                 var key = UNIT_PREFIX + id;
                 var text = messages.get(key);
                 if (text == null || text.isBlank()) {
@@ -116,7 +106,7 @@ class StateWordsCompletenessTest {
         }
 
         assertTrue(missing.isEmpty(),
-                "Every workflow unit id needs a plain name in en and de: " + missing);
+                "Every workflow unit id of the contract needs a plain name in every locale: " + missing);
     }
 
     /**
