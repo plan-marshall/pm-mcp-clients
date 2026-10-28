@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '../i18n';
   import type { ArchiveCheck, WorkActions } from '../api/client';
+  import Icon from './Icon.svelte';
 
   export let subjectId: string;
   export let subjectKind: 'plan' | 'epic' = 'plan';
@@ -309,7 +310,9 @@
             <ul class="control-actions__checks">
               {#each archiveCheck.lines as line (line.label)}
                 <li class="control-actions__check" data-testid={`archive-line-${line.label}`}>
-                  <span class="control-actions__check-glyph">{line.passed ? '✓' : '✗'}</span>
+                  <span class="control-actions__check-glyph"
+                    ><Icon name={line.passed ? 'state.check' : 'state.error'} size={16} /></span
+                  >
                   <span>{$t(line.label)}</span>
                   {#if line.note}
                     <span class="control-actions__check-note">{line.note}</span>

@@ -55,7 +55,7 @@ describe('the advisory title layer', () => {
 
   it('gives a button that only carries an aria-label no title', () => {
     const button = document.createElement('button');
-    button.textContent = '🌙';
+    button.textContent = 'Toggle';
     button.setAttribute('aria-label', 'Toggle light/dark theme');
     advisory(button);
     expect(button.hasAttribute('title')).toBe(false);

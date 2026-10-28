@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '../i18n';
+  import Icon from './Icon.svelte';
 
   /**
    * The step bar of the onboarding.
@@ -53,7 +54,9 @@
             onclick={() => select(step.num)}
             data-testid={`step-button-${step.num}`}
           >
-            <span class="step-bar__indicator" aria-hidden="true">✓</span>
+            <span class="step-bar__indicator" aria-hidden="true"
+              ><Icon name="state.check" size={16} /></span
+            >
             <span class="step-bar__label">{$t(step.key)}</span>
           </button>
         {:else}
@@ -67,7 +70,10 @@
     <li class="step-bar__item" class:step-bar__item--done={activeStep > 7}>
       <span class="step-bar__static">
         <span class="step-bar__indicator" aria-hidden="true">
-          {#if activeStep > 7}✓{:else}○{/if}
+          {#if activeStep > 7}<Icon name="state.check" size={16} />{:else}<Icon
+              name="state.dot"
+              size={16}
+            />{/if}
         </span>
         <span class="step-bar__label">{$t('onboard.step.done')}</span>
       </span>
@@ -86,7 +92,7 @@
           aria-label={$t('onboard.completed.hide_step')}
           onclick={() => onSelectStep(0)}
         >
-          ✕
+          <Icon name="act.cancel" size={16} />
         </button>
       </div>
       <p class="step-summary__value">{summaries[String(selectedStep)]}</p>

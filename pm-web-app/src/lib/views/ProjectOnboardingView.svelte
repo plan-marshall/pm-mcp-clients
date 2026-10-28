@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
+  import Icon from '../components/Icon.svelte';
   import Spinner from '../components/Spinner.svelte';
   import { apiClient } from '../api/client';
   import type {
@@ -412,7 +413,7 @@
           aria-current={step.status === 'current' ? 'step' : undefined}
         >
           <span class="step-line__indicator" aria-hidden="true">
-            {#if step.status === 'done'}✓{:else}{step.step}{/if}
+            {#if step.status === 'done'}<Icon name="state.check" size={16} />{:else}{step.step}{/if}
           </span>
           <span class="step-line__label">{$t(stepKey(step.step))}</span>
           <span class="step-line__status">{$t(statusKey(step.status))}</span>
@@ -442,7 +443,7 @@
     {:else if isComplete}
       <div class="state-card" data-testid="project-onboarding-complete">
         <div class="state-card__header">
-          <span class="badge-success" aria-hidden="true">✓</span>
+          <span class="badge-success" aria-hidden="true"><Icon name="state.check" size={16} /></span>
           <h2 class="state-card__title">
             {$t('project.ready.title', { project: run?.checkout_path ?? '' })}
           </h2>

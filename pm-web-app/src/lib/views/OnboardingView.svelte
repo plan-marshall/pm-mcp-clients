@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
+  import Icon from '../components/Icon.svelte';
   import Spinner from '../components/Spinner.svelte';
   import StepBar from '../components/StepBar.svelte';
   import ConsentBox from '../components/ConsentBox.svelte';
@@ -265,7 +266,7 @@
         {:else if isCompleted}
           <div class="state-card">
             <div class="state-card__header">
-              <span class="badge-success" aria-hidden="true">✓</span>
+              <span class="badge-success" aria-hidden="true"><Icon name="state.check" size={16} /></span>
               <h1 class="state-card__title">{$t('onboard.completed.title')}</h1>
               <p class="state-card__summary">
                 {stringField('summary') || $t('onboard.completed.summary')}
@@ -276,7 +277,9 @@
               <ul class="completed-list" data-testid="completed-steps">
                 {#each doneSteps as step}
                   <li class="completed-row">
-                    <span class="completed-row__check" aria-hidden="true">✓</span>
+                    <span class="completed-row__check" aria-hidden="true"
+                      ><Icon name="state.check" size={16} /></span
+                    >
                     <span class="completed-row__name">{$t(`onboard.step.${stepKey(step)}`)}</span>
                     <span class="completed-row__value">
                       {stepSummaries[String(step)] ?? $t('onboard.completed.no_summary')}

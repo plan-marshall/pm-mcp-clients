@@ -8,7 +8,9 @@
   import FindingsReviewModal from '../components/FindingsReviewModal.svelte';
   import ChatPanel from '../components/ChatPanel.svelte';
   import WorkflowIcon from '../components/WorkflowIcon.svelte';
+  import Icon from '../components/Icon.svelte';
   import { phaseIconId } from '../icons/workflowIcons';
+  import type { UiIconId } from '../icons/uiIcons';
   import {
     apiClient,
     type ChatReadBack,
@@ -203,24 +205,24 @@
   }
 
   /** The marker of a row's status, as the design writes the workstream rows. */
-  function statusGlyph(status: string): string {
+  function statusIcon(status: string): UiIconId {
     switch (status) {
       case 'shipped':
-        return '✓';
+        return 'state.check';
       case 'running':
       case 'pausing':
-        return '▶';
+        return 'act.start';
       case 'paused':
-        return '⏸';
+        return 'act.pause';
       case 'waiting':
       case 'waiting for you':
       case 'held':
-        return '!';
+        return 'state.alert';
       case 'cancelled':
       case 'abandoned':
-        return '✕';
+        return 'state.error';
       default:
-        return '○';
+        return 'state.dot';
     }
   }
 
@@ -688,7 +690,7 @@
                         data-advisory={$t('epic.views.open_plan.title')}
                         onclick={() => openPlan(row.plan_id)}
                       >
-                        <span class="plan-glyph">{statusGlyph(row.status)}</span>
+                        <span class="plan-glyph"><Icon name={statusIcon(row.status)} size={16} /></span>
                         <span class="plan-title font-semibold">{row.title}</span>
                       </button>
                       <span class="badge badge--state badge--state-{rowStatusKey(row.status)}">
@@ -867,7 +869,7 @@
                   data-testid="running-plan-{plan.plan_id}"
                 >
                   <div class="plan-card__head">
-                    <span class="plan-glyph">▶</span>
+                    <span class="plan-glyph"><Icon name="act.start" size={16} /></span>
                     <span class="plan-title font-semibold">{plan.title}</span>
                     <span class="badge badge--phase">
                       <WorkflowIcon id={phaseIconId(plan.current_phase)} size={16} />
@@ -908,7 +910,7 @@
                   data-testid="staged-plan-{plan.plan_id}"
                 >
                   <div class="plan-card__head">
-                    <span class="plan-glyph">○</span>
+                    <span class="plan-glyph"><Icon name="state.dot" size={16} /></span>
                     <span class="plan-title font-semibold">{plan.title}</span>
                     <span class="badge badge--state badge--state-staged"
                       >{plan.phase_state || 'staged'}</span

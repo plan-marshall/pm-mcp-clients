@@ -3,6 +3,7 @@
   import { t } from '../i18n';
   import type { SourceKindOffer, StartSource } from '../api/client';
   import { failureMessage, offerReason, resetTime } from '../start/sourceLabels';
+  import Icon from './Icon.svelte';
 
   export let sources: StartSource[] = [];
   export let offers: SourceKindOffer[] = [];
@@ -88,7 +89,14 @@
     {#each sources as source (source.source_id)}
       <li class="source-line" data-testid={`source-${source.source_id}`}>
         <span class="source-line__mark" aria-hidden="true">
-          {#if source.state === 'failed'}✗{:else if source.state === 'flagged'}⚠{:else if source.state === 'unscreened'}?{:else if settled(source)}✓{:else}▶{/if}
+          {#if source.state === 'failed'}<Icon name="state.error" size={16} />{:else if source.state ===
+          'flagged'}<Icon name="state.alert" size={16} />{:else if source.state === 'unscreened'}<Icon
+              name="state.clock"
+              size={16}
+            />{:else if settled(source)}<Icon name="state.check" size={16} />{:else}<Icon
+              name="act.start"
+              size={16}
+            />{/if}
         </span>
         <span class="source-line__kind">{$t(`start.source.${source.kind}`)}</span>
         <span class="source-line__reference">

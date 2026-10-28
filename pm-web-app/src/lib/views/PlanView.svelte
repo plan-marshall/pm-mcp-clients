@@ -28,7 +28,8 @@
   } from '../stores/runtime';
   import { formatSplit, formatTokens, formatDurationSeconds } from '../utils/tokenFormat';
   import { stripControlSequences } from '../utils/outputSafety';
-  import { getNodeGlyph, getNodeStateText } from '../utils/processNode';
+  import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
+  import Icon from '../components/Icon.svelte';
 
   /** What the inspector shows: a leaf task's live feed, or a node's own narrative. */
   type TreeSelection = { kind: 'task'; taskId: string } | { kind: 'node'; nodeId: string };
@@ -823,7 +824,7 @@
                 aria-expanded={hasChildren(node) ? Boolean(expandedNodes[node.node_id]) : undefined}
                 data-testid="toggle-node-{node.node_id}"
               >
-                <span class="node-glyph">{getNodeGlyph(node.state)}</span>
+                <span class="node-glyph"><Icon name={getNodeStateIcon(node.state)} size={16} /></span>
                 <span class="toggle-icon">
                   {#if hasChildren(node)}
                     {expandedNodes[node.node_id] ? '▾' : '▸'}
@@ -876,7 +877,9 @@
                         data-testid="task-{task.task_id}"
                         data-advisory={$t('plan.view.select_task.title')}
                       >
-                        <span class="task-glyph">{getNodeGlyph(task.status)}</span>
+                        <span class="task-glyph"
+                          ><Icon name={getNodeStateIcon(task.status)} size={16} /></span
+                        >
                         <span class="task-id font-semibold">{task.task_id}</span>
                         <span class="task-role">{task.role}</span>
                         <span class="task-model">{task.harness} {task.model}</span>
@@ -952,7 +955,7 @@
               <!-- Off-track alert banner -->
               {#if taskActivity.off_track}
                 <div class="off-track-banner" data-testid="off-track-alert" role="alert">
-                  <span class="warning-icon">⚠</span>
+                  <span class="warning-icon"><Icon name="state.alert" size={16} /></span>
                   <span class="off-track-msg">
                     {$t('plan.activity.off_track', {
                       signal: taskActivity.off_track.signal,

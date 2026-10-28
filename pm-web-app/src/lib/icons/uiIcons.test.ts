@@ -16,6 +16,23 @@ function assetName(id: string): string {
   return `${id.replaceAll('.', '-')}.svg`;
 }
 
+/**
+ * @param directory the directory to walk
+ * @returns every file below it, recursively
+ */
+function walk(directory: string): string[] {
+  const found: string[] = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const full = join(directory, entry.name);
+    if (entry.isDirectory()) {
+      found.push(...walk(full));
+    } else {
+      found.push(full);
+    }
+  }
+  return found;
+}
+
 describe('UI icon registry', () => {
   it('delivers one unique asset for every id and none beside the registry', () => {
     expect(UI_ICON_IDS.length).toBeGreaterThanOrEqual(40);
@@ -110,5 +127,17 @@ describe('Icon component', () => {
     const { container } = render(Icon, { props: { name: 'nav.unknown' } });
 
     expect(container.querySelector('.ui-icon')).toBeNull();
+  });
+});
+
+describe('the emoji sweep', () => {
+  it('leaves no pictographic character anywhere in the web app source', () => {
+    const pictographic = /\p{Extended_Pictographic}/u;
+    const sourceDirectory = join(projectRoot, 'src');
+    const offenders = walk(sourceDirectory)
+      .filter((file) => pictographic.test(readFileSync(file, 'utf-8')))
+      .map((file) => file.slice(projectRoot.length + 1));
+
+    expect(offenders).toEqual([]);
   });
 });

@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
+  import Icon from '../components/Icon.svelte';
   import Spinner from '../components/Spinner.svelte';
   import FilterInput from '../components/FilterInput.svelte';
   import ViewLayoutToggle from '../components/ViewLayoutToggle.svelte';
@@ -808,7 +809,7 @@
             {#each groupedReports as pGroup}
               <section class="project-section">
                 <h2 class="project-header">
-                  <span class="project-glyph" aria-hidden="true">▪</span>
+                  <span class="project-glyph" aria-hidden="true"><Icon name="state.dot" size={16} /></span>
                   {#if pGroup.projectId}
                     <button
                       type="button"
