@@ -190,6 +190,10 @@ plan spec names the plan, proposal and finding documents it comes from.
   - Not chosen: PLAN-08 (the docs-only Sonar watch needs the operator's decision); PLAN-09 (check
     against the new enums and decide the tab-title watch first); PLAN-11 (5 files shared with the
     in-flight PLAN-03); PLAN-13 and PLAN-14 (share the operator catalogue with PLAN-10).
+- 2026-10-28 — PLAN-12 landing analysed (`landings/PLAN-12.md`). Emitted PLAN-19 (`web-ui-icon-set`) into
+  the web slot it freed. Its dependencies PLAN-12 and PLAN-76 are shipped, it is disjoint from PLAN-03,
+  PLAN-10 and PLAN-15, and it carries PLAN-12's emoji residue. PLAN-09 was not chosen: the PLAN-06 enum
+  check and the tab-title watch must be settled before its emit.
 
 ## Open Defects
 
@@ -204,7 +208,8 @@ plan spec names the plan, proposal and finding documents it comes from.
   `rb-76-shared-port-assignment-001.md` (PLAN-76, harness `antigravity`), `total_tokens`, `model` and
   `effort` missing. Recurrence 2026-10-27: `rb-07-cli-terminal-design-docs-001.md` (PLAN-07, antigravity),
   only `total_tokens` missing. Recurrence 2026-10-28: `rb-06-shared-display-vocabulary-001.md` (PLAN-06,
-  opencode), `total_tokens` and `plugin_version` missing.
+  opencode), `total_tokens` and `plugin_version` missing. Recurrence 2026-10-28:
+  `rb-12-web-design-tokens-v2-001.md` (PLAN-12, opencode), same two keys.
 
 ## Watches
 
@@ -222,8 +227,21 @@ plan spec names the plan, proposal and finding documents it comes from.
 - Build server: the bare-`mvn` failure (PLAN-02, 04, 05, 01) is gone: PLAN-07's and every one of PLAN-06's
   routed builds ran on the daemon. What remains is the learned timeout bound. It expired below a full
   `verify -Ppre-commit` in both runs (876 s during `npm ci` for PLAN-07, 752 s for PLAN-06, against runs of
-  663–793 s), and the lanes then passed `--timeout 1800`/`2400` by hand. — re-check at the next routed
-  landing; raise it with the build server if the bound keeps expiring.
+  663–793 s), and the lanes then passed `--timeout 1800`/`2400` by hand. But PLAN-12, running in the same
+  hours, fell back to in-process for every build (`maven_not_on_daemon_path`, bare `mvn`), so the fix is
+  not reliable. — re-check at the next routed landing, compare the daemon's PATH between runs, and raise
+  both the PATH and the timeout bound with the build server.
+- Playwright MCP browser shared between parallel sessions (PLAN-12): another session took over its tabs,
+  and a tab left open on the app port broke one e2e run. The port blocks separate the mock and the app,
+  not the browser. — re-check at the next landings of browser-checking plans running side by side. If it
+  recurs, give each opencode session its own Playwright MCP profile or output directory, or run only one
+  browser-checking plan at a time.
+- The Sonar credential cannot transition an issue (HTTP 400, PLAN-12). The Sonar clause of every spec
+  allows a dismissal "transmitted through the plan-less transition verb", which can't be transmitted
+  today, so any finding that is dismissed rather than fixed blocks its merge. — fix the token's
+  permission; re-check at the first dismissal.
+- `/plans/{id}` scrolls horizontally at 390 px (498 px measured; PLAN-12 residue, older than the epic).
+  — check that PLAN-55 (`web-plan-page`) covers it before emitting it.
 - Tab titles name the identifier (`drop-legacy-api`), not the display title (PLAN-04 residue). No
   staged plan owns a title store for the shell. — decide when PLAN-09 (`web-display-layer`) is emitted,
   or at the PLAN-29 verification (`CC-V-04`).
