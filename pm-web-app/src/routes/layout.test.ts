@@ -144,7 +144,7 @@ describe('the app shell', () => {
     expect(screen.queryByTestId('nav-designer-btn')).not.toBeInTheDocument();
   });
 
-  it('marks the LAN mode and keeps the detail when the connection status fails', async () => {
+  it('keeps the machine pill neutral and names the network mode in its title', async () => {
     localStorage.setItem('pm_device_secret', 'pmw_valid');
     vi.spyOn(apiClient, 'getStatus').mockResolvedValue(STATUS);
     vi.spyOn(apiClient, 'getConnectionStatus').mockRejectedValue(new Error('unavailable'));

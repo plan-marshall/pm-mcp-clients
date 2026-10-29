@@ -144,14 +144,6 @@
     border-inline-start: 3px solid var(--color-border);
   }
 
-  /* The pill stays neutral in both modes: the machine's name is a fact, never a warning. The
-     connection mode travels in the title, which names the listener this browser reached. */
-  .app-header__machine[data-connection-mode='lan'] {
-    color: var(--color-text-muted);
-    background-color: var(--color-bg-subtle);
-    border-inline-start-color: var(--color-border);
-  }
-
   @media (max-width: 767px) {
     .app-header {
       padding-inline: var(--space-3);

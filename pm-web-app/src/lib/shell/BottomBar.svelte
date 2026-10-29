@@ -130,6 +130,46 @@
       </section>
     </div>
   </Dialog>
+{:else}
+  <!-- A phone that cannot open a destination keeps the frame's controls: the rail is hidden and
+       the pairing and revoked pages still need the language switch and the theme choice. -->
+  <nav
+    class="bottom-bar bottom-bar--frame"
+    data-testid="bottom-bar"
+    aria-label={$t('web.frame.bottom.label')}
+  >
+    <button
+      type="button"
+      class="bottom-bar__item"
+      data-testid="frame-language-toggle"
+      aria-label={$t('web.frame.toggle_language')}
+      onclick={() => setLocale($currentLocale === 'en' ? 'de' : 'en')}
+    >
+      <span class="bottom-bar__label">{$currentLocale === 'en' ? 'DE' : 'EN'}</span>
+    </button>
+
+    <fieldset class="sheet-theme">
+      <legend class="sr-only">{$t('web.frame.theme.label')}</legend>
+      {#each THEME_CHOICES as choice (choice)}
+        <input
+          class="sheet-theme__input"
+          type="radio"
+          name="pm-theme-frame"
+          id={`frame-theme-${choice}`}
+          value={choice}
+          checked={themeChoice === choice}
+          onchange={() => onChooseTheme(choice)}
+        />
+        <label
+          class="sheet-theme__option"
+          for={`frame-theme-${choice}`}
+          data-testid={`frame-theme-${choice}`}
+        >
+          {$t(`web.frame.theme.${choice}`)}
+        </label>
+      {/each}
+    </fieldset>
+  </nav>
 {/if}
 
 <style>
@@ -256,6 +296,15 @@
       padding-inline: var(--space-1);
       background-color: var(--color-bg-surface);
       border-block-start: 1px solid var(--color-border);
+    }
+
+    .bottom-bar--frame {
+      justify-content: space-between;
+      padding-inline: var(--space-3);
+    }
+
+    .bottom-bar--frame .sheet-theme {
+      flex: 0 1 auto;
     }
 
     .bottom-bar__item {

@@ -154,7 +154,7 @@ Every screen is built from the same frame, the same grid, the same tokens, and t
 The app is one rail, one column of four tiers beside it, and — on a phone — one bottom bar:
 
 ----
-rail      ▣ plan-marshall        │ top bar   path › path › title   [⌘K]  ● live  machine
+rail      ▣ plan-marshall        │ top bar   path › path › title   [search]  ● live  machine
           WORK                   │ ──────────────────────────────────────────────────────────
            Running               │ notices   runtime progress (a drain, an upgrade),
            Projects              │           the arrival line of reports or decisions

@@ -98,12 +98,12 @@ export async function startMockRuntime(scenario = 'fully-onboarded') {
     ],
     { cwd: descriptor.root, stdio: 'ignore', detached: false },
   );
+  await waitFor(true, 30000);
   fs.writeFileSync(
     DESCRIPTOR,
     JSON.stringify({ ...descriptor, pid: child.pid }, null, 2),
     'utf8',
   );
-  await waitFor(true, 30000);
 }
 
 /**
@@ -115,8 +115,12 @@ export async function startMockRuntime(scenario = 'fully-onboarded') {
  * @param scenario the scenario to open with when the mock has to be started
  */
 export async function ensureMockRuntime(scenario = 'fully-onboarded') {
-  if (await isUp()) {
-    return;
+  try {
+    if (await isUp()) {
+      return;
+    }
+    await startMockRuntime(scenario);
+  } catch {
+    // Best effort: the check's own failure is the one worth reporting.
   }
-  await startMockRuntime(scenario);
 }

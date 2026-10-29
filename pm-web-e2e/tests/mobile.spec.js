@@ -177,6 +177,24 @@ test.describe('Mobile viewports (WEB-1)', () => {
     }
   });
 
+  test('keeps the language and theme at the foot of a page with no destinations', async ({
+    page,
+    request,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await useScenario(request, 'web-pairing');
+    await page.goto('/');
+    await page.evaluate(() => localStorage.clear());
+    await page.goto('/pair');
+
+    const bar = page.getByTestId('bottom-bar');
+    await expect(bar).toBeVisible();
+    await expect(page.getByTestId('frame-language-toggle')).toBeVisible();
+    await expect(page.getByTestId('frame-theme-dark')).toBeVisible();
+    // Nothing to open yet: no destination pretends there is one.
+    await expect(page.getByTestId('bottom-running')).toHaveCount(0);
+  });
+
   test.afterAll(async ({ request }) => {
     try {
       await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {

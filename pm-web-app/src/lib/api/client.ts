@@ -3707,6 +3707,7 @@ export class ApiClient {
             this.onRevokedCallback?.('unauthorized');
           }
           abortAll();
+          onState?.('offline');
           return;
         }
 
@@ -3754,6 +3755,7 @@ export class ApiClient {
 
             if (revoked) {
               abortAll();
+              onState?.('offline');
               return;
             }
           }
