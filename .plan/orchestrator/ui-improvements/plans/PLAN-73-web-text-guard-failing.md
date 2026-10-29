@@ -27,6 +27,13 @@ Source of this plan (read before scoping):
        the guard joins inline runs.
      - The browser clause reads "every violation the guard lists appears in the browser snapshot", not an equality
        of the two word sets.
+     - Second landing message of PLAN-01 (`landings/PLAN-01.md`, addendum 2026-10-29), checked at HEAD a2f4d2c4:
+       model-written text is unmarked in `PlanView.svelte` (the `tool-name` and `tool-target` spans) and
+       `CompletionReportView.svelte` (no `data-model-text` at all); seven journeys record at "container visible",
+       so give them a readiness anchor; the baseline keeps host-shaped `state-id` entries (`github.com`,
+       `de.cuioss`), which no interface fix removes: narrow the rule or allow them, and say which.
+     - Empty the 22 x 2 baseline lists from the journeys, never from a browser pass, and never with
+       `TEXT_GUARD_BOOTSTRAP=1`.
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
    - Done when:
