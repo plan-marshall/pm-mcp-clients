@@ -445,32 +445,48 @@ public final class PmConsole {
      */
     void applyConsoleEvent(@Nullable String eventName, Map<String, Object> eventMap, LineReader reader) {
         var locale = locale();
-        var notice = ConsoleNotice.fromEventMap(locale, eventMap);
+        var kind = noticeKind(eventName, eventMap);
+        var notice = ConsoleNotice.fromEventMap(locale, eventName, eventMap);
         if (notice != null) {
-            var category = categoryOf(eventMap);
+            var category = categoryOf(kind);
             if (!noticeBuffer.hold(category, countOf(eventMap, category))) {
                 reader.printAbove(notice);
             }
-            notifyOperator(reader.getTerminal(), eventMap);
+            notifyOperator(reader.getTerminal(), kind, eventMap);
         }
         var name = eventName != null ? eventName : "";
-        var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
+        var payload = ConsoleNotice.payloadOf(eventMap);
+        var type = kind != null ? kind : "";
         if ("device.paired".equals(name) || "paired".equals(type)) {
-            var label = JsonTree.string(eventMap, "label");
+            var label = JsonTree.string(payload, "label");
             printAboveOrHold(reader, MessageCatalogue.format(locale, "operator.console.paired",
                                 Map.of("label", TerminalSanitizer.sanitize(label != null ? label : "local"))));
             if ("device.paired".equals(name)) {
                 issueFreshCodeAbove(reader);
             }
         } else if ("fresh_code".equals(type)) {
-            activePairingCode = JsonTree.string(eventMap, "code");
-            activePairingUrl = JsonTree.string(eventMap, "url");
+            activePairingCode = JsonTree.string(payload, "code");
+            activePairingUrl = JsonTree.string(payload, "url");
         }
     }
 
+    /**
+     * Resolves the notice kind of one event, so the buffer and the notification name the same kind
+     * the notice was rendered from.
+     *
+     * @param eventName the SSE event name, or {@code null}
+     * @param eventMap  the parsed event payload
+     * @return the notice kind, or {@code null} when the event becomes no notice
+     */
+    private static @Nullable String noticeKind(@Nullable String eventName, Map<String, Object> eventMap) {
+        var notice = ConsoleNotice.noticeKindOf(eventName, eventMap);
+        return notice != null ? notice.notice() : null;
+    }
+
     private static int countOf(Map<String, Object> eventMap, ConsoleNoticeBuffer.Category category) {
+        var payload = ConsoleNotice.payloadOf(eventMap);
         if (category == ConsoleNoticeBuffer.Category.REPORT
-                            && eventMap.get("count") instanceof Number number && number.intValue() > 1) {
+                            && payload.get("count") instanceof Number number && number.intValue() > 1) {
             return Math.min(number.intValue(), 10_000);
         }
         return 1;
@@ -488,11 +504,10 @@ public final class PmConsole {
         }
     }
 
-    private static ConsoleNoticeBuffer.Category categoryOf(Map<String, Object> eventMap) {
-        var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
-        return switch (type) {
-            case "question", "decision", "waiver_request" -> ConsoleNoticeBuffer.Category.DECISION;
-            case "report", "report.sent" -> ConsoleNoticeBuffer.Category.REPORT;
+    private static ConsoleNoticeBuffer.Category categoryOf(@Nullable String kind) {
+        return switch (kind != null ? kind : "") {
+            case "question", "decision", "waiver_request", "answered_elsewhere" -> ConsoleNoticeBuffer.Category.DECISION;
+            case "report" -> ConsoleNoticeBuffer.Category.REPORT;
             default -> ConsoleNoticeBuffer.Category.NEED;
         };
     }
@@ -526,15 +541,14 @@ public final class PmConsole {
         out.flush();
     }
 
-    private void notifyOperator(Terminal terminal, Map<String, Object> eventMap) {
+    private void notifyOperator(Terminal terminal, @Nullable String kind, Map<String, Object> eventMap) {
         if (!notify) {
             return;
         }
-        var kind = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
-        var scope = String.valueOf(eventMap.getOrDefault("scope", ""));
+        var scope = ConsoleNotice.scopeOf(ConsoleNotice.payloadOf(eventMap));
         var payload = MessageCatalogue.format(locale(), "operator.console.notification.line",
                             Map.of("scope", TerminalSanitizer.sanitize(scope),
-                                                "kind", TerminalSanitizer.sanitize(kind)));
+                                                "kind", TerminalSanitizer.sanitize(kind != null ? kind : "")));
         terminal.writer().write("\u001B]9;" + TerminalSanitizer.sanitizeNotification(payload) + "\u0007");
         terminal.writer().flush();
     }

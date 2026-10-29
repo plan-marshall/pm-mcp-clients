@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.DisplayName;
@@ -238,6 +239,125 @@ class ConsoleNoticeTest {
                                 () -> assertEquals("▪ fix-relay: merged (#214) · reports open rep-101", ConsoleNotice.fromEventMap(single)),
                                 () -> assertEquals("▪ docs-typo: no change", ConsoleNotice.fromEventMap(singleSummary)),
                                 () -> assertEquals("▪ plan: New report", ConsoleNotice.fromEventMap(fallback))
+            );
+        }
+    }
+
+    @Nested
+    @DisplayName("event name dispatch")
+    class NamedEventDispatch {
+
+        @Test
+        @DisplayName("maps decision.opened from the envelope to the question notice")
+        void decisionOpened() {
+            var event = Map.<String, Object>of(
+                                "event", "decision.opened",
+                                "id", 42,
+                                "scope", Map.of("kind", "plan", "id", "fix-relay"),
+                                "data", Map.of("decision", Map.of(
+                                                    "id", "Q-007",
+                                                    "subject", "plan fix-relay",
+                                                    "blocks", "plan",
+                                                    "description", "The change conflicts with main in RelayServer.java.",
+                                                    "parts", List.of(Map.of(
+                                                                        "part_id", "1",
+                                                                        "question", "How should the conflict be resolved?",
+                                                                        "options", List.of(
+                                                                                            Map.of("key", "1", "label", "Merge main into the branch"),
+                                                                                            Map.of("key", "2", "label", "Rebase onto main")),
+                                                                        "recommendation", "2")))));
+
+            var notice = ConsoleNotice.fromEventMap("en", "decision.opened", event);
+
+            assertAll(
+                                () -> assertNotNull(notice),
+                                () -> assertTrue(notice.contains("◆ Question Q-007 · plan fix-relay · blocks the plan"), notice),
+                                () -> assertTrue(notice.contains("The change conflicts with main in RelayServer.java."), notice),
+                                () -> assertTrue(notice.contains("Recommended: 2) Rebase onto main"), notice)
+            );
+        }
+
+        @Test
+        @DisplayName("maps decision.answered from the web app to the answered-elsewhere notice")
+        void decisionAnswered() {
+            var event = Map.<String, Object>of(
+                                "id", "Q-007",
+                                "answer", "Rebase onto main",
+                                "channel", "web",
+                                "device", "iPad");
+
+            var notice = ConsoleNotice.fromEventMap("en", "decision.answered", event);
+            var ownConsole = ConsoleNotice.fromEventMap("en", "decision.answered", Map.of(
+                                "id", "Q-008",
+                                "answer", "Abort",
+                                "channel", "cli"));
+
+            assertAll(
+                                () -> assertEquals("– Q-007 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.",
+                                                    notice),
+                                () -> assertNull(ownConsole)
+            );
+        }
+
+        @Test
+        @DisplayName("maps hold.opened to the notice of the hold's kind")
+        void holdOpened() {
+            var event = Map.<String, Object>of(
+                                "hold_id", "h-1",
+                                "subject_id", "fix-relay",
+                                "subject_kind", "plan",
+                                "kind", "stalled",
+                                "cause", "worker died");
+
+            var notice = ConsoleNotice.fromEventMap("en", "hold.opened", event);
+
+            assertEquals("◆ Plan fix-relay stalled: worker died", notice);
+        }
+
+        @Test
+        @DisplayName("maps landing.failed to the landing-failed notice")
+        void landingFailed() {
+            var event = Map.<String, Object>of("epic", "storage-v2", "reason", "git conflict");
+
+            var notice = ConsoleNotice.fromEventMap("en", "landing.failed", event);
+
+            assertEquals("◆ Epic storage-v2: the landing failed: git conflict", notice);
+        }
+
+        @Test
+        @DisplayName("maps report.sent from the report payload to the quiet report line")
+        void reportSent() {
+            var event = Map.<String, Object>of("report", Map.of(
+                                "id", "rep-101",
+                                "from", "pm-mcp-clients > relay-hardening > fix-relay",
+                                "subject", "merged (#214)"));
+
+            var notice = ConsoleNotice.fromEventMap("en", "report.sent", event);
+
+            assertEquals("▪ fix-relay: merged (#214) · reports open rep-101", notice);
+        }
+
+        @Test
+        @DisplayName("keeps the type field as the fallback of an unnamed or unknown event")
+        void typeFallback() {
+            var unnamed = ConsoleNotice.fromEventMap("en", null, Map.of(
+                                "type", "stalled", "scope", "fix-relay", "reason", "worker died"));
+            var unknownName = ConsoleNotice.fromEventMap("en", "task.off_track", Map.of(
+                                "type", "question", "id", "Q-001", "scope", "plan fix-relay"));
+
+            assertAll(
+                                () -> assertEquals("◆ Plan fix-relay stalled: worker died", unnamed),
+                                () -> assertNotNull(unknownName),
+                                () -> assertTrue(unknownName.contains("◆ Question Q-001 · plan fix-relay"), unknownName)
+            );
+        }
+
+        @Test
+        @DisplayName("prints no notice for an event with no notice kind")
+        void noNoticeForUnmappedEvents() {
+            assertAll(
+                                () -> assertNull(ConsoleNotice.fromEventMap("en", "task.off_track", Map.of())),
+                                () -> assertNull(ConsoleNotice.fromEventMap("en", "hold.cleared", Map.of("hold_id", "h-1")))
             );
         }
     }
