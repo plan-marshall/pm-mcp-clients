@@ -74,32 +74,48 @@ class OnboardCommandTest {
 
     private void seedOnboardingRoutes() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
+        var autoStarted = new boolean[1];
         fixture.start((request, response) -> {
             var path = request.target();
             var method = request.method();
             if (OnboardCommand.STATE_PATH.equals(path)) {
-                response.json(200, """
-                                    {"scope":"machine","state":"harness.consent","summary":"Look for harnesses on this machine?",
-                                     "completed_steps":1,"auto":false,
-                                     "links":{"yes":{"href":"/api/v1/onboarding/harness/scan","method":"POST","next":"harness.choose"},
-                                              "no":{"href":"/api/v1/onboarding/harness/decline","method":"POST","next":"harness.consent"}}}
-                                    """);
+                response.json(200, autoStarted[0] ? AUTO_RESULT : HARNESS_CONSENT);
             } else if (OnboardCommand.STEP_PATH.equals(path) && "POST".equals(method)) {
-                response.json(200, """
-                                    {"scope":"machine","state":"harness.choose","summary":"Choose the harnesses to enrol",
-                                     "completed_steps":1,"auto":false,
-                                     "links":{"choose":{"href":"/api/v1/onboarding/harness/choose","method":"POST","next":"harness.probe-consent"}}}
-                                    """);
+                response.json(200, autoStarted[0] ? AUTO_RESULT : HARNESS_CHOOSE);
             } else if (OnboardCommand.AUTO_PATH.equals(path) && "POST".equals(method)) {
-                response.json(200, """
-                                    {"scope":"machine","state":"auto.consent","summary":"Decide everything for me?",
-                                     "completed_steps":0,"auto":true}
-                                    """);
+                autoStarted[0] = true;
+                response.json(200, AUTO_CONSENT);
             } else {
                 response.send(404, null, "Not found: " + path);
             }
         });
     }
+
+    private static final String HARNESS_CONSENT = """
+                        {"scope":"machine","state":"harness.consent","summary":"Look for harnesses on this machine?",
+                         "completed_steps":1,"auto":false,
+                         "links":{"yes":{"href":"/api/v1/onboarding/harness/scan","method":"POST","next":"harness.choose","preselected":true},
+                                  "no":{"href":"/api/v1/onboarding/harness/decline","method":"POST","next":"harness.consent"}}}
+                        """;
+
+    private static final String HARNESS_CHOOSE = """
+                        {"scope":"machine","state":"harness.choose","summary":"Choose the harnesses to enrol",
+                         "completed_steps":1,"auto":false,
+                         "links":{"choose":{"href":"/api/v1/onboarding/harness/choose","method":"POST","next":"harness.probe-consent"}}}
+                        """;
+
+    private static final String AUTO_CONSENT = """
+                        {"scope":"machine","state":"auto.consent","summary":"Decide everything for me?",
+                         "completed_steps":0,"auto":true,
+                         "links":{"yes":{"href":"/api/v1/onboarding/auto/run","method":"POST","next":"auto.scan","preselected":true}}}
+                        """;
+
+    private static final String AUTO_RESULT = """
+                        {"scope":"machine","state":"auto.result","summary":"Everything is decided.",
+                         "completed_steps":7,"auto":true,
+                         "results":[{"aspect":"language","value":"Deutsch, models too","reason":"detected"}],
+                         "links":{"done":{"href":"/api/v1/onboarding/auto/result/done","method":"POST","next":"onboard.completed","preselected":true}}}
+                        """;
 
     @Nested
     @DisplayName("onboard")
@@ -119,11 +135,10 @@ class OnboardCommandTest {
             var output = writer.toString();
             assertAll(
                                 () -> assertEquals(0, code),
-                                () -> assertTrue(output.contains("Machine onboarding")),
-                                () -> assertTrue(output.contains("Look for harnesses on this machine?")),
-                                () -> assertTrue(output.contains("Step 2 of 7")),
-                                () -> assertTrue(output.contains("yes")),
-                                () -> assertTrue(output.contains("no")));
+                                () -> assertTrue(output.contains("[2/7] Harnesses \u00b7 Look for harnesses on this machine?"),
+                                                    output),
+                                () -> assertTrue(output.contains("Yes")),
+                                () -> assertTrue(output.contains("Not now")));
         }
 
         @Test
@@ -157,7 +172,9 @@ class OnboardCommandTest {
             var output = writer.toString();
             assertAll(
                                 () -> assertEquals(0, code),
-                                () -> assertTrue(output.contains("Decide everything for me?")));
+                                () -> assertTrue(output.contains("Decide everything for me?")),
+                                () -> assertTrue(output.contains("Everything is decided.")),
+                                () -> assertTrue(output.contains("Language  Deutsch, models too")));
         }
 
         @Test

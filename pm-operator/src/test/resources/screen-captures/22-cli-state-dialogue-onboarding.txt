@@ -1,0 +1,36 @@
+# Screen captures for PLAN-22: One State Dialogue for Both Onboardings
+# name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys
+#
+# The entry captures open pm-operator without a verb, answer the entry prompt with `h`, and take
+# the screen the guided path draws; the verb captures show `onboard` and `project setup` as they
+# stand; the guided one types `h` and one Enter per state up to the completed state.
+
+entry-onboard-mode-120x30-en | onboarding | - |  | - | 120x30 | en_US.UTF-8 | - | h\n
+entry-onboard-mode-80x24-en | onboarding | - |  | - | 80x24 | en_US.UTF-8 | - | h\n
+entry-onboard-mode-120x30-de | onboarding | - |  | - | 120x30 | de_DE.UTF-8 | - | h\n
+entry-onboard-mode-80x24-de | onboarding | - |  | - | 80x24 | de_DE.UTF-8 | - | h\n
+
+entry-guided-language-120x30-en | onboarding | - |  | - | 120x30 | en_US.UTF-8 | - | h\n\n
+entry-guided-language-80x24-en | onboarding | - |  | - | 80x24 | en_US.UTF-8 | - | h\n\n
+entry-guided-language-120x30-de | onboarding | - |  | - | 120x30 | de_DE.UTF-8 | - | h\n\n
+entry-guided-language-80x24-de | onboarding | - |  | - | 80x24 | de_DE.UTF-8 | - | h\n\n
+
+onboard-dialogue-120x30-en | onboarding | - | onboard | - | 120x30 | en_US.UTF-8 | -
+onboard-dialogue-80x24-en | onboarding | - | onboard | - | 80x24 | en_US.UTF-8 | -
+onboard-dialogue-120x30-de | onboarding | - | onboard | - | 120x30 | de_DE.UTF-8 | -
+onboard-dialogue-80x24-de | onboarding | - | onboard | - | 80x24 | de_DE.UTF-8 | -
+
+onboard-auto-120x30-en | onboarding | - | onboard --auto --yes | - | 120x30 | en_US.UTF-8 | -
+onboard-auto-80x24-en | onboarding | - | onboard --auto --yes | - | 80x24 | en_US.UTF-8 | -
+onboard-auto-120x30-de | onboarding | - | onboard --auto --yes | - | 120x30 | de_DE.UTF-8 | -
+onboard-auto-80x24-de | onboarding | - | onboard --auto --yes | - | 80x24 | de_DE.UTF-8 | -
+
+project-setup-120x30-en | projects-and-start | projects.being-added | project setup cui-parent | - | 120x30 | en_US.UTF-8 | -
+project-setup-80x24-en | projects-and-start | projects.being-added | project setup cui-parent | - | 80x24 | en_US.UTF-8 | -
+project-setup-120x30-de | projects-and-start | projects.being-added | project setup cui-parent | - | 120x30 | de_DE.UTF-8 | -
+project-setup-80x24-de | projects-and-start | projects.being-added | project setup cui-parent | - | 80x24 | de_DE.UTF-8 | -
+
+entry-guided-completed-120x30-en | onboarding | - |  | - | 120x30 | en_US.UTF-8 | - | h\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
+entry-guided-completed-80x24-en | onboarding | - |  | - | 80x24 | en_US.UTF-8 | - | h\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
+entry-guided-completed-120x30-de | onboarding | - |  | - | 120x30 | de_DE.UTF-8 | - | h\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
+entry-guided-completed-80x24-de | onboarding | - |  | - | 80x24 | de_DE.UTF-8 | - | h\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
