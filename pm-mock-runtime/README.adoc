@@ -15,7 +15,7 @@ The mock runtime implements the link:../doc/plans/api-contract.adoc[Local API] `
 === Key Properties
 
 * *Transports*:
-** *Unix domain socket*: binds `<PM_MCP_BASE>/run/pm-mcpd.sock`, generates `<PM_MCP_BASE>/run/runtime.token` with strict POSIX permissions (`rw-------`), writes `<PM_MCP_BASE>/state/runtime.json`, and answers liveness checks so client libraries find an active runtime.
+** *Unix domain socket*: binds `<PM_MCP_BASE>/run/runtime.sock`, generates `<PM_MCP_BASE>/run/runtime.token` with strict POSIX permissions (`rw-------`), writes `<PM_MCP_BASE>/state/runtime.json`, and answers liveness checks so client libraries find an active runtime.
 ** *Loopback TCP*: optionally listens on `127.0.0.1:<port>` for browser-based client development and testing, supporting web pairing redemption.
 * *Control Plane*: provides `/mock/` control endpoints alongside `/api/v1/` to inspect state, reset flows, jump between states, and switch active scenarios on the fly.
 * *Minimal Dependency Footprint*: HTTP/1.1 and Server-Sent Events (SSE) are implemented using JDK `ServerSocketChannel` and `jackson-core`, requiring no third-party web frameworks or servlet containers.
@@ -101,7 +101,7 @@ When started, the CLI outputs connection coordinates:
 ----
 Mock runtime started successfully:
   Base (PM_MCP_BASE): /tmp/pm-mock12345/b
-  Unix Socket:        /tmp/pm-mock12345/b/run/pm-mcpd.sock
+  Unix Socket:        /tmp/pm-mock12345/b/run/runtime.sock
   Loopback Web Port:  8088 (http://127.0.0.1:8088)
   Scenario:           onboarding-happy
   Initial State:      onboard.mode
