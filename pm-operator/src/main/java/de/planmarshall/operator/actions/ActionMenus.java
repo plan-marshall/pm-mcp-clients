@@ -39,14 +39,15 @@ public final class ActionMenus {
     }
 
     /**
-     * @param locale  the interface locale
-     * @param actions the actions the runtime offers for the plan
-     * @param hold    the plan's hold, or {@code null} when it has none
-     * @param rowId   the row the menu is drawn below, or {@code null}
+     * @param locale       the interface locale
+     * @param actions      the actions the runtime offers for the plan
+     * @param hold         the plan's hold, or {@code null} when it has none
+     * @param openDecision the decision a waiting plan waits for, or {@code null}
+     * @param rowId        the row the menu is drawn below, or {@code null}
      * @return the plan's menu
      */
     public static ActionsMenu plan(String locale, WorkActions actions, @Nullable HoldRecord hold,
-                        @Nullable String rowId) {
+                        @Nullable String openDecision, @Nullable String rowId) {
         var entries = new ArrayList<TuiMenuEntry>();
         var used = new HashSet<String>();
         var dropped = new ArrayList<String>();

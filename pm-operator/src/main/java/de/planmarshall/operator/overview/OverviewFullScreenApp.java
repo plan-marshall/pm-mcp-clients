@@ -950,7 +950,7 @@ public final class OverviewFullScreenApp {
         menuKind = "plan";
         menuHold = hold;
         menuEpic = null;
-        actionsMenu = ActionMenus.plan(locale, actions, hold, rowId);
+        actionsMenu = ActionMenus.plan(locale, actions, hold, null, rowId);
         reportDroppedActions(actionsMenu);
     }
 

@@ -48,7 +48,7 @@ class ActionMenusTest {
     @DisplayName("a running plan offers Pause, Cancel, Chat, and Settings, in that order")
     void runningPlan() {
         var menu = ActionMenus.plan("en", actions("plan", "running", null, "pause", "cancel", "chat",
-                            "settings"), null, "row");
+                            "settings"), null, null, "row");
         var labels = menu.entries().stream().map(TuiMenuEntry::label).toList();
         assertEquals(4, labels.size());
         assertTrue(labels.get(0).startsWith("Pause"), labels.toString());
@@ -67,14 +67,14 @@ class ActionMenusTest {
     @DisplayName("a paused plan offers Start and Abandon; a pausing one Start and Cancel")
     void pausedAndPausing() {
         var paused = ActionMenus.plan("en", actions("plan", "paused", null, "start", "abandon", "chat",
-                            "settings"), null, null);
+                            "settings"), null, null, null);
         assertEquals("s", paused.entries().get(0).trigger());
         assertTrue(paused.entries().get(0).label().startsWith("Start"));
         assertEquals("x", paused.entries().get(1).trigger());
         assertTrue(paused.entries().get(1).label().startsWith("Abandon"));
 
         var pausing = ActionMenus.plan("en", actions("plan", "pausing", null, "start", "cancel", "chat"),
-                            null, null);
+                            null, null, null);
         assertEquals("s", pausing.entries().get(0).trigger());
         assertTrue(pausing.entries().get(1).label().startsWith("Cancel"));
     }
@@ -85,7 +85,7 @@ class ActionMenusTest {
         var offered = new ArrayList<ActionAvailability>();
         offered.add(ActionAvailability.disabled("chat", "no configuration of replan qualifies yet"));
         var menu = ActionMenus.plan("en", new WorkActions("subject", "plan", "running", null, null, null,
-                            offered), null, null);
+                            offered), null, null, null);
         assertFalse(menu.entries().getFirst().enabled());
         assertEquals("no configuration of replan qualifies yet", menu.entries().getFirst().reason());
     }
@@ -94,7 +94,7 @@ class ActionMenusTest {
     @DisplayName("a held plan shows the acts of its hold first and drops its own Cancel")
     void held() {
         var menu = ActionMenus.plan("en", actions("plan", "held", "condition", "pause", "cancel", "chat",
-                            "settings"), hold("retry", "grant", "end_plan"), null);
+                            "settings"), hold("retry", "grant", "end_plan"), null, null);
         var labels = menu.entries().stream().map(TuiMenuEntry::label).toList();
         assertTrue(labels.get(0).startsWith("Retry now"), labels.toString());
         assertTrue(labels.get(1).startsWith("Grant read access"), labels.toString());
@@ -110,7 +110,7 @@ class ActionMenusTest {
     @DisplayName("an integrity pause offers Accept the change and Abort the plan")
     void integrityPause() {
         var menu = ActionMenus.plan("en", actions("plan", "held", "integrity_pause", "pause", "cancel"),
-                            hold("retry", "accept", "abort"), null);
+                            hold("retry", "accept", "abort"), null, null);
         var labels = menu.entries().stream().map(TuiMenuEntry::label).toList();
         assertTrue(labels.stream().anyMatch(label -> label.startsWith("Accept the change")), labels.toString());
         assertTrue(labels.stream().anyMatch(label -> label.startsWith("Abort the plan")), labels.toString());
@@ -184,9 +184,9 @@ class ActionMenusTest {
     @DisplayName("the mnemonics are the catalogue's: German differs from English, and none is a")
     void germanMnemonics() {
         var en = ActionMenus.plan("en", actions("plan", "running", null, "pause", "cancel", "chat",
-                            "settings"), null, null);
+                            "settings"), null, null, null);
         var de = ActionMenus.plan("de", actions("plan", "running", null, "pause", "cancel", "chat",
-                            "settings"), null, null);
+                            "settings"), null, null, null);
         assertEquals("p", en.entries().get(0).trigger());
         assertEquals("h", de.entries().get(0).trigger());
         assertEquals("o", en.entries().get(3).trigger());
