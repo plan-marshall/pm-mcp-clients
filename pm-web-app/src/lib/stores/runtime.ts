@@ -441,6 +441,11 @@ export async function initRuntime(): Promise<void> {
       startEntryId: requested?.entryId ?? null,
       currentState,
       activeStep: deriveStepFromState(currentState?.state),
+      isDraining: status.lifecycle_state === 'draining',
+      drainInfo: status.lifecycle_state === 'draining' && status.draining_by
+        ? { who: status.draining_by }
+        : null,
+      isStopped: status.lifecycle_state === 'stopped',
       isOffline: false,
       isRevoked: false,
     }));

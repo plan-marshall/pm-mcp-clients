@@ -35,6 +35,8 @@ export interface StatusResponse {
   version?: string;
   listener?: string;
   onboarded?: boolean;
+  lifecycle_state?: string;
+  draining_by?: string;
   machine?: {
     name?: string;
     onboarded?: boolean;

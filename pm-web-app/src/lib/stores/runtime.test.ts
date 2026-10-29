@@ -108,6 +108,27 @@ describe('the runtime store', () => {
     expect(get(runtimeStore).isOffline).toBe(false);
   });
 
+  it('shows the draining lifecycle the status reports', async () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...PAIRED_STATUS,
+      lifecycle_state: 'draining',
+      draining_by: 'the console',
+    });
+    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue(EMPTY_REPORTS);
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
+
+    // Act
+    await initRuntime();
+
+    // Assert
+    expect(get(runtimeStore).isDraining).toBe(true);
+    expect(get(runtimeStore).drainInfo?.who).toBe('the console');
+  });
+
   it('does not open a start page while the browser is unpaired', async () => {
     // Arrange
     const projects = vi.spyOn(apiClient, 'getProjects');

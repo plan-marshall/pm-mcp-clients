@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.ReviewResource;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.system.CleanupKind;
 import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.http.MockHttpResponse;
@@ -112,9 +113,26 @@ class FixtureConsistencyTest {
         }
 
         @Test
-        @DisplayName("the system snapshot carries the same cleanup summary as the job")
-        void snapshotCarriesTheSameSummary() throws Exception {
+        @DisplayName("a kept item's kind is one the contract's closed set knows")
+        void keptItemKindIsFromTheClosedSet() throws Exception {
             try (var engine = engine(StandardScenarios.REPORTS_AND_SYSTEM)) {
+                var body = JsonTree.write(Map.of("unchecked_ids", List.of("token-usage")))
+                        .getBytes(StandardCharsets.UTF_8);
+                body(engine, "POST", "/api/v1/system/cleanup/cln-0012/delete", body);
+
+                var kept = JsonTree.asArray(JsonTree.parse(body(engine, "/api/v1/system/cleanup/kept")));
+                assertNotNull(kept, "the kept list must answer an array");
+                for (var element : kept) {
+                    var kind = JsonTree.string(JsonTree.asObject(element), "kind");
+                    assertNotNull(CleanupKind.fromValue(kind),
+                            "kept item kind " + kind + " is outside CleanupKind");
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("the system snapshot carries the same cleanup summary as the job")
+        void snapshotCarriesTheSameSummary() throws Exception {            try (var engine = engine(StandardScenarios.REPORTS_AND_SYSTEM)) {
                 var job = get(engine, "/api/v1/system/cleanup");
                 var summary = JsonTree.object(job, "summary");
                 var snapshot = JsonTree.object(get(engine, "/api/v1/system"), "cleanup");

@@ -11,6 +11,7 @@ package de.planmarshall.mock.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
@@ -25,6 +26,7 @@ import java.util.TreeSet;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -148,6 +150,68 @@ class ScenarioStateContractTest {
                 }
             }
         }
+    }
+
+    @Test
+    @DisplayName("the plan list answers in every primary scenario")
+    void everyScenarioAnswersThePlanList() throws Exception {
+        var registry = new ScenarioRegistry();
+        for (var scenarioName : StandardScenarios.PRIMARY_SCENARIOS) {
+            try (var engine = new MockRuntimeEngine(registry, registry.resolve(scenarioName),
+                    "test-token", "test-secret")) {
+                var answer = get(engine, "/api/v1/plans");
+                assertEquals(200, answer.status(), scenarioName + " must answer GET /api/v1/plans");
+                assertNotNull(JsonTree.asArray(answer.json().get("plans")),
+                        scenarioName + " must answer a plans array");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("every system state serves its own lifecycle state in the status")
+    void everySystemStateServesItsLifecycleState() throws Exception {
+        var registry = new ScenarioRegistry();
+        try (var engine = new MockRuntimeEngine(registry,
+                registry.resolve(StandardScenarios.REPORTS_AND_SYSTEM), "test-token", "test-secret")) {
+            var scenario = engine.currentScenario();
+            var states = new TreeSet<String>();
+            for (var stateId : scenario.states().keySet()) {
+                if (stateId.startsWith("system.")) {
+                    states.add(stateId);
+                }
+            }
+            assertTrue(!states.isEmpty(), "the scenario declares no system state");
+            for (var stateId : states) {
+                var expected = fact(scenario, stateId, "lifecycle_state");
+                assertNotNull(expected, stateId + " declares no lifecycle_state fact");
+                engine.goToState(stateId);
+                var status = get(engine, "/api/v1/status");
+                assertEquals(200, status.status(), stateId + " status");
+                assertEquals(expected, status.json().get("lifecycle_state"),
+                        stateId + " lifecycle_state");
+            }
+        }
+    }
+
+    /**
+     * @param engine the engine
+     * @param path   the resource
+     * @return the answer's status and JSON body
+     * @throws IOException on write failure
+     */
+    private static Answer get(MockRuntimeEngine engine, String path) throws IOException {
+        var raw = answer(engine, path);
+        var split = raw.indexOf("\r\n\r\n");
+        var body = split >= 0 ? raw.substring(split + 4) : "";
+        var status = -1;
+        var firstLine = raw.split("\r\n")[0].split(" ");
+        if (firstLine.length >= 2) {
+            status = Integer.parseInt(firstLine[1]);
+        }
+        return new Answer(status, body.isBlank() ? null : JsonTree.asObject(JsonTree.parse(body)));
+    }
+
+    private record Answer(int status, @Nullable Map<String, Object> json) {
     }
 
     /**
