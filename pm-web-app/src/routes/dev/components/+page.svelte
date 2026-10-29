@@ -7,7 +7,9 @@
   import CountBadge from '../../../lib/components/CountBadge.svelte';
   import IconButton from '../../../lib/components/IconButton.svelte';
   import KeyValueList from '../../../lib/components/KeyValueList.svelte';
+  import Breadcrumb from '../../../lib/components/Breadcrumb.svelte';
   import StatusLabel from '../../../lib/components/StatusLabel.svelte';
+  import Tabs from '../../../lib/components/Tabs.svelte';
 
   /**
    * The development page (VD-P-05, VD-S-03): every control of design system v2, in both themes.
@@ -50,6 +52,23 @@
     { label: $t('dev.key_value.status'), value: $t('state.plan.running') },
     { label: $t('dev.key_value.duration'), value: $t('dev.key_value.duration_value') },
     { label: $t('dev.key_value.tokens'), value: $t('dev.key_value.tokens_value') },
+  ];
+
+  /** The tab the fixture shows as selected, so the widget answers the keyboard on the page. */
+  let activeTab = 'open';
+
+  /** The tabs of the fixture: one count that waits for the operator, one that does not. */
+  $: tabs = [
+    { id: 'open', label: $t('dev.tabs.open'), count: 2, attention: true },
+    { id: 'done', label: $t('dev.tabs.done') },
+    { id: 'failed', label: $t('dev.tabs.failed'), count: 1 },
+  ];
+
+  /** The trail of the fixture: two links and the page a person stands on. */
+  $: trail = [
+    { label: $t('dev.breadcrumb.projects'), href: '/projects' },
+    { label: CHIP_VALUE, href: '/projects/relay' },
+    { label: $t('dev.breadcrumb.plan') },
   ];
 </script>
 
@@ -145,6 +164,12 @@
       <Card title={$t('dev.key_value.title')}>
         <KeyValueList items={runtimeFacts} />
       </Card>
+
+      <h3 class="dev__section-title">{$t('dev.section.tabs')}</h3>
+      <Tabs {tabs} active={activeTab} onSelect={(id) => (activeTab = id)} />
+
+      <h3 class="dev__section-title">{$t('dev.section.breadcrumb')}</h3>
+      <Breadcrumb crumbs={trail} label={$t('dev.breadcrumb.label')} />
     </section>
   {/each}
 </div>
