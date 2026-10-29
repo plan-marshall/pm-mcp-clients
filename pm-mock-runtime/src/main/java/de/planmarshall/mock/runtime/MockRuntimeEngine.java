@@ -409,6 +409,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ERR_EPIC_NOT_FOUND = "epic_not_found";
     private static final String ERR_CHECKS_FAIL = "checks_fail";
     private static final String ERR_PLAN_NOT_FOUND = "plan_not_found";
+    private static final String MESSAGE_PLAN_NOT_FOUND = "Plan not found: ";
     private static final String EVENT_PR_OBSERVED = "source.pr_observed";
     private static final String EVENT_LOCAL_CAPTURED = "source.local_changes_captured";
     private static final String ERR_PROJECT_NOT_READY = "project_not_ready";
@@ -4398,7 +4399,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var actionRequest = PlanActionRequest.fromMap(readBodyMap(request));
         synchronized (controlLock) {
             if (!controlPlanStates.containsKey(planId)) {
-                response.json(404, Map.of(KEY_ERROR, ERR_PLAN_NOT_FOUND, KEY_MESSAGE, "Plan not found: " + planId));
+                response.json(404, Map.of(KEY_ERROR, ERR_PLAN_NOT_FOUND, KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
                 return;
             }
             var availability = buildPlanActions(planId).action(action);
@@ -8328,7 +8329,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 var planId = parts[4];
                 if (!knowsPlan(planId)) {
                     response.json(404, Map.of(KEY_ERROR, ERR_PLAN_NOT_FOUND,
-                            KEY_MESSAGE, "Plan not found: " + planId));
+                            KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
                     return true;
                 }
                 var taskId = parts[6];
@@ -8353,7 +8354,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 var summary = planSummary(planId);
                 if (summary == null) {
                     response.json(404, Map.of(KEY_ERROR, ERR_PLAN_NOT_FOUND,
-                            KEY_MESSAGE, "Plan not found: " + planId));
+                            KEY_MESSAGE, MESSAGE_PLAN_NOT_FOUND + planId));
                     return true;
                 }
                 var defaultRoute = activeRoute("GET", "/api/v1/plans/fix-relay/process");
