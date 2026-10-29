@@ -1,10 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { pair, switchScenario } from './helpers/pairing.js';
+import { startMockRuntime, stopMockRuntime } from './helpers/mockRuntime.js';
 
 /**
- * The web chrome, navigation and action advisories: the header is the only always-on status row,
- * the project mark and the brand open the start page, an action explains itself on hover only where
- * the label does not already say it, and the designer is reachable from the header and from a plan.
+ * The web chrome, navigation and action advisories: the frame is a rail with three groups and a
+ * top bar with the path, the search trigger, the live indicator and the machine pill; the brand
+ * opens the start page, an action explains itself on hover only where the label does not already
+ * say it, and the designer is reachable from the rail and from a plan.
  */
 test.describe('Web chrome, navigation and action advisories', () => {
   test.beforeEach(async ({ page, request }) => {
@@ -20,7 +22,7 @@ test.describe('Web chrome, navigation and action advisories', () => {
     }
   });
 
-  test('keeps the connection status in the header and drops the full-width banner', async ({
+  test('keeps the connection status in the top bar and drops the full-width banner', async ({
     page,
   }) => {
     await expect(page.getByTestId('connection-status-banner')).toHaveCount(0);
@@ -106,13 +108,13 @@ test.describe('Web chrome, navigation and action advisories', () => {
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   });
 
-  test('shows the project mark in the header at desktop and phone width', async ({ page }) => {
-    const mark = page.getByTestId('brand-mark');
+  test('draws the project mark in the rail head at desktop width', async ({ page }) => {
+    const rail = page.getByTestId('nav-rail');
+    const mark = rail.getByTestId('brand-mark');
     await expect(mark).toBeVisible();
     await expect(mark).toHaveAttribute('aria-hidden', 'true');
+    await expect(rail.getByTestId('brand-mark-plate')).toBeVisible();
 
-    await page.setViewportSize({ width: 320, height: 568 });
-    await expect(mark).toBeVisible();
     const box = await mark.boundingBox();
     expect(box).not.toBeNull();
     expect(box.width).toBeGreaterThanOrEqual(20);
@@ -128,7 +130,7 @@ test.describe('Web chrome, navigation and action advisories', () => {
     await expect(page).toHaveURL(/\/(overview|projects)$/);
   });
 
-  test('opens the designer from the header and from a plan, keeping the project across a reload', async ({
+  test('opens the designer from the rail and from a plan, keeping the project across a reload', async ({
     page,
   }) => {
     await page.getByTestId('nav-designer-btn').click();
@@ -145,5 +147,121 @@ test.describe('Web chrome, navigation and action advisories', () => {
     await page.reload();
     await expect(page.getByTestId('process-designer')).toBeVisible();
     await expect(page.getByTestId('designer-checked')).toContainText('pm-mcp-clients');
+  });
+});
+
+test.describe('The app shell on fully-onboarded', () => {
+  test.beforeEach(async ({ page, request }) => {
+    await switchScenario(request, 'fully-onboarded');
+    await pair(page, request);
+  });
+
+  test.afterAll(async ({ request }) => {
+    try {
+      await switchScenario(request, 'web-pairing');
+    } catch {
+      // Best-effort cleanup.
+    }
+  });
+
+  test('draws three rail groups with the counts the header carried', async ({ page }) => {
+    const rail = page.getByTestId('nav-rail');
+    await expect(rail).toBeVisible();
+
+    const groups = rail.getByTestId(/^rail-group-/);
+    await expect(groups).toHaveCount(3);
+    await expect(rail.getByTestId('rail-group-work')).toContainText('Work');
+    await expect(rail.getByTestId('rail-group-records')).toContainText('Records');
+    await expect(rail.getByTestId('rail-group-machine')).toContainText('Machine');
+
+    // The counts are the ones the header carried before the shell: 3 open decisions and 5 unread
+    // reports in this scenario.
+    await expect(page.getByTestId('nav-decisions-btn-count')).toHaveText('3');
+    await expect(page.getByTestId('nav-reports-btn-count')).toHaveText('5');
+  });
+
+  test('keeps the collapsed rail across a reload', async ({ page }) => {
+    const rail = page.getByTestId('nav-rail');
+    await expect(rail).not.toHaveClass(/nav-rail--collapsed/);
+
+    await page.getByTestId('rail-toggle').click();
+    await expect(rail).toHaveClass(/nav-rail--collapsed/);
+    await expect(rail.getByTestId('nav-projects-btn')).toHaveAttribute('title', 'Projects');
+
+    await page.reload();
+    await expect(page.getByTestId('nav-rail')).toHaveClass(/nav-rail--collapsed/);
+    await expect(page.getByTestId('nav-projects-btn')).toHaveAttribute('title', 'Projects');
+
+    await page.getByTestId('rail-toggle').click();
+    await expect(page.getByTestId('nav-rail')).not.toHaveClass(/nav-rail--collapsed/);
+  });
+
+  test('renders every route of the rail and the top bar inside the shell', async ({ page }) => {
+    const routes = [
+      { path: '/overview', view: '[data-testid="overview-view"]' },
+      { path: '/plans/fix-relay', view: '[data-testid="plan-view"]' },
+      { path: '/epics/relay-hardening', view: '[data-testid="epic-view"]' },
+      { path: '/projects', view: '[data-testid="project-explorer-view"]' },
+      { path: '/decisions', view: '.decisions-view' },
+      { path: '/reports', view: '.reports-view' },
+      { path: '/designer', view: '[data-testid="process-designer"]' },
+      { path: '/system', view: '[data-testid="system-view"]' },
+      { path: '/system/cleanup', view: '[data-testid="cleanup-view"]' },
+      { path: '/settings', view: '[data-testid="settings-view"]' },
+    ];
+
+    for (const route of routes) {
+      await page.goto(route.path);
+      await expect.soft(page).toHaveURL(new RegExp(`${route.path}$`));
+      await expect.soft(page.locator(route.view)).toBeVisible();
+      await expect.soft(page.getByTestId('nav-rail')).toBeVisible();
+      await expect.soft(page.getByTestId('top-bar')).toBeVisible();
+    }
+  });
+
+  test('names where the person stands in the top bar', async ({ page }) => {
+    await page.goto('/system/cleanup');
+    const topBar = page.getByTestId('top-bar');
+    await expect(topBar).toContainText('Machine');
+    await expect(topBar).toContainText('System');
+    await expect(topBar).toContainText('Cleanup');
+
+    await page.goto('/plans/fix-relay');
+    await expect(topBar).toContainText('Work');
+    await expect(topBar).toContainText('fix-relay');
+  });
+});
+
+test.describe('The live indicator', () => {
+  test.beforeEach(async ({ page, request }) => {
+    await switchScenario(request, 'fully-onboarded');
+    await pair(page, request);
+  });
+
+  test.afterAll(async ({ request }) => {
+    try {
+      await switchScenario(request, 'web-pairing');
+    } catch {
+      // Best-effort cleanup.
+    }
+  });
+
+  test('reads Live while the event stream is connected', async ({ page }) => {
+    const indicator = page.getByTestId('live-indicator');
+    await expect(indicator).toBeVisible();
+    await expect(indicator).toHaveAttribute('data-state', 'connected', { timeout: 15000 });
+    await expect(indicator).toContainText('Live');
+  });
+
+  test('turns amber when the mock stops and live again when it restarts', async ({ page }) => {
+    const indicator = page.getByTestId('live-indicator');
+    await expect(indicator).toHaveAttribute('data-state', 'connected', { timeout: 15000 });
+
+    await stopMockRuntime();
+    await expect(indicator).toHaveAttribute('data-state', 'reconnecting', { timeout: 15000 });
+
+    await startMockRuntime('fully-onboarded');
+    await expect(indicator).toHaveAttribute('data-state', 'connected', { timeout: 45000 });
+    await expect(indicator).toContainText('Live');
   });
 });

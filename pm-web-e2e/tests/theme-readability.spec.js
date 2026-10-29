@@ -229,7 +229,7 @@ async function gotoInLocale(page, locale, route) {
  * @param {string} projectId the project to select
  */
 async function openProjectOverview(page, projectId) {
-  await page.locator('.app-header').getByRole('button', { name: LABELS.overview }).click();
+  await page.goto('/overview');
   await expect(page.locator('.overview')).toBeVisible();
   await page
     .locator('.project-list')
@@ -252,7 +252,7 @@ const GUARD_JOURNEYS = [
       await pairInLocale(page, request, 'running-work', locale);
     },
     async walk(page, record) {
-      await page.locator('.app-header').getByRole('button', { name: LABELS.overview }).click();
+      await page.goto('/overview');
       await expect(page.locator('.overview')).toBeVisible();
       await expect(page.locator('[data-testid="plan-card"]').first()).toBeVisible();
       await record('OverviewView');
@@ -272,7 +272,7 @@ const GUARD_JOURNEYS = [
       await pairInLocale(page, request, 'plan-view', locale);
     },
     async walk(page, record) {
-      await page.locator('.app-header').getByRole('button', { name: LABELS.overview }).click();
+      await page.goto('/overview');
       await expect(page.locator('.overview')).toBeVisible();
       await page.locator('[data-testid="plan-card"]').first().click();
       await expect(page.getByTestId('plan-view')).toBeVisible();
@@ -288,7 +288,7 @@ const GUARD_JOURNEYS = [
       await pairInLocale(page, request, 'reports', locale);
     },
     async walk(page, record) {
-      await page.locator('.app-header').getByRole('button', { name: LABELS.reports }).click();
+      await page.goto('/reports');
       await expect(page.locator('.reports-view')).toBeVisible();
       await expect(page.locator('.report-card').first()).toBeVisible({ timeout: 15000 });
       await record('ReportsView');
@@ -308,7 +308,7 @@ const GUARD_JOURNEYS = [
       await pairInLocale(page, request, 'decisions', locale);
     },
     async walk(page, record) {
-      await page.locator('.app-header').getByRole('button', { name: LABELS.decisions }).click();
+      await page.goto('/decisions');
       await expect(page.locator('.decisions-view')).toBeVisible();
       await expect(page.locator('.decision-card, .standard-decision-card').first()).toBeVisible({
         timeout: 15000,
@@ -323,7 +323,7 @@ const GUARD_JOURNEYS = [
       await pairInLocale(page, request, 'system', locale);
     },
     async walk(page, record) {
-      await page.locator('.app-header').getByRole('button', { name: LABELS.system }).click();
+      await page.goto('/system');
       await expect(page.getByTestId('system-view')).toBeVisible();
       await expect(page.locator('[data-testid="system-view"] .card').first()).toBeVisible({
         timeout: 15000,
@@ -344,7 +344,7 @@ const GUARD_JOURNEYS = [
       await pairInLocale(page, request, 'designer', locale);
     },
     async walk(page, record) {
-      await page.locator('.app-header').getByRole('button', { name: LABELS.settings }).click();
+      await page.goto('/settings');
       await expect(page.getByTestId('settings-view')).toBeVisible();
       await expect(page.getByTestId('listener-bar')).toBeVisible({ timeout: 15000 });
       await expect(page.locator('.loading-text')).toHaveCount(0, { timeout: 15000 });
@@ -480,7 +480,7 @@ const GUARD_JOURNEYS = [
       await pairInLocale(page, request, 'paired-devices', locale);
     },
     async walk(page, record) {
-      await page.locator('.app-header').getByRole('button', { name: LABELS.settings }).click();
+      await page.goto('/settings');
       await expect(page.locator('.settings-view')).toBeVisible();
 
       const revoke = page.getByTestId('revoke-btn-dev-1');
@@ -615,11 +615,8 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await setTheme(page, theme);
 
           // 1. Overview page
-          await page
-            .locator('.app-header')
-            .getByRole('button', { name: /Running work/i })
-            .click();
-          await expect(page.locator('.overview')).toBeVisible();
+          await page.goto('/overview');
+            await expect(page.locator('.overview')).toBeVisible();
           await expect(page.locator('[data-testid="plan-card"]').first()).toBeVisible();
 
           // 2. Switch to by epic
@@ -696,11 +693,8 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await pair(page, request);
           await setTheme(page, theme);
 
-          await page
-            .locator('.app-header')
-            .getByRole('button', { name: /Running work/i })
-            .click();
-          await expect(page.locator('.overview')).toBeVisible();
+          await page.goto('/overview');
+            await expect(page.locator('.overview')).toBeVisible();
 
           // Audit by-plan
           await page.getByRole('radio', { name: /by plan/i }).click();
@@ -717,11 +711,8 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await pair(page, request);
           await setTheme(page, theme);
 
-          await page
-            .locator('.app-header')
-            .getByRole('button', { name: /Running work/i })
-            .click();
-          await expect(page.locator('.overview')).toBeVisible();
+          await page.goto('/overview');
+            await expect(page.locator('.overview')).toBeVisible();
 
           const planCard = page.locator('[data-testid="plan-card"]').first();
           await expect(planCard).toBeVisible();
@@ -736,11 +727,8 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await pair(page, request);
           await setTheme(page, theme);
 
-          await page
-            .locator('.app-header')
-            .getByRole('button', { name: /Running work/i })
-            .click();
-          await expect(page.locator('.overview')).toBeVisible();
+          await page.goto('/overview');
+            await expect(page.locator('.overview')).toBeVisible();
 
           const byEpicRadio = page.getByRole('radio', { name: /by epic/i });
           await byEpicRadio.click({ force: true });
@@ -760,8 +748,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await pair(page, request);
           await setTheme(page, theme);
 
-          const reportsBtn = page.locator('.app-header').getByRole('button', { name: /Reports/i });
-          await reportsBtn.click();
+          await page.goto('/reports');
           await expect(page.locator('.reports-view')).toBeVisible();
 
           await auditView(page, testInfo, { view: 'ReportsView', theme, viewport: vp });
@@ -782,7 +769,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await pair(page, request);
           await setTheme(page, theme);
 
-          await page.getByRole('button', { name: /Decisions/i }).click();
+          await page.goto('/decisions');
           await expect(page.locator('.decisions-view')).toBeVisible();
 
           await auditView(page, testInfo, { view: 'DecisionView', theme, viewport: vp });
@@ -796,8 +783,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await pair(page, request);
           await setTheme(page, theme);
 
-          const systemNavBtn = page.getByRole('button', { name: /System/i });
-          await systemNavBtn.click();
+          await page.goto('/system');
           await expect(page.getByTestId('system-view')).toBeVisible();
 
           await auditView(page, testInfo, { view: 'SystemView', theme, viewport: vp });
@@ -819,7 +805,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await pair(page, request);
           await setTheme(page, theme);
 
-          await page.getByRole('button', { name: 'Machine settings' }).click();
+          await page.goto('/settings');
           await expect(page.getByTestId('settings-view')).toBeVisible();
 
           await auditView(page, testInfo, { view: 'SettingsView', theme, viewport: vp });
@@ -835,7 +821,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await pair(page, request);
           await setTheme(page, theme);
 
-          await page.getByRole('button', { name: 'Machine settings' }).click();
+          await page.goto('/settings');
           await page.getByTestId('machine-settings-button').click();
           await expect(page.getByTestId('machine-settings-view')).toBeVisible();
           await page.getByTestId('open-designer-btn').click();
@@ -951,8 +937,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await pair(page, request);
           await setTheme(page, theme);
 
-          const settingsBtn = page.getByRole('button', { name: /Settings/i });
-          await settingsBtn.click();
+          await page.goto('/settings');
           await expect(page.locator('.settings-view')).toBeVisible();
 
           const revokeBtn = page.getByTestId('revoke-btn-dev-1');

@@ -36,7 +36,7 @@ async function pair(page, request, scenario) {
  */
 async function openEpicFromOverview(page, title = 'Relay Hardening') {
   await page
-    .locator('.app-header')
+    .locator('.nav-rail')
     .getByRole('button', { name: /Running work/i })
     .click();
   await expect(page.locator('.overview')).toBeVisible();
@@ -85,7 +85,7 @@ test.describe('Epic View (UC-PLN-5)', () => {
     await expect(page.getByTestId('project-explorer-view')).toBeVisible();
 
     await page
-      .locator('.app-header')
+      .locator('.nav-rail')
       .getByRole('button', { name: /Running work/i })
       .click();
     await expect(page.locator('.overview')).toBeVisible();

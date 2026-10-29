@@ -9,6 +9,13 @@ const __dirname = path.dirname(__filename);
 
 let mockProcess = null;
 const AUDIT_CACHE_FILE = path.resolve(__dirname, '.audited-views.json');
+/** The fixed device secret of the suite run, so a restarted mock accepts the paired browser. */
+const DEVICE_SECRET = 'pmw_e2e_fixed_device_secret';
+/** What the restart helper needs: the process, its classpath, its root and the fixed secret. */
+const DESCRIPTOR_FILE = path.resolve(
+  process.env.PLAYWRIGHT_OUTPUT_DIR || path.resolve(__dirname, 'target'),
+  'mock-runtime.json',
+);
 
 async function isPortReachable(port) {
   try {
@@ -42,6 +49,11 @@ export default async function globalSetup() {
       throw new Error(`Port ${MOCK_WEB_PORT} is already in use by another process. Assigned ports cannot reuse an existing server.`);
     }
     console.log(`[pm-web-e2e] Mock runtime is already running on default port ${MOCK_WEB_PORT}`);
+    try {
+      fs.rmSync(DESCRIPTOR_FILE, { force: true });
+    } catch {
+      // Non-fatal: the restart helper refuses instead of stopping a process it did not start.
+    }
     return cleanupAuditCache;
   }
 
@@ -90,6 +102,8 @@ export default async function globalSetup() {
       String(MOCK_WEB_PORT),
       '--scenario',
       'web-pairing',
+      '--device-secret',
+      DEVICE_SECRET,
     ],
     {
       cwd: rootDir,
@@ -118,12 +132,51 @@ export default async function globalSetup() {
 
   console.log(`[pm-web-e2e] pm-mock-runtime is ready on port ${MOCK_WEB_PORT}`);
 
+  // The restart helper stops and starts this process for the live-indicator check, so it needs
+  // the classpath, the root and the fixed secret the pairing depends on — never a fresh one.
+  try {
+    fs.mkdirSync(path.dirname(DESCRIPTOR_FILE), { recursive: true });
+    fs.writeFileSync(
+      DESCRIPTOR_FILE,
+      JSON.stringify(
+        {
+          pid: mockProcess.pid,
+          classpath: cp,
+          root: rootDir,
+          deviceSecret: DEVICE_SECRET,
+          port: MOCK_WEB_PORT,
+        },
+        null,
+        2,
+      ),
+      'utf8',
+    );
+  } catch (err) {
+    console.error(`[pm-web-e2e] Could not write the mock descriptor: ${err}`);
+  }
+
   // Return teardown function
   return () => {
     cleanupAuditCache();
-    if (mockProcess) {
+    // The live-indicator check restarts the mock; the descriptor names the process that runs now.
+    let pid = mockProcess ? mockProcess.pid : null;
+    try {
+      pid = JSON.parse(fs.readFileSync(DESCRIPTOR_FILE, 'utf8')).pid ?? pid;
+    } catch {
+      // No descriptor: the process this setup started is the one to stop.
+    }
+    try {
+      fs.rmSync(DESCRIPTOR_FILE, { force: true });
+    } catch {
+      // Best-effort cleanup.
+    }
+    if (pid) {
       console.log('[pm-web-e2e] Stopping pm-mock-runtime...');
-      mockProcess.kill('SIGTERM');
+      try {
+        process.kill(pid, 'SIGTERM');
+      } catch {
+        // Already stopped.
+      }
       mockProcess = null;
     }
   };

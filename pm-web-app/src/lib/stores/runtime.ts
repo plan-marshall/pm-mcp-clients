@@ -8,6 +8,7 @@ import {
   type MachineSettingsRecord,
   type MachineSettingsUpdateResult,
   type ProjectOverviewResponse,
+  type EventStreamState,
 } from '../api/client';
 import {
   matchPath,
@@ -20,6 +21,15 @@ import {
 import { currentLocale, translate } from '../i18n';
 
 export type { AppRoute, RouteParams, StartPath };
+
+/**
+ * The state of the one event stream (UX-P-12).
+ *
+ * `connecting` is the first attempt, `connected` a live stream, `reconnecting` a dropped stream
+ * that retries, and `offline` the state after the retries gave up — the one that offers `Try
+ * again`.
+ */
+export type StreamState = EventStreamState;
 
 export interface RevokedInfo {
   reason?: string;
@@ -44,6 +54,8 @@ export interface RuntimeState {
   /** A code in the address bar was refused; the pairing page shows why. */
   pairingFailed?: boolean;
   isOffline: boolean;
+  /** The state of the event stream, for the live indicator. */
+  streamState: StreamState;
   /** The network listener this browser reached the machine over was turned off. */
   isListenerClosed: boolean;
   /** When that listener was turned off, for the page that waits for it. */
@@ -112,6 +124,7 @@ const initialState: RuntimeState = {
   revokedInfo: null,
   pairingFailed: false,
   isOffline: false,
+  streamState: 'connecting',
   isListenerClosed: false,
   listenerClosedAt: null,
   isDraining: false,
@@ -396,6 +409,14 @@ export async function initRuntime(): Promise<void> {
     }
   });
 
+  // The stream reports its own state, so the live indicator says what the connection does instead
+  // of inferring it from a request that happened to fail.
+  apiClient.setOnStreamState((state) => {
+    if (get(runtimeStore).streamState !== state) {
+      runtimeStore.update((s) => ({ ...s, streamState: state }));
+    }
+  });
+
   const hasCodeInHash = await checkUrlHashForCode();
   if (hasCodeInHash) {
     return;
@@ -458,6 +479,18 @@ export async function initRuntime(): Promise<void> {
       isOffline: true,
     }));
   }
+}
+
+/**
+ * Retries the event stream after it gave up, and re-reads the runtime.
+ *
+ * The indicator's `Try again` calls it: the stream reconnects at once, and the status read that
+ * follows settles whether the machine is reachable again.
+ */
+export function retryEventStream(): void {
+  runtimeStore.update((s) => ({ ...s, streamState: 'connecting', isOffline: false }));
+  apiClient.retryEventStream();
+  void initRuntime();
 }
 
 export async function refreshReportsCount(): Promise<void> {

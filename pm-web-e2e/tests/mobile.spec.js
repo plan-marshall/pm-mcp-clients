@@ -74,7 +74,7 @@ test.describe('Mobile viewports (WEB-1)', () => {
       await pair(page);
 
       const overviewNav = page
-        .locator('.app-header')
+        .locator('.bottom-bar')
         .getByRole('button', { name: /Running work/i });
       await expectWithinViewport(page, overviewNav, phone.width);
       await overviewNav.click();
@@ -98,7 +98,7 @@ test.describe('Mobile viewports (WEB-1)', () => {
       await pair(page);
 
       await page
-        .locator('.app-header')
+        .locator('.bottom-bar')
         .getByRole('button', { name: /Reports/i })
         .click();
       await expect(page.locator('.reports-view')).toBeVisible();
@@ -117,6 +117,65 @@ test.describe('Mobile viewports (WEB-1)', () => {
       await expectNoHorizontalOverflow(page);
     });
   }
+
+  test('carries four labelled destinations in the bottom bar', async ({ page, request }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await useScenario(request, 'fully-onboarded');
+    await pair(page);
+
+    const bar = page.getByTestId('bottom-bar');
+    await expect(bar).toBeVisible();
+    await expect(bar.getByRole('button')).toHaveCount(4);
+    for (const name of [/Running work/i, /Decisions/i, /Reports/i, /More/i]) {
+      const item = bar.getByRole('button', { name });
+      await expect(item).toBeVisible();
+      await expect(item).toHaveText(/\S/);
+    }
+
+    await expect(page.getByTestId('nav-rail')).toBeHidden();
+
+    await bar.getByRole('button', { name: /More/i }).click();
+    const sheet = page.getByTestId('dialog');
+    await expect(sheet).toBeVisible();
+    await expect(page.getByTestId('sheet-group-work')).toBeVisible();
+    await expect(page.getByTestId('sheet-group-records')).toBeVisible();
+    await expect(page.getByTestId('sheet-group-machine')).toBeVisible();
+
+    // The language switch and the theme choice of the rail's foot stay reachable on a phone.
+    await expect(page.getByTestId('sheet-language-toggle')).toBeVisible();
+    await expect(page.getByTestId('sheet-theme-light')).toBeVisible();
+    await expect(page.getByTestId('sheet-theme-dark')).toBeVisible();
+    await expect(page.getByTestId('sheet-theme-system')).toBeVisible();
+
+    await page.getByTestId('sheet-system').click();
+    await expect(page).toHaveURL(/\/system$/);
+    await expect(page.getByTestId('dialog')).toHaveCount(0);
+  });
+
+  test('keeps every route without horizontal scroll at 390 px', async ({ page, request }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await useScenario(request, 'fully-onboarded');
+    await pair(page);
+
+    const routes = [
+      '/overview',
+      '/plans/fix-relay',
+      '/epics/relay-hardening',
+      '/projects',
+      '/decisions',
+      '/reports',
+      '/designer',
+      '/system',
+      '/system/cleanup',
+      '/settings',
+    ];
+
+    for (const path of routes) {
+      await page.goto(path);
+      await expect.soft(page.getByTestId('bottom-bar')).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+    }
+  });
 
   test.afterAll(async ({ request }) => {
     try {

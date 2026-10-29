@@ -1314,6 +1314,8 @@
   .system-container {
     padding: var(--space-6);
     max-width: 1200px;
+    min-inline-size: 0;
+    max-inline-size: 100%;
     margin: 0 auto;
     width: 100%;
   }
@@ -1341,8 +1343,11 @@
 
   .system-header__controls {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
+    min-inline-size: 0;
+    max-inline-size: 100%;
   }
 
   .window-selector,
@@ -1427,6 +1432,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
+    min-inline-size: 0;
   }
 
   .card--full {
@@ -1435,10 +1441,13 @@
 
   .card-header {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: center;
+    gap: var(--space-3);
     border-bottom: 1px solid var(--color-border-subtle);
     padding-bottom: var(--space-3);
+    min-inline-size: 0;
   }
 
   .card-header--flex {
@@ -1455,6 +1464,7 @@
 
   .card-actions {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-2);
   }
 
@@ -1466,6 +1476,7 @@
 
   .metric-row {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: flex-start;
     font-size: var(--text-sm);
