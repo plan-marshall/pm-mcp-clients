@@ -293,6 +293,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_PROJECT_ID = "project_id";
     private static final String KEY_NODE_ID = "node_id";
     private static final String KEY_TITLE = "title";
+    private static final String KEY_PHASE = "phase";
+    private static final String PHASE_EXECUTE = "execute";
     private static final String KEY_EVENT = "event";
     private static final String CONST_GITHUB_PM_PREFIX = "https://github.com/plan-marshall/";
     private static final String CONST_TIME_10_14 = "2026-10-14T10:00:00Z";
@@ -4947,7 +4949,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var fixRelayPhase = List.of(
                 new TokenBreakdownItem("refine", 38000, 35000, 3000, 0, false, null, null),
                 new TokenBreakdownItem("outline", 96000, 90000, 6000, 0, false, null, null),
-                new TokenBreakdownItem("execute", 241000, 222000, 19000, 3, true, null, fixRelayComponents),
+                new TokenBreakdownItem(PHASE_EXECUTE, 241000, 222000, 19000, 3, true, null, fixRelayComponents),
                 new TokenBreakdownItem("finalize", 37000, 33000, 4000, 0, false, null, null)
         );
         var fixRelayRole = List.of(
@@ -8422,7 +8424,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             summary.put("id", planId);
             summary.put(KEY_TITLE, started.title());
             summary.put("project", started.projectId());
-            summary.put("phase", "execute");
+            summary.put(KEY_PHASE, PHASE_EXECUTE);
             summary.put("state", "running");
             return summary;
         }
@@ -8477,7 +8479,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private static Map<String, Object> synthesizedPlan(@Nullable Map<?, ?> template, String planId,
             Map<String, Object> summary) {
-        var phase = summaryText(summary, "phase", "execute");
+        var phase = summaryText(summary, KEY_PHASE, PHASE_EXECUTE);
         var phaseState = summaryText(summary, "state", "running");
         var copy = new LinkedHashMap<String, Object>();
         copy.put(KEY_PLAN_ID, planId);
@@ -8535,7 +8537,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var phase = new LinkedHashMap<String, Object>();
         phase.put(KEY_NODE_ID, nodeId);
         phase.put(KEY_TITLE, title);
-        phase.put("kind", "phase");
+        phase.put("kind", KEY_PHASE);
         phase.put("state", state);
         phase.put("run_count", ran);
         phase.put("current_run", ran);
