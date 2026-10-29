@@ -6013,7 +6013,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private void applyStateEffectOf(String event, Object data) {
         if (!(DECISION_OPENED.equals(event) || DECISION_ANSWERED.equals(event)
-                            || DECISION_CLOSED.equals(event))) {
+                || DECISION_CLOSED.equals(event))) {
             return;
         }
         var payload = JsonTree.asObject(data);

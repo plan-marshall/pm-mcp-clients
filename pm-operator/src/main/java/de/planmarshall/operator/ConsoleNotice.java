@@ -403,7 +403,8 @@ public final class ConsoleNotice {
     }
 
     private static String channelText(String locale, String channel) {
-        var key = "operator.console.channel." + channel;        return MessageCatalogue.hasKey(locale, key)
+        var key = "operator.console.channel." + channel;
+        return MessageCatalogue.hasKey(locale, key)
                             ? MessageCatalogue.format(locale, key, Map.of())
                             : TerminalSanitizer.sanitize(channel);
     }
