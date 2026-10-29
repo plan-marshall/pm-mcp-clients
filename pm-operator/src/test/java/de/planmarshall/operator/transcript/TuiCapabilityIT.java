@@ -71,7 +71,8 @@ class TuiCapabilityIT {
     private static final String TERM = "TERM";
     private static final String TERM_PROGRAM = "TERM_PROGRAM";
     private static final String PATH = "PATH";
-    private static final String PROMPT = "pm \u203a";
+    /** The console prompt's suffix: the prompt carries its badges between {@code pm} and it. */
+    private static final String PROMPT = " \u203a";
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
                         MachinePaths.class, CommandLine.class, JsonFactory.class,

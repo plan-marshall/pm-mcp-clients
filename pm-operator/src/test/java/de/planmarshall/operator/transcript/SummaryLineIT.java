@@ -53,7 +53,8 @@ class SummaryLineIT {
     private static final Duration TIMEOUT = Duration.ofSeconds(20);
     private static final String SCRIPT = "/usr/bin/script";
     private static final String OVERVIEW_PREFIX = "While the overview was open: ";
-    private static final String PROMPT = "pm \u203a";
+    /** The console prompt's suffix: the prompt carries its badges between {@code pm} and it. */
+    private static final String PROMPT = " \u203a";
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
                         MachinePaths.class, CommandLine.class, JsonFactory.class,
