@@ -94,6 +94,23 @@ describe('Dialog', () => {
     expect(document.activeElement).toBe(cancel);
   });
 
+  it('keeps Tab on the dialog box inside it, and Shift-Tab too', async () => {
+    render(DialogFixture, { props: FIXTURE });
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    const dialog = await screen.findByRole('dialog');
+    const confirm = within(dialog).getByRole('button', { name: 'Confirm' });
+    const cancel = within(dialog).getByRole('button', { name: 'Cancel' });
+
+    // The dialog box holds the focus when it opens; neither direction may leave it from there.
+    dialog.focus();
+    await fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(confirm);
+
+    dialog.focus();
+    await fireEvent.keyDown(window, { key: 'Tab' });
+    expect(document.activeElement).toBe(cancel);
+  });
+
   it('names the consequences of a danger act in a list', () => {
     render(Dialog, {
       props: {
