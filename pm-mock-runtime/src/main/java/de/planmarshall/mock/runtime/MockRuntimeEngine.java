@@ -8342,8 +8342,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // 4. Dynamic plan process route: /api/v1/plans/{planId}/process. A plan the scenario serves
-        // by its own route is answered at step 1; a plan it lists is answered from its summary
-        // entry; any other id is plan_not_found.
+        // by its own route is answered at step 1; a listed plan is answered from its summary entry
+        // when the template route is active; any other id is plan_not_found.
         if (isPlanProcess) {
             var sub = path.substring(PATH_PLANS_PREFIX.length());
             var planId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
@@ -8438,9 +8438,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     /**
      * Builds the process-tree detail of a plan the scenario lists without a route of its own. The
-     * tree carries the plan's own identity and a phase list consistent with its phase and state;
-     * nothing that belongs to another plan (its epic, pull request, activity, tokens, duration or
-     * project) is copied.
+     * tree carries the plan's own identity, its phase list is the template's, and every phase is
+     * marked from the plan's own phase and state; nothing that identifies another plan (its epic,
+     * pull request, activity, tokens, duration or project) is copied.
      *
      * @param template the template representation
      * @param planId   the requested plan id
