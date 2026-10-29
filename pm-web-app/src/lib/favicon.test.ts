@@ -40,6 +40,22 @@ function lightTokenValue(token: string): string {
   return (declaration ?? '').split(':')[1]?.replace(';', '').trim() ?? '';
 }
 
+/**
+ * @param href the icon href exported by `favicon.ts`
+ * @returns the asset's text
+ */
+function assetText(href: string): string {
+  return fs.readFileSync(path.join(STATIC_DIR, href.replace(/^\//, '')), 'utf-8');
+}
+
+/**
+ * @param href the icon href exported by `favicon.ts`
+ * @returns the parsed asset
+ */
+function assetDoc(href: string): Document {
+  return new DOMParser().parseFromString(assetText(href), 'image/svg+xml');
+}
+
 describe('the tab icon', () => {
   beforeEach(() => {
     plantIcon(FAVICON_CALM_HREF);
@@ -76,42 +92,53 @@ describe('the tab icon', () => {
 describe('the two tab assets', () => {
   it('delivers the plain mark and the mark with the attention dot as parsable vectors', () => {
     for (const href of [FAVICON_CALM_HREF, FAVICON_ATTENTION_HREF]) {
-      const svg = fs.readFileSync(path.join(STATIC_DIR, href.replace(/^\//, '')), 'utf-8');
-      const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
+      const doc = assetDoc(href);
 
       expect(doc.querySelector('parsererror')).toBeNull();
       expect(doc.documentElement.getAttribute('viewBox')).toBe('0 0 24 24');
     }
   });
 
-  it('adds the attention dot only to the attention variant', () => {
-    const attentionFill = lightTokenValue('--color-attention');
-    /**
-     * @param href the icon href exported by `favicon.ts`
-     * @returns the circle drawn in the attention colour, or null
-     */
+  it('adds the attention dot only to the attention variant, inside the view box', () => {
     const dotOf = (href: string) =>
-      new DOMParser()
-        .parseFromString(
-          fs.readFileSync(path.join(STATIC_DIR, href.replace(/^\//, '')), 'utf-8'),
-          'image/svg+xml',
-        )
-        .querySelector(`circle[fill="${attentionFill}"]`);
+      assetDoc(href).querySelector(`circle[fill="${lightTokenValue('--color-attention')}"]`);
 
     expect(dotOf(FAVICON_CALM_HREF)).toBeNull();
-    expect(dotOf(FAVICON_ATTENTION_HREF)).not.toBeNull();
+
+    const dot = dotOf(FAVICON_ATTENTION_HREF);
+    expect(dot).not.toBeNull();
+
+    const cx = Number(dot?.getAttribute('cx'));
+    const cy = Number(dot?.getAttribute('cy'));
+    const radius = Number(dot?.getAttribute('r'));
+    expect(radius).toBeGreaterThan(0);
+    expect(cx - radius).toBeGreaterThanOrEqual(0);
+    expect(cx + radius).toBeLessThanOrEqual(24);
+    expect(cy - radius).toBeGreaterThanOrEqual(0);
+    expect(cy + radius).toBeLessThanOrEqual(24);
   });
 
-  it('bakes the light-theme brand and attention colours of the token catalogue', () => {
+  it('bakes the light-theme brand and attention colours on the drawn elements', () => {
+    const brand = lightTokenValue('--color-brand');
+    const attention = lightTokenValue('--color-attention');
     /**
      * @param href the icon href exported by `favicon.ts`
-     * @returns the asset's text
+     * @returns the colours the drawn elements actually paint with
      */
-    const assetOf = (href: string) =>
-      fs.readFileSync(path.join(STATIC_DIR, href.replace(/^\//, '')), 'utf-8');
+    const paintedColours = (href: string): string[] => {
+      const painted = Array.from(assetDoc(href).querySelectorAll('[fill], [stroke]')).flatMap(
+        (element) => [element.getAttribute('fill'), element.getAttribute('stroke')],
+      );
+      return painted.filter((value): value is string => Boolean(value) && value !== 'none');
+    };
 
-    expect(assetOf(FAVICON_CALM_HREF)).toContain(lightTokenValue('--color-brand'));
-    expect(assetOf(FAVICON_ATTENTION_HREF)).toContain(lightTokenValue('--color-brand'));
-    expect(assetOf(FAVICON_ATTENTION_HREF)).toContain(lightTokenValue('--color-attention'));
+    expect(new Set(paintedColours(FAVICON_CALM_HREF))).toEqual(new Set([brand]));
+
+    const attentionColours = new Set(paintedColours(FAVICON_ATTENTION_HREF));
+    expect(attentionColours).toContain(brand);
+    expect(attentionColours).toContain(attention);
+    // The dot's separating ring is the one non-token colour, and only the attention copy carries it.
+    expect(attentionColours).toContain('#FFFFFF');
+    expect(paintedColours(FAVICON_CALM_HREF)).not.toContain('#FFFFFF');
   });
 });
