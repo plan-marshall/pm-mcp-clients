@@ -54,6 +54,7 @@ import de.planmarshall.api.control.HoldChangedEvent;
 import de.planmarshall.api.control.HoldRecord;
 import de.planmarshall.api.control.HoldResolutionRequest;
 import de.planmarshall.api.control.HoldResolutionResult;
+import de.planmarshall.api.control.PlanAction;
 import de.planmarshall.api.control.PlanActionRequest;
 import de.planmarshall.api.control.PlanControlEvent;
 import de.planmarshall.api.control.PlanSettingsRecord;
@@ -265,6 +266,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String SEGMENT_ENTRY_CHAT_END = "/chat/end";
     private static final String SEGMENT_ENTRY_CHAT_PROPOSAL = SEGMENT_ENTRY_CHAT + "/proposal/";
     private static final String ACTION_ACCEPT = "accept";
+    private static final String ACTION_PAUSE = "pause";
+    private static final String ACTION_ABANDON = "abandon";
+    private static final String ACTION_COMMON_FILES = "common_files";
+    private static final String ACTION_ARCHIVE = "archive";
+    private static final String ACTION_START = "start";
+    private static final String ACTION_CANCEL = "cancel";
+    private static final String ACTION_NEXT = "next";
+    private static final String ACTION_AUTO = "auto";
+    private static final Set<String> PLAN_CONTROL_ACTIONS = Set.of(
+            PlanAction.PAUSE.value(), PlanAction.START.value(),
+            PlanAction.CANCEL.value(), PlanAction.ABANDON.value());
+    private static final Set<String> EPIC_FLAT_ACTIONS = Set.of(ACTION_AUTO);
     private static final String ACTION_RETRY = "retry";
     private static final String ACTION_ABORT = "abort";
     private static final String SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT = SEGMENT_ENTRY_CHAT_PROPOSAL + ACTION_ACCEPT;
@@ -311,6 +324,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ERR_CLI_ONLY = "cli_only";
     private static final String ERR_WEB_LISTENER_CONFLICT = "web_listener_conflict";
     private static final String FIELD_ENABLED = "enabled";
+    private static final String FIELD_OVERLAP_MAX_FILES = "overlap_max_files";
     private static final String FIELD_PAIRED_FROM = "paired_from";
     private static final String FIELD_ONBOARDED = "onboarded";
     private static final String CONST_LAN_HOST = "mbp-oliver.local";
@@ -426,6 +440,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String REASON_LESSON_RETIRED = "lesson_retired";
     private static final String REASON_LESSON_PREMISE_BROKEN = "lesson_premise_broken";
     private static final String PATH_PLANS_PREFIX = "/api/v1/plans/";
+    private static final String SEGMENT_ACTIONS = "/actions";
+    private static final String SEGMENT_HOLDS = "/holds";
+    private static final String SEGMENT_HOLDS_PATH = "/holds/";
+    private static final String SEGMENT_DECOMPOSITION = "/decomposition";
     private static final String PATH_EPICS_PREFIX = "/api/v1/epics/";
     private static final String SUFFIX_INTENT = "/intent";
     private static final String SUFFIX_OUTLINE = "/outline";
@@ -2585,7 +2603,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             epicAuto.put(epicId, Boolean.TRUE.equals(epic.get("auto_start")));
             epicScope.put(epicId, intMember(epic, "scope"));
             epicRunning.put(epicId, intMember(epic, "running"));
-            epicOverlap.put(epicId, intMember(epic, "overlap_max_files"));
+            epicOverlap.put(epicId, intMember(epic, FIELD_OVERLAP_MAX_FILES));
 
             var resource = fixtureObject(epic, "resource",
                     "facts.runtime.control.epics." + epicId + ".resource");
@@ -4149,19 +4167,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var actions = new ArrayList<ActionAvailability>();
         switch (state) {
             case "pausing" -> {
-                actions.add(ActionAvailability.enabled("start"));
-                actions.add(ActionAvailability.enabled("cancel"));
+                actions.add(ActionAvailability.enabled(ACTION_START));
+                actions.add(ActionAvailability.enabled(ACTION_CANCEL));
                 addChatAndSettings(planId, actions);
             }
             case "paused" -> {
-                actions.add(ActionAvailability.enabled("start"));
-                actions.add(ActionAvailability.enabled("abandon"));
+                actions.add(ActionAvailability.enabled(ACTION_START));
+                actions.add(ActionAvailability.enabled(ACTION_ABANDON));
                 addChatAndSettings(planId, actions);
             }
             case "ended" -> actions.add(ActionAvailability.enabled("chat"));
             default -> {
-                actions.add(ActionAvailability.enabled("pause"));
-                actions.add(ActionAvailability.enabled("cancel"));
+                actions.add(ActionAvailability.enabled(ACTION_PAUSE));
+                actions.add(ActionAvailability.enabled(ACTION_CANCEL));
                 addChatAndSettings(planId, actions);
             }
         }
@@ -4185,17 +4203,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if ("ended".equals(state)) {
             actions.add(ActionAvailability.enabled("chat"));
         } else {
-            actions.add(ActionAvailability.enabled("next"));
-            actions.add(ActionAvailability.enabled("auto"));
-            actions.add(ActionAvailability.enabled("common_files"));
+            actions.add(ActionAvailability.enabled(ACTION_NEXT));
+            actions.add(ActionAvailability.enabled(ACTION_AUTO));
+            actions.add(ActionAvailability.enabled(ACTION_COMMON_FILES));
             actions.add(ActionAvailability.enabled("decompose"));
             actions.add(ActionAvailability.enabled(FIELD_FINDINGS));
             actions.add(ActionAvailability.enabled("watches"));
             actions.add(ActionAvailability.enabled("chat"));
             if ("landing".equals(state)) {
-                actions.add(ActionAvailability.disabled("archive", "the ledger is landing"));
+                actions.add(ActionAvailability.disabled(ACTION_ARCHIVE, "the ledger is landing"));
             } else {
-                actions.add(ActionAvailability.enabled("archive"));
+                actions.add(ActionAvailability.enabled(ACTION_ARCHIVE));
             }
             actions.add(ActionAvailability.enabled("cancel"));
         }
@@ -4211,45 +4229,58 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return false;
         }
 
-        if ("GET".equals(method) && path.endsWith("/actions")) {
+        if ("GET".equals(method) && path.endsWith(SEGMENT_ACTIONS)) {
             if (isPlan) {
-                handleGetPlanActions(response, controlSubjectId(path, PATH_PLANS_PREFIX, "/actions"));
+                handleGetPlanActions(response, controlSubjectId(path, PATH_PLANS_PREFIX, SEGMENT_ACTIONS));
             } else {
-                handleGetEpicActions(response, controlSubjectId(path, PATH_EPICS_PREFIX, "/actions"));
+                handleGetEpicActions(response, controlSubjectId(path, PATH_EPICS_PREFIX, SEGMENT_ACTIONS));
             }
             return true;
         }
 
-        if ("POST".equals(method) && path.contains("/actions/")) {
+        if ("POST".equals(method)) {
             var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
             var sub = path.substring(prefix.length());
-            var marker = sub.indexOf("/actions/");
-            if (marker < 0) {
-                return false;
-            }
-            var subjectId = sub.substring(0, marker);
-            var action = sub.substring(marker + "/actions/".length());
-            if (action.contains("/")) {
-                return false;
-            }
-            if (isPlan) {
-                handlePlanAction(request, response, subjectId, action);
+            String subjectId = null;
+            String action = null;
+            var marker = sub.indexOf(SEGMENT_ACTIONS + "/");
+            if (marker >= 0) {
+                subjectId = sub.substring(0, marker);
+                action = sub.substring(marker + SEGMENT_ACTIONS.length() + 1);
             } else {
-                handleEpicAction(request, response, subjectId, action);
+                var slash = sub.indexOf('/');
+                if (slash > 0 && sub.indexOf('/', slash + 1) < 0) {
+                    var candidate = sub.substring(slash + 1);
+                    var controlAction = (isPlan && PLAN_CONTROL_ACTIONS.contains(candidate))
+                            || (isEpic && EPIC_FLAT_ACTIONS.contains(candidate));
+                    if (controlAction) {
+                        subjectId = sub.substring(0, slash);
+                        action = candidate;
+                    }
+                }
             }
+            if (subjectId != null && action != null && !action.contains("/")) {
+                if (isPlan) {
+                    handlePlanAction(request, response, subjectId, action);
+                } else {
+                    handleEpicAction(request, response, subjectId, action);
+                }
+                return true;
+            }
+        }
+
+        if (isPlan && "GET".equals(method) && path.endsWith(SEGMENT_HOLDS)) {
+            handleListHolds(response, controlSubjectId(path, PATH_PLANS_PREFIX, SEGMENT_HOLDS));
             return true;
         }
 
-        if (isPlan && "GET".equals(method) && path.endsWith("/holds")) {
-            handleListHolds(response, controlSubjectId(path, PATH_PLANS_PREFIX, "/holds"));
-            return true;
-        }
-
-        if (isPlan && "POST".equals(method) && path.contains("/holds/") && path.endsWith("/resolve")) {
+        if (isPlan && "POST".equals(method) && path.contains(SEGMENT_HOLDS_PATH)
+                && path.endsWith("/resolve")) {
             var sub = path.substring(PATH_PLANS_PREFIX.length());
-            var marker = sub.indexOf("/holds/");
+            var marker = sub.indexOf(SEGMENT_HOLDS_PATH);
             var subjectId = sub.substring(0, marker);
-            var holdId = sub.substring(marker + "/holds/".length(), sub.length() - "/resolve".length());
+            var holdId = sub.substring(marker + SEGMENT_HOLDS_PATH.length(),
+                    sub.length() - "/resolve".length());
             handleResolveHold(request, response, subjectId, holdId);
             return true;
         }
@@ -4277,8 +4308,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        if ("GET".equals(method) && isEpic && path.endsWith("/decomposition")) {
-            handleGetControlDecomposition(response, controlSubjectId(path, PATH_EPICS_PREFIX, "/decomposition"));
+        if ("GET".equals(method) && isEpic && path.endsWith(SEGMENT_DECOMPOSITION)) {
+            handleGetControlDecomposition(response,
+                    controlSubjectId(path, PATH_EPICS_PREFIX, SEGMENT_DECOMPOSITION));
             return true;
         }
 
@@ -4319,16 +4351,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private Map<String, Object> readBodyMap(MockHttpRequest request) {
-        if (request.body() == null || request.body().length == 0) {
-            return new LinkedHashMap<>();
-        }
+        var body = request.body();
+        var parsed = body == null || body.length == 0 ? null : parseBody(body);
+        return parsed != null ? parsed : new LinkedHashMap<>();
+    }
+
+    private @Nullable Map<String, Object> parseBody(byte[] body) {
         try {
-            var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
-            return parsed != null ? parsed : new LinkedHashMap<>();
+            return JsonTree.asObject(JsonTree.parse(body));
         }
         /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
         catch (IOException | RuntimeException _) {
-            return new LinkedHashMap<>();
+            return null;
         }
     }
 
@@ -4377,20 +4411,20 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             switch (action) {
-                case "pause" -> {
+                case ACTION_PAUSE -> {
                     var point = actionRequest.point() != null ? actionRequest.point() : "task";
                     controlPlanStates.put(planId, "pausing");
                     controlPlanPausePoints.put(planId, point);
                     broadcastEvent(PlanControlEvent.EVENT_PAUSED, new PlanControlEvent(
                             PlanControlEvent.EVENT_PAUSED, planId, "pausing", point, null).toMap());
                 }
-                case "start" -> {
+                case ACTION_START -> {
                     controlPlanStates.put(planId, "running");
                     controlPlanPausePoints.remove(planId);
                     broadcastEvent(PlanControlEvent.EVENT_RESUMED, new PlanControlEvent(
                             PlanControlEvent.EVENT_RESUMED, planId, "running", null, null).toMap());
                 }
-                case "cancel", "abandon" -> {
+                case ACTION_CANCEL, ACTION_ABANDON -> {
                     controlPlanStates.put(planId, "ended");
                     controlPlanPausePoints.remove(planId);
                     removeHolds(planId);
@@ -4429,24 +4463,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             switch (action) {
-                case "auto" -> {
-                    var enabled = actionRequest.extra().get(FIELD_ENABLED);
-                    if (enabled instanceof Boolean flag) {
-                        controlEpicAuto.put(epicId, flag);
-                    } else {
-                        var mode = actionRequest.extra().get("mode");
-                        if (mode != null) {
-                            controlEpicAuto.put(epicId, "on".equalsIgnoreCase(String.valueOf(mode)));
-                        }
-                    }
-                }
-                case "common_files" -> {
+                case ACTION_AUTO -> applyAuto(epicId, actionRequest);
+                case ACTION_COMMON_FILES -> {
                     var value = actionRequest.extra().get("count");
                     if (value instanceof Number number) {
                         controlEpicOverlap.put(epicId, number.intValue());
                     }
                 }
-                case "cancel" -> controlEpicStates.put(epicId, "ended");
+                case ACTION_CANCEL -> controlEpicStates.put(epicId, "ended");
                 default -> {
                     // next, decompose, findings, watches, archive, chat: the epic rests between its events
                 }
@@ -4454,9 +4478,25 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var resp = new LinkedHashMap<String, Object>();
             resp.put(KEY_STATUS, "ok");
             resp.put("auto_enabled", controlEpicAuto.getOrDefault(epicId, true));
-            resp.put("overlap_max_files", controlEpicOverlap.getOrDefault(epicId, 0));
+            resp.put(FIELD_OVERLAP_MAX_FILES, controlEpicOverlap.getOrDefault(epicId, 0));
             resp.putAll(buildEpicActions(epicId).toMap());
             response.json(200, resp);
+        }
+    }
+
+    private void applyAuto(String epicId, PlanActionRequest actionRequest) {
+        var enabled = actionRequest.extra().get(FIELD_ENABLED);
+        if (enabled instanceof Boolean flag) {
+            controlEpicAuto.put(epicId, flag);
+        } else {
+            var mode = actionRequest.extra().get("mode");
+            if (mode != null) {
+                controlEpicAuto.put(epicId, "on".equalsIgnoreCase(String.valueOf(mode)));
+            }
+        }
+        var commonFiles = actionRequest.extra().get(ACTION_COMMON_FILES);
+        if (commonFiles instanceof Number number) {
+            controlEpicOverlap.put(epicId, number.intValue());
         }
     }
 
@@ -4601,7 +4641,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 response.json(404, Map.of(KEY_ERROR, ERR_EPIC_NOT_FOUND, KEY_MESSAGE, "Epic not found: " + epicId));
                 return;
             }
-            response.json(200, resource.toMap());
+            var map = new LinkedHashMap<>(resource.toMap());
+            var overlap = controlEpicOverlap.get(epicId);
+            if (overlap != null) {
+                map.put(FIELD_OVERLAP_MAX_FILES, overlap);
+            }
+            response.json(200, map);
         }
     }
 

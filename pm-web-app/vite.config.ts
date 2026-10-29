@@ -4,6 +4,7 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import { defineConfig } from 'vitest/config';
 import { resolvePorts } from './src/lib/ports.ts';
+import { devRouteExclusion } from './src/lib/dev/devRouteExclusion.ts';
 
 /** The addresses a request from this machine itself carries. */
 const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
@@ -79,6 +80,7 @@ function isLoopbackRequest(request: { socket: { remoteAddress?: string | null } 
 
 export default defineConfig({
   plugins: [
+    devRouteExclusion(),
     {
       name: 'strip-announcer-inline-style',
       enforce: 'post',

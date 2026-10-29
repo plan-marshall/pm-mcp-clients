@@ -79,29 +79,36 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 
 [source,text]
 ----
-pm › plan cancel fix-relay
+pm › x  (the menu's Cancel…)
 Cancel fix-relay?
-  What ends      the running work: 1 job, 2 tasks
-  Pull request   #214 https://github.com/plan-marshall/pm-mcp-clients/pull/214 is open
-                 1) close it, with the reason ←   2) leave it open
   Its epic       relay-hardening is told
   Afterwards     the plan is archived as cancelled; its branch stays
   Reason         › the approach is replaced by plan relay-v2
-Cancel the plan? y) yes   n) no, keep it running   ?   › y
-✓ fix-relay cancelled and archived; #214 closed; relay-hardening told
+  Pull request
+  1) close it, with the reason
+  2) leave it open
+  › 1
+Chosen: close it, with the reason
+Cancel the plan?
+y) yes   n) no   q) leave   ?   › y
+✓ fix-relay cancelled and archived
+✓ relay-hardening told
 pm ›
 ----
+
+`plan cancel <plan>` on its own asks the same reason and the same consent, without the epic and
+afterwards lines and without the pull request, whose answer there is `--close-pr` or `--keep-pr`.
 
 [source,text]
 ----
 pm › plan pause fix-relay
-Pause fix-relay?
-  1) now                       2 tasks withdrawn, 1 job stopped; they run again on start
-  2) after the current task ←  implement · 4 min, build · 2 min finish
-  3) after the current phase   execute runs to its end: 3 of 7 tasks left
-  Its epic   relay-hardening is told
+Where does fix-relay hold?
+  1) now                       running work is withdrawn at once; it runs again on start
+  2) after the current task ←  the running task finishes, then the plan holds
+  3) after the current phase   the running phase finishes, then the plan holds
 › ⏎
-✓ fix-relay pausing after the task; relay-hardening told
+Chosen: after the current task
+✓ fix-relay pausing after the task
 …
 ✓ fix-relay paused
 pm ›
@@ -109,7 +116,7 @@ pm ›
 
 * `plan pause` without an answer asks; `--after-task` is the answer of the default, and `--no-input` without one stops.
 * `plan start` asks nothing (`plan.start`): a paused plan runs on from where it rests, a pausing one has its pause withdrawn.
-* `plan cancel` and `plan abandon` ask the reason when `--reason` is missing; it is required, and `--no-input` without it stops.
+* `plan cancel` and `plan abandon` ask the reason when `--reason` is missing; it is required, and `--no-input` without it stops. Afterwards the consent asks for the act the runtime performs in the plan's state (_Cancel the plan_, _Abandon the plan_, or _Abort the plan_ on an integrity pause): `y` sends, `n` and `q` send nothing, and Enter has no default.
 
 [#settings]
 === A Plan's Settings (`plan-settings.open`, `plan-settings.aspect`, `plan-settings.value`, `plan-settings.validate`, `plan-settings.apply`)

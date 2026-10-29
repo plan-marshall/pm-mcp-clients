@@ -41,6 +41,15 @@
 
   let { children }: Props = $props();
 
+  // The development page draws components, not a view of the app: it is outside the route model,
+  // so the shell neither rewrites its address nor replaces it with the stored route. The branch is
+  // compiled out of a production build, where the page's route does not exist either, and its
+  // boundary check keeps `/device` or `/developer` out of it.
+  const devRoute =
+    import.meta.env.DEV &&
+    typeof window !== 'undefined' &&
+    (window.location.pathname === '/dev' || window.location.pathname.startsWith('/dev/'));
+
   // The theme this browser chose. `app.html` already applied it before the first paint; the
   // control reads the same choice so the pressed option and the document agree.
   let themeChoice = $state<ThemeChoice>(readThemeChoice());
@@ -145,7 +154,7 @@
   // It never rewrites a URL that still carries a pairing code in its fragment: that code is
   // redeemed first, and only then does the app move on.
   $effect(() => {
-    if ($runtimeStore.isInitialized) {
+    if ($runtimeStore.isInitialized && !devRoute) {
       syncPath($runtimeStore.currentRoute);
     }
   });
@@ -191,7 +200,11 @@
   });
 </script>
 
-{#if !$runtimeStore.isInitialized}
+{#if devRoute}
+  <main class="app-body">
+    {@render children?.()}
+  </main>
+{:else if !$runtimeStore.isInitialized}
   <div class="app-loading" role="status">
     <Spinner size="3rem" label={$t('web.frame.initializing')} />
   </div>
