@@ -262,6 +262,27 @@ plan spec names the plan, proposal and finding documents it comes from.
   emitted: two plans (08, 27) stay launched, so one slot is free; the choice of what takes it is left to the
   operator: PLAN-31 (ready, but the web track is taken by PLAN-27 until it lands), PLAN-11 (mock track), or
   PLAN-13 / PLAN-14 (terminal track, free now that PLAN-10 shipped; they overlap on the operator catalogue).
+- 2026-10-29 — Ledger landed as PR #263 (merge `a2f4d2c4`): PLAN-10 and PLAN-25 landings, the launch records of
+  PLAN-08, 25 and 27, the anchor and this file.
+- 2026-10-29 — Second PLAN-01 landing message analysed (`landings/PLAN-01.md`, addendum). It comes from the
+  resumed run of the same plan after the server outage, not from a re-run of a shipped plan: PR #237 was merged
+  by the operator during the outage, no new PR, no leftover branch or worktree. The row stays `shipped`. Its
+  round-3 findings were folded into PLAN-73's deliverable 1; no plan emitted.
+- 2026-10-29 — PLAN-08 and PLAN-27 recorded running on the operator's word (PLAN-08 had been recorded launched
+  from a command emitted, with no proof of a live session; the operator found the session; PR #259 open, CI green).
+- 2026-10-29 — Emitted PLAN-31 (`web-core-components-containers`, ports 20310/20311) and PLAN-11 (`mock-cli-fixes`,
+  ports 20110/20111) at the operator's request. With PLAN-08 and PLAN-27 running that makes four in flight, one
+  above N=3, by the operator's choice (the same exception as 2026-10-28). Gate: both specs are declarative with a
+  determinate comparison, no blocking candidate and no overlap prompt (`corpus cross-check`); the four surfaces
+  are pairwise disjoint (PLAN-08 `doc/design/`, PLAN-27 brand files, PLAN-31 containers and the dev page, PLAN-11
+  the mock). PLAN-31 shares the web track with PLAN-27 on the operator's choice; the files are disjoint, but both
+  plans may touch `pm-web-app` in the same period. Both dependencies are shipped (PLAN-31: 25, 76; PLAN-11: 03,
+  76). Specs re-read at HEAD `a2f4d2c4` and corrected before the emit: PLAN-31 (the dev page exists, created by
+  PLAN-25; the controls it reuses; the `dev.*` keys) and PLAN-11 (`kind="item"` is at `MockRuntimeEngine.java:7708`,
+  not 7663; claim 1 re-confirmed: still one plan copy for any plan id, no `/api/v1/config` or `/roles` route).
+  Not added to PLAN-11: the two stale mock epic routes (`actions/cancel` ignores `with_plans`, `actions/next`
+  is a no-op); the operator did not decide it, so they stay a watch. Not recorded as launched: that waits for the
+  operator's confirmation that the commands were started.
 
 ## Open Defects
 
@@ -282,7 +303,8 @@ plan spec names the plan, proposal and finding documents it comes from.
   `rb-15-cli-footer-and-help-overlay-001.md` (PLAN-15, opencode) and `rb-19-web-ui-icon-set-001.md` (PLAN-19,
   opencode), same two keys each. Recurrence 2026-10-29: `rb-10-cli-choice-prompt-pause-001.md` (PLAN-10,
   opencode), same two keys. Recurrence 2026-10-29: `rb-25-web-core-components-controls-001.md` (PLAN-25,
-  opencode), same two keys.
+  opencode), same two keys. Recurrence 2026-10-29: `rb-01-web-text-guard-report-002.md` (PLAN-01, second message
+  of a resumed run, opencode), same two keys.
 
 ## Watches
 
