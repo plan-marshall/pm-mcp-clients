@@ -2,10 +2,10 @@
   "id": "PLAN-10",
   "slug": "cli-choice-prompt-pause",
   "workstream": "WS-04",
-  "status": "launched",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "10-cli-choice-prompt-pause",
+  "pr": "257",
+  "landing": "landings/PLAN-10.md",
   "seq": 10
 }
