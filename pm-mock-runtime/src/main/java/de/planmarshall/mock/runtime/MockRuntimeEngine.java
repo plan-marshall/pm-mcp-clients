@@ -8512,7 +8512,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return List.of(phaseNode(currentPhase, state, "phase " + currentPhase));
         }
         var current = currentPhaseIndex(nodes, currentPhase);
-        var result = new ArrayList<Map<String, Object>>(nodes.size());
+        var result = new ArrayList<Map<String, Object>>(nodes.size() + 1);
         for (var index = 0; index < nodes.size(); index++) {
             var node = JsonTree.asObject(nodes.get(index));
             if (node == null) {
@@ -8521,6 +8521,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
             result.add(phaseNode(JsonTree.string(node, KEY_NODE_ID),
                     phaseNodeState(index, current, phaseState),
                     JsonTree.string(node, KEY_TITLE)));
+        }
+        if (current < 0) {
+            // The listed phase is not in the template, so it gets its own node rather than
+            // leaving every template node planned while current_phase names another phase.
+            result.add(phaseNode(currentPhase, phaseNodeState(0, 0, phaseState),
+                    "phase " + currentPhase));
         }
         return result;
     }
@@ -8573,7 +8579,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return "done";
         }
         if (index == current) {
-            return "waiting_for_you".equals(phaseState) ? "waiting_for_operator" : "running";
+            return "running".equals(phaseState) ? "running" : "waiting_for_operator";
         }
         return "planned";
     }

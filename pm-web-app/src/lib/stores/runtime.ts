@@ -579,11 +579,21 @@ function handleDecisionEvent(event: string, data: unknown): void {
 /** The runtime's lifecycle: a drain, a withdrawn drain, or a stop. */
 function handleLifecycleEvent(event: string, data: unknown): void {
   if (event === 'runtime.draining') {
+    const payload = (data || {}) as {
+      who?: string;
+      count?: number;
+      draining_by?: string;
+      remaining_count?: number;
+      remaining_work_count?: number;
+    };
     runtimeStore.update((s) => ({
       ...s,
       isDraining: true,
       isStopped: false,
-      drainInfo: (data || {}) as RuntimeState['drainInfo'],
+      drainInfo: {
+        who: payload.who ?? payload.draining_by,
+        count: payload.count ?? payload.remaining_count ?? payload.remaining_work_count,
+      },
     }));
   } else if (event === 'runtime.drain_withdrawn') {
     runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));

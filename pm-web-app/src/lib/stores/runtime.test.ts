@@ -180,11 +180,12 @@ describe('the runtime store', () => {
     runtimeStore.set(makeRuntimeState({ isStopped: true }));
 
     // Act
-    handleRuntimeEvent('runtime.draining', { who: 'the console', remaining_count: 2 });
+    handleRuntimeEvent('runtime.draining', { draining_by: 'the console', remaining_work_count: 2 });
 
     // Assert
     expect(get(runtimeStore).isStopped).toBe(false);
     expect(get(runtimeStore).isDraining).toBe(true);
+    expect(get(runtimeStore).drainInfo).toEqual({ who: 'the console', count: 2 });
   });
 
   it('clears the drain info when the status is not draining', async () => {
