@@ -173,7 +173,7 @@ The test pyramid enforces theme readability across three automated tiers:
   * Asserts the type scale of VD-P-03, the spacing, radius, elevation, motion and breakpoint tokens of VD-P-04, and every old token name as an alias of its v2 token.
   * Audits the WCAG 2.1 AA contrast of the declared pairs in both themes: every text pair at 4.5:1 or above, every state dot at 3:1 or above.
   * Parses all `.svelte` and `.css` files to ensure every `var(--...)` reference exists in the token catalogue.
-  * Static regex scanner asserting zero hard-coded `#hex`, `rgb()`, or `hsl()` literals outside the documented `PairingQr.svelte` allowlist.
+  * Static regex scanner asserting zero hard-coded `#hex`, `rgb()`, or `hsl()` literals outside the documented colour-literal exceptions.
 
 . **Component Theme Tests (`pm-web-app/src/lib/views/theme.test.ts`):**
   * Mounts representative components (`EpicView`, `OverviewView`, `FindingsReviewModal`) under `data-theme="light"` and `data-theme="dark"`.

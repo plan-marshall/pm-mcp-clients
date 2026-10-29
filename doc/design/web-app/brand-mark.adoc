@@ -89,7 +89,7 @@ page context for `currentColor`, so the two tab copies bake their colours; <<the
 
 |Empty states
 |`24` px in `--color-text-muted`
-|The empty states of the views; the mark is the surface's illustration, never its only text.
+|The empty states of the views, once those views arrive with their own plan; the mark is the surface's illustration, never its only text.
 
 |Browser tab
 |`24` px, in the baked light-theme brand colour; with a small attention dot while the attention count is above zero

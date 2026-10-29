@@ -24,6 +24,20 @@ function currentIcon(): string | null {
   return document.querySelector('link[rel="icon"]')?.getAttribute('href') ?? null;
 }
 
+/**
+ * Reads a custom property's light-theme value from the token catalogue, so a baked tab copy
+ * cannot drift from the token it stands for.
+ *
+ * @param token the custom property, e.g. `--color-brand`
+ * @returns the six-digit hex value the light theme declares
+ */
+function lightTokenValue(token: string): string {
+  const css = fs.readFileSync(path.resolve(__dirname, '../styles/tokens.css'), 'utf-8');
+  const match = new RegExp(`${token}:\\s*(#[0-9A-Fa-f]{6})`).exec(css);
+  expect(match, `${token} is declared in tokens.css`).not.toBeNull();
+  return match?.[1] ?? '';
+}
+
 describe('the tab icon', () => {
   beforeEach(() => {
     plantIcon(FAVICON_CALM_HREF);
@@ -75,7 +89,19 @@ describe('the two tab assets', () => {
       'utf-8',
     );
 
-    expect(calm).not.toContain('#B86E00');
-    expect(attention).toContain('#B86E00');
+    expect(calm).not.toContain(lightTokenValue('--color-attention'));
+    expect(attention).toContain(lightTokenValue('--color-attention'));
+  });
+
+  it('bakes the light-theme brand and attention colours of the token catalogue', () => {
+    const calm = fs.readFileSync(path.join(STATIC_DIR, 'brand-mark.svg'), 'utf-8');
+    const attention = fs.readFileSync(
+      path.join(STATIC_DIR, 'brand-mark-attention.svg'),
+      'utf-8',
+    );
+
+    expect(calm).toContain(lightTokenValue('--color-brand'));
+    expect(attention).toContain(lightTokenValue('--color-brand'));
+    expect(attention).toContain(lightTokenValue('--color-attention'));
   });
 });
