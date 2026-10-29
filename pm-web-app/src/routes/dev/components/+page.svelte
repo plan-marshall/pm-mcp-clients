@@ -81,7 +81,7 @@
   /** The trail of the fixture: two links and the page a person stands on. */
   $: trail = [
     { label: $t('dev.breadcrumb.projects'), href: '/projects' },
-    { label: CHIP_VALUE, href: '/projects/relay' },
+    { label: CHIP_VALUE, href: '/projects/relay', id: true },
     { label: $t('dev.breadcrumb.plan') },
   ];
 
@@ -175,16 +175,16 @@
 
       <h3 class="dev__section-title">{$t('dev.section.cards')}</h3>
       <div class="dev__grid">
-        <Card title={$t('dev.card.runtime')}>
+        <Card title={$t('dev.card.runtime')} titleLevel={3}>
           <svelte:fragment slot="actions">
             <Button variant="ghost" size="sm">{$t('web.common.copy')}</Button>
           </svelte:fragment>
           <KeyValueList items={runtimeFacts} />
         </Card>
-        <Card title={$t('dev.card.plain')}>
+        <Card title={$t('dev.card.plain')} titleLevel={3}>
           <p class="dev__note">{$t('dev.card.body')}</p>
         </Card>
-        <Card title={$t('dev.card.nested')}>
+        <Card title={$t('dev.card.nested')} titleLevel={3}>
           <KeyValueList items={runtimeFacts} />
           <Card title={$t('dev.card.nested_part')}>
             <p class="dev__note">{$t('dev.card.body')}</p>
@@ -193,7 +193,7 @@
       </div>
 
       <h3 class="dev__section-title">{$t('dev.section.key_values')}</h3>
-      <Card title={$t('dev.key_value.title')}>
+      <Card title={$t('dev.key_value.title')} titleLevel={3}>
         <KeyValueList items={runtimeFacts} />
       </Card>
 
@@ -316,7 +316,7 @@
 
   .dev__grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
     gap: var(--space-4);
   }
 

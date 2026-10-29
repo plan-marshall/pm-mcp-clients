@@ -24,7 +24,8 @@
   /** The elements the Tab key walks, in document order. */
   const FOCUSABLE =
     'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), ' +
-    'textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    'textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), ' +
+    '[contenteditable]:not([contenteditable="false"])';
 
   /** The id the title carries, for `aria-labelledby`. */
   const titleId = uniqueId('dialog-title');
@@ -45,9 +46,14 @@
   function takeFocus(node: HTMLElement): { destroy: () => void } {
     panel = node;
     returnFocus = document.activeElement as HTMLElement | null;
+    // The page behind the backdrop must not scroll under the dialog; its own position survives.
+    const root = document.documentElement;
+    const previousOverflow = root.style.overflow;
+    root.style.overflow = 'hidden';
     node.focus();
     return {
       destroy(): void {
+        root.style.overflow = previousOverflow;
         returnFocus?.focus();
         returnFocus = null;
         panel = undefined;
@@ -55,9 +61,18 @@
     };
   }
 
-  /** @returns the elements inside the dialog that can take the focus */
+  /** @returns the elements inside the dialog that can take the focus, in native tab order */
   function focusable(): HTMLElement[] {
-    return panel ? Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)) : [];
+    if (!panel) {
+      return [];
+    }
+    // `:disabled` also matches a control an ancestor `fieldset` disables, which a `focus()` call
+    // cannot reach. A positive `tabindex` comes first in the native order, ascending.
+    const rank = (element: HTMLElement): number =>
+      element.tabIndex > 0 ? element.tabIndex : Number.MAX_SAFE_INTEGER;
+    return Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE))
+      .filter((element) => !element.matches(':disabled'))
+      .sort((first, second) => rank(first) - rank(second));
   }
 
   /** @param event the key press anywhere while the dialog is open */

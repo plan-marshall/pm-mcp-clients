@@ -12,7 +12,7 @@ const LABEL = 'Trail';
 
 const TRAIL = [
   { label: 'Projects', href: '/projects' },
-  { label: 'plan-marshall/pm-mcp-clients', href: '/projects/pm-mcp-clients' },
+  { label: 'plan-marshall/pm-mcp-clients', href: '/projects/pm-mcp-clients', id: true },
   { label: 'Plan 31: web core components, containers' },
 ];
 
@@ -75,10 +75,10 @@ describe('Breadcrumb', () => {
     expect(screen.queryByRole('link', { name: /Plan 31/ })).toBeNull();
   });
 
-  it('shortens a long segment in the middle on a phone', async () => {
+  it('shortens an identifier in the middle on a phone, keeping the whole label as its name', async () => {
     stubMediaQuery(true);
     render(Breadcrumb, { props: { crumbs: TRAIL, label: LABEL } });
-    const middle = await screen.findByRole('link', { name: /…/ });
+    const middle = await screen.findByRole('link', { name: 'plan-marshall/pm-mcp-clients' });
     const visible = middle.textContent ?? '';
 
     expect(visible.startsWith('plan-m')).toBe(true);
@@ -101,19 +101,40 @@ describe('Breadcrumb', () => {
 
     media.fire(true);
 
-    expect(await screen.findByRole('link', { name: /…/ })).toBeInTheDocument();
+    const link = await screen.findByRole('link', { name: 'plan-marshall/pm-mcp-clients' });
+    expect(link.textContent).toContain('…');
   });
 
-  it('never cuts a sentence a person reads, only an id', () => {
+  it('never cuts a label the view did not classify as an id', () => {
     stubMediaQuery(true);
     render(Breadcrumb, {
       props: {
-        crumbs: [{ label: 'Projects' }, { label: 'Plan 31: web core components' }],
+        crumbs: [
+          { label: 'Projects' },
+          // One long word, and still copy: only an id is shortened.
+          { label: 'Plan31webcorecomponentscontainers' },
+        ],
         label: LABEL,
       },
     });
 
-    expect(screen.getByText('Plan 31: web core components')).toBeInTheDocument();
+    expect(screen.getByText('Plan31webcorecomponentscontainers')).toBeInTheDocument();
+  });
+
+  it('keeps the current page as text even when it carries an address', () => {
+    stubMediaQuery(false);
+    render(Breadcrumb, {
+      props: {
+        crumbs: [
+          { label: 'Projects', href: '/projects' },
+          { label: 'Plan 31', href: '/plans/31' },
+        ],
+        label: LABEL,
+      },
+    });
+
+    expect(screen.getByText('Plan 31')).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryByRole('link', { name: 'Plan 31' })).toBeNull();
   });
 
   it('draws two segments that read the same, which a trail must allow', () => {

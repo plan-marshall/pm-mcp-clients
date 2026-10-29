@@ -5,6 +5,11 @@
     label: string;
     /** The address the segment leads to; the last segment carries none. */
     href?: string;
+    /**
+     * Whether the label is an identifier. Only an identifier is shortened in its middle on a phone:
+     * a sentence a person reads is never cut, however long it is.
+     */
+    id?: boolean;
   }
 </script>
 
@@ -46,14 +51,18 @@
   });
 
   /** The rows the trail draws; the shortening follows the viewport, so the template reads a value. */
-  $: rows = crumbs.map((crumb, index) => ({
-    ...crumb,
-    // Only an id has a middle worth keeping: a sentence a person reads is never cut.
-    shown:
-      phone && !/\s/.test(crumb.label) ? shortenMiddle(crumb.label, PHONE_MAX) : crumb.label,
-    current: index === crumbs.length - 1,
-    leads: index < crumbs.length - 1 && crumb.href !== undefined,
-  }));
+  $: rows = crumbs.map((crumb, index) => {
+    // Only an identifier the view classifies as such is shortened: a label is copy until the view
+    // says otherwise, and copy is never cut — a catalogue label may be one long word.
+    const shown = phone && crumb.id === true ? shortenMiddle(crumb.label, PHONE_MAX) : crumb.label;
+    return {
+      ...crumb,
+      shown,
+      shortened: shown !== crumb.label,
+      current: index === crumbs.length - 1,
+      leads: index < crumbs.length - 1 && crumb.href !== undefined,
+    };
+  });
 </script>
 
 <nav class="breadcrumb" aria-label={label}>
@@ -61,10 +70,22 @@
     {#each rows as row}
       <li class="breadcrumb__item">
         {#if row.leads}
-          <a class="breadcrumb__link" href={row.href}>{row.shown}</a>
+          <!-- The shortened text is the visual form; the accessible name stays the whole label. -->
+          <a
+            class="breadcrumb__link"
+            href={row.href}
+            aria-label={row.shortened ? row.label : undefined}
+          >
+            {row.shown}
+          </a>
+        {:else if row.shortened}
+          <span class="breadcrumb__current" aria-current={row.current ? 'page' : undefined}>
+            <span aria-hidden="true">{row.shown}</span>
+            <span class="sr-only">{row.label}</span>
+          </span>
         {:else}
           <span class="breadcrumb__current" aria-current={row.current ? 'page' : undefined}>
-            {row.shown}
+            {row.label}
           </span>
         {/if}
       </li>
@@ -90,6 +111,7 @@
     align-items: center;
     gap: var(--space-2);
     min-inline-size: 0;
+    overflow-wrap: anywhere;
   }
 
   .breadcrumb__item + .breadcrumb__item::before {

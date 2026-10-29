@@ -29,7 +29,7 @@
 <style>
   .key-value-list {
     display: grid;
-    grid-template-columns: max-content minmax(0, 1fr);
+    grid-template-columns: minmax(0, max-content) minmax(0, 1fr);
     gap: var(--space-2) var(--space-4);
     margin: 0;
     font-size: var(--text-sm);
@@ -38,6 +38,7 @@
 
   .key-value-list__label {
     color: var(--color-text-muted);
+    overflow-wrap: anywhere;
   }
 
   .key-value-list__value {

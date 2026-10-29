@@ -44,10 +44,17 @@ describe('Card', () => {
 
   it('draws the head of acts alone, without an empty title', () => {
     render(CardFixture, { props: { title: '', body: 'Body text', actLabel: 'Refresh' } });
-    const head = screen.getByTestId('card').querySelector('.card__head');
+    const head = screen.getByTestId('card').querySelector('.card__head') as HTMLElement;
 
     expect(head).not.toBeNull();
+    expect(within(head).getByRole('button', { name: 'Refresh' })).toBeInTheDocument();
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
+  });
+
+  it('takes the heading level the view gives it, so the outline stays in order', () => {
+    render(Card, { props: { title: 'Runtime', titleLevel: 3 } });
+
+    expect(screen.getByRole('heading', { name: 'Runtime', level: 3 })).toBeInTheDocument();
   });
 
   it('refuses a card inside a card: the nested one draws a divider, not a surface', () => {
@@ -60,11 +67,14 @@ describe('Card', () => {
         innerActLabel: 'Copy',
       },
     });
+    const nested = container.querySelector('.card__nested') as HTMLElement;
 
     expect(container.querySelectorAll('.card')).toHaveLength(1);
-    expect(container.querySelector('.card__nested')).not.toBeNull();
-    expect(container.querySelector('.card__nested .card__divider')).not.toBeNull();
-    expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument();
+    expect(nested).not.toBeNull();
+    expect(nested.querySelector('.card__divider')).not.toBeNull();
+    expect(within(nested).getByRole('heading', { name: 'Inner', level: 3 })).toBeInTheDocument();
+    expect(within(nested).getByText('Body text')).toBeInTheDocument();
+    expect(within(nested).getByRole('button', { name: 'Copy' })).toBeInTheDocument();
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('nested'));
   });
 

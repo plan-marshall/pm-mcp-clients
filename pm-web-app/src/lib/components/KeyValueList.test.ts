@@ -28,6 +28,12 @@ describe('KeyValueList', () => {
     ]);
     expect(labels[0]?.className).toContain('key-value-list__label');
     expect(values[0]?.className).toContain('key-value-list__value');
+    expect(Array.from(list.children).map((child) => child.tagName)).toEqual([
+      'DT',
+      'DD',
+      'DT',
+      'DD',
+    ]);
   });
 
   it('draws nothing but the empty list when there is no pair', () => {

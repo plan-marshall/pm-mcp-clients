@@ -40,7 +40,9 @@
   /** The prop value the list has already followed, so its own selection is not undone. */
   let followed: string | undefined = active;
 
-  $: if (active !== undefined && active !== followed) {
+  $: if (active === undefined) {
+    followed = undefined;
+  } else if (active !== followed) {
     followed = active;
     selected = active;
   }

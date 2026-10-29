@@ -16,6 +16,7 @@ const FIXTURE = {
   openLabel: 'Delete',
   cancelLabel: 'Cancel',
   confirmLabel: 'Confirm',
+  disabledLabel: 'Archive',
 };
 
 describe('Dialog', () => {
@@ -109,6 +110,32 @@ describe('Dialog', () => {
     dialog.focus();
     await fireEvent.keyDown(window, { key: 'Tab' });
     expect(document.activeElement).toBe(cancel);
+  });
+
+  it('keeps the tab wrap off an act that cannot take the focus', async () => {
+    render(DialogFixture, { props: FIXTURE });
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    const dialog = await screen.findByRole('dialog');
+    const confirm = within(dialog).getByRole('button', { name: 'Confirm' });
+    const cancel = within(dialog).getByRole('button', { name: 'Cancel' });
+
+    // A disabled act sits after Confirm in the footer and must not become the wrap target.
+    confirm.focus();
+    await fireEvent.keyDown(window, { key: 'Tab' });
+
+    expect(document.activeElement).toBe(cancel);
+  });
+
+  it('stops the page behind it from scrolling, and gives the page back when it closes', async () => {
+    render(DialogFixture, { props: FIXTURE });
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    await screen.findByRole('dialog');
+
+    expect(document.documentElement.style.overflow).toBe('hidden');
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    expect(document.documentElement.style.overflow).toBe('');
   });
 
   it('names the consequences of a danger act in a list', () => {

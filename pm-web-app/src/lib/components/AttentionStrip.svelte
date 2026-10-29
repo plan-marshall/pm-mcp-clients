@@ -48,5 +48,7 @@
   .attention-strip__message {
     flex: 1 1 auto;
     margin: 0;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
   }
 </style>

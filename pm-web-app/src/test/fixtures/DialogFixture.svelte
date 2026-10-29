@@ -11,6 +11,7 @@
   export let openLabel: string;
   export let cancelLabel: string;
   export let confirmLabel: string;
+  export let disabledLabel: string;
 
   let open = false;
 </script>
@@ -22,5 +23,6 @@
   <svelte:fragment slot="footer">
     <Button variant="ghost" on:click={() => (open = false)}>{cancelLabel}</Button>
     <Button variant="danger" on:click={() => (open = false)}>{confirmLabel}</Button>
+    <Button variant="ghost" disabled disabledReason={disabledLabel}>{disabledLabel}</Button>
   </svelte:fragment>
 </Dialog>

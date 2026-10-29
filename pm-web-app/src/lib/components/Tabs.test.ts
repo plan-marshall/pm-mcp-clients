@@ -138,6 +138,16 @@ describe('Tabs', () => {
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
   });
 
+  it('takes the tab the view selects again after clearing the selection', async () => {
+    const { rerender } = render(Tabs, { props: { tabs: TABS, active: 'done', label: LABEL } });
+
+    await rerender({ tabs: TABS, active: undefined });
+    await fireEvent.click(screen.getByRole('tab', { name: /Failed/ }));
+    await rerender({ tabs: TABS, active: 'done' });
+
+    expect(screen.getByRole('tab', { name: /Done/ })).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('names the count and the panel a tab controls when the view does', () => {
     render(Tabs, {
       props: {

@@ -12,6 +12,14 @@
    * development build names the nesting in the console of the page that caused it.
    */
   export let title: string | undefined = undefined;
+  /**
+   * The heading level of the title, so a view keeps its outline in order: a card under a section
+   * heading takes the level below it.
+   */
+  export let titleLevel: 2 | 3 | 4 | 5 | 6 = 2;
+
+  /** The level a nested part's title takes, one below the card that holds it. */
+  $: nestedLevel = Math.min(titleLevel + 1, 6) as 2 | 3 | 4 | 5 | 6;
 
   /** Whether this card sits inside the body of another card. */
   let nested = false;
@@ -38,7 +46,9 @@
     {#if title || $$slots.actions}
       <div class="card__nested-head">
         {#if title}
-          <h3 class="card__title card__title--nested">{title}</h3>
+          <svelte:element this={`h${nestedLevel}`} class="card__title card__title--nested">
+            {title}
+          </svelte:element>
         {/if}
         {#if $$slots.actions}
           <div class="card__actions">
@@ -54,7 +64,7 @@
     {#if title || $$slots.actions}
       <header class="card__head">
         {#if title}
-          <h2 class="card__title">{title}</h2>
+          <svelte:element this={`h${titleLevel}`} class="card__title">{title}</svelte:element>
         {/if}
         {#if $$slots.actions}
           <div class="card__actions">
