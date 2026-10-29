@@ -8,8 +8,11 @@
   import IconButton from '../../../lib/components/IconButton.svelte';
   import KeyValueList from '../../../lib/components/KeyValueList.svelte';
   import Breadcrumb from '../../../lib/components/Breadcrumb.svelte';
+  import AttentionStrip from '../../../lib/components/AttentionStrip.svelte';
+  import Dialog from '../../../lib/components/Dialog.svelte';
   import StatusLabel from '../../../lib/components/StatusLabel.svelte';
   import Tabs from '../../../lib/components/Tabs.svelte';
+  import Toast from '../../../lib/components/Toast.svelte';
 
   /**
    * The development page (VD-P-05, VD-S-03): every control of design system v2, in both themes.
@@ -69,6 +72,18 @@
     { label: $t('dev.breadcrumb.projects'), href: '/projects' },
     { label: CHIP_VALUE, href: '/projects/relay' },
     { label: $t('dev.breadcrumb.plan') },
+  ];
+
+  /** Which theme's danger dialog is open, one flag per theme so each shows in its own colour. */
+  let openDialogs: Record<string, boolean> = {};
+
+  /** Which theme's toast is on screen. */
+  let openToasts: Record<string, boolean> = {};
+
+  /** What the danger act of the fixture costs. */
+  $: dialogConsequences = [
+    $t('dev.dialog.consequence.drafts'),
+    $t('dev.dialog.consequence.lessons'),
   ];
 </script>
 
@@ -170,6 +185,57 @@
 
       <h3 class="dev__section-title">{$t('dev.section.breadcrumb')}</h3>
       <Breadcrumb crumbs={trail} label={$t('dev.breadcrumb.label')} />
+
+      <h3 class="dev__section-title">{$t('dev.section.dialog')}</h3>
+      <div class="dev__row">
+        <Button
+          variant="danger"
+          on:click={() => (openDialogs = { ...openDialogs, [theme]: true })}
+        >
+          {$t('dev.dialog.open')}
+        </Button>
+      </div>
+      <Dialog
+        open={openDialogs[theme] ?? false}
+        danger
+        title={$t('dev.dialog.title')}
+        consequences={dialogConsequences}
+        onClose={() => (openDialogs = { ...openDialogs, [theme]: false })}
+      >
+        <p class="dev__note">{$t('dev.dialog.body')}</p>
+        <svelte:fragment slot="footer">
+          <Button variant="ghost" on:click={() => (openDialogs = { ...openDialogs, [theme]: false })}>
+            {$t('web.common.cancel')}
+          </Button>
+          <Button
+            variant="danger"
+            on:click={() => (openDialogs = { ...openDialogs, [theme]: false })}
+          >
+            {$t('dev.dialog.confirm')}
+          </Button>
+        </svelte:fragment>
+      </Dialog>
+
+      <h3 class="dev__section-title">{$t('dev.section.toast')}</h3>
+      <div class="dev__row">
+        <Button variant="secondary" on:click={() => (openToasts = { ...openToasts, [theme]: true })}>
+          {$t('dev.toast.show')}
+        </Button>
+      </div>
+      <Toast
+        open={openToasts[theme] ?? false}
+        message={$t('dev.toast.message')}
+        actionLabel={$t('dev.toast.act')}
+        onAction={() => (openToasts = { ...openToasts, [theme]: false })}
+        onDismiss={() => (openToasts = { ...openToasts, [theme]: false })}
+      />
+
+      <h3 class="dev__section-title">{$t('dev.section.attention')}</h3>
+      <AttentionStrip
+        message={$t('dev.attention.message')}
+        actionLabel={$t('dev.attention.act')}
+        onAct={() => {}}
+      />
     </section>
   {/each}
 </div>
