@@ -1,0 +1,60 @@
+= `pm-exec`: scopes, system call filter, parent watch and self-check
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `exec-hardening`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 4
+Where:: pm-exec (Linux confinement, the macOS sandbox profile, the launch report, the check mode)
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+* *ABI floor*: the launcher handles `LANDLOCK_ACCESS_FS_TRUNCATE` from ABI 3 and grants it with the write set; on a
+  kernel that offers ABI 2 only it applies the ruleset and reports `confinement: partial(abi=2)`, never `confined`.
+* *Scopes*: from ABI 6 the launcher applies `LANDLOCK_SCOPE_SIGNAL` to every job and
+  `LANDLOCK_SCOPE_ABSTRACT_UNIX_SOCKET` to a worker and a probe, in a domain the command's descendants share, so the
+  launcher's sweep still reaches them.
+* *System call filter*: the seccomp filter of the specification, compiled into the launcher and installed as the last
+  step before `execve` of the command (after the Landlock ruleset and a worker's namespaces): the architecture check,
+  the refused namespace, mount, kernel-interface and socket-family calls, `clone3` and `io_uring` with `ENOSYS`; the
+  launch report carries `seccomp`; a kernel that refuses the filter makes the launcher exit `126`.
+* *Parent watch*: for a worker and a probe the launcher stays the job's process on both platforms, notes the
+  runtime's PID, and ends the command's tree when its parent is no longer that process (on macOS through the process
+  tree it records itself); no `PR_SET_PDEATHSIG`.
+* *macOS sandbox profile*: for a worker the lookup of `com.apple.mDNSResponder` and `com.apple.dnssd.service` is
+  denied; for every job `signal` and `process-info*` with target `others` are denied.
+* *Check mode*: `pm-exec --self-check` under a worker's confinement and egress proxy, with the fixture sets the
+  runtime passes; it runs each check with its positive control and writes one JSON line with every result, like the
+  launch report.
+
+== Trace
+
+Requirements, specification sections, and watch documents stay in `plan-marshall-documentation` (those of the engine in
+`pm-mcp-core`) and are only referenced here. They are the starting set; the trace matrix of `traced-implementation` is
+built from them before code (link:README.adoc#how[How to work a package]).
+
+* Requirements: link:../../../plan-marshall-documentation/doc/requirements/08-security.adoc#PM-SEC-5[PM-SEC-5]
+* Specification: link:../../../pm-mcp-core/doc/specification/job-runtime/02-confinement-and-environment.adoc#abi-floor[Job Runtime § ABI Floor];
+  link:../../../pm-mcp-core/doc/specification/job-runtime/02-confinement-and-environment.adoc#landlock-scopes[§ Scopes];
+  link:../../../pm-mcp-core/doc/specification/job-runtime/02-confinement-and-environment.adoc#seccomp-filter[§ System call filter];
+  link:../../../pm-mcp-core/doc/specification/job-runtime/02-confinement-and-environment.adoc#macos-confinement[§ macOS Confinement];
+  link:../../../pm-mcp-core/doc/specification/job-runtime/02-confinement-and-environment.adoc#worker-name-resolution[§ Name Resolution];
+  link:../../../pm-mcp-core/doc/specification/job-runtime/02-confinement-and-environment.adoc#confinement-self-check[§ Confinement Self-Check];
+  link:../../../pm-mcp-core/doc/specification/job-runtime/01-pipeline-and-subprocesses.adoc#runtime-loss[§ Runtime Loss];
+  link:../../../pm-mcp-core/doc/specification/job-runtime/01-pipeline-and-subprocesses.adoc#launch-report[§ Launch report]
+* Watch: link:../../../pm-mcp-core/doc/implementation-watch/job-runtime.adoc#PM-WATCH-JOB-40[PM-WATCH-JOB-40];
+  link:../../../pm-mcp-core/doc/implementation-watch/job-runtime.adoc#PM-WATCH-JOB-41[PM-WATCH-JOB-41];
+  link:../../../pm-mcp-core/doc/implementation-watch/job-runtime.adoc#PM-WATCH-JOB-42[PM-WATCH-JOB-42];
+  link:../../../pm-mcp-core/doc/implementation-watch/job-runtime.adoc#PM-WATCH-JOB-43[PM-WATCH-JOB-43];
+  link:../../../pm-mcp-core/doc/implementation-watch/job-runtime.adoc#PM-WATCH-JOB-44[PM-WATCH-JOB-44];
+  link:../../../pm-mcp-core/doc/implementation-watch/job-runtime.adoc#PM-WATCH-JOB-45[PM-WATCH-JOB-45]
+
+== Done When
+
+`PmExecIT` under Landlock, per applied ABI: the truncation, signal, and system call tests of PM-WATCH-JOB-41,
+PM-WATCH-JOB-42, and PM-WATCH-JOB-43 pass with their positive controls, each assertion turning over with the ABI where
+the watch item says so; a worker fixture started from a thread that ends keeps running and one whose parent is killed
+ends its tree within two seconds (PM-WATCH-JOB-44); the check mode reports every check and its control on a confining
+kernel and reports the failed refusal of a fixture that lets it through. On macOS the profile refuses a worker's name
+lookup and a signal to the runtime fixture, and the parent watch ends a worker's tree.
