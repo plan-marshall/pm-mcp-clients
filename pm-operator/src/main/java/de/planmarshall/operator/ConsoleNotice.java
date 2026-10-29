@@ -334,7 +334,7 @@ public final class ConsoleNotice {
                                 TerminalSanitizer.sanitize(String.valueOf(payload.getOrDefault("valid_until", ""))),
                                 String.valueOf(payload.getOrDefault("url", "")));
             case OPERATOR_WAIT, INTEGRITY_PAUSE, STALLED, CONDITION, HELD, LANDING_FAILED, FINDINGS, SETUP ->
-                formatHoldNotice(locale, kind.notice(), scopeOf(payload), detailOf(payload));
+                formatHoldNotice(locale, kind.notice(), scopeOf(event), detailOf(payload));
             case REPORT -> formatReportNotice(locale, reportOf(payload));
             case HOLD -> null;
         };
@@ -374,6 +374,9 @@ public final class ConsoleNotice {
             return byName == EventKind.QUESTION && isWaiver(payload) ? EventKind.WAIVER_REQUEST : byName;
         }
         var byType = EventKind.fromType(textOr(payload, "type", ""));
+        if (byType == EventKind.QUESTION && isWaiver(payload)) {
+            return EventKind.WAIVER_REQUEST;
+        }
         return byType == EventKind.HOLD ? EventKind.fromType(stringOf(payload, "kind")) : byType;
     }
 

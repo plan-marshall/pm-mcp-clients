@@ -283,6 +283,23 @@ class MockRuntimeEngineTest {
     }
 
     @Test
+    @DisplayName("a broadcast waiver request counts under its own kind")
+    void broadcastWaiverCountsSeparately() throws Exception {
+        try (var showroom = new MockRuntimeEngine(registry, registry.resolve(StandardScenarios.FULLY_ONBOARDED),
+                            "test-token", "test-secret")) {
+            var waiver = "{\"event\":\"decision.opened\",\"data\":{\"decision\":{\"id\":\"WR-2\","
+                                + "\"title\":\"Waiver\",\"subject\":\"plan fix-relay\",\"is_waiver\":true,"
+                                + "\"waiver_gate\":\"sonar\"}}}";
+            send(showroom, "POST", "/mock/broadcast", Map.of(), waiver.getBytes(StandardCharsets.UTF_8), false);
+
+            var after = send(showroom, "GET", "/api/v1/status", Map.of("Authorization", "Bearer test-token"),
+                                new byte[0], false);
+            var waiting = JsonTree.asObject(after.json().get("needs_operator"));
+            assertEquals(1, JsonTree.integer(waiting, "waiver_request"));
+        }
+    }
+
+    @Test
     @DisplayName("control endpoint: unknown path returns 404")
     void controlUnknown() throws Exception {
         var res = send("GET", "/mock/unknown-endpoint", Map.of(), new byte[0], false);

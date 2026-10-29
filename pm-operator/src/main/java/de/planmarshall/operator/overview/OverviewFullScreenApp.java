@@ -1199,10 +1199,10 @@ public final class OverviewFullScreenApp {
         holdNotice(eventName, kind, eventMap);
 
         var name = eventName != null ? eventName : "";
-        var type = kind != null ? kind.notice()
-                            : String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
+        var rawType = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
+        var type = kind != null ? kind.notice() : rawType;
 
-        if (isReportEvent(name, type)) {
+        if (isReportEvent(name, rawType)) {
             refreshReports();
             return;
         }

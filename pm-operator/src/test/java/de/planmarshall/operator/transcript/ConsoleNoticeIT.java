@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.locks.LockSupport;
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
 
@@ -60,7 +61,7 @@ class ConsoleNoticeIT {
     private static final String BADGE_AFTER_ONE_ANSWER = "pm [2 questions · 1 integrity pause · 1 held] \u203a";
 
     private static final String DECISION_OPENED = """
-                        {"event":"decision.opened","data":{"decision":{"id":"Q-007","subject":"plan fix-relay",\
+                        {"event":"decision.opened","data":{"decision":{"id":"Q-042","subject":"plan fix-relay",\
                         "blocks":"plan","description":"The change conflicts with main in RelayServer.java.",\
                         "parts":[{"part_id":"1","question":"How should the conflict be resolved?",\
                         "options":[{"key":"1","label":"Merge main into the branch"},\
@@ -80,15 +81,18 @@ class ConsoleNoticeIT {
         try (var runtime = start();
              var session = open(runtime)) {
             assertTrue(session.awaitText(BADGE, TIMEOUT), session.rawOutput());
+            assertTrue(awaitEventSubscription(runtime), "the console did not subscribe to the event stream");
 
             broadcast(runtime, DECISION_OPENED);
 
-            assertTrue(session.awaitText("◆ Question Q-007 · plan fix-relay · blocks the plan", TIMEOUT),
+            assertTrue(session.awaitText("◆ Question Q-042 · plan fix-relay · blocks the plan", TIMEOUT),
                                 session.rawOutput());
             assertTrue(session.awaitText("Recommended: 2) Rebase onto main", TIMEOUT), session.rawOutput());
-            assertTrue(aboveThePrompt(session.screenText(), "◆ Question Q-007"), session.screenText());
-            assertEquals(1, DialogueHarness.times(session.rawOutput(), "◆ Question Q-007"),
+            assertTrue(aboveThePrompt(session.screenText(), "◆ Question Q-042"), session.screenText());
+            assertEquals(1, DialogueHarness.times(session.rawOutput(), "◆ Question Q-042"),
                                 "the notice is printed once, not once per redraw");
+            session.send("\n");
+            assertTrue(session.awaitText("pm [4 questions", TIMEOUT), session.screenText());
             leave(session);
         }
     }
@@ -99,6 +103,7 @@ class ConsoleNoticeIT {
         try (var runtime = start();
              var session = open(runtime)) {
             assertTrue(session.awaitText(BADGE, TIMEOUT), session.rawOutput());
+            assertTrue(awaitEventSubscription(runtime), "the console did not subscribe to the event stream");
 
             broadcast(runtime, DECISION_ANSWERED);
 
@@ -135,6 +140,27 @@ class ConsoleNoticeIT {
             }
         }
         return noticeAt >= 0 && promptAt >= 0 && noticeAt < promptAt;
+    }
+
+    /**
+     * @param runtime the mock runtime
+     * @return {@code true} once the console has subscribed to the event stream, so a broadcast that
+     *         follows is delivered rather than lost
+     * @throws InterruptedException if interrupted while waiting
+     */
+    private static boolean awaitEventSubscription(MockRuntime runtime) throws InterruptedException {
+        var deadline = System.nanoTime() + TIMEOUT.toNanos();
+        while (System.nanoTime() < deadline) {
+            if (runtime.requests().stream()
+                                .anyMatch(request -> "/api/v1/events".equals(request.target()))) {
+                return true;
+            }
+            LockSupport.parkNanos(50_000_000L);
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
+        }
+        return false;
     }
 
     private void leave(PtySession session) throws IOException, InterruptedException {

@@ -366,12 +366,17 @@ class ConsoleNoticeTest {
                                 "type", "operator_wait", "scope", "fix-relay", "detail", "token approval"));
             var unknownName = ConsoleNotice.fromEventMap("en", "task.off_track", Map.of(
                                 "type", "question", "id", "Q-001", "scope", "plan fix-relay"));
+            var unnamedWaiver = ConsoleNotice.fromEventMap("en", null, Map.of(
+                                "type", "decision", "id", "WR-2", "scope", "plan fix-relay",
+                                "is_waiver", true, "waiver_gate", "sonar"));
 
             assertAll(
                                 () -> assertEquals("◆ Plan fix-relay stalled: worker died", unnamed),
                                 () -> assertEquals("◆ Plan fix-relay waits for you: token approval", wait),
                                 () -> assertNotNull(unknownName),
-                                () -> assertTrue(unknownName.contains("◆ Question Q-001 · plan fix-relay"), unknownName)
+                                () -> assertTrue(unknownName.contains("◆ Question Q-001 · plan fix-relay"), unknownName),
+                                () -> assertNotNull(unnamedWaiver),
+                                () -> assertTrue(unnamedWaiver.contains("◆ Waiver request WR-2"), unnamedWaiver)
             );
         }
 

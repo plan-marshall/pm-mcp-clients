@@ -316,9 +316,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ENROL_CURRENT_SHA256 =
             "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
     private static final String CONST_DECISION = "decision";
-    private static final String DECISION_OPENED = "decision.opened";
-    private static final String DECISION_ANSWERED = "decision.answered";
-    private static final String DECISION_CLOSED = "decision.closed";
+    private static final String DECISION_OPENED = EventName.DECISION_OPENED.wire();
+    private static final String DECISION_ANSWERED = EventName.DECISION_ANSWERED.wire();
+    private static final String DECISION_CLOSED = EventName.DECISION_CLOSED.wire();
     private static final String PATH_CONNECTION_STATUS = "/api/v1/status/connection";
     private static final String PATH_LAN_LISTENER = "/api/v1/web/listeners/lan";
     private static final String PATH_CREDENTIALS = "/api/v1/credentials/";
@@ -5349,8 +5349,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private Map<String, Object> waitingCounts() {
         var kinds = new LinkedHashMap<String, Integer>();
         synchronized (decisionsLock) {
-            if (!openDecisions.isEmpty()) {
-                kinds.merge("decision", openDecisions.size(), Integer::sum);
+            for (var decision : openDecisions.values()) {
+                kinds.merge(decision.isWaiver() ? "waiver_request" : "decision", 1, Integer::sum);
             }
         }
         synchronized (controlLock) {
