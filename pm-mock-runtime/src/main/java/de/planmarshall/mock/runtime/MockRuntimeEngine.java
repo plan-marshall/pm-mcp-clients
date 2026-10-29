@@ -7705,7 +7705,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
 
             for (var un : unchecked) {
-                keptItems.add(new CleanupKeptItem(un, "item", un, "left out of a delete", "today", isWeb ? "the web app" : "the console"));
+                var entry = cleanupEntry(un);
+                if (entry != null) {
+                    keptItems.add(new CleanupKeptItem(un, entry.kind(), entry.title(),
+                            "left out of a delete", "today", isWeb ? "the web app" : "the console"));
+                }
             }
 
             activeCleanupJob = new CleanupJob(
@@ -7854,8 +7858,24 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
-    private void handleGetKeptCleanup(MockHttpResponse response) throws IOException {
-        var list = new ArrayList<Map<String, Object>>();
+    /**
+     * @param id the id of an item the operator left out of a delete
+     * @return the job's own item entry, or {@code null} when the job carries no such item
+     */
+    private @Nullable CleanupItemEntry cleanupEntry(String id) {
+        if (activeCleanupJob != null) {
+            for (var projectItem : activeCleanupJob.projectItems()) {
+                for (var entry : projectItem.items()) {
+                    if (entry.id().equals(id)) {
+                        return entry;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private void handleGetKeptCleanup(MockHttpResponse response) throws IOException {        var list = new ArrayList<Map<String, Object>>();
         synchronized (systemLock) {
             for (var k : keptItems) {
                 list.add(k.toMap());
@@ -8305,17 +8325,36 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
 
-        // 4. Dynamic plan process route: /api/v1/plans/{planId}/process
+        // 4. Dynamic plan process route: /api/v1/plans/{planId}/process. The scenario's plan list
+        // decides which ids exist; a plan without a route of its own is served from the template
+        // with its own identity, and an id the scenario does not know is plan_not_found.
         if (isPlanProcess) {
             var sub = path.substring(PATH_PLANS_PREFIX.length());
             var planId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
             if (!planId.contains("/")) {
+                var summary = planSummary(planId);
+                if (summary == null) {
+                    response.json(404, Map.of(KEY_ERROR, ERR_PLAN_NOT_FOUND,
+                            KEY_MESSAGE, "Plan not found: " + planId));
+                    return true;
+                }
                 var defaultRoute = activeRoute("GET", "/api/v1/plans/fix-relay/process");
                 if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
                     var copy = new LinkedHashMap<String, Object>();
                     repMap.forEach((k, v) -> copy.put(String.valueOf(k), v));
                     copy.put(KEY_PLAN_ID, planId);
-                    copy.put("title", planId);
+                    copy.put("title", summaryText(summary, "title", planId));
+                    copy.put("current_phase", summaryText(summary, "phase", "execute"));
+                    var phaseState = summaryText(summary, "state", "running");
+                    copy.put("phase_state", phaseState);
+                    copy.put("needs_operator", "waiting_for_you".equals(phaseState));
+                    var projectId = summaryText(summary, "project", null);
+                    if (projectId != null) {
+                        copy.put("project", planProjectRef(projectId));
+                    }
+                    // The template's activity names another plan's task, so a synthesized plan
+                    // does not carry it.
+                    copy.remove("activity");
                     response.json(200, copy);
                     return true;
                 }
@@ -8340,6 +8379,51 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         return false;
+    }
+
+    /**
+     * Looks a plan id up in the plan list the active scenario (or its state) serves.
+     *
+     * @param planId the requested plan id
+     * @return the plan's summary entry, or {@code null} when the scenario does not list the id
+     */
+    private @Nullable Map<String, Object> planSummary(String planId) {
+        var listRoute = activeRoute("GET", "/api/v1/plans");
+        if (listRoute == null || !(listRoute.representation() instanceof Map<?, ?> list)
+                || !(list.get("plans") instanceof List<?> plans)) {
+            return null;
+        }
+        for (var element : plans) {
+            var plan = JsonTree.asObject(element);
+            if (plan != null && planId.equals(JsonTree.string(plan, "id"))) {
+                return plan;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param summary the plan's summary entry
+     * @param member  the member to read
+     * @param fallback the value to use when the member is absent or blank
+     * @return the member's text, or the fallback
+     */
+    private static @Nullable String summaryText(Map<String, Object> summary, String member,
+            @Nullable String fallback) {
+        var text = JsonTree.string(summary, member);
+        return text != null && !text.isBlank() ? text : fallback;
+    }
+
+    /**
+     * @param projectId the project id a plan summary names
+     * @return the process tree's project reference for it
+     */
+    private static Map<String, Object> planProjectRef(String projectId) {
+        var project = new LinkedHashMap<String, Object>();
+        project.put("project_id", projectId);
+        project.put("display_name", projectId);
+        project.put("link", "/api/v1/projects/" + projectId);
+        return project;
     }
 
     @Override
