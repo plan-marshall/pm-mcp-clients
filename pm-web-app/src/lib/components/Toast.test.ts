@@ -80,4 +80,29 @@ describe('Toast', () => {
 
     expect(onDismiss).toHaveBeenCalledOnce();
   });
+
+  it('fires once, however long the view leaves the toast open', () => {
+    vi.useFakeTimers();
+    const onDismiss = vi.fn();
+    render(Toast, { props: { open: true, message: 'The plan was deleted.', onDismiss } });
+
+    vi.advanceTimersByTime(12_000);
+
+    expect(onDismiss).toHaveBeenCalledOnce();
+  });
+
+  it('counts again when the view opens it a second time', async () => {
+    vi.useFakeTimers();
+    const onDismiss = vi.fn();
+    const { rerender } = render(Toast, {
+      props: { open: true, message: 'The plan was deleted.', onDismiss },
+    });
+    vi.advanceTimersByTime(4000);
+
+    await rerender({ open: false, message: 'The plan was deleted.', onDismiss });
+    await rerender({ open: true, message: 'The plan was deleted.', onDismiss });
+    vi.advanceTimersByTime(4000);
+
+    expect(onDismiss).toHaveBeenCalledTimes(2);
+  });
 });

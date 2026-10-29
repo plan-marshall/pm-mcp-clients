@@ -30,6 +30,8 @@
   export let tabs: TabItem[] = [];
   /** The selected tab; a view that keeps the selection itself passes it and follows `onSelect`. */
   export let active: string | undefined = undefined;
+  /** The accessible name of the list, from the view's catalogue key. */
+  export let label: string;
   /** Reports the tab a person chose. */
   export let onSelect: (id: string) => void = () => {};
 
@@ -44,9 +46,10 @@
   }
 
   // A view may fill its tabs after its fetch, or drop the one that was selected: the list then
-  // selects its first tab instead of handing every tab a `tabindex="-1"` and dying for the keyboard.
+  // takes the view's tab when it arrives, and otherwise selects its first tab instead of handing
+  // every tab a `tabindex="-1"` and dying for the keyboard.
   $: if (!tabs.some((tab) => tab.id === selected)) {
-    selected = tabs[0]?.id ?? '';
+    selected = active !== undefined && tabs.some((tab) => tab.id === active) ? active : (tabs[0]?.id ?? '');
   }
 
   /** The list's own element, for the keyboard to move within. */
@@ -99,7 +102,7 @@
   }
 </script>
 
-<div class="tabs" role="tablist" bind:this={host} on:keydown={onKeydown}>
+<div class="tabs" role="tablist" aria-label={label} bind:this={host} on:keydown={onKeydown}>
   {#each tabs as tab (tab.id)}
     <button
       type="button"

@@ -5,7 +5,7 @@ import Breadcrumb from './Breadcrumb.svelte';
 /**
  * `Breadcrumb` (VD-P-05, VD-S-03): the trail in `--color-text-secondary`, the last segment in
  * `--color-text-primary` and marked as the current page, and long ids shortened in the middle on a
- * phone, where the whole trail has to fit a 390 px row.
+ * phone, where a row has little room for a trail.
  */
 
 const LABEL = 'Trail';

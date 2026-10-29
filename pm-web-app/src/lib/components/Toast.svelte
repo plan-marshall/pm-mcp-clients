@@ -27,6 +27,8 @@
   let timer: ReturnType<typeof setTimeout> | undefined = undefined;
   /** Whether the countdown is already running, so a re-render does not restart it. */
   let counting = false;
+  /** Whether the countdown has fired for this opening, so it does not arm itself again. */
+  let fired = false;
 
   /** Stops the countdown of a toast that left the screen early or was replaced. */
   function stopTimer(): void {
@@ -38,16 +40,19 @@
   }
 
   // The countdown starts on the opening alone: a view that re-renders while the toast is on screen
-  // does not get a fifth second, and a toast that never opened never calls back.
-  $: if (open && !counting) {
+  // does not get a fifth second, and one that keeps it open after the call back does not get a
+  // second countdown.
+  $: if (open && !counting && !fired) {
     counting = true;
     timer = setTimeout(() => {
       timer = undefined;
       counting = false;
+      fired = true;
       onDismiss();
     }, durationMs);
-  } else if (!open && counting) {
+  } else if (!open && (counting || fired)) {
     stopTimer();
+    fired = false;
   }
 
   onDestroy(stopTimer);

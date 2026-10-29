@@ -53,12 +53,18 @@ describe('Card', () => {
   it('refuses a card inside a card: the nested one draws a divider, not a surface', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const { container } = render(NestedCardsFixture, {
-      props: { outerTitle: 'Outer', innerTitle: 'Inner', body: 'Body text' },
+      props: {
+        outerTitle: 'Outer',
+        innerTitle: 'Inner',
+        body: 'Body text',
+        innerActLabel: 'Copy',
+      },
     });
 
     expect(container.querySelectorAll('.card')).toHaveLength(1);
     expect(container.querySelector('.card__nested')).not.toBeNull();
     expect(container.querySelector('.card__nested .card__divider')).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument();
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('nested'));
   });
 

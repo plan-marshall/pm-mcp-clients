@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from 'svelte';
+  import { onMount } from 'svelte';
   import { uniqueId } from '../utils/uniqueId';
 
   /**
@@ -83,9 +83,14 @@
     const first = items[0];
     const last = items[items.length - 1];
     const current = document.activeElement;
-    const leaving = event.shiftKey
-      ? current === first || current === panel
-      : current === last || current === panel;
+    // A focus that has left the dialog — a click on the backdrop drops it to the body — counts as
+    // leaving too, so the next Tab returns it to the dialog instead of the page behind it.
+    const leaving =
+      current === null || !panel?.contains(current)
+        ? true
+        : event.shiftKey
+          ? current === first
+          : current === last;
     if (!leaving) {
       return;
     }

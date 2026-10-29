@@ -62,9 +62,20 @@
 
   /** The tabs of the fixture: one count that waits for the operator, one that does not. */
   $: tabs = [
-    { id: 'open', label: $t('dev.tabs.open'), count: 2, attention: true },
+    {
+      id: 'open',
+      label: $t('dev.tabs.open'),
+      count: 2,
+      countLabel: $t('dev.badge.needs_you', { count: 2 }),
+      attention: true,
+    },
     { id: 'done', label: $t('dev.tabs.done') },
-    { id: 'failed', label: $t('dev.tabs.failed'), count: 1 },
+    {
+      id: 'failed',
+      label: $t('dev.tabs.failed'),
+      count: 1,
+      countLabel: $t('dev.badge.needs_you', { count: 1 }),
+    },
   ];
 
   /** The trail of the fixture: two links and the page a person stands on. */
@@ -189,6 +200,7 @@
       <h3 class="dev__section-title">{$t('dev.section.tabs')}</h3>
       <Tabs
         {tabs}
+        label={$t('dev.tabs.label')}
         active={activeTabs[theme] ?? 'open'}
         onSelect={(id) => (activeTabs = { ...activeTabs, [theme]: id })}
       />

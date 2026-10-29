@@ -26,6 +26,7 @@ describe('Dialog', () => {
     const dialog = await screen.findByRole('dialog');
 
     expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getByRole('dialog', { name: 'Delete the plan' })).toBe(dialog);
     expect(within(dialog).getByRole('heading', { name: 'Delete the plan' })).toBeInTheDocument();
     expect(within(dialog).getByText('The plan and its tasks are removed.')).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
@@ -78,6 +79,19 @@ describe('Dialog', () => {
     await fireEvent.keyDown(window, { key: 'Tab', shiftKey: true });
 
     expect(document.activeElement).toBe(confirm);
+  });
+
+  it('takes the focus back into the dialog when it has left it', async () => {
+    render(DialogFixture, { props: FIXTURE });
+    await fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    const dialog = await screen.findByRole('dialog');
+    const cancel = within(dialog).getByRole('button', { name: 'Cancel' });
+
+    // A click on the backdrop drops the focus to the body; the next Tab must not walk the page.
+    (document.activeElement as HTMLElement | null)?.blur();
+    await fireEvent.keyDown(window, { key: 'Tab' });
+
+    expect(document.activeElement).toBe(cancel);
   });
 
   it('names the consequences of a danger act in a list', () => {
