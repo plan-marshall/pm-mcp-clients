@@ -87,27 +87,31 @@ describe('the two tab assets', () => {
   it('adds the attention dot only to the attention variant', () => {
     const attentionFill = lightTokenValue('--color-attention');
     /**
-     * @param file the asset file name under `static/`
+     * @param href the icon href exported by `favicon.ts`
      * @returns the circle drawn in the attention colour, or null
      */
-    const dotOf = (file: string) =>
+    const dotOf = (href: string) =>
       new DOMParser()
-        .parseFromString(fs.readFileSync(path.join(STATIC_DIR, file), 'utf-8'), 'image/svg+xml')
+        .parseFromString(
+          fs.readFileSync(path.join(STATIC_DIR, href.replace(/^\//, '')), 'utf-8'),
+          'image/svg+xml',
+        )
         .querySelector(`circle[fill="${attentionFill}"]`);
 
-    expect(dotOf('brand-mark.svg')).toBeNull();
-    expect(dotOf('brand-mark-attention.svg')).not.toBeNull();
+    expect(dotOf(FAVICON_CALM_HREF)).toBeNull();
+    expect(dotOf(FAVICON_ATTENTION_HREF)).not.toBeNull();
   });
 
   it('bakes the light-theme brand and attention colours of the token catalogue', () => {
-    const calm = fs.readFileSync(path.join(STATIC_DIR, 'brand-mark.svg'), 'utf-8');
-    const attention = fs.readFileSync(
-      path.join(STATIC_DIR, 'brand-mark-attention.svg'),
-      'utf-8',
-    );
+    /**
+     * @param href the icon href exported by `favicon.ts`
+     * @returns the asset's text
+     */
+    const assetOf = (href: string) =>
+      fs.readFileSync(path.join(STATIC_DIR, href.replace(/^\//, '')), 'utf-8');
 
-    expect(calm).toContain(lightTokenValue('--color-brand'));
-    expect(attention).toContain(lightTokenValue('--color-brand'));
-    expect(attention).toContain(lightTokenValue('--color-attention'));
+    expect(assetOf(FAVICON_CALM_HREF)).toContain(lightTokenValue('--color-brand'));
+    expect(assetOf(FAVICON_ATTENTION_HREF)).toContain(lightTokenValue('--color-brand'));
+    expect(assetOf(FAVICON_ATTENTION_HREF)).toContain(lightTokenValue('--color-attention'));
   });
 });
