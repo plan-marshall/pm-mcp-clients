@@ -74,8 +74,12 @@ class ScreenCaptureIT {
     private static final Duration READY_TIMEOUT = Duration.ofSeconds(40);
     private static final Duration POLL = Duration.ofMillis(50);
 
-    /** The console prompt's suffix, so a badged prompt settles like the bare one (04-console.adoc#prompt). */
-    private static final String CONSOLE_PROMPT_SUFFIX = " \u203a ";
+    /** The console prompt's two forms: the bare one and the one carrying the runtime's badges. */
+    private static final String CONSOLE_PROMPT = "pm \u203a";
+    private static final String BADGED_CONSOLE_PROMPT = "pm [";
+
+    /** How long a broadcast may take to draw before a capture settles without it. */
+    private static final Duration BROADCAST_GRACE = Duration.ofSeconds(3);
 
     /**
      * One capture line of the set.
@@ -130,8 +134,8 @@ class ScreenCaptureIT {
                 if (!capture.broadcast().isEmpty()) {
                     var drawn = session.rawOutput().length();
                     broadcast(runtime, capture.broadcast());
-                    assertTrue(awaitRedraw(session, drawn),
-                                        capture.name() + " did not draw the broadcast within " + READY_TIMEOUT);
+                    assertTrue(awaitBroadcast(session, drawn),
+                                        capture.name() + " did not settle after the broadcast within " + READY_TIMEOUT);
                 }
                 var screen = session.screen();
                 var raw = session.rawOutput();
@@ -170,6 +174,26 @@ class ScreenCaptureIT {
                 }
             }
         }
+    }
+
+    /**
+     * Waits out the broadcast: until it drew something and the screen settled, or until the grace
+     * window passed with nothing drawn (a before-capture of a tree that does not render the event).
+     *
+     * @param session the running session
+     * @param drawn   the output length before the broadcast was sent
+     * @return {@code true} when the screen settled
+     * @throws InterruptedException if interrupted
+     */
+    private static boolean awaitBroadcast(PtySession session, int drawn) throws InterruptedException {
+        var graceEnd = System.nanoTime() + BROADCAST_GRACE.toNanos();
+        while (session.rawOutput().length() == drawn && System.nanoTime() < graceEnd) {
+            LockSupport.parkNanos(POLL.toNanos());
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
+        }
+        return awaitQuiet(session, false);
     }
 
     private static void broadcast(MockRuntime runtime, String body) throws IOException {
@@ -242,7 +266,7 @@ class ScreenCaptureIT {
      *         alternate screen
      */
     private static boolean settled(PtySession session, String raw, long start) {
-        if (raw.contains(StartPrompt.SUFFIX) || raw.contains(CONSOLE_PROMPT_SUFFIX)) {
+        if (raw.contains(StartPrompt.SUFFIX) || raw.contains(CONSOLE_PROMPT) || raw.contains(BADGED_CONSOLE_PROMPT)) {
             return System.nanoTime() - start >= MIN_WAIT.toNanos();
         }
         return session.screen().alternateScreenActive();

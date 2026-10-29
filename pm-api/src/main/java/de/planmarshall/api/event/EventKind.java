@@ -19,9 +19,10 @@ import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.report.ReportSentEvent;
 
 /**
- * The one table of event names and the notice each of them becomes, shared by the operator's
- * clients (CLI-UC-P-04): the console renders the notice of the kind it names, and the web app reads
- * the same list instead of matching event names of its own.
+ * The one table of event names and the notice each of them becomes (CLI-UC-P-04): the console
+ * renders the notice of the kind it names, and a second client — the web app — is meant to read
+ * the same list instead of matching event names of its own. That alignment is not part of this
+ * change: the web app still matches event names itself.
  *
  * <p>A client resolves the kind of a streamed event by its <em>event name</em> first — the name in
  * the SSE {@code event} field, a member of {@link EventName} — and falls back to the {@code type}
@@ -32,13 +33,20 @@ import de.planmarshall.api.report.ReportSentEvent;
  * <p>{@link #HOLD} is the one family: {@code hold.opened} names no notice itself, so the client
  * resolves the {@code kind} member of the hold's payload through {@link #fromType} — the hold kinds
  * are exactly the operator-wait kinds of {@link NeedsOperatorKind}.
+ *
+ * <p>{@link #LANDING_FAILED} accepts the event name {@code landing.failed}, which no member of
+ * {@link EventName} carries today: the runtime reports a failed landing as a hold of kind
+ * {@code landing_failed} ({@code hold.opened}). The name is kept because the event contract of
+ * CLI-UC-P-04 names it.
  */
 public enum EventKind {
 
-    /** A decision or question opened, rendered as the question notice block. */
+    /**
+     * A decision or a waiver request opened; the envelope's {@code is_waiver} selects the notice.
+     */
     QUESTION("question", List.of("question", "decision"), List.of(EventName.DECISION_OPENED.wire())),
 
-    /** A waiver request opened. */
+    /** A waiver request named by the legacy {@code type} member alone. */
     WAIVER_REQUEST("waiver_request", List.of("waiver_request"), List.of()),
 
     /**

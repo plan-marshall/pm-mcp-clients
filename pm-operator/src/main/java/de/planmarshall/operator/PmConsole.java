@@ -62,6 +62,10 @@ public final class PmConsole {
     /** The verbs that draw their full-screen view on the terminal the console already owns. */
     private static final Set<String> FULL_SCREEN_VERBS = Set.of(PLANS, "plan", "projects", "system");
 
+    /** The kinds of notice that put something in front of the operator, so a notification is due. */
+    private static final Set<String> NOTIFIED_KINDS = Set.of("question", "waiver_request", "operator_wait",
+                        "integrity_pause", "stalled", "condition", "held", "landing_failed", "findings", "setup");
+
     private final OperatorContext context;
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
@@ -580,14 +584,31 @@ public final class PmConsole {
         out.flush();
     }
 
+    /**
+     * Sends one desktop notification for an event that puts something in front of the operator: the
+     * payload names the scope and the localized label of the kind, never the text of the item
+     * (04-console.adoc#notifications). An event that only reports or withdraws something — a report,
+     * an answer given elsewhere, a pairing — notifies nothing.
+     *
+     * @param terminal the terminal to notify on
+     * @param kind     the notice kind, or {@code null}
+     * @param eventMap the event frame
+     */
     private void notifyOperator(Terminal terminal, @Nullable String kind, Map<String, Object> eventMap) {
-        if (!notify) {
+        if (!notify || kind == null || !NOTIFIED_KINDS.contains(kind)) {
             return;
         }
         var scope = ConsoleNotice.scopeOf(ConsoleNotice.payloadOf(eventMap));
+        if (scope.isBlank()) {
+            return;
+        }
+        var key = "overview.needs." + kind;
+        var label = MessageCatalogue.hasKey(locale(), key)
+                            ? MessageCatalogue.format(locale(), key, Map.of())
+                            : kind;
         var payload = MessageCatalogue.format(locale(), "operator.console.notification.line",
                             Map.of("scope", TerminalSanitizer.sanitize(scope),
-                                                "kind", TerminalSanitizer.sanitize(kind != null ? kind : "")));
+                                                "kind", TerminalSanitizer.sanitize(label)));
         terminal.writer().write("\u001B]9;" + TerminalSanitizer.sanitizeNotification(payload) + "\u0007");
         terminal.writer().flush();
     }

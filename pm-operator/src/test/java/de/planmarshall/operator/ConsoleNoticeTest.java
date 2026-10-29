@@ -278,6 +278,26 @@ class ConsoleNoticeTest {
         }
 
         @Test
+        @DisplayName("maps a waiver request that arrives as decision.opened to the waiver notice")
+        void waiverOpened() {
+            var event = Map.<String, Object>of("decision", Map.of(
+                                "id", "WR-2",
+                                "subject", "plan fix-relay",
+                                "is_waiver", true,
+                                "waiver_gate", "ci_check:integration-tests"));
+
+            var notice = ConsoleNotice.fromEventMap("en", "decision.opened", event);
+
+            assertAll(
+                                () -> assertNotNull(notice),
+                                () -> assertTrue(notice.contains(
+                                                    "◆ Waiver request WR-2 · plan fix-relay · gate ci_check:integration-tests"),
+                                                    notice),
+                                () -> assertTrue(notice.contains("answer WR-2"), notice)
+            );
+        }
+
+        @Test
         @DisplayName("maps decision.answered from the web app to the answered-elsewhere notice")
         void decisionAnswered() {
             var event = Map.<String, Object>of(

@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
 
@@ -51,7 +52,6 @@ class ConsoleNoticeIT {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(20);
     private static final String SCRIPT = "/usr/bin/script";
-    private static final String PROMPT = "pm \u203a ";
 
     /** The badge of the showroom: three decisions, one integrity pause, one held epic wait. */
     private static final String BADGE = "pm [3 questions · 1 integrity pause · 1 held] \u203a";
@@ -86,6 +86,7 @@ class ConsoleNoticeIT {
             assertTrue(session.awaitText("◆ Question Q-007 · plan fix-relay · blocks the plan", TIMEOUT),
                                 session.rawOutput());
             assertTrue(session.awaitText("Recommended: 2) Rebase onto main", TIMEOUT), session.rawOutput());
+            assertTrue(aboveThePrompt(session.screenText(), "◆ Question Q-007"), session.screenText());
             assertEquals(1, DialogueHarness.times(session.rawOutput(), "◆ Question Q-007"),
                                 "the notice is printed once, not once per redraw");
             leave(session);
@@ -105,10 +106,35 @@ class ConsoleNoticeIT {
                                                     "– Q-007 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.",
                                                     TIMEOUT),
                                 session.rawOutput());
+            assertTrue(aboveThePrompt(session.screenText(), "– Q-007 was answered"), session.screenText());
+            assertEquals(1, DialogueHarness.times(session.rawOutput(), "– Q-007 was answered"),
+                                "the notice is printed once, not once per redraw");
+            // The console rebuilds the badge on the event; JLine draws the prompt of a line already
+            // being read with the badges it had, so an empty Enter is what shows the new ones.
             session.send("\n");
             assertTrue(session.awaitText(BADGE_AFTER_ONE_ANSWER, TIMEOUT), session.rawOutput());
             leave(session);
         }
+    }
+
+    /**
+     * @param screen the screen's lines
+     * @param notice the notice to place
+     * @return {@code true} when the notice stands above the prompt line
+     */
+    private static boolean aboveThePrompt(String screen, String notice) {
+        var lines = List.of(screen.split("\n"));
+        var noticeAt = -1;
+        var promptAt = -1;
+        for (int i = 0; i < lines.size(); i++) {
+            if (noticeAt < 0 && lines.get(i).contains(notice)) {
+                noticeAt = i;
+            }
+            if (lines.get(i).contains(" \u203a")) {
+                promptAt = i;
+            }
+        }
+        return noticeAt >= 0 && promptAt >= 0 && noticeAt < promptAt;
     }
 
     private void leave(PtySession session) throws IOException, InterruptedException {

@@ -398,12 +398,8 @@ public final class ConsoleNotice {
 
     private static String channelText(String locale, String channel) {
         var key = "operator.console.channel." + channel;
-        if (MessageCatalogue.hasKey(locale, key)) {
-            return MessageCatalogue.format(locale, key, Map.of());
-        }
-        var fallback = "decision.channel." + channel;
-        return MessageCatalogue.hasKey(locale, fallback)
-                            ? MessageCatalogue.format(locale, fallback, Map.of())
+        return MessageCatalogue.hasKey(locale, key)
+                            ? MessageCatalogue.format(locale, key, Map.of())
                             : TerminalSanitizer.sanitize(channel);
     }
 
@@ -422,12 +418,27 @@ public final class ConsoleNotice {
             decision = JsonTree.object(event, "question");
         }
         var source = decision != null ? decision : event;
-        return formatQuestion(locale,
-                            TerminalSanitizer.sanitize(textOr(source, "id", textOr(event, "id", "Q-???"))),
-                            TerminalSanitizer.sanitize(firstText(source, event, SCOPE, "subject", "plan")),
+        var id = TerminalSanitizer.sanitize(textOr(source, "id", textOr(event, "id", "Q-???")));
+        var scope = TerminalSanitizer.sanitize(firstText(source, event, SCOPE, "subject", "plan"));
+        if (isWaiver(source, id)) {
+            return formatWaiverRequest(locale, id, scope, stringOf(source, "waiver_gate"));
+        }
+        return formatQuestion(locale, id, scope,
                             summaryOf(locale, source),
                             firstText(source, event, "description", "text", null),
                             recommendationOf(source));
+    }
+
+    /**
+     * @param source the decision envelope or the legacy event data
+     * @param id     the id the notice addresses
+     * @return {@code true} when the runtime opened a waiver request, which shares the envelope
+     *         (and the {@code decision.opened} event) with a question
+     */
+    private static boolean isWaiver(Map<String, Object> source, String id) {
+        return Boolean.TRUE.equals(JsonTree.bool(source, "is_waiver"))
+                            || stringOf(source, "waiver_gate") != null
+                            || id.startsWith("WR-");
     }
 
     private static @Nullable String summaryOf(String locale, Map<String, Object> source) {

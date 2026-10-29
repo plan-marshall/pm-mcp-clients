@@ -6017,8 +6017,22 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
         var decision = JsonTree.object(payload, "decision");
-        var id = JsonTree.string(decision != null ? decision : payload, "id");
-        if (id != null) {
+        var source = decision != null ? decision : payload;
+        var id = JsonTree.string(source, "id");
+        if (id == null) {
+            return;
+        }
+        if ("decision.opened".equals(event)) {
+            try {
+                var opened = DecisionEnvelope.fromMap(source);
+                synchronized (decisionsLock) {
+                    openDecisions.putIfAbsent(id, opened);
+                }
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (RuntimeException _) {
+                // a payload that is not a decision envelope opens nothing; the notice still goes out
+            }
+        } else {
             synchronized (decisionsLock) {
                 openDecisions.remove(id);
             }

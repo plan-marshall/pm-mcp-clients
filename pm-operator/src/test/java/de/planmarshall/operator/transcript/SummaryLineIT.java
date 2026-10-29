@@ -53,8 +53,6 @@ class SummaryLineIT {
     private static final Duration TIMEOUT = Duration.ofSeconds(20);
     private static final String SCRIPT = "/usr/bin/script";
     private static final String OVERVIEW_PREFIX = "While the overview was open: ";
-    /** The console prompt's suffix: the prompt carries its badges between {@code pm} and it. */
-    private static final String PROMPT = " \u203a";
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
                         MachinePaths.class, CommandLine.class, JsonFactory.class,
@@ -84,13 +82,13 @@ class SummaryLineIT {
     void consoleHandOffPrintsOneLine() throws Exception {
         try (var runtime = start(StandardScenarios.RUNNING_WORK);
              var session = open(runtime)) {
-            assertTrue(session.awaitText(PROMPT, TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitConsolePrompt(TIMEOUT), session.rawOutput());
 
             session.send("plans\n");
             assertTrue(session.awaitText("Running work", TIMEOUT), session.rawOutput());
 
             session.send("q");
-            assertTrue(session.awaitText(PROMPT, TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitConsolePrompt(TIMEOUT), session.rawOutput());
 
             var leaving = leavingLine(session.rawOutput());
             assertTrue(leaving.startsWith(OVERVIEW_PREFIX), leaving);

@@ -22,7 +22,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 * *Badges* say what waits for the operator, between `pm` and `›`, only when there is something: `pm [1 question] ›`, `pm [setup 3/7] ›`, `pm [2 questions · 1 waiver request · setup 3/7] ›`. One badge per kind of the runtime's `needs_operator` summary that is not zero (<<pushed>>), with its count, and one per open onboarding: the machine's (`setup 3/7`) and each project's that has not completed (`setup pm-mcp-clients 5/9`). The counts come from the runtime (its `needs_operator` summaries and the open onboarding runs), never from counting in the client, so a question answered in the web app leaves the badge at once. More than three badges are cut to the first three and `+<n>` (`pm [2 questions · 1 waiver request · 1 stalled · +2] ›`); `questions` and `plans` show them all.
 * *Connection*: `pm (reconnecting) ›` while the runtime cannot be reached (<<connection>>).
 * `Enter` on the empty prompt takes what the badge offers first: an unfinished onboarding continues where it stopped, the most recent one when several are open (the machine's first while it is not complete, it gates the others); `project setup <project_id>` continues a specific project's. Otherwise nothing happens. A question is never taken by `Enter` alone (<<answering>>).
-* A badge changes while the operator types: the prompt is redrawn with the typed text and the cursor where they were.
+* A badge changes while the operator types: the console rebuilds it from the runtime's `needs_operator` summary on every event that can change what waits, and the prompt is redrawn with the typed text and the cursor where they were. The prompt of a line that is already being read keeps the badges it was drawn with; the refreshed ones appear at its next draw, and the window title, which carries the same badges, changes at once.
 
 [#pushed]
 === What the Runtime Pushes
@@ -131,12 +131,14 @@ A dialogue is never interrupted. When something arrives while a dialogue runs, t
 [#answered-elsewhere]
 === Answered Elsewhere
 
-The first valid answer wins, from the web app or the console (the channels `web` and `cli`, named in the texts as `decision.channel.web` "the web app" and `decision.channel.cli` "the console"). When another channel or another console answers first:
+The first valid answer wins, from the web app or the console (the channels `web` and `cli`, named in the texts as `operator.console.channel.web` "web app" and `operator.console.channel.cli` "console"). When another channel answers first:
 
-* the console prints `– Q-007 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.` and the badge drops;
+* the console prints `– Q-007 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.` and the badge drops from the next prompt on;
 * a question open as a dialogue is closed, the input typed into it is dropped, and the console returns to its prompt;
 * an answer from the console that arrives too late is refused by the runtime (`already_answered`), and the console prints the same line, not an error;
 * a desktop notification of the question is withdrawn where the terminal allows it.
+
+An answer over the console channel (`cli`) prints no such line: a console cannot tell its own answer from another console's, and it must never claim that nothing was sent from here about an answer one console may have sent.
 
 [#connection]
 === Connection
@@ -353,8 +355,16 @@ The console's own texts, area `operator`; the conventions of the texts are those
 |{id} beantwortet: {option}.
 
 |`operator.console.question.answered_elsewhere`
-|{id} was answered in {channel} ({device}): {option}. Nothing was sent from here.
-|{id} wurde in {channel} ({device}) beantwortet: {option}. Von hier wurde nichts gesendet.
+|{id} was answered in the {channel} ({device}): {option}. Nothing was sent from here.
+|{id} wurde in der {channel} ({device}) beantwortet: {option}. Von hier wurde nichts gesendet.
+
+|`operator.console.channel.web`
+|web app
+|Web-App
+
+|`operator.console.channel.cli`
+|console
+|Konsole
 
 |`operator.console.notice.waiver_request`
 |Waiver request {id} · plan {plan} · gate {gate}
