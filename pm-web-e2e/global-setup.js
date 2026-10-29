@@ -152,7 +152,13 @@ export default async function globalSetup() {
       'utf8',
     );
   } catch (err) {
-    console.error(`[pm-web-e2e] Could not write the mock descriptor: ${err}`);
+    // Without the descriptor the live check cannot restart the mock, so a run that cannot write it
+    // must fail here instead of in an unrelated assertion later.
+    if (mockProcess) {
+      mockProcess.kill('SIGTERM');
+      mockProcess = null;
+    }
+    throw new Error(`Could not write the mock descriptor: ${err}`);
   }
 
   // Return teardown function

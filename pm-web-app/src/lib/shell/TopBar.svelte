@@ -50,18 +50,21 @@
   );
 
   // The connection status follows the session: read on mount, on a listener/device event, and on a
-  // heartbeat, so a machine that went away or came back is seen without a reload.
+  // heartbeat, so a machine that went away or came back is seen without a reload. Only the latest
+  // request may write, so an older answer that resolves last cannot replace a newer count.
   $effect(() => {
     if (!connectionActive) {
       return;
     }
     let mounted = true;
+    let latestRequest = 0;
     const load = async (): Promise<void> => {
+      const request = ++latestRequest;
       try {
         const next = await apiClient.getConnectionStatus();
-        if (mounted) connectionStatus = next;
+        if (mounted && request === latestRequest) connectionStatus = next;
       } catch {
-        if (mounted) connectionStatus = null;
+        if (mounted && request === latestRequest) connectionStatus = null;
       }
     };
     void load();

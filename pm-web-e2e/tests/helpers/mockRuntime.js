@@ -29,12 +29,24 @@ function readDescriptor() {
 
 /** @returns whether the mock answers on its control route */
 async function isUp() {
+  // A control route that accepts the socket and never answers must not stall the budget below.
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 1000);
   try {
-    const response = await fetch(`${MOCK_RUNTIME_URL}/mock/state`);
+    const response = await fetch(`${MOCK_RUNTIME_URL}/mock/state`, { signal: controller.signal });
     return response.ok;
   } catch {
     return false;
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+/**
+ * @returns whether this suite started the mock and may therefore stop it
+ */
+export function mockRuntimeOwned() {
+  return Boolean(readDescriptor()?.pid);
 }
 
 /**
@@ -98,12 +110,19 @@ export async function startMockRuntime(scenario = 'fully-onboarded') {
     ],
     { cwd: descriptor.root, stdio: 'ignore', detached: false },
   );
-  await waitFor(true, 30000);
-  fs.writeFileSync(
-    DESCRIPTOR,
-    JSON.stringify({ ...descriptor, pid: child.pid }, null, 2),
-    'utf8',
-  );
+  try {
+    await waitFor(true, 30000);
+    fs.writeFileSync(
+      DESCRIPTOR,
+      JSON.stringify({ ...descriptor, pid: child.pid }, null, 2),
+      'utf8',
+    );
+  } catch (error) {
+    // A child the descriptor does not name can never be stopped by the suite or its teardown, and
+    // it would keep the port of the next run.
+    child.kill('SIGTERM');
+    throw error;
+  }
 }
 
 /**

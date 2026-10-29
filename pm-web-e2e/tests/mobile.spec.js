@@ -158,21 +158,24 @@ test.describe('Mobile viewports (WEB-1)', () => {
     await pair(page);
 
     const routes = [
-      '/overview',
-      '/plans/fix-relay',
-      '/epics/relay-hardening',
-      '/projects',
-      '/decisions',
-      '/reports',
-      '/designer',
-      '/system',
-      '/system/cleanup',
-      '/settings',
+      { path: '/overview', view: '[data-testid="overview-view"]' },
+      { path: '/plans/fix-relay', view: '[data-testid="plan-view"]' },
+      { path: '/epics/relay-hardening', view: '[data-testid="epic-view"]' },
+      { path: '/projects', view: '[data-testid="project-explorer-view"]' },
+      { path: '/decisions', view: '.decisions-view' },
+      { path: '/reports', view: '.reports-view' },
+      { path: '/designer', view: '[data-testid="process-designer"]' },
+      { path: '/system', view: '[data-testid="system-view"]' },
+      { path: '/system/cleanup', view: '[data-testid="cleanup-view"]' },
+      { path: '/settings', view: '[data-testid="settings-view"]' },
     ];
 
-    for (const path of routes) {
-      await page.goto(path);
+    for (const route of routes) {
+      await page.goto(route.path);
       await expect.soft(page.getByTestId('bottom-bar')).toBeVisible();
+      // The routed view renders after its data: measure the page once it is on screen, not while
+      // the loading state still owns the body.
+      await expect.soft(page.locator(route.view)).toBeVisible();
       await expectNoHorizontalOverflow(page);
     }
   });

@@ -206,13 +206,19 @@ export function pathOf(route: AppRoute, state: TitleState): PathCrumb[] {
 export const RAIL_COLLAPSED_KEY = 'pm_rail_collapsed';
 
 /**
- * @returns whether this browser left the rail collapsed; `false` when nothing was stored
+ * @returns whether this browser left the rail collapsed; `false` when nothing was stored or the
+ * browser refuses storage access
  */
 export function readRailCollapsed(): boolean {
   if (typeof window === 'undefined') {
     return false;
   }
-  return window.localStorage.getItem(RAIL_COLLAPSED_KEY) === 'true';
+  try {
+    return window.localStorage.getItem(RAIL_COLLAPSED_KEY) === 'true';
+  } catch {
+    // A browser that denies storage still gets a working shell: the rail starts expanded.
+    return false;
+  }
 }
 
 /**
@@ -224,5 +230,9 @@ export function writeRailCollapsed(collapsed: boolean): void {
   if (typeof window === 'undefined') {
     return;
   }
-  window.localStorage.setItem(RAIL_COLLAPSED_KEY, String(collapsed));
+  try {
+    window.localStorage.setItem(RAIL_COLLAPSED_KEY, String(collapsed));
+  } catch {
+    // Storage refused the write. The rail still follows the toggle for this visit.
+  }
 }

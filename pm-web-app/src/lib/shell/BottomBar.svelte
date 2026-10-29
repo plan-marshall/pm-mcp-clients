@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { runtimeStore, navigateTo } from '../stores/runtime';
   import { currentLocale, setLocale, t } from '../i18n';
   import { THEME_CHOICES, type ThemeChoice } from '../theme';
@@ -25,8 +26,32 @@
 
   const active = $derived(activeNavRoute($runtimeStore.currentRoute));
 
+  /** The same condition the rail uses: a destination is offered only where it can open. */
+  const canNavigate = $derived(
+    $runtimeStore.isPaired &&
+      !$runtimeStore.isRevoked &&
+      $runtimeStore.isOnboarded &&
+      !($runtimeStore.isListenerClosed && $runtimeStore.currentRoute === 'listener-off'),
+  );
+
   /** Whether the sheet of the remaining destinations is open. */
   let sheetOpen = $state(false);
+
+  // The sheet is the phone's; a window that grows past the breakpoint shows the rail instead, so
+  // an open sheet would sit over a frame that no longer has the bar it came from.
+  onMount(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+      return;
+    }
+    const desktop = window.matchMedia('(min-width: 768px)');
+    const closeOnDesktop = (): void => {
+      if (desktop.matches) {
+        sheetOpen = false;
+      }
+    };
+    desktop.addEventListener('change', closeOnDesktop);
+    return () => desktop.removeEventListener('change', closeOnDesktop);
+  });
 
   /**
    * Opens a destination and closes the sheet.
@@ -39,7 +64,7 @@
   }
 </script>
 
-{#if $runtimeStore.isPaired && !$runtimeStore.isRevoked}
+{#if canNavigate}
   <nav class="bottom-bar" data-testid="bottom-bar" aria-label={$t('web.frame.bottom.label')}>
     {#each BOTTOM_ITEMS as item (item.id)}
       <button

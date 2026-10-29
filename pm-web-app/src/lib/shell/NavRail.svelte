@@ -30,6 +30,19 @@
   const active = $derived(activeNavRoute($runtimeStore.currentRoute));
 
   /**
+   * Whether the destinations may be opened.
+   *
+   * The onboarding shows itself until the machine is onboarded, and a browser that lost the
+   * network listener waits on its own page: a destination there would only rewrite the address.
+   */
+  const canNavigate = $derived(
+    $runtimeStore.isPaired &&
+      !$runtimeStore.isRevoked &&
+      $runtimeStore.isOnboarded &&
+      !($runtimeStore.isListenerClosed && $runtimeStore.currentRoute === 'listener-off'),
+  );
+
+  /**
    * The count a destination carries, or `0` when it carries none.
    *
    * @param item the destination
@@ -86,7 +99,7 @@
     {/if}
   </div>
 
-  {#if $runtimeStore.isPaired && !$runtimeStore.isRevoked}
+  {#if canNavigate}
     <div class="nav-rail__groups">
       {#each RAIL_GROUPS as group (group.id)}
         <section class="nav-rail__group" data-testid={`rail-group-${group.id}`}>

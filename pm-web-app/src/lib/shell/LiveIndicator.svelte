@@ -30,28 +30,41 @@
             : 'web.frame.live.offline',
     ),
   );
+
+  /**
+   * Whether the indicator belongs on the page.
+   *
+   * A browser that is not paired has no stream and nothing to reconnect; a revoked one is done.
+   * The exception is a boot whose status request failed: it is not paired yet, but the retry is
+   * the one way back to the machine.
+   */
+  const visible = $derived(
+    ($runtimeStore.isPaired || $runtimeStore.isOffline) && !$runtimeStore.isRevoked,
+  );
 </script>
 
-<div
-  class="live-indicator"
-  data-state={shown}
-  data-testid="live-indicator"
-  role="status"
-  aria-live="polite"
->
-  <span class="live-indicator__dot" aria-hidden="true"></span>
-  <span class="live-indicator__label">{label}</span>
-  {#if shown === 'offline'}
-    <Button
-      variant="ghost"
-      size="sm"
-      data-testid="live-retry"
-      on:click={() => void retryEventStream()}
-    >
-      {$t('web.frame.live.retry')}
-    </Button>
-  {/if}
-</div>
+{#if visible}
+  <div
+    class="live-indicator"
+    data-state={shown}
+    data-testid="live-indicator"
+    role="status"
+    aria-live="polite"
+  >
+    <span class="live-indicator__dot" aria-hidden="true"></span>
+    <span class="live-indicator__label">{label}</span>
+    {#if shown === 'offline'}
+      <Button
+        variant="ghost"
+        size="sm"
+        data-testid="live-retry"
+        on:click={() => void retryEventStream()}
+      >
+        {$t('web.frame.live.retry')}
+      </Button>
+    {/if}
+  </div>
+{/if}
 
 <style>
   .live-indicator {

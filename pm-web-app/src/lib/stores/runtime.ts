@@ -477,6 +477,8 @@ export async function initRuntime(): Promise<void> {
       ...s,
       isInitialized: true,
       isOffline: true,
+      // No stream opens on this path, so the indicator must offer the one way back.
+      streamState: 'offline',
     }));
   }
 }
