@@ -95,6 +95,19 @@ describe('Chip', () => {
     expect(screen.queryByText('Copied')).not.toBeInTheDocument();
   });
 
+  it('falls back to the selection copy when the clipboard refuses', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('refused'));
+    stubClipboard(writeText);
+    const exec = vi.fn().mockReturnValue(true);
+    Object.defineProperty(document, 'execCommand', { value: exec, configurable: true });
+    render(Chip, { props: { value: 'a0f80a3f' } });
+
+    await fireEvent.click(screen.getByRole('button'));
+
+    expect(exec).toHaveBeenCalledWith('copy');
+    expect(screen.getByText('Copied')).toBeInTheDocument();
+  });
+
   it('claims nothing when the clipboard refuses', async () => {
     const writeText = vi.fn().mockRejectedValue(new Error('refused'));
     stubClipboard(writeText);
