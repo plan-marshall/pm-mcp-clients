@@ -188,6 +188,17 @@ describe('the runtime store', () => {
     expect(get(runtimeStore).drainInfo).toEqual({ who: 'the console', count: 2 });
   });
 
+  it('reads the who and remaining_count draining fields', () => {
+    // Arrange
+    runtimeStore.set(makeRuntimeState({ isStopped: true }));
+
+    // Act
+    handleRuntimeEvent('runtime.draining', { who: 'the console', remaining_count: 2 });
+
+    // Assert
+    expect(get(runtimeStore).drainInfo).toEqual({ who: 'the console', count: 2 });
+  });
+
   it('clears the drain info when the status is not draining', async () => {
     // Arrange
     localStorage.setItem('pm_device_secret', 'pmw_valid');

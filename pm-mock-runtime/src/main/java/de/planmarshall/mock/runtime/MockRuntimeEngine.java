@@ -8508,7 +8508,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static List<Map<String, Object>> phaseNodes(@Nullable Map<?, ?> template, String currentPhase,
             String phaseState) {
         if (template == null || !(template.get("nodes") instanceof List<?> nodes)) {
-            var state = "waiting_for_you".equals(phaseState) ? "waiting_for_operator" : "running";
+            var state = "running".equals(phaseState) ? "running" : "waiting_for_operator";
             return List.of(phaseNode(currentPhase, state, "phase " + currentPhase));
         }
         var current = currentPhaseIndex(nodes, currentPhase);
