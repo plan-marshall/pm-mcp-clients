@@ -33,9 +33,10 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 - Lanes — every implementation plan runs on the `runbook` lane (opencode, `/plan-marshall-runbook-lane`);
   every `verify-*` plan runs on the `plan-marshall` lane, separate from the implementation it checks.
-- Three tracks for `parallelization_scope = 3` — web (WS-02, WS-03), terminal (WS-04, WS-05), shared
-  (WS-01). The tracks touch disjoint modules (`pm-web-app`/`pm-web-e2e` against `pm-operator`), so one
-  plan per track can run at a time; the shared catalogue `pm-api/src/main/resources/messages/` is split
+- Three tracks — web (WS-02, WS-03), terminal (WS-04, WS-05), shared
+  (WS-01) — with `parallelization_scope` raised from 3 to 4 on 2026-10-29 at the operator's word (the fifth plan
+  past 3 in practice). The tracks touch disjoint modules (`pm-web-app`/`pm-web-e2e` against `pm-operator`), so one
+  plan per track can run at a time, the fourth slot going to a second plan on a track whose specs are pairwise disjoint; the shared catalogue `pm-api/src/main/resources/messages/` is split
   per area, so cross-track overlap is mostly one file or none.
 - Web chain — the web track is the critical path (17 levels): foundation (PLAN-01 to PLAN-41), shell and
   templates, views, then onboarding, light theme, cleanup, guard in failing mode, docs, final check.
@@ -110,6 +111,15 @@ plan spec names the plan, proposal and finding documents it comes from.
   PLAN-39 puts the rail head on screen. Sonar gate `OK`, 0 open issues (confirmed, not the docs-only exception).
   Notes added to PLAN-39 (rail head renders `<BrandMark size={24} plate />`) and PLAN-49 (point the badge, the tab
   title and the tab icon at the attention total). PLAN-39 has its PLAN-27 dependency met (it also needs PLAN-31).
+- PLAN-31 (`web-core-components-containers`) — shipped (PR #266, merge `0351ce78`). All three deliverables met. It
+  changed 23 files against 8 declared and left none of the declared untouched: the seven container components
+  (`Card`, `KeyValueList`, `Tabs`, `Breadcrumb`, `Dialog`, `Toast`, `AttentionStrip`) with the dev page extended, plus
+  fifteen undeclared files (seven tests, `shortenMiddle.ts` and its test, four fixtures, `common.{de,en}.properties`,
+  the last named in its Standing Constraints). Insertions only. The components have no caller yet beyond the dev page.
+  Sonar gate `OK`, 0 open issues. CodeRabbit never reviewed the final head (merge under the standing authorization,
+  its review on `d04ffe00` had every finding fixed). One run slip: the properties were first edited in the main
+  checkout and reverted. PLAN-39 (shell; note added), PLAN-37 (accessibility baseline) have their PLAN-31 dependency
+  met; PLAN-35 still needs PLAN-16, PLAN-41 others.
 - Cleanup 2026-10-28 (HEAD `cc5794c9`): the claims of the 64 staged and parked specs were re-grounded and 83
   verdicts are persisted (`ui-improvements/cleanup`); PLAN-10 (launched) was left alone. Two claims were
   contradicted and absorbed into the spec: PLAN-25 (today's `Button` already has the four variants and 18 views
@@ -322,6 +332,19 @@ plan spec names the plan, proposal and finding documents it comes from.
   so a re-grounded note scopes it. Its one undeclared overlap with PLAN-13 is the new catalogue text (different
   section of the pair), named in the note. Recorded launched and then running on the operator's word the same day
   ("i started #20"): four running (31, 11, 13, 20).
+- 2026-10-29 — PLAN-31 landing analysed (PR #266, `0351ce78`) and drained; row shipped. Running after it: PLAN-11,
+  PLAN-13 and PLAN-20, which is N=3 with no free slot. Emitted PLAN-39 (`web-app-shell`, web track) at the operator's
+  request ("emit the next"); started, it makes four in flight, one above N=3 by the operator's choice (fifth time).
+  The ready set is PLAN-09, 14, 17, 21, 22, 23, 37, 39. Gate for PLAN-39: declarative, determinate, no blocking
+  candidate, no overlap prompt, no shared file with anything (`corpus cross-check`); dependencies PLAN-31, 27, 04, 76
+  shipped; the web track is free; ports 20390/20391 in the spec. It is the critical path of the web chain (the shell
+  gates the view plans). Spec re-read at HEAD 0351ce78: a re-grounded note lists the PLAN-31 components it can use,
+  what `+layout.svelte` holds today and that the four `system.*` lifecycle states are not part of it (the machine
+  pill is neutral). Not chosen: PLAN-37 (adds `@axe-core/playwright`, an operator-decided dependency, and edits
+  `WorkControlPanel`/`ChatPanel`; wait for a free slot), PLAN-09 (two checks still open), PLAN-14, 17, 21, 23 (overlap
+  prompt on the operator catalogue with PLAN-13), PLAN-22. Recorded launched and then running on the operator's word
+  ("I started the plan"). The operator set `parallelization_scope` to 4 in the same message: four running (11, 13, 20,
+  39) is now N, not above it, and no slot is free until one lands.
 
 ## Open Defects
 
@@ -344,7 +367,8 @@ plan spec names the plan, proposal and finding documents it comes from.
   opencode), same two keys. Recurrence 2026-10-29: `rb-25-web-core-components-controls-001.md` (PLAN-25,
   opencode), same two keys. Recurrence 2026-10-29: `rb-01-web-text-guard-report-002.md` (PLAN-01, second message
   of a resumed run, opencode), same two keys. Recurrence 2026-10-29: `rb-08-use-case-documents-001.md` (PLAN-08,
-  opencode), same two keys. Recurrence 2026-10-29: `rb-27-web-brand-001.md` (PLAN-27, opencode), same two keys.
+  opencode), same two keys. Recurrence 2026-10-29: `rb-27-web-brand-001.md` (PLAN-27, opencode), same two keys. Recurrence 2026-10-29:
+  `rb-31-web-core-components-containers-001.md` (PLAN-31, opencode), same two keys.
 
 ## Watches
 
@@ -450,6 +474,14 @@ plan spec names the plan, proposal and finding documents it comes from.
   `en` on the German pairing page (`src/app.html` hard-codes it, nothing writes `document.documentElement.lang`).
   No staged plan owns either. — the test tightening is low value; the `lang` attribute is an accessibility defect
   for the German pages: decide whether PLAN-39 (`web-app-shell`, owns the layout) takes it.
+- Container components without callers (PLAN-31, 2026-10-29): `Card`, `KeyValueList`, `Tabs`, `Breadcrumb`, `Dialog`,
+  `Toast` and `AttentionStrip` are drawn on `/dev/components` only, the nine `*Modal.svelte` components are not
+  migrated, and `Toast` has no host or store, so whichever plan raises the first toast must own it. — check at PLAN-39
+  (the phone's "More" sheet may use `Dialog`), PLAN-43 and the view plans that name a modal; stage a host if none does.
+- A run edited the main checkout (PLAN-31, 2026-10-29): `common.{de,en}.properties` were first changed there,
+  reverted by hand and redone in the worktree; the main checkout was clean afterwards. The merged diff is right. —
+  second report of a lane writing outside its worktree (PLAN-10's `test-results/` was the first, different cause);
+  re-check at the next landing.
 - The tab icon, the header badge and the tab title all read `runtimeStore.openDecisionsCount` (PLAN-27). — PLAN-49
   switches all three to the attention total; check at its emit (note added to its spec).
 - First sibling-repository change of this epic (PLAN-08): the run opened and merged a pull request in
