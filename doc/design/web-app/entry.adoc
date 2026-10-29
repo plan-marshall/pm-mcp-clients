@@ -41,6 +41,8 @@ The URL the terminal client opens or shows carries the code in its fragment (`ht
 ----
 
 * The code is accepted with or without the dash and in any case; the button is enabled once eight characters are typed.
+* *The brand block.* Above the heading the page carries the mark at `64` px and the wordmark `plan-marshall`; the card is the first screen a buyer sees (link:brand-mark.adoc#uses[Brand Mark, Where the Mark Is Used]).
+* *The QR code.* Once eight code characters are in the field, the page also shows the same pairing URL as a QR code, drawn locally. Its caption names what the code carries and, on the local address, points at the machine's network address, because a phone cannot reach a loopback page (link:brand-mark.adoc#favicon[Brand Mark, The Browser Tab]).
 * *A code that does not work* (mistyped, used, expired, replaced by a newer one, or the runtime restarted) gets one answer, since the runtime does not say which: the line under the input `This code does not work. Get a new one in a terminal of the machine.` with the two commands. After too many failed tries the open code stops working even when typed right; the same answer covers it.
 * *On the network listener* (HTTPS) the page also shows the certificate's fingerprint, to compare with the one the terminal printed (`Fingerprint SHA-256  4F:1A:9C:…:E2:07`, _Show in full_).
 
