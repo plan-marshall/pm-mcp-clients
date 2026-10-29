@@ -1,5 +1,5 @@
 # Screen captures for PLAN-20: Terminal: Action Menus by State
-# name | scenario | states | command | keys | columnsxrows | locale | environment
+# name | scenario | states | command | keys | columnsxrows | locale | environment | keys before the capture
 # The keys before the capture open the actions menu of the row's plan (`a`), so the screen is the
 # menu itself; the keys after it close the menu and leave the view.
 

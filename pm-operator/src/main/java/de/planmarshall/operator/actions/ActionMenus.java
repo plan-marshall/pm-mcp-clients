@@ -25,10 +25,12 @@ import de.planmarshall.operator.tui.TuiMenuEntry;
 /**
  * Builds the entries of the actions menu from what the runtime offers for one subject.
  *
- * <p>Only an action the runtime lists is shown, and a disabled one keeps the reason the runtime
- * names. The decision a waiting plan waits for stands first, the acts of a hold come next and are
- * taken from the hold record, so a hold that clears or gains an act changes the menu without a new
- * client release.
+ * <p>The entries follow what the runtime offers: only an action it lists is shown, and a disabled
+ * one keeps the reason the runtime names. The decision a waiting plan waits for comes first, named
+ * by the runtime's decisions read because the actions resource does not carry it
+ * ({@code doc/design/terminal-client/19-actions.adoc#full-screen}); the acts of a hold come next and
+ * are taken from the hold record, so a hold that clears or gains an act changes the menu without a
+ * new client release.
  */
 public final class ActionMenus {
 
@@ -39,6 +41,14 @@ public final class ActionMenus {
     private static final Set<String> WAITING_STATES = Set.of("waiting", "waiting_for_you");
 
     private ActionMenus() {
+    }
+
+    /**
+     * @param state the plan's state as the runtime names it
+     * @return {@code true} when the design gives that state the decision it waits for first
+     */
+    public static boolean waitsForDecision(String state) {
+        return WAITING_STATES.contains(state);
     }
 
     /**
@@ -145,7 +155,7 @@ public final class ActionMenus {
 
     private static void addDecision(List<TuiMenuEntry> entries, Set<String> used, List<String> dropped,
                         String locale, String state, @Nullable String openDecision) {
-        if (openDecision == null || openDecision.isBlank() || !WAITING_STATES.contains(state)) {
+        if (openDecision == null || openDecision.isBlank() || !waitsForDecision(state)) {
             return;
         }
         var trigger = key(locale, ACTION_DECIDE);

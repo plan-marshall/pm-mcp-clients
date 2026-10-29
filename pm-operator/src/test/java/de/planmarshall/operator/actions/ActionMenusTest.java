@@ -64,15 +64,19 @@ class ActionMenusTest {
     }
 
     @Test
-    @DisplayName("a paused plan offers Start and Abandon; a pausing one Start and Cancel")
-    void pausedAndPausing() {
+    @DisplayName("a paused plan offers Start, Abandon, Chat, and Settings")
+    void pausedPlan() {
         var paused = ActionMenus.plan("en", actions("plan", "paused", null, "start", "abandon", "chat",
                             "settings"), null, null, null);
         assertEquals("s", paused.entries().get(0).trigger());
         assertTrue(paused.entries().get(0).label().startsWith("Start"));
         assertEquals("x", paused.entries().get(1).trigger());
         assertTrue(paused.entries().get(1).label().startsWith("Abandon"));
+    }
 
+    @Test
+    @DisplayName("a pausing plan offers Start and Cancel")
+    void pausingPlan() {
         var pausing = ActionMenus.plan("en", actions("plan", "pausing", null, "start", "cancel", "chat"),
                             null, null, null);
         assertEquals("s", pausing.entries().get(0).trigger());
@@ -96,6 +100,15 @@ class ActionMenusTest {
         assertTrue(labels.get(3).startsWith("Chat"), labels.toString());
         assertTrue(labels.get(4).startsWith("Settings"), labels.toString());
         assertTrue(menu.droppedActions().isEmpty(), menu.droppedActions().toString());
+    }
+
+    @Test
+    @DisplayName("the runtime's other spelling of the waiting state offers the decision first too")
+    void waitingForYouPlan() {
+        var menu = ActionMenus.plan("en", actions("plan", "waiting_for_you", null, "pause", "cancel",
+                            "chat", "settings"), null, "Q-009", null);
+        assertEquals("decide", menu.entries().get(0).action(), menu.entries().toString());
+        assertEquals("!", menu.entries().get(0).trigger());
     }
 
     @Test

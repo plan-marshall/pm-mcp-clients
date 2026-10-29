@@ -44,6 +44,7 @@ public final class WorkActionsClient {
 
     private static final String PLANS = "/api/v1/plans/";
     private static final String EPICS = "/api/v1/epics/";
+    private static final String DECISIONS = "/api/v1/decisions";
     private static final String ACTIONS = "/actions";
     private static final String HOLDS = "/holds/";
 
@@ -77,6 +78,10 @@ public final class WorkActionsClient {
      */
     public @Nullable String openDecision(String planId) throws IOException {
         var response = context.runtime(true).send(HttpRequest.get(PLANS + path(planId) + "/decisions"));
+        if (response.status() == 404) {
+            // The scope query of the decisions list is the read the console's `questions` makes.
+            response = context.runtime(true).send(HttpRequest.get(DECISIONS + "?plan=" + path(planId)));
+        }
         if (response.status() != 200) {
             throw new OperatorRefusedException("plan decisions", response);
         }

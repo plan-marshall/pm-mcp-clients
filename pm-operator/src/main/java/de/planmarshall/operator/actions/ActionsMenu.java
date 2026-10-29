@@ -22,7 +22,9 @@ import de.planmarshall.operator.tui.TuiMenuEntry;
  *
  * <p>The menu is modal and carries its own selection; the level below it keeps its row selection.
  * The entries are built from what the runtime offers, never from the client's own idea of what a
- * state allows.
+ * state allows; the one addition is the decision a waiting plan waits for, which the runtime names
+ * in its decisions read and the design puts first for that state
+ * ({@code doc/design/terminal-client/19-actions.adoc#full-screen}).
  */
 public final class ActionsMenu {
 

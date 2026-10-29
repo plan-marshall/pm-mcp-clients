@@ -850,6 +850,7 @@ public final class OverviewFullScreenApp {
                     return;
                 }
                 menuKind = "epic".equalsIgnoreCase(item.kind()) ? "epic" : "plan";
+                menuDecision = null;
                 actionsMenu = ActionMenus.ended(locale, item.id(), item.title(), selectedId);
                 return;
             }
@@ -860,6 +861,7 @@ public final class OverviewFullScreenApp {
                 }
                 if (view.isEnded()) {
                     menuKind = "plan";
+                    menuDecision = null;
                     actionsMenu = ActionMenus.ended(locale, view.planId(), view.planId(), selectedId);
                 } else {
                     openPlanActions(view.planId(), selectedId);
@@ -877,6 +879,7 @@ public final class OverviewFullScreenApp {
                 var completion = currentCompletion.get();
                 if (completion != null) {
                     menuKind = "plan";
+                    menuDecision = null;
                     actionsMenu = ActionMenus.ended(locale, completion.planId(), completion.planId(),
                                         selectedId);
                 }
@@ -944,10 +947,12 @@ public final class OverviewFullScreenApp {
             // A plan without a readable hold list still offers its actions.
         }
         String openDecision = null;
-        try {
-            openDecision = client.openDecision(planId);
-        } catch (IOException _) {
-            // A plan without a readable decision list still offers its actions.
+        if (ActionMenus.waitsForDecision(actions.state())) {
+            try {
+                openDecision = client.openDecision(planId);
+            } catch (IOException _) {
+                // A plan without a readable decision list still offers its actions.
+            }
         }
         if (actions.actions().isEmpty()) {
             statusMessage = MessageCatalogue.format(locale, "operator.actions.none", Map.of("name", planId));
