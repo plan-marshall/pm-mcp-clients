@@ -3,6 +3,7 @@ import { get } from 'svelte/store';
 import { apiClient, type ReportsPage, type StatusResponse } from '../api/client';
 import {
   checkUrlHashForCode,
+  handleRuntimeEvent,
   initRuntime,
   openStartPage,
   replaceDesignerProject,
@@ -134,6 +135,9 @@ describe('the runtime store', () => {
   it('shows the stopped lifecycle the status reports', async () => {
     // Arrange
     localStorage.setItem('pm_device_secret', 'pmw_valid');
+    runtimeStore.set(
+      makeRuntimeState({ isDraining: true, drainInfo: { who: 'the console', count: 2 } }),
+    );
     vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
       ...PAIRED_STATUS,
       lifecycle_state: 'stopped',
@@ -149,6 +153,38 @@ describe('the runtime store', () => {
     // Assert
     expect(get(runtimeStore).isStopped).toBe(true);
     expect(get(runtimeStore).isDraining).toBe(false);
+  });
+
+  it('clears the stopped flag when the status reports running', async () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    runtimeStore.set(makeRuntimeState({ isStopped: true }));
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...PAIRED_STATUS,
+      lifecycle_state: 'running',
+    });
+    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue(EMPTY_REPORTS);
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
+
+    // Act
+    await initRuntime();
+
+    // Assert
+    expect(get(runtimeStore).isStopped).toBe(false);
+  });
+
+  it('clears the stopped flag when a drain event arrives', () => {
+    // Arrange
+    runtimeStore.set(makeRuntimeState({ isStopped: true }));
+
+    // Act
+    handleRuntimeEvent('runtime.draining', { who: 'the console', remaining_count: 2 });
+
+    // Assert
+    expect(get(runtimeStore).isStopped).toBe(false);
+    expect(get(runtimeStore).isDraining).toBe(true);
   });
 
   it('clears the drain info when the status is not draining', async () => {

@@ -116,7 +116,7 @@ class FixtureConsistencyTest {
         @DisplayName("a kept item's kind is one the contract's closed set knows")
         void keptItemKindIsFromTheClosedSet() throws Exception {
             try (var engine = engine(StandardScenarios.REPORTS_AND_SYSTEM)) {
-                var body = JsonTree.write(Map.of("unchecked_ids", List.of("token-usage")))
+                var body = JsonTree.write(Map.of("unchecked_ids", List.of("logs-relay-docs")))
                         .getBytes(StandardCharsets.UTF_8);
                 body(engine, "POST", "/api/v1/system/cleanup/cln-0012/delete", body);
 
@@ -124,9 +124,11 @@ class FixtureConsistencyTest {
                 assertNotNull(kept, "the kept list must answer an array");
                 var added = JsonTree.asObject(kept.get(kept.size() - 1));
                 assertNotNull(added, "the delete must append a kept item");
-                assertEquals("plan", JsonTree.string(added, "kind"),
+                assertEquals("logs-relay-docs", JsonTree.string(added, "id"),
+                        "id of the item the delete added");
+                assertEquals("logs", JsonTree.string(added, "kind"),
                         "kind of the item the delete added");
-                assertEquals("token-usage", JsonTree.string(added, "title"),
+                assertEquals("logs of relay-docs", JsonTree.string(added, "title"),
                         "title of the item the delete added");
                 for (var element : kept) {
                     var kind = JsonTree.string(JsonTree.asObject(element), "kind");

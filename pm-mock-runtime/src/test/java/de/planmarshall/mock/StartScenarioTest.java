@@ -133,6 +133,7 @@ class StartScenarioTest {
                 var tree = ProcessTree.fromJson(process.bodyText());
                 assertEquals(result.id(), tree.planId());
                 assertEquals("Add a Codeberg provider for issues", tree.title());
+                assertEquals("pm-mcp-clients", tree.project().projectId());
             }
         }
     }

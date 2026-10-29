@@ -3868,7 +3868,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
         var planId = uniquePlanId(slug("adopt-pr-" + observation.number()));
-        startedPlans.put(planId, new StartedPlan(planId, projectId));
+        startedPlans.put(planId, new StartedPlan(observation.title(), projectId));
         var body = new LinkedHashMap<String, Object>(new PrAdoptResult(planId, SourceLane.ADOPT,
                 observation.branch(), null).toMap());
         body.put(KEY_PROJECT_ID, projectId);
@@ -4126,7 +4126,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (startLock) {
             var candidate = base;
             int suffix = 1;
-            while (startedPlanIds.contains(candidate)) {
+            while (startedPlanIds.contains(candidate) || knowsPlan(candidate)) {
                 suffix++;
                 candidate = base + "-" + suffix;
             }
