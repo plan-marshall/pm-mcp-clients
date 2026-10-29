@@ -16,7 +16,7 @@ describe('shortenMiddle', () => {
   });
 
   it('never returns more characters than the limit', () => {
-    expect(shortenMiddle('plan-marshall/relay@36e3fc5c', 15).length).toBe(15);
+    expect(shortenMiddle('plan-marshall/relay@36e3fc5c', 15)).toHaveLength(15);
   });
 
   it('returns the ellipsis alone when there is no room for either end', () => {
