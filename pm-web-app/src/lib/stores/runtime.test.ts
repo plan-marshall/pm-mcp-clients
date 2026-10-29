@@ -131,6 +131,49 @@ describe('the runtime store', () => {
     expect(get(runtimeStore).drainInfo?.count).toBe(2);
   });
 
+  it('shows the stopped lifecycle the status reports', async () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...PAIRED_STATUS,
+      lifecycle_state: 'stopped',
+    });
+    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue(EMPTY_REPORTS);
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
+
+    // Act
+    await initRuntime();
+
+    // Assert
+    expect(get(runtimeStore).isStopped).toBe(true);
+    expect(get(runtimeStore).isDraining).toBe(false);
+  });
+
+  it('clears the drain info when the status is not draining', async () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    runtimeStore.set(
+      makeRuntimeState({ isDraining: true, drainInfo: { who: 'the console', count: 2 } }),
+    );
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...PAIRED_STATUS,
+      lifecycle_state: 'running',
+    });
+    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue(EMPTY_REPORTS);
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
+
+    // Act
+    await initRuntime();
+
+    // Assert
+    expect(get(runtimeStore).isDraining).toBe(false);
+    expect(get(runtimeStore).drainInfo).toBeNull();
+  });
+
   it('does not open a start page while the browser is unpaired', async () => {
     // Arrange
     const projects = vi.spyOn(apiClient, 'getProjects');

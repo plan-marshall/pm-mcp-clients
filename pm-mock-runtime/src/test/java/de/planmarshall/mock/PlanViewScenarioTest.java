@@ -343,6 +343,7 @@ class PlanViewScenarioTest {
             var held = ProcessTree.fromJson(
                     get(runtime, "/api/v1/plans/relay-cursor-order/process").bodyText());
             assertEquals("relay-cursor-order", held.planId());
+            assertEquals("waiting_for_you", held.phaseState());
 
             var unknownActivity = get(runtime,
                     "/api/v1/plans/dynamic-custom-plan/tasks/TASK-042/activity");

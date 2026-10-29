@@ -533,6 +533,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private record ReplayPlan(List<BufferedEvent> events, boolean reset) {
     }
 
+    /**
+     * A plan a start flow created in this run, so its process view stays retrievable.
+     *
+     * @param title     the plan's title
+     * @param projectId the project the start named
+     */
+    private record StartedPlan(String title, String projectId) {
+    }
+
     private final AtomicReference<Scenario> currentScenario = new AtomicReference<>();
     private final AtomicReference<String> currentStateId = new AtomicReference<>();
     /**
@@ -582,6 +591,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final StartRegistry startRegistry;
     private final Object startLock = new Object();
     private final Set<String> startedPlanIds = new LinkedHashSet<>();
+    private final Map<String, StartedPlan> startedPlans = new ConcurrentHashMap<>();
     private final Set<String> startedEpicIds = new LinkedHashSet<>();
     private int intakeDraftCounter;
     private final Object lessonSourceLock = new Object();
@@ -3734,6 +3744,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 ? "recipe-" + parsed.recipeId() + "-" + LocalDateTime.now(ZoneId.systemDefault()).format(RECIPE_ID_TIMESTAMP)
                 : title;
         var id = uniquePlanId(slug(idSource));
+        startedPlans.put(id, new StartedPlan(title, projectId));
         var body = new LinkedHashMap<String, Object>(new PlanStartResult(id, PlanStartResult.KIND_PLAN,
                 title, PlanStartResult.STATE_STARTED, PATH_PLANS_PREFIX + id).toMap());
         body.put(KEY_PROJECT_ID, projectId);
@@ -3857,6 +3868,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
         var planId = uniquePlanId(slug("adopt-pr-" + observation.number()));
+        startedPlans.put(planId, new StartedPlan(planId, projectId));
         var body = new LinkedHashMap<String, Object>(new PrAdoptResult(planId, SourceLane.ADOPT,
                 observation.branch(), null).toMap());
         body.put(KEY_PROJECT_ID, projectId);
@@ -3935,6 +3947,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         capturedProjects.add(projectId);
         localChangePreviews.remove(projectId);
         var planId = uniquePlanId(slug("capture-local-changes-" + projectId));
+        startedPlans.put(planId, new StartedPlan(planId, projectId));
         var body = new LinkedHashMap<String, Object>(new LocalChangesCaptureResult(planId, SourceLane.LAND,
                 sha, null).toMap());
         body.put(KEY_PROJECT_ID, projectId);
@@ -8358,10 +8371,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     return true;
                 }
                 var defaultRoute = activeRoute("GET", "/api/v1/plans/fix-relay/process");
-                if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
-                    response.json(200, synthesizedPlan(repMap, planId, summary));
-                    return true;
-                }
+                var template = defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> rep
+                        ? rep
+                        : null;
+                response.json(200, synthesizedPlan(template, planId, summary));
+                return true;
             }
         }
 
@@ -8387,20 +8401,31 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     /**
      * @param planId the requested plan id
-     * @return {@code true} when the scenario serves the plan, by its own route or by its list entry
+     * @return {@code true} when the scenario serves the plan by a non-error route or by its summary
      */
     private boolean knowsPlan(String planId) {
-        return activeRoute("GET", PATH_PLANS_PREFIX + planId + SUFFIX_PROCESS) != null
-                || planSummary(planId) != null;
+        var processRoute = activeRoute("GET", PATH_PLANS_PREFIX + planId + SUFFIX_PROCESS);
+        return (processRoute != null && processRoute.status() < 400) || planSummary(planId) != null;
     }
 
     /**
-     * Looks a plan id up in the plan list the active scenario (or its state) serves.
+     * Looks a plan id up in the plan list the active scenario (or its state) serves, or among the
+     * plans a start flow created in this run.
      *
      * @param planId the requested plan id
-     * @return the plan's summary entry, or {@code null} when the scenario does not list the id
+     * @return the plan's summary entry, or {@code null} when the scenario does not serve the id
      */
     private @Nullable Map<String, Object> planSummary(String planId) {
+        var started = startedPlans.get(planId);
+        if (started != null) {
+            var summary = new LinkedHashMap<String, Object>();
+            summary.put("id", planId);
+            summary.put(KEY_TITLE, started.title());
+            summary.put("project", started.projectId());
+            summary.put("phase", "execute");
+            summary.put("state", "running");
+            return summary;
+        }
         var listRoute = activeRoute("GET", "/api/v1/plans");
         if (listRoute == null || !(listRoute.representation() instanceof Map<?, ?> list)
                 || !(list.get("plans") instanceof List<?> plans)) {
@@ -8450,7 +8475,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param summary  the plan's summary entry
      * @return the representation to answer
      */
-    private static Map<String, Object> synthesizedPlan(Map<?, ?> template, String planId,
+    private static Map<String, Object> synthesizedPlan(@Nullable Map<?, ?> template, String planId,
             Map<String, Object> summary) {
         var phase = summaryText(summary, "phase", "execute");
         var phaseState = summaryText(summary, "state", "running");
@@ -8478,10 +8503,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param phaseState the plan's state
      * @return the template's phase nodes, each marked done, current or planned
      */
-    private static List<Map<String, Object>> phaseNodes(Map<?, ?> template, String currentPhase,
+    private static List<Map<String, Object>> phaseNodes(@Nullable Map<?, ?> template, String currentPhase,
             String phaseState) {
-        if (!(template.get("nodes") instanceof List<?> nodes)) {
-            return List.of();
+        if (template == null || !(template.get("nodes") instanceof List<?> nodes)) {
+            var state = "waiting_for_you".equals(phaseState) ? "waiting_for_operator" : "running";
+            return List.of(phaseNode(currentPhase, state, "phase " + currentPhase));
         }
         var current = currentPhaseIndex(nodes, currentPhase);
         var result = new ArrayList<Map<String, Object>>(nodes.size());
@@ -8490,19 +8516,33 @@ public final class MockRuntimeEngine implements AutoCloseable {
             if (node == null) {
                 continue;
             }
-            var phase = new LinkedHashMap<String, Object>();
-            phase.put(KEY_NODE_ID, JsonTree.string(node, KEY_NODE_ID));
-            phase.put(KEY_TITLE, JsonTree.string(node, KEY_TITLE));
-            phase.put("kind", JsonTree.string(node, "kind"));
-            phase.put("state", phaseNodeState(index, current, phaseState));
-            phase.put("run_count", 1);
-            phase.put("current_run", 1);
-            phase.put("duration_seconds", 0);
-            phase.put("sub_nodes", List.of());
-            phase.put("leaf_tasks", List.of());
-            result.add(phase);
+            result.add(phaseNode(JsonTree.string(node, KEY_NODE_ID),
+                    phaseNodeState(index, current, phaseState),
+                    JsonTree.string(node, KEY_TITLE)));
         }
         return result;
+    }
+
+    /**
+     * @param nodeId the node's id
+     * @param state  the node's state
+     * @param title  the node's title
+     * @return one phase node with no sub-nodes or leaf tasks
+     */
+    private static Map<String, Object> phaseNode(@Nullable String nodeId, String state,
+            @Nullable String title) {
+        var ran = "planned".equals(state) ? 0 : 1;
+        var phase = new LinkedHashMap<String, Object>();
+        phase.put(KEY_NODE_ID, nodeId);
+        phase.put(KEY_TITLE, title);
+        phase.put("kind", "phase");
+        phase.put("state", state);
+        phase.put("run_count", ran);
+        phase.put("current_run", ran);
+        phase.put("duration_seconds", 0);
+        phase.put("sub_nodes", List.of());
+        phase.put("leaf_tasks", List.of());
+        return phase;
     }
 
     /**

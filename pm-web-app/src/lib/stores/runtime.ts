@@ -582,6 +582,7 @@ function handleLifecycleEvent(event: string, data: unknown): void {
     runtimeStore.update((s) => ({
       ...s,
       isDraining: true,
+      isStopped: false,
       drainInfo: (data || {}) as RuntimeState['drainInfo'],
     }));
   } else if (event === 'runtime.drain_withdrawn') {
