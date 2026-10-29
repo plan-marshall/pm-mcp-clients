@@ -20,7 +20,7 @@
 </script>
 
 <dl class="key-value-list" data-testid="key-value-list">
-  {#each items as item (item.label)}
+  {#each items as item}
     <dt class="key-value-list__label">{item.label}</dt>
     <dd class="key-value-list__value">{item.value}</dd>
   {/each}

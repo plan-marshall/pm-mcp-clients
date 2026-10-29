@@ -7,8 +7,10 @@
    * screen, with an optional act.
    *
    * It is a live region, so a screen reader announces it without the focus moving: the person who
-   * triggered the act learns the result where they are. The view removes it when the four seconds
-   * are over, or the person takes its act.
+   * triggered the act learns the result where they are. The region stays in the document while the
+   * toast is empty — a region that arrives with its text is a node several screen readers never
+   * announce — so the message is an update to a region the reader already knows. The act sits
+   * beside the region, not inside it, because the act is a control and a live region is not.
    */
   export let open = false;
   /** The sentence the toast carries, from the view's catalogue key. */
@@ -23,6 +25,8 @@
   export let durationMs = 4000;
 
   let timer: ReturnType<typeof setTimeout> | undefined = undefined;
+  /** Whether the countdown is already running, so a re-render does not restart it. */
+  let counting = false;
 
   /** Stops the countdown of a toast that left the screen early or was replaced. */
   function stopTimer(): void {
@@ -30,29 +34,31 @@
       clearTimeout(timer);
       timer = undefined;
     }
+    counting = false;
   }
 
-  $: if (open) {
-    stopTimer();
+  // The countdown starts on the opening alone: a view that re-renders while the toast is on screen
+  // does not get a fifth second, and a toast that never opened never calls back.
+  $: if (open && !counting) {
+    counting = true;
     timer = setTimeout(() => {
       timer = undefined;
+      counting = false;
       onDismiss();
     }, durationMs);
-  } else {
+  } else if (!open && counting) {
     stopTimer();
   }
 
   onDestroy(stopTimer);
 </script>
 
-{#if open}
-  <div class="toast" role="status" aria-live="polite">
-    <span class="toast__message">{message}</span>
-    {#if actionLabel}
-      <Button variant="ghost" size="sm" on:click={onAction}>{actionLabel}</Button>
-    {/if}
-  </div>
-{/if}
+<div class="toast" class:toast--hidden={!open}>
+  <span class="toast__status" role="status" aria-live="polite">{open ? message : ''}</span>
+  {#if open && actionLabel}
+    <Button variant="ghost" size="sm" on:click={onAction}>{actionLabel}</Button>
+  {/if}
+</div>
 
 <style>
   .toast {
@@ -71,6 +77,17 @@
     color: var(--color-text-primary);
     font-size: var(--text-sm);
     line-height: var(--line-height-sm);
+  }
+
+  /* An empty toast keeps its region in the accessibility tree without drawing anything: clipped to
+     a pixel, it is still a live region a later message can update. */
+  .toast--hidden {
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   /* A phone puts the toast across the bottom, where the thumb already is. */

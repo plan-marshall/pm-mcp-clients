@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen, fireEvent, within } from '@testing-library/svelte';
 import Tabs from './Tabs.svelte';
 
 /**
@@ -101,5 +101,45 @@ describe('Tabs', () => {
 
     expect(document.activeElement).toBe(tabs[0]);
     expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('selects its first tab when the view fills the list after the render', async () => {
+    const { rerender } = render(Tabs, { props: { tabs: [], active: undefined } });
+
+    await rerender({ tabs: TABS });
+
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+    expect(tabs[0]).toHaveAttribute('tabindex', '0');
+  });
+
+  it('falls back to the first tab when the selected one leaves the list', async () => {
+    const { rerender } = render(Tabs, { props: { tabs: TABS, active: 'failed' } });
+
+    await rerender({ tabs: TABS.slice(0, 2), active: 'failed' });
+
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('names the count and the panel a tab controls when the view does', () => {
+    render(Tabs, {
+      props: {
+        tabs: [
+          {
+            id: 'open',
+            label: 'Open',
+            count: 2,
+            countLabel: '2 need you',
+            panelId: 'panel-open',
+          },
+        ],
+        active: 'open',
+      },
+    });
+    const tab = screen.getByRole('tab', { name: 'Open 2 need you' });
+
+    expect(tab).toHaveAttribute('aria-controls', 'panel-open');
+    expect(within(tab).getByText('Open')).toBeInTheDocument();
   });
 });

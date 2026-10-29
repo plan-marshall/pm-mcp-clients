@@ -5,7 +5,8 @@ import Toast from './Toast.svelte';
 /**
  * `Toast` (VD-P-05, VD-S-03): a short confirmation in the bottom right corner, four seconds on
  * screen, with an optional act, announced in a live region so it reaches a screen reader without
- * taking the focus.
+ * taking the focus. The region is in the document while the toast is empty, so the message is an
+ * update the reader announces rather than a node it never saw.
  */
 
 afterEach(() => {
@@ -21,14 +22,30 @@ describe('Toast', () => {
     expect(region).toHaveTextContent('The plan was deleted.');
   });
 
-  it('carries the act it is given and reports it', async () => {
+  it('keeps its live region in the document while it is closed, and empty', () => {
+    const { rerender } = render(Toast, { props: { open: false, message: 'The plan was deleted.' } });
+    const region = screen.getByRole('status');
+
+    expect(region.textContent?.trim()).toBe('');
+
+    // The same region takes the message when the toast opens: an update, not a new node.
+    return rerender({ open: true, message: 'The plan was deleted.' }).then(() => {
+      expect(screen.getByRole('status')).toBe(region);
+      expect(region).toHaveTextContent('The plan was deleted.');
+    });
+  });
+
+  it('keeps the act beside the live region, not inside it', async () => {
     const onAction = vi.fn();
     render(Toast, {
       props: { open: true, message: 'The plan was deleted.', actionLabel: 'Undo', onAction },
     });
+    const region = screen.getByRole('status');
+    const act = screen.getByRole('button', { name: 'Undo' });
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Undo' }));
+    expect(region.contains(act)).toBe(false);
 
+    await fireEvent.click(act);
     expect(onAction).toHaveBeenCalledOnce();
   });
 
@@ -50,9 +67,17 @@ describe('Toast', () => {
     expect(onDismiss).toHaveBeenCalledOnce();
   });
 
-  it('draws nothing while it is closed', () => {
-    render(Toast, { props: { open: false, message: 'The plan was deleted.' } });
+  it('does not restart its four seconds when the view re-renders while it is open', async () => {
+    vi.useFakeTimers();
+    const onDismiss = vi.fn();
+    const { rerender } = render(Toast, {
+      props: { open: true, message: 'The plan was deleted.', onDismiss },
+    });
 
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    vi.advanceTimersByTime(3000);
+    await rerender({ open: true, message: 'The plan was deleted.', onDismiss });
+    vi.advanceTimersByTime(1000);
+
+    expect(onDismiss).toHaveBeenCalledOnce();
   });
 });

@@ -20,7 +20,10 @@
   let host: HTMLElement | undefined = undefined;
 
   onMount(() => {
-    nested = host?.parentElement?.closest('.card') !== null && host !== undefined;
+    // The surface carries its own hook, so a `.card` of a view's stylesheet is never mistaken for
+    // the component around this one.
+    const outer = host?.parentElement?.closest('[data-card]') ?? null;
+    nested = outer !== null;
     if (nested && import.meta.env.DEV) {
       console.warn(
         '[Card] a card inside a card is refused; nested parts use a divider instead of a surface',
@@ -32,13 +35,22 @@
 {#if nested}
   <div class="card__nested" data-testid="card-nested">
     <hr class="card__divider" />
-    {#if title}
-      <h3 class="card__title card__title--nested">{title}</h3>
+    {#if title || $$slots.actions}
+      <div class="card__nested-head">
+        {#if title}
+          <h3 class="card__title card__title--nested">{title}</h3>
+        {/if}
+        {#if $$slots.actions}
+          <div class="card__actions">
+            <slot name="actions" />
+          </div>
+        {/if}
+      </div>
     {/if}
     <slot />
   </div>
 {:else}
-  <section class="card" data-testid="card" bind:this={host}>
+  <section class="card" data-card data-testid="card" bind:this={host}>
     {#if title || $$slots.actions}
       <header class="card__head">
         {#if title}
@@ -87,6 +99,13 @@
     font-size: var(--text-sm);
     line-height: var(--line-height-sm);
     color: var(--color-text-secondary);
+  }
+
+  .card__nested-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
   }
 
   .card__actions {

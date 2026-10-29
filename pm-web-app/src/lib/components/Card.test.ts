@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/svelte';
 import Card from './Card.svelte';
 import CardFixture from '../../test/fixtures/CardFixture.svelte';
+import CardInsideViewCardFixture from '../../test/fixtures/CardInsideViewCardFixture.svelte';
 import NestedCardsFixture from '../../test/fixtures/NestedCardsFixture.svelte';
 
 /**
@@ -11,11 +12,13 @@ import NestedCardsFixture from '../../test/fixtures/NestedCardsFixture.svelte';
  */
 
 describe('Card', () => {
-  it('draws the surface with the padding and radius of the design system', () => {
+  it('draws the surface as the card root', () => {
     const { container } = render(Card, { props: {} });
     const card = container.querySelector('.card');
 
     expect(card).not.toBeNull();
+    expect(card?.tagName).toBe('SECTION');
+    expect(card?.hasAttribute('data-card')).toBe(true);
     expect(screen.getByTestId('card')).toBe(card);
   });
 
@@ -57,5 +60,16 @@ describe('Card', () => {
     expect(container.querySelector('.card__nested')).not.toBeNull();
     expect(container.querySelector('.card__nested .card__divider')).not.toBeNull();
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('nested'));
+  });
+
+  it('draws a surface inside a view element the view calls a card', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const { container } = render(CardInsideViewCardFixture, {
+      props: { title: 'Runtime', body: 'Body text' },
+    });
+
+    expect(container.querySelector('.card > .card')).not.toBeNull();
+    expect(container.querySelector('.card__nested')).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
   });
 });

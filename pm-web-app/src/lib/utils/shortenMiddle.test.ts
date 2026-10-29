@@ -22,4 +22,8 @@ describe('shortenMiddle', () => {
   it('returns the ellipsis alone when there is no room for either end', () => {
     expect(shortenMiddle('plan-marshall', 1)).toBe('…');
   });
+
+  it('returns nothing when the limit leaves no room at all', () => {
+    expect(shortenMiddle('plan-marshall', 0)).toBe('');
+  });
 });

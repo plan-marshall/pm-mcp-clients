@@ -7,8 +7,12 @@
     label: string;
     /** The number the tab counts, drawn as a `CountBadge`; omitted when the tab counts nothing. */
     count?: number;
+    /** The phrase that names the number for a screen reader, including the figure; e.g. "2 needs you". */
+    countLabel?: string;
     /** Whether the number names something that waits for the operator. */
     attention?: boolean;
+    /** The id of the panel the tab controls, when the view draws one. */
+    panelId?: string;
   }
 </script>
 
@@ -37,6 +41,12 @@
   $: if (active !== undefined && active !== followed) {
     followed = active;
     selected = active;
+  }
+
+  // A view may fill its tabs after its fetch, or drop the one that was selected: the list then
+  // selects its first tab instead of handing every tab a `tabindex="-1"` and dying for the keyboard.
+  $: if (!tabs.some((tab) => tab.id === selected)) {
+    selected = tabs[0]?.id ?? '';
   }
 
   /** The list's own element, for the keyboard to move within. */
@@ -97,12 +107,13 @@
       class="tabs__tab"
       class:tabs__tab--active={selected === tab.id}
       aria-selected={selected === tab.id}
+      aria-controls={tab.panelId}
       tabindex={selected === tab.id ? 0 : -1}
       on:click={() => select(tab.id)}
     >
       <span class="tabs__label">{tab.label}</span>
       {#if tab.count !== undefined}
-        <CountBadge count={tab.count} attention={tab.attention ?? false} />
+        <CountBadge count={tab.count} attention={tab.attention ?? false} label={tab.countLabel} />
       {/if}
     </button>
   {/each}

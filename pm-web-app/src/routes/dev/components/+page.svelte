@@ -57,8 +57,8 @@
     { label: $t('dev.key_value.tokens'), value: $t('dev.key_value.tokens_value') },
   ];
 
-  /** The tab the fixture shows as selected, so the widget answers the keyboard on the page. */
-  let activeTab = 'open';
+  /** The tab the fixture shows as selected, one per theme, so each list answers its own keyboard. */
+  let activeTabs: Record<string, string> = {};
 
   /** The tabs of the fixture: one count that waits for the operator, one that does not. */
   $: tabs = [
@@ -173,6 +173,12 @@
         <Card title={$t('dev.card.plain')}>
           <p class="dev__note">{$t('dev.card.body')}</p>
         </Card>
+        <Card title={$t('dev.card.nested')}>
+          <KeyValueList items={runtimeFacts} />
+          <Card title={$t('dev.card.nested_part')}>
+            <p class="dev__note">{$t('dev.card.body')}</p>
+          </Card>
+        </Card>
       </div>
 
       <h3 class="dev__section-title">{$t('dev.section.key_values')}</h3>
@@ -181,7 +187,11 @@
       </Card>
 
       <h3 class="dev__section-title">{$t('dev.section.tabs')}</h3>
-      <Tabs {tabs} active={activeTab} onSelect={(id) => (activeTab = id)} />
+      <Tabs
+        {tabs}
+        active={activeTabs[theme] ?? 'open'}
+        onSelect={(id) => (activeTabs = { ...activeTabs, [theme]: id })}
+      />
 
       <h3 class="dev__section-title">{$t('dev.section.breadcrumb')}</h3>
       <Breadcrumb crumbs={trail} label={$t('dev.breadcrumb.label')} />

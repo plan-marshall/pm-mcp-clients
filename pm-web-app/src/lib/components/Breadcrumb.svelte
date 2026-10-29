@@ -23,7 +23,7 @@
    */
   export let crumbs: Crumb[] = [];
   /** The accessible name of the trail, from the view's catalogue key. */
-  export let label: string | undefined = undefined;
+  export let label: string;
 
   /** The longest segment a phone row keeps; the ellipsis is part of it. */
   const PHONE_MAX = 24;
@@ -57,7 +57,7 @@
 
 <nav class="breadcrumb" aria-label={label}>
   <ol class="breadcrumb__list">
-    {#each rows as row (row.label)}
+    {#each rows as row}
       <li class="breadcrumb__item">
         {#if row.leads}
           <a class="breadcrumb__link" href={row.href}>{row.shown}</a>
@@ -110,26 +110,28 @@
     color: var(--color-text-primary);
   }
 
-  /* One row on a phone: every segment stays on the line instead of wrapping into the content. */
+  /* One row on a phone: the segments keep their width and the current page takes what is left,
+     ellipsised inside its own box — the row never clips a word without saying so. */
   @media (max-width: 767px) {
     .breadcrumb__list {
       flex-wrap: nowrap;
-      overflow: hidden;
     }
 
     .breadcrumb__item {
       flex: 0 0 auto;
+      min-inline-size: 0;
+    }
+
+    .breadcrumb__item:last-child {
+      flex: 0 1 auto;
     }
 
     .breadcrumb__current,
     .breadcrumb__link {
+      min-inline-size: 0;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-    }
-
-    .breadcrumb__current {
-      min-inline-size: 0;
     }
   }
 </style>

@@ -8,6 +8,8 @@ import Breadcrumb from './Breadcrumb.svelte';
  * phone, where the whole trail has to fit a 390 px row.
  */
 
+const LABEL = 'Trail';
+
 const TRAIL = [
   { label: 'Projects', href: '/projects' },
   { label: 'plan-marshall/pm-mcp-clients', href: '/projects/pm-mcp-clients' },
@@ -46,7 +48,7 @@ afterEach(() => {
 describe('Breadcrumb', () => {
   it('draws the trail as a list, with links up to the current page', () => {
     stubMediaQuery(false);
-    render(Breadcrumb, { props: { crumbs: TRAIL } });
+    render(Breadcrumb, { props: { crumbs: TRAIL, label: LABEL } });
     const links = screen.getAllByRole('link');
 
     expect(links.map((link) => link.textContent)).toEqual([
@@ -59,16 +61,23 @@ describe('Breadcrumb', () => {
     );
   });
 
+  it('names the trail for a screen reader', () => {
+    stubMediaQuery(false);
+    render(Breadcrumb, { props: { crumbs: TRAIL, label: LABEL } });
+
+    expect(screen.getByRole('navigation', { name: LABEL })).toBeInTheDocument();
+  });
+
   it('keeps the last segment as text, never as a link', () => {
     stubMediaQuery(false);
-    render(Breadcrumb, { props: { crumbs: TRAIL } });
+    render(Breadcrumb, { props: { crumbs: TRAIL, label: LABEL } });
 
     expect(screen.queryByRole('link', { name: /Plan 31/ })).toBeNull();
   });
 
   it('shortens a long segment in the middle on a phone', async () => {
     stubMediaQuery(true);
-    render(Breadcrumb, { props: { crumbs: TRAIL } });
+    render(Breadcrumb, { props: { crumbs: TRAIL, label: LABEL } });
     const middle = await screen.findByRole('link', { name: /…/ });
     const visible = middle.textContent ?? '';
 
@@ -80,14 +89,14 @@ describe('Breadcrumb', () => {
 
   it('draws the whole segment on a desktop row', () => {
     stubMediaQuery(false);
-    render(Breadcrumb, { props: { crumbs: TRAIL } });
+    render(Breadcrumb, { props: { crumbs: TRAIL, label: LABEL } });
 
     expect(screen.getByRole('link', { name: 'plan-marshall/pm-mcp-clients' })).toBeInTheDocument();
   });
 
   it('follows the viewport when it turns into a phone and back', async () => {
     const media = stubMediaQuery(false);
-    render(Breadcrumb, { props: { crumbs: TRAIL } });
+    render(Breadcrumb, { props: { crumbs: TRAIL, label: LABEL } });
     await screen.findByRole('link', { name: 'plan-marshall/pm-mcp-clients' });
 
     media.fire(true);
@@ -98,9 +107,24 @@ describe('Breadcrumb', () => {
   it('never cuts a sentence a person reads, only an id', () => {
     stubMediaQuery(true);
     render(Breadcrumb, {
-      props: { crumbs: [{ label: 'Projects' }, { label: 'Plan 31: web core components' }] },
+      props: {
+        crumbs: [{ label: 'Projects' }, { label: 'Plan 31: web core components' }],
+        label: LABEL,
+      },
     });
 
     expect(screen.getByText('Plan 31: web core components')).toBeInTheDocument();
+  });
+
+  it('draws two segments that read the same, which a trail must allow', () => {
+    stubMediaQuery(false);
+    render(Breadcrumb, {
+      props: {
+        crumbs: [{ label: 'Plan', href: '/plans/1' }, { label: 'Plan' }],
+        label: LABEL,
+      },
+    });
+
+    expect(screen.getAllByText('Plan')).toHaveLength(2);
   });
 });
