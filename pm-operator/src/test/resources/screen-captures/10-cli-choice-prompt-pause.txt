@@ -1,0 +1,19 @@
+# Screen captures for PLAN-10: Strict Choice Prompt and a Safe Pause
+# name | scenario | states | command | keys | columnsxrows | locale | environment
+# The screen is the prompt as drawn; the state after the keys (q, 9, Enter) is in the
+# matching .stdout.txt, which carries the whole output including the part after the keys.
+
+pause-q-120x30-en | running-work | - | plan pause fix-relay | q\n | 120x30 | en_US.UTF-8 | -
+pause-9-120x30-en | running-work | - | plan pause fix-relay | 9\nq\n | 120x30 | en_US.UTF-8 | -
+pause-enter-120x30-en | running-work | - | plan pause fix-relay | \n | 120x30 | en_US.UTF-8 | -
+pause-enter-80x24-en | running-work | - | plan pause fix-relay | \n | 80x24 | en_US.UTF-8 | -
+pause-enter-120x30-de | running-work | - | plan pause fix-relay | \n | 120x30 | de_DE.UTF-8 | -
+pause-enter-80x24-de | running-work | - | plan pause fix-relay | \n | 80x24 | de_DE.UTF-8 | -
+
+cancel-q-120x30-en | running-work | - | plan cancel fix-relay | q\n | 120x30 | en_US.UTF-8 | -
+cancel-q-120x30-de | running-work | - | plan cancel fix-relay | v\n | 120x30 | de_DE.UTF-8 | -
+cancel-9-120x30-en | running-work | - | plan cancel fix-relay | because\n9\nq\n | 120x30 | en_US.UTF-8 | -
+cancel-enter-120x30-en | running-work | - | plan cancel fix-relay | because\ny\n | 120x30 | en_US.UTF-8 | -
+cancel-enter-80x24-en | running-work | - | plan cancel fix-relay | because\ny\n | 80x24 | en_US.UTF-8 | -
+cancel-enter-120x30-de | running-work | - | plan cancel fix-relay | grund\nj\n | 120x30 | de_DE.UTF-8 | -
+cancel-enter-80x24-de | running-work | - | plan cancel fix-relay | grund\nj\n | 80x24 | de_DE.UTF-8 | -
