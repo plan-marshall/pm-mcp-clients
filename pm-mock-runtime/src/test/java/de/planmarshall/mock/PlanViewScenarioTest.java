@@ -335,6 +335,10 @@ class PlanViewScenarioTest {
                     get(runtime, "/api/v1/plans/drop-legacy-api/tasks/TASK-042/activity").bodyText());
             assertEquals("TASK-042", activity.taskId());
 
+            var servedActivity = TaskActivity.fromJson(
+                    get(runtime, "/api/v1/plans/docs-typo/tasks/TASK-001/activity").bodyText());
+            assertEquals("TASK-001", servedActivity.taskId());
+
             var unknownActivity = get(runtime,
                     "/api/v1/plans/dynamic-custom-plan/tasks/TASK-042/activity");
             assertEquals(404, unknownActivity.status());

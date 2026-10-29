@@ -122,6 +122,11 @@ class FixtureConsistencyTest {
 
                 var kept = JsonTree.asArray(JsonTree.parse(body(engine, "/api/v1/system/cleanup/kept")));
                 assertNotNull(kept, "the kept list must answer an array");
+                var unchecked = kept.stream()
+                        .map(element -> JsonTree.asObject(element))
+                        .filter(item -> item != null && "token-usage".equals(JsonTree.string(item, "id")))
+                        .findFirst();
+                assertTrue(unchecked.isPresent(), "the unchecked item must be kept");
                 for (var element : kept) {
                     var kind = JsonTree.string(JsonTree.asObject(element), "kind");
                     assertNotNull(CleanupKind.fromValue(kind),

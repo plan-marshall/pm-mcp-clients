@@ -37,6 +37,7 @@ export interface StatusResponse {
   onboarded?: boolean;
   lifecycle_state?: string;
   draining_by?: string;
+  remaining_work_count?: number;
   machine?: {
     name?: string;
     onboarded?: boolean;

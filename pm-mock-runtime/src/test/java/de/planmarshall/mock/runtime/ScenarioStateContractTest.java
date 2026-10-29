@@ -190,6 +190,14 @@ class ScenarioStateContractTest {
                 assertEquals(200, status.status(), stateId + " status");
                 assertEquals(expected, status.json().get("lifecycle_state"),
                         stateId + " lifecycle_state");
+                if ("system.draining".equals(stateId)) {
+                    var facts = factsOf(scenario, stateId);
+                    var blockers = facts != null ? JsonTree.asArray(facts.get("blockers")) : null;
+                    assertNotNull(blockers, "system.draining declares its blockers");
+                    assertEquals(blockers.size(),
+                            JsonTree.integer(status.json(), "remaining_work_count"),
+                            "system.draining remaining_work_count");
+                }
             }
         }
     }
@@ -288,13 +296,19 @@ class ScenarioStateContractTest {
     }
 
     private static @Nullable String fact(Scenario scenario, String stateId, String member) {
-        var state = scenario.state(stateId);
-        if (state == null) {
-            return null;
-        }
-        var representation = JsonTree.asObject(state.representation());
-        var facts = representation == null ? null : JsonTree.asObject(representation.get("facts"));
+        var facts = factsOf(scenario, stateId);
         return facts == null ? null : asString(facts.get(member));
+    }
+
+    /**
+     * @param scenario the scenario
+     * @param stateId  a state id
+     * @return the state's operator facts, or {@code null} when it declares none
+     */
+    private static @Nullable Map<String, Object> factsOf(Scenario scenario, String stateId) {
+        var state = scenario.state(stateId);
+        var representation = state != null ? JsonTree.asObject(state.representation()) : null;
+        return representation != null ? JsonTree.object(representation, "facts") : null;
     }
 
     private static @Nullable String fixtureValue(Scenario scenario, String stateId, String fixture,

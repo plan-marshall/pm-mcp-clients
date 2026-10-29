@@ -115,6 +115,7 @@ describe('the runtime store', () => {
       ...PAIRED_STATUS,
       lifecycle_state: 'draining',
       draining_by: 'the console',
+      remaining_work_count: 2,
     });
     vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
     vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
@@ -127,6 +128,7 @@ describe('the runtime store', () => {
     // Assert
     expect(get(runtimeStore).isDraining).toBe(true);
     expect(get(runtimeStore).drainInfo?.who).toBe('the console');
+    expect(get(runtimeStore).drainInfo?.count).toBe(2);
   });
 
   it('does not open a start page while the browser is unpaired', async () => {

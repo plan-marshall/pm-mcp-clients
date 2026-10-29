@@ -5332,7 +5332,33 @@ public final class MockRuntimeEngine implements AutoCloseable {
             copy.put("draining_by", drainingBy);
             copy.put("can_withdraw", canWithdrawStop);
         }
+        if (lifecycleState == RuntimeLifecycleState.DRAINING) {
+            var facts = currentStateFacts();
+            if (facts != null) {
+                if (!copy.containsKey("draining_by")) {
+                    var by = JsonTree.string(facts, "draining_by");
+                    if (by != null) {
+                        copy.put("draining_by", by);
+                    }
+                }
+                var blockers = JsonTree.asArray(facts.get("blockers"));
+                if (blockers != null) {
+                    copy.put("remaining_work_count", blockers.size());
+                }
+            }
+        }
         response.json(route.status(), copy);
+    }
+
+    /**
+     * @return the active state's operator facts, or {@code null} when it declares none
+     */
+    private @Nullable Map<String, Object> currentStateFacts() {
+        var state = currentScenario.get().state(currentStateId.get());
+        var representation = state != null ? JsonTree.asObject(state.representation()) : null;
+        return representation != null
+                ? JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS))
+                : null;
     }
 
     private void handleRouteWithDynamicStatus(RouteDefinition route, String path, MockHttpResponse response) throws IOException {
@@ -8310,13 +8336,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        // 2. Dynamic plan task activity: /api/v1/plans/{planId}/tasks/{taskId}/activity. The plan
-        // list decides which plan ids exist, so an unknown plan is plan_not_found here too.
+        // 2. Dynamic plan task activity: /api/v1/plans/{planId}/tasks/{taskId}/activity. A plan the
+        // scenario serves either by its own route or by its plan-list entry exists; any other id is
+        // plan_not_found here too.
         if (isPlanActivity) {
             var parts = path.split("/");
             if (parts.length >= 7 && "tasks".equals(parts[5])) {
                 var planId = parts[4];
-                if (planSummary(planId) == null) {
+                if (!knowsPlan(planId)) {
                     response.json(404, Map.of(KEY_ERROR, ERR_PLAN_NOT_FOUND,
                             KEY_MESSAGE, "Plan not found: " + planId));
                     return true;
@@ -8372,6 +8399,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         return false;
+    }
+
+    /**
+     * @param planId the requested plan id
+     * @return {@code true} when the scenario serves the plan, by its own route or by its list entry
+     */
+    private boolean knowsPlan(String planId) {
+        return activeRoute("GET", PATH_PLANS_PREFIX + planId + SUFFIX_PROCESS) != null
+                || planSummary(planId) != null;
     }
 
     /**
