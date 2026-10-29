@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -20,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -31,8 +33,9 @@ import de.planmarshall.mock.scenario.ScenarioRegistry;
 
 /**
  * The plan detail contract of CLI-UC-F-13: {@code GET /api/v1/plans/{id}/process} answers the plan
- * the id names, and an id the scenario does not know is a {@code 404 plan_not_found} rather than a
- * copy of another plan.
+ * the id names, and an id the scenario does not know is a {@code 404 plan_not_found}. A plan the
+ * scenario lists without a route of its own is answered from its own summary entry, not with
+ * another plan's epic, pull request or tree.
  */
 @DisplayName("PlanDetailTest")
 class PlanDetailTest {
@@ -58,13 +61,36 @@ class PlanDetailTest {
                     () -> assertEquals("finalize", JsonTree.string(dropLegacy, "current_phase")),
                     () -> assertEquals("waiting_for_you", JsonTree.string(dropLegacy, "phase_state")),
                     () -> assertEquals("pm-mcp-clients",
-                            JsonTree.string(JsonTree.object(dropLegacy, "project"), "project_id")));
+                            JsonTree.string(JsonTree.object(dropLegacy, "project"), "project_id")),
+                    () -> assertNull(dropLegacy.get("epic"), "the plan names no other plan's epic"),
+                    () -> assertNull(dropLegacy.get("pull_request_number"),
+                            "the plan names no other plan's pull request"),
+                    () -> assertEquals("done", phaseState(dropLegacy, "execute"),
+                            "the execute phase is behind a finalize plan"),
+                    () -> assertEquals("waiting_for_operator", phaseState(dropLegacy, "finalize"),
+                            "the finalize phase is the current one"));
 
             var unknown = answer(engine, "/api/v1/plans/nope/process");
             assertEquals(404, unknown.status(), "an unknown plan id answers 404");
             assertNotNull(unknown.json());
             assertEquals("plan_not_found", unknown.json().get("error"));
+
+            var unknownActivity = answer(engine, "/api/v1/plans/nope/tasks/TASK-001/activity");
+            assertEquals(404, unknownActivity.status(), "an unknown plan id has no task activity");
+            assertEquals("plan_not_found", unknownActivity.json().get("error"));
         }
+    }
+
+    private static @Nullable String phaseState(Map<String, Object> plan, String nodeId) {
+        var nodes = JsonTree.asArray(plan.get("nodes"));
+        assertNotNull(nodes, "the plan must answer a node list");
+        for (var element : nodes) {
+            var node = JsonTree.asObject(element);
+            if (node != null && nodeId.equals(JsonTree.string(node, "node_id"))) {
+                return JsonTree.string(node, "state");
+            }
+        }
+        return null;
     }
 
     private static MockRuntimeEngine engine() {

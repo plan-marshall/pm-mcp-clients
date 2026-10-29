@@ -332,8 +332,14 @@ class PlanViewScenarioTest {
                     "an unknown plan id answers plan_not_found");
 
             var activity = TaskActivity.fromJson(
-                    get(runtime, "/api/v1/plans/dynamic-custom-plan/tasks/TASK-042/activity").bodyText());
+                    get(runtime, "/api/v1/plans/drop-legacy-api/tasks/TASK-042/activity").bodyText());
             assertEquals("TASK-042", activity.taskId());
+
+            var unknownActivity = get(runtime,
+                    "/api/v1/plans/dynamic-custom-plan/tasks/TASK-042/activity");
+            assertEquals(404, unknownActivity.status());
+            assertTrue(unknownActivity.bodyText().contains("plan_not_found"),
+                    "an unknown plan id has no task activity");
 
             var epic = EpicProcess.fromJson(
                     get(runtime, "/api/v1/epics/dynamic-custom-epic/process").bodyText());

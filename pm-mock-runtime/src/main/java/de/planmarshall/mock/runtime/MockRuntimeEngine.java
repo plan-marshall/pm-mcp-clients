@@ -8310,10 +8310,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        // 2. Dynamic plan task activity: /api/v1/plans/{planId}/tasks/{taskId}/activity
+        // 2. Dynamic plan task activity: /api/v1/plans/{planId}/tasks/{taskId}/activity. The plan
+        // list decides which plan ids exist, so an unknown plan is plan_not_found here too.
         if (isPlanActivity) {
             var parts = path.split("/");
             if (parts.length >= 7 && "tasks".equals(parts[5])) {
+                var planId = parts[4];
+                if (planSummary(planId) == null) {
+                    response.json(404, Map.of(KEY_ERROR, ERR_PLAN_NOT_FOUND,
+                            KEY_MESSAGE, "Plan not found: " + planId));
+                    return true;
+                }
                 var taskId = parts[6];
                 var defaultRoute = activeRoute("GET", "/api/v1/plans/fix-relay/tasks/TASK-003/activity");
                 if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
@@ -8327,8 +8334,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // 4. Dynamic plan process route: /api/v1/plans/{planId}/process. The scenario's plan list
-        // decides which ids exist; a plan without a route of its own is served from the template
-        // with its own identity, and an id the scenario does not know is plan_not_found.
+        // decides which ids exist; a plan without a route of its own is served from its own summary
+        // entry, and an id the scenario does not know is plan_not_found.
         if (isPlanProcess) {
             var sub = path.substring(PATH_PLANS_PREFIX.length());
             var planId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
@@ -8341,22 +8348,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 }
                 var defaultRoute = activeRoute("GET", "/api/v1/plans/fix-relay/process");
                 if (defaultRoute != null && defaultRoute.representation() instanceof Map<?, ?> repMap) {
-                    var copy = new LinkedHashMap<String, Object>();
-                    repMap.forEach((k, v) -> copy.put(String.valueOf(k), v));
-                    copy.put(KEY_PLAN_ID, planId);
-                    copy.put("title", summaryText(summary, "title", planId));
-                    copy.put("current_phase", summaryText(summary, "phase", "execute"));
-                    var phaseState = summaryText(summary, "state", "running");
-                    copy.put("phase_state", phaseState);
-                    copy.put("needs_operator", "waiting_for_you".equals(phaseState));
-                    var projectId = summaryText(summary, "project", null);
-                    if (projectId != null) {
-                        copy.put("project", planProjectRef(projectId));
-                    }
-                    // The template's activity names another plan's task, so a synthesized plan
-                    // does not carry it.
-                    copy.remove("activity");
-                    response.json(200, copy);
+                    response.json(200, synthesizedPlan(repMap, planId, summary));
                     return true;
                 }
             }
@@ -8425,6 +8417,85 @@ public final class MockRuntimeEngine implements AutoCloseable {
         project.put("display_name", projectId);
         project.put("link", "/api/v1/projects/" + projectId);
         return project;
+    }
+
+    /**
+     * Builds the process-tree detail of a plan the scenario lists without a route of its own. The
+     * tree carries the plan's own identity and a phase list consistent with its phase and state;
+     * the template's epic, pull request, activity, tokens and duration belong to another plan and
+     * are not copied.
+     *
+     * @param template the template representation
+     * @param planId   the requested plan id
+     * @param summary  the plan's summary entry
+     * @return the representation to answer
+     */
+    private static Map<String, Object> synthesizedPlan(Map<?, ?> template, String planId,
+            Map<String, Object> summary) {
+        var phase = summaryText(summary, "phase", "execute");
+        var phaseState = summaryText(summary, "state", "running");
+        var copy = new LinkedHashMap<String, Object>();
+        copy.put(KEY_PLAN_ID, planId);
+        copy.put("title", summaryText(summary, "title", planId));
+        var projectId = summaryText(summary, "project", null);
+        copy.put("project", projectId != null ? planProjectRef(projectId) : template.get("project"));
+        copy.put("current_phase", phase);
+        copy.put("phase_state", phaseState);
+        if ("waiting_for_you".equals(phaseState)) {
+            copy.put("needs_operator", true);
+        }
+        copy.put("instance_version", 1);
+        copy.put("nodes", phaseNodes(template, phase, phaseState));
+        copy.put("current_position_path", List.of());
+        return copy;
+    }
+
+    /**
+     * @param template   the template representation
+     * @param currentPhase the plan's current phase
+     * @param phaseState the plan's state
+     * @return the template's phase nodes, each marked done, current or planned
+     */
+    private static List<Map<String, Object>> phaseNodes(Map<?, ?> template, String currentPhase,
+            String phaseState) {
+        if (!(template.get("nodes") instanceof List<?> nodes)) {
+            return List.of();
+        }
+        var current = -1;
+        for (var index = 0; index < nodes.size(); index++) {
+            var node = JsonTree.asObject(nodes.get(index));
+            if (node != null && currentPhase.equals(JsonTree.string(node, "node_id"))) {
+                current = index;
+                break;
+            }
+        }
+        var result = new ArrayList<Map<String, Object>>(nodes.size());
+        for (var index = 0; index < nodes.size(); index++) {
+            var node = JsonTree.asObject(nodes.get(index));
+            if (node == null) {
+                continue;
+            }
+            String state;
+            if (current >= 0 && index < current) {
+                state = "done";
+            } else if (index == current) {
+                state = "waiting_for_you".equals(phaseState) ? "waiting_for_operator" : "running";
+            } else {
+                state = "planned";
+            }
+            var phase = new LinkedHashMap<String, Object>();
+            phase.put("node_id", JsonTree.string(node, "node_id"));
+            phase.put("title", JsonTree.string(node, "title"));
+            phase.put("kind", JsonTree.string(node, "kind"));
+            phase.put("state", state);
+            phase.put("run_count", 1);
+            phase.put("current_run", 1);
+            phase.put("duration_seconds", 0);
+            phase.put("sub_nodes", List.of());
+            phase.put("leaf_tasks", List.of());
+            result.add(phase);
+        }
+        return result;
     }
 
     @Override
