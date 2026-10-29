@@ -62,6 +62,7 @@ class EventKindTest {
     @DisplayName("a hold's kind resolves to the operator-wait kind of that name")
     void holdKindsResolve() {
         assertAll(
+                () -> assertEquals(EventKind.OPERATOR_WAIT, EventKind.fromType("operator_wait")),
                 () -> assertEquals(EventKind.STALLED, EventKind.fromType("stalled")),
                 () -> assertEquals(EventKind.CONDITION, EventKind.fromType("condition")),
                 () -> assertEquals(EventKind.LANDING_FAILED, EventKind.fromType("landing_failed")),

@@ -731,18 +731,22 @@ public final class OverviewFullScreenApp {
                             system != null ? system.projectId() : existing.systemProjectId());
     }
 
-    static ConsoleNoticeBuffer.Category categoryOf(Map<String, Object> eventMap) {
-        var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
-        return switch (type) {
-            case "question", "decision", "waiver_request" -> ConsoleNoticeBuffer.Category.DECISION;
-            case "report", "report.sent" -> ConsoleNoticeBuffer.Category.REPORT;
+    /**
+     * @param kind the notice kind resolved from the event name, or {@code null}
+     * @return the buffer category the notice counts as
+     */
+    static ConsoleNoticeBuffer.Category categoryOf(@Nullable String kind) {
+        return switch (kind != null ? kind : "") {
+            case "question", "decision", "waiver_request", "answered_elsewhere" -> ConsoleNoticeBuffer.Category.DECISION;
+            case "report" -> ConsoleNoticeBuffer.Category.REPORT;
             default -> ConsoleNoticeBuffer.Category.NEED;
         };
     }
 
     static int countOf(Map<String, Object> eventMap, ConsoleNoticeBuffer.Category category) {
+        var payload = ConsoleNotice.payloadOf(eventMap);
         if (category == ConsoleNoticeBuffer.Category.REPORT
-                            && eventMap.get("count") instanceof Number number && number.intValue() > 1) {
+                            && payload.get("count") instanceof Number number && number.intValue() > 1) {
             return Math.min(number.intValue(), 10_000);
         }
         return 1;
@@ -1199,15 +1203,17 @@ public final class OverviewFullScreenApp {
             return;
         }
 
-        var notice = ConsoleNotice.fromEventMap(locale, eventMap);
+        var kind = ConsoleNotice.noticeKindOf(eventName, eventMap);
+        var notice = ConsoleNotice.fromEventMap(locale, eventName, eventMap);
         if (notice != null && !context.isConsoleActive()) {
-            var category = categoryOf(eventMap);
+            var category = categoryOf(kind != null ? kind.notice() : null);
             int count = countOf(eventMap, category);
             noticeBuffer.hold(category, count);
         }
 
         var name = eventName != null ? eventName : "";
-        var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
+        var type = kind != null ? kind.notice()
+                            : String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
 
         if (isReportEvent(name, type)) {
             refreshReports();

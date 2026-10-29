@@ -322,10 +322,7 @@ public final class ConsoleNotice {
         }
         return switch (kind) {
             case QUESTION -> questionNotice(locale, payload);
-            case WAIVER_REQUEST -> formatWaiverRequest(locale,
-                                TerminalSanitizer.sanitize(textOr(payload, "id", "WR-?")),
-                                TerminalSanitizer.sanitize(textOr(payload, SCOPE, "plan")),
-                                stringOf(payload, "gate"));
+            case WAIVER_REQUEST -> waiverNotice(locale, payload);
             case ANSWERED_ELSEWHERE -> answeredElsewhere(locale, payload);
             case PAIRED -> formatPairedNotice(locale,
                                 String.valueOf(payload.getOrDefault("label", "unknown")));
@@ -348,7 +345,7 @@ public final class ConsoleNotice {
      * @param event the parsed event frame
      * @return the payload to render from
      */
-    static Map<String, Object> payloadOf(Map<String, Object> event) {
+    public static Map<String, Object> payloadOf(Map<String, Object> event) {
         var data = JsonTree.object(event, "data");
         return data != null ? data : event;
     }
@@ -367,8 +364,11 @@ public final class ConsoleNotice {
         if (byName == null) {
             byName = EventKind.fromEventName(JsonTree.string(event, "event"));
         }
+        if (byName == EventKind.HOLD) {
+            return EventKind.fromType(stringOf(payload, "kind"));
+        }
         if (byName != null) {
-            return byName == EventKind.HOLD ? EventKind.fromType(stringOf(payload, "kind")) : byName;
+            return byName == EventKind.QUESTION && isWaiver(payload) ? EventKind.WAIVER_REQUEST : byName;
         }
         var byType = EventKind.fromType(textOr(payload, "type", ""));
         return byType == EventKind.HOLD ? EventKind.fromType(stringOf(payload, "kind")) : byType;
@@ -413,32 +413,53 @@ public final class ConsoleNotice {
      * @return the question notice
      */
     private static String questionNotice(String locale, Map<String, Object> event) {
-        var decision = JsonTree.object(event, "decision");
-        if (decision == null) {
-            decision = JsonTree.object(event, "question");
-        }
-        var source = decision != null ? decision : event;
-        var id = TerminalSanitizer.sanitize(textOr(source, "id", textOr(event, "id", "Q-???")));
-        var scope = TerminalSanitizer.sanitize(firstText(source, event, SCOPE, "subject", "plan"));
-        if (isWaiver(source, id)) {
-            return formatWaiverRequest(locale, id, scope, stringOf(source, "waiver_gate"));
-        }
-        return formatQuestion(locale, id, scope,
+        var source = decisionSource(event);
+        return formatQuestion(locale,
+                            TerminalSanitizer.sanitize(textOr(source, "id", textOr(event, "id", "Q-???"))),
+                            TerminalSanitizer.sanitize(firstText(source, event, SCOPE, "subject", "plan")),
                             summaryOf(locale, source),
                             firstText(source, event, "description", "text", null),
                             recommendationOf(source));
     }
 
     /**
-     * @param source the decision envelope or the legacy event data
-     * @param id     the id the notice addresses
-     * @return {@code true} when the runtime opened a waiver request, which shares the envelope
-     *         (and the {@code decision.opened} event) with a question
+     * Formats the waiver notice: a waiver request shares the decision envelope (and the
+     * {@code decision.opened} event) with a question, and names its gate instead of a recommendation.
+     *
+     * @param locale the interface locale
+     * @param event  the event data
+     * @return the waiver notice
      */
-    private static boolean isWaiver(Map<String, Object> source, String id) {
+    private static String waiverNotice(String locale, Map<String, Object> event) {
+        var source = decisionSource(event);
+        return formatWaiverRequest(locale,
+                            TerminalSanitizer.sanitize(textOr(source, "id", textOr(event, "id", "WR-?"))),
+                            TerminalSanitizer.sanitize(firstText(source, event, SCOPE, "subject", "plan")),
+                            firstText(source, event, "waiver_gate", "gate", null));
+    }
+
+    /**
+     * @param event the event data
+     * @return the decision envelope the event nests, or the data itself when it is the envelope
+     */
+    private static Map<String, Object> decisionSource(Map<String, Object> event) {
+        var decision = JsonTree.object(event, "decision");
+        if (decision == null) {
+            decision = JsonTree.object(event, "question");
+        }
+        return decision != null ? decision : event;
+    }
+
+    /**
+     * @param event the event data, or the decision envelope
+     * @return {@code true} when the runtime opened a waiver request rather than a question
+     */
+    private static boolean isWaiver(Map<String, Object> event) {
+        var source = decisionSource(event);
         return Boolean.TRUE.equals(JsonTree.bool(source, "is_waiver"))
+                            || "waiver".equals(stringOf(source, "kind"))
                             || stringOf(source, "waiver_gate") != null
-                            || id.startsWith("WR-");
+                            || textOr(source, "id", "").startsWith("WR-");
     }
 
     private static @Nullable String summaryOf(String locale, Map<String, Object> source) {
@@ -505,17 +526,42 @@ public final class ConsoleNotice {
     }
 
     /**
-     * @param event the event data
-     * @return the scope a notice names: the subject of a hold, else the plan, epic, or scope it carries
+     * @param event the event frame, its payload, or a decision envelope
+     * @return the scope a notice names: the subject of a hold, the subject of a decision, the plan,
+     *         epic, or scope it carries, or the scope the runtime's envelope declares
      */
     static String scopeOf(Map<String, Object> event) {
-        for (var key : List.of(SCOPE, "subject_id", "epic", "plan", "plan_id", "epic_id", KEY_PROJECT)) {
-            var value = stringOf(event, key);
+        var payload = payloadOf(event);
+        var candidates = List.of(event, payload, decisionSource(payload), decisionSource(event));
+        for (var candidate : candidates) {
+            var found = firstScopeString(candidate);
+            if (found != null) {
+                return found;
+            }
+        }
+        var declared = JsonTree.object(event, "scope");
+        if (declared != null) {
+            var id = stringOf(declared, "id");
+            if (id != null && !id.isBlank()) {
+                return id;
+            }
+            var projectId = stringOf(declared, "project_id");
+            if (projectId != null && !projectId.isBlank()) {
+                return projectId;
+            }
+        }
+        var project = stringOf(event, KEY_PROJECT);
+        return project != null && !project.isBlank() ? project : "";
+    }
+
+    private static @Nullable String firstScopeString(Map<String, Object> map) {
+        for (var key : List.of(SCOPE, "subject_id", "subject", "epic", "plan", "plan_id", "epic_id")) {
+            var value = stringOf(map, key);
             if (value != null && !value.isBlank()) {
                 return value;
             }
         }
-        return "";
+        return null;
     }
 
     /**

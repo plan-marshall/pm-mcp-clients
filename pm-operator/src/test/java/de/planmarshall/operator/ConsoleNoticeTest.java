@@ -99,7 +99,7 @@ class ConsoleNoticeTest {
         }
 
         @Test
-        @DisplayName("formats hold notices for all kinds")
+        @DisplayName("holds in English")
         void holdNotices() {
             assertAll(
                                 () -> assertEquals("◆ Plan fix-relay waits for you: token approval",
@@ -362,11 +362,14 @@ class ConsoleNoticeTest {
         void typeFallback() {
             var unnamed = ConsoleNotice.fromEventMap("en", null, Map.of(
                                 "type", "stalled", "scope", "fix-relay", "reason", "worker died"));
+            var wait = ConsoleNotice.fromEventMap("en", null, Map.of(
+                                "type", "operator_wait", "scope", "fix-relay", "detail", "token approval"));
             var unknownName = ConsoleNotice.fromEventMap("en", "task.off_track", Map.of(
                                 "type", "question", "id", "Q-001", "scope", "plan fix-relay"));
 
             assertAll(
                                 () -> assertEquals("◆ Plan fix-relay stalled: worker died", unnamed),
+                                () -> assertEquals("◆ Plan fix-relay waits for you: token approval", wait),
                                 () -> assertNotNull(unknownName),
                                 () -> assertTrue(unknownName.contains("◆ Question Q-001 · plan fix-relay"), unknownName)
             );

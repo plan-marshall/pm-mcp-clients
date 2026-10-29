@@ -129,12 +129,13 @@ class ScreenCaptureIT {
                 runtime.goToState(state);
             }
             try (var session = start(runtime, capture)) {
-                assertTrue(awaitQuiet(session, !capture.keys().isEmpty()),
+                var consoleCapture = capture.command().isEmpty();
+                assertTrue(awaitQuiet(session, !capture.keys().isEmpty(), consoleCapture),
                                     capture.name() + " did not settle within " + READY_TIMEOUT);
                 if (!capture.broadcast().isEmpty()) {
                     var drawn = session.rawOutput().length();
                     broadcast(runtime, capture.broadcast());
-                    assertTrue(awaitBroadcast(session, drawn),
+                    assertTrue(awaitBroadcast(session, drawn, consoleCapture),
                                         capture.name() + " did not settle after the broadcast within " + READY_TIMEOUT);
                 }
                 var screen = session.screen();
@@ -185,7 +186,8 @@ class ScreenCaptureIT {
      * @return {@code true} when the screen settled
      * @throws InterruptedException if interrupted
      */
-    private static boolean awaitBroadcast(PtySession session, int drawn) throws InterruptedException {
+    private static boolean awaitBroadcast(PtySession session, int drawn, boolean consoleCapture)
+                        throws InterruptedException {
         var graceEnd = System.nanoTime() + BROADCAST_GRACE.toNanos();
         while (session.rawOutput().length() == drawn && System.nanoTime() < graceEnd) {
             LockSupport.parkNanos(POLL.toNanos());
@@ -193,7 +195,7 @@ class ScreenCaptureIT {
                 throw new InterruptedException();
             }
         }
-        return awaitQuiet(session, false);
+        return awaitQuiet(session, false, consoleCapture);
     }
 
     private static void broadcast(MockRuntime runtime, String body) throws IOException {
@@ -227,10 +229,13 @@ class ScreenCaptureIT {
      *
      * @param session     the running session
      * @param expectsView whether the capture types keys and therefore expects an answer
+     * @param console     whether the capture drives the line-oriented console, whose prompt is
+     *                    itself a settled state
      * @return {@code true} when the screen settled before the deadline
      * @throws InterruptedException if interrupted
      */
-    private static boolean awaitQuiet(PtySession session, boolean expectsView) throws InterruptedException {
+    private static boolean awaitQuiet(PtySession session, boolean expectsView, boolean console)
+                        throws InterruptedException {
         var start = System.nanoTime();
         var deadline = start + READY_TIMEOUT.toNanos();
         var lastLength = 0;
@@ -242,7 +247,7 @@ class ScreenCaptureIT {
                 if (quietSince == 0L) {
                     quietSince = System.nanoTime();
                 } else if (System.nanoTime() - quietSince >= SETTLE.toNanos()
-                                    && (!expectsView || settled(session, raw, start))) {
+                                    && (!expectsView || settled(session, raw, start, console))) {
                     return true;
                 }
             } else {
@@ -265,8 +270,9 @@ class ScreenCaptureIT {
      *         prompt suffix and past {@link #MIN_WAIT}, or a full-screen view that entered the
      *         alternate screen
      */
-    private static boolean settled(PtySession session, String raw, long start) {
-        if (raw.contains(StartPrompt.SUFFIX) || raw.contains(CONSOLE_PROMPT) || raw.contains(BADGED_CONSOLE_PROMPT)) {
+    private static boolean settled(PtySession session, String raw, long start, boolean console) {
+        if (raw.contains(StartPrompt.SUFFIX) || (console
+                            && (raw.contains(CONSOLE_PROMPT) || raw.contains(BADGED_CONSOLE_PROMPT)))) {
             return System.nanoTime() - start >= MIN_WAIT.toNanos();
         }
         return session.screen().alternateScreenActive();

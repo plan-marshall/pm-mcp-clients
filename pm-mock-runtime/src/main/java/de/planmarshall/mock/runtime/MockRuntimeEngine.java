@@ -6002,14 +6002,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     /**
      * Applies the state effect an event announces, so a simulated event leaves a coherent runtime:
-     * an answer or a close removes the decision from the open ones the status reports, and the
-     * console's badge therefore drops with it.
+     * an opened decision joins the open ones, an answer or a close removes it, and the console's
+     * badge therefore follows.
      *
      * @param event the event name
      * @param data  the event payload
      */
     private void applyStateEffectOf(String event, Object data) {
-        if (!("decision.answered".equals(event) || "decision.closed".equals(event))) {
+        if (!("decision.opened".equals(event) || "decision.answered".equals(event)
+                            || "decision.closed".equals(event))) {
             return;
         }
         var payload = JsonTree.asObject(data);

@@ -518,6 +518,18 @@ public final class PmConsole {
     }
 
     /**
+     * @param kind the notice kind
+     * @return the catalogue key of the label a desktop notification names the kind by
+     */
+    private static String notificationLabelKey(String kind) {
+        return switch (kind) {
+            case "question" -> "overview.needs.decision";
+            case "waiver_request" -> "overview.needs.waiver_request";
+            default -> "overview.needs." + kind;
+        };
+    }
+
+    /**
      * @param eventName the SSE event name, or {@code null}
      * @return {@code true} when the event can change what waits for the operator
      */
@@ -598,14 +610,11 @@ public final class PmConsole {
         if (!notify || kind == null || !NOTIFIED_KINDS.contains(kind)) {
             return;
         }
-        var scope = ConsoleNotice.scopeOf(ConsoleNotice.payloadOf(eventMap));
+        var scope = ConsoleNotice.scopeOf(eventMap);
         if (scope.isBlank()) {
             return;
         }
-        var key = "overview.needs." + kind;
-        var label = MessageCatalogue.hasKey(locale(), key)
-                            ? MessageCatalogue.format(locale(), key, Map.of())
-                            : kind;
+        var label = MessageCatalogue.format(locale(), notificationLabelKey(kind), Map.of());
         var payload = MessageCatalogue.format(locale(), "operator.console.notification.line",
                             Map.of("scope", TerminalSanitizer.sanitize(scope),
                                                 "kind", TerminalSanitizer.sanitize(label)));

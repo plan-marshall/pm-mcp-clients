@@ -63,7 +63,7 @@ public enum EventKind {
     FRESH_CODE("fresh_code", List.of("fresh_code"), List.of()),
 
     /** A plan or epic waits for the operator. */
-    OPERATOR_WAIT(NeedsOperatorKind.WAITS_FOR_YOU.value(), List.of("operator_wait"), List.of()),
+    OPERATOR_WAIT("operator_wait", List.of("operator_wait"), List.of()),
 
     /** A plan paused for an integrity reason. */
     INTEGRITY_PAUSE(NeedsOperatorKind.INTEGRITY_PAUSE.value(), List.of("integrity_pause"), List.of()),
