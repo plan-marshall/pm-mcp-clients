@@ -595,6 +595,27 @@ class ControlDialoguesTest {
     }
 
     @Test
+    @DisplayName("cancelling an epic can let its plans run on")
+    void workActionCancelEpicKeepsPlans() throws Exception {
+        var body = new String[1];
+        serve((request, response) -> {
+            if (request.target().endsWith("/actions/cancel")) {
+                body[0] = request.bodyText();
+                response.json(200, EPIC_ACTIONS);
+            } else if (request.target().endsWith("/actions")) {
+                response.json(200, EPIC_ACTIONS);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("9\n2\nbecause the scope moved\ny\n");
+        assertEquals(0, dialogue("epic", "e", "cancel"), out.toString());
+        assertTrue(out.toString().contains("9 is not offered here: 1-2, q, ?"), out.toString());
+        assertNotNull(body[0], out.toString());
+        assertTrue(body[0].contains("\"with_plans\":false"), body[0]);
+    }
+
+    @Test
     @DisplayName("an archive that does not pass names what to decide")
     void workActionArchiveNotPassed() throws Exception {
         serve((request, response) -> {
@@ -886,7 +907,7 @@ class ControlDialoguesTest {
                 response.send(404, null, "");
             }
         });
-        virtual.type("the approach changed\n1\ny\n");
+        virtual.type("the approach changed\ny\n");
         var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()),
                             "plan", "cancel", "p");
         assertEquals(0, code, out.toString());

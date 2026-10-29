@@ -28,10 +28,10 @@ import de.planmarshall.api.message.MessageCatalogue;
  * With {@code --no-input} nothing is read: a question that has no answer among the arguments stops
  * the run with {@link MissingInputException}, which names the state and what it needs.
  */
-final class StartPrompt {
+public final class StartPrompt {
 
     /** The suffix after every question, as the terminal client draws it. */
-    static final String SUFFIX = "  \u203a ";
+    public static final String SUFFIX = "  \u203a ";
     private static final String EMPTY = "";
 
     private final OperatorContext context;
@@ -46,7 +46,7 @@ final class StartPrompt {
      * @param locale  the interface locale
      * @param noInput whether the verb may ask nothing
      */
-    StartPrompt(OperatorContext context, PrintWriter out, String locale, boolean noInput) {
+    public StartPrompt(OperatorContext context, PrintWriter out, String locale, boolean noInput) {
         this.context = Objects.requireNonNull(context, "context");
         this.out = Objects.requireNonNull(out, "out");
         this.locale = Objects.requireNonNull(locale, "locale");
@@ -56,14 +56,21 @@ final class StartPrompt {
     /**
      * @return the interface locale
      */
-    String locale() {
+    public String locale() {
         return locale;
+    }
+
+    /**
+     * @return the writer of the dialogue
+     */
+    public PrintWriter out() {
+        return out;
     }
 
     /**
      * @return {@code true} if the verb may ask
      */
-    boolean asks() {
+    public boolean asks() {
         return !noInput;
     }
 
@@ -109,10 +116,11 @@ final class StartPrompt {
      */
     String ask(String key, Map<String, ?> args, String state, String need, @Nullable String entryId) {
         requireAsk(state, need, entryId);
+        var lineReader = reader();
         var question = MessageCatalogue.format(locale, key, args);
         out.print(question + SUFFIX);
         out.flush();
-        return readLine();
+        return read(lineReader);
     }
 
     /**
@@ -126,9 +134,10 @@ final class StartPrompt {
      */
     String askRaw(String question, String state, String need, @Nullable String entryId) {
         requireAsk(state, need, entryId);
+        var lineReader = reader();
         out.print(question + SUFFIX);
         out.flush();
-        return readLine();
+        return read(lineReader);
     }
 
     /**
@@ -142,9 +151,10 @@ final class StartPrompt {
      */
     String askInline(String rendered, String state, String need, @Nullable String entryId) {
         requireAsk(state, need, entryId);
+        var lineReader = reader();
         out.print(rendered);
         out.flush();
-        return readLine();
+        return read(lineReader);
     }
 
     /**
@@ -175,15 +185,22 @@ final class StartPrompt {
         }
     }
 
-    private String readLine() {
+    /**
+     * Reads one line and trims it. The reader is handed in so the caller opens it — and answers
+     * JLine's terminal probe — before it draws its question, never after the operator started typing.
+     *
+     * @param reader the open line reader
+     * @return the trimmed answer
+     */
+    private static String read(LineReader reader) {
         try {
-            return Objects.requireNonNullElse(reader().readLine(), EMPTY).trim();
+            return Objects.requireNonNullElse(reader.readLine(), EMPTY).trim();
         } catch (EndOfFileException | UserInterruptException _) {
             throw new StartLeftException();
         }
     }
 
-    private LineReader reader() {
+    public LineReader reader() {
         if (reader == null) {
             try {
                 reader = LineReaderBuilder.builder().terminal(context.createTerminal()).build();
@@ -195,35 +212,38 @@ final class StartPrompt {
     }
 
     /** The run stopped because the operator left the dialogue. */
-    static final class StartLeftException extends RuntimeException {
+    public static final class StartLeftException extends RuntimeException {
         private static final long serialVersionUID = 1L;
+
+        public StartLeftException() {
+            super();
+        }
     }
 
     /** The run stopped because {@code --no-input} met a state that needs the operator. */
-    static final class MissingInputException extends RuntimeException {
+    public static final class MissingInputException extends RuntimeException {
 
         private static final long serialVersionUID = 1L;
         private final String state;
         private final String need;
         private final @Nullable String entryId;
 
-        MissingInputException(String state, String need, @Nullable String entryId) {
+        public MissingInputException(String state, String need, @Nullable String entryId) {
             super(state + " needs " + need);
             this.state = state;
             this.need = need;
             this.entryId = entryId;
         }
 
-        String state() {
+        public String state() {
             return state;
         }
 
-        String need() {
+        public String need() {
             return need;
         }
 
-        @Nullable
-        String entryId() {
+        public @Nullable String entryId() {
             return entryId;
         }
     }

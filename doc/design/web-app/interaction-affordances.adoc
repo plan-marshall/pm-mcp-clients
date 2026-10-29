@@ -42,6 +42,10 @@ A control's visible or accessible label is identified by a catalogue key stem `X
 |`web.frame.home`
 |`web.frame.home.title`
 |Open the overview or the projects, wherever you usually start
+
+|`web.common.more`
+|`web.common.more.title`
+|Show the acts that do not fit in the bar
 |===
 
 The suffix is part of the key's meaning, not decoration: a `.title` key is an advisory, and a view passes it through `data-advisory` (or an authored `title`) rather than rendering it as visible copy. Both locales carry it; the catalogue's parity test fails on a key that exists in only one.
@@ -82,7 +86,7 @@ A control is audited by its class, not one by one. Every class below must carry 
 |===
 |Class |Why it needs one
 
-|Icon-only controls (the language switch, the favourite star, the notice dismiss)
+|Icon-only controls (the language switch, the favourite star, the notice dismiss, an act bar's overflow menu)
 |The glyph or the icon does not name the action; the advisory is the only explanation in words.
 
 |Destructive or irreversible actions (waive or decline, discard the draft, release or unenrol a project, stop the runtime now)

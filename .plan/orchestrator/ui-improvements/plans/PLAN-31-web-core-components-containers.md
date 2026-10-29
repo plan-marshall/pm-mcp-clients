@@ -44,6 +44,14 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Re-grounded at HEAD a2f4d2c4: `web-core-components-controls` (PLAN-25) shipped, so the development page exists and
+  is built for development only (`lib/dev/devRouteExclusion.ts`, `vite.config.ts` drop `/dev` from the production
+  build). Add the container sections to that page; do not re-create it or touch the exclusion. `Button`,
+  `IconButton`, `StatusLabel`, `CountBadge`, `Chip` and `ActionBar` exist: `Tabs` counts use `CountBadge`, the
+  `Dialog` footer and the `Toast` act use `Button`. The page's copy is in the `dev.*` keys of the shared `common`
+  pack (`common.{de,en}.properties`); add the new sections' keys there. None of `Card`, `KeyValueList`, `Tabs`,
+  `Breadcrumb`, `Dialog`, `Toast`, `AttentionStrip` exists yet; the nine existing `*Modal.svelte` components are not
+  migrated here (VD-S-06 runs with the view plans).
 - Ports of this plan: mock web port `20310`, app port `20311` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Browser check of the rendered output, with the Playwright MCP server of `opencode.json`, following `AGENTS.md` § Browser checks: start the mock (`./mvnw -pl pm-mock-runtime exec:java -Dexec.args="--scenario <scenario> --web-port 20310"`), then `PM_MOCK_WEB_PORT=20310 ./pm-web-app/start.sh -p 20311` (read the port from `pm-web-app/target/pm-web-app.port`); the MCP browser starts with an empty profile, so pair again every session with a fresh single-use code (`POST http://127.0.0.1:20310/mock/pairing`, then open `<app>/pair#code=<CODE>`), never through the `Network:` URL; reach a state with `POST /mock/goto/<state>` and a reload. Check each target in `de` and `en`, dark and light, at 1440 × 900 and 390 × 844 (`browser_resize`). Read the page through `browser_snapshot` (the accessibility tree is the evidence of text and structure) and keep one `browser_take_screenshot` per target; the server writes to its `--output-dir` `.plan/temp/playwright-mcp/` (`opencode.json`), so name every file `{plan}-{target}-{before|after}` and never write to the repository root. Take a baseline snapshot BEFORE the change and one AFTER, and record both paths in the progress record. The visible text of a checked view shows no raw enum, state id, `{placeholder}`, ISO time or emoji outside model-written blocks. Stop the app (`./pm-web-app/stop.sh`) and the mock afterwards. If the Playwright MCP server is not available in the run, the browser Done-when clauses are NOT met — a blocker reported as such, never replaced by a unit test or skipped.
 - This project analyses its pull requests with SonarCloud (project `plan-marshall_pm-mcp-clients`, `.github/project.yml`; provider `plan-marshall:workflow-integration-sonar` and step `default:sonar-roundtrip` in `.plan/marshal.json`) — treat it as `sonar: configured` even where `runbook_lane resolve` reports `not_configured` (its `credentials_config` block is missing; see the epic's Watches). An open Sonar issue is fixed in a pushed commit, or dismissed with a stated reason recorded as `{issue-key}: {reason}` in the run's progress record and transmitted through the plan-less transition verb, `plan-marshall:workflow-integration-sonar:sonar_rest transition --issue-key {key} --transition {falsepositive|wontfix}`. A dismissal the run cannot transmit is a blocker, never a silent pass. The merge gate reads the open-issue count at the head — `0` confirmed, or every remaining issue dismissed — and an `undecidable` read blocks.
@@ -63,7 +71,7 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-web-app/src/lib/components/Dialog.svelte` — absent at HEAD c4dc9bb4; created by this plan
 - OBSERVED: `pm-web-app/src/lib/components/Toast.svelte` — absent at HEAD c4dc9bb4; created by this plan
 - OBSERVED: `pm-web-app/src/lib/components/AttentionStrip.svelte` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `pm-web-app/src/routes/dev/components/+page.svelte` — absent at HEAD c4dc9bb4; created by this plan
+- OBSERVED: `pm-web-app/src/routes/dev/components/+page.svelte` — present at HEAD 8b19a4a7 (created by `web-core-components-controls`, PLAN-25, 176 lines); extended by this plan, not created
 
 ## Dependencies and Sequencing
 
