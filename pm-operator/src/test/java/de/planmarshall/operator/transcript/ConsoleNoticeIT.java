@@ -11,6 +11,7 @@ package de.planmarshall.operator.transcript;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import io.nayuki.qrcodegen.QrCode;
 import java.io.IOException;
@@ -19,7 +20,6 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.locks.LockSupport;
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
 
@@ -81,12 +81,9 @@ class ConsoleNoticeIT {
         try (var runtime = start();
              var session = open(runtime)) {
             assertTrue(session.awaitText(BADGE, TIMEOUT), session.rawOutput());
-            assertTrue(awaitEventSubscription(runtime), "the console did not subscribe to the event stream");
 
-            broadcast(runtime, DECISION_OPENED);
+            broadcastUntilDrawn(runtime, DECISION_OPENED, session, "◆ Question Q-042 · plan fix-relay · blocks the plan");
 
-            assertTrue(session.awaitText("◆ Question Q-042 · plan fix-relay · blocks the plan", TIMEOUT),
-                                session.rawOutput());
             assertTrue(session.awaitText("Recommended: 2) Rebase onto main", TIMEOUT), session.rawOutput());
             assertTrue(aboveThePrompt(session.screenText(), "◆ Question Q-042"), session.screenText());
             assertEquals(1, DialogueHarness.times(session.rawOutput(), "◆ Question Q-042"),
@@ -103,14 +100,11 @@ class ConsoleNoticeIT {
         try (var runtime = start();
              var session = open(runtime)) {
             assertTrue(session.awaitText(BADGE, TIMEOUT), session.rawOutput());
-            assertTrue(awaitEventSubscription(runtime), "the console did not subscribe to the event stream");
 
-            broadcast(runtime, DECISION_ANSWERED);
+            broadcastUntilDrawn(runtime, DECISION_ANSWERED, session,
+                                "– Q-007 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.");
 
-            assertTrue(session.awaitText(
-                                                    "– Q-007 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.",
-                                                    TIMEOUT),
-                                session.rawOutput());
+            assertTrue(session.awaitText("– Q-007 was answered", TIMEOUT), session.rawOutput());
             assertTrue(aboveThePrompt(session.screenText(), "– Q-007 was answered"), session.screenText());
             assertEquals(1, DialogueHarness.times(session.rawOutput(), "– Q-007 was answered"),
                                 "the notice is printed once, not once per redraw");
@@ -143,24 +137,35 @@ class ConsoleNoticeIT {
     }
 
     /**
-     * @param runtime the mock runtime
-     * @return {@code true} once the console has subscribed to the event stream, so a broadcast that
-     *         follows is delivered rather than lost
+     * Waits for the runtime event subscription, then broadcasts until the screen shows the expected
+     * line. The request is recorded before the engine registers the stream, so a single broadcast can
+     * slip in between; re-broadcasting until the line is drawn removes that race without the test
+     * needing a signal the runtime does not publish.
+     *
+     * @param runtime  the mock runtime
+     * @param body     the broadcast body
+     * @param session  the running session
+     * @param expected the text the drawn notice carries
      * @throws InterruptedException if interrupted while waiting
      */
-    private static boolean awaitEventSubscription(MockRuntime runtime) throws InterruptedException {
+    private static void broadcastUntilDrawn(MockRuntime runtime, String body, PtySession session,
+                        String expected) throws InterruptedException {
         var deadline = System.nanoTime() + TIMEOUT.toNanos();
         while (System.nanoTime() < deadline) {
-            if (runtime.requests().stream()
-                                .anyMatch(request -> "/api/v1/events".equals(request.target()))) {
-                return true;
-            }
-            LockSupport.parkNanos(50_000_000L);
-            if (Thread.interrupted()) {
-                throw new InterruptedException();
+            broadcastQuietly(runtime, body);
+            if (session.awaitText(expected, Duration.ofSeconds(2))) {
+                return;
             }
         }
-        return false;
+        fail("the broadcast never drew: " + expected);
+    }
+
+    private static void broadcastQuietly(MockRuntime runtime, String body) {
+        try {
+            broadcast(runtime, body);
+        } catch (IOException | AssertionError _) {
+            // the runtime may still be starting the stream; the next attempt is sent again
+        }
     }
 
     private void leave(PtySession session) throws IOException, InterruptedException {
