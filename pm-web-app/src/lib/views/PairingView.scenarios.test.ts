@@ -1,10 +1,39 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import { get } from 'svelte/store';
+import qrcode from 'qrcode-generator';
 import PairingView from './PairingView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient } from '../api/client';
+
+/**
+ * @param value the payload to encode
+ * @returns the dark-module coordinates of the QR code this payload produces
+ */
+function encodedModules(value: string): string {
+  const code = qrcode(0, 'M');
+  code.addData(value);
+  code.make();
+  const count = code.getModuleCount();
+  const dark: string[] = [];
+  for (let row = 0; row < count; row++) {
+    for (let col = 0; col < count; col++) {
+      if (code.isDark(row, col)) dark.push(`${col},${row}`);
+    }
+  }
+  return dark.join(' ');
+}
+
+/**
+ * @param svg the rendered QR code
+ * @returns the dark-module coordinates the page draws, in document order
+ */
+function drawnModules(svg: Element): string {
+  return Array.from(svg.querySelectorAll('rect[x]'))
+    .map((rect) => `${rect.getAttribute('x')},${rect.getAttribute('y')}`)
+    .join(' ');
+}
 
 /**
  * The pairing page and the entry (UC-ENT-1) as a view test against `web-pairing` and `entry`.
@@ -168,5 +197,9 @@ describe('PairingView against the mock runtime scenarios', () => {
     const svg = screen.getByTestId('pairing-qr').querySelector('svg');
     expect(svg).not.toBeNull();
     expect(svg?.querySelectorAll('rect').length).toBeGreaterThan(20);
+    // The drawn modules are the ones the pairing URL produces, not merely some QR code.
+    expect(drawnModules(svg as Element)).toBe(
+      encodedModules(`${window.location.origin}/pair#code=KXQBMRTN`),
+    );
   });
 });

@@ -85,14 +85,18 @@ describe('the two tab assets', () => {
   });
 
   it('adds the attention dot only to the attention variant', () => {
-    const calm = fs.readFileSync(path.join(STATIC_DIR, 'brand-mark.svg'), 'utf-8');
-    const attention = fs.readFileSync(
-      path.join(STATIC_DIR, 'brand-mark-attention.svg'),
-      'utf-8',
-    );
+    const attentionFill = lightTokenValue('--color-attention');
+    /**
+     * @param file the asset file name under `static/`
+     * @returns the circle drawn in the attention colour, or null
+     */
+    const dotOf = (file: string) =>
+      new DOMParser()
+        .parseFromString(fs.readFileSync(path.join(STATIC_DIR, file), 'utf-8'), 'image/svg+xml')
+        .querySelector(`circle[fill="${attentionFill}"]`);
 
-    expect(calm).not.toContain(lightTokenValue('--color-attention'));
-    expect(attention).toContain(lightTokenValue('--color-attention'));
+    expect(dotOf('brand-mark.svg')).toBeNull();
+    expect(dotOf('brand-mark-attention.svg')).not.toBeNull();
   });
 
   it('bakes the light-theme brand and attention colours of the token catalogue', () => {
