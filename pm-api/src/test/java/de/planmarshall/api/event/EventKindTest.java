@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.HashSet;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -29,8 +28,8 @@ class EventKindTest {
         for (var kind : EventKind.values()) {
             for (var event : kind.events()) {
                 assertAll(
-                                    () -> assertTrue(seen.add(event), "the event name is mapped twice: " + event),
-                                    () -> assertEquals(kind, EventKind.fromEventName(event))
+                        () -> assertTrue(seen.add(event), "the event name is mapped twice: " + event),
+                        () -> assertEquals(kind, EventKind.fromEventName(event))
                 );
             }
         }
@@ -40,11 +39,11 @@ class EventKindTest {
     @DisplayName("the named events of the one event contract resolve")
     void namedEventsOfTheContract() {
         assertAll(
-                            () -> assertEquals(EventKind.QUESTION, EventKind.fromEventName("decision.opened")),
-                            () -> assertEquals(EventKind.ANSWERED_ELSEWHERE, EventKind.fromEventName("decision.answered")),
-                            () -> assertEquals(EventKind.HOLD, EventKind.fromEventName("hold.opened")),
-                            () -> assertEquals(EventKind.LANDING_FAILED, EventKind.fromEventName("landing.failed")),
-                            () -> assertEquals(EventKind.REPORT, EventKind.fromEventName("report.sent"))
+                () -> assertEquals(EventKind.QUESTION, EventKind.fromEventName("decision.opened")),
+                () -> assertEquals(EventKind.ANSWERED_ELSEWHERE, EventKind.fromEventName("decision.answered")),
+                () -> assertEquals(EventKind.HOLD, EventKind.fromEventName("hold.opened")),
+                () -> assertEquals(EventKind.LANDING_FAILED, EventKind.fromEventName("landing.failed")),
+                () -> assertEquals(EventKind.REPORT, EventKind.fromEventName("report.sent"))
         );
     }
 
@@ -52,10 +51,10 @@ class EventKindTest {
     @DisplayName("the legacy type tokens resolve, the event names do not")
     void typeTokensAreTheFallback() {
         assertAll(
-                            () -> assertEquals(EventKind.QUESTION, EventKind.fromType("question")),
-                            () -> assertEquals(EventKind.QUESTION, EventKind.fromType("decision")),
-                            () -> assertEquals(EventKind.REPORT, EventKind.fromType("report.sent")),
-                            () -> assertNull(EventKind.fromEventName("question"))
+                () -> assertEquals(EventKind.QUESTION, EventKind.fromType("question")),
+                () -> assertEquals(EventKind.QUESTION, EventKind.fromType("decision")),
+                () -> assertEquals(EventKind.REPORT, EventKind.fromType("report.sent")),
+                () -> assertNull(EventKind.fromEventName("question"))
         );
     }
 
@@ -63,11 +62,11 @@ class EventKindTest {
     @DisplayName("a hold's kind resolves to the operator-wait kind of that name")
     void holdKindsResolve() {
         assertAll(
-                            () -> assertEquals(EventKind.STALLED, EventKind.fromType("stalled")),
-                            () -> assertEquals(EventKind.CONDITION, EventKind.fromType("condition")),
-                            () -> assertEquals(EventKind.LANDING_FAILED, EventKind.fromType("landing_failed")),
-                            () -> assertEquals(EventKind.HELD, EventKind.fromType("held")),
-                            () -> assertEquals(EventKind.SETUP, EventKind.fromType("setup"))
+                () -> assertEquals(EventKind.STALLED, EventKind.fromType("stalled")),
+                () -> assertEquals(EventKind.CONDITION, EventKind.fromType("condition")),
+                () -> assertEquals(EventKind.LANDING_FAILED, EventKind.fromType("landing_failed")),
+                () -> assertEquals(EventKind.HELD, EventKind.fromType("held")),
+                () -> assertEquals(EventKind.SETUP, EventKind.fromType("setup"))
         );
     }
 
@@ -75,13 +74,13 @@ class EventKindTest {
     @DisplayName("an unmapped or absent value names no kind")
     void unmappedValues() {
         assertAll(
-                            () -> assertNull(EventKind.fromEventName("task.off_track")),
-                            () -> assertNull(EventKind.fromEventName("hold.cleared")),
-                            () -> assertNull(EventKind.fromEventName(null)),
-                            () -> assertNull(EventKind.fromEventName("")),
-                            () -> assertNull(EventKind.fromType("unknown_ping")),
-                            () -> assertNull(EventKind.fromType(" ")),
-                            () -> assertNull(EventKind.fromType(null))
+                () -> assertNull(EventKind.fromEventName("task.off_track")),
+                () -> assertNull(EventKind.fromEventName("hold.cleared")),
+                () -> assertNull(EventKind.fromEventName(null)),
+                () -> assertNull(EventKind.fromEventName("")),
+                () -> assertNull(EventKind.fromType("unknown_ping")),
+                () -> assertNull(EventKind.fromType(" ")),
+                () -> assertNull(EventKind.fromType(null))
         );
     }
 }

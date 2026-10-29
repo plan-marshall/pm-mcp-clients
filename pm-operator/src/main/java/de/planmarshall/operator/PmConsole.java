@@ -521,6 +521,7 @@ public final class PmConsole {
         return eventName != null && (eventName.startsWith("decision.") || eventName.startsWith("hold.")
                             || eventName.startsWith("condition.") || eventName.startsWith("needs_operator."));
     }
+
     private static int countOf(Map<String, Object> eventMap, ConsoleNoticeBuffer.Category category) {
         var payload = ConsoleNotice.payloadOf(eventMap);
         if (category == ConsoleNoticeBuffer.Category.REPORT

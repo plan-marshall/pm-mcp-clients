@@ -60,15 +60,15 @@ class ConsoleNoticeIT {
     private static final String BADGE_AFTER_ONE_ANSWER = "pm [2 questions · 1 integrity pause · 1 held] \u203a";
 
     private static final String DECISION_OPENED = """
-                    {"event":"decision.opened","data":{"decision":{"id":"Q-007","subject":"plan fix-relay",\
-                    "blocks":"plan","description":"The change conflicts with main in RelayServer.java.",\
-                    "parts":[{"part_id":"1","question":"How should the conflict be resolved?",\
-                    "options":[{"key":"1","label":"Merge main into the branch"},\
-                    {"key":"2","label":"Rebase onto main"}],"recommendation":"2"}]}}}""";
+                        {"event":"decision.opened","data":{"decision":{"id":"Q-007","subject":"plan fix-relay",\
+                        "blocks":"plan","description":"The change conflicts with main in RelayServer.java.",\
+                        "parts":[{"part_id":"1","question":"How should the conflict be resolved?",\
+                        "options":[{"key":"1","label":"Merge main into the branch"},\
+                        {"key":"2","label":"Rebase onto main"}],"recommendation":"2"}]}}}""";
 
     private static final String DECISION_ANSWERED = """
-                    {"event":"decision.answered","data":{"id":"Q-007","answer":"Rebase onto main",\
-                    "channel":"web","device":"iPad"}}""";
+                        {"event":"decision.answered","data":{"id":"Q-007","answer":"Rebase onto main",\
+                        "channel":"web","device":"iPad"}}""";
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
                         MachinePaths.class, CommandLine.class, JsonFactory.class,
@@ -102,8 +102,8 @@ class ConsoleNoticeIT {
             broadcast(runtime, DECISION_ANSWERED);
 
             assertTrue(session.awaitText(
-                                "– Q-007 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.",
-                                TIMEOUT),
+                                                    "– Q-007 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.",
+                                                    TIMEOUT),
                                 session.rawOutput());
             session.send("\n");
             assertTrue(session.awaitText(BADGE_AFTER_ONE_ANSWER, TIMEOUT), session.rawOutput());

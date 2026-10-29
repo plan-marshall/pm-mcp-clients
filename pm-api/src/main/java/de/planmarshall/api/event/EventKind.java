@@ -46,7 +46,7 @@ public enum EventKind {
      * not its own; see the console's own rendering rules.
      */
     ANSWERED_ELSEWHERE("answered_elsewhere", List.of("answered_elsewhere"),
-                        List.of(EventName.DECISION_ANSWERED.wire())),
+            List.of(EventName.DECISION_ANSWERED.wire())),
 
     /** A device paired. */
     PAIRED("paired", List.of("paired"), List.of()),
