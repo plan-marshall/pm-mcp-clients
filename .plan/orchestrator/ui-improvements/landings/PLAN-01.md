@@ -52,3 +52,37 @@ Beyond the declared surface: `data-model-text` markings in `pm-web-app/src/lib/c
 - Folded into PLAN-73 (`web-text-guard-failing`, CC-S-07): chips, aria labels and glyphs not scanned; no rule for CC-F-05; split tokens; the browser clause as "every violation the guard lists appears in the browser snapshot".
 - CC-F-03 needs nothing: placeholders in titles are fixed by PLAN-04.
 - The PLAN-01 dependency of PLAN-09 (`web-display-layer`) is now met.
+
+## Addendum 2026-10-29: second landing message (`rb-01-web-text-guard-report-002.md`)
+
+The plan's run was resumed after the server outage (restarts on 2026-10-27 and 2026-10-29) and finished its cleanup
+steps. It filed a second landing message for the same PR #237 (merge `1b39f219`, which `ci pr view 237` confirms
+as `merged`, head branch `feature/01-web-text-guard-report`). Analysed against the merged PR and `origin/main`
+(`a2f4d2c4`). Nothing about the shipped state changes: the row stays `shipped`, `pr` `237`, and
+`deliverables_done=0` is the same account as in the first message.
+
+- **Same facts, restated.** Both deliverables' unmet clauses (the browser clause; "baseline lists CC-F-01 to
+  CC-F-05") are as in the first landing. The message adds the evidence: the browser pass is a superset of the
+  baseline (chip text, aria labels, URLs) and only 3 of the 10 routes got a stored accessibility snapshot.
+- **No extra PR, no leftover state.** The operator merged #237 during the outage; the run enqueued nothing. The
+  remote branch is gone (`git ls-remote` finds none) and no `01` worktree remains (`git worktree list`). The
+  message mentions a temporary worktree `00-base-e2e-check` and its branch, both removed.
+- **Facts differ from the first message in two fields only:** `executor_version` is `0.1.2028` (was `0.1.2017`)
+  and `plugin_version` is `unknown` (was `0.1.2021`). `total_tokens` is `unknown` as before.
+- **Four post-merge self-review findings (round 3), checked against `origin/main`:**
+  1. Model-written text is unmarked at `PlanView.svelte` (`tool-name` and `tool-target` spans at 985-987 carry no
+     `data-model-text`, while the `file-changed`, `activity-gap` and `entry-content` blocks at 994-1004 do) and
+     `CompletionReportView.svelte` (no `data-model-text` at all). Confirmed.
+  2. Seven journeys record at "container visible" and a CSS spinner is mutation-silent. The lane's account; not
+     re-read.
+  3. The baseline holds `state-id: github.com` and `state-id: de.cuioss`: six lines still match at HEAD. The
+     `emoji: ▪` entry the message lists is gone (PLAN-19 removed the `emoji` entries).
+  4. Imprecise claims in the PR body and commit messages. Recorded, nothing to change.
+- **Process notes (guard `none`, recorded only):** about 30 read-class shell calls (`grep`, `sed -n`, `ls`,
+  `head`, `tail`); a rebase was asked for and a merge used twice; another lane's leftover vite (5173) and mock
+  (7420) were killed after the operator declared that lane finished; `TEXT_GUARD_BOOTSTRAP=1` was passed as an
+  env prefix on two runs, with `--execution-mode in_process`. One routed build `killed`/`failed` on the port
+  collision and was not retried blindly.
+- **Folded into PLAN-73** (`web-text-guard-failing`), which already carries the first landing's gaps: items 1 to 3
+  above, plus "model-written text marks for `PlanView` tool spans and `CompletionReportView`" and "do not empty the
+  baseline with `TEXT_GUARD_BOOTSTRAP=1`; empty the 22 x 2 lists from the journeys, not from a browser pass".
