@@ -49,7 +49,7 @@ The mock runtime logs its connection coordinates:
 ```text
 Mock runtime started successfully:
   Base (PM_MCP_BASE): /tmp/pm-mock-xyz/b
-  Unix Socket:        /tmp/pm-mock-xyz/b/run/pm-mcpd.sock
+  Unix Socket:        /tmp/pm-mock-xyz/b/run/runtime.sock
   Loopback Web Port:  7420 (http://127.0.0.1:7420)
   Scenario:           onboarding-happy
   Runtime Token:      mock-token-abcde-12345

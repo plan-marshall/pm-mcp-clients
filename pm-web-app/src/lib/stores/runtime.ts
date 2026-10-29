@@ -441,6 +441,11 @@ export async function initRuntime(): Promise<void> {
       startEntryId: requested?.entryId ?? null,
       currentState,
       activeStep: deriveStepFromState(currentState?.state),
+      isDraining: status.lifecycle_state === 'draining',
+      drainInfo: status.lifecycle_state === 'draining'
+        ? { who: status.draining_by, count: status.drain_remaining_count }
+        : null,
+      isStopped: status.lifecycle_state === 'stopped',
       isOffline: false,
       isRevoked: false,
     }));
@@ -574,10 +579,21 @@ function handleDecisionEvent(event: string, data: unknown): void {
 /** The runtime's lifecycle: a drain, a withdrawn drain, or a stop. */
 function handleLifecycleEvent(event: string, data: unknown): void {
   if (event === 'runtime.draining') {
+    const payload = (data || {}) as {
+      who?: string;
+      count?: number;
+      draining_by?: string;
+      remaining_count?: number;
+      remaining_work_count?: number;
+    };
     runtimeStore.update((s) => ({
       ...s,
       isDraining: true,
-      drainInfo: (data || {}) as RuntimeState['drainInfo'],
+      isStopped: false,
+      drainInfo: {
+        who: payload.who ?? payload.draining_by,
+        count: payload.count ?? payload.remaining_count ?? payload.remaining_work_count,
+      },
     }));
   } else if (event === 'runtime.drain_withdrawn') {
     runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));

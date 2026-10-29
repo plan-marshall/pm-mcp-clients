@@ -25,6 +25,11 @@
           "open": true
         }
       }
+    },
+    "GET /api/v1/plans": {
+      "representation": {
+        "plans": []
+      }
     }
   },
   "states": {
