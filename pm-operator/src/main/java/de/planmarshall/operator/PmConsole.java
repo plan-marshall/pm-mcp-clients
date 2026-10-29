@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
@@ -70,7 +71,7 @@ public final class PmConsole {
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
     private final AtomicInteger controlDCounter = new AtomicInteger();
     /** The prompt's badges, replaced as a whole so a draw never sees a half-updated set. */
-    private volatile List<String> badges = List.of();
+    private final AtomicReference<List<String>> badges = new AtomicReference<>(List.of());
     private final ConsoleNoticeBuffer noticeBuffer;
 
     private volatile @Nullable String activePairingCode;
@@ -126,7 +127,7 @@ public final class PmConsole {
         activePairingCode = entryResult.activeCode();
         activePairingUrl = entryResult.activeUrl();
         webPort = EntryFlow.getWebPort(entryResult.status());
-        badges = List.copyOf(entryResult.initialBadges());
+        badges.set(List.copyOf(entryResult.initialBadges()));
         updateWindowTitle(terminal);
         printFullScreenHint(out, terminal);
 
@@ -170,7 +171,7 @@ public final class PmConsole {
     private @Nullable String readCommand(LineReader reader, PrintWriter out, String locale) {
         while (running.get()) {
             try {
-                var line = reader.readLine(ConsolePrompt.format(locale, badges, reconnecting.get()));
+                var line = reader.readLine(ConsolePrompt.format(locale, badges.get(), reconnecting.get()));
                 return line == null ? null : line.trim();
             } catch (UserInterruptException e) {
                 if (e.getPartialLine() == null || e.getPartialLine().isEmpty()) {
@@ -190,7 +191,7 @@ public final class PmConsole {
     }
 
     private boolean hasOpenQuestions() {
-        for (var badge : badges) {
+        for (var badge : badges.get()) {
             var lower = badge.toLowerCase(Locale.ROOT);
             if (lower.contains("question") || lower.contains("frage") || lower.contains("waiver")) {
                 return true;
@@ -201,7 +202,7 @@ public final class PmConsole {
 
     private int questionCount() {
         int total = 0;
-        for (var badge : badges) {
+        for (var badge : badges.get()) {
             var lower = badge.toLowerCase(Locale.ROOT);
             if (lower.contains("question") || lower.contains("frage") || lower.contains("waiver")) {
                 total += leadingCount(badge);
@@ -231,7 +232,7 @@ public final class PmConsole {
     private void handleEmptyEnter(PrintWriter out, LineReader reader) {
         var locale = locale();
         boolean hasSetup = false;
-        for (var b : badges) {
+        for (var b : badges.get()) {
             if (b.startsWith("setup") || b.startsWith("Einrichtung")) {
                 hasSetup = true;
                 break;
@@ -509,10 +510,10 @@ public final class PmConsole {
             // the runtime did not answer this read: keep the badges it last gave us
             return;
         }
-        if (refreshed.equals(badges)) {
+        if (refreshed.equals(badges.get())) {
             return;
         }
-        badges = List.copyOf(refreshed);
+        badges.set(List.copyOf(refreshed));
         updateWindowTitle(terminal);
     }
 
@@ -648,8 +649,8 @@ public final class PmConsole {
 
     private void updateWindowTitle(Terminal terminal) {
         var title = new StringBuilder("pm-operator");
-        if (!badges.isEmpty()) {
-            title.append(" [").append(String.join(" \u00b7 ", badges)).append(']');
+        if (!badges.get().isEmpty()) {
+            title.append(" [").append(String.join(" \u00b7 ", badges.get())).append(']');
         }
         TerminalTitle.set(terminal, title.toString());
     }

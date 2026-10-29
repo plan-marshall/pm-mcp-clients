@@ -40,6 +40,9 @@ public final class ConsoleNotice {
     private static final String CONDITION = "condition";
     private static final String COUNT = "count";
     private static final String SUBJECT = "subject";
+    private static final String ID = "id";
+    private static final String LABEL = "label";
+    private static final String CHANNEL = "channel";
     private static final String KEY_PROJECT = "project";
     private static final String DETAIL = "detail";
 
@@ -93,7 +96,7 @@ public final class ConsoleNotice {
         Objects.requireNonNull(scope, SCOPE);
         var sb = new StringBuilder(BULLET);
         sb.append(MessageCatalogue.format(locale, "operator.console.question.notice",
-                            Map.of("id", id, SCOPE, scope)));
+                            Map.of(ID, id, SCOPE, scope)));
         if (summary != null && !summary.isBlank()) {
             sb.append(" \u00b7 ").append(TerminalSanitizer.sanitize(summary));
         }
@@ -106,7 +109,7 @@ public final class ConsoleNotice {
             sb.append(MessageCatalogue.format(locale, "operator.console.question.recommended",
                                 Map.of(OPTION, TerminalSanitizer.sanitize(recommendation)))).append('\n');
         }
-        sb.append(MessageCatalogue.format(locale, "operator.console.question.hint", Map.of("id", id)));
+        sb.append(MessageCatalogue.format(locale, "operator.console.question.hint", Map.of(ID, id)));
         return sb.toString();
     }
 
@@ -137,13 +140,13 @@ public final class ConsoleNotice {
         var sb = new StringBuilder(BULLET);
         if (gate != null && !gate.isBlank()) {
             sb.append(MessageCatalogue.format(locale, "operator.console.notice.waiver_request",
-                                Map.of("id", id, SCOPE, scope, "gate", TerminalSanitizer.sanitize(gate))));
+                                Map.of(ID, id, SCOPE, scope, "gate", TerminalSanitizer.sanitize(gate))));
         } else {
             sb.append(MessageCatalogue.format(locale, "operator.console.notice.waiver_request_plain",
-                                Map.of("id", id, SCOPE, scope)));
+                                Map.of(ID, id, SCOPE, scope)));
         }
         sb.append('\n');
-        sb.append(MessageCatalogue.format(locale, "operator.console.question.hint", Map.of("id", id)));
+        sb.append(MessageCatalogue.format(locale, "operator.console.question.hint", Map.of(ID, id)));
         return sb.toString();
     }
 
@@ -212,7 +215,7 @@ public final class ConsoleNotice {
      */
     public static String formatPairedNotice(String locale, String label) {
         return CHECK + MessageCatalogue.format(locale, "operator.console.paired",
-                            Map.of("label", TerminalSanitizer.sanitize(label)));
+                            Map.of(LABEL, TerminalSanitizer.sanitize(label)));
     }
 
     /**
@@ -272,11 +275,11 @@ public final class ConsoleNotice {
         var safeAnswer = TerminalSanitizer.sanitize(answer);
         if (device != null && !device.isBlank()) {
             return DASH + MessageCatalogue.format(locale, "operator.console.question.answered_elsewhere",
-                                Map.of("id", id, "channel", channel, "device", TerminalSanitizer.sanitize(device),
+                                Map.of(ID, id, CHANNEL, channel, "device", TerminalSanitizer.sanitize(device),
                                                     OPTION, safeAnswer));
         }
         return DASH + MessageCatalogue.format(locale, "operator.console.question.answered_elsewhere_plain",
-                            Map.of("id", id, "channel", channel, OPTION, safeAnswer));
+                            Map.of(ID, id, CHANNEL, channel, OPTION, safeAnswer));
     }
 
     /**
@@ -325,7 +328,7 @@ public final class ConsoleNotice {
             case WAIVER_REQUEST -> waiverNotice(locale, payload);
             case ANSWERED_ELSEWHERE -> answeredElsewhere(locale, payload);
             case PAIRED -> formatPairedNotice(locale,
-                                String.valueOf(payload.getOrDefault("label", "unknown")));
+                                String.valueOf(payload.getOrDefault(LABEL, "unknown")));
             case FRESH_CODE -> formatFreshCodeNotice(locale,
                                 TerminalSanitizer.sanitize(String.valueOf(payload.get("code"))),
                                 TerminalSanitizer.sanitize(String.valueOf(payload.getOrDefault("valid_until", ""))),
@@ -385,20 +388,19 @@ public final class ConsoleNotice {
      * @return the notice, or {@code null}
      */
     private static @Nullable String answeredElsewhere(String locale, Map<String, Object> event) {
-        var channel = stringOf(event, "channel");
+        var channel = stringOf(event, CHANNEL);
         if (channel == null || channel.isBlank() || CHANNEL_CLI.equalsIgnoreCase(channel)) {
             return null;
         }
         return formatAnsweredElsewhere(locale,
-                            TerminalSanitizer.sanitize(textOr(event, "id", "Q-???")),
+                            TerminalSanitizer.sanitize(textOr(event, ID, "Q-???")),
                             channelText(locale, channel),
                             stringOf(event, "device"),
                             stringOf(event, "answer"));
     }
 
     private static String channelText(String locale, String channel) {
-        var key = "operator.console.channel." + channel;
-        return MessageCatalogue.hasKey(locale, key)
+        var key = "operator.console.channel." + channel;        return MessageCatalogue.hasKey(locale, key)
                             ? MessageCatalogue.format(locale, key, Map.of())
                             : TerminalSanitizer.sanitize(channel);
     }
@@ -415,8 +417,8 @@ public final class ConsoleNotice {
     private static String questionNotice(String locale, Map<String, Object> event) {
         var source = decisionSource(event);
         return formatQuestion(locale,
-                            TerminalSanitizer.sanitize(textOr(source, "id", textOr(event, "id", "Q-???"))),
-                            TerminalSanitizer.sanitize(firstText(source, event, SCOPE, "subject", "plan")),
+                            TerminalSanitizer.sanitize(textOr(source, ID, textOr(event, ID, "Q-???"))),
+                            TerminalSanitizer.sanitize(firstText(source, event, SCOPE, SUBJECT, "plan")),
                             summaryOf(locale, source),
                             firstText(source, event, "description", "text", null),
                             recommendationOf(source));
@@ -433,8 +435,8 @@ public final class ConsoleNotice {
     private static String waiverNotice(String locale, Map<String, Object> event) {
         var source = decisionSource(event);
         return formatWaiverRequest(locale,
-                            TerminalSanitizer.sanitize(textOr(source, "id", textOr(event, "id", "WR-?"))),
-                            TerminalSanitizer.sanitize(firstText(source, event, SCOPE, "subject", "plan")),
+                            TerminalSanitizer.sanitize(textOr(source, ID, textOr(event, ID, "WR-?"))),
+                            TerminalSanitizer.sanitize(firstText(source, event, SCOPE, SUBJECT, "plan")),
                             firstText(source, event, "waiver_gate", "gate", null));
     }
 
@@ -459,7 +461,7 @@ public final class ConsoleNotice {
         return Boolean.TRUE.equals(JsonTree.bool(source, "is_waiver"))
                             || "waiver".equals(stringOf(source, "kind"))
                             || stringOf(source, "waiver_gate") != null
-                            || textOr(source, "id", "").startsWith("WR-");
+                            || textOr(source, ID, "").startsWith("WR-");
     }
 
     private static @Nullable String summaryOf(String locale, Map<String, Object> source) {
@@ -494,7 +496,7 @@ public final class ConsoleNotice {
         for (var option : options) {
             var map = JsonTree.asObject(option);
             if (map != null && key.equals(stringOf(map, "key"))) {
-                return stringOf(map, "label");
+                return stringOf(map, LABEL);
             }
         }
         return null;
@@ -539,9 +541,9 @@ public final class ConsoleNotice {
                 return found;
             }
         }
-        var declared = JsonTree.object(event, "scope");
+        var declared = JsonTree.object(event, SCOPE);
         if (declared != null) {
-            var id = stringOf(declared, "id");
+            var id = stringOf(declared, ID);
             if (id != null && !id.isBlank()) {
                 return id;
             }
@@ -555,7 +557,7 @@ public final class ConsoleNotice {
     }
 
     private static @Nullable String firstScopeString(Map<String, Object> map) {
-        for (var key : List.of(SCOPE, "subject_id", "subject", "epic", "plan", "plan_id", "epic_id")) {
+        for (var key : List.of(SCOPE, "subject_id", SUBJECT, "epic", "plan", "plan_id", "epic_id")) {
             var value = stringOf(map, key);
             if (value != null && !value.isBlank()) {
                 return value;
@@ -610,7 +612,7 @@ public final class ConsoleNotice {
             return QUIET + MessageCatalogue.format(locale, "operator.console.notice.reports_many",
                                 Map.of(COUNT, num.intValue(), SCOPE, TerminalSanitizer.sanitize(scope)));
         }
-        var id = String.valueOf(event.getOrDefault("id", ""));
+        var id = String.valueOf(event.getOrDefault(ID, ""));
         var subject = stringOf(event, SUBJECT);
         var leaf = extractLeaf(event);
 
@@ -627,7 +629,7 @@ public final class ConsoleNotice {
                                 Map.of("leaf", safeLeaf, SUBJECT, safeSubject));
         }
         return QUIET + MessageCatalogue.format(locale, "operator.console.notice.report_line_open",
-                            Map.of("leaf", safeLeaf, SUBJECT, safeSubject, "id", TerminalSanitizer.sanitize(id)));
+                            Map.of("leaf", safeLeaf, SUBJECT, safeSubject, ID, TerminalSanitizer.sanitize(id)));
     }
 
     private static @Nullable String stringOf(Map<String, Object> event, String key) {

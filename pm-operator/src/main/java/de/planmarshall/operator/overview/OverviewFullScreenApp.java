@@ -31,6 +31,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.HoldRecord;
+import de.planmarshall.api.event.EventKind;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
@@ -1190,26 +1191,12 @@ public final class OverviewFullScreenApp {
     }
 
     void handleLiveEvent(@Nullable String eventName, @Nullable String data) {
-        if (data == null || data.isBlank()) {
-            return;
-        }
-        Map<String, Object> eventMap;
-        try {
-            eventMap = JsonTree.asObject(JsonTree.parse(data));
-        } catch (IOException _) {
-            return;
-        }
+        var eventMap = parseEvent(data);
         if (eventMap == null) {
             return;
         }
-
         var kind = ConsoleNotice.noticeKindOf(eventName, eventMap);
-        var notice = ConsoleNotice.fromEventMap(locale, eventName, eventMap);
-        if (notice != null && !context.isConsoleActive()) {
-            var category = categoryOf(kind != null ? kind.notice() : null);
-            int count = countOf(eventMap, category);
-            noticeBuffer.hold(category, count);
-        }
+        holdNotice(eventName, kind, eventMap);
 
         var name = eventName != null ? eventName : "";
         var type = kind != null ? kind.notice()
@@ -1231,6 +1218,37 @@ public final class OverviewFullScreenApp {
         if (isStructuralChange(name, type)) {
             refreshActiveLevels();
         }
+    }
+
+    /**
+     * @param data the event's data member
+     * @return the parsed event frame, or {@code null} when it is absent or no JSON object
+     */
+    private static @Nullable Map<String, Object> parseEvent(@Nullable String data) {
+        if (data == null || data.isBlank()) {
+            return null;
+        }
+        try {
+            return JsonTree.asObject(JsonTree.parse(data));
+        } catch (IOException _) {
+            return null;
+        }
+    }
+
+    /**
+     * Offers the event's notice to the buffer while a full-screen view is open.
+     *
+     * @param eventName the SSE event name, or {@code null}
+     * @param kind      the notice kind the event resolves to, or {@code null}
+     * @param eventMap  the parsed event frame
+     */
+    private void holdNotice(@Nullable String eventName, @Nullable EventKind kind, Map<String, Object> eventMap) {
+        var notice = ConsoleNotice.fromEventMap(locale, eventName, eventMap);
+        if (notice == null || context.isConsoleActive()) {
+            return;
+        }
+        var category = categoryOf(kind != null ? kind.notice() : null);
+        noticeBuffer.hold(category, countOf(eventMap, category));
     }
 
     static boolean isReportEvent(String name, String type) {

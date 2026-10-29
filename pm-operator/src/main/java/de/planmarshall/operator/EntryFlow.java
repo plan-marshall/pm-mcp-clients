@@ -471,29 +471,40 @@ public final class EntryFlow {
      * @return the badges, in the order the status names the kinds
      */
     static List<String> extractWaitingBadges(String locale, Map<String, Object> status) {
+        if (!(status.get("needs_operator") instanceof Map<?, ?> needs)) {
+            return List.of();
+        }
         var badges = new ArrayList<String>();
-        if (status.get("needs_operator") instanceof Map<?, ?> needs) {
-            for (var entry : needs.entrySet()) {
-                var kind = String.valueOf(entry.getKey());
-                int countVal = -1;
-                if (entry.getValue() instanceof Number count) {
-                    countVal = count.intValue();
-                } else if (entry.getValue() instanceof JsonNumber jn) {
-                    try {
-                        countVal = (int) jn.longValue();
-                    } catch (NumberFormatException _) {
-                        // ignore invalid
-                    }
-                }
-                if (countVal >= 0) {
-                    var badge = ConsolePrompt.formatBadge(locale, kind, countVal);
-                    if (badge != null) {
-                        badges.add(badge);
-                    }
-                }
+        for (var entry : needs.entrySet()) {
+            var count = countOf(entry.getValue());
+            if (count < 0) {
+                continue;
+            }
+            var badge = ConsolePrompt.formatBadge(locale, String.valueOf(entry.getKey()), count);
+            if (badge != null) {
+                badges.add(badge);
             }
         }
         return badges;
+    }
+
+    /**
+     * @param value the count the status reports for one kind
+     * @return the count, or {@code -1} when the value is no number
+     */
+    private static int countOf(@Nullable Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value instanceof JsonNumber jsonNumber) {
+            try {
+                return (int) jsonNumber.longValue();
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (NumberFormatException _) {
+                return -1;
+            }
+        }
+        return -1;
     }
 
     private String getHostname() {
