@@ -135,6 +135,13 @@
             "project": "pm-mcp-core",
             "phase": "finalize",
             "state": "paused"
+          },
+          {
+            "id": "relay-cursor-order",
+            "title": "Relay cursor order",
+            "project": "pm-mcp-clients",
+            "phase": "execute",
+            "state": "waiting_for_you"
           }
         ]
       }

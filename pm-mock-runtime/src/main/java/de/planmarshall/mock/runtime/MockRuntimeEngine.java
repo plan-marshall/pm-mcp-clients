@@ -5333,32 +5333,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
             copy.put("can_withdraw", canWithdrawStop);
         }
         if (lifecycleState == RuntimeLifecycleState.DRAINING) {
-            var facts = currentStateFacts();
-            if (facts != null) {
-                if (!copy.containsKey("draining_by")) {
-                    var by = JsonTree.string(facts, "draining_by");
-                    if (by != null) {
-                        copy.put("draining_by", by);
-                    }
-                }
-                var blockers = JsonTree.asArray(facts.get("blockers"));
-                if (blockers != null) {
-                    copy.put("remaining_work_count", blockers.size());
-                }
+            var facts = stateFacts(currentStateId.get());
+            var blockers = facts != null ? JsonTree.asArray(facts.get("blockers")) : null;
+            if (blockers != null) {
+                copy.put("drain_remaining_count", blockers.size());
             }
         }
         response.json(route.status(), copy);
-    }
-
-    /**
-     * @return the active state's operator facts, or {@code null} when it declares none
-     */
-    private @Nullable Map<String, Object> currentStateFacts() {
-        var state = currentScenario.get().state(currentStateId.get());
-        var representation = state != null ? JsonTree.asObject(state.representation()) : null;
-        return representation != null
-                ? JsonTree.asObject(representation.get(OperatorStateResource.FIELD_FACTS))
-                : null;
     }
 
     private void handleRouteWithDynamicStatus(RouteDefinition route, String path, MockHttpResponse response) throws IOException {
@@ -8360,9 +8341,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
 
-        // 4. Dynamic plan process route: /api/v1/plans/{planId}/process. The scenario's plan list
-        // decides which ids exist; a plan without a route of its own is served from its own summary
-        // entry, and an id the scenario does not know is plan_not_found.
+        // 4. Dynamic plan process route: /api/v1/plans/{planId}/process. A plan the scenario serves
+        // by its own route is answered at step 1; a plan it lists is answered from its summary
+        // entry; any other id is plan_not_found.
         if (isPlanProcess) {
             var sub = path.substring(PATH_PLANS_PREFIX.length());
             var planId = sub.substring(0, sub.length() - SUFFIX_PROCESS.length());
@@ -8458,8 +8439,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /**
      * Builds the process-tree detail of a plan the scenario lists without a route of its own. The
      * tree carries the plan's own identity and a phase list consistent with its phase and state;
-     * the template's epic, pull request, activity, tokens and duration belong to another plan and
-     * are not copied.
+     * nothing that belongs to another plan (its epic, pull request, activity, tokens, duration or
+     * project) is copied.
      *
      * @param template the template representation
      * @param planId   the requested plan id
@@ -8474,7 +8455,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         copy.put(KEY_PLAN_ID, planId);
         copy.put("title", summaryText(summary, "title", planId));
         var projectId = summaryText(summary, "project", null);
-        copy.put("project", projectId != null ? planProjectRef(projectId) : template.get("project"));
+        if (projectId != null) {
+            copy.put("project", planProjectRef(projectId));
+        }
         copy.put("current_phase", phase);
         copy.put("phase_state", phaseState);
         if ("waiting_for_you".equals(phaseState)) {

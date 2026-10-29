@@ -115,7 +115,7 @@ describe('the runtime store', () => {
       ...PAIRED_STATUS,
       lifecycle_state: 'draining',
       draining_by: 'the console',
-      remaining_work_count: 2,
+      drain_remaining_count: 2,
     });
     vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
     vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});

@@ -443,7 +443,7 @@ export async function initRuntime(): Promise<void> {
       activeStep: deriveStepFromState(currentState?.state),
       isDraining: status.lifecycle_state === 'draining',
       drainInfo: status.lifecycle_state === 'draining'
-        ? { who: status.draining_by, count: status.remaining_work_count }
+        ? { who: status.draining_by, count: status.drain_remaining_count }
         : null,
       isStopped: status.lifecycle_state === 'stopped',
       isOffline: false,

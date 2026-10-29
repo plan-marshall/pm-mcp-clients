@@ -195,8 +195,8 @@ class ScenarioStateContractTest {
                     var blockers = facts != null ? JsonTree.asArray(facts.get("blockers")) : null;
                     assertNotNull(blockers, "system.draining declares its blockers");
                     assertEquals(blockers.size(),
-                            JsonTree.integer(status.json(), "remaining_work_count"),
-                            "system.draining remaining_work_count");
+                            JsonTree.integer(status.json(), "drain_remaining_count"),
+                            "system.draining drain_remaining_count");
                 }
             }
         }
