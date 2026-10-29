@@ -2,10 +2,10 @@
   "id": "PLAN-27",
   "slug": "web-brand",
   "workstream": "WS-02",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "27-web-brand",
+  "pr": "262",
+  "landing": "landings/PLAN-27.md",
   "seq": 27
 }

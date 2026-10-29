@@ -25,6 +25,33 @@ test.describe('Web Client Pairing Flow', () => {
     await expect(pairBtn).toBeDisabled();
   });
 
+  test('presents the mark, the wordmark, the code and the QR on the pairing page', async ({
+    page,
+  }) => {
+    await page.goto('/pair');
+
+    // The page carries the mark at its pairing-page size, beside the visible wordmark.
+    const pairView = page.getByTestId('pairing-view');
+    await expect(pairView.getByTestId('brand-mark')).toHaveAttribute('data-size', '64');
+    await expect(pairView.getByText('plan-marshall')).toBeVisible();
+
+    // The code is entered in the page's largest monospace figure (VD-P-08, --text-3xl).
+    const code = page.locator('#pairing-code');
+    await expect(code).toBeVisible();
+    const codeStyle = await code.evaluate((el) => {
+      const style = getComputedStyle(el);
+      return { fontSize: style.fontSize, fontFamily: style.fontFamily };
+    });
+    expect(codeStyle.fontSize).toBe('36px');
+    expect(codeStyle.fontFamily.toLowerCase()).toContain('mono');
+
+    // The complete code is also presented as a QR code, drawn locally.
+    await code.fill('KXQB-MRTN');
+    const qr = page.getByTestId('pairing-qr');
+    await expect(qr).toBeVisible();
+    expect(await qr.locator('svg rect').count()).toBeGreaterThan(20);
+  });
+
   test('enables pair button and pairs successfully with code', async ({ page }) => {
     await page.goto('/');
 

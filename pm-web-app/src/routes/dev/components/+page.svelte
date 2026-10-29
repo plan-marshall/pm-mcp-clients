@@ -2,10 +2,17 @@
   import { t } from '../../../lib/i18n';
   import ActionBar from '../../../lib/components/ActionBar.svelte';
   import Button from '../../../lib/components/Button.svelte';
+  import Card from '../../../lib/components/Card.svelte';
   import Chip from '../../../lib/components/Chip.svelte';
   import CountBadge from '../../../lib/components/CountBadge.svelte';
   import IconButton from '../../../lib/components/IconButton.svelte';
+  import KeyValueList from '../../../lib/components/KeyValueList.svelte';
+  import Breadcrumb from '../../../lib/components/Breadcrumb.svelte';
+  import AttentionStrip from '../../../lib/components/AttentionStrip.svelte';
+  import Dialog from '../../../lib/components/Dialog.svelte';
   import StatusLabel from '../../../lib/components/StatusLabel.svelte';
+  import Tabs from '../../../lib/components/Tabs.svelte';
+  import Toast from '../../../lib/components/Toast.svelte';
 
   /**
    * The development page (VD-P-05, VD-S-03): every control of design system v2, in both themes.
@@ -41,6 +48,53 @@
       disabledReason: $t('dev.disabled_reason'),
     },
     { id: 'retry', label: $t('web.common.retry') },
+  ];
+
+  /** The runtime figures of the card fixture, as a view would read them. */
+  $: runtimeFacts = [
+    { label: $t('dev.key_value.status'), value: $t('state.plan.running') },
+    { label: $t('dev.key_value.duration'), value: $t('dev.key_value.duration_value') },
+    { label: $t('dev.key_value.tokens'), value: $t('dev.key_value.tokens_value') },
+  ];
+
+  /** The tab the fixture shows as selected, one per theme, so each list answers its own keyboard. */
+  let activeTabs: Record<string, string> = {};
+
+  /** The tabs of the fixture: one count that waits for the operator, one that does not. */
+  $: tabs = [
+    {
+      id: 'open',
+      label: $t('dev.tabs.open'),
+      count: 2,
+      countLabel: $t('dev.badge.needs_you', { count: 2 }),
+      attention: true,
+    },
+    { id: 'done', label: $t('dev.tabs.done') },
+    {
+      id: 'failed',
+      label: $t('dev.tabs.failed'),
+      count: 1,
+      countLabel: $t('dev.badge.needs_you', { count: 1 }),
+    },
+  ];
+
+  /** The trail of the fixture: two links and the page a person stands on. */
+  $: trail = [
+    { label: $t('dev.breadcrumb.projects'), href: '/projects' },
+    { label: CHIP_VALUE, href: '/projects/relay', id: true },
+    { label: $t('dev.breadcrumb.plan') },
+  ];
+
+  /** Which theme's danger dialog is open, one flag per theme so each shows in its own colour. */
+  let openDialogs: Record<string, boolean> = {};
+
+  /** Which theme's toast is on screen. */
+  let openToasts: Record<string, boolean> = {};
+
+  /** What the danger act of the fixture costs. */
+  $: dialogConsequences = [
+    $t('dev.dialog.consequence.drafts'),
+    $t('dev.dialog.consequence.lessons'),
   ];
 </script>
 
@@ -118,6 +172,92 @@
 
       <h3 class="dev__section-title">{$t('dev.section.action_bar')}</h3>
       <ActionBar {acts} onAct={() => {}} />
+
+      <h3 class="dev__section-title">{$t('dev.section.cards')}</h3>
+      <div class="dev__grid">
+        <Card title={$t('dev.card.runtime')} titleLevel={3}>
+          <svelte:fragment slot="actions">
+            <Button variant="ghost" size="sm">{$t('web.common.copy')}</Button>
+          </svelte:fragment>
+          <KeyValueList items={runtimeFacts} />
+        </Card>
+        <Card title={$t('dev.card.plain')} titleLevel={3}>
+          <p class="dev__note">{$t('dev.card.body')}</p>
+        </Card>
+        <Card title={$t('dev.card.nested')} titleLevel={3}>
+          <KeyValueList items={runtimeFacts} />
+          <Card title={$t('dev.card.nested_part')}>
+            <p class="dev__note">{$t('dev.card.body')}</p>
+          </Card>
+        </Card>
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.key_values')}</h3>
+      <Card title={$t('dev.key_value.title')} titleLevel={3}>
+        <KeyValueList items={runtimeFacts} />
+      </Card>
+
+      <h3 class="dev__section-title">{$t('dev.section.tabs')}</h3>
+      <Tabs
+        {tabs}
+        label={$t('dev.tabs.label')}
+        active={activeTabs[theme] ?? 'open'}
+        onSelect={(id) => (activeTabs = { ...activeTabs, [theme]: id })}
+      />
+
+      <h3 class="dev__section-title">{$t('dev.section.breadcrumb')}</h3>
+      <Breadcrumb crumbs={trail} label={$t('dev.breadcrumb.label')} />
+
+      <h3 class="dev__section-title">{$t('dev.section.dialog')}</h3>
+      <div class="dev__row">
+        <Button
+          variant="danger"
+          on:click={() => (openDialogs = { ...openDialogs, [theme]: true })}
+        >
+          {$t('dev.dialog.open')}
+        </Button>
+      </div>
+      <Dialog
+        open={openDialogs[theme] ?? false}
+        danger
+        title={$t('dev.dialog.title')}
+        consequences={dialogConsequences}
+        onClose={() => (openDialogs = { ...openDialogs, [theme]: false })}
+      >
+        <p class="dev__note">{$t('dev.dialog.body')}</p>
+        <svelte:fragment slot="footer">
+          <Button variant="ghost" on:click={() => (openDialogs = { ...openDialogs, [theme]: false })}>
+            {$t('web.common.cancel')}
+          </Button>
+          <Button
+            variant="danger"
+            on:click={() => (openDialogs = { ...openDialogs, [theme]: false })}
+          >
+            {$t('dev.dialog.confirm')}
+          </Button>
+        </svelte:fragment>
+      </Dialog>
+
+      <h3 class="dev__section-title">{$t('dev.section.toast')}</h3>
+      <div class="dev__row">
+        <Button variant="secondary" on:click={() => (openToasts = { ...openToasts, [theme]: true })}>
+          {$t('dev.toast.show')}
+        </Button>
+      </div>
+      <Toast
+        open={openToasts[theme] ?? false}
+        message={$t('dev.toast.message')}
+        actionLabel={$t('dev.toast.act')}
+        onAction={() => (openToasts = { ...openToasts, [theme]: false })}
+        onDismiss={() => (openToasts = { ...openToasts, [theme]: false })}
+      />
+
+      <h3 class="dev__section-title">{$t('dev.section.attention')}</h3>
+      <AttentionStrip
+        message={$t('dev.attention.message')}
+        actionLabel={$t('dev.attention.act')}
+        onAct={() => {}}
+      />
     </section>
   {/each}
 </div>
@@ -172,5 +312,18 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
+  }
+
+  .dev__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+    gap: var(--space-4);
+  }
+
+  .dev__note {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+    line-height: var(--line-height-sm);
   }
 </style>

@@ -23,6 +23,7 @@
     type ThemeChoice,
   } from '../lib/theme';
   import { installAdvisoryTitles } from '../lib/utils/advisoryTitle';
+  import { applyFavicon } from '../lib/favicon';
   import Spinner from '../lib/components/Spinner.svelte';
   import PairingView from '../lib/views/PairingView.svelte';
   import OnboardingView from '../lib/views/OnboardingView.svelte';
@@ -197,6 +198,12 @@
     if (!$messagesStore[key]) return;
     const base = $t(key, args);
     document.title = count > 0 ? $t('decision.notify.tab_title', { count, title: base }) : base;
+  });
+
+  // The tab icon carries the attention dot while items wait; it reads the same count the header
+  // badge and the tab title carry, so the three never disagree.
+  $effect(() => {
+    applyFavicon($runtimeStore.openDecisionsCount);
   });
 </script>
 
