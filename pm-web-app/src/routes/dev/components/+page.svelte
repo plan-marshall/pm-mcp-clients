@@ -2,9 +2,11 @@
   import { t } from '../../../lib/i18n';
   import ActionBar from '../../../lib/components/ActionBar.svelte';
   import Button from '../../../lib/components/Button.svelte';
+  import Card from '../../../lib/components/Card.svelte';
   import Chip from '../../../lib/components/Chip.svelte';
   import CountBadge from '../../../lib/components/CountBadge.svelte';
   import IconButton from '../../../lib/components/IconButton.svelte';
+  import KeyValueList from '../../../lib/components/KeyValueList.svelte';
   import StatusLabel from '../../../lib/components/StatusLabel.svelte';
 
   /**
@@ -41,6 +43,13 @@
       disabledReason: $t('dev.disabled_reason'),
     },
     { id: 'retry', label: $t('web.common.retry') },
+  ];
+
+  /** The runtime figures of the card fixture, as a view would read them. */
+  $: runtimeFacts = [
+    { label: $t('dev.key_value.status'), value: $t('state.plan.running') },
+    { label: $t('dev.key_value.duration'), value: $t('dev.key_value.duration_value') },
+    { label: $t('dev.key_value.tokens'), value: $t('dev.key_value.tokens_value') },
   ];
 </script>
 
@@ -118,6 +127,24 @@
 
       <h3 class="dev__section-title">{$t('dev.section.action_bar')}</h3>
       <ActionBar {acts} onAct={() => {}} />
+
+      <h3 class="dev__section-title">{$t('dev.section.cards')}</h3>
+      <div class="dev__grid">
+        <Card title={$t('dev.card.runtime')}>
+          <svelte:fragment slot="actions">
+            <Button variant="ghost" size="sm">{$t('web.common.copy')}</Button>
+          </svelte:fragment>
+          <KeyValueList items={runtimeFacts} />
+        </Card>
+        <Card title={$t('dev.card.plain')}>
+          <p class="dev__note">{$t('dev.card.body')}</p>
+        </Card>
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.key_values')}</h3>
+      <Card title={$t('dev.key_value.title')}>
+        <KeyValueList items={runtimeFacts} />
+      </Card>
     </section>
   {/each}
 </div>
@@ -172,5 +199,18 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
+  }
+
+  .dev__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: var(--space-4);
+  }
+
+  .dev__note {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+    line-height: var(--line-height-sm);
   }
 </style>
