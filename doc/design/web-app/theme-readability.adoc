@@ -154,11 +154,12 @@ Contrast ratio between two luminances \(L_1\) (lighter) and \(L_2\) (darker) is 
 [#audit-allowlist]
 == The Audit Allowlist
 
-Only one reasoned, functional exception is permitted to use hard-coded color literals:
+Two reasoned, functional exceptions carry colour literals; the first sits inside the scanned surface, the second outside it:
 
 * **`PairingQr.svelte`:** SVG QR code modules use `#ffffff` (quiet zone and light modules) and `#000000` (dark modules). QR code optical scanners require strict binary black-on-white module contrast regardless of operating system or browser theme.
+* **The two browser-tab copies** (`pm-web-app/static/brand-mark.svg`, `pm-web-app/static/brand-mark-attention.svg`): a standalone SVG has no page context for `currentColor`, so they bake the light-theme brand colour and the attention dot; link:brand-mark.adoc#theme[Brand Mark, Theme and Contrast] names the values.
 
-All other components and views must reference defined tokens in `tokens.css`. Static scans in `tokens.test.ts` enforce zero unexpected color literals across `pm-web-app/src/lib/`.
+All other components and views must reference defined tokens in `tokens.css`. Static scans in `tokens.test.ts` enforce zero unexpected color literals across `pm-web-app/src/lib/`; the `static/` copies are outside that scan and are documented in link:brand-mark.adoc[Brand Mark].
 
 The contrast audit itself exempts nothing: `CONTRAST_ALLOWLIST` in `pm-web-e2e/tests/theme-readability.spec.js` is empty, so every text and state pair a view renders is judged. An entry added later names the selector it exempts and the reason the pair cannot meet the threshold; a guard test in the same file fails an entry that states no reason.
 
@@ -172,7 +173,7 @@ The test pyramid enforces theme readability across three automated tiers:
   * Asserts the type scale of VD-P-03, the spacing, radius, elevation, motion and breakpoint tokens of VD-P-04, and every old token name as an alias of its v2 token.
   * Audits the WCAG 2.1 AA contrast of the declared pairs in both themes: every text pair at 4.5:1 or above, every state dot at 3:1 or above.
   * Parses all `.svelte` and `.css` files to ensure every `var(--...)` reference exists in the token catalogue.
-  * Static regex scanner asserting zero hard-coded `#hex`, `rgb()`, or `hsl()` literals outside the documented `PairingQr.svelte` allowlist.
+  * Static regex scanner asserting zero hard-coded `#hex`, `rgb()`, or `hsl()` literals outside the documented colour-literal exceptions.
 
 . **Component Theme Tests (`pm-web-app/src/lib/views/theme.test.ts`):**
   * Mounts representative components (`EpicView`, `OverviewView`, `FindingsReviewModal`) under `data-theme="light"` and `data-theme="dark"`.

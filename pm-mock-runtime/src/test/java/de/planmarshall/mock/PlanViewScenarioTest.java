@@ -316,16 +316,40 @@ class PlanViewScenarioTest {
     }
 
     @Test
-    @DisplayName("synthesizes the dynamic process routes for unknown ids")
+    @DisplayName("synthesizes the dynamic routes and refuses an unknown plan id")
     void dynamicRoutes() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
             var tree = ProcessTree.fromJson(
-                    get(runtime, "/api/v1/plans/dynamic-custom-plan/process").bodyText());
-            assertEquals("dynamic-custom-plan", tree.planId());
+                    get(runtime, "/api/v1/plans/drop-legacy-api/process").bodyText());
+            assertEquals("drop-legacy-api", tree.planId());
+            assertEquals("Drop the legacy endpoints", tree.title());
+            assertEquals("finalize", tree.currentPhase());
+            assertEquals("waiting_for_you", tree.phaseState());
+
+            var unknown = get(runtime, "/api/v1/plans/dynamic-custom-plan/process");
+            assertEquals(404, unknown.status());
+            assertTrue(unknown.bodyText().contains("plan_not_found"),
+                    "an unknown plan id answers plan_not_found");
 
             var activity = TaskActivity.fromJson(
-                    get(runtime, "/api/v1/plans/dynamic-custom-plan/tasks/TASK-042/activity").bodyText());
+                    get(runtime, "/api/v1/plans/drop-legacy-api/tasks/TASK-042/activity").bodyText());
             assertEquals("TASK-042", activity.taskId());
+
+            var servedActivity = TaskActivity.fromJson(
+                    get(runtime, "/api/v1/plans/docs-typo/tasks/TASK-001/activity").bodyText());
+            assertEquals("TASK-001", servedActivity.taskId());
+
+            // The held plan the control walk opens is listed, so its process answers.
+            var held = ProcessTree.fromJson(
+                    get(runtime, "/api/v1/plans/relay-cursor-order/process").bodyText());
+            assertEquals("relay-cursor-order", held.planId());
+            assertEquals("waiting_for_you", held.phaseState());
+
+            var unknownActivity = get(runtime,
+                    "/api/v1/plans/dynamic-custom-plan/tasks/TASK-042/activity");
+            assertEquals(404, unknownActivity.status());
+            assertTrue(unknownActivity.bodyText().contains("plan_not_found"),
+                    "an unknown plan id has no task activity");
 
             var epic = EpicProcess.fromJson(
                     get(runtime, "/api/v1/epics/dynamic-custom-epic/process").bodyText());

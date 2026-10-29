@@ -33,9 +33,10 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 - Lanes — every implementation plan runs on the `runbook` lane (opencode, `/plan-marshall-runbook-lane`);
   every `verify-*` plan runs on the `plan-marshall` lane, separate from the implementation it checks.
-- Three tracks for `parallelization_scope = 3` — web (WS-02, WS-03), terminal (WS-04, WS-05), shared
-  (WS-01). The tracks touch disjoint modules (`pm-web-app`/`pm-web-e2e` against `pm-operator`), so one
-  plan per track can run at a time; the shared catalogue `pm-api/src/main/resources/messages/` is split
+- Three tracks — web (WS-02, WS-03), terminal (WS-04, WS-05), shared
+  (WS-01) — with `parallelization_scope` raised from 3 to 4 on 2026-10-29 at the operator's word (the fifth plan
+  past 3 in practice). The tracks touch disjoint modules (`pm-web-app`/`pm-web-e2e` against `pm-operator`), so one
+  plan per track can run at a time, the fourth slot going to a second plan on a track whose specs are pairwise disjoint; the shared catalogue `pm-api/src/main/resources/messages/` is split
   per area, so cross-track overlap is mostly one file or none.
 - Web chain — the web track is the critical path (17 levels): foundation (PLAN-01 to PLAN-41), shell and
   templates, views, then onboarding, light theme, cleanup, guard in failing mode, docs, final check.
@@ -94,6 +95,31 @@ plan spec names the plan, proposal and finding documents it comes from.
   page as created by themselves; it exists now), and those declaring `common.{de,en}.properties` (PLAN-04, 06, 34,
   39, 45, 46, 73), `+layout.svelte` (PLAN-39, 66) or `interaction-affordances.adoc` (PLAN-47, 74). PLAN-31 has its
   PLAN-25 dependency met (and PLAN-76); PLAN-41 still waits for 31 and others.
+- PLAN-08 (`use-case-documents`) — shipped (PR #259, merge `eba84c17`; sibling `plan-marshall-documentation` PR #128,
+  `24eabd4`). All three deliverables met. In this repository it changed exactly the two declared design files; the
+  use cases themselves (UC-PLN-7 and UC-PLN-8 as `DRAFT`, variations in UC-PLN-2, UC-PLN-4, UC-PRJ-1, UC-ONB-1) are in
+  the sibling repository, opened and merged with `gh` on the operator's two explicit answers. The operator agreed
+  "as written" in the PR; the use cases stay `DRAFT` until a separate act flips them to `AGREED`. Sonar:
+  `undecidable (docs-only skip)`, as decided 2026-10-28. PLAN-36, PLAN-46 and PLAN-49 have their PLAN-08 dependency
+  met (each needs others as well).
+- PLAN-27 (`web-brand`) — shipped (PR #262, merge `4c39c0f8`). All three deliverables met. It changed 18 files
+  against 7 declared: six of the declared (all but `src/app.html`) and twelve undeclared (the favicon module and its
+  test, `brand-mark-attention.svg`, the `+layout.svelte` wiring, `PairingView.scenarios.test.ts`, the pairing
+  captions `pairing.{en,de}.properties`, three design pages and two brand diagrams). Two operator-accepted
+  departures: the 64 px test rests on a mutation-after run, not test-first (question 3), and the QR now shows on
+  every listener under a caption that tells the truth (question 2). The 28 px plate is visible in no artifact until
+  PLAN-39 puts the rail head on screen. Sonar gate `OK`, 0 open issues (confirmed, not the docs-only exception).
+  Notes added to PLAN-39 (rail head renders `<BrandMark size={24} plate />`) and PLAN-49 (point the badge, the tab
+  title and the tab icon at the attention total). PLAN-39 has its PLAN-27 dependency met (it also needs PLAN-31).
+- PLAN-31 (`web-core-components-containers`) — shipped (PR #266, merge `0351ce78`). All three deliverables met. It
+  changed 23 files against 8 declared and left none of the declared untouched: the seven container components
+  (`Card`, `KeyValueList`, `Tabs`, `Breadcrumb`, `Dialog`, `Toast`, `AttentionStrip`) with the dev page extended, plus
+  fifteen undeclared files (seven tests, `shortenMiddle.ts` and its test, four fixtures, `common.{de,en}.properties`,
+  the last named in its Standing Constraints). Insertions only. The components have no caller yet beyond the dev page.
+  Sonar gate `OK`, 0 open issues. CodeRabbit never reviewed the final head (merge under the standing authorization,
+  its review on `d04ffe00` had every finding fixed). One run slip: the properties were first edited in the main
+  checkout and reverted. PLAN-39 (shell; note added), PLAN-37 (accessibility baseline) have their PLAN-31 dependency
+  met; PLAN-35 still needs PLAN-16, PLAN-41 others.
 - Cleanup 2026-10-28 (HEAD `cc5794c9`): the claims of the 64 staged and parked specs were re-grounded and 83
   verdicts are persisted (`ui-improvements/cleanup`); PLAN-10 (launched) was left alone. Two claims were
   contradicted and absorbed into the spec: PLAN-25 (today's `Button` already has the four variants and 18 views
@@ -283,6 +309,42 @@ plan spec names the plan, proposal and finding documents it comes from.
   Not added to PLAN-11: the two stale mock epic routes (`actions/cancel` ignores `with_plans`, `actions/next`
   is a no-op); the operator did not decide it, so they stay a watch. Not recorded as launched: that waits for the
   operator's confirmation that the commands were started.
+- 2026-10-29 — Ledger landed as PR #264 (`53718209`). PLAN-31 and PLAN-11 recorded launched, then running, on the
+  operator's word.
+- 2026-10-29 — PLAN-08 landing analysed (`landings/PLAN-08.md`). Row `shipped` (PR #259), message archived. Emitted
+  PLAN-13 (`cli-event-contract`; terminal plan, no ports assigned in the spec) at the operator's request ("emit the next"): terminal track,
+  free since PLAN-10 shipped. With PLAN-27, PLAN-31 and PLAN-11 running that is four in flight, one above N=3 by the
+  operator's choice (third time). Gate: declarative, determinate, no blocking candidate, no overlap prompt
+  (`corpus cross-check`); its only shared files are the operator catalogue pair with staged plans (PLAN-14, 17, 21,
+  23), none in flight. Dependency PLAN-02 shipped. Spec re-read at HEAD eba84c17: hypothesis still holds
+  (`ConsoleNotice.java:293`, `PmConsole.java:448`); a re-grounded note added (PLAN-10 and PLAN-15 changed the
+  catalogue, PLAN-15 changed `04-console.adoc`). PLAN-14 not chosen: same catalogue pair, so not both at once.
+  Not recorded as launched.
+- 2026-10-29 — PLAN-27 landing analysed (PR #262, `4c39c0f8`) and drained; row shipped. Running after it: PLAN-31,
+  PLAN-11 and PLAN-13, which is N=3 with no free slot. Emitted PLAN-20 (`cli-actions-by-state`, terminal) at the
+  operator's request ("emit the next"), which makes four in flight if it is started: one above N=3 by the operator's
+  choice (fourth time). The ready set (every dependency shipped) is PLAN-09, 14, 17, 20, 21, 22, 23. Gate:
+  declarative, determinate, no blocking candidate, no overlap prompt for PLAN-20 (`corpus cross-check`: no shared file
+  with anything). Not chosen: PLAN-14, 17 (each shares the operator catalogue pair with PLAN-13; the cross-check asks
+  an overlap prompt); PLAN-21, 22, 23 (the catalogue pair too, and the same terminal track); PLAN-09 (two checks
+  still open: the PLAN-06 enums with the tab-title watch, and the five views PLAN-19 and PLAN-25 changed). PLAN-20
+  re-read at HEAD 4c39c0f8: half is done (hold acts first exist; the decision-first entry of a waiting plan does not),
+  so a re-grounded note scopes it. Its one undeclared overlap with PLAN-13 is the new catalogue text (different
+  section of the pair), named in the note. Recorded launched and then running on the operator's word the same day
+  ("i started #20"): four running (31, 11, 13, 20).
+- 2026-10-29 — PLAN-31 landing analysed (PR #266, `0351ce78`) and drained; row shipped. Running after it: PLAN-11,
+  PLAN-13 and PLAN-20, which is N=3 with no free slot. Emitted PLAN-39 (`web-app-shell`, web track) at the operator's
+  request ("emit the next"); started, it makes four in flight, one above N=3 by the operator's choice (fifth time).
+  The ready set is PLAN-09, 14, 17, 21, 22, 23, 37, 39. Gate for PLAN-39: declarative, determinate, no blocking
+  candidate, no overlap prompt, no shared file with anything (`corpus cross-check`); dependencies PLAN-31, 27, 04, 76
+  shipped; the web track is free; ports 20390/20391 in the spec. It is the critical path of the web chain (the shell
+  gates the view plans). Spec re-read at HEAD 0351ce78: a re-grounded note lists the PLAN-31 components it can use,
+  what `+layout.svelte` holds today and that the four `system.*` lifecycle states are not part of it (the machine
+  pill is neutral). Not chosen: PLAN-37 (adds `@axe-core/playwright`, an operator-decided dependency, and edits
+  `WorkControlPanel`/`ChatPanel`; wait for a free slot), PLAN-09 (two checks still open), PLAN-14, 17, 21, 23 (overlap
+  prompt on the operator catalogue with PLAN-13), PLAN-22. Recorded launched and then running on the operator's word
+  ("I started the plan"). The operator set `parallelization_scope` to 4 in the same message: four running (11, 13, 20,
+  39) is now N, not above it, and no slot is free until one lands.
 
 ## Open Defects
 
@@ -304,7 +366,9 @@ plan spec names the plan, proposal and finding documents it comes from.
   opencode), same two keys each. Recurrence 2026-10-29: `rb-10-cli-choice-prompt-pause-001.md` (PLAN-10,
   opencode), same two keys. Recurrence 2026-10-29: `rb-25-web-core-components-controls-001.md` (PLAN-25,
   opencode), same two keys. Recurrence 2026-10-29: `rb-01-web-text-guard-report-002.md` (PLAN-01, second message
-  of a resumed run, opencode), same two keys.
+  of a resumed run, opencode), same two keys. Recurrence 2026-10-29: `rb-08-use-case-documents-001.md` (PLAN-08,
+  opencode), same two keys. Recurrence 2026-10-29: `rb-27-web-brand-001.md` (PLAN-27, opencode), same two keys. Recurrence 2026-10-29:
+  `rb-31-web-core-components-containers-001.md` (PLAN-31, opencode), same two keys.
 
 ## Watches
 
@@ -397,6 +461,33 @@ plan spec names the plan, proposal and finding documents it comes from.
   `build / conclusion` passed). Running the analysis in CI was rejected: it needs
   `maven-build.skip-on-docs-only: false` and would build on two JDKs for diffs with no code. — re-check at
   the landing of PLAN-08, PLAN-24 and PLAN-74 that the changed files stayed inside the list; retire then.
+  PLAN-08 checked 2026-10-29: two `.adoc` files under `doc/`, `build / conclusion` passed, the gate read is
+  HTTP 404 (no analysis), landing reports `unknown`; the exception held. Stays open for PLAN-24 and PLAN-74.
+- UC-PLN-7 and UC-PLN-8 are `DRAFT`, agreed by the operator in PR #259 (2026-10-29), not `AGREED`. PLAN-36 (`needs`),
+  PLAN-46 and PLAN-49 depend on PLAN-08 and the epic notes the use cases "must be agreed first". The flip to
+  `AGREED` is a separate act in `plan-marshall-documentation` that no staged plan owns; the drafts also name two
+  follow-ups (move the `Changes to the Specification` part into PM-ARCH-11 and the runtime-model specification;
+  add the `credential` and `cleanup_due` kinds to the two client designs). — decide before emitting PLAN-36, 46 or 49
+  whether the flip is needed first, and whether a plan carries the two follow-ups.
+- Brand residue (PLAN-27, 2026-10-29): three CodeRabbit nitpicks on `favicon.test.ts` were answered, not fixed
+  (stroke half-width in the dot bounds, an exact palette set, the ring on the dot circle), and `<html lang>` stays
+  `en` on the German pairing page (`src/app.html` hard-codes it, nothing writes `document.documentElement.lang`).
+  No staged plan owns either. — the test tightening is low value; the `lang` attribute is an accessibility defect
+  for the German pages: decide whether PLAN-39 (`web-app-shell`, owns the layout) takes it.
+- Container components without callers (PLAN-31, 2026-10-29): `Card`, `KeyValueList`, `Tabs`, `Breadcrumb`, `Dialog`,
+  `Toast` and `AttentionStrip` are drawn on `/dev/components` only, the nine `*Modal.svelte` components are not
+  migrated, and `Toast` has no host or store, so whichever plan raises the first toast must own it. — check at PLAN-39
+  (the phone's "More" sheet may use `Dialog`), PLAN-43 and the view plans that name a modal; stage a host if none does.
+- A run edited the main checkout (PLAN-31, 2026-10-29): `common.{de,en}.properties` were first changed there,
+  reverted by hand and redone in the worktree; the main checkout was clean afterwards. The merged diff is right. —
+  second report of a lane writing outside its worktree (PLAN-10's `test-results/` was the first, different cause);
+  re-check at the next landing.
+- The tab icon, the header badge and the tab title all read `runtimeStore.openDecisionsCount` (PLAN-27). — PLAN-49
+  switches all three to the attention total; check at its emit (note added to its spec).
+- First sibling-repository change of this epic (PLAN-08): the run opened and merged a pull request in
+  `plan-marshall-documentation` with `gh`, because the lane's `ci` surface cannot target another checkout. The
+  operator authorized both steps. — expect it again whenever a spec's deliverable writes to the sibling; the lane
+  has no way to do it without a rule bend.
 - `EpicProcessPlan` documents `phase_state` as `running/staged/planned/done` (`EpicProcessPlan.java:26`),
   but the scenarios serve `staged`/`ended` and `PlanActivity.parse("done")` throws (PLAN-06 residue).
   — fix in PLAN-34 (`cli-display-layer`), the next plan on the `pm-api` display contract; check before

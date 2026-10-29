@@ -69,6 +69,12 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |nothing
 |Milestone 4
 
+|link:exec-hardening.adoc[`exec-hardening`]
+|`pm-exec`: scopes, system call filter, parent watch and self-check
+|`open`
+|link:exec-listed-read-set.adoc[`exec-listed-read-set`]
+|Milestone 4
+
 |link:implemented/operator-harness-and-roles-verbs.adoc[`operator-harness-and-roles-verbs`]
 |Operator verbs of harness enrolment and roles
 |`done`
