@@ -2,6 +2,7 @@
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
+  import BrandMark from '../components/BrandMark.svelte';
   import PairingQr from '../components/PairingQr.svelte';
   import { pairBrowser, runtimeStore, navigateTo } from '../stores/runtime';
 
@@ -10,11 +11,9 @@
   let errorMessage = '';
   let copiedCommand: string | null = null;
 
-  const loopbackHosts = ['127.0.0.1', 'localhost', '::1', '[::1]'];
   const cmdLocal = 'pm-operator web open --pair';
   const cmdRemote = 'pm-operator web pair';
 
-  $: isLoopback = typeof window !== 'undefined' && loopbackHosts.includes(window.location.hostname);
   $: isCodeValid = codeInput.replace(/[^A-Za-z0-9]/g, '').length >= 8;
   $: pairingUrl =
     typeof window !== 'undefined'
@@ -88,6 +87,11 @@
       <p class="pair-card__loading-text">{$t('web.pair.page.pairing')}</p>
     </div>
   {:else}
+    <div class="pair-card__brand">
+      <BrandMark size={64} />
+      <span class="pair-card__wordmark">{$t('web.frame.brand')}</span>
+    </div>
+
     <div class="pair-card__header">
       <h1 class="pair-card__title">{$t('web.pair.page.title')}</h1>
       <p class="pair-card__intro">{$t('web.pair.page.intro')}</p>
@@ -140,7 +144,7 @@
         </div>
       </div>
 
-      {#if !isLoopback && isCodeValid}
+      {#if isCodeValid}
         <div class="pair-card__qr">
           <PairingQr value={pairingUrl} label={$t('web.pair.qr.label')} />
           <p class="pair-card__qr-hint">{$t('web.pair.qr.hint')}</p>
@@ -184,6 +188,22 @@
   .revoked-banner__reason {
     font-size: var(--text-sm);
     color: var(--color-text-secondary);
+  }
+
+  .pair-card__brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-8) var(--space-6) 0;
+    color: var(--color-brand);
+  }
+
+  .pair-card__wordmark {
+    font-size: var(--text-2xl);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--color-text-primary);
   }
 
   .pair-card__header {
@@ -234,8 +254,10 @@
   .form-input {
     width: 100%;
     padding: var(--space-3) var(--space-4);
-    font-size: var(--text-lg);
-    letter-spacing: 0.1em;
+    font-family: var(--font-mono);
+    font-size: var(--text-3xl);
+    font-weight: 600;
+    letter-spacing: 0.08em;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     background-color: var(--color-bg-app);
