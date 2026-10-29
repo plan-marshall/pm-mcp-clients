@@ -7875,7 +7875,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return null;
     }
 
-    private void handleGetKeptCleanup(MockHttpResponse response) throws IOException {        var list = new ArrayList<Map<String, Object>>();
+    private void handleGetKeptCleanup(MockHttpResponse response) throws IOException {
+        var list = new ArrayList<Map<String, Object>>();
         synchronized (systemLock) {
             for (var k : keptItems) {
                 list.add(k.toMap());

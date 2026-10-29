@@ -10,6 +10,7 @@
 package de.planmarshall.mock.runtime;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -158,7 +159,7 @@ class ScenarioStateContractTest {
         var registry = new ScenarioRegistry();
         for (var scenarioName : StandardScenarios.PRIMARY_SCENARIOS) {
             try (var engine = new MockRuntimeEngine(registry, registry.resolve(scenarioName),
-                    "test-token", "test-secret")) {
+                         "test-token", "test-secret")) {
                 var answer = get(engine, "/api/v1/plans");
                 assertEquals(200, answer.status(), scenarioName + " must answer GET /api/v1/plans");
                 assertNotNull(JsonTree.asArray(answer.json().get("plans")),
@@ -172,7 +173,7 @@ class ScenarioStateContractTest {
     void everySystemStateServesItsLifecycleState() throws Exception {
         var registry = new ScenarioRegistry();
         try (var engine = new MockRuntimeEngine(registry,
-                registry.resolve(StandardScenarios.REPORTS_AND_SYSTEM), "test-token", "test-secret")) {
+                     registry.resolve(StandardScenarios.REPORTS_AND_SYSTEM), "test-token", "test-secret")) {
             var scenario = engine.currentScenario();
             var states = new TreeSet<String>();
             for (var stateId : scenario.states().keySet()) {
@@ -180,7 +181,7 @@ class ScenarioStateContractTest {
                     states.add(stateId);
                 }
             }
-            assertTrue(!states.isEmpty(), "the scenario declares no system state");
+            assertFalse(states.isEmpty(), "the scenario declares no system state");
             for (var stateId : states) {
                 var expected = fact(scenario, stateId, "lifecycle_state");
                 assertNotNull(expected, stateId + " declares no lifecycle_state fact");

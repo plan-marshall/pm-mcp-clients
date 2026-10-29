@@ -132,7 +132,8 @@ class FixtureConsistencyTest {
 
         @Test
         @DisplayName("the system snapshot carries the same cleanup summary as the job")
-        void snapshotCarriesTheSameSummary() throws Exception {            try (var engine = engine(StandardScenarios.REPORTS_AND_SYSTEM)) {
+        void snapshotCarriesTheSameSummary() throws Exception {
+            try (var engine = engine(StandardScenarios.REPORTS_AND_SYSTEM)) {
                 var job = get(engine, "/api/v1/system/cleanup");
                 var summary = JsonTree.object(job, "summary");
                 var snapshot = JsonTree.object(get(engine, "/api/v1/system"), "cleanup");

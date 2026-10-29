@@ -316,12 +316,20 @@ class PlanViewScenarioTest {
     }
 
     @Test
-    @DisplayName("synthesizes the dynamic process routes for unknown ids")
+    @DisplayName("synthesizes the dynamic routes and refuses an unknown plan id")
     void dynamicRoutes() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
             var tree = ProcessTree.fromJson(
-                    get(runtime, "/api/v1/plans/dynamic-custom-plan/process").bodyText());
-            assertEquals("dynamic-custom-plan", tree.planId());
+                    get(runtime, "/api/v1/plans/drop-legacy-api/process").bodyText());
+            assertEquals("drop-legacy-api", tree.planId());
+            assertEquals("Drop the legacy endpoints", tree.title());
+            assertEquals("finalize", tree.currentPhase());
+            assertEquals("waiting_for_you", tree.phaseState());
+
+            var unknown = get(runtime, "/api/v1/plans/dynamic-custom-plan/process");
+            assertEquals(404, unknown.status());
+            assertTrue(unknown.bodyText().contains("plan_not_found"),
+                    "an unknown plan id answers plan_not_found");
 
             var activity = TaskActivity.fromJson(
                     get(runtime, "/api/v1/plans/dynamic-custom-plan/tasks/TASK-042/activity").bodyText());
