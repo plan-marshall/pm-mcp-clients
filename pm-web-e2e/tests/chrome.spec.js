@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { pair, switchScenario } from './helpers/pairing.js';
-import { startMockRuntime, stopMockRuntime } from './helpers/mockRuntime.js';
+import { startMockRuntime, stopMockRuntime, ensureMockRuntime } from './helpers/mockRuntime.js';
 
 /**
  * The web chrome, navigation and action advisories: the frame is a rail with three groups and a
@@ -258,10 +258,15 @@ test.describe('The live indicator', () => {
     await expect(indicator).toHaveAttribute('data-state', 'connected', { timeout: 15000 });
 
     await stopMockRuntime();
-    await expect(indicator).toHaveAttribute('data-state', 'reconnecting', { timeout: 15000 });
+    try {
+      await expect(indicator).toHaveAttribute('data-state', 'reconnecting', { timeout: 15000 });
 
-    await startMockRuntime('fully-onboarded');
-    await expect(indicator).toHaveAttribute('data-state', 'connected', { timeout: 45000 });
-    await expect(indicator).toContainText('Live');
+      await startMockRuntime('fully-onboarded');
+      await expect(indicator).toHaveAttribute('data-state', 'connected', { timeout: 45000 });
+      await expect(indicator).toContainText('Live');
+    } finally {
+      // The suite runs serially: a failure here must not leave the following specs without a mock.
+      await ensureMockRuntime('fully-onboarded');
+    }
   });
 });

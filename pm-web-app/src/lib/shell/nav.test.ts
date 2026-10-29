@@ -36,7 +36,7 @@ describe('the shell navigation model', () => {
     expect(ALL_NAV_ITEMS.every((item) => item.icon.startsWith('nav.'))).toBe(true);
   });
 
-  it('keeps the four phone destinations, the rest in the More sheet', () => {
+  it('keeps the three phone destinations, the rest in the More sheet', () => {
     expect(BOTTOM_ITEMS.map((item) => item.id)).toEqual(['running', 'decisions', 'reports']);
   });
 

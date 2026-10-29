@@ -119,7 +119,7 @@ export const ALL_NAV_ITEMS: readonly ShellNavItem[] = RAIL_GROUPS.flatMap(
 /** The destinations the phone's bottom bar keeps; the rest live in its "More" sheet. */
 const BOTTOM_IDS: readonly string[] = ['running', 'decisions', 'reports'];
 
-/** The four controls of the phone's bottom bar, before "More" is counted. */
+/** The destinations the phone's bar carries, before "More" is counted. */
 export const BOTTOM_ITEMS: readonly ShellNavItem[] = ALL_NAV_ITEMS.filter((item) =>
   BOTTOM_IDS.includes(item.id),
 );

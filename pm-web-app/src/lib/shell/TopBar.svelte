@@ -11,8 +11,8 @@
    * The top bar of the shell (UX-P-02, UX-P-12): where the person stands, the way into the search,
    * the live indicator, and the machine in a neutral pill.
    *
-   * The path is the one trail the whole app draws; the machine pill is neutral by design, so a
-   * machine that is simply named never reads as a warning.
+   * The path is the one trail the whole app draws; the pill stays neutral in both connection modes,
+   * because a machine that is simply named never reads as a warning.
    */
   const loopbackHosts = ['127.0.0.1', 'localhost', '::1', '[::1]'];
   const CONNECTION_HEARTBEAT_MS = 30_000;
@@ -94,7 +94,6 @@
       data-testid="search-trigger"
     >
       {$t('web.frame.search')}
-      <kbd class="app-header__shortcut" aria-hidden="true">⌘K</kbd>
     </Button>
 
     <LiveIndicator />
@@ -136,11 +135,6 @@
     gap: var(--space-2);
   }
 
-  .app-header__shortcut {
-    font-size: var(--text-xs);
-    color: var(--color-text-muted);
-  }
-
   .app-header__machine {
     font-size: var(--text-xs);
     color: var(--color-text-muted);
@@ -150,11 +144,12 @@
     border-inline-start: 3px solid var(--color-border);
   }
 
-  /* The mode marker: the network listener is the one that is not implied by the loopback page. */
+  /* The pill stays neutral in both modes: the machine's name is a fact, never a warning. The
+     connection mode travels in the title, which names the listener this browser reached. */
   .app-header__machine[data-connection-mode='lan'] {
-    color: var(--color-attention-text);
-    background-color: var(--color-attention-subtle);
-    border-inline-start-color: var(--color-attention);
+    color: var(--color-text-muted);
+    background-color: var(--color-bg-subtle);
+    border-inline-start-color: var(--color-border);
   }
 
   @media (max-width: 767px) {

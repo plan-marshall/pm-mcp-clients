@@ -3590,6 +3590,8 @@ export class ApiClient {
       this.eventStreamAbort();
       this.eventStreamAbort = null;
       this.eventStreamRetry = null;
+      // The shared stream is gone: the indicator must not keep claiming a connection it lost.
+      this.reportStreamState('offline');
     }
   }
 
@@ -3712,7 +3714,6 @@ export class ApiClient {
           throw new Error(`SSE failed: ${res.status}`);
         }
 
-        failures = 0;
         onState?.('connected');
         this.onOnlineCallback?.();
         const reader = res.body.getReader();
@@ -3730,6 +3731,9 @@ export class ApiClient {
             return;
           }
 
+          // Data arrived: the connection is genuinely alive, so the failures before it are past.
+          // A stream that is accepted and ends again without data stays on its way to `offline`.
+          failures = 0;
           buffer += decoder.decode(value, { stream: true });
           const parts = buffer.split(/(?:\r\n|\r|\n){2}/);
           buffer = parts.pop() || '';

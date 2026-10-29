@@ -1,6 +1,7 @@
 <script lang="ts">
   import { runtimeStore, retryEventStream } from '../stores/runtime';
   import { t } from '../i18n';
+  import Button from '../components/Button.svelte';
 
   /**
    * The live indicator of the top bar (UX-P-12): the state of the event stream in one line.
@@ -41,14 +42,14 @@
   <span class="live-indicator__dot" aria-hidden="true"></span>
   <span class="live-indicator__label">{label}</span>
   {#if shown === 'offline'}
-    <button
-      type="button"
-      class="live-indicator__retry"
+    <Button
+      variant="ghost"
+      size="sm"
       data-testid="live-retry"
-      onclick={() => void retryEventStream()}
+      on:click={() => void retryEventStream()}
     >
       {$t('web.frame.live.retry')}
-    </button>
+    </Button>
   {/if}
 </div>
 
@@ -103,14 +104,5 @@
 
   .live-indicator[data-state='offline'] .live-indicator__dot {
     background-color: var(--color-danger);
-  }
-
-  .live-indicator__retry {
-    padding: 0;
-    font-size: inherit;
-    font-weight: 600;
-    color: inherit;
-    text-decoration: underline;
-    text-underline-offset: 2px;
   }
 </style>

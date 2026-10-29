@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { MOCK_RUNTIME_URL, MOCK_WEB_PORT } from './ports.js';
 
 /**
@@ -13,7 +14,7 @@ import { MOCK_RUNTIME_URL, MOCK_WEB_PORT } from './ports.js';
  */
 
 const DESCRIPTOR = path.resolve(
-  process.env.PLAYWRIGHT_OUTPUT_DIR || path.resolve(process.cwd(), 'target'),
+  process.env.PLAYWRIGHT_OUTPUT_DIR || fileURLToPath(new URL('../../target', import.meta.url)),
   'mock-runtime.json',
 );
 
@@ -97,11 +98,25 @@ export async function startMockRuntime(scenario = 'fully-onboarded') {
     ],
     { cwd: descriptor.root, stdio: 'ignore', detached: false },
   );
-  child.unref();
   fs.writeFileSync(
     DESCRIPTOR,
     JSON.stringify({ ...descriptor, pid: child.pid }, null, 2),
     'utf8',
   );
   await waitFor(true, 30000);
+}
+
+/**
+ * Makes sure the mock runtime answers, starting it again when it was left down.
+ *
+ * A test that fails between the stop and the start of a check must not take the mock — and with
+ * it every following test of the serial suite — down with it.
+ *
+ * @param scenario the scenario to open with when the mock has to be started
+ */
+export async function ensureMockRuntime(scenario = 'fully-onboarded') {
+  if (await isUp()) {
+    return;
+  }
+  await startMockRuntime(scenario);
 }

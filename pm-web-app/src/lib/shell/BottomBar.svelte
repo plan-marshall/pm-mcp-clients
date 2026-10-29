@@ -39,96 +39,98 @@
   }
 </script>
 
-<nav class="bottom-bar" data-testid="bottom-bar" aria-label={$t('web.frame.bottom.label')}>
-  {#each BOTTOM_ITEMS as item (item.id)}
+{#if $runtimeStore.isPaired && !$runtimeStore.isRevoked}
+  <nav class="bottom-bar" data-testid="bottom-bar" aria-label={$t('web.frame.bottom.label')}>
+    {#each BOTTOM_ITEMS as item (item.id)}
+      <button
+        type="button"
+        class="bottom-bar__item"
+        class:bottom-bar__item--active={active === item.route}
+        data-testid={`bottom-${item.id}`}
+        aria-current={active === item.route ? 'page' : undefined}
+        onclick={() => open(item)}
+      >
+        <Icon name={item.icon} size={20} />
+        <span class="bottom-bar__label">{$t(item.labelKey)}</span>
+      </button>
+    {/each}
+
     <button
       type="button"
       class="bottom-bar__item"
-      class:bottom-bar__item--active={active === item.route}
-      data-testid={`bottom-${item.id}`}
-      aria-current={active === item.route ? 'page' : undefined}
-      onclick={() => open(item)}
+      data-testid="bottom-more"
+      aria-haspopup="dialog"
+      aria-expanded={sheetOpen}
+      onclick={() => (sheetOpen = true)}
     >
-      <Icon name={item.icon} size={20} />
-      <span class="bottom-bar__label">{$t(item.labelKey)}</span>
+      <Icon name="act.more" size={20} />
+      <span class="bottom-bar__label">{$t('web.frame.bottom.more')}</span>
     </button>
-  {/each}
+  </nav>
 
-  <button
-    type="button"
-    class="bottom-bar__item"
-    data-testid="bottom-more"
-    aria-haspopup="dialog"
-    aria-expanded={sheetOpen}
-    onclick={() => (sheetOpen = true)}
-  >
-    <Icon name="act.more" size={20} />
-    <span class="bottom-bar__label">{$t('web.frame.bottom.more')}</span>
-  </button>
-</nav>
+  <Dialog open={sheetOpen} title={$t('web.frame.bottom.title')} onClose={() => (sheetOpen = false)}>
+    <div class="bottom-sheet">
+      {#each RAIL_GROUPS as group (group.id)}
+        <section class="bottom-sheet__group" data-testid={`sheet-group-${group.id}`}>
+          <h3 class="bottom-sheet__title">{$t(group.labelKey)}</h3>
+          <ul class="bottom-sheet__list">
+            {#each group.items as item (item.id)}
+              <li>
+                <button
+                  type="button"
+                  class="bottom-sheet__item"
+                  data-testid={`sheet-${item.id}`}
+                  aria-current={active === item.route ? 'page' : undefined}
+                  onclick={() => open(item)}
+                >
+                  <Icon name={item.icon} size={20} />
+                  <span>{$t(item.labelKey)}</span>
+                </button>
+              </li>
+            {/each}
+          </ul>
+        </section>
+      {/each}
 
-<Dialog open={sheetOpen} title={$t('web.frame.bottom.title')} onClose={() => (sheetOpen = false)}>
-  <div class="bottom-sheet">
-    {#each RAIL_GROUPS as group (group.id)}
-      <section class="bottom-sheet__group" data-testid={`sheet-group-${group.id}`}>
-        <h3 class="bottom-sheet__title">{$t(group.labelKey)}</h3>
-        <ul class="bottom-sheet__list">
-          {#each group.items as item (item.id)}
-            <li>
-              <button
-                type="button"
-                class="bottom-sheet__item"
-                data-testid={`sheet-${item.id}`}
-                aria-current={active === item.route ? 'page' : undefined}
-                onclick={() => open(item)}
+      <section class="bottom-sheet__group" data-testid="sheet-group-frame">
+        <h3 class="bottom-sheet__title">{$t('web.frame.bottom.frame')}</h3>
+        <div class="bottom-sheet__controls">
+          <button
+            type="button"
+            class="bottom-sheet__control"
+            data-testid="sheet-language-toggle"
+            aria-label={$t('web.frame.toggle_language')}
+            onclick={() => setLocale($currentLocale === 'en' ? 'de' : 'en')}
+          >
+            {$currentLocale === 'en' ? 'DE' : 'EN'}
+          </button>
+
+          <fieldset class="sheet-theme">
+            <legend class="sr-only">{$t('web.frame.theme.label')}</legend>
+            {#each THEME_CHOICES as choice (choice)}
+              <input
+                class="sheet-theme__input"
+                type="radio"
+                name="pm-theme-sheet"
+                id={`sheet-theme-${choice}`}
+                value={choice}
+                checked={themeChoice === choice}
+                onchange={() => onChooseTheme(choice)}
+              />
+              <label
+                class="sheet-theme__option"
+                for={`sheet-theme-${choice}`}
+                data-testid={`sheet-theme-${choice}`}
               >
-                <Icon name={item.icon} size={20} />
-                <span>{$t(item.labelKey)}</span>
-              </button>
-            </li>
-          {/each}
-        </ul>
+                {$t(`web.frame.theme.${choice}`)}
+              </label>
+            {/each}
+          </fieldset>
+        </div>
       </section>
-    {/each}
-
-    <section class="bottom-sheet__group" data-testid="sheet-group-frame">
-      <h3 class="bottom-sheet__title">{$t('web.frame.bottom.frame')}</h3>
-      <div class="bottom-sheet__controls">
-        <button
-          type="button"
-          class="bottom-sheet__control"
-          data-testid="sheet-language-toggle"
-          aria-label={$t('web.frame.toggle_language')}
-          onclick={() => setLocale($currentLocale === 'en' ? 'de' : 'en')}
-        >
-          {$currentLocale === 'en' ? 'DE' : 'EN'}
-        </button>
-
-        <fieldset class="sheet-theme">
-          <legend class="sr-only">{$t('web.frame.theme.label')}</legend>
-          {#each THEME_CHOICES as choice (choice)}
-            <input
-              class="sheet-theme__input"
-              type="radio"
-              name="pm-theme-sheet"
-              id={`sheet-theme-${choice}`}
-              value={choice}
-              checked={themeChoice === choice}
-              onchange={() => onChooseTheme(choice)}
-            />
-            <label
-              class="sheet-theme__option"
-              for={`sheet-theme-${choice}`}
-              data-testid={`sheet-theme-${choice}`}
-            >
-              {$t(`web.frame.theme.${choice}`)}
-            </label>
-          {/each}
-        </fieldset>
-      </div>
-    </section>
-  </div>
-</Dialog>
+    </div>
+  </Dialog>
+{/if}
 
 <style>
   .bottom-bar {

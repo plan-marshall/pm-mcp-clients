@@ -159,7 +159,7 @@
       class="nav-rail__foot-control nav-rail__toggle"
       data-testid="rail-toggle"
       aria-label={$t(collapsed ? 'web.frame.rail.expand' : 'web.frame.rail.collapse')}
-      aria-expanded={!collapsed}
+      aria-pressed={!collapsed}
       onclick={onToggle}
     >
       <span class="nav-rail__toggle-icon" class:nav-rail__toggle-icon--collapsed={collapsed}>

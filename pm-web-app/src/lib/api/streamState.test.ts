@@ -85,6 +85,35 @@ describe('the event stream state', () => {
     unsubscribe();
   });
 
+  it('reaches offline when the machine accepts the stream and ends it again without data', async () => {
+    // A proxy or a half-open connection can accept the stream and close it at once. Only data
+    // proves the connection alive, so these attempts count and the stream gives up eventually.
+    const body = {
+      getReader: () => ({
+        read: () => Promise.resolve({ done: true }),
+        cancel: () => Promise.resolve(),
+      }),
+    };
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, body });
+
+    const unsubscribe = client.subscribeEvents(() => {});
+    await vi.advanceTimersByTimeAsync(25_000);
+
+    expect(states.at(-1)).toBe('offline');
+
+    unsubscribe();
+  });
+
+  it('reports offline when the last subscriber leaves', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, body: hangingBody() });
+    const unsubscribe = client.subscribeEvents(() => {});
+    await vi.advanceTimersByTimeAsync(0);
+    expect(states.at(-1)).toBe('connected');
+
+    unsubscribe();
+    expect(states.at(-1)).toBe('offline');
+  });
+
   it('does nothing on a retry while the stream is live', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, body: hangingBody() });
     const unsubscribe = client.subscribeEvents(() => {});
