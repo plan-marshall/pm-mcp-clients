@@ -26,6 +26,11 @@
         }
       }
     },
+    "GET /api/v1/plans": {
+      "representation": {
+        "plans": []
+      }
+    },
     "GET /api/v1/projects": {
       "representation": {
         "favourites": [

@@ -2,10 +2,10 @@
   "id": "PLAN-31",
   "slug": "web-core-components-containers",
   "workstream": "WS-02",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "31-web-core-components-containers",
+  "pr": "266",
+  "landing": "landings/PLAN-31.md",
   "seq": 31
 }

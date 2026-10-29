@@ -36,6 +36,7 @@ import de.planmarshall.api.control.ChatScope;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.process.ProcessTree;
 import de.planmarshall.api.source.git.ChangedFile;
 import de.planmarshall.api.start.ConfinedFileListResource;
 import de.planmarshall.api.start.ConfinedRoot;
@@ -124,6 +125,15 @@ class StartScenarioTest {
                 assertEquals("plan.started", event.event());
                 var data = JsonTree.asObject(JsonTree.parse(event.data()));
                 assertEquals("add-a-codeberg-provider-for-issues", JsonTree.string(data, "plan_id"));
+
+                var process = client.send(HttpRequest.get(
+                        "/api/v1/plans/" + result.id() + "/process")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, process.status(), "a started plan stays retrievable");
+                var tree = ProcessTree.fromJson(process.bodyText());
+                assertEquals(result.id(), tree.planId());
+                assertEquals("Add a Codeberg provider for issues", tree.title());
+                assertEquals("pm-mcp-clients", tree.project().projectId());
             }
         }
     }
