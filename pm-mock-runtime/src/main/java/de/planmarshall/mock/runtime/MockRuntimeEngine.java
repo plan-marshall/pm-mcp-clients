@@ -291,6 +291,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ERR_SCOPE_NOT_FOUND = "scope_not_found";
     private static final String EVENT_PROJECT_CHANGED = "project.changed";
     private static final String KEY_PROJECT_ID = "project_id";
+    private static final String KEY_NODE_ID = "node_id";
+    private static final String KEY_TITLE = "title";
     private static final String KEY_EVENT = "event";
     private static final String CONST_GITHUB_PM_PREFIX = "https://github.com/plan-marshall/";
     private static final String CONST_TIME_10_14 = "2026-10-14T10:00:00Z";
@@ -4396,7 +4398,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var actionRequest = PlanActionRequest.fromMap(readBodyMap(request));
         synchronized (controlLock) {
             if (!controlPlanStates.containsKey(planId)) {
-                response.json(404, Map.of(KEY_ERROR, "plan_not_found", KEY_MESSAGE, "Plan not found: " + planId));
+                response.json(404, Map.of(KEY_ERROR, ERR_PLAN_NOT_FOUND, KEY_MESSAGE, "Plan not found: " + planId));
                 return;
             }
             var availability = buildPlanActions(planId).action(action);
@@ -5300,7 +5302,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             response.json(200, report.toMap());
             return;
         }
-        response.json(404, Map.of(KEY_ERROR, "plan_not_found", KEY_MESSAGE, "Completion report not found for plan: " + planId));
+        response.json(404, Map.of(KEY_ERROR, ERR_PLAN_NOT_FOUND, KEY_MESSAGE, "Completion report not found for plan: " + planId));
     }
 
     /**
@@ -8372,7 +8374,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     var copy = new LinkedHashMap<String, Object>();
                     repMap.forEach((k, v) -> copy.put(String.valueOf(k), v));
                     copy.put("epic_id", epicId);
-                    copy.put("title", epicId);
+                    copy.put(KEY_TITLE, epicId);
                     response.json(200, copy);
                     return true;
                 }
@@ -8430,7 +8432,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private static Map<String, Object> planProjectRef(String projectId) {
         var project = new LinkedHashMap<String, Object>();
-        project.put("project_id", projectId);
+        project.put(KEY_PROJECT_ID, projectId);
         project.put("display_name", projectId);
         project.put("link", "/api/v1/projects/" + projectId);
         return project;
@@ -8453,7 +8455,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var phaseState = summaryText(summary, "state", "running");
         var copy = new LinkedHashMap<String, Object>();
         copy.put(KEY_PLAN_ID, planId);
-        copy.put("title", summaryText(summary, "title", planId));
+        copy.put(KEY_TITLE, summaryText(summary, KEY_TITLE, planId));
         var projectId = summaryText(summary, "project", null);
         if (projectId != null) {
             copy.put("project", planProjectRef(projectId));
@@ -8480,33 +8482,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (!(template.get("nodes") instanceof List<?> nodes)) {
             return List.of();
         }
-        var current = -1;
-        for (var index = 0; index < nodes.size(); index++) {
-            var node = JsonTree.asObject(nodes.get(index));
-            if (node != null && currentPhase.equals(JsonTree.string(node, "node_id"))) {
-                current = index;
-                break;
-            }
-        }
+        var current = currentPhaseIndex(nodes, currentPhase);
         var result = new ArrayList<Map<String, Object>>(nodes.size());
         for (var index = 0; index < nodes.size(); index++) {
             var node = JsonTree.asObject(nodes.get(index));
             if (node == null) {
                 continue;
             }
-            String state;
-            if (current >= 0 && index < current) {
-                state = "done";
-            } else if (index == current) {
-                state = "waiting_for_you".equals(phaseState) ? "waiting_for_operator" : "running";
-            } else {
-                state = "planned";
-            }
             var phase = new LinkedHashMap<String, Object>();
-            phase.put("node_id", JsonTree.string(node, "node_id"));
-            phase.put("title", JsonTree.string(node, "title"));
+            phase.put(KEY_NODE_ID, JsonTree.string(node, KEY_NODE_ID));
+            phase.put(KEY_TITLE, JsonTree.string(node, KEY_TITLE));
             phase.put("kind", JsonTree.string(node, "kind"));
-            phase.put("state", state);
+            phase.put("state", phaseNodeState(index, current, phaseState));
             phase.put("run_count", 1);
             phase.put("current_run", 1);
             phase.put("duration_seconds", 0);
@@ -8515,6 +8502,37 @@ public final class MockRuntimeEngine implements AutoCloseable {
             result.add(phase);
         }
         return result;
+    }
+
+    /**
+     * @param nodes        the template's phase nodes
+     * @param currentPhase the plan's current phase
+     * @return the index of the current phase, or {@code -1} when the template has no such node
+     */
+    private static int currentPhaseIndex(List<?> nodes, String currentPhase) {
+        for (var index = 0; index < nodes.size(); index++) {
+            var node = JsonTree.asObject(nodes.get(index));
+            if (node != null && currentPhase.equals(JsonTree.string(node, KEY_NODE_ID))) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    /**
+     * @param index      the node's position in the template
+     * @param current    the current phase's position, or {@code -1}
+     * @param phaseState the plan's state
+     * @return the node's state: done before the current phase, the current phase's own, planned after
+     */
+    private static String phaseNodeState(int index, int current, String phaseState) {
+        if (current >= 0 && index < current) {
+            return "done";
+        }
+        if (index == current) {
+            return "waiting_for_you".equals(phaseState) ? "waiting_for_operator" : "running";
+        }
+        return "planned";
     }
 
     @Override
