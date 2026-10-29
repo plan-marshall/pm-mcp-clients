@@ -291,7 +291,7 @@ class ConsoleNoticeTest {
             assertAll(
                                 () -> assertNotNull(notice),
                                 () -> assertTrue(notice.contains(
-                                                    "◆ Waiver request WR-2 · plan fix-relay · gate ci_check:integration-tests"),
+                                                                        "◆ Waiver request WR-2 · plan fix-relay · gate ci_check:integration-tests"),
                                                     notice),
                                 () -> assertTrue(notice.contains("answer WR-2"), notice)
             );

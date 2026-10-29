@@ -145,11 +145,11 @@ class PmConsoleBehaviourTest {
                                 ClientEnvironment.capture(fixture.environment()),
                                 () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
             new PmConsole(context).applyConsoleEvent("decision.opened", Map.of(
-                                "event", "decision.opened",
-                                "id", 7,
-                                "scope", Map.of("kind", "plan", "id", "fix-relay"),
-                                "data", Map.of("decision", Map.of(
-                                                    "id", "Q-007", "subject", "plan fix-relay", "blocks", "plan"))),
+                                                    "event", "decision.opened",
+                                                    "id", 7,
+                                                    "scope", Map.of("kind", "plan", "id", "fix-relay"),
+                                                    "data", Map.of("decision", Map.of(
+                                                                        "id", "Q-007", "subject", "plan fix-relay", "blocks", "plan"))),
                                 reader);
         }
         var text = rendered.toString(StandardCharsets.UTF_8);
