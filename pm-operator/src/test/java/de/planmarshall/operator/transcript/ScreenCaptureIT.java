@@ -85,8 +85,9 @@ class ScreenCaptureIT {
      * One capture line of the set.
      *
      * @param keys       the keys typed after the capture, usually {@code q} to leave the view
-     * @param beforeKeys the keys typed before the capture, so that the captured screen shows their
-     *                   state; empty when the capture is the screen the verb opens
+     * @param beforeKeys the keys typed after the capture screen is written, so that the
+     *                   {@code .after} screen shows their state; empty when the capture is the
+     *                   screen the verb opens
      * @param broadcast  the body {@code POST /mock/broadcast} is sent once the screen settled, so
      *                   that the capture shows what the pushed event drew; empty for none
      */

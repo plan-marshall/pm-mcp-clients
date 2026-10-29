@@ -24,7 +24,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.reader.EndOfFileException;
@@ -70,7 +69,8 @@ public final class PmConsole {
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
     private final AtomicInteger controlDCounter = new AtomicInteger();
-    private final List<String> badges = new CopyOnWriteArrayList<>();
+    /** The prompt's badges, replaced as a whole so a draw never sees a half-updated set. */
+    private volatile List<String> badges = List.of();
     private final ConsoleNoticeBuffer noticeBuffer;
 
     private volatile @Nullable String activePairingCode;
@@ -126,7 +126,7 @@ public final class PmConsole {
         activePairingCode = entryResult.activeCode();
         activePairingUrl = entryResult.activeUrl();
         webPort = EntryFlow.getWebPort(entryResult.status());
-        badges.addAll(entryResult.initialBadges());
+        badges = List.copyOf(entryResult.initialBadges());
         updateWindowTitle(terminal);
         printFullScreenHint(out, terminal);
 
@@ -509,11 +509,10 @@ public final class PmConsole {
             // the runtime did not answer this read: keep the badges it last gave us
             return;
         }
-        if (refreshed.equals(List.copyOf(badges))) {
+        if (refreshed.equals(badges)) {
             return;
         }
-        badges.clear();
-        badges.addAll(refreshed);
+        badges = List.copyOf(refreshed);
         updateWindowTitle(terminal);
     }
 

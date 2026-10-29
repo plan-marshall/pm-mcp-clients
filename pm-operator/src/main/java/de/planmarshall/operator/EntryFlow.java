@@ -451,7 +451,8 @@ public final class EntryFlow {
     static List<String> badges(String locale, Map<String, Object> status) {
         var badges = new ArrayList<String>();
         if (!isMachineOnboarded(status)) {
-            badges.add(ConsolePrompt.formatMachineSetupBadge(locale, getCompletedOnboardStep(status), 7));
+            badges.add(ConsolePrompt.formatMachineSetupBadge(locale, getCompletedOnboardStep(status),
+                                STEP_KEYS.size()));
         }
         badges.addAll(extractWaitingBadges(locale, status));
         return badges;
