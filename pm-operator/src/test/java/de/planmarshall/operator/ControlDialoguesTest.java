@@ -982,6 +982,7 @@ class ControlDialoguesTest {
         var client = new WorkActionsClient(context);
         assertThrows(OperatorRefusedException.class, () -> client.actions("plan", "p"));
         assertThrows(OperatorRefusedException.class, () -> client.holds("p"));
+        assertThrows(OperatorRefusedException.class, () -> client.openDecision("p"));
         assertThrows(OperatorRefusedException.class, () -> client.perform("plan", "p", "start", Map.of()));
         assertThrows(OperatorRefusedException.class, () -> client.resolveHold("p", "h", "retry", null));
         assertThrows(OperatorRefusedException.class, () -> client.settings("p"));
