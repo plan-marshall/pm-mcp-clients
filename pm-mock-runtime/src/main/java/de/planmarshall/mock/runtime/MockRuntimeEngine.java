@@ -351,6 +351,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_UNENROLLED_AFTER_DAYS = "unenrolled_after_days";
     private static final String KEY_REMIND_AFTER_DAYS = "remind_after_days";
     private static final String STATE_ONBOARD_COMPLETED = "onboard.completed";
+    private static final String PROJECT_SETUP_IDENTITY = "project.identity";
+    private static final String PROJECT_SETUP_COMPLETED = "project.completed";
+    private static final String PROJECT_SETUP_READY_SUFFIX = " is ready";
     private static final String STATE_ONBOARD_SUMMARY = "onboard.summary";
     /** The engine-only fixture data a state's operator facts carry beside its domain facts. */
     private static final String FIXTURE_RUNTIME = "runtime";
@@ -588,6 +591,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final List<EnrolledProject> enrolledProjects = new ArrayList<>();
     private final List<String> favouriteProjectIds = new ArrayList<>();
     private final List<BeingAddedProject> beingAddedProjects = new ArrayList<>();
+    private final Map<String, String> projectSetupStates = new ConcurrentHashMap<>();
     private final Object storeLock = new Object();
     private final Map<String, MockStore> mockStores = new LinkedHashMap<>();
     private final StartRegistry startRegistry;
@@ -6976,6 +6980,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleGetProjectsExplorer(response);
             return true;
         }
+        if (path.startsWith("/api/v1/projects/") && path.endsWith("/setup")) {
+            var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/setup".length());
+            response.json(200, projectSetupState(prjId,
+                                projectSetupStates.getOrDefault(prjId, PROJECT_SETUP_IDENTITY)));
+            return true;
+        }
         if (declaresProjects()
                 && path.startsWith("/api/v1/projects/")
                 && !path.endsWith("/ended")
@@ -7025,7 +7035,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         if (path.startsWith("/api/v1/projects/") && path.endsWith("/setup")) {
             var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/setup".length());
-            handleSetupProject(response, prjId);
+            handleSetupProject(request, response, prjId);
             return true;
         }
         return false;
@@ -7327,8 +7337,56 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
-    private void handleSetupProject(MockHttpResponse response, String projectId) throws IOException {
-        response.json(200, Map.of(KEY_STATUS, "setup_started", KEY_PROJECT_ID, projectId));
+    /**
+     * Serves a project's onboarding run as the state dialogue reads it ({@code CLI-UC-P-01}): the
+     * first call reports the run's current state, a call that names a link advances it. A run of a
+     * project that is only being added has no enrolment yet, so its id is the one the caller named.
+     *
+     * @param request   the setup call
+     * @param response  the response to complete
+     * @param projectId the project or checkout the run belongs to
+     * @throws IOException if the body cannot be read
+     */
+    private void handleSetupProject(MockHttpRequest request, MockHttpResponse response,
+                        String projectId) throws IOException {
+        var body = readBodyMap(request);
+        var linkName = JsonTree.string(body, "link");
+        var current = projectSetupStates.getOrDefault(projectId, PROJECT_SETUP_IDENTITY);
+        if (linkName != null && PROJECT_SETUP_IDENTITY.equals(current)) {
+            current = PROJECT_SETUP_COMPLETED;
+        }
+        projectSetupStates.put(projectId, current);
+        response.json(200, projectSetupState(projectId, current));
+    }
+
+    private Map<String, Object> projectSetupState(String projectId, String stateId) {
+        var body = new LinkedHashMap<String, Object>();
+        body.put(KEY_PROJECT_ID, projectId);
+        body.put(KEY_STATE, stateId);
+        body.put("total_steps", 10);
+        if (PROJECT_SETUP_COMPLETED.equals(stateId)) {
+            body.put("step", 10);
+            body.put("summary", projectId + PROJECT_SETUP_READY_SUFFIX);
+            body.put(KEY_LINKS, Map.of());
+            return body;
+        }
+        body.put("step", 2);
+        body.put("id", projectId);
+        body.put("name", displayNameOf(projectId));
+        body.put("pilot", false);
+        body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
+                            "/api/v1/projects/" + projectId + "/setup", KEY_METHOD, "POST")));
+        return body;
+    }
+
+    private String displayNameOf(String projectId) {
+        synchronized (projectsLock) {
+            return enrolledProjects.stream()
+                                .filter(project -> project.projectId().equals(projectId))
+                                .map(EnrolledProject::displayName)
+                                .findFirst()
+                                .orElse(projectId);
+        }
     }
 
     private boolean handleSystemRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {

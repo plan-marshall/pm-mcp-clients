@@ -12,14 +12,20 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.ProjectReleaseRequest;
+
+import de.planmarshall.operator.dialogue.ChoicePrompt;
+import de.planmarshall.operator.dialogue.ProjectOnboardingSource;
+import de.planmarshall.operator.dialogue.StateDialogue;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -168,23 +174,32 @@ public final class ProjectCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var safeId = OperatorUrlUtil.encodePathSegment(projectId);
-            var sanitizedId = OutputSafety.stripControlSequences(projectId);
-            var path = PROJECTS_API + safeId + "/setup";
-            var body = new LinkedHashMap<String, Object>();
-            if (step != null) body.put("step", step);
-            var response = context.runtime(true).send(HttpRequest.json("POST", path, JsonTree.write(body)));
             var out = spec.commandLine().getOut();
-            if (response.status() == 200) {
-                var stepStr = step != null ? OutputSafety.stripControlSequences(step) : "current";
-                out.println("✓ Project setup for " + sanitizedId + " (step " + stepStr + ")");
-                out.flush();
-                return 0;
-            }
             var err = spec.commandLine().getErr();
-            err.printf("Failed to setup project %s: HTTP %d%n", sanitizedId, response.status());
-            err.flush();
-            return 1;
+            var sanitizedId = OutputSafety.stripControlSequences(projectId);
+            var locale = context.clientEnvironment().locale();
+            var source = new ProjectOnboardingSource(context.runtime(true), projectId);
+            var startPrompt = new StartPrompt(context, out, locale, false);
+            var dialogue = new StateDialogue(source, out, locale,
+                                stateId -> new ChoicePrompt(startPrompt, stateId));
+            try {
+                if (step != null && !step.isBlank()) {
+                    var frame = source.choose(step);
+                    out.println(MessageCatalogue.format(locale, "project.setup.step_line",
+                                        Map.of("step", OutputSafety.stripControlSequences(step),
+                                                            "title", dialogue.title(frame))));
+                    out.flush();
+                    return 0;
+                }
+                dialogue.run();
+                return 0;
+            } catch (StartPrompt.StartLeftException _) {
+                return 0;
+            } catch (IOException e) {
+                err.printf("Failed to setup project %s: %s%n", sanitizedId, e.getMessage());
+                err.flush();
+                return 1;
+            }
         }
     }
 
