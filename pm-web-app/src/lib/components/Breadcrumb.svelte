@@ -17,9 +17,10 @@
    * `--color-text-secondary`, the last segment in `--color-text-primary` and marked as the current
    * page.
    *
-   * A phone has one row for the whole trail, so a segment that is longer than the row fits is
+   * A phone has little room for the trail, so a segment that is longer than a row can hold is
    * shortened in its middle — the head names the kind, the tail tells two ids apart — while a
-   * desktop row draws every segment in full.
+   * desktop draws every segment in full. A trail that still does not fit wraps rather than clipping
+   * a word.
    */
   export let crumbs: Crumb[] = [];
   /** The accessible name of the trail, from the view's catalogue key. */
@@ -108,30 +109,5 @@
 
   .breadcrumb__current {
     color: var(--color-text-primary);
-  }
-
-  /* One row on a phone: the segments keep their width and the current page takes what is left,
-     ellipsised inside its own box — the row never clips a word without saying so. */
-  @media (max-width: 767px) {
-    .breadcrumb__list {
-      flex-wrap: nowrap;
-    }
-
-    .breadcrumb__item {
-      flex: 0 0 auto;
-      min-inline-size: 0;
-    }
-
-    .breadcrumb__item:last-child {
-      flex: 0 1 auto;
-    }
-
-    .breadcrumb__current,
-    .breadcrumb__link {
-      min-inline-size: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
   }
 </style>
