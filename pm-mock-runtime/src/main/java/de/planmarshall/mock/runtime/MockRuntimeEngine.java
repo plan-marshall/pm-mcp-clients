@@ -5325,6 +5325,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         applyStateRuntimeToStatus(copy);
         copy.put("lifecycle_state", lifecycleState.name().toLowerCase());
         copy.put("listeners", listenerMaps());
+        copy.put("needs_operator", waitingCounts());
         synchronized (devicesLock) {
             copy.put("paired_devices_count", pairedDevices.size());
         }
@@ -5333,6 +5334,29 @@ public final class MockRuntimeEngine implements AutoCloseable {
             copy.put("can_withdraw", canWithdrawStop);
         }
         response.json(route.status(), copy);
+    }
+
+    /**
+     * Counts what waits for the operator, by the kind the clients badge it as
+     * (04-console.adoc#prompt): the decisions the runtime holds open, and the holds a plan or epic
+     * carries. The clients never count these themselves; they read this map.
+     *
+     * @return the waiting count per kind, in the order the kinds became non-empty
+     */
+    private Map<String, Object> waitingCounts() {
+        var kinds = new LinkedHashMap<String, Integer>();
+        synchronized (decisionsLock) {
+            if (!openDecisions.isEmpty()) {
+                kinds.merge("decision", openDecisions.size(), Integer::sum);
+            }
+        }
+        synchronized (controlLock) {
+            for (var hold : controlHolds.values()) {
+                var kind = hold.kind() != null && !hold.kind().isBlank() ? hold.kind() : "held";
+                kinds.merge(kind, 1, Integer::sum);
+            }
+        }
+        return new LinkedHashMap<>(kinds);
     }
 
     private void handleRouteWithDynamicStatus(RouteDefinition route, String path, MockHttpResponse response) throws IOException {
@@ -5971,8 +5995,34 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 // Ignore parse errors from broadcast body
             }
         }
+        applyStateEffectOf(event, data);
         broadcastEvent(event, data);
         response.json(200, Map.of(KEY_STATUS, "broadcasted", KEY_EVENT, event));
+    }
+
+    /**
+     * Applies the state effect an event announces, so a simulated event leaves a coherent runtime:
+     * an answer or a close removes the decision from the open ones the status reports, and the
+     * console's badge therefore drops with it.
+     *
+     * @param event the event name
+     * @param data  the event payload
+     */
+    private void applyStateEffectOf(String event, Object data) {
+        if (!("decision.answered".equals(event) || "decision.closed".equals(event))) {
+            return;
+        }
+        var payload = JsonTree.asObject(data);
+        if (payload == null) {
+            return;
+        }
+        var decision = JsonTree.object(payload, "decision");
+        var id = JsonTree.string(decision != null ? decision : payload, "id");
+        if (id != null) {
+            synchronized (decisionsLock) {
+                openDecisions.remove(id);
+            }
+        }
     }
 
     /**

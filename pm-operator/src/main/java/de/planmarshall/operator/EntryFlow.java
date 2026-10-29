@@ -207,7 +207,7 @@ public final class EntryFlow {
     private EntryResult runOnboarded(RuntimeClient runtime, Map<String, Object> status,
                         PrintWriter out, boolean isSsh, int webPort) throws IOException {
         ensureLoopbackListener(runtime, webPort);
-        var badges = extractWaitingBadges(status);
+        var badges = extractWaitingBadges(context.clientEnvironment().locale(), status);
 
         EntryResult result;
         var locale = context.clientEnvironment().locale();
@@ -441,6 +441,18 @@ public final class EntryFlow {
     }
 
     static List<String> extractWaitingBadges(Map<String, Object> status) {
+        return extractWaitingBadges("en", status);
+    }
+
+    /**
+     * The badges of what waits for the operator, in the machine's language: one per
+     * {@code needs_operator} kind whose count is not zero (04-console.adoc#prompt).
+     *
+     * @param locale the interface locale
+     * @param status the runtime's status
+     * @return the badges, in the order the status names the kinds
+     */
+    static List<String> extractWaitingBadges(String locale, Map<String, Object> status) {
         var badges = new ArrayList<String>();
         if (status.get("needs_operator") instanceof Map<?, ?> needs) {
             for (var entry : needs.entrySet()) {
@@ -456,7 +468,7 @@ public final class EntryFlow {
                     }
                 }
                 if (countVal >= 0) {
-                    var badge = ConsolePrompt.formatBadge(kind, countVal);
+                    var badge = ConsolePrompt.formatBadge(locale, kind, countVal);
                     if (badge != null) {
                         badges.add(badge);
                     }

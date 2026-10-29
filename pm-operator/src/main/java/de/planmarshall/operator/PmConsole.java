@@ -454,6 +454,9 @@ public final class PmConsole {
             }
             notifyOperator(reader.getTerminal(), kind, eventMap);
         }
+        if (notice != null || changesWaitingItems(eventName)) {
+            refreshBadges(reader.getTerminal());
+        }
         var name = eventName != null ? eventName : "";
         var payload = ConsoleNotice.payloadOf(eventMap);
         var type = kind != null ? kind : "";
@@ -483,6 +486,41 @@ public final class PmConsole {
         return notice != null ? notice.notice() : null;
     }
 
+    /**
+     * Rebuilds the prompt badges from the runtime's {@code needs_operator} summary after an event,
+     * so a question answered in the web app leaves the badge at once (04-console.adoc#prompt). The
+     * counts stay the runtime's; the client never counts them itself.
+     *
+     * <p>JLine offers no way to replace the prompt of a line that is already being read, so the
+     * prompt itself shows the refreshed badges at its next draw; the window title, which carries
+     * the same badges, is updated here and now.
+     *
+     * @param terminal the terminal whose window title carries the badges
+     */
+    private void refreshBadges(Terminal terminal) {
+        List<String> refreshed;
+        try {
+            refreshed = EntryFlow.extractWaitingBadges(locale(), StatusCommand.fetch(context.runtime(false)));
+        } catch (IOException _) {
+            // the runtime did not answer this read: keep the badges it last gave us
+            return;
+        }
+        if (refreshed.equals(List.copyOf(badges))) {
+            return;
+        }
+        badges.clear();
+        badges.addAll(refreshed);
+        updateWindowTitle(terminal);
+    }
+
+    /**
+     * @param eventName the SSE event name, or {@code null}
+     * @return {@code true} when the event can change what waits for the operator
+     */
+    private static boolean changesWaitingItems(@Nullable String eventName) {
+        return eventName != null && (eventName.startsWith("decision.") || eventName.startsWith("hold.")
+                            || eventName.startsWith("condition.") || eventName.startsWith("needs_operator."));
+    }
     private static int countOf(Map<String, Object> eventMap, ConsoleNoticeBuffer.Category category) {
         var payload = ConsoleNotice.payloadOf(eventMap);
         if (category == ConsoleNoticeBuffer.Category.REPORT

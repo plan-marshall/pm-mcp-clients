@@ -74,8 +74,8 @@ class ScreenCaptureIT {
     private static final Duration READY_TIMEOUT = Duration.ofSeconds(40);
     private static final Duration POLL = Duration.ofMillis(50);
 
-    /** The line-oriented console's prompt, the second prompt a capture can wait for (04-console.adoc#prompt). */
-    private static final String CONSOLE_PROMPT = "pm \u203a ";
+    /** The console prompt's suffix, so a badged prompt settles like the bare one (04-console.adoc#prompt). */
+    private static final String CONSOLE_PROMPT_SUFFIX = " \u203a ";
 
     /**
      * One capture line of the set.
@@ -242,7 +242,7 @@ class ScreenCaptureIT {
      *         alternate screen
      */
     private static boolean settled(PtySession session, String raw, long start) {
-        if (raw.contains(StartPrompt.SUFFIX) || raw.contains(CONSOLE_PROMPT)) {
+        if (raw.contains(StartPrompt.SUFFIX) || raw.contains(CONSOLE_PROMPT_SUFFIX)) {
             return System.nanoTime() - start >= MIN_WAIT.toNanos();
         }
         return session.screen().alternateScreenActive();
