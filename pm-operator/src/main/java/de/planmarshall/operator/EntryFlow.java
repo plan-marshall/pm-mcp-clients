@@ -207,7 +207,7 @@ public final class EntryFlow {
     private EntryResult runOnboarded(RuntimeClient runtime, Map<String, Object> status,
                         PrintWriter out, boolean isSsh, int webPort) throws IOException {
         ensureLoopbackListener(runtime, webPort);
-        var badges = extractWaitingBadges(context.clientEnvironment().locale(), status);
+        var badges = badges(context.clientEnvironment().locale(), status);
 
         EntryResult result;
         var locale = context.clientEnvironment().locale();
@@ -438,6 +438,23 @@ public final class EntryFlow {
             }
         }
         return DEFAULT_WEB_PORT;
+    }
+
+    /**
+     * The prompt badges of a status (04-console.adoc#prompt): one per {@code needs_operator} kind
+     * that is not zero, and the machine's onboarding badge while the machine is not onboarded.
+     *
+     * @param locale the interface locale
+     * @param status the runtime's status
+     * @return the badges, in the order the prompt shows them
+     */
+    static List<String> badges(String locale, Map<String, Object> status) {
+        var badges = new ArrayList<String>();
+        if (!isMachineOnboarded(status)) {
+            badges.add(ConsolePrompt.formatMachineSetupBadge(locale, getCompletedOnboardStep(status), 7));
+        }
+        badges.addAll(extractWaitingBadges(locale, status));
+        return badges;
     }
 
     static List<String> extractWaitingBadges(Map<String, Object> status) {

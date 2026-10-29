@@ -504,7 +504,7 @@ public final class PmConsole {
     private void refreshBadges(Terminal terminal) {
         List<String> refreshed;
         try {
-            refreshed = EntryFlow.extractWaitingBadges(locale(), StatusCommand.fetch(context.runtime(false)));
+            refreshed = EntryFlow.badges(locale(), StatusCommand.fetch(context.runtime(false)));
         } catch (IOException _) {
             // the runtime did not answer this read: keep the badges it last gave us
             return;

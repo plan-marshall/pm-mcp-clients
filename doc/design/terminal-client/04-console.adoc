@@ -135,7 +135,7 @@ The first valid answer wins, from the web app or the console (the channels `web`
 
 * the console prints `– Q-007 was answered in the web app (iPad): Rebase onto main. Nothing was sent from here.` and the badge drops from the next prompt on;
 * a question open as a dialogue is closed, the input typed into it is dropped, and the console returns to its prompt;
-* an answer from the console that arrives too late is refused by the runtime (`already_answered`), and the console prints the same line, not an error;
+* an answer from the console that arrives too late is refused by the runtime (`already_answered`); where the answer came from another channel, the console prints the same line as above, never an error;
 * a desktop notification of the question is withdrawn where the terminal allows it.
 
 An answer over the console channel (`cli`) prints no such line: a console cannot tell its own answer from another console's, and it must never claim that nothing was sent from here about an answer one console may have sent.

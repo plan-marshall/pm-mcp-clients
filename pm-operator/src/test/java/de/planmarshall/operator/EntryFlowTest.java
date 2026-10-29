@@ -112,6 +112,22 @@ class EntryFlowTest {
         }
 
         @Test
+        @DisplayName("badges keep the machine's onboarding badge until the machine is onboarded")
+        void badgesKeepTheOnboardingBadge() {
+            var notOnboarded = Map.<String, Object>of(
+                                "onboard", Map.of("step", 2),
+                                "needs_operator", Map.of("decision", 1));
+            var onboarded = Map.<String, Object>of(
+                                "onboarded", true,
+                                "needs_operator", Map.of("decision", 1));
+
+            assertAll(
+                                () -> assertEquals(List.of("setup 2/7", "1 question"), EntryFlow.badges("en", notOnboarded)),
+                                () -> assertEquals(List.of("1 question"), EntryFlow.badges("en", onboarded))
+            );
+        }
+
+        @Test
         @DisplayName("extractWaitingBadges formats badges from needs_operator map")
         void extractsBadges() {
             var status = Map.<String, Object>of(
