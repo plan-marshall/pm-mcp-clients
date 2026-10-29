@@ -1,21 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 220" role="img" aria-labelledby="sizes-title sizes-desc">
   <title id="sizes-title">The brand mark at 24 and 20 pixels, in the light and the dark theme</title>
-  <desc id="sizes-desc">Two panels, light and dark. Each shows the mark at 24 and 20 pixels, magnified three and a half times, in the primary colour of that theme.</desc>
+  <desc id="sizes-desc">Two panels, light and dark. Each shows the mark at 24 and 20 pixels, magnified three and a half times, in the brand colour of that theme.</desc>
 
   <rect x="10" y="30" width="190" height="180" rx="8" fill="#ffffff" stroke="#d0d7de"/>
   <text x="105" y="52" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#1f2328">Light theme</text>
-  <g transform="translate(24 68) scale(3.5)" fill="#2563eb">
+  <g transform="translate(24 68) scale(3.5)" fill="#5B4BDB">
     <path d="M2.5 21.5V14.2L7.2 11.6V21.5Z"/>
     <path d="M9.4 21.5V9.2L14.1 6.6V21.5Z"/>
     <path d="M16.3 21.5V4.8L21 2.2V21.5Z"/>
-    <path d="M2.7 11.3 13.9 4.4" fill="none" stroke="#2563eb" stroke-width="1.9" stroke-linecap="round"/>
+    <path d="M2.7 11.3 13.9 4.4" fill="none" stroke="#5B4BDB" stroke-width="1.9" stroke-linecap="round"/>
     <circle cx="16.2" cy="3.7" r="1.4"/>
   </g>
-  <g transform="translate(120 75) scale(3.5)" fill="#2563eb">
+  <g transform="translate(120 75) scale(3.5)" fill="#5B4BDB">
     <path d="M2.5 21.5V14.2L7.2 11.6V21.5Z"/>
     <path d="M9.4 21.5V9.2L14.1 6.6V21.5Z"/>
     <path d="M16.3 21.5V4.8L21 2.2V21.5Z"/>
-    <path d="M2.7 11.3 13.9 4.4" fill="none" stroke="#2563eb" stroke-width="1.9" stroke-linecap="round"/>
+    <path d="M2.7 11.3 13.9 4.4" fill="none" stroke="#5B4BDB" stroke-width="1.9" stroke-linecap="round"/>
     <circle cx="16.2" cy="3.7" r="1.4"/>
   </g>
   <text x="24" y="180" font-family="ui-monospace, monospace" font-size="11" fill="#57606a">24 px</text>
@@ -23,18 +23,18 @@
 
   <rect x="220" y="30" width="190" height="180" rx="8" fill="#0d1117" stroke="#30363d"/>
   <text x="315" y="52" text-anchor="middle" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" fill="#e6edf3">Dark theme</text>
-  <g transform="translate(234 68) scale(3.5)" fill="#3b82f6">
+  <g transform="translate(234 68) scale(3.5)" fill="#8B7EF9">
     <path d="M2.5 21.5V14.2L7.2 11.6V21.5Z"/>
     <path d="M9.4 21.5V9.2L14.1 6.6V21.5Z"/>
     <path d="M16.3 21.5V4.8L21 2.2V21.5Z"/>
-    <path d="M2.7 11.3 13.9 4.4" fill="none" stroke="#3b82f6" stroke-width="1.9" stroke-linecap="round"/>
+    <path d="M2.7 11.3 13.9 4.4" fill="none" stroke="#8B7EF9" stroke-width="1.9" stroke-linecap="round"/>
     <circle cx="16.2" cy="3.7" r="1.4"/>
   </g>
-  <g transform="translate(330 75) scale(3.5)" fill="#3b82f6">
+  <g transform="translate(330 75) scale(3.5)" fill="#8B7EF9">
     <path d="M2.5 21.5V14.2L7.2 11.6V21.5Z"/>
     <path d="M9.4 21.5V9.2L14.1 6.6V21.5Z"/>
     <path d="M16.3 21.5V4.8L21 2.2V21.5Z"/>
-    <path d="M2.7 11.3 13.9 4.4" fill="none" stroke="#3b82f6" stroke-width="1.9" stroke-linecap="round"/>
+    <path d="M2.7 11.3 13.9 4.4" fill="none" stroke="#8B7EF9" stroke-width="1.9" stroke-linecap="round"/>
     <circle cx="16.2" cy="3.7" r="1.4"/>
   </g>
   <text x="234" y="180" font-family="ui-monospace, monospace" font-size="11" fill="#8b949e">24 px</text>

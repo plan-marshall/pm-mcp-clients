@@ -2,10 +2,10 @@
   "id": "PLAN-08",
   "slug": "use-case-documents",
   "workstream": "WS-01",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "08-use-case-documents",
+  "pr": "259",
+  "landing": "landings/PLAN-08.md",
   "seq": 8
 }

@@ -53,6 +53,33 @@ describe('BrandMark component', () => {
     expect(mark.getAttribute('height')).toBe('20');
     expect(mark.getAttribute('data-size')).toBe('20');
   });
+
+  it('renders the pairing page size at 64 px', () => {
+    const { getByTestId } = render(BrandMark, { props: { size: 64 } });
+    const mark = getByTestId('brand-mark');
+
+    expect(mark.getAttribute('width')).toBe('64');
+    expect(mark.getAttribute('height')).toBe('64');
+    expect(mark.getAttribute('data-size')).toBe('64');
+  });
+
+  it('sets the 24 px rail mark in its 28 px brand square when asked', () => {
+    const { getByTestId } = render(BrandMark, { props: { size: 24, plate: true } });
+    const plate = getByTestId('brand-mark-plate');
+    const mark = getByTestId('brand-mark');
+
+    expect(plate.getAttribute('style')).toContain('inline-size: 28px');
+    expect(plate.getAttribute('style')).toContain('block-size: 28px');
+    expect(plate.contains(mark)).toBe(true);
+    expect(mark.getAttribute('width')).toBe('24');
+  });
+
+  it('draws no brand square by default', () => {
+    const { queryByTestId, getByTestId } = render(BrandMark, { props: { size: 24 } });
+
+    expect(queryByTestId('brand-mark-plate')).toBeNull();
+    expect(getByTestId('brand-mark')).toBeInTheDocument();
+  });
 });
 
 describe('the brand mark asset', () => {
