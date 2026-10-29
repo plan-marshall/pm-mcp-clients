@@ -68,10 +68,14 @@ class ActionMenusTest {
     void pausedPlan() {
         var paused = ActionMenus.plan("en", actions("plan", "paused", null, "start", "abandon", "chat",
                             "settings"), null, null, null);
+        var labels = paused.entries().stream().map(TuiMenuEntry::label).toList();
+        assertEquals(4, labels.size(), labels.toString());
         assertEquals("s", paused.entries().get(0).trigger());
-        assertTrue(paused.entries().get(0).label().startsWith("Start"));
+        assertTrue(labels.get(0).startsWith("Start"));
         assertEquals("x", paused.entries().get(1).trigger());
-        assertTrue(paused.entries().get(1).label().startsWith("Abandon"));
+        assertTrue(labels.get(1).startsWith("Abandon"));
+        assertTrue(labels.get(2).startsWith("Chat"), labels.toString());
+        assertTrue(labels.get(3).startsWith("Settings"), labels.toString());
     }
 
     @Test
