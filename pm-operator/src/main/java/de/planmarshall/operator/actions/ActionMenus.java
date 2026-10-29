@@ -26,14 +26,17 @@ import de.planmarshall.operator.tui.TuiMenuEntry;
  * Builds the entries of the actions menu from what the runtime offers for one subject.
  *
  * <p>Only an action the runtime lists is shown, and a disabled one keeps the reason the runtime
- * names. The acts of a hold stand first and are taken from the hold record, so a hold that clears
- * or gains an act changes the menu without a new client release.
+ * names. The decision a waiting plan waits for stands first, the acts of a hold come next and are
+ * taken from the hold record, so a hold that clears or gains an act changes the menu without a new
+ * client release.
  */
 public final class ActionMenus {
 
     private static final String KEY_PREFIX = "operator.actions.key.";
     private static final String ELLIPSIS = "\u2026";
     private static final String ACTION_CHAT = "chat";
+    private static final String ACTION_DECIDE = "decide";
+    private static final Set<String> WAITING_STATES = Set.of("waiting", "waiting_for_you");
 
     private ActionMenus() {
     }
@@ -51,6 +54,7 @@ public final class ActionMenus {
         var entries = new ArrayList<TuiMenuEntry>();
         var used = new HashSet<String>();
         var dropped = new ArrayList<String>();
+        addDecision(entries, used, dropped, locale, actions.state(), openDecision);
         boolean holdEnds = false;
         if (hold != null) {
             holdEnds = addHoldActs(entries, used, dropped, locale, hold);
@@ -137,6 +141,21 @@ public final class ActionMenus {
             addHoldAct(entries, used, dropped, locale, "retry");
         }
         return new ActionsMenu(landingId, ActionsMenu.Subject.LANDING, rowId, entries, dropped);
+    }
+
+    private static void addDecision(List<TuiMenuEntry> entries, Set<String> used, List<String> dropped,
+                        String locale, String state, @Nullable String openDecision) {
+        if (openDecision == null || openDecision.isBlank() || !WAITING_STATES.contains(state)) {
+            return;
+        }
+        var trigger = key(locale, ACTION_DECIDE);
+        if (!used.add(trigger)) {
+            dropped.add(ACTION_DECIDE);
+            return;
+        }
+        entries.add(TuiMenuEntry.enabled(trigger, ACTION_DECIDE,
+                            MessageCatalogue.format(locale, "operator.actions.decide",
+                                                Map.of("id", openDecision))));
     }
 
     private static boolean addHoldActs(List<TuiMenuEntry> entries, Set<String> used, List<String> dropped,

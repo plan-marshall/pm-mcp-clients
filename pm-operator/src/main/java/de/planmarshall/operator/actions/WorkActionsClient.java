@@ -72,6 +72,29 @@ public final class WorkActionsClient {
 
     /**
      * @param planId the plan
+     * @return the id of the plan's first open decision, or {@code null} when it waits for none
+     * @throws IOException when the runtime refuses or cannot be reached
+     */
+    public @Nullable String openDecision(String planId) throws IOException {
+        var response = context.runtime(true).send(HttpRequest.get(PLANS + path(planId) + "/decisions"));
+        if (response.status() != 200) {
+            throw new OperatorRefusedException("plan decisions", response);
+        }
+        var parsed = JsonTree.parse(response.bodyText());
+        if (parsed instanceof List<?> list) {
+            for (var item : list) {
+                var map = JsonTree.asObject(item);
+                var id = map != null ? JsonTree.string(map, "id") : null;
+                if (id != null && !id.isBlank()) {
+                    return id;
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param planId the plan
      * @return every hold that holds the plan, in the runtime's order
      * @throws IOException when the runtime refuses or cannot be reached
      */

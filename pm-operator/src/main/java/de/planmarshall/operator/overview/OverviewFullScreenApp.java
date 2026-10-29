@@ -190,6 +190,7 @@ public final class OverviewFullScreenApp {
     private @Nullable EpicResource menuEpic;
     private @Nullable String menuKind;
     private @Nullable String menuLandingUnit;
+    private @Nullable String menuDecision;
     private @Nullable String statusMessage;
     private @Nullable String systemBanner;
     private @Nullable PrintWriter consoleOut;
@@ -942,6 +943,12 @@ public final class OverviewFullScreenApp {
         } catch (IOException _) {
             // A plan without a readable hold list still offers its actions.
         }
+        String openDecision = null;
+        try {
+            openDecision = client.openDecision(planId);
+        } catch (IOException _) {
+            // A plan without a readable decision list still offers its actions.
+        }
         if (actions.actions().isEmpty()) {
             statusMessage = MessageCatalogue.format(locale, "operator.actions.none", Map.of("name", planId));
             actionsMenu = null;
@@ -950,7 +957,8 @@ public final class OverviewFullScreenApp {
         menuKind = "plan";
         menuHold = hold;
         menuEpic = null;
-        actionsMenu = ActionMenus.plan(locale, actions, hold, null, rowId);
+        menuDecision = openDecision;
+        actionsMenu = ActionMenus.plan(locale, actions, hold, openDecision, rowId);
         reportDroppedActions(actionsMenu);
     }
 
@@ -970,6 +978,7 @@ public final class OverviewFullScreenApp {
         }
         menuKind = "epic";
         menuHold = null;
+        menuDecision = null;
         menuEpic = resource;
         var next = resource != null ? nextLaunchable(resource) : null;
         var reasons = currentEpicView.get() != null
@@ -993,6 +1002,7 @@ public final class OverviewFullScreenApp {
         menuKind = "landing";
         menuLandingUnit = unit;
         menuHold = null;
+        menuDecision = null;
         menuEpic = null;
         actionsMenu = ActionMenus.landing(locale, unit,
                             landing != null ? landing.holdKind() : null, rowId);
@@ -1077,6 +1087,14 @@ public final class OverviewFullScreenApp {
         if (subject == ActionsMenu.Subject.ENDED) {
             runDialogue(() -> OperatorActions.chatAboutEnded(context, dialogueOut(), kind, menu.subjectId(),
                                 currentProjectId(), locale));
+            return;
+        }
+        if (subject == ActionsMenu.Subject.PLAN && "decide".equals(entry.action())) {
+            var decision = menuDecision;
+            if (decision != null) {
+                runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), "answer", decision,
+                                    "--interactive"));
+            }
             return;
         }
         var holdId = menuHold != null ? menuHold.holdId() : null;

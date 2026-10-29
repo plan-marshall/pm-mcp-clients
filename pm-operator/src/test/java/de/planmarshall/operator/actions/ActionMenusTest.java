@@ -80,6 +80,47 @@ class ActionMenusTest {
     }
 
     @Test
+    @DisplayName("a waiting plan offers the decision it waits for first, then Pause, Cancel, Chat, Settings")
+    void waitingPlan() {
+        var menu = ActionMenus.plan("en", actions("plan", "waiting", null, "pause", "cancel", "chat",
+                            "settings"), null, "Q-009", "row");
+        var labels = menu.entries().stream().map(TuiMenuEntry::label).toList();
+        assertEquals(5, labels.size(), labels.toString());
+        assertEquals("Decide Q-009", labels.get(0));
+        assertEquals("!", menu.entries().get(0).trigger());
+        assertEquals("decide", menu.entries().get(0).action());
+        assertTrue(menu.entries().get(0).enabled());
+        assertTrue(labels.get(1).startsWith("Pause"), labels.toString());
+        assertEquals("p", menu.entries().get(1).trigger());
+        assertTrue(labels.get(2).startsWith("Cancel"), labels.toString());
+        assertTrue(labels.get(3).startsWith("Chat"), labels.toString());
+        assertTrue(labels.get(4).startsWith("Settings"), labels.toString());
+        assertTrue(menu.droppedActions().isEmpty(), menu.droppedActions().toString());
+    }
+
+    @Test
+    @DisplayName("a paused plan keeps its own order even while a decision stays open")
+    void pausedPlanKeepsItsOrder() {
+        var menu = ActionMenus.plan("en", actions("plan", "paused", null, "start", "abandon", "chat",
+                            "settings"), null, "Q-009", null);
+        var labels = menu.entries().stream().map(TuiMenuEntry::label).toList();
+        assertEquals(4, labels.size(), labels.toString());
+        assertTrue(labels.get(0).startsWith("Start"), labels.toString());
+        assertTrue(menu.entries().stream().noneMatch(entry -> "decide".equals(entry.action())),
+                            menu.entries().toString());
+    }
+
+    @Test
+    @DisplayName("a waiting plan with no open decision offers its actions alone")
+    void waitingPlanWithoutDecision() {
+        var menu = ActionMenus.plan("en", actions("plan", "waiting", null, "pause", "cancel", "chat",
+                            "settings"), null, null, null);
+        assertEquals(4, menu.entries().size(), menu.entries().toString());
+        assertTrue(menu.entries().stream().noneMatch(entry -> "decide".equals(entry.action())),
+                            menu.entries().toString());
+    }
+
+    @Test
     @DisplayName("a disabled action stays in the menu with the runtime's reason")
     void disabled() {
         var offered = new ArrayList<ActionAvailability>();
