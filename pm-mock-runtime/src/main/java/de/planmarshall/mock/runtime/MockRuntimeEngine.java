@@ -8016,7 +8016,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decisionsLock) {
             openDecisions.put(decision.id(), decision);
         }
-        broadcastEvent("decision.opened", Map.of(CONST_DECISION, decision.toMap()));
+        broadcastEvent(DECISION_OPENED, Map.of(CONST_DECISION, decision.toMap()));
     }
 
     private static @Nullable String extractPlan(DecisionEnvelope entry) {
@@ -8203,13 +8203,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decisionsLock) {
             openDecisions.remove(decisionId);
         }
-        broadcastEvent("decision.answered", Map.of(
+        broadcastEvent(DECISION_ANSWERED, Map.of(
                 "id", decisionId,
                 "answer", outcome + " (" + reason + ")",
                 "channel", answerReq.channel(),
                 "device", answerReq.device() != null ? answerReq.device() : ""
         ));
-        broadcastEvent("decision.closed", Map.of(
+        broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", outcome,
                 "reason", reason
@@ -8239,13 +8239,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         var channel = answerReq.channel();
         var device = answerReq.device() != null ? answerReq.device() : "";
-        broadcastEvent("decision.answered", Map.of(
+        broadcastEvent(DECISION_ANSWERED, Map.of(
                 "id", decisionId,
                 "answer", chosen,
                 "channel", channel,
                 "device", device
         ));
-        broadcastEvent("decision.closed", Map.of(
+        broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", "answered",
                 "answer", chosen
@@ -8315,7 +8315,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
 
-        broadcastEvent("decision.closed", Map.of(
+        broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", "withdrawn",
                 "reason", "none_fits"
@@ -8331,7 +8331,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decisionsLock) {
             openDecisions.put("Q-009", replacement);
         }
-        broadcastEvent("decision.opened", Map.of(CONST_DECISION, replacement.toMap()));
+        broadcastEvent(DECISION_OPENED, Map.of(CONST_DECISION, replacement.toMap()));
 
         response.json(200, Map.of(KEY_STATUS, "withdrawn", "id", decisionId));
     }

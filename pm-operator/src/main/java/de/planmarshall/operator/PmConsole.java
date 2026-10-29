@@ -62,9 +62,12 @@ public final class PmConsole {
     /** The verbs that draw their full-screen view on the terminal the console already owns. */
     private static final Set<String> FULL_SCREEN_VERBS = Set.of(PLANS, "plan", "projects", "system");
 
-    /** The kinds of notice that put something in front of the operator, so a notification is due. */
-    private static final Set<String> NOTIFIED_KINDS = Set.of("question", "waiver_request", "operator_wait",
-                        "integrity_pause", "stalled", "condition", "held", "landing_failed", "findings", "setup");
+    /** The notice kind of a question, named once for the switch labels and the badge-text scan. */
+    private static final String KIND_QUESTION = "question";
+
+    /** The kinds that only report or withdraw something: nothing is put in front of the operator. */
+    private static final Set<String> UNNOTIFIED_KINDS = Set.of("report", "answered_elsewhere", "paired",
+                        "fresh_code");
 
     private final OperatorContext context;
     private final AtomicBoolean running = new AtomicBoolean(true);
@@ -193,7 +196,7 @@ public final class PmConsole {
     private boolean hasOpenQuestions() {
         for (var badge : badges.get()) {
             var lower = badge.toLowerCase(Locale.ROOT);
-            if (lower.contains("question") || lower.contains("frage") || lower.contains("waiver")) {
+            if (lower.contains(KIND_QUESTION) || lower.contains("frage") || lower.contains("waiver")) {
                 return true;
             }
         }
@@ -204,7 +207,7 @@ public final class PmConsole {
         int total = 0;
         for (var badge : badges.get()) {
             var lower = badge.toLowerCase(Locale.ROOT);
-            if (lower.contains("question") || lower.contains("frage") || lower.contains("waiver")) {
+            if (lower.contains(KIND_QUESTION) || lower.contains("frage") || lower.contains("waiver")) {
                 total += leadingCount(badge);
             }
         }
@@ -523,7 +526,7 @@ public final class PmConsole {
      */
     private static String notificationLabelKey(String kind) {
         return switch (kind) {
-            case "question" -> "overview.needs.decision";
+            case KIND_QUESTION -> "overview.needs.decision";
             case "waiver_request" -> "overview.needs.waiver_request";
             default -> "overview.needs." + kind;
         };
@@ -561,7 +564,7 @@ public final class PmConsole {
 
     private static ConsoleNoticeBuffer.Category categoryOf(@Nullable String kind) {
         return switch (kind != null ? kind : "") {
-            case "question", "decision", "waiver_request", "answered_elsewhere" -> ConsoleNoticeBuffer.Category.DECISION;
+            case KIND_QUESTION, "decision", "waiver_request", "answered_elsewhere" -> ConsoleNoticeBuffer.Category.DECISION;
             case "report" -> ConsoleNoticeBuffer.Category.REPORT;
             default -> ConsoleNoticeBuffer.Category.NEED;
         };
@@ -607,7 +610,7 @@ public final class PmConsole {
      * @param eventMap the event frame
      */
     private void notifyOperator(Terminal terminal, @Nullable String kind, Map<String, Object> eventMap) {
-        if (!notify || kind == null || !NOTIFIED_KINDS.contains(kind)) {
+        if (!notify || kind == null || UNNOTIFIED_KINDS.contains(kind)) {
             return;
         }
         var scope = ConsoleNotice.scopeOf(eventMap);
