@@ -905,6 +905,7 @@ public final class OverviewFullScreenApp {
         if (view.isEnded()) {
             menuKind = "epic";
             menuHold = null;
+            menuDecision = null;
             menuEpic = null;
             actionsMenu = ActionMenus.ended(locale, view.epicId(), view.epicId(), selectedId);
             return;

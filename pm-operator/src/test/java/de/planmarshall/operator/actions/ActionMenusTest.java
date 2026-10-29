@@ -90,7 +90,7 @@ class ActionMenusTest {
                             "settings"), null, "Q-009", "row");
         var labels = menu.entries().stream().map(TuiMenuEntry::label).toList();
         assertEquals(5, labels.size(), labels.toString());
-        assertEquals("Decide Q-009", labels.get(0));
+        assertEquals("Decide Q-009\u2026", labels.get(0));
         assertEquals("!", menu.entries().get(0).trigger());
         assertEquals("decide", menu.entries().get(0).action());
         assertTrue(menu.entries().get(0).enabled());

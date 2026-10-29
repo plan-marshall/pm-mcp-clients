@@ -503,6 +503,8 @@ class ControlDialoguesTest {
                 response.json(200, "[{\"id\":\"Q-009\",\"title\":\"Delete published v1 endpoints?\"}]");
             } else if (path.contains("/plans/quiet/decisions")) {
                 response.json(200, "[]");
+            } else if (path.startsWith("/api/v1/decisions?plan=legacy")) {
+                response.json(200, "[{\"id\":\"Q-011\"}]");
             } else if (path.endsWith("/holds")) {
                 response.json(200, STALLED_HOLD);
             } else if (path.contains("/plans/conflict/settings") && "GET".equals(request.method())) {
@@ -547,6 +549,7 @@ class ControlDialoguesTest {
         assertEquals("running", actions.state());
         assertEquals("Q-009", client.openDecision("p"));
         assertNull(client.openDecision("quiet"));
+        assertEquals("Q-011", client.openDecision("legacy"));
         List<HoldRecord> holds = client.holds("p");
         assertEquals(1, holds.size());
         assertNotNull(client.hold("p"));

@@ -36,8 +36,8 @@ The texts of the actions, the dialogues, the settings, the review, and the holds
 |{name} ist beendet: seine Ansicht und ein Chat darüber
 
 |`operator.actions.decide`
-|Decide {id}
-|Entscheiden {id}
+|Decide {id}…
+|Entscheide {id}…
 
 |`operator.actions.chat_end`
 |an empty line ends it
