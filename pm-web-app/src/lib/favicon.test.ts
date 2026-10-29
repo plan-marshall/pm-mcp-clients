@@ -33,9 +33,11 @@ function currentIcon(): string | null {
  */
 function lightTokenValue(token: string): string {
   const css = fs.readFileSync(path.resolve(__dirname, '../styles/tokens.css'), 'utf-8');
-  const match = new RegExp(`${token}:\\s*(#[0-9A-Fa-f]{6})`).exec(css);
-  expect(match, `${token} is declared in tokens.css`).not.toBeNull();
-  return match?.[1] ?? '';
+  const declaration = css
+    .split('\n')
+    .find((line) => line.trim().startsWith(`${token}:`));
+  expect(declaration, `${token} is declared in tokens.css`).toBeDefined();
+  return (declaration ?? '').split(':')[1]?.replace(';', '').trim() ?? '';
 }
 
 describe('the tab icon', () => {
