@@ -127,7 +127,7 @@ class StartScenarioTest {
                 assertEquals("add-a-codeberg-provider-for-issues", JsonTree.string(data, "plan_id"));
 
                 var process = client.send(HttpRequest.get(
-                                "/api/v1/plans/" + result.id() + "/process")
+                        "/api/v1/plans/" + result.id() + "/process")
                         .withHeader("Authorization", auth));
                 assertEquals(200, process.status(), "a started plan stays retrievable");
                 var tree = ProcessTree.fromJson(process.bodyText());
