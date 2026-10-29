@@ -9,6 +9,7 @@
  */
 package de.planmarshall.mock.runtime;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -246,6 +247,40 @@ class MockRuntimeEngineTest {
         assertEquals(200, res.status());
         assertEquals("broadcasted", res.json().get("status"));
         assertEquals("test-evt", res.json().get("event"));
+    }
+
+    @Test
+    @DisplayName("the status reports what waits, by kind, and follows a broadcast answer")
+    void statusWaitingCountsFollowBroadcasts() throws Exception {
+        try (var showroom = new MockRuntimeEngine(registry, registry.resolve(StandardScenarios.FULLY_ONBOARDED),
+                            "test-token", "test-secret")) {
+            var auth = Map.of("Authorization", "Bearer test-token");
+            var before = send(showroom, "GET", "/api/v1/status", auth, new byte[0], false);
+            var waitingBefore = JsonTree.asObject(before.json().get("needs_operator"));
+            assertEquals(3, JsonTree.integer(waitingBefore, "decision"));
+
+            var answer = "{\"event\":\"decision.answered\",\"data\":{\"id\":\"Q-007\",\"answer\":\"Rebase onto main\","
+                                + "\"channel\":\"web\",\"device\":\"iPad\"}}";
+            send(showroom, "POST", "/mock/broadcast", Map.of(), answer.getBytes(StandardCharsets.UTF_8), false);
+
+            var after = send(showroom, "GET", "/api/v1/status", auth, new byte[0], false);
+            assertEquals(2, JsonTree.integer(JsonTree.asObject(after.json().get("needs_operator")), "decision"));
+        }
+    }
+
+    @Test
+    @DisplayName("a broadcast decision.opened joins the open decisions")
+    void broadcastOpenedDecisionCounts() throws Exception {
+        try (var showroom = new MockRuntimeEngine(registry, registry.resolve(StandardScenarios.FULLY_ONBOARDED),
+                            "test-token", "test-secret")) {
+            var opened = "{\"event\":\"decision.opened\",\"data\":{\"decision\":{\"id\":\"Q-042\","
+                                + "\"title\":\"Ship it\",\"subject\":\"plan fix-relay\"}}}";
+            send(showroom, "POST", "/mock/broadcast", Map.of(), opened.getBytes(StandardCharsets.UTF_8), false);
+
+            var after = send(showroom, "GET", "/api/v1/status", Map.of("Authorization", "Bearer test-token"),
+                                new byte[0], false);
+            assertEquals(4, JsonTree.integer(JsonTree.asObject(after.json().get("needs_operator")), "decision"));
+        }
     }
 
     @Test

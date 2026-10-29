@@ -21,6 +21,7 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
 
@@ -159,6 +160,40 @@ class PmConsoleBehaviourTest {
                             () -> assertTrue(notification.contains("plan fix-relay"), notification),
                             () -> assertTrue(notification.contains("decision"), notification),
                             () -> assertFalse(notification.contains("Q-007"), notification)
+        );
+    }
+
+    @Test
+    @DisplayName("an event rebuilds the prompt badges and the window title from the status")
+    void badgesRefreshFromTheStatus() throws Exception {
+        var calls = new AtomicInteger();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                var count = calls.getAndIncrement() == 0 ? 3 : 2;
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true,"
+                                    + "\"needs_operator\":{\"question\":" + count + "}}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            var decision = Map.<String, Object>of("event", "decision.opened",
+                                "data", Map.of("decision", Map.of(
+                                                    "id", "Q-007", "subject", "plan fix-relay", "blocks", "plan")));
+
+            console.applyConsoleEvent("decision.opened", decision, reader);
+            console.applyConsoleEvent("decision.opened", decision, reader);
+        }
+        var text = rendered.toString(StandardCharsets.UTF_8);
+        assertAll(
+                            () -> assertTrue(text.contains("pm-operator [3 questions]"), text),
+                            () -> assertTrue(text.contains("pm-operator [2 questions]"), text)
         );
     }
 
