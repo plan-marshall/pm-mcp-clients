@@ -37,7 +37,9 @@ import de.planmarshall.operator.OperatorUrlUtil;
  *
  * <p>Every method is fail-closed: a status other than the one the contract names is raised as an
  * {@link OperatorRefusedException}, so the view never invents an action result and never shows a
- * success the runtime did not confirm. The client is read-only on {@code pm-mock-runtime} and
+ * success the runtime did not confirm. The one exception is the plan's decisions read
+ * ({@link #openDecision(String)}), which falls back to the scoped decisions list where the
+ * plan-scoped collection is absent. The client is read-only on {@code pm-mock-runtime} and
  * {@code pm-api}; it only sends what those contracts define.
  */
 public final class WorkActionsClient {
