@@ -75,6 +75,25 @@ plan spec names the plan, proposal and finding documents it comes from.
   47, 51, 53, 54, 55, 57, 58, 59, 62, 64, 66, 73, and PLAN-68 and PLAN-69 for `HarnessChoice.svelte` (PLAN-69
   lists the monogram as its own deliverable; PLAN-19 delivered it). PLAN-25, 27 and 41 have their PLAN-19
   dependency met.
+- PLAN-10 (`cli-choice-prompt-pause`) — shipped (PR #257, merge `81f84ee3`). It changed 21 files against 11
+  declared: the mock engine and its test, four design documents (`consents.adoc`, `03-dialogues.adoc`,
+  `19-actions.adoc`, `27-tui-testing.adoc`), `ActionSupport`, `PlanCommand`, `StartPrompt`, `PlanCommandTest`,
+  `ScreenCaptureIT` and the capture text. `control.{de,en}.properties` were declared and not touched. D1
+  (`ChoicePrompt`) is as specified; D2 shipped with two clauses not met as written, both approved by the operator:
+  the browser regression check (the changed `operator.*` texts are terminal-only, so no web view shows them) and
+  the per-point pause consequence (the actions resource carries no such data). Sonar gate `OK`, 0 open issues,
+  `new_coverage` 87.6 %; CodeRabbit refused the last two heads on quota. Specs to re-read at HEAD before emitting,
+  because they name `ChoicePrompt`: PLAN-17, 22, 23; because they declare the operator catalogue pair PLAN-10
+  changed: PLAN-13, 14, 17, 21, 23, 30, 36, 42. The operator catalogue is no longer held by a plan in flight.
+- PLAN-25 (`web-core-components-controls`) — shipped (PR #260, merge `8b19a4a7`). All four deliverables met. It
+  changed 20 files against 8 declared and left none of the declared untouched: four component tests, the dev-route
+  exclusion (`lib/dev/devRouteExclusion.ts` and its test, `vite.config.ts`), `lib/utils/uniqueId.ts`,
+  `+layout.svelte`, `common.{de,en}.properties` and `interaction-affordances.adoc` (the spec asked for it).
+  `size="small"` now renders at ten call sites in `DecisionView`, `ReportsView` and `ProjectExplorerView`. Sonar
+  gate `OK`, 0 open issues. Specs to re-read at HEAD before emitting: PLAN-31 and PLAN-35 (both declare the dev
+  page as created by themselves; it exists now), and those declaring `common.{de,en}.properties` (PLAN-04, 06, 34,
+  39, 45, 46, 73), `+layout.svelte` (PLAN-39, 66) or `interaction-affordances.adoc` (PLAN-47, 74). PLAN-31 has its
+  PLAN-25 dependency met (and PLAN-76); PLAN-41 still waits for 31 and others.
 - Cleanup 2026-10-28 (HEAD `cc5794c9`): the claims of the 64 staged and parked specs were re-grounded and 83
   verdicts are persisted (`ui-improvements/cleanup`); PLAN-10 (launched) was left alone. Two claims were
   contradicted and absorbed into the spec: PLAN-25 (today's `Button` already has the four variants and 18 views
@@ -234,6 +253,15 @@ plan spec names the plan, proposal and finding documents it comes from.
     its views); PLAN-11 (re-read against HEAD and add the e2e specs and the transcript to its Expected Surface
     first); PLAN-13 and PLAN-14 (each shares both operator catalogue files with PLAN-10, so the overlap prompt
     would fire); PLAN-27 (ready, but the web track is taken by PLAN-25).
+- 2026-10-28 — PLAN-08, PLAN-25 and PLAN-27 recorded launched on the operator's confirmation (four launched with
+  PLAN-10, one above N=3 by the operator's choice).
+- 2026-10-29 — PLAN-10 landing analysed (`landings/PLAN-10.md`). Row `shipped` (PR #257), message archived. No plan
+  emitted: three plans (08, 25, 27) stay launched, which is N. Next in line when a slot frees: PLAN-11, or the
+  terminal plans PLAN-13 and PLAN-14 now that the operator catalogue is free (re-read at HEAD first).
+- 2026-10-29 — PLAN-25 landing analysed (`landings/PLAN-25.md`). Row `shipped` (PR #260), message archived. No plan
+  emitted: two plans (08, 27) stay launched, so one slot is free; the choice of what takes it is left to the
+  operator: PLAN-31 (ready, but the web track is taken by PLAN-27 until it lands), PLAN-11 (mock track), or
+  PLAN-13 / PLAN-14 (terminal track, free now that PLAN-10 shipped; they overlap on the operator catalogue).
 
 ## Open Defects
 
@@ -252,7 +280,9 @@ plan spec names the plan, proposal and finding documents it comes from.
   `rb-12-web-design-tokens-v2-001.md` (PLAN-12, opencode), same two keys. Recurrence 2026-10-28:
   `rb-03-mock-scenario-states-001.md` (PLAN-03, opencode), same two keys. Recurrence 2026-10-28:
   `rb-15-cli-footer-and-help-overlay-001.md` (PLAN-15, opencode) and `rb-19-web-ui-icon-set-001.md` (PLAN-19,
-  opencode), same two keys each.
+  opencode), same two keys each. Recurrence 2026-10-29: `rb-10-cli-choice-prompt-pause-001.md` (PLAN-10,
+  opencode), same two keys. Recurrence 2026-10-29: `rb-25-web-core-components-controls-001.md` (PLAN-25,
+  opencode), same two keys.
 
 ## Watches
 
@@ -271,7 +301,11 @@ plan spec names the plan, proposal and finding documents it comes from.
   guard. Recurrence: PLAN-04 (same `could_not_check`, guard `none`). Recurrence: PLAN-03 (executor `0.1.2021`, same
   `could_not_check`, guard `none`; the operator was asked in two sessions and proceeded both times).
   Recurrence: PLAN-15 and PLAN-19 (executor `0.1.2021`, `could_not_check`, guard `none`; the operator proceeded
-  both times).
+  both times). Recurrence 2026-10-29: PLAN-10 (`could_not_check`, answered "Proceed" three times, guard `none`).
+  Change 2026-10-29: PLAN-25 is the first run where `executor-skew` answered `skew` (0.1.2021 against 0.1.2028)
+  and `match` after the operator regenerated the executor; the registry pin, the executor and the cache now all
+  read `0.1.2028` (`cleanup restart-check`, `registry_parity: ready`). The guard is still `none`, so the watch
+  stays until a landing reports a guard.
 - Build server: the bare-`mvn` failure (PLAN-02, 04, 05, 01) is gone: PLAN-07's and every one of PLAN-06's
   routed builds ran on the daemon. What remains is the learned timeout bound. It expired below a full
   `verify -Ppre-commit` in both runs (876 s during `npm ci` for PLAN-07, 752 s for PLAN-06, against runs of
@@ -309,6 +343,8 @@ plan spec names the plan, proposal and finding documents it comes from.
   Recurrence 2026-10-28: the runs of PLAN-15 and PLAN-19 each stopped to ask the operator about an untracked
   `test-results/.last-run.json` in the main checkout (PLAN-15: moved to `.plan/temp/`; PLAN-19: the operator
   answered "fixed"). The file keeps reappearing in the main checkout; which run writes it is not established.
+  PLAN-10's landing (2026-10-29) is silent on it and shows its browser snapshots taken through the Playwright MCP
+  server (after the operator repaired the output directory), so the PLAN-10 part of this watch is closed.
 - `/plans/{id}` scrolls horizontally at 390 px (498 px measured; PLAN-12 residue, older than the epic).
   — check that PLAN-55 (`web-plan-page`) covers it before emitting it.
 - Tab titles name the identifier (`drop-legacy-api`), not the display title (PLAN-04 residue). No
@@ -364,7 +400,19 @@ plan spec names the plan, proposal and finding documents it comes from.
   `36 roles` as an input. — fix the document in PLAN-23 (`cli-cleanup-dialogue`, which names it) and the test in PLAN-09 or
   PLAN-60, the staged specs that name `MachineSettingsView`; check there.
 - The mock writes a kept cleanup item with `kind="item"` (`MockRuntimeEngine:7663` at `4efa0314`;
-  PLAN-03 moved it from 7462 and left it), outside `CleanupKind` (PLAN-06 residue). — folded into PLAN-11 (`mock-cli-fixes`) deliverable 2 on 2026-10-28 (its Expected Surface already names `MockRuntimeEngine`); retire at PLAN-11's landing.
+  PLAN-03 moved it from 7462 and left it), outside `CleanupKind` (PLAN-06 residue). — folded into PLAN-11 (`mock-cli-fixes`) deliverable 2 on 2026-10-28 (its Expected Surface already names `MockRuntimeEngine`); retire at PLAN-11's landing. PLAN-10 changed `MockRuntimeEngine` after that (PR #257), so the line number is stale: the lane re-reads it at HEAD.
+- Mock epic-action routes (PLAN-10 residue, 2026-10-29): `/api/v1/epics/{id}/actions/cancel` ignores `with_plans`
+  and `/api/v1/epics/{id}/actions/next` is a no-op. The run fixed the other false successes (`common_files`,
+  `with_plans`, `archive`, `next` as CodeRabbit found them) and left these two untouched. No staged plan owns
+  them. — decide with PLAN-11 (`mock-cli-fixes`) at its emit whether to add them to its deliverable 2.
+- Per-point pause consequence (PLAN-10 residue, 2026-10-29): the cancel/pause dialogue cannot show what each
+  pause point costs, because the actions resource carries no per-point data; the spec clause was accepted as
+  not met. — an operator decision: add the data to the daemon contract (another repository) or drop the clause
+  from the design. Check whether PLAN-20 (`cli-actions-by-state`) repeats the clause.
+- Browser regression clause on terminal-only plans (PLAN-10 residue): PLAN-10 D2 asked for web views "that render
+  the changed catalogue areas (control)" but changed only `operator.*` texts, so the clause was not met. The
+  same generated clause is in PLAN-05 (shipped), 17, 21, 22, 23, 26, 34 and 36. — covered by the terminal-check
+  watch below: before emitting each, keep the clause only when the plan changes a catalogue the web renders.
 - PLAN-04 was run a second time after it shipped (2026-10-27 about 12:00, opencode). The run found the spec
   already merged (`099a3b40`) and stopped with no commit and no PR. It left the worktree
   `.plan/local/worktrees/04-web-theme-and-titles` and the branch `feature/04-web-theme-and-titles`,
@@ -380,11 +428,14 @@ plan spec names the plan, proposal and finding documents it comes from.
   deliverable's own observable, or drop it for a non-rendering change and say so.
 - Shared message catalogues with the plan in flight (PLAN-15, PLAN-19): PLAN-15 changed
   `operator.{de,en}.properties` and PLAN-19 changed `control.{de,en}.properties` in `pm-api`, neither declared.
-  PLAN-10 (launched) declares all four files, and PLAN-13, 14, 17, 21, 23, 30, 36 and 42 declare the operator
-  pair. PLAN-10 started before both landings, so its lane will meet them when it merges `main`. — check
-  PLAN-10's landing for catalogue conflicts; re-read PLAN-13 and PLAN-14 (they run after PLAN-10) at HEAD
-  before emitting.
-- CodeRabbit refuses a review of the final head: PLAN-03, PLAN-15 and PLAN-19 each merged a head that no
+  PLAN-10 declared all four files, and PLAN-13, 14, 17, 21, 23, 30, 36 and 42 declare the operator
+  pair. PLAN-10 shipped (2026-10-29): it changed only `operator.{de,en}.properties`, merged `main` twice and
+  reported no catalogue conflict. The part about PLAN-10 is retired; what stays: PLAN-10, 15 and 19 all changed
+  the catalogue, so re-read PLAN-13 and 14 (next on the operator pair) and the other six at HEAD before emitting.
+- CodeRabbit refuses a review of the final head (PLAN-10 too, 2026-10-29: refused twice, newest reviewed head `1c77501`
+  against merged head `52275941`, after three qualifying reviews; the lane merged under the standing authorization;
+  the quota refusal was recorded; PLAN-25, 2026-10-29: the re-trigger after the last push returned no review at all,
+  the check stayed `NEUTRAL`, an earlier qualifying review on `1d494f9` stood): PLAN-03, PLAN-15 and PLAN-19 each merged a head that no
   CodeRabbit review covers (re-triggers refused as "Review rate limited": PLAN-15 at 17:25 and 18:03, PLAN-19 at
   17:44 on 2026-10-28, the next slot given as 19:14Z); the lanes merged under the standing review authorization after an earlier qualifying review and the
   operator's word. The quota is shared by every plan running side by side. — re-check at each landing; if a
