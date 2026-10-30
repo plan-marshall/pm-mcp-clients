@@ -19,4 +19,7 @@
  * contract: every method sends only what the contract defines and raises a refusal rather than
  * inventing an answer.
  */
+@NullMarked
 package de.planmarshall.operator.actions;
+
+import org.jspecify.annotations.NullMarked;

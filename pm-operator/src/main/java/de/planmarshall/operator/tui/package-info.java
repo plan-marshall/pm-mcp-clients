@@ -23,4 +23,7 @@
  * navigation, filter, key, and layout rule can be tested without a terminal. The driver is tested
  * against the virtual terminal of the test harness.
  */
+@NullMarked
 package de.planmarshall.operator.tui;
+
+import org.jspecify.annotations.NullMarked;

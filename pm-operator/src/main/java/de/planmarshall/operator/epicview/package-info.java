@@ -18,4 +18,7 @@
  * rows for the shared TUI stack, keep which nodes are open, and never talk to the runtime
  * themselves. Every external text passes through {@code OutputSafety} before it becomes a cell.
  */
+@NullMarked
 package de.planmarshall.operator.epicview;
+
+import org.jspecify.annotations.NullMarked;
