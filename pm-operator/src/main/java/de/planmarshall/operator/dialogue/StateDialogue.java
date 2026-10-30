@@ -52,7 +52,7 @@ public final class StateDialogue {
     private static final int CONTENT_WIDTH = 76;
     private static final Set<String> BARE_FIELDS = Set.of(
                         "name", "summary", "value", "reason", "model_id", "role", "effort",
-                        "aspect", "version", "current", "default", "cause", "fix");
+                        "aspect", "provider", "version", "current", "default", "cause", "fix");
     private static final List<String> STEP_KEYS = List.of(
                         "language", "harnesses", "models", "roles", "credentials", "providers", "plans");
 
@@ -308,6 +308,9 @@ public final class StateDialogue {
                 var field = String.valueOf(entry.getKey());
                 var value = rendered(entry.getValue());
                 if (value == null) {
+                    continue;
+                }
+                if ("name".equals(field) && map.containsKey("provider")) {
                     continue;
                 }
                 var own = itemLabel(field);
