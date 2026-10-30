@@ -57,6 +57,50 @@ class ProjectCommandTest {
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
 
+    private int executeWithInput(String input, String... args) throws IOException {
+        var inStream = new java.io.ByteArrayInputStream(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        var outStream = new java.io.ByteArrayOutputStream();
+        var terminal = new org.jline.terminal.impl.DumbTerminal(inStream, outStream);
+        var context = new OperatorContext(fixture.environment(), tempDir, true,
+                            ClientEnvironment.capture(fixture.environment()), () -> terminal, null);
+        var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+        out.write(outStream.toString(java.nio.charset.StandardCharsets.UTF_8));
+        return code;
+    }
+
+    @Test
+    @DisplayName("project setup runs the state dialogue on the project's onboarding resource")
+    void projectSetupRunsTheDialogue() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
+                if (request.bodyText().contains("\"link\"")) {
+                    response.json(200, """
+                                        {"project_id":"cui-parent","state":"project.completed","step":10,
+                                         "total_steps":10,"summary":"cui-parent is ready","links":{}}
+                                        """);
+                } else {
+                    response.json(200, """
+                                        {"project_id":"cui-parent","state":"project.identity","step":2,
+                                         "total_steps":10,"id":"cui-parent","name":"cui-parent","pilot":false,
+                                         "links":{"set":{"href":"/api/v1/projects/cui-parent/setup"}}}
+                                        """);
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = executeWithInput("\n", "project", "setup", "cui-parent");
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, output),
+                            () -> assertTrue(output.contains("Id"), output),
+                            () -> assertTrue(output.contains("cui-parent"), output),
+                            () -> assertTrue(output.contains("The project is ready"), output));
+    }
+
     @Test
     @DisplayName("projects lists enrolled projects with favourite indicators")
     void projectsList() throws Exception {
