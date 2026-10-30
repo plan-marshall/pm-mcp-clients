@@ -86,6 +86,9 @@ public final class PtySession implements AutoCloseable {
         try {
             var builder = new ProcessBuilder(onPseudoTerminal(command, statusFile, columns, rows))
                                 .directory(cwd.toFile());
+            // The PTY test clears the environment on purpose: the operator gate (PM-SEC-3) refuses an
+            // act when a coding-agent marker is set, and this harness is the one place allowed to run
+            // the operator like the operator would.
             builder.environment().clear();
             builder.environment().putAll(env);
             return new PtySession(builder.start(), statusFile, columns, rows);

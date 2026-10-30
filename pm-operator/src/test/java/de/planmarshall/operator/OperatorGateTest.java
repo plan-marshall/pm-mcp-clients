@@ -20,6 +20,8 @@ import java.io.StringWriter;
 import java.nio.file.Path;
 import java.util.Map;
 
+import de.planmarshall.api.message.MessageCatalogue;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -30,6 +32,15 @@ import org.junit.jupiter.params.provider.ValueSource;
 class OperatorGateTest {
 
     private final Path home = Path.of("/tmp/test-home");
+
+    private static String agentRefusal(String locale, String marker) {
+        return MessageCatalogue.format(locale, OperatorGate.AGENT_REFUSED_KEY,
+                            Map.of(OperatorGate.MARKER_PARAM, marker));
+    }
+
+    private static String terminalRefusal(String locale) {
+        return MessageCatalogue.format(locale, OperatorGate.TERMINAL_REFUSED_KEY, Map.of());
+    }
 
     @Nested
     @DisplayName("interactive terminal verification")
@@ -53,7 +64,9 @@ class OperatorGateTest {
             var ex = assertThrows(OperatorSecurityException.class, gate::verify);
             assertAll(
                                 () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
-                                () -> assertEquals("operator refused: interactive terminal required", ex.getMessage())
+                                () -> assertEquals(terminalRefusal("en"), ex.getMessage()),
+                                () -> assertTrue(ex.getMessage().contains("not attached to an interactive terminal")),
+                                () -> assertTrue(ex.getMessage().contains("terminal of your own"))
             );
         }
     }
@@ -63,9 +76,13 @@ class OperatorGateTest {
     class HostDetectionGate {
 
         @ParameterizedTest
-        @ValueSource(strings = {"CLAUDE_CODE_SESSION_ID", "CLAUDECODE", "CLAUDE_CODE", "CLAUDE_PROJECT_ROOT"})
-        @DisplayName("detects and refuses Claude Code host signals")
-        void detectsClaudeCode(String varName) {
+        @ValueSource(strings = {
+                            "CLAUDE_CODE_SESSION_ID", "CLAUDECODE", "CLAUDE_CODE", "CLAUDE_PROJECT_ROOT",
+                            "ANTIGRAVITY_AGENT", "GEMINI_CLI",
+                            "OPENCODE", "OPENCODE_PID", "OPENCODE_CLIENT",
+                            "CODEX_SANDBOX", "CODEX_CI", "CODEX_THREAD_ID", "CODEX_ENV"})
+        @DisplayName("detects and refuses the marker of every host")
+        void detectsEveryHostMarker(String varName) {
             var env = Map.of(varName, "1");
             var context = new OperatorContext(env, home, true);
             var gate = new OperatorGate(context);
@@ -73,52 +90,7 @@ class OperatorGateTest {
             var ex = assertThrows(OperatorSecurityException.class, gate::verify);
             assertAll(
                                 () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
-                                () -> assertEquals("operator refused: coding-agent environment detected (claude)", ex.getMessage())
-            );
-        }
-
-        @ParameterizedTest
-        @ValueSource(strings = {"ANTIGRAVITY_AGENT", "GEMINI_CLI"})
-        @DisplayName("detects and refuses Antigravity host signals")
-        void detectsAntigravity(String varName) {
-            var env = Map.of(varName, "1");
-            var context = new OperatorContext(env, home, true);
-            var gate = new OperatorGate(context);
-
-            var ex = assertThrows(OperatorSecurityException.class, gate::verify);
-            assertAll(
-                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
-                                () -> assertEquals("operator refused: coding-agent environment detected (antigravity)", ex.getMessage())
-            );
-        }
-
-        @ParameterizedTest
-        @ValueSource(strings = {"OPENCODE", "OPENCODE_PID", "OPENCODE_CLIENT"})
-        @DisplayName("detects and refuses OpenCode host signals")
-        void detectsOpenCode(String varName) {
-            var env = Map.of(varName, "1");
-            var context = new OperatorContext(env, home, true);
-            var gate = new OperatorGate(context);
-
-            var ex = assertThrows(OperatorSecurityException.class, gate::verify);
-            assertAll(
-                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
-                                () -> assertEquals("operator refused: coding-agent environment detected (opencode)", ex.getMessage())
-            );
-        }
-
-        @ParameterizedTest
-        @ValueSource(strings = {"CODEX_SANDBOX", "CODEX_CI", "CODEX_THREAD_ID", "CODEX_ENV"})
-        @DisplayName("detects and refuses Codex host signals")
-        void detectsCodex(String varName) {
-            var env = Map.of(varName, "1");
-            var context = new OperatorContext(env, home, true);
-            var gate = new OperatorGate(context);
-
-            var ex = assertThrows(OperatorSecurityException.class, gate::verify);
-            assertAll(
-                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
-                                () -> assertEquals("operator refused: coding-agent environment detected (codex)", ex.getMessage())
+                                () -> assertEquals(agentRefusal("en", varName), ex.getMessage())
             );
         }
 
@@ -132,8 +104,34 @@ class OperatorGateTest {
             var ex = assertThrows(OperatorSecurityException.class, gate::verify);
             assertAll(
                                 () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
-                                () -> assertEquals("operator refused: coding-agent environment detected", ex.getMessage())
+                                () -> assertEquals(agentRefusal("en", "AI_AGENT"), ex.getMessage())
             );
+        }
+
+        @Test
+        @DisplayName("the English refusal names the act, the marker, and the way back")
+        void englishRefusalText() {
+            var env = Map.of("CLAUDECODE", "1", "LANG", "en_US.UTF-8");
+            var gate = new OperatorGate(new OperatorContext(env, home, true));
+
+            var ex = assertThrows(OperatorSecurityException.class, gate::verify);
+
+            assertEquals("Operator acts are refused here: this terminal belongs to a coding agent"
+                                + " (CLAUDECODE is set). Run pm-operator in a terminal of your own.",
+                                ex.getMessage());
+        }
+
+        @Test
+        @DisplayName("the German refusal names the act, the marker, and the way back")
+        void germanRefusalText() {
+            var env = Map.of("CLAUDECODE", "1", "LANG", "de_DE.UTF-8");
+            var gate = new OperatorGate(new OperatorContext(env, home, true));
+
+            var ex = assertThrows(OperatorSecurityException.class, gate::verify);
+
+            assertEquals("Operatorische Aktionen werden hier abgelehnt: Dieses Terminal gehört zu einem"
+                                + " Coding-Agenten (CLAUDECODE ist gesetzt). Führe pm-operator in einem eigenen"
+                                + " Terminal aus.", ex.getMessage());
         }
 
         @Test
@@ -168,7 +166,7 @@ class OperatorGateTest {
 
             assertAll(
                                 () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, code),
-                                () -> assertTrue(err.toString().contains("operator refused: coding-agent environment detected (claude)"))
+                                () -> assertTrue(err.toString().contains(agentRefusal("en", "CLAUDE_CODE")))
             );
         }
 
@@ -183,7 +181,7 @@ class OperatorGateTest {
 
             assertAll(
                                 () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, code),
-                                () -> assertTrue(err.toString().contains("operator refused: interactive terminal required"))
+                                () -> assertTrue(err.toString().contains(terminalRefusal("en")))
             );
         }
 
@@ -198,27 +196,12 @@ class OperatorGateTest {
 
             assertAll(
                                 () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, code),
-                                () -> assertTrue(err.toString().contains("operator refused: coding-agent environment detected (opencode)"))
+                                () -> assertTrue(err.toString().contains(agentRefusal("en", "OPENCODE")))
             );
         }
 
         @Test
-        @DisplayName("pm-operator entry is refused when agent environment is present")
-        void entryRefusedByAgent() {
-            var out = new StringWriter();
-            var err = new StringWriter();
-            var context = new OperatorContext(Map.of("ANTIGRAVITY_AGENT", "1"), home, true);
-
-            var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err));
-
-            assertAll(
-                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, code),
-                                () -> assertTrue(err.toString().contains("operator refused: coding-agent environment detected (antigravity)"))
-            );
-        }
-
-        @Test
-        @DisplayName("status command is not an operator verb and ignores agent presence")
+        @DisplayName("a read-only verb is not an operator act and ignores agent presence")
         void statusPermittedInAgentEnvironment() {
             var out = new StringWriter();
             var err = new StringWriter();

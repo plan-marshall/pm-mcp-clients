@@ -60,6 +60,7 @@ import de.planmarshall.operator.ConsoleNotice;
 import de.planmarshall.operator.ConsoleNoticeBuffer;
 import de.planmarshall.operator.OperatorActions;
 import de.planmarshall.operator.OperatorContext;
+import de.planmarshall.operator.OperatorRefusedException;
 import de.planmarshall.operator.OperatorUrlUtil;
 import de.planmarshall.operator.OutputSafety;
 import de.planmarshall.operator.OverviewSavedState;
@@ -1669,9 +1670,13 @@ public final class OverviewFullScreenApp {
      */
     boolean markReportRead(String reportId) {
         try {
+            context.gate().verifyAct();
             var path = "/api/v1/reports/" + OperatorUrlUtil.encodePathSegment(reportId) + "/read";
             var response = context.runtime(true).send(HttpRequest.json("POST", path, "{}"));
             return response.status() >= 200 && response.status() < 300 || response.status() == 404;
+        } catch (OperatorRefusedException e) {
+            statusMessage = e.getMessage();
+            return false;
         } catch (IOException _) {
             return false;
         }
@@ -1686,10 +1691,14 @@ public final class OverviewFullScreenApp {
             return false;
         }
         try {
+            context.gate().verifyAct();
             var request = new ReadReportsRequest(reportIds, false);
             var response = context.runtime(true).send(
                                 HttpRequest.json("POST", "/api/v1/reports/read", request.toJson()));
             return response.status() >= 200 && response.status() < 300;
+        } catch (OperatorRefusedException e) {
+            statusMessage = e.getMessage();
+            return false;
         } catch (IOException _) {
             return false;
         }
@@ -2854,6 +2863,7 @@ public final class OverviewFullScreenApp {
                 return;
             }
             try {
+                context.gate().verifyAct();
                 var body = new LinkedHashMap<String, Object>();
                 body.put("favourite", !project.isFavourite());
                 var path = PROJECTS_API_PREFIX + OperatorUrlUtil.encodePathSegment(project.projectId())
@@ -2862,6 +2872,8 @@ public final class OverviewFullScreenApp {
                 if (response.status() != 200 && response.status() != 204) {
                     statusMessage = MessageCatalogue.format(locale, "project.explorer.favourite_failed", Map.of());
                 }
+            } catch (OperatorRefusedException e) {
+                statusMessage = e.getMessage();
             } catch (IOException _) {
                 statusMessage = MessageCatalogue.format(locale, "project.explorer.favourite_failed", Map.of());
             }
@@ -2902,12 +2914,16 @@ public final class OverviewFullScreenApp {
                 stack.select(selectedRowId);
             }
             try {
+                context.gate().verifyAct();
                 var ids = favourites.stream().map(EnrolledProject::projectId).toList();
                 var response = context.runtime(true).send(HttpRequest.json("PUT", "/api/v1/explorer/favourites",
                                     new FavouritesUpdateRequest(ids).toJson()));
                 if (response.status() != 200 && response.status() != 204) {
                     revertFavourites(previous);
                 }
+            } catch (OperatorRefusedException e) {
+                revertFavourites(previous);
+                statusMessage = e.getMessage();
             } catch (IOException _) {
                 revertFavourites(previous);
             }
@@ -3047,10 +3063,13 @@ public final class OverviewFullScreenApp {
                 target = "/api/v1/project-onboardings/" + OperatorUrlUtil.encodePathSegment(being.checkoutPath());
             }
             try {
+                context.gate().verifyAct();
                 var response = context.runtime(true).send(HttpRequest.delete(target));
                 if (response.status() < 200 || response.status() >= 300) {
                     statusMessage = MessageCatalogue.format(locale, "project.adding.abandon_failed", Map.of());
                 }
+            } catch (OperatorRefusedException e) {
+                statusMessage = e.getMessage();
             } catch (IOException _) {
                 statusMessage = MessageCatalogue.format(locale, "project.adding.abandon_failed", Map.of());
             }

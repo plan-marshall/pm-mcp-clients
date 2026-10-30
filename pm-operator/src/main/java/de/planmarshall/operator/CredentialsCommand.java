@@ -79,7 +79,6 @@ public final class CredentialsCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        context.gate().verify();
         spec.commandLine().usage(spec.commandLine().getOut());
         return 0;
     }
@@ -332,7 +331,6 @@ public final class CredentialsCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
             var out = spec.commandLine().getOut();
             var command = new CredentialsCommand(context);
             var status = command.readStatus(out, key);

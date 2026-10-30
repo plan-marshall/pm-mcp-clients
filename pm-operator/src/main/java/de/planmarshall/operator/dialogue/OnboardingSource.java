@@ -16,6 +16,7 @@ import java.util.Objects;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.runtime.RuntimeClient;
+import de.planmarshall.operator.OperatorGate;
 
 /**
  * The machine onboarding as a {@link StateDialogue.Source}: the runtime's onboarding state machine
@@ -35,12 +36,15 @@ public final class OnboardingSource implements StateDialogue.Source {
     private static final int TOTAL_STEPS = 7;
 
     private final RuntimeClient runtime;
+    private final OperatorGate gate;
 
     /**
      * @param runtime the runtime client
+     * @param gate    the operator gate an answer is sent through
      */
-    public OnboardingSource(RuntimeClient runtime) {
+    public OnboardingSource(RuntimeClient runtime, OperatorGate gate) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
+        this.gate = Objects.requireNonNull(gate, "gate");
     }
 
     @Override
@@ -54,6 +58,7 @@ public final class OnboardingSource implements StateDialogue.Source {
 
     @Override
     public StateDialogue.Frame choose(String linkId) throws IOException {
+        gate.verifyAct();
         var response = runtime.send(HttpRequest.json("POST", STEP_PATH,
                             JsonTree.write(Map.of("link", linkId))));
         if (response.status() != 200) {

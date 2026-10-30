@@ -51,7 +51,7 @@ pm [1 question] ›
 * `entry.runtime` prints `✓ Runtime running` when one was running already. On the desktop `entry.pairing` issues no code when a browser of this machine is paired (`paired_by: open`); the browser is then not opened again, and `web` opens it (`web pair` pairs another one). In an SSH session it always issues a code (<<t-entry-ssh>>).
 * `entry.browser` that cannot start the browser prints `– No browser opened: <reason>` and shows the ways in as over SSH.
 * `entry.wait` is the console itself: a pairing is reported above the prompt (`✓ Paired: …`), and a redeemed code is replaced by a new one for a further device, which `web` shows.
-* The console's own views are its verbs at that prompt (`status` above, `plans` for the overview of running work); `pm-operator` without a verb never opens one of them, it connects the web app (xref:01-commands.adoc#command-tree[The Verbs]).
+* The console's own views are its verbs at that prompt (`status` above, `plans` for the overview of running work); `pm-operator` without a verb never opens one of them, it connects the web app (xref:01-commands.adoc#command-tree[The Verbs]). Connecting it is an act — the listener is enabled and a code is issued — so where the operator checks refuse an act the console opens without the web app, and the refusal names it when an act is typed (xref:04-console.adoc#console-security[The Operator Checks]).
 
 [#t-entry-ssh]
 ==== Onboarded, over SSH (`entry.where`, `entry.show`, `entry.wait`)
@@ -83,7 +83,7 @@ pm ›
 ----
 
 * Over SSH `entry.pairing` always issues a code, whatever browser of this machine is paired, since the browser is on the operator's own computer; a browser that holds a valid device secret does not redeem it (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#start[The Terminal Client as the Entry]).
-* `web qr` prints the QR code of the open code with its URL again, for a phone at hand; it issues no new code. After a redemption the fresh code is reported above the prompt (`operator.entry.fresh_code`), and `web qr` shows its QR code (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#fresh-code[A Fresh Code after a Redemption]).
+* `web qr` prints the QR code of the open code with its URL again, for a phone at hand; it issues no new code. After a redemption the fresh code is reported above the prompt (`operator.entry.fresh_code`), and `web qr` shows its QR code (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#fresh-code[A Fresh Code after a Redemption]). The code and its URL are shown only where the operator checks pass: `web` and every verb below it is an act, because the code it shows or copies is the way into the web app (xref:04-console.adoc#console-security[The Operator Checks]).
 
 [#t-entry-other]
 ==== Another Device (`entry.other-device`, `entry.lan`)

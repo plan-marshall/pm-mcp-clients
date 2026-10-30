@@ -269,7 +269,7 @@ A refused request is printed as a `✗` line with the text of its error code fro
 === Without Prompts
 
 * *`--no-input`* never asks: a choice state answered by the arguments is passed, the first one that is not ends the run with exit code `3`, its state printed and one line naming the option that answers it (`Needs a choice: --landing pull-request|main|files`), or for a consent the `--consent <kind>` that gives it, or for a secret the `pm-operator credentials set` command.
-* Like every operator verb it runs only where the operator checks pass, in an interactive terminal.
+* Like every operator act it runs only where the operator checks pass: an interactive terminal and no coding-agent environment.
 * There is no machine-readable output: every interaction goes through the verbs, which validate what they write, and nothing outside the runtime reads or writes the configuration as data.
 
 [#terminal]

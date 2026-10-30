@@ -100,7 +100,6 @@ public final class PmOperator implements Callable<Integer> {
         if (context == null) {
             return 0;
         }
-        context.gate().verify();
         if (tui && runFullScreen()) {
             return 0;
         }

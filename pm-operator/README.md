@@ -8,7 +8,7 @@
 
 - **Interactive Console (`pm-operator`)**: Built on JLine 4 with terminal capability detection, command completion, history persistence, styled prompts (`pm ›`, `pm [setup 3/7] ›`), and asynchronous notifications (`ConsoleNotice`).
 - **Direct CLI Verbs**: Command tree implemented via Picocli (`status`, `runtime`, `config`, `project`, `projects`, `plan`, `epic`, `recipe`, `questions`, `answer`, `reports`, `web`, `client`, `drain`, `abort`).
-- **Operator Gate (`PM-SEC-3`)**: Verifies interactive terminal attachment (`System.console() != null && System.console().isTerminal()`) and refuses execution (exit code 4) if coding-agent host signals (`ANTIGRAVITY_AGENT`, `CLAUDE_CODE`, `OPENCODE_CLIENT`, `CODEX_*`) are present.
+- **Operator Gate (`PM-SEC-3`)**: Verifies interactive terminal attachment (`System.console() != null && System.console().isTerminal()`) and refuses each operator act (exit code 4) if coding-agent host signals (`ANTIGRAVITY_AGENT`, `CLAUDE_CODE`, `OPENCODE_CLIENT`, `CODEX_*`) are present. The gate covers acts only: the read-only verbs and the console entry run without it, and the console checks each act it dispatches.
 - **Unix Domain Socket Client**: Communicates with the daemon exclusively over local Unix domain sockets via `pm-api` (`UnixSocketHttpClient`), authenticated with `run/runtime.token`.
 - **QR Code Pairing**: Generates ASCII and ANSI terminal QR codes (`QrCodeRenderer`) for pairing browsers and mobile devices with the runtime's web listener.
 
@@ -154,18 +154,19 @@ Notes:
 
 ## Troubleshooting & Operator Gate Notes
 
-### Exit Code 4: Operator Refused (Coding-Agent Detected)
-If you run `pm-operator` from an environment where AI assistant signals are exported (e.g. within an IDE terminal session or agent sandbox), the Operator Gate (`OperatorGate`) refuses the execution:
+### Exit Code 4: Operator Act Refused (Coding-Agent Detected)
+If you run an operator act from an environment where AI assistant signals are exported (e.g. within an IDE terminal session or agent sandbox), the Operator Gate (`OperatorGate`) refuses it:
 ```text
-pm-operator: operator refused: coding-agent environment detected (antigravity)
+pm-operator: Operator acts are refused here: this terminal belongs to a coding agent (CLAUDECODE is set). Run pm-operator in a terminal of your own.
 ```
-To run tests manually from such a terminal, launch the command in a clean environment:
+The read-only verbs (`questions`, `reports`, `projects --list`, the `roles`, `config`, `settings`, `plan` and `epic` views, `credentials status`, `lesson check`) and the console itself run without the gate.
+To run the act that was refused, launch it in an environment of your own, with the agent's markers unset:
 ```bash
-env -u ANTIGRAVITY_AGENT -u GEMINI_CLI -u CLAUDE_CODE -u OPENCODE_CLIENT java -jar pm-operator/target/pm-operator-0.1.0-SNAPSHOT.jar status
+env -u CLAUDECODE -u CLAUDE_CODE -u OPENCODE -u OPENCODE_CLIENT -u ANTIGRAVITY_AGENT -u GEMINI_CLI java -jar pm-operator/target/pm-operator-0.1.0-SNAPSHOT.jar runtime stop
 ```
 
 ### Interactive Terminal Required
-`pm-operator` verbs require an interactive terminal (TTY). If standard input is piped or redirected (e.g. `echo "status" | pm-operator`), execution is refused unless explicitly supported by batch-oriented options.
+An operator act requires an interactive terminal (TTY). If standard input is piped or redirected (e.g. `echo "x" | pm-operator answer Q-007`), the act is refused; the read-only verbs print into the pipe.
 
 ---
 

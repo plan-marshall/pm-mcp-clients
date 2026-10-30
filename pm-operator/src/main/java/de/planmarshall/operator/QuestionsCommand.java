@@ -51,7 +51,6 @@ public final class QuestionsCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws IOException {
-        context.gate().verify();
         var out = spec.commandLine().getOut();
         var path = OperatorUrlUtil.appendScope("/api/v1/decisions", project, plan);
         var response = context.runtime(true).send(HttpRequest.get(path));
