@@ -166,7 +166,7 @@ class StateDialogueTest {
 
     @Test
     @DisplayName("reads an operator envelope: kind, step, summary, facts and the preselection")
-    void readsAnOperatorEnvelope() throws IOException {
+    void readsAnOperatorEnvelope() throws Exception {
         var frame = StateDialogue.fromJson("""
                             {"state":"harness.consent","completed_steps":1,
                              "operator":{"state":{"state_id":"harness.consent","kind":"operator_wait"},
@@ -186,7 +186,7 @@ class StateDialogueTest {
 
     @Test
     @DisplayName("reads a flat state and marks its last link as the primary one")
-    void readsAFlatState() throws IOException {
+    void readsAFlatState() throws Exception {
         var frame = StateDialogue.fromJson("""
                             {"state":"onboard.mode","summary":"Set up this machine",
                              "links":{"auto":{"href":"/auto"},"begin":{"href":"/language"}}}
@@ -209,7 +209,7 @@ class StateDialogueTest {
 
     @Test
     @DisplayName("names step lines, titles and labels from the catalogue")
-    void namesTheFrameParts() throws IOException {
+    void namesTheFrameParts() throws Exception {
         var frame = StateDialogue.fromJson("""
                             {"state":"harness.consent","completed_steps":1,
                              "operator":{"state":{"state_id":"harness.consent","kind":"operator_wait"},
@@ -246,7 +246,7 @@ class StateDialogueTest {
 
     @Test
     @DisplayName("re-reads a linkless working state until the runtime moves on")
-    void reReadsAWorkingState() throws IOException {
+    void reReadsAWorkingState() throws Exception {
         var working = new StateDialogue.Frame("harness.probe", "working", 2, 7,
                             "Checking 2 harnesses", Map.of(), List.of());
         var source = new WorkingSource(List.of(working, working, mode(), language(), completed()));

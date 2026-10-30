@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
-
 import de.planmarshall.operator.dialogue.OnboardingSource;
 import de.planmarshall.operator.dialogue.ProjectOnboardingSource;
 
@@ -60,7 +59,7 @@ class DialogueSourceTest {
 
     @Test
     @DisplayName("the machine onboarding reads its state and sends the chosen link")
-    void readsAndSendsTheMachineOnboarding() throws IOException {
+    void readsAndSendsTheMachineOnboarding() throws Exception {
         fixture.start((request, response) -> {
             if (OnboardingSource.STATE_PATH.equals(request.target())) {
                 response.json(200, """
@@ -90,7 +89,7 @@ class DialogueSourceTest {
 
     @Test
     @DisplayName("a project's setup reads its identity and sends the chosen link")
-    void readsAndSendsTheProjectSetup() throws IOException {
+    void readsAndSendsTheProjectSetup() throws Exception {
         fixture.start((request, response) -> {
             if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
                 if (request.bodyText().contains("\"link\"")) {
@@ -124,7 +123,7 @@ class DialogueSourceTest {
 
     @Test
     @DisplayName("a runtime that answers no state is refused")
-    void refusesAnUnreadableState() throws IOException {
+    void refusesAnUnreadableState() throws Exception {
         fixture.start((request, response) -> response.send(500, null, ""));
 
         var onboarding = new OnboardingSource(context().runtime(true));
