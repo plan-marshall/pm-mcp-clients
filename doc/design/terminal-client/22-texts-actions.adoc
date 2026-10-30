@@ -39,6 +39,10 @@ The texts of the actions, the dialogues, the settings, the review, and the holds
 |Decide {id}…
 |Entscheide {id}…
 
+|`operator.actions.decision_unreadable`
+|{plan} waits for a decision the runtime did not return: its other actions stand
+|{plan} wartet auf eine Entscheidung, die die Laufzeit nicht geliefert hat: seine übrigen Aktionen gelten
+
 |`operator.actions.chat_end`
 |an empty line ends it
 |eine leere Zeile beendet ihn

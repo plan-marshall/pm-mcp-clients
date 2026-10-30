@@ -953,11 +953,13 @@ public final class OverviewFullScreenApp {
             // A plan without a readable hold list still offers its actions.
         }
         String openDecision = null;
+        var decisionUnreadable = false;
         if (ActionMenus.waitsForDecision(actions.state())) {
             try {
                 openDecision = client.openDecision(planId);
             } catch (IOException _) {
-                // A plan without a readable decision list still offers its actions.
+                // The plan's other actions still stand; the notice below names what is missing.
+                decisionUnreadable = true;
             }
         }
         if (actions.actions().isEmpty()) {
@@ -971,6 +973,10 @@ public final class OverviewFullScreenApp {
         menuDecision = openDecision;
         actionsMenu = ActionMenus.plan(locale, actions, hold, openDecision, rowId);
         reportDroppedActions(actionsMenu);
+        if (decisionUnreadable) {
+            statusMessage = MessageCatalogue.format(locale, "operator.actions.decision_unreadable",
+                                Map.of("plan", planId));
+        }
     }
 
     private void openEpicActions(String epicId, @Nullable String rowId) throws IOException {
