@@ -32,15 +32,19 @@ final class OperatorActs {
 
     private static final String LIST = "list";
 
+    private static final String CHAT = "chat";
+
+    private static final String CANCEL = "cancel";
+
     private static final Set<String> PLAN_SUBCOMMANDS = Set.of(
-                        "add", "pause", "start", FINDINGS, WATCHES, "cancel", "abandon", "resolve",
-                        "settings", "chat", REPORT);
+                        "add", "pause", "start", FINDINGS, WATCHES, CANCEL, "abandon", "resolve",
+                        "settings", CHAT, REPORT);
 
     private static final Set<String> PLAN_READ_SUBCOMMANDS = Set.of(FINDINGS, WATCHES, REPORT);
 
     private static final Set<String> EPIC_SUBCOMMANDS = Set.of(
                         "add", "next", "auto", "decompose", "review", "instruct", "archive", FINDINGS,
-                        WATCHES, "chat", "cancel");
+                        WATCHES, CHAT, CANCEL);
 
     private static final Set<String> EPIC_READ_SUBCOMMANDS = Set.of(FINDINGS, WATCHES);
 

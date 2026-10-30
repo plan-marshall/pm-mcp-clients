@@ -455,7 +455,7 @@ public final class WebCommand implements Callable<Integer> {
                                     + MessageCatalogue.format(locale, "operator.devices.act_options",
                                     Map.of("others", MessageCatalogue.format(locale,
                                                                             "operator.devices.others", Map.of()),
-                                                        "listener_off", MessageCatalogue.format(locale,
+                                                        LISTENER_OFF_ALT, MessageCatalogue.format(locale,
                                                                             "operator.devices.listener_off", Map.of()),
                                                         "leave", MessageCatalogue.format(locale,
                                                                             "operator.devices.leave", Map.of())));
@@ -508,7 +508,7 @@ public final class WebCommand implements Callable<Integer> {
                 return;
             }
             var act = actLine.trim();
-            if ("r".equalsIgnoreCase(act) || "rename".equalsIgnoreCase(act)) {
+            if ("r".equalsIgnoreCase(act) || RENAME.equalsIgnoreCase(act)) {
                 var newLbl = reader.readLine(MessageCatalogue.format(locale, "operator.devices.label_input",
                                     Map.of(LABEL, devInfo.label())));
                 if (newLbl != null && !newLbl.trim().isEmpty()) {
@@ -516,7 +516,7 @@ public final class WebCommand implements Callable<Integer> {
                     this.newLabel = newLbl.trim();
                     handleRename(runtime, out);
                 }
-            } else if ("x".equalsIgnoreCase(act) || "revoke".equalsIgnoreCase(act)) {
+            } else if ("x".equalsIgnoreCase(act) || REVOKE.equalsIgnoreCase(act)) {
                 this.deviceId = devInfo.id();
                 handleRevoke(runtime, out);
             }
