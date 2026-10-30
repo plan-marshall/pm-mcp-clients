@@ -267,8 +267,10 @@ export async function collectTextGuardViolations(page, options) {
     page.evaluate(() => {
       window.__textGuardObserver?.disconnect();
       window.__textGuardChanges = 0;
+      window.__textGuardLastChange = Date.now();
       window.__textGuardObserver = new MutationObserver((records) => {
         window.__textGuardChanges += records.length;
+        window.__textGuardLastChange = Date.now();
       });
       window.__textGuardObserver.observe(document.body, {
         subtree: true,
@@ -277,11 +279,32 @@ export async function collectTextGuardViolations(page, options) {
       });
     });
 
+  /**
+   * Waits until the document has been mutation-free for one settle interval.
+   *
+   * A quiet window is the condition the read samples; waiting for it rather than for a fixed
+   * duration keeps the loop from reading a page that is mid-update.
+   *
+   * @returns {Promise<unknown>} the waitForFunction handle
+   */
+  const awaitQuietWindow = () =>
+    page.waitForFunction(
+      ({ interval, startedAt }) => {
+        if (!window.__textGuardObserver) {
+          // A navigation replaced the document and with it the observer; the caller re-attaches it.
+          return true;
+        }
+        return Date.now() - (window.__textGuardLastChange ?? startedAt) >= interval;
+      },
+      { interval: SETTLE_INTERVAL_MS, startedAt: Date.now() },
+      { polling: 'raf' },
+    );
+
   await startObserving();
   let previous = await read();
   let quietWindows = 0;
   for (let attempt = 0; attempt < SETTLE_ATTEMPTS; attempt += 1) {
-    await page.waitForTimeout(SETTLE_INTERVAL_MS);
+    await awaitQuietWindow();
     const { seen, observing } = await countChanges();
     const current = await read();
     const unchanged = JSON.stringify(current) === JSON.stringify(previous);

@@ -15,8 +15,17 @@ export async function setTheme(page, theme) {
   await page.evaluate((t) => {
     document.documentElement.setAttribute('data-theme', t);
   }, theme);
-  // Allow any CSS transitions (e.g. 0.15s transition: background-color) to complete
-  await page.waitForTimeout(250);
+  // Wait for the theme's CSS transitions to finish instead of guessing a duration. A style
+  // change starts its transitions on the next frame, so two consecutive quiet frames are
+  // required: one to let the transitions start, one to see them finished.
+  await page.waitForFunction(() => {
+    const quiet = document
+      .getAnimations()
+      .every((animation) => animation.playState !== 'running');
+    const settled = quiet && window.__themeTransitionSettled === true;
+    window.__themeTransitionSettled = quiet;
+    return settled;
+  }, undefined, { polling: 'raf' });
 }
 
 /**
