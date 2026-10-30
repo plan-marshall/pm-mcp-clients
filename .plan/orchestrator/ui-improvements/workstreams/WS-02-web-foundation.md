@@ -28,6 +28,7 @@ The cross-cutting foundation and the design system v2 of `pm-web-app`: the text 
 | PLAN-35-web-data-components | staged | runbook | Web: Data Components |
 | PLAN-37-web-accessibility-baseline | staged | runbook | Web: Accessibility Baseline and axe-core |
 | PLAN-41-verify-web-design-system | staged | plan-marshall | Verify the Web Design System v2 |
+| PLAN-80-web-standards-conformance | staged | runbook | Web: Frontend Standards Conformance (domain configuration, scripts, test hygiene); added 2026-10-30 |
 
 ## Sequencing and Surface Notes
 

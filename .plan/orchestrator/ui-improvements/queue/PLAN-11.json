@@ -2,10 +2,10 @@
   "id": "PLAN-11",
   "slug": "mock-cli-fixes",
   "workstream": "WS-01",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "11-mock-cli-fixes",
+  "pr": "269",
+  "landing": "landings/PLAN-11.md",
   "seq": 11
 }

@@ -20,14 +20,14 @@ Source of this plan (read before scoping):
 1. **plans --json**
    - What: Prints projects, plans, epics and needs, not the status.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
+   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:javadoc, pm-dev-java:java-null-safety, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing, pm-dev-java-cui:cui-logging
    - Done when:
      - A schema test of `plans --json` (evidence order: `test-first`)
      - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work`: stdout of `plans --json`, `status --json`, `needs --json` and stderr of a refused `--json` request; before and after captures recorded (evidence order: `none`)
 2. **--json on listing verbs**
    - What: `status`, `needs`, `questions`, `reports`, `projects --list`, `system`, `epic <id>`, `plan <id>`; no reason line on stdout; errors `{"error": "<code>", "message": …}` on stderr.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
+   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:javadoc, pm-dev-java:java-null-safety, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing, pm-dev-java-cui:cui-logging
    - Done when:
      - One schema test per verb (evidence order: `test-first`)
      - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work`: stdout of `plans --json`, `status --json`, `needs --json` and stderr of a refused `--json` request; before and after captures recorded (evidence order: `none`)
@@ -43,6 +43,7 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-operator verify -Pintegration-tests`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- CUI standards (`CLAUDE.md`, `PLAN-77`): a test that takes input data draws it from `Generators` with `@EnableGeneratorController` (the expected value of a contract stays literal); a log call at INFO or above goes through a `LogRecord` of the module's own `LogMessages` class (one per module that logs, never one for the repository) with a `LogAsserts` test; `@NullMarked` applies in a module that declares JSpecify (`pm-operator`, `pm-mock-runtime`); until `PLAN-77` has landed the test-scope CUI dependencies are missing in `pm-api`, `pm-exec`, `pm-relay` and `pm-mock-runtime`, and a test there follows plain JUnit and reports the departure, never adds the dependency itself.
 - Java 25, Lombok, records; no generic `Exception`/`RuntimeException`; JUnit 5 only, no Mockito (CLAUDE.md).
 - Every new operator text goes through `MessageCatalogue` into `operator.en.properties` and `operator.de.properties`.
 - `pm-operator` may not depend on `jackson-databind` if the build rules forbid it; write JSON with the streaming API the project already uses.

@@ -8,7 +8,7 @@ workstream: WS-03
 
 ## Objective
 
-Introduce the acts-by-state rule of UX-P-04 and UC-P-02 with `ActionBar` behaviour and `byState.ts`, apply it to plan, epic, project, device and runtime, put destructive acts in the overflow behind confirmation, hide the completion-report control for a running plan, and fix the draining acts and banner (UX-S-05, UC-S-03, the draining part of CC-S-06).
+Introduce the acts-by-state rule of UX-P-04 and UC-P-02 with `ActionBar` behaviour and `byState.ts`, apply it to the system, the devices and the shared control panel, put destructive acts in the overflow behind confirmation, and fix the draining acts and banner (UX-S-05, UC-S-03, the draining part of CC-S-06). The plan, epic and project views take their acts from `byState` in the plans that rebuild those views (`PLAN-55`, `PLAN-58`, `PLAN-59`).
 
 Source of this plan (read before scoping):
 
@@ -23,37 +23,31 @@ Source of this plan (read before scoping):
 1. **Acts by state**
    - What: `lib/actions/byState.ts` with one table per resource kind (the excerpt of UX-P-04 and the states the use cases name); where the API sends offered acts, they win.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - `byState.test.ts`: every state has at most one primary act; destructive acts are never primary (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready`, `decisions.open`; `reports-and-system` → `system.draining`; `/projects`; paired devices — one primary act, nothing red at rest, confirmations name consequences; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **ActionBar behaviour and ConfirmDialog**
    - What: `ActionBar` takes `acts: Act[]`; `ConfirmDialog` names the consequences in the danger colour; unenrol and "revoke all others" ask for the typed name.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - Unit tests: the confirmation for a destructive act; the typed-name check (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready`, `decisions.open`; `reports-and-system` → `system.draining`; `/projects`; paired devices — one primary act, nothing red at rest, confirmations name consequences; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-3. **Plan, epic, system**
-   - What: `PlanView`, `EpicView`, `SystemView`, `WorkControlPanel` use `ActionBar`; `ControlActionsBar` goes; the completion-report control renders only for an ended plan; a waiting plan's primary act opens its decision; in `system.draining` only stop now and withdraw, the banner lists what runs and counts down, and its count comes from the same list.
+3. **System, devices and the shared control panel**
+   - What: `SystemView`, `SettingsView` (devices) and `WorkControlPanel` use `ActionBar`; `ControlActionsBar` goes; release, unenrol and revoke sit in the overflow; in `system.draining` only stop now and withdraw, the banner lists what runs and counts down, and its count comes from the same list. The views that HOST the panel keep their own acts with the plans that rebuild them (the structure review of 2026-10-30): the plan page's acts, the completion-report control for an ended plan only and a waiting plan's primary act in `PLAN-55`; the epic page's acts in `PLAN-58`; the project acts in `PLAN-59` D4. They all take their acts from this plan's `byState`.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
-     - `control.spec.js`, `system.spec.js` per state; e2e asserts no element with the danger background outside an open dialog (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready`, `decisions.open`; `reports-and-system` → `system.draining`; `/projects`; paired devices — one primary act, nothing red at rest, confirmations name consequences; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-4. **Projects and devices**
-   - What: `ProjectExplorerView` and `SettingsView` (devices) use `ActionBar`; release, unenrol, revoke in the overflow.
-   - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
-   - Done when:
-     - `projects.spec.js`, `devices.spec.js`: no red control at rest (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready`, `decisions.open`; `reports-and-system` → `system.draining`; `/projects`; paired devices — one primary act, nothing red at rest, confirmations name consequences; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - `control.spec.js`, `system.spec.js`, `devices.spec.js` per state; e2e asserts no element with the danger background outside an open dialog (evidence order: `test-first`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready`; `reports-and-system` → `system.draining`; paired devices — one primary act, nothing red at rest, confirmations name consequences; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 ## Standing Constraints
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20470 PM_WEB_PORT=20471 ./mvnw -pl pm-web-e2e verify -Pe2e`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20470`, app port `20471` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Every view this plan touches uses the design system v2 components (VD-S-06): no plain text button, no acting link, no state pill, no uppercase label, no emoji, no own page width.
 - Every server value on a touched view passes through the display layer and the formatter of WS-02.
@@ -79,16 +73,12 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-web-app/src/lib/components/ControlActionsBar.svelte` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-web-app/src/lib/components/ControlActionsBar.test.ts` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/PlanView.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/EpicView.svelte` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-web-app/src/lib/views/SystemView.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/ProjectExplorerView.svelte` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-web-app/src/lib/views/SettingsView.svelte` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-web-e2e/tests/control.spec.js` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-web-e2e/tests/system.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/projects.spec.js` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-web-e2e/tests/devices.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/web-app/interaction-affordances.adoc` — present at HEAD c4dc9bb4
+- OBSERVED: `doc/design/web-app/interaction-affordances.adoc` — present at HEAD c4dc9bb4; this plan owns its update for the acts and the confirmations (the former `PLAN-74` share)
 
 ## Dependencies and Sequencing
 

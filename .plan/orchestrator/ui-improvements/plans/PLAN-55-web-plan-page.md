@@ -22,23 +22,23 @@ Source of this plan (read before scoping):
 ## Deliverables
 
 1. **Head and attention strip**
-   - What: Kind, path, title, id chip, state sentence ("Running · execute · for 2 h 10 min · task 3 of 5"), PR chip, the acts of `byState`; the strip shows "Waits for your decision … · Open the decision" and the off-track banner.
+   - What: Kind, path, title, id chip, state sentence ("Running · execute · for 2 h 10 min · task 3 of 5"), PR chip, the acts of `byState` (`PlanView` and the `WorkControlPanel` it hosts use `ActionBar` of `PLAN-47`: the completion-report control renders only for an ended plan, a waiting plan's primary act opens its decision); the strip shows "Waits for your decision … · Open the decision" and the off-track banner. The page sits on the `ObjectPage` template of `PLAN-43` (this plan moves it there: `PLAN-43` no longer does).
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `plan-view.spec.js` on `control.ready` and `decisions.open` (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready` and `decisions.open`: head, attention strip, tabs, tree rows, activity rows; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **Tabs and Settings tab**
    - What: Tabs Process (default), Intent, Activity, Tokens, Settings; `PlanSettingsModal` becomes the Settings tab.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - Unit tests: tab switch keeps state; the modal is gone (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready` and `decisions.open`: head, attention strip, tabs, tree rows, activity rows; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-3. **Tree and activity rows**
-   - What: Tree rows: icon, name without the kind, state word, time; "Jump to now" icon button in the tree head; activity rows: local time, kind icon, tool and target; empty `LINK` rows do not render.
+3. **Activity rows**
+   - What: activity rows: local time, kind icon, tool and target; empty `LINK` rows do not render. (The tree rows and the "Jump to now" button moved to `PLAN-62` D1, which owns the process tree.)
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - `NodeNarrative.test.ts` and a `PlanView` test: no `TOOL_CALL`/`PHASE` text; no empty row (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready` and `decisions.open`: head, attention strip, tabs, tree rows, activity rows; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
@@ -48,6 +48,7 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20550 PM_WEB_PORT=20551 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20550`, app port `20551` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Every view this plan touches uses the design system v2 components (VD-S-06): no plain text button, no acting link, no state pill, no uppercase label, no emoji, no own page width.
 - Every server value on a touched view passes through the display layer and the formatter of WS-02.
@@ -61,6 +62,7 @@ Source of this plan (read before scoping):
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-07)`, `doc/claude_review/ux/proposals.adoc#UX-P-05` — read at `doc/claude_review/ux/plan.adoc`
   - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/ux/plan.adoc:52 UX-S-07 (Plan page on the object template); ux/proposals.adoc:247 [#UX-P-05] The Plan Page
+- Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 added a line to the plan view's head in `doc/design/shared/plan-view.adoc` (`change so far   12 files · +340 −27 · 2 unplanned`, below the tokens line, `plan.change.size`, absent before the first capture) and a work list beside the plan in a wide window (`PLAN-83`). `PLAN-82` serves the size in the contract and the mock and this plan builds the line into the head (the former `PLAN-81`, superseded, had it): it renders only when the plan carries a size. Also `PLAN-39` (PR #274) wrapped `PlanView.svelte` at 390 px, and its `mobile.spec.js` asserts no horizontal scroll on the ten routes: the 390 px watch on `/plans/{id}` is to be confirmed here and retired.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
@@ -78,7 +80,7 @@ Source of this plan (read before scoping):
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-43` (`web-page-templates`), `PLAN-47` (`web-actions-by-state`), `PLAN-76` (`shared-port-assignment`)
+- Depends on: `PLAN-43` (`web-page-templates`), `PLAN-47` (`web-actions-by-state`), `PLAN-76` (`shared-port-assignment`, shipped), `PLAN-82` (the size in the contract and the mock)
 - Overlaps with: none known at staging
 - Adjacent to: none
 

@@ -1,5 +1,7 @@
 # PLAN-40: Verify the Terminal Foundation
 
+> **SUPERSEDED on 2026-10-30 (structure review, operator decision): do not emit.** Its seven checks moved into `PLAN-63` (`verify-cli-presentation`): the terminal stages verify one client, nothing waits for them, and one result file at the end is enough. The text below is kept for the record.
+
 epic: ui-improvements
 workstream: WS-05
 

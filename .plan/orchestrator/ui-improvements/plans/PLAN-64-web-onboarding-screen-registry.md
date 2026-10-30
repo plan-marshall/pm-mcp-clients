@@ -21,21 +21,21 @@ Source of this plan (read before scoping):
 1. **Registry**
    - What: `lib/views/onboarding/screens.ts` maps a state id or pattern (`*.consent`) to a screen; the `{:else}` chain of `OnboardingView.svelte` goes.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - `screens.registry.test.ts` reads every state of `onboarding.json` and fails for a state without a screen (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding`: every state of the scenario; `entry.lan-open`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **Missing screen at runtime**
    - What: A state without a screen shows "This screen is not available in the web app", the terminal command, and a way back.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - A unit test with an unknown state: no state id in the text (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding`: every state of the scenario; `entry.lan-open`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 3. **Entry states in settings**
    - What: `entry.*` renders inside the settings frame; `entry.lan-open` shows the LAN URL, the QR code and the fingerprint, with no step bar.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `entry.spec.js` on `entry.lan-open` (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding`: every state of the scenario; `entry.lan-open`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
@@ -45,6 +45,7 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20640 PM_WEB_PORT=20641 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20640`, app port `20641` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Every view this plan touches uses the design system v2 components (VD-S-06): no plain text button, no acting link, no state pill, no uppercase label, no emoji, no own page width.
 - Every server value on a touched view passes through the display layer and the formatter of WS-02.

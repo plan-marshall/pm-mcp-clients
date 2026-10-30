@@ -1,4 +1,4 @@
-# PLAN-54: Web: Reports Triage and Designer Panes
+# PLAN-54: Web: Reports Triage
 
 epic: ui-improvements
 workstream: WS-03
@@ -8,7 +8,7 @@ workstream: WS-03
 
 ## Objective
 
-Make reports a triage list with unread rows set apart, and give the process designer three panes with results above the text linked to their lines (reports and designer part of UX-S-11; UX-P-10).
+Make reports a triage list with unread rows set apart (reports part of UX-S-11; UX-P-10). The process designer, the second half of this plan, is `PLAN-88` since the structure review of 2026-10-30: the two views share only the review source.
 
 Source of this plan (read before scoping):
 
@@ -20,23 +20,18 @@ Source of this plan (read before scoping):
 1. **Reports**
    - What: Triage list: unread rows bold with a dot; opening marks read; machine reports in their own group; "mark as read" in the row menu.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `reports.spec.js`: unread stand out; opening marks read (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` → `/reports`; `designer` → `designer.unit-invalid`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-2. **Designer**
-   - What: Three resizable panes; the results panel docked above the text, each finding linked to its line; installed units as a compact list with an overflow menu; "Back to the designer" removed.
-   - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
-   - Done when:
-     - `designer.spec.js` on `designer.unit-invalid`: results above the text; a finding jumps to its line (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` → `/reports`; `designer` → `designer.unit-invalid`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` → `/reports` and a completion report; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - The completion report shows the `Change` line when the plan carries a size and none without one (evidence order: `test-first`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 ## Standing Constraints
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20540 PM_WEB_PORT=20541 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20540`, app port `20541` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Every view this plan touches uses the design system v2 components (VD-S-06): no plain text button, no acting link, no state pill, no uppercase label, no emoji, no own page width.
 - Every server value on a touched view passes through the display layer and the formatter of WS-02.
@@ -49,26 +44,22 @@ Source of this plan (read before scoping):
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/proposals.adoc#UX-P-10`, `doc/claude_review/ux/findings.adoc#UX-F-15` — read at `doc/claude_review/ux/proposals.adoc`
   - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/ux/proposals.adoc:339 [#UX-P-10] (Epic, Projects, Reports, Designer); ux/findings.adoc:146 [#UX-F-15] exists
+- Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 added a `Change` line to the completion report in `doc/design/shared/completion-report.adoc` (`Change   12 files · +340 −27 · 2 unplanned`, `plan.change.size`; a plan with no measured size leaves it out). `PLAN-82` serves the size in the contract and the mock; this plan builds the `Change` line into `CompletionReportView.svelte` (the former `PLAN-81`, superseded, had it) and keeps it when it reworks the page.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
 
 - OBSERVED: `pm-web-app/src/lib/views/ReportsView.svelte` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-web-app/src/lib/views/ReportsView.test.ts` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/ProcessDesigner.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/components/WorkflowValidationResults.svelte` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-web-app/src/lib/views/CompletionReportView.svelte` — present at HEAD 07104678
 - OBSERVED: `pm-web-e2e/tests/reports.spec.js` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-e2e/tests/designer.spec.js` — present at HEAD c4dc9bb4
 - OBSERVED: `doc/design/shared/reports.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/web-app/process-designer.adoc` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/reports.en.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/reports.de.properties` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/designer.en.properties` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-api/src/main/resources/messages/designer.de.properties` — present at HEAD c4dc9bb4
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-43` (`web-page-templates`), `PLAN-76` (`shared-port-assignment`)
+- Depends on: `PLAN-43` (`web-page-templates`), `PLAN-76` (`shared-port-assignment`, shipped), `PLAN-82` (the size in the contract and the mock)
 - Overlaps with: none known at staging
 - Adjacent to: none
 

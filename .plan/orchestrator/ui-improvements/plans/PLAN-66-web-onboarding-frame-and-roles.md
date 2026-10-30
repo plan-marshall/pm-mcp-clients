@@ -1,4 +1,4 @@
-# PLAN-66: Web: Onboarding Variations, Frame to Providers
+# PLAN-66: Web: Onboarding Variations (Frame, Roles, Providers, Harness, Language, Models, Store)
 
 epic: ui-improvements
 workstream: WS-03
@@ -8,7 +8,7 @@ workstream: WS-03
 
 ## Objective
 
-Add the first onboarding variations of UC-P-03 in the review's order: the frame until onboarded, `defaults.review`, `roles.review`, `providers.failed` (UC-S-04, part 1).
+Add the onboarding variations of UC-P-03 (UC-S-04): the frame until onboarded, `defaults.review`, `roles.review`, `providers.failed` (deliverables 1 to 4), then `harness.none`, `auto.result`, `language.choose` (5 to 7, the former `PLAN-68`) and `catalogue.select`, `store.choose`, `harness.choose` (8 to 10, the former `PLAN-69`). The three plans were one chain cut by count ("part 1, 2, 3") and ran strictly in series on the same registry; the structure review of 2026-10-30 merged them into this one. Each deliverable is a screen with its own test-first test and its own browser check, so the work can still be shipped in steps by the lane.
 
 Source of this plan (read before scoping):
 
@@ -21,37 +21,80 @@ Source of this plan (read before scoping):
 1. **Frame**
    - What: Until onboarded, the header shows brand, machine, language and theme only; the step bar marks no step on the mode screen.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `onboarding.spec.js`: no navigation before onboarding is done (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding` → `onboard.mode`, `defaults.review`, `roles.review`, `providers.failed`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **defaults.review**
    - What: Per axis: name, one sentence of meaning, a choice of its variants with plain names, variants that need a missing provider disabled with the reason; posture only on a later run.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - A screen test on `defaults.review`: no raw unit id (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding` → `onboard.mode`, `defaults.review`, `roles.review`, `providers.failed`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 3. **roles.review**
    - What: Roles grouped by phase; departures marked; an advisory per role; a change per role (harness, model, effort); "Ask the steward" with accept or reject per departure; an unmet role empty and assignable.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - A screen test on `roles.review` (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding` → `onboard.mode`, `defaults.review`, `roles.review`, `providers.failed`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 4. **providers.failed**
    - What: Label "Provider"; acts "Enter the token again" (`CredentialEntry`), "Check again", "Continue without".
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - A screen test on `providers.failed` (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding` → `onboard.mode`, `defaults.review`, `roles.review`, `providers.failed`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
-     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+5. **harness.none** (from the former `PLAN-68`, superseded: the three onboarding variation plans were a chain cut by count, not by topic)
+   - What: Per harness found: name, path, the check that failed, the answer received, the fix.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
+   - Done when:
+     - A screen test on `harness.none`: no `Machine · harness.none` text (evidence order: `test-first`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding` → `harness.none`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+6. **auto.result** (from the former `PLAN-68`)
+   - What: A "Change" link per row that opens the sub-workflow of that aspect.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
+   - Done when:
+     - A screen test on `auto.result` (evidence order: `test-first`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding` → `auto.result`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+7. **language.choose** (from the former `PLAN-68`)
+   - What: After recording, the app locale follows the interface language the onboarding recorded; the browser's own language choice (offered on the pairing page and in Settings → "This browser", `PLAN-85`) overrides it for this browser and says so in its advisory. (The former text named a header toggle; the control no longer stands in the frame.)
+   - Persona: plan-marshall:persona-integration-tester
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
+   - Done when:
+     - `onboarding.spec.js`: after "Use Deutsch for both" the next screen is German (evidence order: `test-first`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding` → `language.choose`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+8. **catalogue.select** (from the former `PLAN-69`)
+   - What: The advice's recommendation preselected and marked "recommended" with its reason; a text field per harness that cannot list its models.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
+   - Done when:
+     - A screen test on `catalogue.select` (evidence order: `test-first`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding` → `catalogue.select`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+9. **store.choose** (from the former `PLAN-69`)
+   - What: Per option two lines: "Protects a secret against: …", "Does not protect against: …".
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
+   - Done when:
+     - A screen test on `store.choose` (evidence order: `test-first`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding` → `store.choose`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+10. **harness.choose** (from the former `PLAN-69`)
+    - What: Monogram when no icon is fetched; the token line says "usage complete", "usage partial" or "usage not reported".
+    - Persona: plan-marshall:persona-implementer
+    - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
+    - Done when:
+      - A screen test on `harness.choose` (evidence order: `test-first`)
+      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding` → `harness.choose`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 ## Standing Constraints
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20660 PM_WEB_PORT=20661 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20660`, app port `20661` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Every view this plan touches uses the design system v2 components (VD-S-06): no plain text button, no acting link, no state pill, no uppercase label, no emoji, no own page width.
 - Every server value on a touched view passes through the display layer and the formatter of WS-02.
@@ -71,6 +114,10 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-web-app/src/lib/views/onboarding/` — absent at HEAD c4dc9bb4; created by this plan
 - OBSERVED: `pm-web-app/src/lib/views/OnboardingView.svelte` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-web-app/src/lib/components/AspectChoice.svelte` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-web-app/src/lib/components/HarnessChoice.svelte` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-web-app/src/lib/components/LanguageChoice.svelte` — present at HEAD c4dc9bb4 (the onboarding's interface-language choice, not the browser's: `PLAN-85` names its own component `LocaleSwitch`)
+- OBSERVED: `pm-web-app/src/lib/components/ModelsChoice.svelte` — present at HEAD c4dc9bb4
+- OBSERVED: `doc/design/web-app/onboarding-steps-4-7.adoc` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-web-app/src/lib/components/CredentialEntry.svelte` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-web-app/src/routes/+layout.svelte` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-web-e2e/tests/onboarding.spec.js` — present at HEAD c4dc9bb4

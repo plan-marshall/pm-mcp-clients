@@ -2,10 +2,10 @@
   "id": "PLAN-14",
   "slug": "cli-gate-scope",
   "workstream": "WS-05",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "14-cli-gate-scope",
+  "pr": "277",
+  "landing": "landings/PLAN-14.md",
   "seq": 14
 }

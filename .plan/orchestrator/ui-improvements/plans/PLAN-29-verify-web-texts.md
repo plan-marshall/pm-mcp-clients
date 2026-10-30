@@ -53,7 +53,7 @@ Run the cross-cutting checks of the web texts plans against the merged code and 
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-01` (`web-text-guard-report`), `PLAN-04` (`web-theme-and-titles`), `PLAN-09` (`web-display-layer`), `PLAN-16` (`web-time-format-and-locale`), `PLAN-76` (`shared-port-assignment`)
+- Depends on: `PLAN-01` (`web-text-guard-report`), `PLAN-04` (`web-theme-and-titles`), `PLAN-09` (`web-display-layer`), `PLAN-16` (`web-time-format-and-locale`), `PLAN-76` (`shared-port-assignment`), `PLAN-85` (`web-theme-in-browser-settings`: the theme and the language are chosen on the pairing page and in "This browser", and remembered; checked here beside the titles and the time format)
 - Overlaps with: other verification plans may update the same analysis matrix (one shared file)
 - Adjacent to: the plans verified; their code stays untouched
 

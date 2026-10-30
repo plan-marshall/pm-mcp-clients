@@ -22,6 +22,10 @@ Run the checks of answering, notices, onboarding, cleanup, the system model and 
      - `CLI-UC-V-07` of `doc/claude_review/cli/use-cases/verification.adoc` (cleanup prompt; d asks y/n; q deletes nothing) has a verdict with evidence (evidence order: `none`)
      - `CLI-UC-V-08` of `doc/claude_review/cli/use-cases/verification.adoc` (draining first line; one system model) has a verdict with evidence (evidence order: `none`)
      - `CLI-UC-V-09` of `doc/claude_review/cli/use-cases/verification.adoc` (plan nope exits 1; no false Nothing runs) has a verdict with evidence (evidence order: `none`)
+     - `CLI-CC-V-06` of `doc/claude_review/cli/cross-cutting/verification.adoc` (every acting dialogue has a PTY test; q sends nothing) has a verdict with evidence (from the former `PLAN-28`, superseded) (evidence order: `none`)
+     - `CLI-UC-V-01` of `doc/claude_review/cli/use-cases/verification.adoc` (pause: q leaves; 9 re-asks; Enter preselection) has a verdict with evidence (from the former `PLAN-28`) (evidence order: `none`)
+     - `CLI-UC-V-02` of `doc/claude_review/cli/use-cases/verification.adoc` (runtime stop asks; k keeps; --no-input exits 3) has a verdict with evidence (from the former `PLAN-28`) (evidence order: `none`)
+     - `CLI-UC-V-03` of `doc/claude_review/cli/use-cases/verification.adoc` (waiting plan offers the decision first) has a verdict with evidence (from the former `PLAN-28`) (evidence order: `none`)
 2. **Record the result**
    - What: write `doc/claude_review/verification-results/verify-cli-acts.adoc`: one row per check with verdict and evidence, the commit verified, the date, and the environment. Move the verdicts of the analysis matrices named in the Expected Surface where the checks prove a change (for example a use case from `partial` to `conforms`).
    - Persona: plan-marshall:persona-documenter
@@ -54,7 +58,7 @@ Run the checks of answering, notices, onboarding, cleanup, the system model and 
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-21` (`cli-answer-dialogue`), `PLAN-13` (`cli-event-contract`), `PLAN-22` (`cli-state-dialogue-onboarding`), `PLAN-23` (`cli-cleanup-dialogue`), `PLAN-26` (`cli-system-model`), `PLAN-11` (`mock-cli-fixes`), `PLAN-76` (`shared-port-assignment`)
+- Depends on: `PLAN-21` (`cli-answer-dialogue`), `PLAN-13` (`cli-event-contract`, shipped), `PLAN-22` (`cli-state-dialogue-onboarding`, shipped), `PLAN-23` (`cli-cleanup-dialogue`), `PLAN-26` (`cli-system-model`), `PLAN-11` (`mock-cli-fixes`, shipped), `PLAN-76` (`shared-port-assignment`, shipped), and, from the former `PLAN-28` (superseded), `PLAN-02` (`cli-pty-dialogue-harness`, shipped), `PLAN-10` (`cli-choice-prompt-pause`, shipped), `PLAN-17` (`cli-runtime-act-confirm`), `PLAN-20` (`cli-actions-by-state`)
 - Overlaps with: other verification plans may update the same analysis matrix (one shared file)
 - Adjacent to: the plans verified; their code stays untouched
 

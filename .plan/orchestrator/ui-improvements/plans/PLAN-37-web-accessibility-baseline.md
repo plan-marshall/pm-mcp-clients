@@ -21,21 +21,21 @@ Source of this plan (read before scoping):
 1. **Escape and focus**
    - What: Escape closes every panel, popover and dialog (pause panel, chat, overflow menu); focus returns to the opener.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security, pm-dev-frontend:lint-config, pm-dev-frontend-cui:cui-javascript-project
    - Done when:
      - e2e keyboard checks in `workspace.spec.js` per panel (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready`: the pause panel, the chat and the overflow close with Escape (`browser_press_key`) and focus returns; disabled controls state their reason; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **Reasons, labels, sizes**
    - What: A disabled control states its reason in its advisory and through `aria-describedby`; icon-only controls have a visible label from tablet width up and an `aria-label` always; minimum text 12 px; no uppercase transform; touch targets 44 px on the phone.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security, pm-dev-frontend:lint-config, pm-dev-frontend-cui:cui-javascript-project
    - Done when:
      - Unit tests on `WorkControlPanel` and `ChatPanel` for reason and label (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready`: the pause panel, the chat and the overflow close with Escape (`browser_press_key`) and focus returns; disabled controls state their reason; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 3. **axe-core audit**
    - What: Add `@axe-core/playwright` to `pm-web-e2e` and run it on every declared view; serious issues fail the run.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security, pm-dev-frontend:lint-config, pm-dev-frontend-cui:cui-javascript-project
    - Done when:
      - `PM_MOCK_WEB_PORT=20370 PM_WEB_PORT=20371 ./mvnw -pl pm-web-e2e verify -Pe2e` passes with the audit on every declared view (evidence order: `none`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.ready`: the pause panel, the chat and the overflow close with Escape (`browser_press_key`) and focus returns; disabled controls state their reason; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
@@ -45,6 +45,7 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20370 PM_WEB_PORT=20371 ./mvnw -pl pm-web-e2e verify -Pe2e`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20370`, app port `20371` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - axe-core is the one new dependency the operator approved for this plan.
 - Browser check of the rendered output, with the Playwright MCP server of `opencode.json`, following `AGENTS.md` § Browser checks: start the mock (`./mvnw -pl pm-mock-runtime exec:java -Dexec.args="--scenario <scenario> --web-port 20370"`), then `PM_MOCK_WEB_PORT=20370 ./pm-web-app/start.sh -p 20371` (read the port from `pm-web-app/target/pm-web-app.port`); the MCP browser starts with an empty profile, so pair again every session with a fresh single-use code (`POST http://127.0.0.1:20370/mock/pairing`, then open `<app>/pair#code=<CODE>`), never through the `Network:` URL; reach a state with `POST /mock/goto/<state>` and a reload. Check each target in `de` and `en`, dark and light, at 1440 × 900 and 390 × 844 (`browser_resize`). Read the page through `browser_snapshot` (the accessibility tree is the evidence of text and structure) and keep one `browser_take_screenshot` per target; the server writes to its `--output-dir` `.plan/temp/playwright-mcp/` (`opencode.json`), so name every file `{plan}-{target}-{before|after}` and never write to the repository root. Take a baseline snapshot BEFORE the change and one AFTER, and record both paths in the progress record. The visible text of a checked view shows no raw enum, state id, `{placeholder}`, ISO time or emoji outside model-written blocks. Stop the app (`./pm-web-app/stop.sh`) and the mock afterwards. If the Playwright MCP server is not available in the run, the browser Done-when clauses are NOT met — a blocker reported as such, never replaced by a unit test or skipped.

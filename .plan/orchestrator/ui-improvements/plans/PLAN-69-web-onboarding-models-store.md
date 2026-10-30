@@ -1,5 +1,7 @@
 # PLAN-69: Web: Onboarding Variations, Models to Harness Choice
 
+> **SUPERSEDED on 2026-10-30 (structure review, operator decision): do not emit.** The three deliverables moved into `PLAN-66` (deliverables 8 to 10): the three onboarding variation plans were one chain cut by count. The text below is kept for the record.
+
 epic: ui-improvements
 workstream: WS-03
 
@@ -20,21 +22,21 @@ Source of this plan (read before scoping):
 1. **catalogue.select**
    - What: The advice's recommendation preselected and marked "recommended" with its reason; a text field per harness that cannot list its models.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - A screen test on `catalogue.select` (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding` → `catalogue.select`, `store.choose`, `harness.choose`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **store.choose**
    - What: Per option two lines: "Protects a secret against: …", "Does not protect against: …".
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - A screen test on `store.choose` (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding` → `catalogue.select`, `store.choose`, `harness.choose`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 3. **harness.choose**
    - What: Monogram when no icon is fetched; the token line says "usage complete", "usage partial" or "usage not reported".
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - A screen test on `harness.choose` (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `onboarding` → `catalogue.select`, `store.choose`, `harness.choose`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
@@ -44,6 +46,7 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20690 PM_WEB_PORT=20691 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20690`, app port `20691` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Every view this plan touches uses the design system v2 components (VD-S-06): no plain text button, no acting link, no state pill, no uppercase label, no emoji, no own page width.
 - Every server value on a touched view passes through the display layer and the formatter of WS-02.

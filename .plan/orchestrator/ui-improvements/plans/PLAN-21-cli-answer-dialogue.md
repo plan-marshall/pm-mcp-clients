@@ -21,21 +21,21 @@ Source of this plan (read before scoping):
 1. **Terminal ownership and errors**
    - What: `AnswerCommand` borrows the console's scoped terminal (no try-with-resources) and opens its own only in the shell; no `catch (IOException | RuntimeException)` that writes to a closed terminal.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
+   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:javadoc, pm-dev-java:java-null-safety, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing, pm-dev-java-cui:cui-logging
    - Done when:
      - A unit test answers twice in one console session (evidence order: `test-first`)
      - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` → `decisions.open`: `answer Q-007` (options, votes, dissent, evidence, prompt), Enter, `answer Q-007 2`, `answer WR-2`; in `de_DE.UTF-8` no English word outside the glossary; before and after captures recorded (evidence order: `none`)
 2. **Content from the envelope**
    - What: Options, votes, dissent, recommendation, the evidence hint (file, lines, summary), the range `1-N`; every string as `operator.decision.*`.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-java:junit-integration, pm-dev-java:junit-core
+   - Skills: pm-dev-java:junit-integration, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
    - Done when:
      - `AnswerDialogueIT` enabled: option, own words, waiver, later (evidence order: `test-first`)
      - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` → `decisions.open`: `answer Q-007` (options, votes, dissent, evidence, prompt), Enter, `answer Q-007 2`, `answer WR-2`; in `de_DE.UTF-8` no English word outside the glossary; before and after captures recorded (evidence order: `none`)
 3. **Direct answer**
    - What: `answer Q-007 2` sends without a dialogue and prints `✓ Q-007 answered: Rebase onto main`.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-java:junit-integration, pm-dev-java:junit-core
+   - Skills: pm-dev-java:junit-integration, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
    - Done when:
      - `AnswerDialogueIT`: the direct form and its act in `/mock/acts` (evidence order: `test-first`)
      - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` → `decisions.open`: `answer Q-007` (options, votes, dissent, evidence, prompt), Enter, `answer Q-007 2`, `answer WR-2`; in `de_DE.UTF-8` no English word outside the glossary; before and after captures recorded (evidence order: `none`)
@@ -46,6 +46,7 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-operator verify -Pintegration-tests`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- CUI standards (`CLAUDE.md`, `PLAN-77`): a test that takes input data draws it from `Generators` with `@EnableGeneratorController` (the expected value of a contract stays literal); a log call at INFO or above goes through a `LogRecord` of the module's own `LogMessages` class (one per module that logs, never one for the repository) with a `LogAsserts` test; `@NullMarked` applies in a module that declares JSpecify (`pm-operator`, `pm-mock-runtime`); until `PLAN-77` has landed the test-scope CUI dependencies are missing in `pm-api`, `pm-exec`, `pm-relay` and `pm-mock-runtime`, and a test there follows plain JUnit and reports the departure, never adds the dependency itself.
 - Ports of this plan: mock web port `20210`, app port `20211` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Java 25, Lombok, records; no generic `Exception`/`RuntimeException`; JUnit 5 only, no Mockito (CLAUDE.md).
 - Every new operator text goes through `MessageCatalogue` into `operator.en.properties` and `operator.de.properties`.
