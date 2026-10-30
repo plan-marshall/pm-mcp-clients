@@ -147,7 +147,9 @@ test.describe('Overview View (UC-PLN-4)', () => {
     await expect(page.locator('.plan-card').first()).toBeVisible();
   });
 
-  test('opens an ended plan as it ended and its completion report in one step', async ({ page }) => {
+  test('opens an ended plan as it ended and its completion report in one step', async ({
+    page,
+  }) => {
     await page.getByRole('button', { name: /^Ended work/i }).click();
     await expect(page.locator('[data-testid="ended-item"]').first()).toBeVisible();
 
