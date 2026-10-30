@@ -63,6 +63,7 @@ import de.planmarshall.api.control.PlanSettingsUpdateResult;
 import de.planmarshall.api.control.PlanSettingsValue;
 import de.planmarshall.api.control.ReviewResource;
 import de.planmarshall.api.control.WorkActions;
+import de.planmarshall.api.control.WorkRow;
 import de.planmarshall.api.decision.DecisionAnswerRequest;
 import de.planmarshall.api.decision.DecisionEnvelope;
 import de.planmarshall.api.decision.DecisionInterpretation;
@@ -349,6 +350,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_PLAN_DEFAULTS = "plan_defaults";
     private static final String KEY_PLANS_AFTER_DAYS = "plans_after_days";
     private static final String KEY_EPICS_AFTER_DAYS = "epics_after_days";
+    /** The epic a plan belongs to, as the plan view reads it. */
+    private static final String KEY_EPIC_ID = "epic_id";
     private static final String KEY_LOGS_AFTER_DAYS = "logs_after_days";
     private static final String KEY_REPORTS_AFTER_DAYS = "reports_after_days";
     private static final String KEY_UNENROLLED_AFTER_DAYS = "unenrolled_after_days";
@@ -358,6 +361,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String PROJECT_SETUP_COMPLETED = "project.completed";
     private static final String PROJECT_SETUP_READY_SUFFIX = " is ready";
     private static final String STATE_ONBOARD_SUMMARY = "onboard.summary";
+    /** The plan state a landed or merged epic row maps to. */
+    private static final String STATE_DONE = "done";
     /** The engine-only fixture data a state's operator facts carry beside its domain facts. */
     private static final String FIXTURE_RUNTIME = "runtime";
     private static final String FIXTURE_DEVICES = "devices";
@@ -8548,8 +8553,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     /**
-     * Looks a plan id up in the plan list the active scenario (or its state) serves, or among the
-     * plans a start flow created in this run.
+     * Looks a plan id up in the plan list the active scenario (or its state) serves, among the
+     * plans a start flow created in this run, or among the members an epic lists.
      *
      * @param planId the requested plan id
      * @return the plan's summary entry, or {@code null} when the scenario does not serve the id
@@ -8566,17 +8571,73 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return summary;
         }
         var listRoute = activeRoute("GET", "/api/v1/plans");
-        if (listRoute == null || !(listRoute.representation() instanceof Map<?, ?> list)
-                || !(list.get("plans") instanceof List<?> plans)) {
-            return null;
+        if (listRoute != null && listRoute.representation() instanceof Map<?, ?> list
+                && list.get("plans") instanceof List<?> plans) {
+            for (var element : plans) {
+                var plan = JsonTree.asObject(element);
+                if (plan != null && planId.equals(JsonTree.string(plan, "id"))) {
+                    return plan;
+                }
+            }
         }
-        for (var element : plans) {
-            var plan = JsonTree.asObject(element);
-            if (plan != null && planId.equals(JsonTree.string(plan, "id"))) {
-                return plan;
+        return planListedByAnEpic(planId);
+    }
+
+    /**
+     * Looks a plan id up among the members an epic lists in the state's control fixture.
+     *
+     * A staged, paused or shipped member can live only inside its epic's workstreams; without this
+     * lookup the plan view of such a member answered {@code plan_not_found} although the scenario
+     * lists it.
+     *
+     * @param planId the requested plan id
+     * @return the summary built from the epic's row, or {@code null} when no epic lists the id
+     */
+    private @Nullable Map<String, Object> planListedByAnEpic(String planId) {
+        synchronized (controlLock) {
+            for (var epic : controlEpics.values()) {
+                for (var workstream : epic.workstreams()) {
+                    for (var row : workstream.rows()) {
+                        if (planId.equals(row.planId())) {
+                            return planRowSummary(row, planId, epic.projectId(), epic.epicId());
+                        }
+                    }
+                }
             }
         }
         return null;
+    }
+
+    /**
+     * @param row       the epic's row for the plan
+     * @param planId    the plan id
+     * @param projectId the project the epic belongs to
+     * @param epicId    the epic that lists the plan
+     * @return the summary the process synthesis reads
+     */
+    private static Map<String, Object> planRowSummary(WorkRow row, String planId,
+            @Nullable String projectId, String epicId) {
+        var summary = new LinkedHashMap<String, Object>();
+        summary.put("id", planId);
+        summary.put(KEY_TITLE, row.title() != null && !row.title().isBlank() ? row.title() : planId);
+        if (projectId != null) {
+            summary.put("project", projectId);
+        }
+        summary.put("epic", Map.of(KEY_EPIC_ID, epicId));
+        summary.put(KEY_PHASE, PHASE_EXECUTE);
+        summary.put("state", planStateOf(row.status()));
+        return summary;
+    }
+
+    /**
+     * @param status the row's status as the epic lists it
+     * @return the plan state the view understands
+     */
+    private static String planStateOf(String status) {
+        return switch (status) {
+            case "shipped", "merged", "landed" -> STATE_DONE;
+            default -> status;
+        };
     }
 
     /**
@@ -8625,6 +8686,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (projectId != null) {
             copy.put("project", planProjectRef(projectId));
         }
+        // A plan synthesized from its epic's row names that epic, so the view links back to it.
+        if (summary.get("epic") instanceof Map<?, ?> epicRef) {
+            copy.put("epic", epicRef);
+        }
         copy.put("current_phase", phase);
         copy.put("phase_state", phaseState);
         if ("waiting_for_you".equals(phaseState)) {
@@ -8645,7 +8710,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static List<Map<String, Object>> phaseNodes(@Nullable Map<?, ?> template, String currentPhase,
             String phaseState) {
         if (template == null || !(template.get("nodes") instanceof List<?> nodes)) {
-            var state = "running".equals(phaseState) ? "running" : "waiting_for_operator";
+            var state = STATE_DONE.equals(phaseState) ? STATE_DONE : phaseFallbackState(phaseState);
             return List.of(phaseNode(currentPhase, state, "phase " + currentPhase));
         }
         var current = currentPhaseIndex(nodes, currentPhase);
@@ -8666,6 +8731,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "phase " + currentPhase));
         }
         return result;
+    }
+
+    /**
+     * @param phaseState the plan's state
+     * @return the state of a phase a plan without a template names
+     */
+    private static String phaseFallbackState(String phaseState) {
+        return "running".equals(phaseState) ? "running" : "waiting_for_operator";
     }
 
     /**
@@ -8712,6 +8785,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @return the node's state: done before the current phase, the current phase's own, planned after
      */
     private static String phaseNodeState(int index, int current, String phaseState) {
+        if (STATE_DONE.equals(phaseState)) {
+            return STATE_DONE;
+        }
         if (current >= 0 && index < current) {
             return "done";
         }

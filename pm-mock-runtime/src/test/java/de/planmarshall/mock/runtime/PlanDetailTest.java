@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 
 
@@ -81,6 +83,29 @@ class PlanDetailTest {
         }
     }
 
+    @Test
+    @DisplayName("a plan listed only inside an epic answers its own process")
+    void servesAPlanListedInsideAnEpic() throws Exception {
+        try (var engine = engine()) {
+            var process = get(engine, "/api/v1/plans/relay-reconnect-backoff/process");
+
+            assertAll("the row's own facts",
+                    () -> assertEquals("relay-reconnect-backoff", JsonTree.string(process, "plan_id")),
+                    () -> assertEquals("relay-reconnect-backoff", JsonTree.string(process, "title")),
+                    () -> assertEquals("pm-mcp-clients",
+                            JsonTree.string(JsonTree.object(process, "project"), "project_id")),
+                    () -> assertEquals("relay-hardening",
+                            JsonTree.string(JsonTree.object(process, "epic"), "epic_id"),
+                            "the plan names the epic that lists it"),
+                    () -> assertEquals("done", JsonTree.string(process, "phase_state"),
+                            "the shipped row is a done plan"),
+                    () -> assertNotNull(JsonTree.asArray(process.get("nodes")),
+                            "the plan answers a node list"),
+                    () -> assertEquals(List.of("done"), nodeStates(process),
+                            "every phase of a done plan is done"));
+        }
+    }
+
     private static @Nullable String phaseState(Map<String, Object> plan, String nodeId) {
         var nodes = JsonTree.asArray(plan.get("nodes"));
         assertNotNull(nodes, "the plan must answer a node list");
@@ -91,6 +116,22 @@ class PlanDetailTest {
             }
         }
         return null;
+    }
+
+    /**
+     * @param plan the plan's process representation
+     * @return the distinct states of its phase nodes, in order
+     */
+    private static List<String> nodeStates(Map<String, Object> plan) {
+        var nodes = JsonTree.asArray(plan.get("nodes"));
+        assertNotNull(nodes, "the plan must answer a node list");
+        var states = new LinkedHashSet<String>();
+        for (var element : nodes) {
+            var node = JsonTree.asObject(element);
+            assertNotNull(node, "every node is an object");
+            states.add(JsonTree.string(node, "state"));
+        }
+        return List.copyOf(states);
     }
 
     private static MockRuntimeEngine engine() {

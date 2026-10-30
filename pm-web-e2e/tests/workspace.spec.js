@@ -31,7 +31,7 @@ test.describe('Routing, History & Frame', () => {
   });
 
   test('writes every view to the address bar and moves with browser history', async ({ page }) => {
-    const header = page.locator('.app-header');
+    const header = page.locator('.nav-rail');
     await header.getByRole('button', { name: 'Running work' }).click();
     await expect(page).toHaveURL(/\/overview$/);
 
