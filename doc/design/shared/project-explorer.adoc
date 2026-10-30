@@ -73,6 +73,8 @@ A project's onboarding that has not reached its enrolment has no project id yet 
 
 A project's running work shows its own pull requests by their numbers, each a link to the provider, where the client shows its plans (link:plan-overview.adoc#item-rows[A Plan, an Epic]).
 
+*One step to a plan, in the web app*: the row of a ready project carries _Add a plan_ (`project.action.add_plan`) beside its marks, so a plan is started without selecting the project first; a project that is not ready shows it disabled with the reason (`project.action.disabled_not_ready`). _Add an epic_ stays among the actions. The terminal client keeps its command.
+
 [#actions]
 == Actions of a Project
 

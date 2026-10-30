@@ -1,0 +1,25 @@
+= Running work in a stable order, and a plan's size of change
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `overview-order-and-size`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4], link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]; link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestones 10 and 11
+Where:: `pm-api` (the contract and the mock runtime), `pm-operator`, `pm-web-app`
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+* *Order*: the terminal client drops its own sort of projects and plans by last activity (`OverviewFormatting`) and keeps the order served; the web app already shows it as served. The mock runtime serves the stable order, and a test shows that an activity event moves no row.
+* *Size*: `plan.change.size` in the head of the plan view and in the completion report (link:../design/shared/plan-view.adoc#change-size[Plan View, Change So Far]); the contract carries the size and the count of unplanned changes, both absent before the first capture.
+
+== Trace
+
+* Requirement: link:../../../plan-marshall-documentation/doc/requirements/01-architecture.adoc#PM-ARCH-11[PM-ARCH-11]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#overview-resource[The Overview Resource and Its Events]; link:../../../pm-mcp-core/doc/specification/store-schemas/13-leases-integrity-testing.adoc#change-size[The Size of a Plan's Change]
+* Reason: link:../../../plan-marshall-documentation/doc/articles/thinkrail.adoc[ThinkRail]
+
+== Done When
+
+Both clients keep the served order through an activity event, and show the size, and no line before a capture, against the mock runtime in their tests.
