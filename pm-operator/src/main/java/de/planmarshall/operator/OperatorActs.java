@@ -38,10 +38,14 @@ final class OperatorActs {
 
     private static final String ADD = "add";
 
+    private static final String START = "start";
+
     private static final String SETTINGS = "settings";
 
+    private static final String WEB = "web";
+
     private static final Set<String> PLAN_SUBCOMMANDS = Set.of(
-                        ADD, "pause", "start", FINDINGS, WATCHES, CANCEL, "abandon", "resolve",
+                        ADD, "pause", START, FINDINGS, WATCHES, CANCEL, "abandon", "resolve",
                         SETTINGS, CHAT, REPORT);
 
     private static final Set<String> PLAN_READ_SUBCOMMANDS = Set.of(FINDINGS, WATCHES, REPORT);
@@ -63,7 +67,7 @@ final class OperatorActs {
 
     private static final Set<String> ACT_VERBS = Set.of(
                         "answer", "cleanup", "enrol", "unenrol", "enrol-harness", "accept-edit", "onboard",
-                        "abort", "recipe", "start", "web", "git-source");
+                        "abort", "recipe", START, WEB, "git-source");
 
     private OperatorActs() {
         // Utility class
@@ -84,14 +88,14 @@ final class OperatorActs {
             case "plan" -> planAct(rest);
             case "epic" -> epicAct(rest);
             case "config" -> !rest.isEmpty() && !CONFIG_READ_SUBCOMMANDS.contains(rest.get(0));
-            case "settings" -> settingsAct(rest);
+            case SETTINGS -> settingsAct(rest);
             case "credentials" -> !rest.isEmpty() && !"status".equals(rest.get(0));
             case "roles" -> !rest.isEmpty() && "qualify".equals(rest.get(0));
             case "runtime" -> runtimeAct(rest);
             case "reports" -> !rest.isEmpty() && !rest.get(0).startsWith("-");
             case "project" -> !rest.isEmpty() && PROJECT_ACT_SUBCOMMANDS.contains(rest.get(0));
             case "client" -> !rest.isEmpty() && CLIENT_ACT_SUBCOMMANDS.contains(rest.get(0));
-            case "web" -> webAct(rest);
+            case WEB -> webAct(rest);
             default -> ACT_VERBS.contains(verb);
         };
     }
