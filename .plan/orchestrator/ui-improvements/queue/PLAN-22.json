@@ -2,10 +2,10 @@
   "id": "PLAN-22",
   "slug": "cli-state-dialogue-onboarding",
   "workstream": "WS-04",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "22-cli-state-dialogue-onboarding",
+  "pr": "275",
+  "landing": "landings/PLAN-22.md",
   "seq": 22
 }

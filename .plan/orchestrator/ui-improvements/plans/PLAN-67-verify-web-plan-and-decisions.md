@@ -1,5 +1,7 @@
 # PLAN-67: Verify the Web Plan Page and Decisions
 
+> **SUPERSEDED on 2026-10-30 (structure review, operator decision): do not emit.** Its four checks moved into `PLAN-65` (`verify-web-work-views`), as did those of `PLAN-61`. The text below is kept for the record.
+
 epic: ui-improvements
 workstream: WS-03
 

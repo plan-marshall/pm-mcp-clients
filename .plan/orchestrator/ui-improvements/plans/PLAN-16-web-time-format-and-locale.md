@@ -23,21 +23,21 @@ Source of this plan (read before scoping):
 1. **Formatter**
    - What: `lib/display/format.ts`: `formatTime(iso, style)` with `relative`, `short`, `clock` through `Intl`, `formatDuration`, `formatTokens(n, floor)`, `formatBytes`; replaces `lib/utils/tokenFormat.ts`.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - Table tests per style and locale, following `shared/texts-and-languages.adoc` (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: `/reports`, overview, plan activity, paired devices show one time format with the absolute time on hover; switch `de` → `en` → `de` without reload; `onboarding` → `language.choose`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **Every view formatted**
    - What: Lists use `relative` with `short` on hover; details use `short`; the activity stream uses `clock` with the date on the first row of each day.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - The text-guard baseline holds no ISO time (evidence order: `none`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: `/reports`, overview, plan activity, paired devices show one time format with the absolute time on hover; switch `de` → `en` → `de` without reload; `onboarding` → `language.choose`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 3. **Locale switch and recorded language**
    - What: `setLocale` replaces the cached catalogue only after the new one loaded; the cache key includes the catalogue version of `/api/v1/status`; summaries are catalogue messages with plural rules; the recorded interface language sets the locale on first load.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - A unit test switches `de` → `en` → `de` and finds no word of the other locale in a summary (evidence order: `test-first`)
      - An e2e check: after onboarding with "Deutsch for both", a fresh browser opens in German (evidence order: `test-first`)
@@ -48,6 +48,7 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20160 PM_WEB_PORT=20161 ./mvnw -pl pm-web-e2e verify -Pe2e`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20160`, app port `20161` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Views this plan touches pass the text guard of `web-text-guard-report`: the baseline file may only shrink, never grow.
 - Browser check of the rendered output, with the Playwright MCP server of `opencode.json`, following `AGENTS.md` § Browser checks: start the mock (`./mvnw -pl pm-mock-runtime exec:java -Dexec.args="--scenario <scenario> --web-port 20160"`), then `PM_MOCK_WEB_PORT=20160 ./pm-web-app/start.sh -p 20161` (read the port from `pm-web-app/target/pm-web-app.port`); the MCP browser starts with an empty profile, so pair again every session with a fresh single-use code (`POST http://127.0.0.1:20160/mock/pairing`, then open `<app>/pair#code=<CODE>`), never through the `Network:` URL; reach a state with `POST /mock/goto/<state>` and a reload. Check each target in `de` and `en`, dark and light, at 1440 × 900 and 390 × 844 (`browser_resize`). Read the page through `browser_snapshot` (the accessibility tree is the evidence of text and structure) and keep one `browser_take_screenshot` per target; the server writes to its `--output-dir` `.plan/temp/playwright-mcp/` (`opencode.json`), so name every file `{plan}-{target}-{before|after}` and never write to the repository root. Take a baseline snapshot BEFORE the change and one AFTER, and record both paths in the progress record. The visible text of a checked view shows no raw enum, state id, `{placeholder}`, ISO time or emoji outside model-written blocks. Stop the app (`./pm-web-app/stop.sh`) and the mock afterwards. If the Playwright MCP server is not available in the run, the browser Done-when clauses are NOT met — a blocker reported as such, never replaced by a unit test or skipped.
@@ -59,6 +60,7 @@ Source of this plan (read before scoping):
   - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/cross-cutting/plan.adoc:34-38 states CC-S-04 (CC-P-04, CC-P-05); proposals.adoc:46 [#CC-P-04] and :58 [#CC-P-05] exist
 - HYPOTHESIS: `lib/i18n/index.ts` caches catalogues in `localStorage` (`pm_i18n_messages_<locale>`) and a stale cache causes CC-F-10 — confirm/refute at `pm-web-app/src/lib/i18n/index.ts` (verify-at-outline)
   - verdict: unverifiable | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-web-app/src/lib/i18n/index.ts:9 pm_i18n_messages_ and :169 localStorage hold; that the stale cache causes CC-F-10 needs a runtime repro (findings.adoc:172 itself says 'likely')
+- Re-grounded note (2026-10-30, operator request): `PLAN-85` takes the theme choice AND the language choice out of the rail foot and the More sheet and puts them on the pairing page and in the Settings view "This browser" (settings of one type are not spread over plans). This plan keeps the behaviour of the locale switch (every text refreshes, the recorded language applies); where the person chooses is `PLAN-85`'s. A deliverable here that edits the rail's or the More sheet's language control is moved to `PLAN-85` or waits for it.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

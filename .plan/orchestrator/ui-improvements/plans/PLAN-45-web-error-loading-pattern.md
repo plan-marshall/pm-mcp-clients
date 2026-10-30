@@ -20,23 +20,23 @@ Source of this plan (read before scoping):
 ## Deliverables
 
 1. **Error texts by code**
-   - What: Every error code of the API contract gets `error.<code>.title`, `.cause`, `.fix` in `de` and `en`; an unknown code uses `error.unknown.*` and shows the code under "Details".
+   - What: `ErrorState` shows the title, the cause and the fix of the code from the shared set `PLAN-86` (`error.<code>.title`, `.cause`, `.fix` in `de` and `en`, read through `displayError(code)` of `PLAN-09`); an unknown code uses `error.unknown.*` and shows the code under "Details". This plan writes no error text: a missing key is reported to `PLAN-86`, not added here.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
+   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:javadoc, pm-dev-java:java-null-safety, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing, pm-dev-java-cui:cui-logging
    - Done when:
-     - A unit test fails for an API error code without its three keys (evidence order: `test-first`)
+     - A unit test: `ErrorState` for a known code shows its title, cause and fix in `de` and `en`; for an unknown code the fallback and the code under "Details" (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `/plans/does-not-exist`; `/start` for an unknown project; stopping the mock while a view loads shows the pattern within 15 s; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **Time limits**
    - What: `lib/api/client.ts`: 15 s per request, 30 s for a check, ending in an error with code `timeout`.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - A unit test with a request that never answers gets `timeout` after the limit (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `/plans/does-not-exist`; `/start` for an unknown project; stopping the mock while a view loads shows the pattern within 15 s; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 3. **Views on the pattern**
-   - What: Every view shows `ErrorState` for a failed load and `Skeleton` while loading; `plan_not_found` and `project_not_found` show title, cause and an act.
+   - What: Every view shows `ErrorState` for a failed load and `Skeleton` while loading, with the loading text as an `<area>.loading` key that names what loads (the keys formerly planned in `PLAN-09` D4: this plan owns every loading text); `plan_not_found` and `project_not_found` show title, cause and an act.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - e2e: `/plans/does-not-exist` shows the pattern; stopping the mock shows it within 15 s with "Try again" (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `/plans/does-not-exist`; `/start` for an unknown project; stopping the mock while a view loads shows the pattern within 15 s; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
@@ -46,6 +46,8 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20450 PM_WEB_PORT=20451 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- CUI standards (`CLAUDE.md`, `PLAN-77`): a test that takes input data draws it from `Generators` with `@EnableGeneratorController` (the expected value of a contract stays literal); a log call at INFO or above goes through a `LogRecord` of the module's own `LogMessages` class (one per module that logs, never one for the repository) with a `LogAsserts` test; `@NullMarked` applies in a module that declares JSpecify (`pm-operator`, `pm-mock-runtime`); until `PLAN-77` has landed the test-scope CUI dependencies are missing in `pm-api`, `pm-exec`, `pm-relay` and `pm-mock-runtime`, and a test there follows plain JUnit and reports the departure, never adds the dependency itself.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20450`, app port `20451` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Every view this plan touches uses the design system v2 components (VD-S-06): no plain text button, no acting link, no state pill, no uppercase label, no emoji, no own page width.
 - Every server value on a touched view passes through the display layer and the formatter of WS-02.
@@ -72,7 +74,7 @@ Source of this plan (read before scoping):
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-35` (`web-data-components`), `PLAN-39` (`web-app-shell`), `PLAN-76` (`shared-port-assignment`)
+- Depends on: `PLAN-35` (`web-data-components`), `PLAN-39` (`web-app-shell`, shipped), `PLAN-76` (`shared-port-assignment`, shipped), `PLAN-86` (`shared-error-texts`), `PLAN-09` (`displayError`)
 - Overlaps with: none known at staging
 - Adjacent to: none
 

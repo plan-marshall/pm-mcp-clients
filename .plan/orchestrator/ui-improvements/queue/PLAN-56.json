@@ -2,7 +2,7 @@
   "id": "PLAN-56",
   "slug": "verify-cli-interaction",
   "workstream": "WS-05",
-  "status": "staged",
+  "status": "superseded",
   "lane": "plan-marshall",
   "plan_marshall_plan_id": "",
   "pr": "",

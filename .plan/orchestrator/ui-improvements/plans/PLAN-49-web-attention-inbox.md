@@ -19,16 +19,16 @@ Source of this plan (read before scoping):
 ## Deliverables
 
 1. **Attention store**
-   - What: `lib/stores/attention.ts` derives the items of UX-P-01 (decisions, holds, failed landings, setup questions, findings to review, credentials, due cleanup) from the existing stores, sorted blocking first then oldest, and updates on their events; reports are never items.
+   - What: `lib/stores/attention.ts` holds the runtime's list of what waits (decisions, holds, failed landings, setup questions, findings to review, credentials, due cleanup, any other operator wait) as `GET /api/v1/machine/needs-operator` serves it, in the order served (blocking first, then oldest), and updates on `needs_operator.changed`; an item resolved in another client leaves with a quiet notice; reports are never items.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - `attention.test.ts`: each kind becomes an item with its act; order; an answered decision leaves (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: `/` lists the waiting items blocking first; each act opens its place; an answered decision leaves; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **Inbox view and route**
    - What: `lib/views/InboxView.svelte` on the triage template at `/`; `openStartPage()` opens it; empty state "Nothing waits for you." with the running work per project; the rail item and the tab title carry the total.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `inbox.spec.js` on `fully-onboarded`: the five items of UX-V-02, blocking first; each act opens its place (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: `/` lists the waiting items blocking first; each act opens its place; an answered decision leaves; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
@@ -38,12 +38,13 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20490 PM_WEB_PORT=20491 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20490`, app port `20491` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Every view this plan touches uses the design system v2 components (VD-S-06): no plain text button, no acting link, no state pill, no uppercase label, no emoji, no own page width.
 - Every server value on a touched view passes through the display layer and the formatter of WS-02.
 - Views this plan touches pass the text guard of `web-text-guard-report`: the baseline file may only shrink, never grow.
 - The design document of `doc/design/` that this plan changes is updated in the same pull request (UX-S-13, VD-S-09).
-- UC-PLN-7 must be agreed (`use-case-documents`) before this plan starts.
+- UC-PLN-7 is `AGREED` (`plan-marshall-documentation` PR #135, 2026-10-30). The list is the runtime's (`GET /api/v1/machine/needs-operator`, built by `PLAN-82`: blocking first, then oldest; the machine's own `credential` and `cleanup_due` items included), kept in the order served; this plan derives nothing from the stores. Whether the view is also the start page `/` is settled by the design `PLAN-82` writes and the operator accepts: where it differs from this spec, the design wins and the spec's route text is corrected in the same pull request. If `PLAN-82` has not landed, this plan stops as a blocker. The phone's Inbox item that `PLAN-39` deferred (PR #274) is added here.
 - Re-grounded after `web-brand` (PLAN-27, HEAD 4c39c0f8): the tab icon is switched by `src/lib/favicon.ts` from `runtimeStore.openDecisionsCount` (wired in `+layout.svelte`), the same count the header badge and the tab title carry. When the attention store exists, point the badge, the tab title and the tab icon at its item total in this plan, so the three never disagree; `favicon.test.ts` is the test to extend.
 - Browser check of the rendered output, with the Playwright MCP server of `opencode.json`, following `AGENTS.md` § Browser checks: start the mock (`./mvnw -pl pm-mock-runtime exec:java -Dexec.args="--scenario <scenario> --web-port 20490"`), then `PM_MOCK_WEB_PORT=20490 ./pm-web-app/start.sh -p 20491` (read the port from `pm-web-app/target/pm-web-app.port`); the MCP browser starts with an empty profile, so pair again every session with a fresh single-use code (`POST http://127.0.0.1:20490/mock/pairing`, then open `<app>/pair#code=<CODE>`), never through the `Network:` URL; reach a state with `POST /mock/goto/<state>` and a reload. Check each target in `de` and `en`, dark and light, at 1440 × 900 and 390 × 844 (`browser_resize`). Read the page through `browser_snapshot` (the accessibility tree is the evidence of text and structure) and keep one `browser_take_screenshot` per target; the server writes to its `--output-dir` `.plan/temp/playwright-mcp/` (`opencode.json`), so name every file `{plan}-{target}-{before|after}` and never write to the repository root. Take a baseline snapshot BEFORE the change and one AFTER, and record both paths in the progress record. The visible text of a checked view shows no raw enum, state id, `{placeholder}`, ISO time or emoji outside model-written blocks. Stop the app (`./pm-web-app/stop.sh`) and the mock afterwards. If the Playwright MCP server is not available in the run, the browser Done-when clauses are NOT met — a blocker reported as such, never replaced by a unit test or skipped.
 - This project analyses its pull requests with SonarCloud (project `plan-marshall_pm-mcp-clients`, `.github/project.yml`; provider `plan-marshall:workflow-integration-sonar` and step `default:sonar-roundtrip` in `.plan/marshal.json`) — treat it as `sonar: configured` even where `runbook_lane resolve` reports `not_configured` (its `credentials_config` block is missing; see the epic's Watches). An open Sonar issue is fixed in a pushed commit, or dismissed with a stated reason recorded as `{issue-key}: {reason}` in the run's progress record and transmitted through the plan-less transition verb, `plan-marshall:workflow-integration-sonar:sonar_rest transition --issue-key {key} --transition {falsepositive|wontfix}`. A dismissal the run cannot transmit is a blocker, never a silent pass. The merge gate reads the open-issue count at the head — `0` confirmed, or every remaining issue dismissed — and an `undecidable` read blocks.
@@ -52,6 +53,7 @@ Source of this plan (read before scoping):
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-02)`, `doc/claude_review/ux/proposals.adoc#UX-P-01` — read at `doc/claude_review/ux/plan.adoc`
   - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/ux/plan.adoc:24-26 UX-S-02 maps to UX-P-01; ux/proposals.adoc:12-13 '== UX-P-01: The Attention Inbox as Home' exists
+- Re-grounded at HEAD 07104678 (2026-10-30) after PR #278, PLAN-39 (PR #274) and `plan-marshall-documentation` PR #135: UC-PLN-7 is `AGREED` and the runtime serves the list, so "derived on the client from the stores that exist" no longer holds. The operator decided two views against one combined entry (what waits; go to work by name), and the web "what waits" view is "a route of its own, a destination of the rail with its count" per the package `needs-and-find`; the rail from `PLAN-39` exists and the rail item and tab title carry the total. `PLAN-83` and `PLAN-52` share the running-work rows with this view.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
@@ -68,7 +70,7 @@ Source of this plan (read before scoping):
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-43` (`web-page-templates`), `PLAN-08` (`use-case-documents`), `PLAN-76` (`shared-port-assignment`)
+- Depends on: `PLAN-43` (`web-page-templates`), `PLAN-08` (`use-case-documents`, shipped), `PLAN-76` (`shared-port-assignment`, shipped), `PLAN-82` (`needs-and-find-contract`)
 - Overlaps with: none known at staging
 - Adjacent to: none
 

@@ -1,4 +1,4 @@
-# PLAN-43: Web: Four Page Templates and Four Reference Views
+# PLAN-43: Web: Four Page Templates and One Reference View
 
 epic: ui-improvements
 workstream: WS-03
@@ -19,32 +19,33 @@ Source of this plan (read before scoping):
 ## Deliverables
 
 1. **Templates**
-   - What: `lib/templates/TriagePage.svelte`, `ObjectPage.svelte`, `WizardPage.svelte`, `DashboardPage.svelte` with slots and the widths of UX-P-03.
+   - What: `lib/templates/TriagePage.svelte`, `ObjectPage.svelte`, `WizardPage.svelte`, `DashboardPage.svelte` with slots and the widths of UX-P-03; `doc/design/web-app/view-density-and-filtering.adoc` states that templates replace the layout modes (moved here from `PLAN-74`).
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - Unit tests per template: slots render, width as specified, triage split below 1100 px (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: decisions, a plan, `/start`, `/system` on their templates at 1440 and 390 px; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: `/system` on the `DashboardPage` template at 1440 and 390 px (the other three templates are proved by their unit tests and by the plans that move their views); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **Reference views**
-   - What: `DecisionView`, `PlanView`, `StartView`, `SystemView` sit on their template without changing their content.
+   - What: `SystemView` sits on the `DashboardPage` template without changing its content, as the one reference view. `DecisionView` (`TriagePage`), `PlanView` and `EpicView` (`ObjectPage`) and `StartView` (`WizardPage`) are moved by the plans that rebuild them (`PLAN-51`, `PLAN-55`, `PLAN-58`, `PLAN-53`), so none of them is moved twice (structure review of 2026-10-30).
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
-     - Existing e2e specs of the four views pass unchanged (evidence order: `none`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: decisions, a plan, `/start`, `/system` on their templates at 1440 and 390 px; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - The existing e2e spec of the system view passes unchanged (evidence order: `none`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: `/system` on the `DashboardPage` template at 1440 and 390 px (the other three templates are proved by their unit tests and by the plans that move their views); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 3. **No own page width**
-   - What: A unit test greps view styles and fails on a `max-width` on a view's page root.
+   - What: A unit test greps view styles and fails on a `max-width` on the page root of a view that sits on a template; the list of such views grows as `PLAN-51`, `PLAN-53`, `PLAN-55` and `PLAN-58` move theirs, and each of those plans adds its view to the test.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
-     - The test fails on a view with its own width before the move and passes for the four after (evidence order: `test-first`)
-     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: decisions, a plan, `/start`, `/system` on their templates at 1440 and 390 px; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
+     - The test fails on a view with its own width before the move and passes for `SystemView` after (evidence order: `test-first`)
+     - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: `/system` on the `DashboardPage` template at 1440 and 390 px (the other three templates are proved by their unit tests and by the plans that move their views); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 ## Standing Constraints
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20430`, app port `20431` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Every view this plan touches uses the design system v2 components (VD-S-06): no plain text button, no acting link, no state pill, no uppercase label, no emoji, no own page width.
 - Every server value on a touched view passes through the display layer and the formatter of WS-02.
@@ -62,9 +63,6 @@ Source of this plan (read before scoping):
 ## Expected Surface
 
 - OBSERVED: `pm-web-app/src/lib/templates/` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `pm-web-app/src/lib/views/DecisionView.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/PlanView.svelte` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-web-app/src/lib/views/StartView.svelte` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-web-app/src/lib/views/SystemView.svelte` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-web-app/src/lib/templates/pageWidth.test.ts` — absent at HEAD c4dc9bb4; created by this plan
 - OBSERVED: `doc/design/web-app/view-density-and-filtering.adoc` — present at HEAD c4dc9bb4

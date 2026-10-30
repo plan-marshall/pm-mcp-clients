@@ -1,5 +1,7 @@
 # PLAN-57: Web: Correct Feedback for a Decision
 
+> **SUPERSEDED on 2026-10-30 (structure review, operator decision): do not emit.** The two deliverables moved into `PLAN-51` (deliverables 3 and 4), because both plans work on the one `DecisionView` and `PLAN-57` could only run after `PLAN-51`. The text below is kept for the record.
+
 epic: ui-improvements
 workstream: WS-03
 
@@ -21,14 +23,14 @@ Source of this plan (read before scoping):
 1. **Recommendation and evidence**
    - What: "Recommended: Rebase onto main (by implement)"; evidence as fields with plain labels, `file`/`lines` as a link where the project offers one, unknown structures as a folded JSON block (`EvidenceView.svelte`).
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - Unit tests: label, fields, the fallback (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open` and `decisions.answered-elsewhere` (plus a `POST /mock/broadcast` from `cli`); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **Own answer confirmed**
    - What: The answer request carries a client request id; the `decision.answered` event with that id confirms "Decided: <option>"; other events produce "answered elsewhere" with channel, device and option label.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `decisions.spec.js`: own answer; a `POST /mock/broadcast` from `cli` shows "answered in the terminal" (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `decisions.open` and `decisions.answered-elsewhere` (plus a `POST /mock/broadcast` from `cli`); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
@@ -38,6 +40,7 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20570 PM_WEB_PORT=20571 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20570`, app port `20571` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Every view this plan touches uses the design system v2 components (VD-S-06): no plain text button, no acting link, no state pill, no uppercase label, no emoji, no own page width.
 - Every server value on a touched view passes through the display layer and the formatter of WS-02.
@@ -50,6 +53,7 @@ Source of this plan (read before scoping):
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/use-cases/plan.adoc (UC-S-06)`, `doc/claude_review/use-cases/proposals.adoc#UC-P-05` — read at `doc/claude_review/use-cases/plan.adoc`
   - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/use-cases/plan.adoc:56 UC-S-06 (Decision feedback); use-cases/proposals.adoc:114 [#UC-P-05] Correct feedback for a decision
+- Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 added the key `decision.notify.several` (`{count} decisions wait for you` / `{count} Entscheidungen warten auf dich`) to `doc/design/shared/decisions-texts.adoc`. `PLAN-83` (deliverable 3) puts it into `decisions.{en,de}.properties` with the burst rule; this plan's feedback texts must not duplicate or rename it.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

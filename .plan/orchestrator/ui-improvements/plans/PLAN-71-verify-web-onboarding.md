@@ -51,7 +51,7 @@ Run the checks of the onboarding screen registry and variations against the merg
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-64` (`web-onboarding-screen-registry`), `PLAN-66` (`web-onboarding-frame-and-roles`), `PLAN-68` (`web-onboarding-harness-language`), `PLAN-69` (`web-onboarding-models-store`), `PLAN-76` (`shared-port-assignment`)
+- Depends on: `PLAN-64` (`web-onboarding-screen-registry`), `PLAN-66` (`web-onboarding-frame-and-roles`, with the former `PLAN-68` and `PLAN-69`), `PLAN-76` (`shared-port-assignment`, shipped)
 - Overlaps with: other verification plans may update the same analysis matrix (one shared file)
 - Adjacent to: the plans verified; their code stays untouched
 

@@ -1,5 +1,7 @@
 # PLAN-56: Verify the Terminal Interaction
 
+> **SUPERSEDED on 2026-10-30 (structure review, operator decision): do not emit.** Its six checks moved into `PLAN-63` (`verify-cli-presentation`), as did those of `PLAN-40`. The text below is kept for the record.
+
 epic: ui-improvements
 workstream: WS-05
 

@@ -21,14 +21,14 @@ Source of this plan (read before scoping):
 1. **Stop, restart, upgrade dialogues**
    - What: What runs, then `1) Stop when done  2) Stop now  k) keep it running` on `ChoicePrompt`, in `RuntimeCommand` and the `a` menu of the system view.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-java:junit-integration, pm-dev-java:junit-core
+   - Skills: pm-dev-java:junit-integration, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
    - Done when:
      - `RuntimeStopDialogueIT` enabled: `k` keeps it running; `1` stops when done (evidence order: `test-first`)
      - Terminal check (screen capture) shows this deliverable's change as specified on: `reports-and-system` → `system.running`: `runtime stop` with `k` and with `1`; the `a` menu of the system view; before and after captures recorded (evidence order: `none`)
 2. **Script options**
    - What: `--now`, `--when-done`; `--no-input` without an answer exits `3`.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
+   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:javadoc, pm-dev-java:java-null-safety, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing, pm-dev-java-cui:cui-logging
    - Done when:
      - A unit test per option and the exit code (evidence order: `test-first`)
      - Terminal check (screen capture) shows this deliverable's change as specified on: `reports-and-system` → `system.running`: `runtime stop` with `k` and with `1`; the `a` menu of the system view; before and after captures recorded (evidence order: `none`)
@@ -39,6 +39,7 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-operator verify -Pintegration-tests`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- CUI standards (`CLAUDE.md`, `PLAN-77`): a test that takes input data draws it from `Generators` with `@EnableGeneratorController` (the expected value of a contract stays literal); a log call at INFO or above goes through a `LogRecord` of the module's own `LogMessages` class (one per module that logs, never one for the repository) with a `LogAsserts` test; `@NullMarked` applies in a module that declares JSpecify (`pm-operator`, `pm-mock-runtime`); until `PLAN-77` has landed the test-scope CUI dependencies are missing in `pm-api`, `pm-exec`, `pm-relay` and `pm-mock-runtime`, and a test there follows plain JUnit and reports the departure, never adds the dependency itself.
 - Ports of this plan: mock web port `20170`, app port `20171` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Java 25, Lombok, records; no generic `Exception`/`RuntimeException`; JUnit 5 only, no Mockito (CLAUDE.md).
 - Every new operator text goes through `MessageCatalogue` into `operator.en.properties` and `operator.de.properties`.
@@ -53,6 +54,7 @@ Source of this plan (read before scoping):
   - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/cli/use-cases/plan.adoc:21-26 (CLI-UC-S-02, proposals CLI-UC-P-05) and proposals.adoc:96-97 CLI-UC-P-05 exist
 - HYPOTHESIS: `runtime stop` stops without a question — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/RuntimeCommand.java` (verify-at-outline)
   - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: RuntimeCommand.java:96-130 StopCommand.call(): gate verify then POST /api/v1/runtime/stop, prints 'runtime stopping'; no confirmation prompt
+- Exit codes (structure review, 2026-10-30): one table owns them, `doc/design/terminal-client/01-commands.adoc#exit-codes` (`1` refused, `2` usage, `3` needs input, `4` operator gate). This plan implements the codes of its own verbs from that table and invents none; `PLAN-30` D4 tests the table for every verb.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

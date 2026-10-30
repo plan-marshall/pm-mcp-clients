@@ -53,7 +53,7 @@ Run the verification checks of the shared foundation plans against the merged co
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-03` (`mock-scenario-states`), `PLAN-06` (`shared-display-vocabulary`), `PLAN-08` (`use-case-documents`), `PLAN-11` (`mock-cli-fixes`), `PLAN-76` (`shared-port-assignment`)
+- Depends on: `PLAN-03` (`mock-scenario-states`), `PLAN-06` (`shared-display-vocabulary`), `PLAN-08` (`use-case-documents`), `PLAN-11` (`mock-cli-fixes`), `PLAN-76` (`shared-port-assignment`), and the shared plans of 2026-10-30: `PLAN-82` (the contract and mock for order, size, what waits and find: its mock tests and the served lists are checked here), `PLAN-86` (the shared error texts: every code has its three texts in both languages)
 - Overlaps with: other verification plans may update the same analysis matrix (one shared file)
 - Adjacent to: the plans verified; their code stays untouched
 

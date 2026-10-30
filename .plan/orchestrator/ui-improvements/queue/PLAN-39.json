@@ -2,10 +2,10 @@
   "id": "PLAN-39",
   "slug": "web-app-shell",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "39-web-app-shell",
+  "pr": "274",
+  "landing": "landings/PLAN-39.md",
   "seq": 39
 }

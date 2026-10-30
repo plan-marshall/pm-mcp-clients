@@ -2,10 +2,10 @@
   "id": "PLAN-13",
   "slug": "cli-event-contract",
   "workstream": "WS-04",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "13-cli-event-contract",
+  "pr": "270",
+  "landing": "landings/PLAN-13.md",
   "seq": 13
 }

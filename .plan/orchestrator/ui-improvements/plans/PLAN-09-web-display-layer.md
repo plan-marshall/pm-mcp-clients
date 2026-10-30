@@ -8,7 +8,7 @@ workstream: WS-02
 
 ## Objective
 
-Add the display layer of CC-P-01 so that no view prints an API enum, code or unit id directly, fix every broken string of CC-F-05, remove terminal key hints from web texts, and give loading texts keys per view (CC-S-02; CC-P-01, CC-P-02).
+Add the display layer of CC-P-01 so that no view prints an API enum, code or unit id directly, fix every broken string of CC-F-05, and remove terminal key hints from web texts (CC-S-02; CC-P-01, CC-P-02). The error texts are `PLAN-86`'s and the loading texts `PLAN-45`'s.
 
 Source of this plan (read before scoping):
 
@@ -21,30 +21,30 @@ Source of this plan (read before scoping):
 ## Deliverables
 
 1. **Display module**
-   - What: `lib/display/index.ts` with `displayState(kind, value)`, `displayError(code)` and `displayUnit(id)` on the `state.*` and `unit.*` keys of `shared-display-vocabulary`; `lib/display/enumFields.ts` lists the enum fields.
+   - What: `lib/display/index.ts` with `displayState(kind, value)`, `displayError(code)` and `displayUnit(id)` on the `state.*` and `unit.*` keys of `shared-display-vocabulary` and, for `displayError`, on the shared error texts of `PLAN-86` (`error.<code>.title`, `.cause`, `.fix`; this plan writes none of them); `lib/display/enumFields.ts` lists the enum fields.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - Unit tests per function, in `de` and `en`, including an unknown value (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: `/system`, `/system/cleanup`, overview, `/reports`, a completion report, an epic, `/start`, `/settings/machine` show plain state words and the CC-F-05 strings as expected; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **Enum guard**
    - What: A unit test parses every `.svelte` file and fails when a field of `enumFields.ts` is interpolated without `displayState`.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - The test fails on `SystemView.svelte` before the views change and passes after (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: `/system`, `/system/cleanup`, overview, `/reports`, a completion report, an epic, `/start`, `/settings/machine` show plain state words and the CC-F-05 strings as expected; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 3. **Views through the display layer**
    - What: `SystemView`, `PlanView`, `OverviewView`, `CleanupView`, `ReportsView`, `CompletionReportView`, `EpicView`, `StartView`, `MachineSettingsView` print enums, codes and unit ids only through the display layer.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - The text-guard baseline loses every raw-enum and state-id entry of these views (evidence order: `none`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: `/system`, `/system/cleanup`, overview, `/reports`, a completion report, an epic, `/start`, `/settings/machine` show plain state words and the CC-F-05 strings as expected; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 4. **Catalogue fixes**
-   - What: Every string of the table of CC-F-05 reads as expected in `de` and `en`; no terminal key hint in a web text; loading texts as `<area>.loading` keys naming what loads; the mock serves the same keys.
+   - What: Every string of the table of CC-F-05 reads as expected in `de` and `en`; no terminal key hint in a web text; the mock serves the same keys. (Loading texts as `<area>.loading` keys moved to `PLAN-45`, which owns the loading pattern.)
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
+   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:javadoc, pm-dev-java:java-null-safety, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing, pm-dev-java-cui:cui-logging
    - Done when:
      - A catalogue test asserts each corrected string of CC-F-05 in both locales (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded`: `/system`, `/system/cleanup`, overview, `/reports`, a completion report, an epic, `/start`, `/settings/machine` show plain state words and the CC-F-05 strings as expected; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
@@ -54,6 +54,8 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20090 PM_WEB_PORT=20091 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- CUI standards (`CLAUDE.md`, `PLAN-77`): a test that takes input data draws it from `Generators` with `@EnableGeneratorController` (the expected value of a contract stays literal); a log call at INFO or above goes through a `LogRecord` of the module's own `LogMessages` class (one per module that logs, never one for the repository) with a `LogAsserts` test; `@NullMarked` applies in a module that declares JSpecify (`pm-operator`, `pm-mock-runtime`); until `PLAN-77` has landed the test-scope CUI dependencies are missing in `pm-api`, `pm-exec`, `pm-relay` and `pm-mock-runtime`, and a test there follows plain JUnit and reports the departure, never adds the dependency itself.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20090`, app port `20091` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Views this plan touches pass the text guard of `web-text-guard-report`: the baseline file may only shrink, never grow.
 - Browser check of the rendered output, with the Playwright MCP server of `opencode.json`, following `AGENTS.md` § Browser checks: start the mock (`./mvnw -pl pm-mock-runtime exec:java -Dexec.args="--scenario <scenario> --web-port 20090"`), then `PM_MOCK_WEB_PORT=20090 ./pm-web-app/start.sh -p 20091` (read the port from `pm-web-app/target/pm-web-app.port`); the MCP browser starts with an empty profile, so pair again every session with a fresh single-use code (`POST http://127.0.0.1:20090/mock/pairing`, then open `<app>/pair#code=<CODE>`), never through the `Network:` URL; reach a state with `POST /mock/goto/<state>` and a reload. Check each target in `de` and `en`, dark and light, at 1440 × 900 and 390 × 844 (`browser_resize`). Read the page through `browser_snapshot` (the accessibility tree is the evidence of text and structure) and keep one `browser_take_screenshot` per target; the server writes to its `--output-dir` `.plan/temp/playwright-mcp/` (`opencode.json`), so name every file `{plan}-{target}-{before|after}` and never write to the repository root. Take a baseline snapshot BEFORE the change and one AFTER, and record both paths in the progress record. The visible text of a checked view shows no raw enum, state id, `{placeholder}`, ISO time or emoji outside model-written blocks. Stop the app (`./pm-web-app/stop.sh`) and the mock afterwards. If the Playwright MCP server is not available in the run, the browser Done-when clauses are NOT met — a blocker reported as such, never replaced by a unit test or skipped.
@@ -100,7 +102,7 @@ Source of this plan (read before scoping):
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-06` (`shared-display-vocabulary`), `PLAN-01` (`web-text-guard-report`), `PLAN-76` (`shared-port-assignment`)
+- Depends on: `PLAN-06` (`shared-display-vocabulary`, shipped), `PLAN-01` (`web-text-guard-report`, shipped), `PLAN-76` (`shared-port-assignment`, shipped), `PLAN-86` (`shared-error-texts`)
 - Overlaps with: none known at staging
 - Adjacent to: none
 

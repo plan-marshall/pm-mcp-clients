@@ -1,5 +1,7 @@
 # PLAN-61: Verify the Web Shell and Patterns
 
+> **SUPERSEDED on 2026-10-30 (structure review, operator decision): do not emit.** Its six checks moved into `PLAN-65` (`verify-web-work-views`): the web view stages verify one client, nothing waits for them, and one result file is enough. The text below is kept for the record.
+
 epic: ui-improvements
 workstream: WS-03
 

@@ -21,23 +21,23 @@ Source of this plan (read before scoping):
 ## Deliverables
 
 1. **Gate**
-   - What: "Checking the project's setup…" with a spinner; after 20 s the cause and "Try again"; a refused gate with its reason and act; a start for an unknown project shows the error pattern with "Choose a project".
+   - What: The start page sits on the `WizardPage` template of `PLAN-43` (this plan moves it there: `PLAN-43` no longer does). "Checking the project's setup…" with a spinner; after 20 s the cause and "Try again"; a refused gate with its reason and act; a start for an unknown project shows the error pattern with "Choose a project".
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `start.spec.js`: a gate that does not answer shows its cause after 20 s; `/start` without a project (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `projects-and-start` → `start.sources`, `start.refused`; `/start` without a project; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **Steps 1 to 3**
    - What: What (two cards), Sources (source cards with state; one "Add a source" menu; the description as a source card with one "Add"), Ready (title, id, sources, what happens next; primary "Start the plan"); footer Back · Discard (overflow) · primary.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `start.spec.js`, `git-sources.spec.js`, `lesson-source.spec.js`: one primary per step; Back works (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `projects-and-start` → `start.sources`, `start.refused`; `/start` without a project; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 3. **Lazy entry**
    - What: The entry is created when the first source is added; leaving without a source leaves no entry.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - A unit test of `lib/stores/start.ts`; e2e on `projects-and-start` → `start.sources` (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `projects-and-start` → `start.sources`, `start.refused`; `/start` without a project; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
@@ -47,6 +47,7 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20530 PM_WEB_PORT=20531 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20530`, app port `20531` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Every view this plan touches uses the design system v2 components (VD-S-06): no plain text button, no acting link, no state pill, no uppercase label, no emoji, no own page width.
 - Every server value on a touched view passes through the display layer and the formatter of WS-02.

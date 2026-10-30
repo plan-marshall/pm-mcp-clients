@@ -23,21 +23,21 @@ Source of this plan (read before scoping):
 1. **Rows and groups**
    - What: Grouped by project then epic (toggle by plan / by epic kept); the project sidebar becomes a filter chip row; rows: kind icon, title, state, phase, since, progress, needs you; the row menu an icon button.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `overview.spec.js`: columns align at 1440 px; the row menu is an icon button (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work` → `overview.running`: aligned columns at 1440 px, by plan and by epic, ended work table; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **One list, one count**
    - What: By plan and by epic render from one list; head counts are `$derived` from the rendered list or say "showing n of m".
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - A unit test asserts both groupings hold the same plans and the epic head count equals its rows (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work` → `overview.running`: aligned columns at 1440 px, by plan and by epic, ended work table; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 3. **Ended work and alongside**
    - What: Ended work is a sortable `DataTable` tab of the page, with "Chat about it" (read-only) per row; background jobs in a small block in the page head; the rail item always opens running work.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `overview.spec.js`: aligned ended-work columns; the rail item opens running work after ended work was open (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` and `running-work` → `overview.running`: aligned columns at 1440 px, by plan and by epic, ended work table; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
@@ -47,6 +47,7 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20520 PM_WEB_PORT=20521 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20520`, app port `20521` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Every view this plan touches uses the design system v2 components (VD-S-06): no plain text button, no acting link, no state pill, no uppercase label, no emoji, no own page width.
 - Every server value on a touched view passes through the display layer and the formatter of WS-02.
@@ -59,6 +60,7 @@ Source of this plan (read before scoping):
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-09)`, `doc/claude_review/ux/proposals.adoc#UX-P-09` — read at `doc/claude_review/ux/plan.adoc`
   - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/ux/plan.adoc:63 UX-S-09 (running work rework); ux/proposals.adoc:325 [#UX-P-09] exists
+- Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 changed the order rule in `doc/design/shared/plan-overview.adoc`: running work is shown in the order the runtime serves (needs the operator first, then the newest started; projects by the start of their oldest active work); activity moves no row and a client does not sort again; the time beside a row only says how recently it was active. The rows of this page keep that order (`PLAN-82` serves it in the contract and the mock; the former `PLAN-81` is superseded); a sort by activity in this plan's rows is a defect. `PLAN-83` adds a work list beside a plan and an epic that reuses these rows and markers.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
@@ -74,7 +76,7 @@ Source of this plan (read before scoping):
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-43` (`web-page-templates`), `PLAN-35` (`web-data-components`), `PLAN-03` (`mock-scenario-states`), `PLAN-76` (`shared-port-assignment`)
+- Depends on: `PLAN-43` (`web-page-templates`), `PLAN-35` (`web-data-components`), `PLAN-03` (`mock-scenario-states`, shipped), `PLAN-76` (`shared-port-assignment`, shipped), `PLAN-82` (the served order in the mock)
 - Overlaps with: none known at staging
 - Adjacent to: none
 

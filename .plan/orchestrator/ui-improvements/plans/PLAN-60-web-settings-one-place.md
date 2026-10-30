@@ -24,21 +24,21 @@ Source of this plan (read before scoping):
 1. **One settings view**
    - What: `SettingsView` and `MachineSettingsView` merge into one `SettingsView` with a tab per part; `/settings/machine` redirects to `/settings?tab=setup`.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `onboarding.spec.js`, `devices.spec.js`: the redirect and every tab (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` → `/settings` (every tab) and `/settings/machine` (redirect); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **Forms**
    - What: One form, one "Save" disabled until a change, a "changed" mark per field, "Reset to inherited" for an override; plain labels with one sentence of help; no raw keys.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - Unit tests: save disabled until change; reset to inherited (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` → `/settings` (every tab) and `/settings/machine` (redirect); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 3. **Conflict notice**
    - What: A settings conflict shows the other client's value and "Apply mine again" (UC-ONB-10).
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - A unit test of the conflict notice (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` → `/settings` (every tab) and `/settings/machine` (redirect); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
@@ -48,6 +48,7 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20600 PM_WEB_PORT=20601 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20600`, app port `20601` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Every view this plan touches uses the design system v2 components (VD-S-06): no plain text button, no acting link, no state pill, no uppercase label, no emoji, no own page width.
 - Every server value on a touched view passes through the display layer and the formatter of WS-02.
@@ -60,6 +61,7 @@ Source of this plan (read before scoping):
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-12)`, `doc/claude_review/ux/proposals.adoc#UX-P-02` — read at `doc/claude_review/ux/plan.adoc`
   - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/ux/plan.adoc:80 UX-S-12 (One settings place with tabs); ux/proposals.adoc:73 [#UX-P-02] exists
+- Re-grounded note (2026-10-30, operator request): the tabs of the one settings view are Setup, Access, Credentials, Consents, Retention and **This browser**. The last one is `BrowserSettingsView` of `PLAN-85` (`web-theme-in-browser-settings`): the theme and the language choice, applied at once, no Save, nothing sent to the machine, route `/settings/browser`; later browser-only settings belong in this tab and not in another plan's view. It is a browser setting and not a machine setting, so the one-save, "changed" mark and "reset to inherited" rules of deliverable 2 do not apply to it. If `PLAN-85` has landed, this plan makes `/settings/browser` redirect to `/settings?tab=browser` like `/settings/machine`; if it has not, this plan leaves the tab to `PLAN-85`.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

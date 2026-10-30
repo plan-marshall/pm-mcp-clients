@@ -23,28 +23,28 @@ Source of this plan (read before scoping):
 1. **Strings into the catalogue**
    - What: Every string of `AnswerCommand`, `OnboardCommand`, `WorkActionDialogue`, `CleanupCommand`, `RuntimeCommand` in `operator.en/de.properties`.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
+   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:javadoc, pm-dev-java:java-null-safety, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing, pm-dev-java-cui:cui-logging
    - Done when:
      - `LiteralTextGuardTest` (extended) scans for literals passed to `print`, `println`, `printf`, `readLine`, `askRaw` and fails on one (evidence order: `test-first`). Re-grounded at HEAD cc5794c9: its render-call pattern already includes `prompt.askRaw` (`LiteralTextGuardTest.java:61-81`) and its guarded list already names `StartDialogue`, `ChatDialogue`, `WorkActionDialogue` and `HoldDialogue`, so the extension is the guarded list, not the pattern: add `AnswerCommand`, `CleanupCommand` and `RuntimeCommand` (and the sub-packages) to it, and clear what it then finds.
      - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` in `de_DE.UTF-8` and `en_US.UTF-8`: `answer Q-999 1`, `plan nope`, `bogus`, `pm-operator -h`, with exit codes; before and after captures recorded (evidence order: `none`)
 2. **RefusalRenderer**
-   - What: `OperatorRefusedException` carries the `pm-api` error code; `RefusalRenderer` prints `✗` line, cause, `→ fix` from `operator.refusal.<code>`; unknown code "The runtime refused: <message>"; never an HTTP status, a JSON body or an exception class.
+   - What: `OperatorRefusedException` carries the `pm-api` error code; `RefusalRenderer` prints `✗` line (the title), cause, `→ fix` from the shared set `PLAN-86` (`ErrorTexts` over `error.<code>.title`, `.cause`, `.fix`; no `operator.refusal.*` family is added); unknown code "The runtime refused: <message>" over `error.unknown.*`; never an HTTP status, a JSON body or an exception class.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
+   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:javadoc, pm-dev-java:java-null-safety, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing, pm-dev-java-cui:cui-logging
    - Done when:
-     - A unit test: every `pm-api` error code has a refusal text and a fix (evidence order: `test-first`)
+     - A unit test: `RefusalRenderer` prints the three lines for a known code and the unknown fallback for any other, in both languages, and never an HTTP status, a JSON body or an exception class (the check that every code has its texts belongs to `PLAN-86`) (evidence order: `test-first`)
      - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` in `de_DE.UTF-8` and `en_US.UTF-8`: `answer Q-999 1`, `plan nope`, `bogus`, `pm-operator -h`, with exit codes; before and after captures recorded (evidence order: `none`)
 3. **Picocli in the operator's language**
    - What: `CommandLine.setResourceBundle` for usage; an `IParameterExceptionHandler` prints `✗ bogus is not a verb. → help lists them.`
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
+   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:javadoc, pm-dev-java:java-null-safety, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing, pm-dev-java-cui:cui-logging
    - Done when:
      - In `de_DE.UTF-8`, `bogus` and `pm-operator -h` print no English word outside the glossary (evidence order: `test-first`)
      - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` in `de_DE.UTF-8` and `en_US.UTF-8`: `answer Q-999 1`, `plan nope`, `bogus`, `pm-operator -h`, with exit codes; before and after captures recorded (evidence order: `none`)
 4. **Exit codes**
    - What: `1` refused, `2` usage, `3` needs input, as in `01-commands.adoc#exit-codes`.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:junit-core
+   - Skills: pm-dev-java:java-core, pm-dev-java:java-lombok, pm-dev-java:javadoc, pm-dev-java:java-null-safety, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing, pm-dev-java-cui:cui-logging
    - Done when:
      - `ExitCodesTest` checks success, refusal and usage error of every verb (evidence order: `test-first`)
      - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` in `de_DE.UTF-8` and `en_US.UTF-8`: `answer Q-999 1`, `plan nope`, `bogus`, `pm-operator -h`, with exit codes; before and after captures recorded (evidence order: `none`)
@@ -54,6 +54,7 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-operator verify -Pintegration-tests`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- CUI standards (`CLAUDE.md`, `PLAN-77`): a test that takes input data draws it from `Generators` with `@EnableGeneratorController` (the expected value of a contract stays literal); a log call at INFO or above goes through a `LogRecord` of the module's own `LogMessages` class (one per module that logs, never one for the repository) with a `LogAsserts` test; `@NullMarked` applies in a module that declares JSpecify (`pm-operator`, `pm-mock-runtime`); until `PLAN-77` has landed the test-scope CUI dependencies are missing in `pm-api`, `pm-exec`, `pm-relay` and `pm-mock-runtime`, and a test there follows plain JUnit and reports the departure, never adds the dependency itself.
 - Java 25, Lombok, records; no generic `Exception`/`RuntimeException`; JUnit 5 only, no Mockito (CLAUDE.md).
 - Every new operator text goes through `MessageCatalogue` into `operator.en.properties` and `operator.de.properties`.
 - Terminal check of the rendered output through the screen capture harness of `cli-pty-dialogue-harness` (`ScreenCaptureIT`, command line in `doc/design/terminal-client/27-tui-testing.adoc`): write this plan's captures to `pm-operator/src/test/resources/screen-captures/{plan}.txt`, run the set BEFORE the change and copy `pm-operator/target/screens/{plan}/` to `.plan/temp/terminal/{plan}/before/`, then run it AFTER and copy to `.../after/`. Capture at 120 × 30 and 80 × 24 in `en_US.UTF-8` and `de_DE.UTF-8` unless the target names other sizes or environments. Read every `.txt` and `.attrs.txt` with the file tools and compare them with the deliverable; the screen text shows no raw id, link name, state id, `-` placeholder, ISO time or HTTP status, and no text of a previous level. Never run `pm-operator` in the agent's own shell: the operator gate refuses a coding agent by design (`PM-SEC-3`) and is never worked around; only the harness, which clears the environment like every PTY test, runs it. If the harness is not available, the terminal Done-when clauses are NOT met — a blocker, never skipped.
@@ -67,6 +68,7 @@ Source of this plan (read before scoping):
   - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: git ls-tree origin/main: pm-operator/src/test/java/de/planmarshall/operator/LiteralTextGuardTest.java exists
 - HYPOTHESIS: `LiteralTextGuardTest` does not cover dialogues and `askRaw` — confirm/refute at its source (verify-at-outline)
   - verdict: contradicted | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: yes | evidence: LiteralTextGuardTest.java:61-81 RENDER_CALL includes prompt.askRaw; GUARDED lists StartDialogue, ChatDialogue, WorkActionDialogue, HoldDialogue. Uncovered: AnswerCommand, CleanupCommand, RuntimeCommand, sub-packages. D1 now names the guarded list as the extension
+- Exit codes (structure review, 2026-10-30): this plan owns the check of the one table in `01-commands.adoc#exit-codes` for every verb (`ExitCodesTest`); `PLAN-17` (exit `3` for `--no-input`) and `PLAN-26` (exit `1` on a failed read) implement their verbs from the same table before this plan runs, and this plan fails on a verb that breaks it.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
@@ -89,7 +91,7 @@ Source of this plan (read before scoping):
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-21` (`cli-answer-dialogue`), `PLAN-22` (`cli-state-dialogue-onboarding`), `PLAN-23` (`cli-cleanup-dialogue`), `PLAN-17` (`cli-runtime-act-confirm`)
+- Depends on: `PLAN-21` (`cli-answer-dialogue`), `PLAN-22` (`cli-state-dialogue-onboarding`, shipped), `PLAN-23` (`cli-cleanup-dialogue`), `PLAN-17` (`cli-runtime-act-confirm`), `PLAN-86` (`shared-error-texts`)
 - Overlaps with: touches the dialogue classes of WS-04: runs after them
 - Adjacent to: none
 

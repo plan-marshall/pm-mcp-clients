@@ -1,5 +1,7 @@
 # PLAN-28: Verify the Terminal Safety Fixes
 
+> **SUPERSEDED on 2026-10-30 (structure review, operator decision): do not emit.** Its four checks moved into `PLAN-33` (`verify-cli-acts`): the two verified the same acting dialogues, nothing waits for either, and one result file per stage is enough. The text below is kept for the record.
+
 epic: ui-improvements
 workstream: WS-04
 

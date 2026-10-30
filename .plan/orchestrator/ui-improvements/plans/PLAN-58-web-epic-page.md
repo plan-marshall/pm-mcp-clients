@@ -20,23 +20,23 @@ Source of this plan (read before scoping):
 ## Deliverables
 
 1. **Tree and summary**
-   - What: Workstreams as a tree on the left, the selected plan's summary on the right; each wait with its reason and a relative "since"; ids shown as chips beside titles.
+   - What: Workstreams as a tree on the left, the selected plan's summary on the right; each wait with its reason and a relative "since"; ids shown as chips beside titles; the epic's acts through `ActionBar` and `byState` of `PLAN-47` (`EpicView` and the `WorkControlPanel` it hosts); the page sits on the `ObjectPage` template of `PLAN-43` (this plan moves it there).
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `epic-view.spec.js` on `control.epic`: waits show since; titles first (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.epic`, `control.review`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **Tabs and Intent**
    - What: Tabs Workstreams, Intent (destination, done-when checks with evidence, non-goals), Landings, Findings and watches, Tokens, Events (timeline).
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - The Intent tab is filled on `control.epic` (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.epic`, `control.review`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 3. **Counts and findings review**
    - What: Head counts and "Landungen" come from the rows the view lists; the findings review opens with the first open item selected and its counts match the card.
    - Persona: plan-marshall:persona-implementer
-   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:css, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
    - Done when:
      - Unit tests: epic counts equal rows; `FindingsReviewModal` selects the first open item (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.epic`, `control.review`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
@@ -46,6 +46,7 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20580 PM_WEB_PORT=20581 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20580`, app port `20581` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Every view this plan touches uses the design system v2 components (VD-S-06): no plain text button, no acting link, no state pill, no uppercase label, no emoji, no own page width.
 - Every server value on a touched view passes through the display layer and the formatter of WS-02.

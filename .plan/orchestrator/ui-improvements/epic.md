@@ -47,8 +47,15 @@ plan spec names the plan, proposal and finding documents it comes from.
   until they do.
 - PLAN-32 (`cli-config-contract`) — parked: waits on the operator's decision which config contract is
   right (CLI-UC-P-07).
-- PLAN-08 (`use-case-documents`) gates PLAN-46 (command palette), PLAN-49 (attention inbox) and
-  PLAN-36 (`needs`): UC-PLN-7 and UC-PLN-8 must be agreed first.
+- PLAN-08 (`use-case-documents`) gated PLAN-46 (command palette), PLAN-49 (attention inbox) and
+  PLAN-36 (`needs`): UC-PLN-7 and UC-PLN-8 had to be agreed first. They are `AGREED` (2026-10-30); the three plans now
+  wait for PLAN-82 (`needs-and-find-contract`) instead.
+- PLAN-81 to PLAN-84 (staged 2026-10-30) carry the three work packages of PR #278 (`overview-order-and-size`,
+  `needs-and-find`, `web-moving-between-plans`) into the epic. PLAN-81 (stable order, size of change) comes first;
+  PLAN-82 (design of the two views, accepted by the operator, then the contract and the mock) follows it; PLAN-36, 46, 49
+  and 84 consume PLAN-82; PLAN-83 (work list beside a plan, Add a plan on the row, one notification for a burst) needs
+  PLAN-81 and its work-list design accepted by the operator. Re-grounded notes sit in PLAN-34, 36, 46, 49, 51, 52, 54, 55,
+  57 and 59.
 - PLAN-76 (`shared-port-assignment`) shipped (PR #243). Every staged plan that names a port block passes its
   own ports (`PM_MOCK_WEB_PORT`, `PM_WEB_PORT`, `--web-port`, `-p`), so plans with blocks may run side by
   side. PLAN-03 predated the blocks and ran on the defaults `7420`/`5173`; it shipped (PR #253), so the defaults
@@ -120,6 +127,54 @@ plan spec names the plan, proposal and finding documents it comes from.
   its review on `d04ffe00` had every finding fixed). One run slip: the properties were first edited in the main
   checkout and reverted. PLAN-39 (shell; note added), PLAN-37 (accessibility baseline) have their PLAN-31 dependency
   met; PLAN-35 still needs PLAN-16, PLAN-41 others.
+- PLAN-11 (`mock-cli-fixes`) — shipped (PR #269, merge `bae3a8c8`). All three deliverables met. It changed 21 files
+  against 7 declared entries: four declared entries changed (engine, `reports-and-system.json`, the README, the
+  runtime test directory) and three left untouched (`mock/http/`, `plan-view.spec.js`, `system.spec.js`), plus
+  fifteen undeclared files (three more scenario files, two scenario tests, `plan_view.{de,en}.properties`, the root and
+  operator READMEs, six `pm-web-app` files so the app shows "not found" and the draining banner). The mock now serves
+  a plan per id with `404 plan_not_found`, `/api/v1/plans` in every scenario, and the `kind="item"` residue is fixed.
+  Sonar gate `OK`, 0 open issues. CodeRabbit never reviewed the merge head (standing authorization). Self-review ran
+  out its budget (three rounds and a confirmation round). The two stale mock epic routes were not in the spec and are
+  still stale.
+- PLAN-13 (`cli-event-contract`) — shipped (PR #270, merge `7e2b4b61`). All three deliverables met. It changed 23 files
+  against 10 declared entries: seven changed (`EventKind.java` in the declared `event/` directory, `ConsoleNotice`, its
+  test, the new `ConsoleNoticeIT`, `04-console.adoc`, the operator catalogue pair) and three untouched (`EventName`,
+  `ConsoleNoticeBuffer`, `ConsolePrompt`), plus sixteen undeclared files (`EntryFlow` and its test, `PmConsole` and two
+  tests, `OverviewFullScreenApp` and its test, the mock engine and its test, `PtySession`, `ScreenCaptureIT`,
+  `SummaryLineIT`, `TuiCapabilityIT`, `27-tui-testing.adoc`, the capture set, `EventKindTest`). The console now reads
+  the event name first, shows badges at the prompt and prints the answered-elsewhere notice. Sonar gate `OK`, 0 open
+  issues. CodeRabbit reviewed only the head `a0820cde`; later pushes went unreviewed (merge under the standing
+  authorization). Four self-review rounds (the fourth on the operator's word; clear). Two run slips: a heredoc `python3`
+  edit and a `perl -0pi` edit in the shell. The web alignment is only a note in the PR: no staged plan owns it.
+- PLAN-14 (`cli-gate-scope`) — shipped (PR #277, merge `5348e89e`). All three deliverables met. It changed 45 files
+  against 9 declared entries: eight changed (`OperatorGate`, `PmOperator`, `PmConsole`, `OperatorGateTest`, `PtySession`,
+  the new `OperatorGateScopeTest`, the catalogue pair) and `OperatorContext` untouched, plus thirty-seven undeclared files
+  (eighteen command and flow classes, `WorkActionsClient`, `OverviewFullScreenApp`, the two onboarding sources, four tests,
+  the capture file, the README, nine design documents). The gate now guards acts only (shell verbs, console lines, full-screen
+  keys); the refusal text comes from the catalogue and names the marker. Two decisions with the operator: `plan <id> --print`
+  was added (PLAN-42's flag, present for `plan` only) and the whole `cleanup` verb stays an operator act (documents fixed).
+  `drain` is not gated. Sonar gate `OK`, 0 open issues. CodeRabbit reviewed two earlier heads; the merge head went in under
+  the standing authorization. The `PM_OPERATOR_DEV_ALLOW_AGENT` question is still open.
+- PLAN-22 (`cli-state-dialogue-onboarding`) — shipped (PR #275, merge `fa178dec`). All four deliverables met; the
+  `test-first` order of D1 to D3 is not evidenced (`mutation-after` for D1, none for the two ITs, which were already
+  written and `@Disabled`). It changed 28 files against 13 declared entries: twelve changed (`StateDialogue`,
+  `EntryFlow`, `OnboardCommand`, `ProjectCommand`, the unit test, both ITs, `OnboardCommandTest`, the `onboarding` and
+  `projects` catalogue pairs) and one untouched (the `projects/` directory), plus sixteen undeclared files (two dialogue
+  sources, three more tests, `PmConsole` and its test, the `operator.*` pair, two design documents, the mock engine and
+  its test, two capture files). Sonar gate `OK`, 0 open issues; CodeRabbit reviewed the merge head. Self-review budget
+  exhausted after three rounds: its two last findings went to the open follow-up PR #276 (see Watches). `OnboardingDialogueIT`
+  and `ProjectSetupDialogueIT` are enabled; `RuntimeStopDialogueIT`, `AnswerDialogueIT` and `CleanupDialogueIT` stay
+  `@Disabled` for PLAN-17, 21, 23.
+- PLAN-39 (`web-app-shell`) — shipped (PR #274, merge `44b051ff`). All three deliverables met. It changed 37 files
+  against 13 declared entries: all 13 changed (the `lib/shell/` directory with `AppShell`, `NavRail`, `TopBar`,
+  `BottomBar`, `+layout.svelte`, `runtime.ts`, the three e2e specs, the design README, the catalogue pair) plus
+  twenty-five undeclared files (`nav.ts` and test, `LiveIndicator` and test, `client.ts`, `streamState.test.ts`, four
+  shared views and components, ten e2e files, `MockRuntimeEngine` and its test). `+layout.svelte` is now boot-only; the
+  rail, top bar, bottom bar (phone, with a More sheet on `Dialog`) and the live indicator (four stream states, `Try
+  again`) replace the header and the offline banner. The operator had the run fix a pre-existing e2e failure in the mock
+  (a plan listed only in an epic answered `plan_not_found`). Sonar gate `OK`, 0 open issues. CodeRabbit reviewed two
+  earlier heads and refused on quota for the merge head (merge under the standing authorization, confirmed by the
+  operator). Phone Inbox item deferred to PLAN-49, search trigger disabled until PLAN-46.
 - Cleanup 2026-10-28 (HEAD `cc5794c9`): the claims of the 64 staged and parked specs were re-grounded and 83
   verdicts are persisted (`ui-improvements/cleanup`); PLAN-10 (launched) was left alone. Two claims were
   contradicted and absorbed into the spec: PLAN-25 (today's `Button` already has the four variants and 18 views
@@ -345,6 +400,118 @@ plan spec names the plan, proposal and finding documents it comes from.
   prompt on the operator catalogue with PLAN-13), PLAN-22. Recorded launched and then running on the operator's word
   ("I started the plan"). The operator set `parallelization_scope` to 4 in the same message: four running (11, 13, 20,
   39) is now N, not above it, and no slot is free until one lands.
+- 2026-10-30 — PLAN-11 landing analysed (PR #269, `bae3a8c8`) and drained; row shipped. Running after it: PLAN-13,
+  PLAN-20 and PLAN-39, which is three of N=4, so one slot is free. Emitted PLAN-22 (`cli-state-dialogue-onboarding`,
+  terminal track) at the operator's request ("emit next"). The ready set is PLAN-09, 14, 17, 21, 22, 23, 37. Gate for
+  PLAN-22: declarative (13 entries), determinate, no blocking candidate, no overlap prompt, no shared file with any
+  gate candidate (`corpus cross-check`); dependencies PLAN-10 and PLAN-76 shipped; ports 20220/20221 in the spec. Its
+  catalogue sections (`onboarding.*`, `projects.*`) are not the ones PLAN-13 (`operator.console.*`) and PLAN-20
+  (`operator.actions.*`) edit. Spec re-read at HEAD bae3a8c8: the two dialogue ITs already exist `@Disabled` (PLAN-02),
+  so a re-grounded note and two corrected Expected Surface lines say "enable", not "create". Not chosen: PLAN-14, 17,
+  21, 23 (overlap prompt on the operator catalogue with PLAN-13), PLAN-37 (adds `@axe-core/playwright`, an
+  operator-decided dependency; also shares `workspace.spec.js` with PLAN-39), PLAN-09 (two checks still open).
+  Recorded launched and then running on the operator's word the same day ("#22 is running"): four running (13, 20,
+  39, 22) is N=4, and no slot is free until one lands.
+- 2026-10-30 — PLAN-13 landing analysed (PR #270, `7e2b4b61`) and drained; row shipped. Running after it: PLAN-20,
+  PLAN-22 and PLAN-39, which is three of N=4, so one slot is free. Emitted PLAN-14 (`cli-gate-scope`, terminal track)
+  at the operator's request ("emit next"). With PLAN-13 shipped the operator catalogue is held by no running plan, so
+  PLAN-14, 17, 21 and 23 now read a clean gate (`corpus cross-check`: declarative, determinate, no blocking candidate,
+  no overlap prompt, no shared file with a running plan); PLAN-36 still needs PLAN-34; PLAN-09 now overlaps PLAN-22 on
+  `onboarding.*` (overlap prompt); PLAN-37 shares `workspace.spec.js` with PLAN-39 and needs the axe decision. PLAN-14
+  chosen as the lowest ready terminal plan with a single dependency (PLAN-02, shipped); no ports in the spec. Spec
+  re-read at HEAD 7e2b4b61: `PmConsole` and `PtySession` changed under it (PLAN-13), the hypothesis holds
+  (`QuestionsCommand:54`, `ReportsCommand:65`, `ProjectsCommand:68` call `gate().verify()` unconditionally), and
+  `OperatorGateScopeTest` is still absent; a re-grounded note says so. The overlap of the
+  running PLAN-22 with PLAN-13's `EntryFlow` change is named in the PLAN-13 landing; no mailbox note sent. Recorded launched and then running on the operator's word the same day ("plan is running"): four running (20, 22, 39, 14) is N=4, and no slot is free until one lands.
+- 2026-10-30 — Standards conformance (operator request, pasted analysis task): the Java and web modules were checked
+  against the marketplace standards the project is configured for (`java-cui` in `.plan/marshal.json`; `pm-dev-java`,
+  `pm-dev-java-cui`, `pm-dev-frontend`, `pm-dev-frontend-cui`). Java: 0 of 267 test classes use `Generators` or
+  `@EnableGeneratorController`; `pm-operator` declares `cui-test-generator` and `cui-test-juli-logger` and uses neither;
+  `pm-api`, `pm-exec`, `pm-relay`, `pm-mock-runtime` declare neither; the one logger (`MockRuntimeExtension`) logs two
+  `ERROR` lines with string literals and has no `LogAsserts` test; `@NullMarked` is on 4 of 49 packages and the three
+  modules without JSpecify cannot take it without a dependency. `cui-http-testing` does not fit (HTTP runs over a Unix
+  socket or tests the repository's own server) and is not applied. Web: largely in line (ES modules, flat ESLint with the
+  security plugin, Prettier, lockfiles, no HTML-parsing sink in production code); gaps are the `javascript` domain globs
+  (no `.ts`, no `.svelte`), no `pm-dev-frontend-cui` domain, `pm-web-e2e` without `test:ci-strict` and `quality`, six timer
+  waits in tests. The operator approved on the same day: test-scope `cui-test-generator` and `cui-test-juli-logger` for
+  `pm-api`, `pm-exec`, `pm-relay`, `pm-mock-runtime`; "foundation first, the rule goes forward" (no hard gate on the other
+  plans); one `LogMessages` holder per module, never one for the repository. Staged: PLAN-77
+  (`cui-standards-foundation`: dependencies and the `CLAUDE.md` rule, logging, `@NullMarked` in the two modules that have
+  JSpecify, tests of `pm-relay`, `pm-exec`, `pm-mock-runtime`), PLAN-78 (`cui-testing-api`), PLAN-79
+  (`cui-testing-operator`), PLAN-80 (`web-standards-conformance`), all gate-clean except PLAN-79 (overlap prompt with the
+  running PLAN-14, 20, 22: emit when no terminal plan runs). PLAN-77 and PLAN-80 are the highest-priority emits and both
+  add a paragraph to `CLAUDE.md`. Skills lines of the 39 staged and parked specs that carry a Java or web deliverable were
+  adapted (Java: `javadoc`, `java-null-safety`, `cui-testing`, `cui-logging`, `cui-testing` on integration lines; web:
+  `javascript-security`; PLAN-37 and PLAN-72: `lint-config`, `cui-javascript-project`) and a Standing Constraint states the
+  rule; the shipped plans and the four running ones (14, 20, 22, 39) were left alone. No spec was blocked on PLAN-77.
+- 2026-10-30 — PLAN-39 landing analysed (PR #274, `44b051ff`) and drained; row shipped. The same drain found PLAN-22's
+  PR #275 (`fa178dec`) already on `main` with no inbox message yet: PLAN-22 stays `running` until its landing message
+  arrives. Running after this drain: PLAN-14, 20 and 22, which is three of N=4, so one slot is free (two once PLAN-22's
+  landing is drained; see the PLAN-22 entry below). Nothing emitted: the operator's standing order is to drain the running plans before the refactor
+  sprint, so the emit waits for the operator's pick (gate reads at HEAD `44b051ff`: PLAN-77, 80 and 37 clean; PLAN-17,
+  21 and 23 now ask an overlap prompt with PLAN-14 on the operator catalogue; PLAN-09 with PLAN-22 on `onboarding.*`;
+  PLAN-79 with 14, 20 and 22). The web shell now exists, so PLAN-46 (palette), PLAN-49 (inbox item, `+layout`),
+  PLAN-45 and PLAN-57 (`client.ts`), PLAN-37 (`workspace.spec.js`) and PLAN-52 and PLAN-75 (`mobile.spec.js`) read against
+  the new layout; their gates are clean for the running set. The PLAN-80 note that PLAN-39 edits `+layout.svelte`
+  is now past. The refactor sprint (PLAN-77, 80, then 78, 79) is unaffected.
+- 2026-10-30 — PLAN-22 landing analysed (PR #275, `fa178dec`) and drained; row shipped. Running after it: PLAN-14 and
+  PLAN-20, which is two of N=4, so two slots are free. Nothing emitted (same order as above: the operator picks).
+  Gate reads at HEAD `44b051ff` with PLAN-22 gone from the running set: PLAN-09 is now clean (its `onboarding.*`
+  overlap prompt is gone) and PLAN-37, 77, 78, 80 stay clean; PLAN-17, 21, 23, 30, 36 and 79 still ask an overlap prompt
+  with PLAN-14 or PLAN-20 on the operator catalogue, the capture sets or `pm-operator` tests. PLAN-14 and PLAN-20 rebase
+  over `fa178dec` (`PmConsole`, `dialogue/`, `operator.*`); no mailbox note sent (offered). The follow-up PR #276 is
+  recorded as a Watch for the operator.
+- 2026-10-30 — PLAN-14 landing analysed (PR #277, `5348e89e`) and drained; row shipped. Only PLAN-20 runs now (one of
+  N=4, three slots free). Nothing emitted: the operator's order stands (drain the running plan, then the refactor sprint).
+  Gate reads at HEAD `5348e89e` with PLAN-14 gone from the running set: PLAN-09, 17, 21, 23, 30, 36, 37, 77, 78 and 80 are
+  clean with no overlap prompt, and PLAN-79 shares one file with PLAN-20 (`ActionMenusTest`) and asks no prompt (below the
+  threshold). PLAN-20 (running) must rebase over `19-actions.adoc` and `WorkActionsClient`; no mailbox note sent (offered).
+  Re-grounded notes added to PLAN-42 (`plan <id> --print` now exists) and PLAN-23 (the whole `cleanup` verb is an operator
+  act; `26-cleanup.adoc` rewritten). The `PM_OPERATOR_DEV_ALLOW_AGENT` question stays an operator decision.
+- 2026-10-30 — UI specification changes analysed and incorporated (operator request "analyze the last PRs"). Sources:
+  `pm-mcp-clients` PR #278 (`07104678`, documents only: design `plan-overview`, `plan-view`, `completion-report`,
+  `decisions`, `decisions-texts`, `project-explorer`, console; three new work packages `overview-order-and-size`,
+  `needs-and-find`, `web-moving-between-plans`) and `plan-marshall-documentation` PR #135 (ThinkRail reading: UC-PLN-7 and
+  UC-PLN-8 `AGREED` as two views, the machine in `needs_operator` with `credential` and `cleanup_due`, running work in a
+  stable order, a plan's size of change; requirements, runtime-model specification and roadmap Milestone 11 updated). Read
+  against the staged specs: the client-side derivations of PLAN-46 (search index from the stores) and PLAN-49 (inbox derived
+  from the stores) are replaced by the runtime's resources (`GET /api/v1/find`, `GET /api/v1/machine/needs-operator`), the
+  start-page role of PLAN-49 is open until the accepted design, and PLAN-36 reads the served list. Staged: PLAN-81
+  (`overview-order-and-size`, WS-01), PLAN-82 (`needs-and-find-contract`, WS-01: design first, then contract and mock),
+  PLAN-83 (`web-moving-between-plans`, WS-03; ports 20830/20831), PLAN-84 (`cli-find`, WS-04). All four read a clean gate
+  (declarative, determinate, no blocking candidate, no overlap prompt with the running PLAN-20). Rescoped, not deleted:
+  PLAN-36, 46, 49 (data source, dependency on PLAN-82, UC agreement discharged). Notes only: PLAN-34, 51, 52, 54, 55, 57,
+  59. Mapping choices that are the orchestrator's and open to the operator: the package `needs-and-find` is split in two
+  plans (design and contract first, consumers after) and its terminal "find" is its own plan (PLAN-84) rather than a
+  deliverable of PLAN-36; PLAN-83 keeps the three parts of its package together. The packages' own rows in
+  `doc/plans/README.adoc` stay `open` and are set to `done` by the plans that complete them.
+- 2026-10-30 — Structure review applied (operator: "fix clear and weaker"; nothing landed yet). Staged: PLAN-86
+  (`shared-error-texts`, WS-01), PLAN-87 (`cui-testing-mock-runtime`, WS-01), PLAN-88 (`web-designer-panes`, WS-03).
+  Superseded (spec kept with a banner, deliverables moved): PLAN-81 into PLAN-82 and PLAN-34, 52, 54, 55; PLAN-38 into
+  PLAN-44; PLAN-57 into PLAN-51; PLAN-68 and 69 into PLAN-66; verify plans PLAN-28 into PLAN-33, PLAN-40 and 56 into
+  PLAN-63, PLAN-61 and 67 into PLAN-65. Rescoped: PLAN-09 and 45 (error texts to PLAN-86, loading texts to PLAN-45),
+  PLAN-30 (renders PLAN-86's texts), PLAN-83 (work list only; "Add a plan" to PLAN-59 D4, notifications to PLAN-51 D5),
+  PLAN-43 (one reference view; PLAN-51, 53, 55, 58 move their own views), PLAN-47 (system, devices, shared panel; plan,
+  epic, project acts to PLAN-55, 58, 59), PLAN-55 and 62 (the process tree is PLAN-62's), PLAN-54 (reports only),
+  PLAN-77 (pilot modules only), PLAN-74 (design documents follow the work: view density to PLAN-43, interaction
+  affordances to PLAN-47, components to PLAN-35), PLAN-17, 26, 30 (one exit-code table), PLAN-70, 71, 18, 29 (dependencies
+  and coverage of the new plans). The eight verify plans left are PLAN-18, 29, 33, 41, 63, 65, 71, 75. The gate reads
+  88 specs, all determinate, no blocking candidate. One slip: the PLAN-85 component name `LanguageChoice` collided with the
+  onboarding component of the same name; PLAN-85 uses `LocaleSwitch`, and PLAN-66's `language.choose` no longer names a
+  header toggle.
+- 2026-10-30 — Operator design request: the theme choice (light, dark, system) stands on every page today (rail foot on
+  a desktop, More sheet on a phone, put there by PLAN-39 and stored by PLAN-04 in `localStorage` key `pm_theme`). The
+  operator wants it on the pairing page at the start and changeable in Settings in a new view of the client. A cookie
+  was first proposed; the operator then said local storage is fine, so the storage stays `localStorage` `pm_theme`
+  (PLAN-04) and the cookie is dropped. Staged PLAN-85 (`web-theme-in-browser-settings`, WS-03, ports 20850/20851; gate
+  clean, no plan dependency left): the control leaves the rail and the More sheet and stands on the pairing page and the
+  revoked page (the pages without a way to Settings), and Settings gets the view "This browser" (`/settings/browser`,
+  applied at once, no Save). Notes added to PLAN-60 (the tab "This browser" joins its tabs; the one-save rules do not
+  apply to it), PLAN-70 (the contrast audit's storage stays) and PLAN-16 (keeps the switch behaviour). The operator then
+  asked why one setting type is spread over several plans: the language choice, first left in the rail, moves with the
+  theme (same two places, `pm_locale` stays in local storage), so PLAN-85 owns every browser-only setting and its view
+  is their one home; PLAN-16 keeps only how the switch refreshes the texts. The rail's collapse button stays on the rail
+  (a layout toggle, not a preference). Orchestrator choices open to the operator: the view is called "This browser".
 
 ## Open Defects
 
@@ -368,15 +535,51 @@ plan spec names the plan, proposal and finding documents it comes from.
   opencode), same two keys. Recurrence 2026-10-29: `rb-01-web-text-guard-report-002.md` (PLAN-01, second message
   of a resumed run, opencode), same two keys. Recurrence 2026-10-29: `rb-08-use-case-documents-001.md` (PLAN-08,
   opencode), same two keys. Recurrence 2026-10-29: `rb-27-web-brand-001.md` (PLAN-27, opencode), same two keys. Recurrence 2026-10-29:
-  `rb-31-web-core-components-containers-001.md` (PLAN-31, opencode), same two keys.
+  `rb-31-web-core-components-containers-001.md` (PLAN-31, opencode), same two keys. Recurrence 2026-10-30:
+  `rb-11-mock-cli-fixes-001.md` (PLAN-11, opencode), same two keys. Recurrence 2026-10-30:
+  `rb-13-cli-event-contract-001.md` (PLAN-13, opencode), same two keys. Recurrence 2026-10-30:
+  `rb-39-web-app-shell-001.md` (PLAN-39, opencode), same two keys. Recurrence 2026-10-30:
+  `rb-22-cli-state-dialogue-onboarding-001.md` (PLAN-22, opencode), same two keys. Recurrence 2026-10-30:
+  `rb-14-cli-gate-scope-001.md` (PLAN-14, opencode), same two keys.
 
 ## Watches
 
+- Structure review of the staged plans, applied 2026-10-30 at the operator's word ("fix clear and weaker"); see the
+  Decisions entry of that date. Left open: PLAN-84 (`find`) stays in WS-04 although it belongs with PLAN-36 in WS-05 (the
+  queue verb cannot change a row's workstream; the workstream documents say so); the review finding "PLAN-59 bundles
+  projects with project onboarding" was withdrawn after reading PLAN-64: the project onboarding view and the machine
+  onboarding screens are different views and documents. — re-check the split at each emit of the plans it touched.
+- Follow-up PR #276 of PLAN-22 is open (`fix/22-cli-state-dialogue-followup`, mergeable, clean; the run reports CI and
+  Sonar green at `eebbeeb6` and CodeRabbit refused on quota twice). It fixes the German `--auto` line that repeats the
+  runtime's English summary and two duplicated catalogue keys in `onboarding.{en,de}.properties`. PLAN-22 shipped
+  without it, no plan owns it, and nothing merges without the operator's word. — ask the operator to merge or close it;
+  PLAN-14 and PLAN-20 (both running) declare the operator catalogue and `PmConsole` and rebase over `fa178dec` either way.
+- Standards left to the operator (PLAN-77/80 analysis, 2026-10-30): `stylelint` (the `css` and `lint-config` skills expect
+  it; 3 CSS files and component styles), `dependency-cruiser` (the `arch-gate-js` fitness check), `org.jspecify:jspecify`
+  in `pm-api`, `pm-exec`, `pm-relay` (needed for `@NullMarked` there), `cui-test-value-objects` (only for types with
+  hand-written equality; none found) and a sanitizer (no production code needs one). Each is a new dependency or plugin.
+  — decide when a plan needs one; none is added by PLAN-77 to PLAN-80. `stylelint` is approved for PLAN-72 (its spec
+  says so): the plan that adds it also applies the `css` and `lint-config` expectations of PLAN-80 to it.
+- New specs and re-grounded specs must name the CUI skills and carry the standards Standing Constraint: Java deliverables
+  `pm-dev-java:javadoc`, `pm-dev-java:java-null-safety`, `pm-dev-java-cui:cui-testing`, `pm-dev-java-cui:cui-logging`;
+  web deliverables `pm-dev-frontend:javascript-security`. Specs not adapted: PLAN-24, 74 (documents only), the
+  plan-marshall-lane verify plans (no Skills lines), PLAN-14, 20, 22, 39 (running) and the shipped ones.
+- The CUI test standards are applied to inputs; the expected value of a contract (catalogue text, wire name, golden
+  capture) stays literal. That is the orchestrator's reading of `cui-testing` ("no manual test data"), not the skill's
+  text, and PLAN-78 and PLAN-79 report any class where it does not hold. — the operator may overrule it at emit.
+
 - Operator decisions still open: the development switch `PM_OPERATOR_DEV_ALLOW_AGENT` (CLI-CC-P-05,
   security; PLAN-14 does not build it); the config contract (PLAN-32); the proof of presence (PLAN-24
-  writes the record for the decision). — re-check when PLAN-14 and PLAN-24 land.
-- Web event handling should read the `pm-api` event table of PLAN-13 (CLI-UC-S-05 step 4). No web plan
-  owns it yet. — re-check at the landing of PLAN-13; stage a web plan if the table lands.
+  writes the record for the decision). — PLAN-14 landed 2026-10-30 and its PR body states the switch as an open
+  decision for the operator; nothing builds it. Re-check when PLAN-24 lands.
+- Web event handling should read the `pm-api` event table of PLAN-13 (CLI-UC-S-05 step 4). PLAN-13 landed
+  2026-10-30 (`EventKind` in `pm-api`) and its PR names the six web files that still match event names themselves
+  (`stores/runtime.ts`, `views/epicEvents.ts`, `OverviewView.svelte`, `DecisionView.svelte`, `ReportsView.svelte`,
+  `api/client.test.ts`). No web plan owns the move; PLAN-09, 43, 45, 51, 52, 54, 57 and 58 name some of those files.
+  — decide at the next web view plan to be emitted: fold it into one (PLAN-09 first) or stage a web plan. PLAN-39
+  shipped 2026-10-30 and changed `stores/runtime.ts` and `api/client.ts` (stream state) without reading the table.
+- `landing.failed` is accepted as an event name in the PLAN-13 tests but no `EventName` member carries it; the runtime
+  sends `hold.opened` with kind `landing_failed` (PLAN-13 residue). — check where a later spec names it.
 - The mock limits (`doc/claude_review/README.adoc#limits`) can make view checks `not verified` until
   PLAN-11 lands (PLAN-03 landed 2026-10-28: goto now applies a state's facts for the three scenarios, with
   four `system.*` lifecycle states still showing no view change). — re-check at the first verification
@@ -404,7 +607,9 @@ plan spec names the plan, proposal and finding documents it comes from.
   failure is back. The first routed build of each failed (`execution_failed`; the daemon ran a bare `mvn` that
   is not on its PATH), and every later build ran `in_process`. So the PATH fix
   holds for some daemon runs and not others; compare the daemon's start (PLAN-03's runs, which held, against
-  these two).
+  these two). Recurrence 2026-10-30: PLAN-22 and PLAN-14 (every routed build answered `execution_failed` / exit `-1`
+  in 0 s, so every build ran `in_process`; the daemon bound also expired once in each: 555 s and 445 s). PLAN-39 (same day) reported
+  no fallback, so it recurs on some daemon runs only: raise it with the build server.
 - Playwright MCP browser shared between parallel sessions (PLAN-12): another session took over its tabs,
   and a tab left open on the app port broke one e2e run. The port blocks separate the mock and the app,
   not the browser. — re-check at the next landings of browser-checking plans running side by side. If it
@@ -463,21 +668,22 @@ plan spec names the plan, proposal and finding documents it comes from.
   the landing of PLAN-08, PLAN-24 and PLAN-74 that the changed files stayed inside the list; retire then.
   PLAN-08 checked 2026-10-29: two `.adoc` files under `doc/`, `build / conclusion` passed, the gate read is
   HTTP 404 (no analysis), landing reports `unknown`; the exception held. Stays open for PLAN-24 and PLAN-74.
-- UC-PLN-7 and UC-PLN-8 are `DRAFT`, agreed by the operator in PR #259 (2026-10-29), not `AGREED`. PLAN-36 (`needs`),
-  PLAN-46 and PLAN-49 depend on PLAN-08 and the epic notes the use cases "must be agreed first". The flip to
-  `AGREED` is a separate act in `plan-marshall-documentation` that no staged plan owns; the drafts also name two
-  follow-ups (move the `Changes to the Specification` part into PM-ARCH-11 and the runtime-model specification;
-  add the `credential` and `cleanup_due` kinds to the two client designs). — decide before emitting PLAN-36, 46 or 49
-  whether the flip is needed first, and whether a plan carries the two follow-ups.
+- Retired watch (2026-10-30): UC-PLN-7 and UC-PLN-8 were `DRAFT` (agreed by the operator in PR #259). They are `AGREED`
+  since `plan-marshall-documentation` PR #135 (`use-cases/03-plans.adoc`, both `Status:: AGREED`), which also moved the
+  `Changes to the Specification` content into PM-ARCH-11 and the runtime-model specification, and PR #278 added the
+  `credential` and `cleanup due` kinds to the shared and the console design. Both drafts' follow-ups are done in the
+  documents; the code is owned by PLAN-81 to PLAN-84 and PLAN-36, 46, 49.
 - Brand residue (PLAN-27, 2026-10-29): three CodeRabbit nitpicks on `favicon.test.ts` were answered, not fixed
   (stroke half-width in the dot bounds, an exact palette set, the ring on the dot circle), and `<html lang>` stays
   `en` on the German pairing page (`src/app.html` hard-codes it, nothing writes `document.documentElement.lang`).
   No staged plan owns either. — the test tightening is low value; the `lang` attribute is an accessibility defect
-  for the German pages: decide whether PLAN-39 (`web-app-shell`, owns the layout) takes it.
+  for the German pages: PLAN-39 shipped (2026-10-30) without it and `src/app.html` still reads `<html lang="en">`.
+  — decide which plan takes it (a view plan, or stage a one-line fix).
 - Container components without callers (PLAN-31, 2026-10-29): `Card`, `KeyValueList`, `Tabs`, `Breadcrumb`, `Dialog`,
   `Toast` and `AttentionStrip` are drawn on `/dev/components` only, the nine `*Modal.svelte` components are not
-  migrated, and `Toast` has no host or store, so whichever plan raises the first toast must own it. — check at PLAN-39
-  (the phone's "More" sheet may use `Dialog`), PLAN-43 and the view plans that name a modal; stage a host if none does.
+  migrated, and `Toast` has no host or store, so whichever plan raises the first toast must own it. — PLAN-39 (shipped
+  2026-10-30) gave `Dialog` its first caller, the phone's More sheet; the rest is unchanged. Check at PLAN-43 and the
+  view plans that name a modal; stage a host if none does.
 - A run edited the main checkout (PLAN-31, 2026-10-29): `common.{de,en}.properties` were first changed there,
   reverted by hand and redone in the worktree; the main checkout was clean afterwards. The merged diff is right. —
   second report of a lane writing outside its worktree (PLAN-10's `test-results/` was the first, different cause);
@@ -495,14 +701,13 @@ plan spec names the plan, proposal and finding documents it comes from.
 - Four lifecycle states are invisible in `pm-web-app` (PLAN-03 residue): `system.running`, `system.stopped`,
   `system.restarting` and `system.force-stop` change the API resource but no rendered view, because the app
   shows the lifecycle only as the draining banner. PLAN-11, PLAN-17 and PLAN-26 name `system.*` states but are
-  mock and CLI plans, so no staged web plan owns rendering them. — decide when PLAN-39 (`web-app-shell`) or
-  PLAN-09 is emitted: fold the rendering into one of them or stage a web plan; at the latest at PLAN-41.
+  mock and CLI plans, so no staged web plan owns rendering them. PLAN-39 shipped (2026-10-30) with a neutral machine
+  pill and did not take them. — decide when PLAN-09 is emitted: fold the rendering into it or stage a web plan; at the
+  latest at PLAN-41.
 - PLAN-03 changed fixture values that other staged specs assert or declare: 18 files merged against 9 declared.
-  PLAN-11 changes the same mock fixtures and routes but declares neither the e2e specs nor the transcript
-  that assert the values, so it is likely to repeat the under-declaration. — before emitting PLAN-11, PLAN-47,
-  PLAN-50, PLAN-52, PLAN-55, PLAN-58 or PLAN-62: re-read the spec against HEAD. PLAN-11's Expected Surface
-  now names `plan-view.spec.js` and `system.spec.js` (cleanup 2026-10-28; the transcript was left out, nothing
-  in PLAN-11 reaches it).
+  PLAN-11 repeated it as predicted: 21 files against 7 declared entries, three of them untouched (the e2e specs
+  stayed unchanged). — before emitting PLAN-47, PLAN-50, PLAN-52, PLAN-55, PLAN-58 or PLAN-62: re-read the spec
+  against HEAD (PLAN-11 is struck from the list, shipped 2026-10-30).
 - Closed-PR branch left behind (retired watch, 2026-10-28): `feature/03-mock-scenario-states` (the closed PR #250's
   head, `8cf8cfb`) outlived the PLAN-03 landing, which reports `cleanup_owed=false`; the lane pruned only the `-b`
   branch. Deleted from the remote on the operator's word after checking that no open PR used it and that
@@ -512,8 +717,17 @@ plan spec names the plan, proposal and finding documents it comes from.
   fixture now says 1.9, and `pm-web-app/src/lib/views/MachineSettingsView.scenarios.test.ts` still passes
   `36 roles` as an input. — fix the document in PLAN-23 (`cli-cleanup-dialogue`, which names it) and the test in PLAN-09 or
   PLAN-60, the staged specs that name `MachineSettingsView`; check there.
-- The mock writes a kept cleanup item with `kind="item"` (`MockRuntimeEngine:7663` at `4efa0314`;
-  PLAN-03 moved it from 7462 and left it), outside `CleanupKind` (PLAN-06 residue). — folded into PLAN-11 (`mock-cli-fixes`) deliverable 2 on 2026-10-28 (its Expected Surface already names `MockRuntimeEngine`); retire at PLAN-11's landing. PLAN-10 changed `MockRuntimeEngine` after that (PR #257), so the line number is stale: the lane re-reads it at HEAD.
+- Retired watch (2026-10-30): the mock wrote a kept cleanup item with `kind="item"`, outside `CleanupKind` (PLAN-06
+  residue). PLAN-11 (PR #269) fixed it in its deliverable 2 and `FixtureConsistencyTest.keptItemKindIsFromTheClosedSet`
+  now pins it.
+- Mock residue named by the PLAN-11 run (2026-10-30), accepted and not fixed: the drain-reconcile race after the event
+  stream connects (needs a connection-established signal the SSE client does not expose); a drain started through
+  `POST /api/v1/operator/runtime/stop` leaves the status without `drain_remaining_count`; a paused plan's synthesized
+  current node is `waiting_for_operator` because `NodeState` has no paused value; the draining banner's `what` stays
+  generic; the synthesized plan's activity body is the template's for a listed plan without its own fixture. — check
+  where a spec reads the mock plan detail or the drain status: PLAN-20, 47, 52, 55. PLAN-39 (2026-10-30) fixed one more
+  case at the operator's word: a plan listed only inside an epic's rows now resolves (`planListedByAnEpic`), takes its
+  state from the row (`shipped`/`merged`/`landed` read as `done`) and names its epic.
 - Mock epic-action routes (PLAN-10 residue, 2026-10-29): `/api/v1/epics/{id}/actions/cancel` ignores `with_plans`
   and `/api/v1/epics/{id}/actions/next` is a no-op. The run fixed the other false successes (`common_files`,
   `with_plans`, `archive`, `next` as CodeRabbit found them) and left these two untouched. No staged plan owns
@@ -545,6 +759,9 @@ plan spec names the plan, proposal and finding documents it comes from.
   pair. PLAN-10 shipped (2026-10-29): it changed only `operator.{de,en}.properties`, merged `main` twice and
   reported no catalogue conflict. The part about PLAN-10 is retired; what stays: PLAN-10, 15 and 19 all changed
   the catalogue, so re-read PLAN-13 and 14 (next on the operator pair) and the other six at HEAD before emitting.
+  PLAN-13 shipped (2026-10-30) and changed the pair too (`operator.console.*`) plus `PmConsole`, `EntryFlow`,
+  `OverviewFullScreenApp`, `PtySession`, `ScreenCaptureIT`: re-read PLAN-14, 17, 21, 23, 30, 36, 42 and, for the
+  terminal files, PLAN-34, 38, 44, 50 at HEAD before emitting. PLAN-22 (running) declares `EntryFlow`.
 - CodeRabbit refuses a review of the final head (PLAN-10 too, 2026-10-29: refused twice, newest reviewed head `1c77501`
   against merged head `52275941`, after three qualifying reviews; the lane merged under the standing authorization;
   the quota refusal was recorded; PLAN-25, 2026-10-29: the re-trigger after the last push returned no review at all,

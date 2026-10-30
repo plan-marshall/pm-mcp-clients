@@ -19,18 +19,12 @@ Source of this plan (read before scoping):
 ## Deliverables
 
 1. **Web-app design**
-   - What: `doc/design/web-app/README.adoc`: structure, principles with the next-action rule, Visual Language v2; `view-density-and-filtering.adoc`: templates replace layout modes; `interaction-affordances.adoc`: overflow menu, keyboard.
+   - What: `doc/design/web-app/README.adoc`: structure, principles with the next-action rule, Visual Language v2. (The other design documents are written by the plans that do the work, as the repository rule says: `view-density-and-filtering.adoc` by `PLAN-43` (templates replace layout modes), `interaction-affordances.adoc` by `PLAN-47` (overflow menu, keyboard), `components.adoc` by `PLAN-35`; this plan only checks that they exist and are linked from the README.)
    - Persona: plan-marshall:persona-documenter
    - Skills: pm-documents:ref-asciidoc, pm-documents:ref-documentation
    - Done when:
-     - The documents pass `doc-review` (evidence order: `none`)
-2. **Components document**
-   - What: New `doc/design/web-app/components.adoc` with the specifications of VD-P-05 and one picture per component.
-   - Persona: plan-marshall:persona-documenter
-   - Skills: pm-documents:ref-asciidoc, pm-documents:ref-documentation
-   - Done when:
-     - The document exists, is linked from the README, and passes `doc-review` (under the runbook lane its checker `trace.py` does not run, so `pm-documents:ref-documentation` `docs review` and `pm-documents:ref-asciidoc` `validate` and `verify-links` stand in for it, clean, as PLAN-06 and PLAN-07 ran them) (evidence order: `none`)
-3. **Proposal status**
+     - The documents pass `doc-review` (under the runbook lane its checker `trace.py` does not run, so `pm-documents:ref-documentation` `docs review` and `pm-documents:ref-asciidoc` `validate` and `verify-links` stand in for it, clean, as PLAN-06 and PLAN-07 ran them), and `components.adoc`, `view-density-and-filtering.adoc` and `interaction-affordances.adoc` are linked from the README and state what the shipped views do (evidence order: `none`)
+2. **Proposal status**
    - What: Every proposal of `doc/claude_review/{ux,visual-design,cross-cutting,use-cases}/proposals.adoc` is listed as done (with its plan) or dropped (with a reason) in `doc/design/web-app/README.adoc`.
    - Persona: plan-marshall:persona-documenter
    - Skills: pm-documents:ref-asciidoc, pm-documents:ref-documentation
@@ -52,9 +46,6 @@ Source of this plan (read before scoping):
 ## Expected Surface
 
 - OBSERVED: `doc/design/web-app/README.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/web-app/view-density-and-filtering.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/web-app/interaction-affordances.adoc` — present at HEAD c4dc9bb4
-- OBSERVED: `doc/design/web-app/components.adoc` — absent at HEAD c4dc9bb4; created by this plan
 - OBSERVED: `doc/design/web-app/theme-readability.adoc` — present at HEAD c4dc9bb4
 - OBSERVED: `doc/design/web-app/brand-mark.adoc` — present at HEAD c4dc9bb4
 

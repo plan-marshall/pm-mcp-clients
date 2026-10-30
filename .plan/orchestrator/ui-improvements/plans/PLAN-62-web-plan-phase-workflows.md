@@ -18,24 +18,24 @@ Source of this plan (read before scoping):
 
 ## Deliverables
 
-1. **True expanders and phase workflows**
-   - What: An expander only for a node with children; a phase expands to its steps taken, not taken (muted, with reason) and sub-workflows, from the instance diagram the server draws (`PM-IMPL-5`).
+1. **The process tree: rows, true expanders and phase workflows** (the tree rows come from `PLAN-55` D3, moved here: this plan owns the tree)
+   - What: Tree rows: icon, name without the kind, state word, time; a "Jump to now" icon button in the tree head; an expander only for a node with children; a phase expands to its steps taken, not taken (muted, with reason) and sub-workflows, from the instance diagram the server draws (`PM-IMPL-5`).
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
-     - `plan-view.spec.js` on `process.phase.*`: taken and not-taken steps; a leaf has no expander (evidence order: `test-first`)
+     - `plan-view.spec.js` on `process.phase.*`: taken and not-taken steps; a leaf has no expander; tree rows without the kind in the name; "Jump to now" scrolls to the running node (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `process.phase.*`, `process.pruned-lane`, `intent.ready`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 2. **Phase narrative and intent**
    - What: A phase without task activity shows outcome, duration, loop count, and for outline and refine a link to the Intent tab; the Intent tab shows goal, criteria, non-goals.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `intent.ready` shows the three parts (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `process.phase.*`, `process.pruned-lane`, `intent.ready`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
 3. **Not in this plan; breakdown**
    - What: A list "Not in this plan" under the phases with the reason; "By phase and role" only when reported.
    - Persona: plan-marshall:persona-integration-tester
-   - Skills: pm-dev-frontend:javascript
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:javascript-security
    - Done when:
      - `process.pruned-lane` shows the list; no breakdown control without data (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `process.phase.*`, `process.pruned-lane`, `intent.ready`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
@@ -45,6 +45,7 @@ Source of this plan (read before scoping):
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20620 PM_WEB_PORT=20621 ./mvnw -pl pm-web-e2e verify -Pe2e`.
 - No new dependency or plugin unless this spec names it as approved by the operator.
+- Frontend standards (`CLAUDE.md`, `PLAN-80`): `pm-dev-frontend` (`javascript`, `css`, `jest-testing`, `lint-config`, `javascript-security`) and `pm-dev-frontend-cui` (`cui-javascript-project`) apply to `pm-web-app` and `pm-web-e2e`; text from the runtime or from a model reaches the DOM through text-treating sinks only (no `innerHTML`, `outerHTML`, `insertAdjacentHTML`, `{@html}`); a test waits on a condition, never on an arbitrary timer; the tests run on Vitest with Testing Library and the `jest-testing` standards apply as method.
 - Ports of this plan: mock web port `20620`, app port `20621` (`AGENTS.md` § Ports, made passable by `shared-port-assignment`, PLAN-76). Pass them to every mock, app and e2e start; other plans may run at the same time, so never stop or reuse a process this worktree did not start, and an assigned port that is in use is a blocker, never a reason to take another port.
 - Every view this plan touches uses the design system v2 components (VD-S-06): no plain text button, no acting link, no state pill, no uppercase label, no emoji, no own page width.
 - Every server value on a touched view passes through the display layer and the formatter of WS-02.
