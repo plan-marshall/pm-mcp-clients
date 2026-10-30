@@ -168,9 +168,10 @@
                                     <excludes>
                                         <exclude>*</exclude>
                                     </excludes>
-                                    <!-- Beside jackson-core: Lombok, which is needed at compile time only, and the
-                                         JUnit stack of the tests with what it brings (the rule cannot tell the
-                                         scope of a transitive dependency) -->
+                                    <!-- Beside jackson-core: Lombok, which is needed at compile time only, the
+                                         JUnit stack of the tests with what it brings, and the CUI test stack of the
+                                         tests (cui-test-generator, cui-test-juli-logger and the cui-java-tools they
+                                         bring) — the rule cannot tell the scope of a transitive dependency -->
                                     <includes>
                                         <include>com.fasterxml.jackson.core:jackson-core</include>
                                         <include>org.projectlombok:lombok</include>
@@ -179,6 +180,9 @@
                                         <include>org.opentest4j:*</include>
                                         <include>org.apiguardian:*</include>
                                         <include>org.jspecify:*</include>
+                                        <include>de.cuioss.test:cui-test-generator</include>
+                                        <include>de.cuioss.test:cui-test-juli-logger</include>
+                                        <include>de.cuioss:cui-java-tools</include>
                                     </includes>
                                     <message>pm-api depends on jackson-core only.</message>
                                 </bannedDependencies>
