@@ -9,8 +9,11 @@
  */
 package de.planmarshall.operator;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+
+import picocli.CommandLine;
 
 /**
  * Which typed console line is an operator act (PM-SEC-3, CLI-CC-S-02).
@@ -34,34 +37,21 @@ final class OperatorActs {
 
     private static final String COPY = "copy";
 
-    private static final String CHAT = "chat";
-
-    private static final String CANCEL = "cancel";
-
-    private static final String ADD = "add";
-
-    private static final String START = "start";
-
     private static final String SETTINGS = "settings";
 
     private static final String WEB = "web";
 
-    private static final Set<String> PLAN_SUBCOMMANDS = Set.of(
-                        ADD, "pause", START, FINDINGS, WATCHES, CANCEL, "abandon", "resolve",
-                        SETTINGS, CHAT, REPORT);
-
+    /** The plan subcommands that read; every other subcommand of the tree is an act. */
     private static final Set<String> PLAN_READ_SUBCOMMANDS = Set.of(FINDINGS, WATCHES, REPORT);
 
-    private static final Set<String> EPIC_SUBCOMMANDS = Set.of(
-                        ADD, "next", "auto", "decompose", "review", "instruct", "archive", FINDINGS,
-                        WATCHES, CHAT, CANCEL);
-
+    /** The epic subcommands that read; every other subcommand of the tree is an act. */
     private static final Set<String> EPIC_READ_SUBCOMMANDS = Set.of(FINDINGS, WATCHES);
 
-    private static final Set<String> PROJECT_ACT_SUBCOMMANDS = Set.of(
-                        ADD, "setup", "favourite", "release", "unenrol");
+    /** The project subcommands that read; every other subcommand of the tree is an act. */
+    private static final Set<String> PROJECT_READ_SUBCOMMANDS = Set.of();
 
-    private static final Set<String> CLIENT_ACT_SUBCOMMANDS = Set.of("install", "remove", "update");
+    /** The client subcommands that read; every other subcommand of the tree is an act. */
+    private static final Set<String> CLIENT_READ_SUBCOMMANDS = Set.of("status");
 
     private static final Set<String> WEB_READ_ACTIONS = Set.of(LIST);
 
@@ -69,10 +59,44 @@ final class OperatorActs {
 
     private static final Set<String> ACT_VERBS = Set.of(
                         "answer", "cleanup", "enrol", "unenrol", "enrol-harness", "accept-edit", "onboard",
-                        "abort", "recipe", START, WEB, "git-source");
+                        "abort", "recipe", "start", WEB, "git-source");
 
     private OperatorActs() {
         // Utility class
+    }
+
+    /**
+     * @param command a command whose subcommands the classifier reads
+     * @return the names the {@code @Command} annotation declares, so the classifier follows the tree
+     */
+    private static Set<String> subcommandsOf(Class<?> command) {
+        var declared = command.getAnnotation(CommandLine.Command.class);
+        if (declared == null) {
+            return Set.of();
+        }
+        var names = new LinkedHashSet<String>();
+        for (var type : declared.subcommands()) {
+            var subcommand = type.getAnnotation(CommandLine.Command.class);
+            if (subcommand != null && !subcommand.name().isBlank()) {
+                names.add(subcommand.name());
+            }
+        }
+        return Set.copyOf(names);
+    }
+
+    /**
+     * @param command the command whose subcommands are classified
+     * @param reads   the subcommands that read
+     * @param args    the arguments after the verb
+     * @return {@code true} when the line dispatches an act, {@code false} for a view, a read, or a
+     *         subcommand the tree does not declare
+     */
+    private static boolean subcommandAct(Class<?> command, Set<String> reads, List<String> args) {
+        if (args.isEmpty()) {
+            return false;
+        }
+        var subcommand = args.get(0);
+        return subcommandsOf(command).contains(subcommand) && !reads.contains(subcommand);
     }
 
     /**
@@ -95,8 +119,8 @@ final class OperatorActs {
             case "roles" -> !rest.isEmpty() && "qualify".equals(rest.get(0));
             case "runtime" -> runtimeAct(rest);
             case "reports" -> !rest.isEmpty() && !rest.get(0).startsWith("-");
-            case "project" -> !rest.isEmpty() && PROJECT_ACT_SUBCOMMANDS.contains(rest.get(0));
-            case "client" -> !rest.isEmpty() && CLIENT_ACT_SUBCOMMANDS.contains(rest.get(0));
+            case "project" -> subcommandAct(ProjectCommand.class, PROJECT_READ_SUBCOMMANDS, rest);
+            case "client" -> subcommandAct(ClientCommand.class, CLIENT_READ_SUBCOMMANDS, rest);
             case WEB -> webAct(rest);
             default -> ACT_VERBS.contains(verb);
         };
@@ -109,26 +133,21 @@ final class OperatorActs {
         if (rest.isEmpty() || !DEVICES.equals(rest.get(0))) {
             return true;
         }
-        return rest.size() > 1 && !WEB_READ_ACTIONS.contains(rest.get(1));
+        return rest.size() > 1 && WEB_READ_ACTIONS.stream().noneMatch(rest.get(1)::equalsIgnoreCase);
     }
 
     private static boolean planAct(List<String> rest) {
-        if (rest.isEmpty() || !PLAN_SUBCOMMANDS.contains(rest.get(0))) {
+        if (!subcommandAct(PlanCommand.class, PLAN_READ_SUBCOMMANDS, rest)) {
             return false;
         }
-        var subcommand = rest.get(0);
-        if (PLAN_READ_SUBCOMMANDS.contains(subcommand)) {
-            return false;
-        }
-        if (SETTINGS.equals(subcommand)) {
+        if (SETTINGS.equals(rest.get(0))) {
             return hasAny(rest, "--set", "--remove");
         }
         return true;
     }
 
     private static boolean epicAct(List<String> rest) {
-        return !rest.isEmpty() && EPIC_SUBCOMMANDS.contains(rest.get(0))
-                            && !EPIC_READ_SUBCOMMANDS.contains(rest.get(0));
+        return subcommandAct(EpicCommand.class, EPIC_READ_SUBCOMMANDS, rest);
     }
 
     private static boolean settingsAct(List<String> rest) {
