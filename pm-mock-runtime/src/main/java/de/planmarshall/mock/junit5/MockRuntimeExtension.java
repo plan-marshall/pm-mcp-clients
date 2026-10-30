@@ -267,8 +267,8 @@ public class MockRuntimeExtension implements BeforeEachCallback, AfterEachCallba
 
     /**
      * Logs a failed runtime start. Package-private so that the logging contract is testable: the
-     * failure path itself needs a mock runtime that cannot be started and a close that fails, which
-     * the production seams do not produce.
+     * ledger record of this message is asserted beside the failing start, and the close that follows
+     * an already-broken runtime is not reachable from the production seams.
      *
      * @param failure the failure that ended the setup
      */

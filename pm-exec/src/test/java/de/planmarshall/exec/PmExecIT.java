@@ -10,7 +10,6 @@
 package de.planmarshall.exec;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -175,15 +174,15 @@ class PmExecIT {
     @Test
     @DisplayName("a plain exec runs the program with its arguments and reports first")
     void plainExec() throws Exception {
-        var first = Generators.letterStrings(1, 6).next();
-        var second = Generators.letterStrings(1, 6).next();
-        var result = run(confinedOptions(), "/bin/echo", first, second);
+        // One argument that carries a space: the vector reaches the program element by element.
+        var argument = Generators.letterStrings(1, 6).next() + " " + Generators.letterStrings(1, 6).next();
+        var result = run(confinedOptions(), "/bin/echo", argument);
 
         measured("plain_exec_exit", result.exit(), result.exit() == 0);
         measured("plain_exec_ms", result.millis(), true);
         measured("report_line", result.reportLine(), result.reportLine().startsWith("{\"pm_exec\":\"launched\""));
         assertEquals(0, result.exit(), result.err());
-        assertEquals(first + " " + second, result.out().strip());
+        assertEquals(argument, result.out().strip());
         assertTrue(result.reportLine().startsWith("{\"pm_exec\":\"launched\",\"pid\":"), result.err());
     }
 
@@ -357,7 +356,6 @@ class PmExecIT {
                     && promptText.equals(Files.readString(jobDir.resolve("prompt.md")));
             measured("job_private_read_only", ok, ok);
             assertTrue(ok, read.err() + write.err());
-            assertFalse(Files.readString(jobDir.resolve("prompt.md")).contains("x"));
         }
 
         @Test
