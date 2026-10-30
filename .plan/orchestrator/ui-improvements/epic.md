@@ -146,6 +146,14 @@ plan spec names the plan, proposal and finding documents it comes from.
   issues. CodeRabbit reviewed only the head `a0820cde`; later pushes went unreviewed (merge under the standing
   authorization). Four self-review rounds (the fourth on the operator's word; clear). Two run slips: a heredoc `python3`
   edit and a `perl -0pi` edit in the shell. The web alignment is only a note in the PR: no staged plan owns it.
+- PLAN-20 (`cli-actions-by-state`) — shipped (PR #273, merge `a07a09b6`). Its one deliverable was met. It changed 11 files
+  against 5 declared entries: three changed (`ActionMenus`, `ActionsMenu`, `ActionMenusTest`), two untouched (`HoldActs`,
+  `19-actions.adoc`) and eight undeclared (`22-texts-actions.adoc`, the catalogue pair, `WorkActionsClient`,
+  `OverviewFullScreenApp`, `ControlDialoguesTest`, `ActionsCatalogueTest`, the capture file). The `a` menu of a waiting plan
+  now offers `!  Decide <question>…` first (one-character key, unique in every menu, both languages). Sonar gate `OK`, 0
+  open issues; CodeRabbit reviewed the merge head in its summary marker. Six self-review rounds (the operator authorised
+  four and five) and one merge-queue ejection on infrastructure, re-enqueued. The `decide` dispatch has no unit test; its
+  PTY path is PLAN-21's.
 - PLAN-14 (`cli-gate-scope`) — shipped (PR #277, merge `5348e89e`). All three deliverables met. It changed 45 files
   against 9 declared entries: eight changed (`OperatorGate`, `PmOperator`, `PmConsole`, `OperatorGateTest`, `PtySession`,
   the new `OperatorGateScopeTest`, the catalogue pair) and `OperatorContext` untouched, plus thirty-seven undeclared files
@@ -238,23 +246,13 @@ plan spec names the plan, proposal and finding documents it comes from.
   outside the tests.
 - 2026-10-25 — `opencode.json` already starts Playwright MCP with `--isolated` and
   `--output-dir .plan/temp/playwright-mcp`; the browser checks name their files there.
-- 2026-10-26 — Round 1 cancelled and re-launched: the runbook lane failed on the opencode install
-  (bundle resolution, `executor-skew`, empty architecture); after the lane fix PLAN-01, PLAN-02 and
-  PLAN-04 were launched again (PRs #226, #229).
+> ↪ Relocated to `settled.md` § "Decision of 2026-10-26: round 1 cancelled and re-launched" — the runbook lane restart is done and the plans it concerned have shipped
+
 - 2026-10-26 — `orchestrator.use_worktree` switched on (operator request, PR #230): the ledger lives in
   `.plan/local/worktrees/_orchestrator` on `chore/orchestrator-ledger` and reaches `main` through
   `land`, so the main checkout stays clean while plans run.
-- 2026-10-27 — PLAN-02 landing analysed (`landings/PLAN-02.md`). The two baseline defects it found (a
-  `-` placeholder in the plan view's task line, a relative "today" in the status header) belong to
-  PLAN-34 (`cli-display-layer`), not to PLAN-04/PLAN-16 as the message says; PLAN-34 already covers
-  them, so nothing is folded. The undeclared files it touched (`pm-mock-runtime/README.adoc`, the
-  test-scope `tui/AnsiScreen*`, `VirtualScreenTerminal`) collided with nothing.
-- 2026-10-27 — PLAN-04 landing analysed (`landings/PLAN-04.md`). Spec correction across the corpus: the
-  standing constraint named `./mvnw -pl pm-web-e2e verify -Pintegration-tests`, which activates no profile
-  in `pm-web-e2e` and skips Playwright silently; the suite's profile is `-Pe2e`. Replaced in the 27 staged
-  web specs (PLAN-01 running and PLAN-04 shipped left as they are). The files PLAN-04 touched beyond its
-  declared surface (`lib/theme.ts`, `routeTitles.test.ts`, the `plan_view`/`epic_view`/`start` message
-  areas, `workspace.spec.js`, five design docs) collided with nothing in flight.
+> ↪ Relocated to `settled.md` § "Landings of PLAN-02 and PLAN-04 (2026-10-27)" — both plans are shipped and their follow-ups sit in Watches and Open Defects
+
 - 2026-10-27 — Port collisions between concurrent plans (operator report: the mock, the app and the
   terminal client connecting to the mock block each other's ports). Staged PLAN-76
   (`shared-port-assignment`, WS-01).
@@ -268,161 +266,15 @@ plan spec names the plan, proposal and finding documents it comes from.
     plan). It overlaps the in-flight PLAN-01 (`pm-web-e2e/tests/`), PLAN-03 (`MockRuntimeEngine.java`,
     `pm-mock-runtime/README.adoc`) and PLAN-05 (`pm-operator` tests). The operator chose the emit; the
     later of each pair rebases.
-- 2026-10-27 — PLAN-01 landing analysed (`landings/PLAN-01.md`). Its unmet clauses are spec wording, not
-  missing code, so the gaps are folded into PLAN-73 (`web-text-guard-failing`), deliverable 1:
-  - the guard does not scan chips, aria labels or glyphs;
-  - CC-F-05 has no rule;
-  - split tokens are not seen;
-  - the browser clause becomes "every violation the guard lists appears in the snapshot".
+> ↪ Relocated to `settled.md` § "Landings of PLAN-01, PLAN-76, PLAN-07 and PLAN-06 (2026-10-27 to 2026-10-28)" — all four plans are shipped; their unmet clauses and follow-ups were routed when drained
 
-  PLAN-73's Expected Surface is updated in the same act: the three guard files exist now, and
-  `text-guard.spec.js` is added. The port collision with PLAN-03 cost PLAN-01 several hours, which
-  confirms PLAN-76.
-- 2026-10-27 — PLAN-76 landing analysed (`landings/PLAN-76.md`), and the operator's hold on new launches
-  lifted. Emitted three plans, one per track, all with port blocks and disjoint from PLAN-03 and from each
-  other: PLAN-06 (`shared-display-vocabulary`), PLAN-07 (`cli-terminal-design-docs`) and PLAN-12
-  (`web-design-tokens-v2`).
-  - With PLAN-03, that is four in flight, one above N=3, at the operator's request ("three if sensible").
-    It is sensible because the port blocks remove the collision that motivated the limit.
-  - Not chosen: PLAN-08 (same track as PLAN-06); PLAN-10, PLAN-13 and PLAN-14, which share
-    `operator.{de,en}.properties` with each other; PLAN-15, which shares `15-overview.adoc` with PLAN-07.
-- 2026-10-27 — PLAN-07 landing analysed (`landings/PLAN-07.md`). Emitted PLAN-10 (`cli-choice-prompt-pause`)
-  into the terminal slot it freed. It comes first in order among the ready terminal plans and gates PLAN-20
-  and PLAN-28.
-  - Corrected before the emit, under the terminal-check watch: deliverable 1 (`ChoicePrompt`) gets no
-    terminal check of its own, because it reaches the screen only through deliverable 2's dialogues.
-  - Deliverable 2 now enables `CancelDialogueIT` as well as `PauseDialogueIT` (both name PLAN-10 since
-    PLAN-02), and its capture covers the cancel dialogue.
-  - Expected Surface: `PauseDialogueIT` relabelled present, `CancelDialogueIT` added.
-  - Not chosen: PLAN-13 and PLAN-14 (share the operator catalogue with PLAN-10); PLAN-15 (next terminal
-    candidate); PLAN-08 (Sonar watch open).
-- 2026-10-28 — PLAN-06 landing analysed (`landings/PLAN-06.md`). Two operator decisions in its run change
-  the shared contract, and later plans build on them:
-  - The `state.<kind>.<value>` and `unit.<id>` keys are a documented carve-out from the three-part key
-    rule of `texts-and-languages.adoc`.
-  - `pm-api` gained the closed sets `EpicState`, `LandingState`, `CleanupKind`, `ModelStatus` and
-    `GateKind`, and `PlanActivity` gained `STAGED`/`ENDED`. Before, five of the eleven state kinds existed
-    only as literals in the mock and the views.
-
-  The display layers PLAN-09 and PLAN-34 read these enums; their specs predate them, so each is checked
-  against them before it is emitted.
 - 2026-10-28 — `doc-review` under the runbook lane: its checker (`trace.py`, in the sibling documentation
   repository) does not run through the executor. PLAN-06's operator accepted an equivalent review. The
   five staged runbook specs that ask for it (PLAN-15, 42, 48, 70, 74) now name that equivalent:
   `docs review` plus `asciidoc validate`/`verify-links`, clean. The 13 verification specs run on the
   `plan-marshall` lane, where the skill runs, and are unchanged.
-- 2026-10-28 — Emitted PLAN-15 (`cli-footer-and-help-overlay`) into the slot PLAN-06 freed (four in
-  flight, as before).
-  - The terminal-check watch applied: deliverables 2 (footer by priority) and 3 (help overlay) had the
-    plan's shared residue target, which shows neither change. Each now names its own observable: the
-    80-column footer keeping `a`, `Enter`, `Esc`, `?`, `q` and ending `? more`; and `?` opening the
-    grouped box with `Esc close`.
-  - Not chosen: PLAN-08 (the docs-only Sonar watch needs the operator's decision); PLAN-09 (check
-    against the new enums and decide the tab-title watch first); PLAN-11 (5 files shared with the
-    in-flight PLAN-03); PLAN-13 and PLAN-14 (share the operator catalogue with PLAN-10).
-- 2026-10-28 — PLAN-12 landing analysed (`landings/PLAN-12.md`). Emitted PLAN-19 (`web-ui-icon-set`) into
-  the web slot it freed. Its dependencies PLAN-12 and PLAN-76 are shipped, it is disjoint from PLAN-03,
-  PLAN-10 and PLAN-15, and it carries PLAN-12's emoji residue. PLAN-09 was not chosen: the PLAN-06 enum
-  check and the tab-title watch must be settled before its emit.
-- 2026-10-28 — PLAN-15 and PLAN-19 landings analysed (`landings/PLAN-15.md`, `landings/PLAN-19.md`). With PLAN-10
-  alone in flight, two of the three slots were free. Emitted PLAN-08 (`use-case-documents`, shared track) and
-  PLAN-25 (`web-core-components-controls`, web track, ports 20250/20251). Both pass the gate: PLAN-08 depends on
-  nothing and PLAN-25 on PLAN-12, 19 and 76 (all shipped); each shares no file with PLAN-10 or with the other;
-  every verdict admits; every surface is declarative. PLAN-08 was held back before only for the docs-only Sonar
-  watch, which was decided earlier today. No overlap prompt was asked.
-  - Not chosen: PLAN-09 (the PLAN-06 enum check and the tab-title watch are still owed, and PLAN-19 changed five of
-    its views); PLAN-11 (re-read against HEAD and add the e2e specs and the transcript to its Expected Surface
-    first); PLAN-13 and PLAN-14 (each shares both operator catalogue files with PLAN-10, so the overlap prompt
-    would fire); PLAN-27 (ready, but the web track is taken by PLAN-25).
-- 2026-10-28 — PLAN-08, PLAN-25 and PLAN-27 recorded launched on the operator's confirmation (four launched with
-  PLAN-10, one above N=3 by the operator's choice).
-- 2026-10-29 — PLAN-10 landing analysed (`landings/PLAN-10.md`). Row `shipped` (PR #257), message archived. No plan
-  emitted: three plans (08, 25, 27) stay launched, which is N. Next in line when a slot frees: PLAN-11, or the
-  terminal plans PLAN-13 and PLAN-14 now that the operator catalogue is free (re-read at HEAD first).
-- 2026-10-29 — PLAN-25 landing analysed (`landings/PLAN-25.md`). Row `shipped` (PR #260), message archived. No plan
-  emitted: two plans (08, 27) stay launched, so one slot is free; the choice of what takes it is left to the
-  operator: PLAN-31 (ready, but the web track is taken by PLAN-27 until it lands), PLAN-11 (mock track), or
-  PLAN-13 / PLAN-14 (terminal track, free now that PLAN-10 shipped; they overlap on the operator catalogue).
-- 2026-10-29 — Ledger landed as PR #263 (merge `a2f4d2c4`): PLAN-10 and PLAN-25 landings, the launch records of
-  PLAN-08, 25 and 27, the anchor and this file.
-- 2026-10-29 — Second PLAN-01 landing message analysed (`landings/PLAN-01.md`, addendum). It comes from the
-  resumed run of the same plan after the server outage, not from a re-run of a shipped plan: PR #237 was merged
-  by the operator during the outage, no new PR, no leftover branch or worktree. The row stays `shipped`. Its
-  round-3 findings were folded into PLAN-73's deliverable 1; no plan emitted.
-- 2026-10-29 — PLAN-08 and PLAN-27 recorded running on the operator's word (PLAN-08 had been recorded launched
-  from a command emitted, with no proof of a live session; the operator found the session; PR #259 open, CI green).
-- 2026-10-29 — Emitted PLAN-31 (`web-core-components-containers`, ports 20310/20311) and PLAN-11 (`mock-cli-fixes`,
-  ports 20110/20111) at the operator's request. With PLAN-08 and PLAN-27 running that makes four in flight, one
-  above N=3, by the operator's choice (the same exception as 2026-10-28). Gate: both specs are declarative with a
-  determinate comparison, no blocking candidate and no overlap prompt (`corpus cross-check`); the four surfaces
-  are pairwise disjoint (PLAN-08 `doc/design/`, PLAN-27 brand files, PLAN-31 containers and the dev page, PLAN-11
-  the mock). PLAN-31 shares the web track with PLAN-27 on the operator's choice; the files are disjoint, but both
-  plans may touch `pm-web-app` in the same period. Both dependencies are shipped (PLAN-31: 25, 76; PLAN-11: 03,
-  76). Specs re-read at HEAD `a2f4d2c4` and corrected before the emit: PLAN-31 (the dev page exists, created by
-  PLAN-25; the controls it reuses; the `dev.*` keys) and PLAN-11 (`kind="item"` is at `MockRuntimeEngine.java:7708`,
-  not 7663; claim 1 re-confirmed: still one plan copy for any plan id, no `/api/v1/config` or `/roles` route).
-  Not added to PLAN-11: the two stale mock epic routes (`actions/cancel` ignores `with_plans`, `actions/next`
-  is a no-op); the operator did not decide it, so they stay a watch. Not recorded as launched: that waits for the
-  operator's confirmation that the commands were started.
-- 2026-10-29 — Ledger landed as PR #264 (`53718209`). PLAN-31 and PLAN-11 recorded launched, then running, on the
-  operator's word.
-- 2026-10-29 — PLAN-08 landing analysed (`landings/PLAN-08.md`). Row `shipped` (PR #259), message archived. Emitted
-  PLAN-13 (`cli-event-contract`; terminal plan, no ports assigned in the spec) at the operator's request ("emit the next"): terminal track,
-  free since PLAN-10 shipped. With PLAN-27, PLAN-31 and PLAN-11 running that is four in flight, one above N=3 by the
-  operator's choice (third time). Gate: declarative, determinate, no blocking candidate, no overlap prompt
-  (`corpus cross-check`); its only shared files are the operator catalogue pair with staged plans (PLAN-14, 17, 21,
-  23), none in flight. Dependency PLAN-02 shipped. Spec re-read at HEAD eba84c17: hypothesis still holds
-  (`ConsoleNotice.java:293`, `PmConsole.java:448`); a re-grounded note added (PLAN-10 and PLAN-15 changed the
-  catalogue, PLAN-15 changed `04-console.adoc`). PLAN-14 not chosen: same catalogue pair, so not both at once.
-  Not recorded as launched.
-- 2026-10-29 — PLAN-27 landing analysed (PR #262, `4c39c0f8`) and drained; row shipped. Running after it: PLAN-31,
-  PLAN-11 and PLAN-13, which is N=3 with no free slot. Emitted PLAN-20 (`cli-actions-by-state`, terminal) at the
-  operator's request ("emit the next"), which makes four in flight if it is started: one above N=3 by the operator's
-  choice (fourth time). The ready set (every dependency shipped) is PLAN-09, 14, 17, 20, 21, 22, 23. Gate:
-  declarative, determinate, no blocking candidate, no overlap prompt for PLAN-20 (`corpus cross-check`: no shared file
-  with anything). Not chosen: PLAN-14, 17 (each shares the operator catalogue pair with PLAN-13; the cross-check asks
-  an overlap prompt); PLAN-21, 22, 23 (the catalogue pair too, and the same terminal track); PLAN-09 (two checks
-  still open: the PLAN-06 enums with the tab-title watch, and the five views PLAN-19 and PLAN-25 changed). PLAN-20
-  re-read at HEAD 4c39c0f8: half is done (hold acts first exist; the decision-first entry of a waiting plan does not),
-  so a re-grounded note scopes it. Its one undeclared overlap with PLAN-13 is the new catalogue text (different
-  section of the pair), named in the note. Recorded launched and then running on the operator's word the same day
-  ("i started #20"): four running (31, 11, 13, 20).
-- 2026-10-29 — PLAN-31 landing analysed (PR #266, `0351ce78`) and drained; row shipped. Running after it: PLAN-11,
-  PLAN-13 and PLAN-20, which is N=3 with no free slot. Emitted PLAN-39 (`web-app-shell`, web track) at the operator's
-  request ("emit the next"); started, it makes four in flight, one above N=3 by the operator's choice (fifth time).
-  The ready set is PLAN-09, 14, 17, 21, 22, 23, 37, 39. Gate for PLAN-39: declarative, determinate, no blocking
-  candidate, no overlap prompt, no shared file with anything (`corpus cross-check`); dependencies PLAN-31, 27, 04, 76
-  shipped; the web track is free; ports 20390/20391 in the spec. It is the critical path of the web chain (the shell
-  gates the view plans). Spec re-read at HEAD 0351ce78: a re-grounded note lists the PLAN-31 components it can use,
-  what `+layout.svelte` holds today and that the four `system.*` lifecycle states are not part of it (the machine
-  pill is neutral). Not chosen: PLAN-37 (adds `@axe-core/playwright`, an operator-decided dependency, and edits
-  `WorkControlPanel`/`ChatPanel`; wait for a free slot), PLAN-09 (two checks still open), PLAN-14, 17, 21, 23 (overlap
-  prompt on the operator catalogue with PLAN-13), PLAN-22. Recorded launched and then running on the operator's word
-  ("I started the plan"). The operator set `parallelization_scope` to 4 in the same message: four running (11, 13, 20,
-  39) is now N, not above it, and no slot is free until one lands.
-- 2026-10-30 — PLAN-11 landing analysed (PR #269, `bae3a8c8`) and drained; row shipped. Running after it: PLAN-13,
-  PLAN-20 and PLAN-39, which is three of N=4, so one slot is free. Emitted PLAN-22 (`cli-state-dialogue-onboarding`,
-  terminal track) at the operator's request ("emit next"). The ready set is PLAN-09, 14, 17, 21, 22, 23, 37. Gate for
-  PLAN-22: declarative (13 entries), determinate, no blocking candidate, no overlap prompt, no shared file with any
-  gate candidate (`corpus cross-check`); dependencies PLAN-10 and PLAN-76 shipped; ports 20220/20221 in the spec. Its
-  catalogue sections (`onboarding.*`, `projects.*`) are not the ones PLAN-13 (`operator.console.*`) and PLAN-20
-  (`operator.actions.*`) edit. Spec re-read at HEAD bae3a8c8: the two dialogue ITs already exist `@Disabled` (PLAN-02),
-  so a re-grounded note and two corrected Expected Surface lines say "enable", not "create". Not chosen: PLAN-14, 17,
-  21, 23 (overlap prompt on the operator catalogue with PLAN-13), PLAN-37 (adds `@axe-core/playwright`, an
-  operator-decided dependency; also shares `workspace.spec.js` with PLAN-39), PLAN-09 (two checks still open).
-  Recorded launched and then running on the operator's word the same day ("#22 is running"): four running (13, 20,
-  39, 22) is N=4, and no slot is free until one lands.
-- 2026-10-30 — PLAN-13 landing analysed (PR #270, `7e2b4b61`) and drained; row shipped. Running after it: PLAN-20,
-  PLAN-22 and PLAN-39, which is three of N=4, so one slot is free. Emitted PLAN-14 (`cli-gate-scope`, terminal track)
-  at the operator's request ("emit next"). With PLAN-13 shipped the operator catalogue is held by no running plan, so
-  PLAN-14, 17, 21 and 23 now read a clean gate (`corpus cross-check`: declarative, determinate, no blocking candidate,
-  no overlap prompt, no shared file with a running plan); PLAN-36 still needs PLAN-34; PLAN-09 now overlaps PLAN-22 on
-  `onboarding.*` (overlap prompt); PLAN-37 shares `workspace.spec.js` with PLAN-39 and needs the axe decision. PLAN-14
-  chosen as the lowest ready terminal plan with a single dependency (PLAN-02, shipped); no ports in the spec. Spec
-  re-read at HEAD 7e2b4b61: `PmConsole` and `PtySession` changed under it (PLAN-13), the hypothesis holds
-  (`QuestionsCommand:54`, `ReportsCommand:65`, `ProjectsCommand:68` call `gate().verify()` unconditionally), and
-  `OperatorGateScopeTest` is still absent; a re-grounded note says so. The overlap of the
-  running PLAN-22 with PLAN-13's `EntryFlow` change is named in the PLAN-13 landing; no mailbox note sent. Recorded launched and then running on the operator's word the same day ("plan is running"): four running (20, 22, 39, 14) is N=4, and no slot is free until one lands.
+> ↪ Relocated to `settled.md` § "Emits, launches and landings from PLAN-15 to PLAN-13 (2026-10-28 to 2026-10-30)" — sixteen drains and emits of plans that are all shipped (PLAN-15, 19, 12, 10, 25, 08, 27, 31, 11, 13) and two ledger lands
+
 - 2026-10-30 — Standards conformance (operator request, pasted analysis task): the Java and web modules were checked
   against the marketplace standards the project is configured for (`java-cui` in `.plan/marshal.json`; `pm-dev-java`,
   `pm-dev-java-cui`, `pm-dev-frontend`, `pm-dev-frontend-cui`). Java: 0 of 267 test classes use `Generators` or
@@ -444,30 +296,8 @@ plan spec names the plan, proposal and finding documents it comes from.
   adapted (Java: `javadoc`, `java-null-safety`, `cui-testing`, `cui-logging`, `cui-testing` on integration lines; web:
   `javascript-security`; PLAN-37 and PLAN-72: `lint-config`, `cui-javascript-project`) and a Standing Constraint states the
   rule; the shipped plans and the four running ones (14, 20, 22, 39) were left alone. No spec was blocked on PLAN-77.
-- 2026-10-30 — PLAN-39 landing analysed (PR #274, `44b051ff`) and drained; row shipped. The same drain found PLAN-22's
-  PR #275 (`fa178dec`) already on `main` with no inbox message yet: PLAN-22 stays `running` until its landing message
-  arrives. Running after this drain: PLAN-14, 20 and 22, which is three of N=4, so one slot is free (two once PLAN-22's
-  landing is drained; see the PLAN-22 entry below). Nothing emitted: the operator's standing order is to drain the running plans before the refactor
-  sprint, so the emit waits for the operator's pick (gate reads at HEAD `44b051ff`: PLAN-77, 80 and 37 clean; PLAN-17,
-  21 and 23 now ask an overlap prompt with PLAN-14 on the operator catalogue; PLAN-09 with PLAN-22 on `onboarding.*`;
-  PLAN-79 with 14, 20 and 22). The web shell now exists, so PLAN-46 (palette), PLAN-49 (inbox item, `+layout`),
-  PLAN-45 and PLAN-57 (`client.ts`), PLAN-37 (`workspace.spec.js`) and PLAN-52 and PLAN-75 (`mobile.spec.js`) read against
-  the new layout; their gates are clean for the running set. The PLAN-80 note that PLAN-39 edits `+layout.svelte`
-  is now past. The refactor sprint (PLAN-77, 80, then 78, 79) is unaffected.
-- 2026-10-30 — PLAN-22 landing analysed (PR #275, `fa178dec`) and drained; row shipped. Running after it: PLAN-14 and
-  PLAN-20, which is two of N=4, so two slots are free. Nothing emitted (same order as above: the operator picks).
-  Gate reads at HEAD `44b051ff` with PLAN-22 gone from the running set: PLAN-09 is now clean (its `onboarding.*`
-  overlap prompt is gone) and PLAN-37, 77, 78, 80 stay clean; PLAN-17, 21, 23, 30, 36 and 79 still ask an overlap prompt
-  with PLAN-14 or PLAN-20 on the operator catalogue, the capture sets or `pm-operator` tests. PLAN-14 and PLAN-20 rebase
-  over `fa178dec` (`PmConsole`, `dialogue/`, `operator.*`); no mailbox note sent (offered). The follow-up PR #276 is
-  recorded as a Watch for the operator.
-- 2026-10-30 — PLAN-14 landing analysed (PR #277, `5348e89e`) and drained; row shipped. Only PLAN-20 runs now (one of
-  N=4, three slots free). Nothing emitted: the operator's order stands (drain the running plan, then the refactor sprint).
-  Gate reads at HEAD `5348e89e` with PLAN-14 gone from the running set: PLAN-09, 17, 21, 23, 30, 36, 37, 77, 78 and 80 are
-  clean with no overlap prompt, and PLAN-79 shares one file with PLAN-20 (`ActionMenusTest`) and asks no prompt (below the
-  threshold). PLAN-20 (running) must rebase over `19-actions.adoc` and `WorkActionsClient`; no mailbox note sent (offered).
-  Re-grounded notes added to PLAN-42 (`plan <id> --print` now exists) and PLAN-23 (the whole `cleanup` verb is an operator
-  act; `26-cleanup.adoc` rewritten). The `PM_OPERATOR_DEV_ALLOW_AGENT` question stays an operator decision.
+> ↪ Relocated to `settled.md` § "Landings of PLAN-39, PLAN-22 and PLAN-14 (2026-10-30)" — all three plans are shipped; the open points they raised are in Watches
+
 - 2026-10-30 — UI specification changes analysed and incorporated (operator request "analyze the last PRs"). Sources:
   `pm-mcp-clients` PR #278 (`07104678`, documents only: design `plan-overview`, `plan-view`, `completion-report`,
   `decisions`, `decisions-texts`, `project-explorer`, console; three new work packages `overview-order-and-size`,
@@ -485,6 +315,29 @@ plan spec names the plan, proposal and finding documents it comes from.
   plans (design and contract first, consumers after) and its terminal "find" is its own plan (PLAN-84) rather than a
   deliverable of PLAN-36; PLAN-83 keeps the three parts of its package together. The packages' own rows in
   `doc/plans/README.adoc` stay `open` and are set to `done` by the plans that complete them.
+- 2026-10-30 — PLAN-77, 80, 82 and 86 recorded launched and then running on the operator's word ("all four plans are
+  running"), after the emit below; four running is N=4 and no slot is free. The operator asked to persist, land everything
+  and prepare a restart: the ledger was landed and a restart note heads the resume anchor. PLAN-22's follow-up PR #276 was
+  merged and cleaned up on the operator's word in between (`44803a77`).
+- 2026-10-30 — PLAN-20 landing analysed (PR #273, `a07a09b6`) and drained; row shipped. Nothing runs now: all four slots
+  of N=4 are free and the refactor sprint the operator announced ("drain all current plans, then the refactor sprint") can
+  start. Emitted at the operator's request ("analyze landed and emit"): PLAN-77 (`cui-standards-foundation`), PLAN-80
+  (`web-standards-conformance`), PLAN-82 (`needs-and-find-contract`) and PLAN-86 (`shared-error-texts`). All four are
+  `declarative`, determinate, with no blocking candidate and no overlap prompt (PLAN-77 and PLAN-80 share only
+  `CLAUDE.md`, one file); `corpus verdicts` has `blocking_count: 0` and the four specs carry no stale verdict. PLAN-80 now
+  adds a `## Web Standards` section of its own after § Code Standards, so the two `CLAUDE.md` edits cannot conflict. The
+  choice rests on: the operator's order (the refactor sprint first), and PLAN-82 and PLAN-86 each unblock several staged
+  plans (PLAN-82: 34, 36, 46, 49, 52, 54, 55, 83, 84; PLAN-86: 09, 30, 45). Not emitted, though ready: PLAN-17, 21, 23, 24,
+  37, 85 (PLAN-17, 21, 23 overlap each other by 2 to 4 files, so they run one after the other). PLAN-78, 79 and 87 wait for
+  PLAN-77. Re-grounded notes added to PLAN-21 (the PTY path of `decide`) and PLAN-36 (the `!` key is one rule).
+- 2026-10-30 — Settled narrative relocated (operator confirmed "yes" to the proposal). 26 Decisions entries (the
+  landing analyses, emits, launches and ledger lands of shipped plans, and the cancelled round 1) and 3 retired Watches
+  moved verbatim into `settled.md` under six headings, with eight pointers left here; `epic.md` went from 781 to about
+  600 lines. Checked: every removed line is in `settled.md`, the only added lines are the pointers, and `compact` reports
+  every pointer resolving. Kept here on purpose: the standing rules of the set-up decisions, the Queue annotations zone
+  (never relocated), the chronic Open Defect, the live Watches and the decisions that still drive open work (standards
+  conformance, UI spec changes, structure review, theme request). The "Structure review applied" entry just below was
+  written before this move and is not relocated.
 - 2026-10-30 — Structure review applied (operator: "fix clear and weaker"; nothing landed yet). Staged: PLAN-86
   (`shared-error-texts`, WS-01), PLAN-87 (`cui-testing-mock-runtime`, WS-01), PLAN-88 (`web-designer-panes`, WS-03).
   Superseded (spec kept with a banner, deliverables moved): PLAN-81 into PLAN-82 and PLAN-34, 52, 54, 55; PLAN-38 into
@@ -540,7 +393,8 @@ plan spec names the plan, proposal and finding documents it comes from.
   `rb-13-cli-event-contract-001.md` (PLAN-13, opencode), same two keys. Recurrence 2026-10-30:
   `rb-39-web-app-shell-001.md` (PLAN-39, opencode), same two keys. Recurrence 2026-10-30:
   `rb-22-cli-state-dialogue-onboarding-001.md` (PLAN-22, opencode), same two keys. Recurrence 2026-10-30:
-  `rb-14-cli-gate-scope-001.md` (PLAN-14, opencode), same two keys.
+  `rb-14-cli-gate-scope-001.md` (PLAN-14, opencode), same two keys. Recurrence 2026-10-30:
+  `rb-20-cli-actions-by-state-001.md` (PLAN-20, opencode, two models), same two keys.
 
 ## Watches
 
@@ -549,11 +403,7 @@ plan spec names the plan, proposal and finding documents it comes from.
   queue verb cannot change a row's workstream; the workstream documents say so); the review finding "PLAN-59 bundles
   projects with project onboarding" was withdrawn after reading PLAN-64: the project onboarding view and the machine
   onboarding screens are different views and documents. — re-check the split at each emit of the plans it touched.
-- Follow-up PR #276 of PLAN-22 is open (`fix/22-cli-state-dialogue-followup`, mergeable, clean; the run reports CI and
-  Sonar green at `eebbeeb6` and CodeRabbit refused on quota twice). It fixes the German `--auto` line that repeats the
-  runtime's English summary and two duplicated catalogue keys in `onboarding.{en,de}.properties`. PLAN-22 shipped
-  without it, no plan owns it, and nothing merges without the operator's word. — ask the operator to merge or close it;
-  PLAN-14 and PLAN-20 (both running) declare the operator catalogue and `PmConsole` and rebase over `fa178dec` either way.
+> ↪ Relocated to `settled.md` § "Retired Watches (2026-10-28 to 2026-10-30)" — the watch is retired, its subject is closed (PR #276 merged as `44803a77`)
 - Standards left to the operator (PLAN-77/80 analysis, 2026-10-30): `stylelint` (the `css` and `lint-config` skills expect
   it; 3 CSS files and component styles), `dependency-cruiser` (the `arch-gate-js` fitness check), `org.jspecify:jspecify`
   in `pm-api`, `pm-exec`, `pm-relay` (needed for `@NullMarked` there), `cui-test-value-objects` (only for types with
@@ -668,11 +518,7 @@ plan spec names the plan, proposal and finding documents it comes from.
   the landing of PLAN-08, PLAN-24 and PLAN-74 that the changed files stayed inside the list; retire then.
   PLAN-08 checked 2026-10-29: two `.adoc` files under `doc/`, `build / conclusion` passed, the gate read is
   HTTP 404 (no analysis), landing reports `unknown`; the exception held. Stays open for PLAN-24 and PLAN-74.
-- Retired watch (2026-10-30): UC-PLN-7 and UC-PLN-8 were `DRAFT` (agreed by the operator in PR #259). They are `AGREED`
-  since `plan-marshall-documentation` PR #135 (`use-cases/03-plans.adoc`, both `Status:: AGREED`), which also moved the
-  `Changes to the Specification` content into PM-ARCH-11 and the runtime-model specification, and PR #278 added the
-  `credential` and `cleanup due` kinds to the shared and the console design. Both drafts' follow-ups are done in the
-  documents; the code is owned by PLAN-81 to PLAN-84 and PLAN-36, 46, 49.
+> ↪ Relocated to `settled.md` § "Retired Watches (2026-10-28 to 2026-10-30)" — the watch is retired, its subject is closed
 - Brand residue (PLAN-27, 2026-10-29): three CodeRabbit nitpicks on `favicon.test.ts` were answered, not fixed
   (stroke half-width in the dot bounds, an exact palette set, the ring on the dot circle), and `<html lang>` stays
   `en` on the German pairing page (`src/app.html` hard-codes it, nothing writes `document.documentElement.lang`).
@@ -708,18 +554,12 @@ plan spec names the plan, proposal and finding documents it comes from.
   PLAN-11 repeated it as predicted: 21 files against 7 declared entries, three of them untouched (the e2e specs
   stayed unchanged). — before emitting PLAN-47, PLAN-50, PLAN-52, PLAN-55, PLAN-58 or PLAN-62: re-read the spec
   against HEAD (PLAN-11 is struck from the list, shipped 2026-10-30).
-- Closed-PR branch left behind (retired watch, 2026-10-28): `feature/03-mock-scenario-states` (the closed PR #250's
-  head, `8cf8cfb`) outlived the PLAN-03 landing, which reports `cleanup_owed=false`; the lane pruned only the `-b`
-  branch. Deleted from the remote on the operator's word after checking that no open PR used it and that
-  merge commit `4efa0314` contains every file it changed (plus later fixes). Open point that stays: the lane's
-  cleanup does not treat a closed PR's branch as owed; re-check at the next landing that re-opens a PR.
+> ↪ Relocated to `settled.md` § "Retired Watches (2026-10-28 to 2026-10-30)" — the watch is retired, its subject is closed
 - PLAN-03 residue outside its boundary: `doc/design/terminal-client/26-cleanup.adoc` says 1.8 GB where the
   fixture now says 1.9, and `pm-web-app/src/lib/views/MachineSettingsView.scenarios.test.ts` still passes
   `36 roles` as an input. — fix the document in PLAN-23 (`cli-cleanup-dialogue`, which names it) and the test in PLAN-09 or
   PLAN-60, the staged specs that name `MachineSettingsView`; check there.
-- Retired watch (2026-10-30): the mock wrote a kept cleanup item with `kind="item"`, outside `CleanupKind` (PLAN-06
-  residue). PLAN-11 (PR #269) fixed it in its deliverable 2 and `FixtureConsistencyTest.keptItemKindIsFromTheClosedSet`
-  now pins it.
+> ↪ Relocated to `settled.md` § "Retired Watches (2026-10-28 to 2026-10-30)" — the watch is retired, its subject is closed
 - Mock residue named by the PLAN-11 run (2026-10-30), accepted and not fixed: the drain-reconcile race after the event
   stream connects (needs a connection-established signal the SSE client does not expose); a drain started through
   `POST /api/v1/operator/runtime/stop` leaves the status without `drain_remaining_count`; a paused plan's synthesized
