@@ -240,15 +240,15 @@ class OverviewFullScreenAppTest {
     }
 
     @Test
-    @DisplayName("categoryOf maps event types to notice buffer categories")
+    @DisplayName("categoryOf maps the resolved notice kinds to notice buffer categories")
     void categoryOf() {
-        assertEquals(ConsoleNoticeBuffer.Category.DECISION, OverviewFullScreenApp.categoryOf(Map.of("type", "question")));
-        assertEquals(ConsoleNoticeBuffer.Category.DECISION, OverviewFullScreenApp.categoryOf(Map.of("type", "decision")));
-        assertEquals(ConsoleNoticeBuffer.Category.DECISION, OverviewFullScreenApp.categoryOf(Map.of("type", "waiver_request")));
-        assertEquals(ConsoleNoticeBuffer.Category.REPORT, OverviewFullScreenApp.categoryOf(Map.of("type", "report")));
-        assertEquals(ConsoleNoticeBuffer.Category.REPORT, OverviewFullScreenApp.categoryOf(Map.of("type", "report.sent")));
-        assertEquals(ConsoleNoticeBuffer.Category.NEED, OverviewFullScreenApp.categoryOf(Map.of("type", "random")));
-        assertEquals(ConsoleNoticeBuffer.Category.NEED, OverviewFullScreenApp.categoryOf(Map.of()));
+        assertEquals(ConsoleNoticeBuffer.Category.DECISION, OverviewFullScreenApp.categoryOf("question"));
+        assertEquals(ConsoleNoticeBuffer.Category.DECISION, OverviewFullScreenApp.categoryOf("waiver_request"));
+        assertEquals(ConsoleNoticeBuffer.Category.DECISION, OverviewFullScreenApp.categoryOf("answered_elsewhere"));
+        assertEquals(ConsoleNoticeBuffer.Category.REPORT, OverviewFullScreenApp.categoryOf("report"));
+        assertEquals(ConsoleNoticeBuffer.Category.NEED, OverviewFullScreenApp.categoryOf("stalled"));
+        assertEquals(ConsoleNoticeBuffer.Category.NEED, OverviewFullScreenApp.categoryOf("random"));
+        assertEquals(ConsoleNoticeBuffer.Category.NEED, OverviewFullScreenApp.categoryOf(null));
     }
 
     @Test

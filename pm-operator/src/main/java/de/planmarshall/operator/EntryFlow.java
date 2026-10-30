@@ -240,7 +240,7 @@ public final class EntryFlow {
     private EntryResult runOnboarded(RuntimeClient runtime, Map<String, Object> status,
                         PrintWriter out, boolean isSsh, int webPort) throws IOException {
         ensureLoopbackListener(runtime, webPort);
-        var badges = extractWaitingBadges(status);
+        var badges = badges(context.clientEnvironment().locale(), status);
 
         EntryResult result;
         var locale = context.clientEnvironment().locale();
@@ -473,30 +473,71 @@ public final class EntryFlow {
         return DEFAULT_WEB_PORT;
     }
 
-    static List<String> extractWaitingBadges(Map<String, Object> status) {
+    /**
+     * The prompt badges of a status (04-console.adoc#prompt): one per {@code needs_operator} kind
+     * that is not zero, and the machine's onboarding badge while the machine is not onboarded.
+     *
+     * @param locale the interface locale
+     * @param status the runtime's status
+     * @return the badges, in the order the prompt shows them
+     */
+    static List<String> badges(String locale, Map<String, Object> status) {
         var badges = new ArrayList<String>();
-        if (status.get("needs_operator") instanceof Map<?, ?> needs) {
-            for (var entry : needs.entrySet()) {
-                var kind = String.valueOf(entry.getKey());
-                int countVal = -1;
-                if (entry.getValue() instanceof Number count) {
-                    countVal = count.intValue();
-                } else if (entry.getValue() instanceof JsonNumber jn) {
-                    try {
-                        countVal = (int) jn.longValue();
-                    } catch (NumberFormatException _) {
-                        // ignore invalid
-                    }
-                }
-                if (countVal >= 0) {
-                    var badge = ConsolePrompt.formatBadge(kind, countVal);
-                    if (badge != null) {
-                        badges.add(badge);
-                    }
-                }
+        if (!isMachineOnboarded(status)) {
+            badges.add(ConsolePrompt.formatMachineSetupBadge(locale, getCompletedOnboardStep(status),
+                                STEP_KEYS.size()));
+        }
+        badges.addAll(extractWaitingBadges(locale, status));
+        return badges;
+    }
+
+    static List<String> extractWaitingBadges(Map<String, Object> status) {
+        return extractWaitingBadges("en", status);
+    }
+
+    /**
+     * The badges of what waits for the operator, in the machine's language: one per
+     * {@code needs_operator} kind whose count is not zero (04-console.adoc#prompt).
+     *
+     * @param locale the interface locale
+     * @param status the runtime's status
+     * @return the badges, in the order the status names the kinds
+     */
+    static List<String> extractWaitingBadges(String locale, Map<String, Object> status) {
+        if (!(status.get("needs_operator") instanceof Map<?, ?> needs)) {
+            return List.of();
+        }
+        var badges = new ArrayList<String>();
+        for (var entry : needs.entrySet()) {
+            var count = countOf(entry.getValue());
+            if (count < 0) {
+                continue;
+            }
+            var badge = ConsolePrompt.formatBadge(locale, String.valueOf(entry.getKey()), count);
+            if (badge != null) {
+                badges.add(badge);
             }
         }
         return badges;
+    }
+
+    /**
+     * @param value the count the status reports for one kind
+     * @return the count, or {@code -1} when the value is no number
+     */
+    private static int countOf(@Nullable Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value instanceof JsonNumber jsonNumber) {
+            try {
+                return (int) jsonNumber.longValue();
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (NumberFormatException _) {
+                return -1;
+            }
+        }
+        return -1;
     }
 
     private String getHostname() {

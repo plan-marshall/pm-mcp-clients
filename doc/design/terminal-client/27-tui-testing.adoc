@@ -200,6 +200,11 @@ separated:
 |Keys typed once the screen has settled, so that the capture shows the state they opened
 (`\n` for Enter, `\t` for Tab, `\e` for Esc, `-` for none). The fifth field's keys are then typed
 after the capture, and they end the process.
+
+|broadcast body (optional)
+|A JSON body sent as `POST /mock/broadcast` over the runtime's socket once the screen has settled,
+so that the capture shows what the pushed event drew — a notice the console prints above the
+prompt, a badge that changed. The keys before the capture are typed after it (`-` for none).
 |===
 
 Every capture writes its files below `target/screens/{set}/` (or `-Dpm.screens.out`):

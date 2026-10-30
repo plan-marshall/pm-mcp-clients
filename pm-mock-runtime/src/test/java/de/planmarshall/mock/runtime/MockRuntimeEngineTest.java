@@ -249,6 +249,57 @@ class MockRuntimeEngineTest {
     }
 
     @Test
+    @DisplayName("the status reports what waits, by kind, and follows a broadcast answer")
+    void statusWaitingCountsFollowBroadcasts() throws Exception {
+        try (var showroom = new MockRuntimeEngine(registry, registry.resolve(StandardScenarios.FULLY_ONBOARDED),
+                     "test-token", "test-secret")) {
+            var auth = Map.of("Authorization", "Bearer test-token");
+            var before = send(showroom, "GET", "/api/v1/status", auth, new byte[0], false);
+            var waitingBefore = JsonTree.asObject(before.json().get("needs_operator"));
+            assertEquals(3, JsonTree.integer(waitingBefore, "decision"));
+
+            var answer = "{\"event\":\"decision.answered\",\"data\":{\"id\":\"Q-007\",\"answer\":\"Rebase onto main\","
+                    + "\"channel\":\"web\",\"device\":\"iPad\"}}";
+            send(showroom, "POST", "/mock/broadcast", Map.of(), answer.getBytes(StandardCharsets.UTF_8), false);
+
+            var after = send(showroom, "GET", "/api/v1/status", auth, new byte[0], false);
+            assertEquals(2, JsonTree.integer(JsonTree.asObject(after.json().get("needs_operator")), "decision"));
+        }
+    }
+
+    @Test
+    @DisplayName("a broadcast decision.opened joins the open decisions")
+    void broadcastOpenedDecisionCounts() throws Exception {
+        try (var showroom = new MockRuntimeEngine(registry, registry.resolve(StandardScenarios.FULLY_ONBOARDED),
+                     "test-token", "test-secret")) {
+            var opened = "{\"event\":\"decision.opened\",\"data\":{\"decision\":{\"id\":\"Q-042\","
+                    + "\"title\":\"Ship it\",\"subject\":\"plan fix-relay\"}}}";
+            send(showroom, "POST", "/mock/broadcast", Map.of(), opened.getBytes(StandardCharsets.UTF_8), false);
+
+            var after = send(showroom, "GET", "/api/v1/status", Map.of("Authorization", "Bearer test-token"),
+                    new byte[0], false);
+            assertEquals(4, JsonTree.integer(JsonTree.asObject(after.json().get("needs_operator")), "decision"));
+        }
+    }
+
+    @Test
+    @DisplayName("a broadcast waiver request counts under its own kind")
+    void broadcastWaiverCountsSeparately() throws Exception {
+        try (var showroom = new MockRuntimeEngine(registry, registry.resolve(StandardScenarios.FULLY_ONBOARDED),
+                     "test-token", "test-secret")) {
+            var waiver = "{\"event\":\"decision.opened\",\"data\":{\"decision\":{\"id\":\"WR-2\","
+                    + "\"title\":\"Waiver\",\"subject\":\"plan fix-relay\",\"is_waiver\":true,"
+                    + "\"waiver_gate\":\"sonar\"}}}";
+            send(showroom, "POST", "/mock/broadcast", Map.of(), waiver.getBytes(StandardCharsets.UTF_8), false);
+
+            var after = send(showroom, "GET", "/api/v1/status", Map.of("Authorization", "Bearer test-token"),
+                    new byte[0], false);
+            var waiting = JsonTree.asObject(after.json().get("needs_operator"));
+            assertEquals(1, JsonTree.integer(waiting, "waiver_request"));
+        }
+    }
+
+    @Test
     @DisplayName("control endpoint: unknown path returns 404")
     void controlUnknown() throws Exception {
         var res = send("GET", "/mock/unknown-endpoint", Map.of(), new byte[0], false);
