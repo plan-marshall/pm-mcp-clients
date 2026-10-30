@@ -30,4 +30,11 @@ public class OperatorRefusedException extends IOException {
         super(verb + " refused by the runtime (HTTP " + response.status() + ")"
                             + (response.body().length == 0 ? "" : ": " + response.bodyText().strip()));
     }
+
+    /**
+     * @param message the refusal text, as the operator gate renders it
+     */
+    public OperatorRefusedException(String message) {
+        super(message);
+    }
 }

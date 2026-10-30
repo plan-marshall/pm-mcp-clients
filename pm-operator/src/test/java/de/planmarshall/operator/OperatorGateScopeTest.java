@@ -13,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -31,6 +32,7 @@ import org.jline.terminal.impl.DumbTerminal;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.operator.actions.WorkActionsClient;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -75,6 +77,10 @@ class OperatorGateScopeTest {
     static List<Arguments> readOnlyVerbs() {
         return asArguments(
                             new String[]{"questions"},
+                            new String[]{"plans"},
+                            new String[]{"system"},
+                            new String[]{"drain"},
+                            new String[]{"client", "status"},
                             new String[]{"reports"},
                             new String[]{"reports", "--older"},
                             new String[]{"projects", "--list"},
@@ -339,6 +345,41 @@ class OperatorGateScopeTest {
         assertEquals(0, code);
         requests.removeIf(request -> request.endsWith("/api/v1/events"));
         return rendered.toString(StandardCharsets.UTF_8);
+    }
+
+    @Test
+    @DisplayName("the acts of the full-screen views refuse at their shared client and send nothing")
+    void viewActsRefuseAtTheClient() throws Exception {
+        var requests = new CopyOnWriteArrayList<String>();
+        server.close();
+        server = fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            response.json(200, "{}");
+        });
+        var environment = markerEnvironment();
+        var context = new OperatorContext(environment, fixture.base().getParent(), true,
+                            ClientEnvironment.capture(environment));
+        var client = new WorkActionsClient(context);
+
+        var refusal = assertThrows(OperatorRefusedException.class,
+                            () -> client.perform("plan", "fix-relay", "pause", Map.of()));
+        assertAll(
+                            () -> assertEquals(refusalText("en"), refusal.getMessage()),
+                            () -> assertThrows(OperatorRefusedException.class,
+                                                () -> client.resolveHold("fix-relay", "HLD-0001", "resume", null)),
+                            () -> assertThrows(OperatorRefusedException.class,
+                                                () -> client.updateSettings("fix-relay", 1L, "a", "b")),
+                            () -> assertThrows(OperatorRefusedException.class,
+                                                () -> client.disposition("relay-hardening", "F-1", "kept", null)),
+                            () -> assertThrows(OperatorRefusedException.class,
+                                                () -> client.commitReview("relay-hardening")),
+                            () -> assertThrows(OperatorRefusedException.class,
+                                                () -> client.chatTurn("plan", "fix-relay", "hi")),
+                            () -> assertThrows(OperatorRefusedException.class,
+                                                () -> client.chatProposal("plan", "fix-relay", true)),
+                            () -> assertThrows(OperatorRefusedException.class,
+                                                () -> client.performLanding("pm-mcp-clients", "unit", "land")),
+                            () -> assertTrue(requests.isEmpty(), requests.toString()));
     }
 
     /** @return the refusal text the catalogue answers in the given locale */

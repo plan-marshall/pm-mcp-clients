@@ -37,7 +37,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
   epic chat <epic_id>                    the chat with the epic's planning role; on an ended epic, about its archive
 ----
 
-* All are operator acts, in the console and as one shell command, except the two reads `epic findings` and `epic watches`, which run without the checks, and direct verbs: an argument answers its state, a missing one is asked (the reason of a cancel or an abandon too), and `--no-input` stops there (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]).
+* All are operator acts, in the console and as one shell command, except the reads `epic <epic_id>` (the view), `epic findings` and `epic watches`, which run without the checks, and direct verbs: an argument answers its state, a missing one is asked (the reason of a cancel or an abandon too), and `--no-input` stops there (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]).
 * An action the state does not allow is refused with the state and the actions it allows (`fix-relay is paused: start, abandon, chat, settings`).
 * *Settings* is an action of every state of a plan until it has ended: `config <aspect> --plan <plan_id>` sets the plan's own value of an aspect, where the plan first needs it or later (xref:02-levels.adoc#level-model[Machine, Project, Plan]; <<settings>>).
 * `plan cancel` on a plan held by an integrity pause is that pause's abort: its dialogue is `Abort fix-relay?`, and the plan ends `aborted` (link:../shared/work-actions.adoc#confirm-end[Ending a Plan]); its epic is told `cancelled` (link:../shared/work-actions.adoc#epic-told[The Epic Is Told]). A waiting or held plan is cancelled like a running one.

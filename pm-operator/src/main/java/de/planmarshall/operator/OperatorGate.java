@@ -110,6 +110,21 @@ public final class OperatorGate {
     }
 
     /**
+     * Verifies the gate for a caller whose contract is an {@link java.io.IOException}: the
+     * full-screen views and their dialogues send their acts through such a seam, and they show the
+     * refusal the way they show any other refusal of the runtime.
+     *
+     * @throws OperatorRefusedException carrying the catalogue text, when the act is refused
+     */
+    public void verifyAct() throws OperatorRefusedException {
+        try {
+            verify();
+        } catch (OperatorSecurityException e) {
+            throw new OperatorRefusedException(e.getMessage());
+        }
+    }
+
+    /**
      * Detects a coding-agent host from the environment variables according to the normative precedence:
      * {@code antigravity -> opencode -> claude -> codex}.
      *

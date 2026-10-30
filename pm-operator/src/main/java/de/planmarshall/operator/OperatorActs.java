@@ -39,9 +39,9 @@ final class OperatorActs {
 
     private static final Set<String> CLIENT_ACT_SUBCOMMANDS = Set.of("install", "remove", "update");
 
-    private static final Set<String> CONFIG_READ_SUBCOMMANDS = Set.of("show");
-
     private static final Set<String> WEB_READ_ACTIONS = Set.of("list");
+
+    private static final Set<String> CONFIG_READ_SUBCOMMANDS = Set.of("show");
 
     private static final Set<String> ACT_VERBS = Set.of(
                         "answer", "cleanup", "enrol", "unenrol", "enrol-harness", "accept-edit", "onboard",
@@ -82,7 +82,7 @@ final class OperatorActs {
         if (rest.isEmpty() || !"devices".equals(rest.get(0))) {
             return true;
         }
-        return rest.size() > 1 && !WEB_READ_ACTIONS.contains(rest.get(1));
+        return rest.size() > 1 && !"list".equals(rest.get(1));
     }
 
     private static boolean planAct(List<String> rest) {
