@@ -81,7 +81,7 @@ class PmExecIT {
     @BeforeEach
     void fixture() throws IOException {
         var root = temp.toRealPath();
-        base = Files.createDirectories(root.resolve(Generators.letterStrings(4, 10).next()));
+        base = Files.createTempDirectory(root, "base");
         Files.createDirectories(base.resolve("run/jobs/l1"));
         tokenText = canary("runtime-token");
         Files.writeString(base.resolve("run/runtime.token"), tokenText);
@@ -90,8 +90,8 @@ class PmExecIT {
         Files.createDirectories(base.resolve("credentials"));
         credentialText = canary("credential");
         Files.writeString(base.resolve("credentials/github.json"), credentialText);
-        project = Files.createDirectories(root.resolve(Generators.letterStrings(4, 10).next()));
-        other = Files.createDirectories(root.resolve(Generators.letterStrings(4, 10).next()));
+        project = Files.createTempDirectory(root, "project");
+        other = Files.createTempDirectory(root, "other");
         siblingText = canary("sibling");
         Files.writeString(root.resolve("sibling.txt"), siblingText);
     }
@@ -319,10 +319,10 @@ class PmExecIT {
         @DisplayName("several denied paths: each is unreadable, their siblings stay readable")
         void severalDeniedPaths() throws Exception {
             var root = temp.toRealPath();
-            var secrets = Files.createDirectories(root.resolve(Generators.letterStrings(4, 10).next()));
+            var secrets = Files.createDirectories(root.resolve("secrets-" + Generators.letterStrings(4, 10).next()));
             var secretsText = canary("secrets");
             Files.writeString(secrets.resolve("token"), secretsText);
-            var checkout = Files.createDirectories(root.resolve(Generators.letterStrings(4, 10).next()));
+            var checkout = Files.createDirectories(root.resolve("checkout-" + Generators.letterStrings(4, 10).next()));
             var checkoutText = canary("checkout");
             Files.writeString(checkout.resolve("readme.md"), checkoutText);
             var options = new ArrayList<>(List.of("--deny-read", base.toString(),

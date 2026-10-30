@@ -82,6 +82,7 @@ class LinuxConfinementTest {
         assertEquals(0xdL, kernel.accessOf(root.resolve("usr")));
         assertEquals(0xdL, kernel.accessOf(jobDir));
         assertEquals(-1L, kernel.accessOf(base));
+        assertEquals(-1L, kernel.accessOf(root.resolve("home")));
         assertEquals(-1L, kernel.accessOf(userDir));
         assertTrue(kernel.closed.contains(100));
         assertEquals(kernel.rules.size() + 1, kernel.closed.size());

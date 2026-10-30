@@ -197,7 +197,7 @@ class PmMcpTest {
             var repository = Files.createDirectories(root.resolve(Generators.letterStrings(4, 10).next()));
             Files.writeString(repository.resolve(".git"), "gitdir: elsewhere");
             var nested = Files.createDirectories(repository.resolve("a/b"));
-            var outside = Files.createDirectories(root.resolve(Generators.letterStrings(4, 10).next()));
+            var outside = Files.createDirectories(root.resolve("plain-" + Generators.letterStrings(4, 10).next()));
 
             assertEquals(repository, Workspace.resolve(nested));
             assertEquals(repository, Workspace.resolve(repository));
