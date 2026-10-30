@@ -206,12 +206,8 @@ public final class EntryFlow {
      */
     private EntryResult refreshedAfterDialogue(RuntimeClient runtime) throws IOException {
         var refreshed = StatusCommand.fetch(runtime);
-        var badges = new ArrayList<String>();
-        if (!isMachineOnboarded(refreshed)) {
-            badges.add(ConsolePrompt.formatMachineSetupBadge(context.clientEnvironment().locale(),
-                                getCompletedOnboardStep(refreshed), 7));
-        }
-        return new EntryResult(refreshed, badges, null, null);
+        return new EntryResult(refreshed, badges(context.clientEnvironment().locale(), refreshed),
+                            null, null);
     }
 
     /**

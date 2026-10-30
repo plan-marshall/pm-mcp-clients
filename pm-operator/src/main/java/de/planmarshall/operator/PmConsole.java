@@ -282,12 +282,7 @@ public final class PmConsole {
      */
     private void refreshSetupBadge(RuntimeClient runtime, String locale) {
         try {
-            var status = StatusCommand.fetch(runtime);
-            badges.removeIf(badge -> badge.startsWith("setup") || badge.startsWith("Einrichtung"));
-            if (!EntryFlow.isMachineOnboarded(status)) {
-                badges.add(ConsolePrompt.formatMachineSetupBadge(locale,
-                                    EntryFlow.getCompletedOnboardStep(status), 7));
-            }
+            badges.set(List.copyOf(EntryFlow.badges(locale, StatusCommand.fetch(runtime))));
         } catch (IOException _) {
             // the badge keeps what the entry flow reported
         }
