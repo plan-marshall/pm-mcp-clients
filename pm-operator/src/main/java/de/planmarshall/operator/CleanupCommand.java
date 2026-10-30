@@ -81,6 +81,7 @@ public final class CleanupCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws IOException {
+        context.gate().verify();
         var out = spec.commandLine().getOut();
         var err = spec.commandLine().getErr();
 
@@ -135,7 +136,6 @@ public final class CleanupCommand implements Callable<Integer> {
     }
 
     private int executeRelease(PrintWriter out, PrintWriter err) throws IOException {
-        context.gate().verify();
         var runtime = context.runtime(true);
         var resKept = runtime.send(HttpRequest.get("/api/v1/system/cleanup/kept"));
         var keptItems = CleanupKeptItem.parseList(resKept.bodyText());
@@ -195,7 +195,6 @@ public final class CleanupCommand implements Callable<Integer> {
     }
 
     private int executeRemind(PrintWriter out, PrintWriter err) throws IOException {
-        context.gate().verify();
         var runtime = context.runtime(true);
         var jobRes = runtime.send(HttpRequest.get("/api/v1/system/cleanup"));
         var parsed = JsonTree.asObject(JsonTree.parse(jobRes.bodyText()));
@@ -219,7 +218,6 @@ public final class CleanupCommand implements Callable<Integer> {
     }
 
     private int executeIgnore(PrintWriter out, PrintWriter err) throws IOException {
-        context.gate().verify();
         if (exclude != null && !exclude.isEmpty()) {
             err.println("--exclude is for --delete only");
             err.flush();
@@ -250,7 +248,6 @@ public final class CleanupCommand implements Callable<Integer> {
     }
 
     private int executeDelete(PrintWriter out, PrintWriter err) throws IOException {
-        context.gate().verify();
         var runtime = context.runtime(true);
         var jobRes = runtime.send(HttpRequest.get("/api/v1/system/cleanup"));
         var parsed = JsonTree.asObject(JsonTree.parse(jobRes.bodyText()));

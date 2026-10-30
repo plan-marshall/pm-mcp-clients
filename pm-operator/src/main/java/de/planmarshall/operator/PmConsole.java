@@ -272,12 +272,34 @@ public final class PmConsole {
 
         // `tui` is the alias of `plans`; the rewrite keeps its trailing arguments.
         var command = "tui".equals(verb) ? PLANS + line.substring(verb.length()) : line;
+        if (OperatorActs.isAct(line) && !checkAct(out)) {
+            return;
+        }
         switch (verb) {
             case "help" -> printHelp(out, parts);
             case "web" -> handleWebCommand(out, parts);
             default -> runOperatorVerb(command, out, reader, terminal);
         }
         out.flush();
+    }
+
+    /**
+     * Checks the operator gate for one act the console is about to dispatch (PM-SEC-3). The console
+     * is entered without the gate, so the act is where the refusal belongs: the operator reads why
+     * the act is refused and the console stays open.
+     *
+     * @param out the console's writer
+     * @return {@code true} when the act may run
+     */
+    private boolean checkAct(PrintWriter out) {
+        try {
+            context.gate().verify();
+            return true;
+        } catch (OperatorSecurityException e) {
+            out.println(e.getMessage());
+            out.flush();
+            return false;
+        }
     }
 
     /**

@@ -65,7 +65,6 @@ public final class ProjectCommand implements Callable<Integer> {
             return 0;
         }
 
-        context.gate().verify();
         var safeId = OperatorUrlUtil.encodePathSegment(projectId);
         var response = context.runtime(true).send(HttpRequest.get(PROJECTS_API + safeId));
         var out = spec.commandLine().getOut();

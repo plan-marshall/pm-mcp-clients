@@ -1,0 +1,42 @@
+# The gate-scope capture set (PLAN-14, PM-SEC-3, CLI-CC-V-05): with a coding-agent marker in the
+# environment, the read-only verbs print and the act verbs refuse with exit 4 and the catalogue text.
+#
+# One capture per line, pipe separated:
+#   name | scenario | states to goto (comma separated, - for none) | command | keys to send | columns x rows | locale | extra environment (KEY=VALUE, comma separated, - for none)
+#
+# The last two lines carry no marker: they show that the cleanup view still prints in a terminal of
+# the operator's own, which the act-only gate leaves alone.
+questions-120-en | fully-onboarded | - | questions | - | 120x30 | en_US.UTF-8 | CLAUDECODE=1
+questions-120-de | fully-onboarded | - | questions | - | 120x30 | de_DE.UTF-8 | CLAUDECODE=1
+questions-80-en | fully-onboarded | - | questions | - | 80x24 | en_US.UTF-8 | CLAUDECODE=1
+questions-80-de | fully-onboarded | - | questions | - | 80x24 | de_DE.UTF-8 | CLAUDECODE=1
+reports-120-en | fully-onboarded | - | reports | - | 120x30 | en_US.UTF-8 | CLAUDECODE=1
+reports-120-de | fully-onboarded | - | reports | - | 120x30 | de_DE.UTF-8 | CLAUDECODE=1
+reports-80-en | fully-onboarded | - | reports | - | 80x24 | en_US.UTF-8 | CLAUDECODE=1
+reports-80-de | fully-onboarded | - | reports | - | 80x24 | de_DE.UTF-8 | CLAUDECODE=1
+projects-list-120-en | fully-onboarded | - | projects --list | - | 120x30 | en_US.UTF-8 | CLAUDECODE=1
+projects-list-120-de | fully-onboarded | - | projects --list | - | 120x30 | de_DE.UTF-8 | CLAUDECODE=1
+projects-list-80-en | fully-onboarded | - | projects --list | - | 80x24 | en_US.UTF-8 | CLAUDECODE=1
+projects-list-80-de | fully-onboarded | - | projects --list | - | 80x24 | de_DE.UTF-8 | CLAUDECODE=1
+plan-print-120-en | fully-onboarded | - | plan fix-relay --print | - | 120x30 | en_US.UTF-8 | CLAUDECODE=1
+plan-print-120-de | fully-onboarded | - | plan fix-relay --print | - | 120x30 | de_DE.UTF-8 | CLAUDECODE=1
+plan-print-80-en | fully-onboarded | - | plan fix-relay --print | - | 80x24 | en_US.UTF-8 | CLAUDECODE=1
+plan-print-80-de | fully-onboarded | - | plan fix-relay --print | - | 80x24 | de_DE.UTF-8 | CLAUDECODE=1
+answer-120-en | fully-onboarded | - | answer Q-007 | - | 120x30 | en_US.UTF-8 | CLAUDECODE=1
+answer-120-de | fully-onboarded | - | answer Q-007 | - | 120x30 | de_DE.UTF-8 | CLAUDECODE=1
+answer-80-en | fully-onboarded | - | answer Q-007 | - | 80x24 | en_US.UTF-8 | CLAUDECODE=1
+answer-80-de | fully-onboarded | - | answer Q-007 | - | 80x24 | de_DE.UTF-8 | CLAUDECODE=1
+plan-pause-120-en | running-work | - | plan pause fix-relay | - | 120x30 | en_US.UTF-8 | CLAUDECODE=1
+plan-pause-120-de | running-work | - | plan pause fix-relay | - | 120x30 | de_DE.UTF-8 | CLAUDECODE=1
+plan-pause-80-en | running-work | - | plan pause fix-relay | - | 80x24 | en_US.UTF-8 | CLAUDECODE=1
+plan-pause-80-de | running-work | - | plan pause fix-relay | - | 80x24 | de_DE.UTF-8 | CLAUDECODE=1
+runtime-stop-120-en | fully-onboarded | - | runtime stop | - | 120x30 | en_US.UTF-8 | CLAUDECODE=1
+runtime-stop-120-de | fully-onboarded | - | runtime stop | - | 120x30 | de_DE.UTF-8 | CLAUDECODE=1
+runtime-stop-80-en | fully-onboarded | - | runtime stop | - | 80x24 | en_US.UTF-8 | CLAUDECODE=1
+runtime-stop-80-de | fully-onboarded | - | runtime stop | - | 80x24 | de_DE.UTF-8 | CLAUDECODE=1
+cleanup-120-en | fully-onboarded | - | cleanup | - | 120x30 | en_US.UTF-8 | CLAUDECODE=1
+cleanup-120-de | fully-onboarded | - | cleanup | - | 120x30 | de_DE.UTF-8 | CLAUDECODE=1
+cleanup-80-en | fully-onboarded | - | cleanup | - | 80x24 | en_US.UTF-8 | CLAUDECODE=1
+cleanup-80-de | fully-onboarded | - | cleanup | - | 80x24 | de_DE.UTF-8 | CLAUDECODE=1
+cleanup-view-120-en | fully-onboarded | - | cleanup | - | 120x30 | en_US.UTF-8 | -
+cleanup-view-120-de | fully-onboarded | - | cleanup | - | 120x30 | de_DE.UTF-8 | -

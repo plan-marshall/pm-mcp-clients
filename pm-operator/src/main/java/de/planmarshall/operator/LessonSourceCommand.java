@@ -287,7 +287,6 @@ public final class LessonSourceCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
             var out = spec.commandLine().getOut();
             if (lesson == null || lesson.isBlank()) {
                 out.println(MessageCatalogue.get("lesson_source.action.lesson_required"));

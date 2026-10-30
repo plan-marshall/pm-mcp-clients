@@ -91,7 +91,6 @@ public final class ConfigCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws IOException {
-        context.gate().verify();
         var out = spec.commandLine().getOut();
         var locale = context.clientEnvironment().locale();
         var settings = readSettingsQuiet();
@@ -297,7 +296,6 @@ public final class ConfigCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
             var locale = context.clientEnvironment().locale();
             var path = CONFIG_PATH;
             if (key != null && !key.isBlank()) {

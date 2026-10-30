@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -31,11 +32,7 @@ import org.jline.terminal.Terminal;
 
 import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.PmVersion;
-import de.planmarshall.api.json.JsonTree;
-import de.planmarshall.api.system.CleanupItemEntry;
-import de.planmarshall.api.system.CleanupJob;
-import de.planmarshall.api.system.CleanupJobState;
-import de.planmarshall.api.system.CleanupProjectItem;
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.system.CleanupSummary;
 import de.planmarshall.api.system.ModelMetric;
 import de.planmarshall.api.system.RuntimeMetrics;
@@ -173,24 +170,31 @@ class PmOperatorProcessIT {
     void refusesCodingAgentHostSignals() throws Exception {
         // one representative marker per host; the exhaustive marker set is the unit-level OperatorGateTest
         for (var signal : HOST_SIGNALS.entrySet()) {
-            assertHostRefusal(signal.getKey(), signal.getValue(), "reports");
-            assertHostRefusal(signal.getKey(), signal.getValue(), "plan", "fix-relay");
+            assertHostRefusal(signal.getKey(), signal.getValue(), "runtime", "stop");
+            assertHostRefusal(signal.getKey(), signal.getValue(), "plan", "pause", "fix-relay");
             assertHostRefusal(signal.getKey(), signal.getValue(), "enrol-harness", "claude");
-            assertHostRefusal(signal.getKey(), signal.getValue(), "roles", "list");
+            assertHostRefusal(signal.getKey(), signal.getValue(), "cleanup");
         }
     }
 
     @Test
-    @DisplayName("inspection verbs refuse execution without an interactive terminal (PM-SEC-3)")
-    void inspectionVerbsRefuseWithoutTerminal() throws Exception {
+    @DisplayName("inspection verbs run without an interactive terminal (PM-SEC-3)")
+    void inspectionVerbsRunWithoutTerminal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> response.json(200, "{}"));
         for (var verb : List.of("config", "questions", "settings")) {
             try (var process = operator(environment(), verb)) {
-                assertEquals(4, process.awaitExit(WAIT), verb);
-                assertTrue(process.stderr().contains("operator refused: interactive terminal required"),
+                assertEquals(0, process.awaitExit(WAIT), verb + " stderr: " + process.stderr());
+                assertFalse(process.stdout().length == 0, verb + " printed nothing");
+                assertFalse(process.stderr().contains(agentRefusal("CLAUDE_CODE")),
                                     verb + " stderr: " + process.stderr());
-                assertEquals(0, process.stdout().length, verb + " wrote nothing to stdout");
             }
         }
+    }
+
+    private static String agentRefusal(String marker) {
+        return MessageCatalogue.format("en", OperatorGate.AGENT_REFUSED_KEY,
+                            Map.of(OperatorGate.MARKER_PARAM, marker));
     }
 
     private void assertHostRefusal(String signal, String host, String... verb) throws Exception {
@@ -199,8 +203,7 @@ class PmOperatorProcessIT {
         try (var process = operator(environment, verb)) {
             var invocation = signal + " " + List.of(verb);
             assertEquals(4, process.awaitExit(WAIT), invocation);
-            assertTrue(process.stderr().contains("operator refused: coding-agent environment detected (" + host + ")"),
-                                invocation + " stderr: " + process.stderr());
+            assertTrue(process.stderr().contains(agentRefusal(signal)), invocation + " stderr: " + process.stderr());
             assertEquals(0, process.stdout().length, invocation + " wrote nothing to stdout");
         }
     }
@@ -293,19 +296,21 @@ class PmOperatorProcessIT {
     }
 
     @Test
-    @DisplayName("reports refuses execution without an interactive terminal (PM-SEC-3)")
-    void reportsRefusesWithoutTerminal() throws Exception {
+    @DisplayName("reports prints without an interactive terminal, and reports read still refuses (PM-SEC-3)")
+    void reportsPrintsWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> response.json(200,
+                            "{\"items\":[],\"unread_count\":0,\"has_older\":false,\"older_count\":0}"));
         try (var process = operator(environment(), "reports")) {
-            assertEquals(4, process.awaitExit(WAIT));
-            var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertEquals(0, process.awaitExit(WAIT), process.stderr());
+            assertFalse(process.stdout().length == 0, "reports printed nothing");
         }
 
         try (var process = operator(environment(), "reports", "read", "--all")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
     }
 
@@ -360,15 +365,6 @@ class PmOperatorProcessIT {
         return new SystemSnapshot(runtimeMetrics, workMetrics, workers, jobs, models, cleanup, SystemWindow.HOUR, null);
     }
 
-    private CleanupJob sampleCleanupJob() {
-        var items1 = List.of(
-                            new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged (#214)", "12 Sep", 88080384L, 6, 0, null)
-        );
-        var prj1 = new CleanupProjectItem("pm-mcp-clients", 1, 0, 6, 0, 88080384L, items1);
-        var summary = new CleanupSummary(1, 0, 6, 0, 1, 88080384L, 1, "today 03:00", "tomorrow 03:00");
-        return new CleanupJob("cln-0007", CleanupJobState.OPEN, "today 03:00", summary, List.of(prj1), Map.of());
-    }
-
     @Test
     @DisplayName("system against runtime reports 6-part dashboard (UC-SYS-1)")
     void systemAgainstRuntime() throws Exception {
@@ -417,38 +413,26 @@ class PmOperatorProcessIT {
     }
 
     @Test
-    @DisplayName("cleanup against runtime reports job summary and items (UC-SYS-3)")
-    void cleanupAgainstRuntime() throws Exception {
+    @DisplayName("cleanup refuses execution without an interactive terminal (PM-SEC-3)")
+    void cleanupRefusesWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        var jobJson = JsonTree.write(sampleCleanupJob().toMap());
-        fixture.start((request, response) -> {
-            if ("/api/v1/system/cleanup".equals(request.target())) {
-                response.json(200, jobJson);
-            } else if ("/api/v1/system/cleanup/residue".equals(request.target())) {
-                response.json(200, "{\"step\":\"workers\",\"last_sweep\":\"14:00\"}");
-            } else {
-                response.json(404, "{\"error\":\"not_found\"}");
-            }
-        });
-
         try (var process = operator(environment(), "cleanup")) {
-            assertEquals(0, process.awaitExit(WAIT), process.stderr());
-            var stdout = new String(process.stdout(), StandardCharsets.UTF_8);
-            assertTrue(stdout.contains("Cleanup cln-0007 · due since today 03:00"), "expected cleanup header; got: " + stdout);
-            assertTrue(stdout.contains("Summary   1 plans"), "expected summary; got: " + stdout);
-            assertTrue(stdout.contains("fix-relay"), "expected item; got: " + stdout);
-            assertTrue(stdout.contains("Kept for good"), "expected kept footer; got: " + stdout);
+            assertEquals(4, process.awaitExit(WAIT));
+            assertTrue(process.stderr()
+                                                    .contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + process.stderr());
+            assertEquals(0, process.stdout().length, "the verb wrote nothing to stdout");
         }
     }
 
     @Test
-    @DisplayName("projects refuses execution without an interactive terminal (PM-SEC-3)")
-    void projectsRefusesWithoutTerminal() throws Exception {
+    @DisplayName("projects prints without an interactive terminal (PM-SEC-3)")
+    void projectsPrintsWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        try (var process = operator(environment(), "projects")) {
-            assertEquals(4, process.awaitExit(WAIT));
-            var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        fixture.start((request, response) -> response.json(200, "{}"));
+        try (var process = operator(environment(), "projects", "--list")) {
+            assertEquals(0, process.awaitExit(WAIT), process.stderr());
+            assertFalse(process.stdout().length == 0, "projects printed nothing");
         }
     }
 
@@ -459,35 +443,37 @@ class PmOperatorProcessIT {
         try (var process = operator(environment(), "project", "release", "my-service", "--reason", "archived", "--yes")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
     }
 
     @Test
-    @DisplayName("plan refuses execution without an interactive terminal (PM-SEC-3)")
-    void planRefusesWithoutTerminal() throws Exception {
+    @DisplayName("plan prints without an interactive terminal; plan pause still refuses (PM-SEC-3)")
+    void planPrintsWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        try (var process = operator(environment(), "plan", "fix-relay")) {
-            assertEquals(4, process.awaitExit(WAIT));
-            var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+        fixture.start((request, response) -> response.json(200, "{}"));
+        try (var process = operator(environment(), "plan", "fix-relay", "--print")) {
+            assertEquals(0, process.awaitExit(WAIT), process.stderr());
+            assertFalse(process.stdout().length == 0, "plan printed nothing");
         }
 
-        try (var process = operator(environment(), "plan", "fix-relay", "--task", "TASK-003")) {
+        try (var process = operator(environment(), "plan", "pause", "fix-relay")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
     }
 
     @Test
-    @DisplayName("epic refuses execution without an interactive terminal (PM-SEC-3)")
-    void epicRefusesWithoutTerminal() throws Exception {
+    @DisplayName("epic prints without an interactive terminal (PM-SEC-3)")
+    void epicPrintsWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> response.json(200, "{}"));
         try (var process = operator(environment(), "epic", "relay-hardening")) {
-            assertEquals(4, process.awaitExit(WAIT));
-            var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertEquals(0, process.awaitExit(WAIT), process.stderr());
+            assertFalse(process.stdout().length == 0, "epic printed nothing");
         }
     }
 
@@ -498,43 +484,42 @@ class PmOperatorProcessIT {
         try (var process = operator(environment(), "epic", "decompose", "relay-hardening")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
 
         try (var process = operator(environment(), "epic", "review", "relay-hardening", "--agree")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
 
         try (var process = operator(environment(), "epic", "instruct", "relay-hardening", "--plan", "relay-auth-v2",
                                  "--instruction", "change it")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
     }
 
     @Test
-    @DisplayName("onboard and settings machine refuse execution without an interactive terminal (PM-SEC-3)")
+    @DisplayName("onboard refuses execution without an interactive terminal (PM-SEC-3)")
     void onboardRefusesWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
         try (var process = operator(environment(), "onboard")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
 
         try (var process = operator(environment(), "onboard", "--auto", "--yes")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
-        }
-
-        try (var process = operator(environment(), "settings", "machine")) {
-            assertEquals(4, process.awaitExit(WAIT));
-            var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
     }
 
@@ -545,30 +530,35 @@ class PmOperatorProcessIT {
         try (var process = operator(environment(), "start", "plan", "pm-mcp-clients", "--prompt", "x")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
 
         try (var process = operator(environment(), "start", "epic", "pm-mcp-clients", "--prompt", "x")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
     }
 
     @Test
-    @DisplayName("lesson refuses execution without an interactive terminal (PM-SEC-3)")
-    void lessonRefusesWithoutTerminal() throws Exception {
+    @DisplayName("lesson check runs without an interactive terminal; start still refuses (PM-SEC-3)")
+    void lessonCheckRunsWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> response.json(200, "{}"));
         try (var process = operator(environment(), "lesson", "check", "les-0007", "--project", "pm-mcp-clients")) {
-            assertEquals(4, process.awaitExit(WAIT));
-            var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertNotEquals(4, process.awaitExit(WAIT), process.stderr());
+            assertFalse(process.stderr()
+                                                    .contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + process.stderr());
         }
 
         try (var process = operator(environment(), "start", "plan", "pm-mcp-clients", "--lesson", "les-0007")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
     }
 
@@ -580,13 +570,15 @@ class PmOperatorProcessIT {
                                  "pm-mcp-clients")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
 
         try (var process = operator(environment(), "start", "plan", "pm-mcp-clients", "--local-changes")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
     }
 
@@ -597,7 +589,8 @@ class PmOperatorProcessIT {
         try (var process = operator(environment(), "enrol", "--pilot", ".")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
     }
 
@@ -608,7 +601,8 @@ class PmOperatorProcessIT {
         try (var process = operator(environment(), "unenrol", "pm-mcp-clients", "--yes")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
     }
 
@@ -620,7 +614,8 @@ class PmOperatorProcessIT {
                                  "--project", "pm-mcp-clients", "--force")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
     }
 
@@ -631,27 +626,34 @@ class PmOperatorProcessIT {
         try (var process = operator(environment(), "enrol-harness", "claude", "--yes")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
-            assertTrue(stderr.contains("operator refused: interactive terminal required"), "stderr: " + stderr);
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
             assertEquals(0, process.stdout().length, "the verb wrote nothing to stdout");
         }
     }
 
     @Test
-    @DisplayName("roles refuses execution without an interactive terminal (PM-SEC-3)")
-    void rolesRefusesWithoutTerminal() throws Exception {
+    @DisplayName("roles list and show run without an interactive terminal; roles qualify still refuses (PM-SEC-3)")
+    void rolesListAndShowRunWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> response.json(200, "{}"));
         for (var verb : List.of(
                             List.of("roles", "list"),
-                            List.of("roles", "show", "implementer"),
-                            List.of("roles", "qualify", "implementer", "--yes"))) {
+                            List.of("roles", "show", "implementer"))) {
             var args = verb.toArray(String[]::new);
             try (var process = operator(environment(), args)) {
-                assertEquals(4, process.awaitExit(WAIT), verb.toString());
-                var stderr = process.stderr();
-                assertTrue(stderr.contains("operator refused: interactive terminal required"),
-                                    verb + " stderr: " + stderr);
-                assertEquals(0, process.stdout().length, verb + " wrote nothing to stdout");
+                assertNotEquals(4, process.awaitExit(WAIT), verb.toString());
+                assertFalse(process.stderr()
+                                                        .contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                    verb + " stderr: " + process.stderr());
             }
+        }
+
+        try (var process = operator(environment(), "roles", "qualify", "implementer", "--yes")) {
+            assertEquals(4, process.awaitExit(WAIT));
+            var stderr = process.stderr();
+            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
+                                "stderr: " + stderr);
         }
     }
 }

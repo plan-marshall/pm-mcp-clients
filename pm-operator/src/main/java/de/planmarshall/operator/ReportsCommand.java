@@ -62,7 +62,6 @@ public final class ReportsCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws IOException {
-        context.gate().verify();
         var out = spec.commandLine().getOut();
         var path = OperatorUrlUtil.appendScope("/api/v1/reports", project, null);
         if (older) {

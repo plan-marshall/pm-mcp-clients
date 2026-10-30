@@ -209,7 +209,6 @@ public final class RuntimeCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
             var out = spec.commandLine().getOut();
             if (notes) {
                 return showNotes(out);
@@ -217,6 +216,7 @@ public final class RuntimeCommand implements Callable<Integer> {
             if (check) {
                 return runCheck(out);
             }
+            context.gate().verify();
             if (withdraw) {
                 return withdrawUpgrade(out);
             }

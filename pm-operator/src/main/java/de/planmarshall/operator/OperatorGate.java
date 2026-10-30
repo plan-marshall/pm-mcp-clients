@@ -9,23 +9,60 @@
  */
 package de.planmarshall.operator;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.host.HostDetection;
+import de.planmarshall.api.message.MessageCatalogue;
 
 /**
- * Gate for operator verbs and console entry (PM-SEC-3): verifies that the process is attached
- * to an interactive terminal ({@code System.console() != null && System.console().isTerminal()})
- * and that no coding-agent environment signal from the Host Integration Table is present.
+ * Gate for operator acts (PM-SEC-3): verifies that the process is attached to an interactive
+ * terminal ({@code System.console() != null && System.console().isTerminal()}) and that no
+ * coding-agent environment signal from the Host Integration Table is present.
+ *
+ * <p>The gate guards acts only: the read-only verbs and the console entry run without it, and an
+ * act calls {@link #verify()} before it sends anything. The refusal comes from the catalogue and
+ * names the marker that was set, so the operator learns what refused the act and where to run it.
  */
 public final class OperatorGate {
 
     /** Exit code of a verb refused by the operator checks. */
     public static final int EXIT_OPERATOR_CHECKS = 4;
 
+    /** The catalogue key of the refusal when a coding-agent marker is set. */
+    public static final String AGENT_REFUSED_KEY = "operator.gate.agent.refused";
+
+    /** The catalogue key of the refusal when no interactive terminal is attached. */
+    public static final String TERMINAL_REFUSED_KEY = "operator.gate.terminal.refused";
+
+    /** The catalogue parameter naming the marker that was set. */
+    public static final String MARKER_PARAM = "marker";
+
     private static final String CODEX = "codex";
+
+    /** The hosts in the normative detection precedence. */
+    private static final List<String> HOST_PRECEDENCE = List.of("antigravity", "opencode", "claude", CODEX);
+
+    /** The marker of a coding-agent environment that names no host. */
+    private static final String UNMAPPED_MARKER = "AI_AGENT";
+
+    /** The prefix of every Codex variable: any of them marks the Codex CLI. */
+    private static final String CODEX_PREFIX = "CODEX_";
+
+    /** The signals the gate knows beside the Host Integration Table, per client id. */
+    private static final Map<String, List<String>> EXTRA_SIGNALS = Map.of(
+                        "antigravity", List.of("GEMINI_CLI", "ANTIGRAVITY_AGENT"),
+                        "opencode", List.of("OPENCODE_CLIENT", "OPENCODE", "OPENCODE_PID"),
+                        "claude", List.of("CLAUDE_CODE", "CLAUDE_PROJECT_ROOT", "CLAUDECODE", "CLAUDE_CODE_SESSION_ID"),
+                        CODEX, List.of());
+
+    /** One detected coding-agent environment: the host it belongs to and the marker that was set. */
+    private record Marker(String host, String variable) {
+    }
 
     private final OperatorContext context;
 
@@ -37,22 +74,22 @@ public final class OperatorGate {
     }
 
     /**
-     * Verifies the operator preconditions.
+     * Verifies the operator preconditions of an act.
      *
      * @throws OperatorSecurityException if an agent environment is detected or no interactive terminal is attached
      */
     public void verify() throws OperatorSecurityException {
-        var detectedHost = detectHost(context.environment());
-        if (detectedHost.isPresent()) {
-            var host = detectedHost.get();
-            if (HostDetection.UNKNOWN.equals(host)) {
-                throw new OperatorSecurityException("operator refused: coding-agent environment detected");
-            }
-            throw new OperatorSecurityException("operator refused: coding-agent environment detected (" + host + ")");
+        var marker = detectMarker(context.environment());
+        if (marker != null) {
+            throw new OperatorSecurityException(
+                                MessageCatalogue.format(context.clientEnvironment().locale(), AGENT_REFUSED_KEY,
+                                                    Map.of(MARKER_PARAM, marker.variable())));
         }
 
         if (!context.isInteractiveTerminal()) {
-            throw new OperatorSecurityException("operator refused: interactive terminal required");
+            throw new OperatorSecurityException(
+                                MessageCatalogue.format(context.clientEnvironment().locale(), TERMINAL_REFUSED_KEY,
+                                                    Map.of()));
         }
     }
 
@@ -64,44 +101,62 @@ public final class OperatorGate {
      * @return the detected host name, {@link HostDetection#UNKNOWN} if unmapped, or empty if none
      */
     public static Optional<String> detectHost(Map<String, String> environment) {
-        // Precedence: antigravity -> opencode -> claude -> codex
-        if (hasHostSignal("antigravity", environment)
-                            || environment.containsKey("GEMINI_CLI") || environment.containsKey("ANTIGRAVITY_AGENT")) {
-            return Optional.of("antigravity");
-        }
+        var marker = detectMarker(environment);
+        return marker == null ? Optional.empty() : Optional.of(marker.host());
+    }
 
-        if (hasHostSignal("opencode", environment)
-                            || environment.containsKey("OPENCODE_CLIENT") || environment.containsKey("OPENCODE")
-                            || environment.containsKey("OPENCODE_PID")) {
-            return Optional.of("opencode");
-        }
-
-        if (hasHostSignal("claude", environment)
-                            || environment.containsKey("CLAUDE_CODE") || environment.containsKey("CLAUDE_PROJECT_ROOT")
-                            || environment.containsKey("CLAUDECODE") || environment.containsKey("CLAUDE_CODE_SESSION_ID")) {
-            return Optional.of("claude");
-        }
-
-        if (hasHostSignal(CODEX, environment)) {
-            return Optional.of(CODEX);
-        }
-        for (var key : environment.keySet()) {
-            if (key.startsWith("CODEX_")) {
-                return Optional.of(CODEX);
+    /**
+     * Names the first coding-agent marker of an environment, in the normative precedence.
+     *
+     * @param environment the process environment
+     * @return the marker, or {@code null} when the environment carries none
+     */
+    private static @Nullable Marker detectMarker(Map<String, String> environment) {
+        for (var host : HOST_PRECEDENCE) {
+            var variable = matchedSignal(host, environment);
+            if (variable != null) {
+                return new Marker(host, variable);
             }
         }
 
-        if (HostDetection.agentSignalPresent(environment) || environment.containsKey("AI_AGENT")) {
-            return Optional.of(HostDetection.UNKNOWN);
+        if (HostDetection.agentSignalPresent(environment) || environment.containsKey(UNMAPPED_MARKER)) {
+            return new Marker(HostDetection.UNKNOWN, UNMAPPED_MARKER);
         }
 
-        return Optional.empty();
+        return null;
     }
 
-    private static boolean hasHostSignal(String hostName, Map<String, String> environment) {
-        return HostDetection.host(hostName)
-                            .map(host -> host.primarySignals().stream().anyMatch(signal -> signal.matches(environment))
-                                                || host.secondarySignals().stream().anyMatch(signal -> signal.matches(environment)))
-                            .orElse(false);
+    /**
+     * @param hostName    the client id of the Host Integration Table
+     * @param environment the process environment
+     * @return the variable of the first matching signal of that host, or {@code null}
+     */
+    private static @Nullable String matchedSignal(String hostName, Map<String, String> environment) {
+        for (var signal : signalsOf(hostName)) {
+            if (signal.matches(environment)) {
+                return signal.variable();
+            }
+        }
+        if (CODEX.equals(hostName)) {
+            return environment.keySet().stream().filter(key -> key.startsWith(CODEX_PREFIX)).sorted().findFirst()
+                                .orElse(null);
+        }
+        return null;
+    }
+
+    /**
+     * @param hostName the client id of the Host Integration Table
+     * @return its signals, primary first, then the ones the table does not carry
+     */
+    private static List<HostDetection.Signal> signalsOf(String hostName) {
+        var signals = new ArrayList<HostDetection.Signal>();
+        HostDetection.host(hostName).ifPresent(host -> {
+            signals.addAll(host.primarySignals());
+            signals.addAll(host.secondarySignals());
+        });
+        for (var variable : EXTRA_SIGNALS.getOrDefault(hostName, List.of())) {
+            signals.add(HostDetection.Signal.present(variable));
+        }
+        return signals;
     }
 }

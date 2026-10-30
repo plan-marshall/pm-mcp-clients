@@ -81,7 +81,6 @@ public final class EpicCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws IOException {
-        context.gate().verify();
         var out = spec.commandLine().getOut();
         var runtime = context.runtime(true);
 
@@ -518,7 +517,6 @@ public final class EpicCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
             var out = spec.commandLine().getOut();
             if (context.isInteractiveTerminal()) {
                 return ReviewDialogue.run(context, out, epicId, "findings", false);
@@ -550,7 +548,6 @@ public final class EpicCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
             var out = spec.commandLine().getOut();
             if (context.isInteractiveTerminal()) {
                 return ReviewDialogue.run(context, out, epicId, "watches", false);
