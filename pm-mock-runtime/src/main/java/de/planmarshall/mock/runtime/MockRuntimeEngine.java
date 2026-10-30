@@ -471,6 +471,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String PATH_WORKFLOWS = "/api/v1/workflows";
     private static final String PATH_PROJECTS_PREFIX = "/api/v1/projects/";
     private static final String SEGMENT_SETUP = "/setup";
+    private static final String METHOD_POST = "POST";
     private static final String PATH_SYSTEM_CLEANUP = "/api/v1/system/cleanup/";
     private static final String SEGMENT_DELETE = "/delete";
     private static final String SEGMENT_WORKFLOWS = "/workflows";
@@ -2222,7 +2223,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var path = request.path();
         return switch (request.method()) {
             case "GET" -> handleGetDeviceRoutes(path, response);
-            case "POST" -> handlePostDeviceRoutes(request, response, path, isWeb);
+            case METHOD_POST -> handlePostDeviceRoutes(request, response, path, isWeb);
             case "PATCH", "PUT" -> handlePutDeviceRoutes(request, response, path, isWeb);
             case METHOD_DELETE -> handleDeleteDeviceRoutes(request, response, path, isWeb);
             default -> false;
@@ -2376,7 +2377,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return serveDesignerCatalogue(response, method, projectId);
         }
         if (SEGMENT_VALIDATE.equals(sub)) {
-            if (!"POST".equals(method)) {
+            if (!METHOD_POST.equals(method)) {
                 return false;
             }
             handleDesignerValidate(request, response);
@@ -2857,7 +2858,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (slash <= 0 || slash == tail.length() - 1) {
             return false;
         }
-        if (!"POST".equals(request.method())) {
+        if (!METHOD_POST.equals(request.method())) {
             return false;
         }
         var lessonId = tail.substring(0, slash);
@@ -3141,19 +3142,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 handleGetDecomposition(response, projectId, epicId);
             }
             case "check" -> {
-                if (!"POST".equals(request.method())) {
+                if (!METHOD_POST.equals(request.method())) {
                     return false;
                 }
                 handleCheckDecomposition(response, projectId, epicId);
             }
             case "instruct" -> {
-                if (!"POST".equals(request.method())) {
+                if (!METHOD_POST.equals(request.method())) {
                     return false;
                 }
                 handleInstructDecomposition(request, response, projectId, epicId);
             }
             case "commit" -> {
-                if (!"POST".equals(request.method())) {
+                if (!METHOD_POST.equals(request.method())) {
                     return false;
                 }
                 handleCommitDecomposition(response, projectId, epicId);
@@ -3373,11 +3374,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleListRecipes(response);
             return true;
         }
-        if ("POST".equals(request.method()) && PATH_INTAKE_DRAFT.equals(path)) {
+        if (METHOD_POST.equals(request.method()) && PATH_INTAKE_DRAFT.equals(path)) {
             handleIntakeDraft(request, response);
             return true;
         }
-        if ("POST".equals(request.method()) && path.startsWith(PREFIX_PROJECTS)) {
+        if (METHOD_POST.equals(request.method()) && path.startsWith(PREFIX_PROJECTS)) {
             if (path.endsWith(SUFFIX_PLANS_START)) {
                 handleStartPlan(request, response, projectIdOf(path, SUFFIX_PLANS_START));
                 return true;
@@ -3402,7 +3403,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleProjectFiles(request, response, projectId, isWeb);
             return true;
         }
-        if ("POST".equals(request.method()) && path.endsWith(SEGMENT_PROJECT_ENTRIES)) {
+        if (METHOD_POST.equals(request.method()) && path.endsWith(SEGMENT_PROJECT_ENTRIES)) {
             var projectId = path.substring(PATH_PROJECTS_PREFIX.length(),
                     path.length() - SEGMENT_PROJECT_ENTRIES.length());
             handleOpenEntry(request, response, projectId);
@@ -3428,7 +3429,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleEndedChat(response, subjectId);
             return true;
         }
-        if ("POST".equals(method) && path.endsWith(SEGMENT_ENDED_CHAT_ACCEPT)) {
+        if (METHOD_POST.equals(method) && path.endsWith(SEGMENT_ENDED_CHAT_ACCEPT)) {
             var rest = path.substring(PATH_ENDED.length());
             var marker = rest.indexOf(SEGMENT_ENDED_CHAT);
             var projectId = marker > 0 ? rest.substring(0, marker) : null;
@@ -3495,7 +3496,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             response.json(200, state.toMap());
             return true;
         }
-        if ("POST".equals(request.method()) && act != null) {
+        if (METHOD_POST.equals(request.method()) && act != null) {
             handleEntryAct(request, response, entryId, act);
             return true;
         }
@@ -3504,7 +3505,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private boolean handleEntryChatRoutes(MockHttpRequest request, MockHttpResponse response, String rest)
             throws IOException {
-        if (!"POST".equals(request.method())) {
+        if (!METHOD_POST.equals(request.method())) {
             return false;
         }
         if (rest.endsWith(SEGMENT_ENTRY_CHAT_TURNS)) {
@@ -3812,11 +3813,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (!path.startsWith(PREFIX_PROJECTS)) {
             return false;
         }
-        if ("POST".equals(method) && path.endsWith(SUFFIX_PR_OBSERVE)) {
+        if (METHOD_POST.equals(method) && path.endsWith(SUFFIX_PR_OBSERVE)) {
             handlePrObserve(request, response, projectIdOf(path, SUFFIX_PR_OBSERVE));
             return true;
         }
-        if ("POST".equals(method) && path.endsWith(SUFFIX_PR_ADOPT)) {
+        if (METHOD_POST.equals(method) && path.endsWith(SUFFIX_PR_ADOPT)) {
             handlePrAdopt(request, response, projectIdOf(path, SUFFIX_PR_ADOPT));
             return true;
         }
@@ -3824,7 +3825,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleLocalChangesPreview(response, projectIdOf(path, SUFFIX_LOCAL_PREVIEW));
             return true;
         }
-        if ("POST".equals(method) && path.endsWith(SUFFIX_LOCAL_CAPTURE)) {
+        if (METHOD_POST.equals(method) && path.endsWith(SUFFIX_LOCAL_CAPTURE)) {
             handleLocalChangesCapture(request, response, projectIdOf(path, SUFFIX_LOCAL_CAPTURE));
             return true;
         }
@@ -4263,7 +4264,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        if ("POST".equals(method)) {
+        if (METHOD_POST.equals(method)) {
             var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
             var sub = path.substring(prefix.length());
             String subjectId = null;
@@ -4299,7 +4300,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        if (isPlan && "POST".equals(method) && path.contains(SEGMENT_HOLDS_PATH)
+        if (isPlan && METHOD_POST.equals(method) && path.contains(SEGMENT_HOLDS_PATH)
                 && path.endsWith("/resolve")) {
             var sub = path.substring(PATH_PLANS_PREFIX.length());
             var marker = sub.indexOf(SEGMENT_HOLDS_PATH);
@@ -4350,13 +4351,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        if (isPlan && "POST".equals(method) && path.endsWith(SEGMENT_ENTRY_CHAT_TURNS)) {
+        if (isPlan && METHOD_POST.equals(method) && path.endsWith(SEGMENT_ENTRY_CHAT_TURNS)) {
             handleChatTurn(request, response, controlSubjectId(path, PATH_PLANS_PREFIX,
                     SEGMENT_ENTRY_CHAT_TURNS));
             return true;
         }
 
-        if (isPlan && "POST".equals(method) && (path.endsWith("/chat/proposal/accept")
+        if (isPlan && METHOD_POST.equals(method) && (path.endsWith("/chat/proposal/accept")
                 || path.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT))) {
             var accept = path.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT);
             var suffix = accept ? SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT : SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT;
@@ -5145,13 +5146,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleListReports(request, response);
             return true;
         }
-        if ("POST".equals(method) && "/api/v1/reports/read".equals(path)) {
+        if (METHOD_POST.equals(method) && "/api/v1/reports/read".equals(path)) {
             handleMarkReportsRead(request, response, isWeb);
             return true;
         }
         if (path.startsWith(PATH_REPORTS_PREFIX)) {
             var sub = path.substring(PATH_REPORTS_PREFIX.length());
-            if (sub.endsWith("/read") && "POST".equals(method)) {
+            if (sub.endsWith("/read") && METHOD_POST.equals(method)) {
                 var reportId = sub.substring(0, sub.length() - "/read".length());
                 handleMarkSingleReportRead(response, reportId, isWeb);
                 return true;
@@ -5518,7 +5519,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @throws IOException on write failure
      */
     private void handleMcp(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        if (!"POST".equals(request.method())) {
+        if (!METHOD_POST.equals(request.method())) {
             response.send(405, "application/json",
                     JsonTree.write(Map.of(KEY_ERROR, "method_not_allowed", KEY_MESSAGE, "POST /mcp only")));
             return;
@@ -5555,7 +5556,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
 
-        var scenarioRoute = currentScenario.get().route("POST", request.path());
+        var scenarioRoute = currentScenario.get().route(METHOD_POST, request.path());
         if (scenarioRoute != null && !"tools/list".equals(method)) {
             response.json(scenarioRoute.status(), scenarioRoute.representation());
             return;
@@ -5869,19 +5870,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleControlState(response);
             return;
         }
-        if ("/mock/reset".equals(path) && "POST".equals(request.method())) {
+        if ("/mock/reset".equals(path) && METHOD_POST.equals(request.method())) {
             handleControlReset(response);
             return;
         }
-        if ("/mock/scenario".equals(path) && "POST".equals(request.method())) {
+        if ("/mock/scenario".equals(path) && METHOD_POST.equals(request.method())) {
             handleControlScenario(request, response);
             return;
         }
-        if (path.startsWith("/mock/goto/") && "POST".equals(request.method())) {
+        if (path.startsWith("/mock/goto/") && METHOD_POST.equals(request.method())) {
             handleControlGoto(path.substring("/mock/goto/".length()), response);
             return;
         }
-        if ("/mock/broadcast".equals(path) && "POST".equals(request.method())) {
+        if ("/mock/broadcast".equals(path) && METHOD_POST.equals(request.method())) {
             handleControlBroadcast(request, response);
             return;
         }
@@ -5891,7 +5892,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         // The development loop has no terminal client to ask for a replacement code. This route
         // returns the open code or issues a fresh one; it never makes a consumed code valid again.
-        if ("/mock/pairing".equals(path) && "POST".equals(request.method())) {
+        if ("/mock/pairing".equals(path) && METHOD_POST.equals(request.method())) {
             handleCreatePairing(response);
             return;
         }
@@ -6096,11 +6097,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleOnboardingState(response);
             return true;
         }
-        if ("/api/v1/onboarding/step".equals(path) && "POST".equals(method)) {
+        if ("/api/v1/onboarding/step".equals(path) && METHOD_POST.equals(method)) {
             handleOnboardingStep(request, response);
             return true;
         }
-        if ("/api/v1/onboarding/auto".equals(path) && "POST".equals(method)) {
+        if ("/api/v1/onboarding/auto".equals(path) && METHOD_POST.equals(method)) {
             handleOnboardingAuto(response);
             return true;
         }
@@ -6323,7 +6324,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             response.json(200, buildMachineSettings());
             return true;
         }
-        if ("PUT".equals(request.method()) || "POST".equals(request.method())) {
+        if ("PUT".equals(request.method()) || METHOD_POST.equals(request.method())) {
             handleUpdateMachineSettings(request, response);
             return true;
         }
@@ -6802,11 +6803,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var path = request.path();
         var method = request.method();
 
-        if ("POST".equals(method) && PATH_ENROL.equals(path)) {
+        if (METHOD_POST.equals(method) && PATH_ENROL.equals(path)) {
             handleEnrol(request, response, null);
             return true;
         }
-        if ("POST".equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_ENROL)) {
+        if (METHOD_POST.equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_ENROL)) {
             var prjId = path.substring(PATH_PROJECTS_PREFIX.length(), path.length() - SEGMENT_ENROL.length());
             handleEnrol(request, response, prjId);
             return true;
@@ -6816,7 +6817,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleStoreDigest(request, response, prjId);
             return true;
         }
-        if ("POST".equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_STORES_ACCEPT_EDIT)) {
+        if (METHOD_POST.equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_STORES_ACCEPT_EDIT)) {
             var prjId = path.substring(PATH_PROJECTS_PREFIX.length(),
                     path.length() - SEGMENT_STORES_ACCEPT_EDIT.length());
             handleAcceptEdit(request, response, prjId);
@@ -6960,7 +6961,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return switch (method) {
             case "GET" -> handleProjectExplorerGet(request, response, path);
             case "PUT" -> handleProjectExplorerPut(request, response, path);
-            case "POST" -> handleProjectExplorerPost(request, response, path);
+            case METHOD_POST -> handleProjectExplorerPost(request, response, path);
             case METHOD_DELETE -> handleProjectExplorerDelete(response, path);
             default -> false;
         };
@@ -7380,7 +7381,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         body.put("name", displayNameOf(projectId));
         body.put("pilot", false);
         body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
-                PATH_PROJECTS_PREFIX + projectId + SEGMENT_SETUP, KEY_METHOD, "POST")));
+                PATH_PROJECTS_PREFIX + projectId + SEGMENT_SETUP, KEY_METHOD, METHOD_POST)));
         return body;
     }
 
@@ -7406,7 +7407,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleGetReleaseNotes(request, response);
             return true;
         }
-        if ("POST".equals(method) && ("/api/v1/operator/runtime/stop".equals(path) || "/api/v1/runtime/stop".equals(path))) {
+        if (METHOD_POST.equals(method) && ("/api/v1/operator/runtime/stop".equals(path) || "/api/v1/runtime/stop".equals(path))) {
             handlePostStopRuntime(request, response, isWeb);
             return true;
         }
@@ -7414,7 +7415,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleDeleteStopRuntime(response);
             return true;
         }
-        if ("POST".equals(method) && "/api/v1/operator/runtime/upgrade".equals(path)) {
+        if (METHOD_POST.equals(method) && "/api/v1/operator/runtime/upgrade".equals(path)) {
             handlePostUpgradeRuntime(request, response);
             return true;
         }
@@ -7422,7 +7423,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleDeleteUpgradeRuntime(response);
             return true;
         }
-        if ("POST".equals(method) && "/api/v1/operator/runtime/upgrade/check".equals(path)) {
+        if (METHOD_POST.equals(method) && "/api/v1/operator/runtime/upgrade/check".equals(path)) {
             handleCheckUpgradeRuntime(response);
             return true;
         }
@@ -7438,7 +7439,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handlePutKeptCleanup(request, response);
             return true;
         }
-        if (path.startsWith(PATH_SYSTEM_CLEANUP) && "POST".equals(method)) {
+        if (path.startsWith(PATH_SYSTEM_CLEANUP) && METHOD_POST.equals(method)) {
             var sub = path.substring(PATH_SYSTEM_CLEANUP.length());
             if (sub.endsWith(SEGMENT_DELETE)) {
                 var jobId = sub.substring(0, sub.length() - SEGMENT_DELETE.length());
@@ -8131,15 +8132,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 handleGetDecision(response, decisionId);
                 return true;
             }
-            if ("POST".equals(method) && ("answer".equals(action) || "answers".equals(action))) {
+            if (METHOD_POST.equals(method) && ("answer".equals(action) || "answers".equals(action))) {
                 handleAnswerDecision(request, response, decisionId, isWeb);
                 return true;
             }
-            if ("POST".equals(method) && "interpret".equals(action)) {
+            if (METHOD_POST.equals(method) && "interpret".equals(action)) {
                 handleInterpretDecision(request, response, decisionId);
                 return true;
             }
-            if ("POST".equals(method) && "withdraw".equals(action)) {
+            if (METHOD_POST.equals(method) && "withdraw".equals(action)) {
                 handleWithdrawDecision(request, response, decisionId);
                 return true;
             }
