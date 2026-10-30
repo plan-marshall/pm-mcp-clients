@@ -345,6 +345,24 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:implemented/start-contract.adoc[`start-contract`]; link:implemented/cli-start.adoc[`cli-start`]; link:implemented/web-start.adoc[`web-start`]
 |Milestone 10
 
+|link:overview-order-and-size.adoc[`overview-order-and-size`]
+|Running work in the stable order the runtime serves; a plan's size of change in the plan view and the completion report
+|`open`
+|link:implemented/overview-contract.adoc[`overview-contract`]; link:implemented/web-plan-view.adoc[`web-plan-view`]
+|Milestones 10 and 11
+
+|link:needs-and-find.adoc[`needs-and-find`]
+|Everything that waits as one list, and finding work by name, in both clients; the badges of `credential` and `cleanup_due`
+|`open`
+|link:implemented/overview-contract.adoc[`overview-contract`]; link:overview-order-and-size.adoc[`overview-order-and-size`]
+|Milestone 11
+
+|link:web-moving-between-plans.adoc[`web-moving-between-plans`]
+|Web app: the work list beside a plan and an epic, _Add a plan_ on a project's row, one notification for a burst and none after a reconnect
+|`open`
+|link:overview-order-and-size.adoc[`overview-order-and-size`]
+|Milestone 11
+
 |===
 
 [#full-screen-status]

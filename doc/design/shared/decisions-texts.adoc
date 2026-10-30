@@ -222,6 +222,10 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |Not now
 |Nicht jetzt
 
+|`decision.notify.several`
+|{count} decisions wait for you
+|{count} Entscheidungen warten auf dich
+
 |`decision.notify.title`
 |{subject, select, epic {Epic {name}} setup {The setup of {project}} entry {The start in {project}} other {{name}}} asks {kind, select, waiver {for a waiver} other {a decision}}
 |{subject, select, epic {Epic {name}} setup {Das Setup von {project}} entry {Der Start in {project}} other {{name}}} {kind, select, waiver {bittet um einen Waiver} other {braucht eine Entscheidung}}

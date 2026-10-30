@@ -20,6 +20,7 @@ A plan's process is not a fixed list of phases: it is the plan's composed workfl
   pm-mcp-clients › relay-hardening › fix-relay
   fix-relay                                   execute · running · 2 h 10 min
   tokens so far   412 k (380 k in · 32 k out)
+  change so far   12 files · +340 −27 · 2 unplanned
   ├─ ✓ phase  init                            done · 2 min
   ├─ ✓ phase  refine                          done · 14 min
   ├─ ✓ phase  outline                         done · 31 min
@@ -151,6 +152,11 @@ Selecting a task of a leaf shows what its worker does, as it does it (link:../..
 * *Untrusted*: every text and target may come from the project, a review comment, or a tool result: shown as plain text after removing every control sequence, never as markup and never as a link the client follows; secrets in it are already masked by the runtime (link:decisions.adoc#safety[Decisions, Untrusted Text]).
 * *Off track*: where the server judged the worker off track, the head and the entry say so with the signal (`repeating`, `no_progress`, `over_size`, `outside_footprint`), its measured value and threshold, and what the server did (`show`, `nudge`, `yield`, `restart`; link:../../../../pm-mcp-core/doc/specification/model-work/03-supervision-and-recycling.adoc#worker-off-track[A Worker Off Track]). It needs no act and is never shown as something that needs the operator; a `yield` or a `restart` is also a report (link:reports.adoc[Reports]).
 
+[#change-size]
+== Change So Far
+
+The line below the tokens says how large the plan's change was at its last capture: `change so far   12 files · +340 −27 · 2 unplanned` (`plan.change.size`; link:../../../../pm-mcp-core/doc/specification/store-schemas/13-leases-integrity-testing.adoc#change-size[The Size of a Plan's Change]). Git measured it, the runtime serves it, and the client adds nothing up. Before the first capture the line is absent, never `0 files`; `2 unplanned` is shown only where there are any. The diff itself is read in the pull request.
+
 [#tokens]
 == Tokens So Far
 
@@ -197,6 +203,10 @@ Keys of the area `plan`, shared by both clients.
 [cols="3,3,3",options="header"]
 |===
 |Key |English |German
+
+|`plan.change.size`
+|{files, plural, one {# file} other {# files}} · +{insertions} −{deletions}{unplanned, plural, =0 {} other { · # unplanned}}
+|{files, plural, one {# Datei} other {# Dateien}} · +{insertions} −{deletions}{unplanned, plural, =0 {} other { · # ungeplant}}
 
 |`plan.view.title`
 |{plan}

@@ -1,0 +1,29 @@
+= Everything that waits, and finding work by name
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `needs-and-find`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7], link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-8[UC-PLN-8]; link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 11
+Where:: `pm-api` (the contract and the mock runtime), `pm-operator`, `pm-web-app`
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+Two views, each with one job, in both clients.
+
+* *Design first*: the package writes the two views into the shared design and has the operator accept them before building them. Two views were decided against one combined entry.
+* *What waits*: the list of `GET /api/v1/machine/needs-operator` in the order served, each item with what it is, where it belongs, since when, what it blocks, and the act that resolves it. Web: a route of its own, a destination of the rail with its count. Terminal: one command, and the badges gain `credential` and `cleanup_due` with their notices and commands (link:../design/terminal-client/04-console.adoc#pushed[The Console, What the Runtime Pushes]). A credential and a cleanup that is due are not items of any plan, so the web app's other counts are unchanged.
+* *Find*: `GET /api/v1/find` behind the search button of the top bar, disabled until now (`web.frame.search.pending`), and one terminal command. Matches by kind, running work first, ended work marked; no match says so and keeps the text.
+* Texts from the message catalogue only; a title is plain text.
+
+== Trace
+
+* Requirement: link:../../../plan-marshall-documentation/doc/requirements/01-architecture.adoc#PM-ARCH-11[PM-ARCH-11]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#needs-operator-list[Everything That Waits, as One List]; link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#find-work[Finding Work by Name]; link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#needs-operator[What Needs the Operator, at a Glance]
+* Reason: link:../../../plan-marshall-documentation/doc/articles/thinkrail.adoc[ThinkRail]
+
+== Done When
+
+The operator accepted the design; both clients show the list in the served order and find running and ended work against the mock runtime in their tests, and an item resolved in another client leaves the list.

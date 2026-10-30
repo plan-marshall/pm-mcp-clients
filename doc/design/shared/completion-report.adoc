@@ -27,6 +27,7 @@ How a plan went, on one page: the detail of the report of its end (link:reports.
                    ✓ cursor write order
                    ✓ a test per transport, websocket and SSE
                    ✓ fsync of the cursor file
+  Change         12 files · +340 −27 · 2 unplanned
   Re-planning    1 · after the base moved (09:55): TASK-5 added
   Decisions      2 · Q-003 Rebase onto main (you, web app) · Q-005 (left to the plan)
   Own calls      3 · shortcuts first
@@ -47,6 +48,7 @@ How a plan went, on one page: the detail of the report of its end (link:reports.
 * *Outcome and reason*: the outcome in words, with what it means for this plan (merged into which branch; handed back as a pull request, a branch, or changes in the working tree, with what is missing; returned with its planning result); the reason where the operator or the plan gave one, else `—`.
 * *Ran*: from its start to its end, and how long it was paused by the operator, where it was.
 * *Deliverables*: how many of all are done, each with its state (done `✓`, not done `○`, dropped by a re-planning `–`); a plan that ended before its outline has none and says so (`no deliverables yet: it ended in refine`).
+* *Change*: the size of the plan's change at its last capture, with the count of its unplanned changes (`plan.change.size`, link:plan-view.adoc#change-size[Plan View, Change So Far]); a plan with no measured size leaves the line out.
 * *Re-planning*: how often the plan was revised, each with its trigger (the base moved, a failed gate, a chat of the operator) and what changed in one line; opening one leads to it in the plan's history.
 * *Decisions*: how many were asked, each with its id, the answer, and how it was taken, as its decision record names it (link:../../../../pm-mcp-core/doc/specification/model-work/06-envelopes-questions-deadlines.adoc#own-words[Answers in the Operator's Own Words]): by you, with the channel and device, chosen, interpreted from your words, your own option, or left to the plan, which took the part's recommendation (`delegated`); by a quorum; or withdrawn; opening one shows it as recorded (link:decisions.adoc#outcomes[Decisions, When It Ends Elsewhere]).
 * *Own calls*: the decisions the plan took on its own, apart from _Decisions_ and never mixed with them: shortcuts first, each with the limit it accepts and the condition that ends it, and each with the self-review's judgment (`consistent`, or `conflicts` with the item it names). A design call and a replaced dependency follow. The report shows the calls in the order the runtime recorded them and adds none.
