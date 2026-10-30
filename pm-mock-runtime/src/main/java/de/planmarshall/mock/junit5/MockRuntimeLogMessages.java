@@ -9,9 +9,10 @@
  */
 package de.planmarshall.mock.junit5;
 
+import lombok.experimental.UtilityClass;
+
 import de.cuioss.tools.logging.LogRecord;
 import de.cuioss.tools.logging.LogRecordModel;
-import lombok.experimental.UtilityClass;
 
 /**
  * The production log messages of {@code pm-mock-runtime}.

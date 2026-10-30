@@ -16,6 +16,7 @@ import java.lang.reflect.Proxy;
 import java.util.HashMap;
 import java.util.Optional;
 
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -57,7 +58,7 @@ class MockRuntimeExtensionLoggingTest {
         var values = new HashMap<Object, Object>();
         var store = (ExtensionContext.Store) Proxy.newProxyInstance(
                 ExtensionContext.Store.class.getClassLoader(),
-                new Class<?>[] {ExtensionContext.Store.class},
+                new Class<?>[]{ExtensionContext.Store.class},
                 (_, method, args) -> switch (method.getName()) {
                     case "get" -> values.get(args[0]);
                     case "put" -> {
@@ -72,7 +73,7 @@ class MockRuntimeExtensionLoggingTest {
                 });
         return (ExtensionContext) Proxy.newProxyInstance(
                 ExtensionContext.class.getClassLoader(),
-                new Class<?>[] {ExtensionContext.class},
+                new Class<?>[]{ExtensionContext.class},
                 (_, method, args) -> switch (method.getName()) {
                     case "getStore" -> store;
                     case "getTestClass" -> Optional.of(testClass);
