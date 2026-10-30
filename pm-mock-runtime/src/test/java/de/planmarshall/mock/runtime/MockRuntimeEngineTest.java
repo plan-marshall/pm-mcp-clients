@@ -9,8 +9,8 @@
  */
 package de.planmarshall.mock.runtime;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -812,17 +812,17 @@ class MockRuntimeEngineTest {
 
         var identity = send("GET", "/api/v1/projects/cui-parent/setup", auth, new byte[0], false);
         var advanced = send("POST", "/api/v1/projects/cui-parent/setup", auth,
-                            "{\"link\":\"set\"}".getBytes(StandardCharsets.UTF_8), false);
+                "{\"link\":\"set\"}".getBytes(StandardCharsets.UTF_8), false);
         var again = send("GET", "/api/v1/projects/cui-parent/setup", auth, new byte[0], false);
 
         assertAll(
-                            () -> assertEquals(200, identity.status()),
-                            () -> assertEquals("project.identity", JsonTree.string(identity.json(), "state")),
-                            () -> assertEquals("cui-parent", JsonTree.string(identity.json(), "id")),
-                            () -> assertEquals(Boolean.FALSE, JsonTree.bool(identity.json(), "pilot")),
-                            () -> assertEquals(200, advanced.status()),
-                            () -> assertEquals("project.completed", JsonTree.string(advanced.json(), "state")),
-                            () -> assertEquals("project.completed", JsonTree.string(again.json(), "state")));
+                () -> assertEquals(200, identity.status()),
+                () -> assertEquals("project.identity", JsonTree.string(identity.json(), "state")),
+                () -> assertEquals("cui-parent", JsonTree.string(identity.json(), "id")),
+                () -> assertEquals(Boolean.FALSE, JsonTree.bool(identity.json(), "pilot")),
+                () -> assertEquals(200, advanced.status()),
+                () -> assertEquals("project.completed", JsonTree.string(advanced.json(), "state")),
+                () -> assertEquals("project.completed", JsonTree.string(again.json(), "state")));
     }
 
     @Test
@@ -834,8 +834,8 @@ class MockRuntimeEngineTest {
         var res = send("GET", "/api/v1/projects/new%20service/setup", auth, new byte[0], false);
 
         assertAll(
-                            () -> assertEquals(200, res.status()),
-                            () -> assertEquals("new service", JsonTree.string(res.json(), "id")));
+                () -> assertEquals(200, res.status()),
+                () -> assertEquals("new service", JsonTree.string(res.json(), "id")));
     }
 
     @Test

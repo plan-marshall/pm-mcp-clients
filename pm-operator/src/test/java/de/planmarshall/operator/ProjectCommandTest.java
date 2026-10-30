@@ -14,10 +14,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -58,13 +62,13 @@ class ProjectCommandTest {
     }
 
     private int executeWithInput(String input, String... args) throws IOException {
-        var inStream = new java.io.ByteArrayInputStream(input.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-        var outStream = new java.io.ByteArrayOutputStream();
-        var terminal = new org.jline.terminal.impl.DumbTerminal(inStream, outStream);
+        var inStream = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
+        var outStream = new ByteArrayOutputStream();
+        var terminal = new DumbTerminal(inStream, outStream);
         var context = new OperatorContext(fixture.environment(), tempDir, true,
                             ClientEnvironment.capture(fixture.environment()), () -> terminal, null);
         var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
-        out.write(outStream.toString(java.nio.charset.StandardCharsets.UTF_8));
+        out.write(outStream.toString(StandardCharsets.UTF_8));
         return code;
     }
 
