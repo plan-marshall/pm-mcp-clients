@@ -8710,8 +8710,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static List<Map<String, Object>> phaseNodes(@Nullable Map<?, ?> template, String currentPhase,
             String phaseState) {
         if (template == null || !(template.get("nodes") instanceof List<?> nodes)) {
-            var state = STATE_DONE.equals(phaseState) ? STATE_DONE
-                    : ("running".equals(phaseState) ? "running" : "waiting_for_operator");
+            var state = STATE_DONE.equals(phaseState) ? STATE_DONE : phaseFallbackState(phaseState);
             return List.of(phaseNode(currentPhase, state, "phase " + currentPhase));
         }
         var current = currentPhaseIndex(nodes, currentPhase);
@@ -8732,6 +8731,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "phase " + currentPhase));
         }
         return result;
+    }
+
+    /**
+     * @param phaseState the plan's state
+     * @return the state of a phase a plan without a template names
+     */
+    private static String phaseFallbackState(String phaseState) {
+        return "running".equals(phaseState) ? "running" : "waiting_for_operator";
     }
 
     /**

@@ -3774,7 +3774,7 @@ export class ApiClient {
             }
           }
         }
-      } catch (err: unknown) {
+      } catch {
         currentReader = undefined;
         if (internalController.signal.aborted) return;
         if (active && !internalController.signal.aborted) {
