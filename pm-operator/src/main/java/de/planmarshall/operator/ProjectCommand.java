@@ -70,7 +70,6 @@ public final class ProjectCommand implements Callable<Integer> {
             return 0;
         }
 
-        context.gate().verify();
         var safeId = OperatorUrlUtil.encodePathSegment(projectId);
         var response = context.runtime(true).send(HttpRequest.get(PROJECTS_API + safeId));
         var out = spec.commandLine().getOut();
@@ -177,7 +176,7 @@ public final class ProjectCommand implements Callable<Integer> {
             var err = spec.commandLine().getErr();
             var sanitizedId = OutputSafety.stripControlSequences(projectId);
             var locale = context.clientEnvironment().locale();
-            var source = new ProjectOnboardingSource(context.runtime(true), projectId);
+            var source = new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId);
             var startPrompt = new StartPrompt(context, out, locale, false);
             var dialogue = new StateDialogue(source, out, locale,
                                 stateId -> new ChoicePrompt(startPrompt, stateId));

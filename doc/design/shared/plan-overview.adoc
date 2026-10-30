@@ -52,7 +52,7 @@ Status: `DRAFT`. Shared by both clients: link:../terminal-client/15-overview.ado
 
 At the project's level, below its plans and epics, a group `alongside` lists its running and failed short landings (`removing 2 moved documents from git · running`, `landing remediation.ci-failure · failed`), each with its state, a failed one with the hold `landing failed` and its acts (link:work-actions.adoc#holds[What Holds a Plan]), and a running onboarding or setup run of the project, leading to it (link:project-onboarding.adoc[Project Onboarding]).
 
-Order: projects that need the operator first, then by their latest activity. A project whose running work ends (its last active plan and epic ended, and no decision of its setup waits) leaves the list; while it is selected, the client says so and moves the selection to its neighbour.
+Order: as the runtime serves it, projects that need the operator first, then by the start of their oldest active work (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#overview-resource[The Overview Resource and Its Events]). Activity moves no row, so a row never moves under the pointer; a project moves only when it starts or stops needing the operator, or its running work starts or ends. A project whose running work ends (its last active plan and epic ended, and no decision of its setup waits) leaves the list; while it is selected, the client says so and moves the selection to its neighbour.
 
 [#item-rows]
 == A Plan, an Epic
@@ -66,7 +66,7 @@ Order: projects that need the operator first, then by their latest activity. A p
 |its icon, colour, and the word `epic`
 
 |Needs the operator
-|the marker with the count and the kind of the first, from one closed list: `decision`, `waiver`, `waits for you` (any other operator wait), the holds `stalled`, `needs a fix` (a condition), `integrity pause`, `held`, `landing failed`, and `setup` (`! 2 · decision`, `! stalled`)
+|the marker with the count and the kind of the first, from one closed list: `decision`, `waiver`, `waits for you` (any other operator wait), the holds `stalled`, `needs a fix` (a condition), `integrity pause`, `held`, `landing failed`, and `setup` (`! 2 · decision`, `! stalled`); the machine's own items, `credential` and `cleanup due`, belong to no plan and show in the list of everything that waits and in the terminal's badges
 |the same, counting its plans' items too, and `new findings` of its own
 
 |Title
@@ -100,7 +100,7 @@ Order: projects that need the operator first, then by their latest activity. A p
 
 * *A paused plan* is no item of what needs the operator: the operator paused it, and its state says so (`paused`); it carries the marker only for what else waits in it, a decision for example.
 * *The holds* are exactly `stalled`, `condition`, `integrity_pause`, `held`, and `landing_failed`; each opens its acts (link:work-actions.adoc#holds[What Holds a Plan]). The other kinds are answered where they are asked.
-* Order within a project: those that need the operator first, then the most recently active; the plans below an epic in the same order.
+* Order within a project: as the runtime serves it, those that need the operator first, then the newest started; the plans below an epic in the same order. Activity moves no row, and a client does not sort again. The time beside a row says how recently it was active.
 * Times are shown as durations, rounded to what matters (`25 min`, `2 h 10 min`, `3 d`), and computed at each redraw; nothing counts in place by the second.
 * Selecting a plan leads into its plan view (link:plan-view.adoc[Plan View]), selecting an epic into its epic view (link:epic-view.adoc[Epic View]); from either, its project is one step away, and from a plan of an epic its epic (link:plan-view.adoc#way-out[Plan View, Its Project and Its Epic]); selecting the marker leads to what waits: a decision or a waiver request (link:decisions.adoc[Decisions]), a hold (link:work-actions.adoc#holds[What Holds a Plan]), new findings (link:work-actions.adoc#review[Reviewing Findings or Watches]).
 
@@ -256,6 +256,14 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |`overview.needs.findings`
 |new findings
 |neue Findings
+
+|`overview.needs.credential`
+|credential
+|Zugangsdaten
+
+|`overview.needs.cleanup_due`
+|cleanup due
+|Aufräumen fällig
 
 |`overview.needs.setup`
 |setup

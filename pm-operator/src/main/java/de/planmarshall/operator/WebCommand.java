@@ -257,6 +257,15 @@ public final class WebCommand implements Callable<Integer> {
     @Command(name = "devices", description = "Lists, renames, or revokes paired devices.")
     @OperatorVerb
     static final class DevicesCommand implements Callable<Integer> {
+
+        private static final String RENAME = "rename";
+
+        private static final String REVOKE = "revoke";
+
+        private static final String LISTENER_OFF = "listener-off";
+
+        private static final String LISTENER_OFF_ALT = "listener_off";
+
         @Spec
         CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
@@ -292,21 +301,43 @@ public final class WebCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
+            if (changesADevice() || interactive) {
+                context.gate().verify();
+            }
             var runtime = context.runtime(true);
             var out = spec.commandLine().getOut();
 
-            if ("rename".equalsIgnoreCase(action)) {
+            if (isRename()) {
                 handleRename(runtime, out);
-            } else if ("revoke".equalsIgnoreCase(action) || others || all) {
+            } else if (isRevoke()) {
                 handleRevoke(runtime, out);
-            } else if ("listener-off".equalsIgnoreCase(action) || "listener_off".equalsIgnoreCase(action)) {
+            } else if (isListenerOff()) {
                 handleListenerOff(runtime, out);
             } else {
                 handleList(runtime, out);
             }
             out.flush();
             return 0;
+        }
+
+        /**
+         * @return {@code true} when the action renames, revokes, or closes the listener: the list
+         *         itself is a read and runs without the operator checks
+         */
+        private boolean changesADevice() {
+            return isRename() || isRevoke() || isListenerOff();
+        }
+
+        private boolean isRename() {
+            return RENAME.equalsIgnoreCase(action);
+        }
+
+        private boolean isRevoke() {
+            return REVOKE.equalsIgnoreCase(action) || others || all;
+        }
+
+        private boolean isListenerOff() {
+            return LISTENER_OFF.equalsIgnoreCase(action) || LISTENER_OFF_ALT.equalsIgnoreCase(action);
         }
 
         private void handleRename(RuntimeClient runtime, PrintWriter out) throws IOException {
@@ -424,7 +455,7 @@ public final class WebCommand implements Callable<Integer> {
                                     + MessageCatalogue.format(locale, "operator.devices.act_options",
                                     Map.of("others", MessageCatalogue.format(locale,
                                                                             "operator.devices.others", Map.of()),
-                                                        "listener_off", MessageCatalogue.format(locale,
+                                                        LISTENER_OFF_ALT, MessageCatalogue.format(locale,
                                                                             "operator.devices.listener_off", Map.of()),
                                                         "leave", MessageCatalogue.format(locale,
                                                                             "operator.devices.leave", Map.of())));
@@ -477,7 +508,7 @@ public final class WebCommand implements Callable<Integer> {
                 return;
             }
             var act = actLine.trim();
-            if ("r".equalsIgnoreCase(act) || "rename".equalsIgnoreCase(act)) {
+            if ("r".equalsIgnoreCase(act) || RENAME.equalsIgnoreCase(act)) {
                 var newLbl = reader.readLine(MessageCatalogue.format(locale, "operator.devices.label_input",
                                     Map.of(LABEL, devInfo.label())));
                 if (newLbl != null && !newLbl.trim().isEmpty()) {
@@ -485,7 +516,7 @@ public final class WebCommand implements Callable<Integer> {
                     this.newLabel = newLbl.trim();
                     handleRename(runtime, out);
                 }
-            } else if ("x".equalsIgnoreCase(act) || "revoke".equalsIgnoreCase(act)) {
+            } else if ("x".equalsIgnoreCase(act) || REVOKE.equalsIgnoreCase(act)) {
                 this.deviceId = devInfo.id();
                 handleRevoke(runtime, out);
             }

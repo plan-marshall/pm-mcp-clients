@@ -65,7 +65,6 @@ public final class ProjectsCommand implements Callable<Integer> {
 
     @Override
     public Integer call() throws IOException {
-        context.gate().verify();
         if (!list && (filter == null || filter.isBlank())) {
             var terminal = openTerminal();
             if (terminal != null) {

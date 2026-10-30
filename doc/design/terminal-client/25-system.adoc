@@ -26,7 +26,7 @@ The verbs of the specification stay as they are: `status` (the running work, wit
   runtime stop [--drain|--now] [--yes]      [op]  stop it: when what runs is done, or now
   runtime stop --withdraw                   [op]  withdraw a drain asked from a client
   runtime restart [--drain|--now] [--yes]   [op]  stop it and start it again
-  runtime upgrade --check                   [op]  ask the registry for a newer version
+  runtime upgrade --check                              ask the registry for a newer version
   runtime upgrade [<version>] [--drain|--now] [--yes]
                                             [op]  upgrade to the newest version, or the one named
   runtime upgrade --withdraw                [op]  withdraw an upgrade before its links are switched

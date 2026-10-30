@@ -115,13 +115,15 @@ public final class PlanCommand implements Callable<Integer> {
     @Option(names = "--watch", description = "Watch updates")
     boolean watch;
 
+    @Option(names = "--print", description = "Prints the plan into the scrollback instead of opening the full-screen view.")
+    boolean print;
+
     PlanCommand(OperatorContext context) {
         this.context = Objects.requireNonNull(context, "context");
     }
 
     @Override
     public Integer call() throws IOException {
-        context.gate().verify();
         var out = spec.commandLine().getOut();
         var fullScreen = runFullScreen(out);
         if (fullScreen != null) {
@@ -206,15 +208,15 @@ public final class PlanCommand implements Callable<Integer> {
 
     /**
      * Opens the full-screen plan view when the verb is run interactively for one plan and without
-     * a scrollback-only flag ({@code --all}, {@code --depth}, {@code --activity}, {@code --tokens},
-     * {@code --components}, {@code --watch}).
+     * a scrollback-only flag ({@code --print}, {@code --all}, {@code --depth}, {@code --activity},
+     * {@code --tokens}, {@code --components}, {@code --watch}).
      *
      * @param out the writer of the console
      * @return {@code 0} when the view was left normally, or {@code null} to use the scrollback
      * @throws IOException when the terminal cannot be opened
      */
     private @Nullable Integer runFullScreen(PrintWriter out) throws IOException {
-        if (planId == null || planId.isBlank() || all || depth != null || activity != null
+        if (planId == null || planId.isBlank() || print || all || depth != null || activity != null
                             || tokens || components || watch || !context.isInteractiveTerminal()) {
             return null;
         }
@@ -712,7 +714,6 @@ public final class PlanCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
             var out = spec.commandLine().getOut();
             var endpoint = PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/findings";
             var response = context.runtime(true).send(HttpRequest.get(endpoint));
@@ -741,7 +742,6 @@ public final class PlanCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
             var out = spec.commandLine().getOut();
             var endpoint = PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/watches";
             var response = context.runtime(true).send(HttpRequest.get(endpoint));
@@ -845,7 +845,6 @@ public final class PlanCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
             var out = spec.commandLine().getOut();
             var response = context.runtime(true).send(
                                 HttpRequest.get(PLANS_API + OperatorUrlUtil.encodePathSegment(planId) + "/completion"));
@@ -1268,7 +1267,9 @@ public final class PlanCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
+            if (set != null || remove != null) {
+                context.gate().verify();
+            }
             var out = spec.commandLine().getOut();
             var settings = loadSettings();
             if (settings == null) {

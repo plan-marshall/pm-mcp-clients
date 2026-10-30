@@ -81,7 +81,6 @@ public final class RolesCommand implements Callable<Integer> {
 
     @Override
     public Integer call() {
-        context.gate().verify();
         spec.commandLine().usage(spec.commandLine().getOut());
         return 0;
     }
@@ -103,7 +102,6 @@ public final class RolesCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
             var out = spec.commandLine().getOut();
             var err = spec.commandLine().getErr();
             var response = context.runtime(true).send(HttpRequest.get(rolesTarget(project)));
@@ -214,7 +212,6 @@ public final class RolesCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
             var out = spec.commandLine().getOut();
             var err = spec.commandLine().getErr();
             var response = context.runtime(true).send(HttpRequest.get(roleTarget(role, project)));

@@ -261,12 +261,15 @@ public final class PmConsole {
     private void continueOnboarding(PrintWriter out, LineReader reader, String locale) {
         try {
             var runtime = context.runtime(true);
-            var dialogue = new StateDialogue(new OnboardingSource(runtime), out, locale,
+            var dialogue = new StateDialogue(new OnboardingSource(runtime, context.gate()), out, locale,
                                 stateId -> new ChoicePrompt(reader, out, locale, stateId));
             dialogue.run();
             refreshSetupBadge(runtime, locale);
         } catch (StartPrompt.StartLeftException | StartPrompt.MissingInputException _) {
             // leaving the dialogue sends nothing; the runtime keeps the state it reports
+        } catch (OperatorRefusedException e) {
+            out.println(e.getMessage());
+            out.flush();
         } catch (IOException _) {
             out.println(MessageCatalogue.format(locale, "onboard.error.no_state", Map.of()));
             out.flush();
@@ -302,12 +305,34 @@ public final class PmConsole {
 
         // `tui` is the alias of `plans`; the rewrite keeps its trailing arguments.
         var command = "tui".equals(verb) ? PLANS + line.substring(verb.length()) : line;
+        if (OperatorActs.isAct(line) && !checkAct(out)) {
+            return;
+        }
         switch (verb) {
             case "help" -> printHelp(out, parts);
             case "web" -> handleWebCommand(out, parts);
             default -> runOperatorVerb(command, out, reader, terminal);
         }
         out.flush();
+    }
+
+    /**
+     * Checks the operator gate for one act the console is about to dispatch (PM-SEC-3). The console
+     * is entered without the gate, so the act is where the refusal belongs: the operator reads why
+     * the act is refused and the console stays open.
+     *
+     * @param out the console's writer
+     * @return {@code true} when the act may run
+     */
+    private boolean checkAct(PrintWriter out) {
+        try {
+            context.gate().verify();
+            return true;
+        } catch (OperatorSecurityException e) {
+            out.println(e.getMessage());
+            out.flush();
+            return false;
+        }
     }
 
     /**

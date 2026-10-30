@@ -18,12 +18,12 @@ What the cleanup offers, what its commands do, and what deleting leaves is link:
 == Commands
 
 ----
-  cleanup [--project <project_id>|.]        the open cleanup job: summary and details
+  cleanup [--project <project_id>|.]        [op]  the open cleanup job: summary and details
   cleanup --delete [--exclude <item>...] [--yes]
                                             [op]  delete what the job lists, but the items left out
   cleanup --remind                          [op]  ask again after the reminder's days
   cleanup --ignore                          [op]  keep everything the job lists for good
-  cleanup --kept                            the items kept for good
+  cleanup --kept                            [op]  the items kept for good
   cleanup --release <item>... | --all [--yes]
                                             [op]  give kept items back to the cleanup
   config cleanup [--project <project_id>|.] [--plans|--epics|--logs <days>|never]
@@ -32,8 +32,8 @@ What the cleanup offers, what its commands do, and what deleting leaves is link:
   sweep [--apply]                           what the next automatic pass removes; --apply runs it now
 ----
 
-* *`cleanup`* is a read: it prints the open job, or that nothing is due with the next check, then the kept count and the residue figures. In the console, without an option, it asks the decision after printing (<<t-job>>); as one shell command it prints and exits `0`.
-* *`--delete`, `--remind`, `--ignore`* are operator verbs, refused without the operator checks (exit code `4`; xref:04-console.adoc#console-security[The Operator Checks]). `--delete` shows its confirmation (`cleanup.confirm`) as a dialogue, `--yes` answers it; with `--no-input` and no `--yes` it stops at the confirmation with exit code `3` (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]). `--remind` and `--ignore` ask nothing.
+* *`cleanup`* and *`--kept`* are the one verb: they print the open job, or that nothing is due with the next check, then the kept count and the residue figures. The whole verb is an operator act, refused without the operator checks (exit code `4`; xref:04-console.adoc#console-security[The Operator Checks]), because the listing is the face of the decision it leads to: in the console, without an option, it asks that decision after printing (<<t-job>>); as one shell command, where the checks pass, it prints and exits `0`.
+* *`--delete`, `--remind`, `--ignore`, `--release`* carry the decision of the same verb, so they are refused with it (exit code `4`). `--delete` shows its confirmation (`cleanup.confirm`) as a dialogue, `--yes` answers it; with `--no-input` and no `--yes` it stops at the confirmation with exit code `3` (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]). `--remind` and `--ignore` ask nothing.
 * *An item* is named by its number in the last listing of this console, or by its kind and id: `plan:fix-relay`, `epic:relay-hardening`, `logs:relay-docs`, `reports:pm-mcp-clients`, `reports:machine`, `project:legacy-portal`. `--exclude` leaves the named items out of the delete and keeps them for good. `Tab` completes the ids of the open job.
 * *`config cleanup`* is the machine settings' part of the durations (link:../shared/cleanup.adoc#durations[Cleanup, How Long Work Is Kept]); with `--project`, the project's own value of plans, epics, and logs. Options answer the questions, as for every `config` verb (xref:08-transcripts-later.adoc#t-config-direct[Arguments as Answers]).
 * *`sweep`* is the verb of the specification for technical residue; it never touches work history (<<t-sweep>>).

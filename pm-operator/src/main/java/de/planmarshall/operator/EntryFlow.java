@@ -177,7 +177,7 @@ public final class EntryFlow {
         var badges = new ArrayList<String>();
         badges.add(ConsolePrompt.formatMachineSetupBadge(locale, completedStep, 7));
 
-        if (choice.startsWith("w")) {
+        if (choice.startsWith("w") && context.gate().permits()) {
             ensureLoopbackListener(runtime, webPort);
             var pairing = issuePairingCode(runtime, webPort);
             if (!isSsh) {
@@ -188,12 +188,18 @@ public final class EntryFlow {
             out.println(MessageCatalogue.format(locale, "operator.entry.web_opens_setup", Map.of()));
             out.flush();
             return new EntryResult(status, badges, pairing.code(), pairing.url());
+        }
+        if (choice.startsWith("w")) {
+            // The web app is offered by opening the listener and issuing a pairing code, both acts:
+            // where the gate refuses an act the setup continues here instead, and the refusal
+            // appears when one is typed.
+            out.println(MessageCatalogue.format(locale, "operator.entry.setup_here_only", Map.of()));
         } else {
             out.println();
-            out.flush();
-            runOnboardingDialogue(runtime, out, reader, locale);
-            return refreshedAfterDialogue(runtime);
         }
+        out.flush();
+        runOnboardingDialogue(runtime, out, reader, locale);
+        return refreshedAfterDialogue(runtime);
     }
 
     /**
@@ -221,12 +227,15 @@ public final class EntryFlow {
      */
     private void runOnboardingDialogue(RuntimeClient runtime, PrintWriter out, LineReader reader,
                         String locale) {
-        var dialogue = new StateDialogue(new OnboardingSource(runtime), out, locale,
+        var dialogue = new StateDialogue(new OnboardingSource(runtime, context.gate()), out, locale,
                             stateId -> new ChoicePrompt(reader, out, locale, stateId));
         try {
             dialogue.run();
         } catch (StartPrompt.StartLeftException | StartPrompt.MissingInputException _) {
             // leaving the dialogue sends nothing; the runtime keeps the state it reports
+        } catch (OperatorRefusedException e) {
+            out.println(e.getMessage());
+            out.flush();
         } catch (IOException _) {
             out.println(MessageCatalogue.format(locale, "onboard.error.no_state", Map.of()));
             out.flush();
@@ -235,8 +244,32 @@ public final class EntryFlow {
 
     private EntryResult runOnboarded(RuntimeClient runtime, Map<String, Object> status,
                         PrintWriter out, boolean isSsh, int webPort) throws IOException {
-        ensureLoopbackListener(runtime, webPort);
         var badges = badges(context.clientEnvironment().locale(), status);
+        var result = context.gate().permits()
+                            ? openWebAccess(runtime, status, out, isSsh, webPort, badges)
+                            : new EntryResult(status, badges, null, null);
+        printReportsArrivalNotice(runtime, out);
+        out.flush();
+        return result;
+    }
+
+    /**
+     * Offers the web app and a pairing code: enabling the loopback listener and issuing a code are
+     * acts, so the entry flow offers them only where the operator gate would let an act run. A
+     * refused act leaves the console a read-only view, and the refusal appears when one is typed.
+     *
+     * @param runtime the runtime client
+     * @param status  the status the entry flow read
+     * @param out     the console's writer
+     * @param isSsh   whether this is an SSH session
+     * @param webPort the web port
+     * @param badges  the prompt badges
+     * @return the entry result carrying the pairing code
+     * @throws IOException on transport failure
+     */
+    private EntryResult openWebAccess(RuntimeClient runtime, Map<String, Object> status, PrintWriter out,
+                        boolean isSsh, int webPort, List<String> badges) throws IOException {
+        ensureLoopbackListener(runtime, webPort);
 
         EntryResult result;
         var locale = context.clientEnvironment().locale();
@@ -261,8 +294,6 @@ public final class EntryFlow {
                 result = new EntryResult(status, badges, pairing.code(), pairing.url());
             }
         }
-        printReportsArrivalNotice(runtime, out);
-        out.flush();
         return result;
     }
 

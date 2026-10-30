@@ -42,18 +42,11 @@ import picocli.CommandLine.Spec;
 @SuppressWarnings("java:S1075")
 public final class SettingsCommand implements Callable<Integer> {
 
-    private final OperatorContext context;
-
     @Spec
     CommandSpec spec = CommandSpec.create();
 
-    SettingsCommand(OperatorContext context) {
-        this.context = Objects.requireNonNull(context, "context");
-    }
-
     @Override
     public Integer call() {
-        context.gate().verify();
         spec.commandLine().usage(spec.commandLine().getOut());
         return 0;
     }
@@ -86,7 +79,9 @@ public final class SettingsCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
+            if ((set != null && !set.isEmpty()) || (withdraw != null && !withdraw.isBlank())) {
+                context.gate().verify();
+            }
             var out = spec.commandLine().getOut();
             var settings = readSettings(out);
             if (settings == null) {

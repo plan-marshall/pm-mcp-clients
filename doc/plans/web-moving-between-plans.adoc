@@ -1,0 +1,26 @@
+= Web app: from plan to plan, a plan from the row, one notification
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `web-moving-between-plans`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2]; link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap] Milestone 11
+Where:: `pm-web-app`
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== What
+
+* *Design first, for the work list*: in a window of the split breakpoint or wider (link:../design/web-app/view-density-and-filtering.adoc#breakpoint[The split breakpoint]), the plan view and the epic view hold a collapsible list of the running work beside them: the same rows and markers as the overview, in the order served, the open item marked with `aria-current`. Moving to a neighbour takes one click and keeps the list's place; this browser remembers whether it is open. Below the breakpoint and in the terminal client nothing changes. The package writes it into link:../design/web-app/README.adoc#shell[The App Shell] and has the operator accept it before building it.
+* *Add a plan on the row* (link:../design/shared/project-explorer.adoc#project-row[Project Explorer, A Project]).
+* *Notifications*: only what is new, and together (link:../design/shared/decisions.adoc#announce[Decisions, Announcing a Decision]); a test covers a reconnect that raises none and a burst that raises one.
+
+== Trace
+
+* Requirement: link:../../../plan-marshall-documentation/doc/requirements/01-architecture.adoc#PM-ARCH-11[PM-ARCH-11]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#overview-resource[The Overview Resource and Its Events]
+* Reason: link:../../../plan-marshall-documentation/doc/articles/thinkrail.adoc[ThinkRail]
+
+== Done When
+
+The operator accepted the design; the end-to-end tests move between two plans through the list, start a plan from a project's row, and see one notification for a burst and none after a reconnect.

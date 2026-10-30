@@ -145,6 +145,7 @@ public final class WorkActionsClient {
      */
     public WorkActions perform(String kind, String id, String action, Map<String, Object> payload)
                         throws IOException {
+        context.gate().verifyAct();
         var response = context.runtime(true).send(HttpRequest.json("POST",
                             prefix(kind) + path(id) + ACTIONS + "/" + path(action), JsonTree.write(payload)));
         if (response.status() != 200) {
@@ -163,6 +164,7 @@ public final class WorkActionsClient {
      */
     public HoldResolutionResult resolveHold(String planId, String holdId, String act, @Nullable String reason)
                         throws IOException {
+        context.gate().verifyAct();
         var payload = new LinkedHashMap<String, Object>();
         payload.put("act", act);
         if (reason != null && !reason.isBlank()) {
@@ -209,6 +211,7 @@ public final class WorkActionsClient {
      */
     public SettingsAnswer updateSettings(String planId, long revision, String aspect,
                         @Nullable String value) throws IOException {
+        context.gate().verifyAct();
         var payload = new LinkedHashMap<String, Object>();
         payload.put("revision", revision);
         payload.put("aspect", aspect);
@@ -261,6 +264,7 @@ public final class WorkActionsClient {
      */
     public ReviewResource disposition(String epicId, String itemId, String disposition,
                         @Nullable String reason) throws IOException {
+        context.gate().verifyAct();
         var payload = new LinkedHashMap<String, Object>();
         payload.put("disposition", disposition);
         if (reason != null && !reason.isBlank()) {
@@ -283,6 +287,7 @@ public final class WorkActionsClient {
      * @throws IOException when the runtime refuses or cannot be reached
      */
     public ReviewResource commitReview(String epicId) throws IOException {
+        context.gate().verifyAct();
         var response = context.runtime(true).send(HttpRequest.json("POST",
                             EPICS + path(epicId) + "/review/commit", "{}"));
         if (response.status() != 200) {
@@ -313,6 +318,7 @@ public final class WorkActionsClient {
      * @throws IOException when the runtime refuses or cannot be reached
      */
     public ChatReadBackResource chatTurn(String kind, String id, String message) throws IOException {
+        context.gate().verifyAct();
         var payload = new LinkedHashMap<String, Object>();
         payload.put("message", message);
         var response = context.runtime(true).send(HttpRequest.json("POST",
@@ -331,6 +337,7 @@ public final class WorkActionsClient {
      * @throws IOException when the runtime refuses or cannot be reached
      */
     public ChatReadBackResource chatProposal(String kind, String id, boolean accept) throws IOException {
+        context.gate().verifyAct();
         var path = accept ? "/chat/proposal/accept" : "/chat/proposal/reject";
         var response = context.runtime(true).send(HttpRequest.json("POST",
                             prefix(kind) + path(id) + path, "{}"));
@@ -375,6 +382,7 @@ public final class WorkActionsClient {
      * @throws IOException when the runtime refuses or cannot be reached
      */
     public void performLanding(String projectId, String unit, String action) throws IOException {
+        context.gate().verifyAct();
         var response = context.runtime(true).send(HttpRequest.json("POST",
                             "/api/v1/projects/" + path(projectId) + "/landings/" + path(unit)
                                                 + "/actions/" + path(action), "{}"));

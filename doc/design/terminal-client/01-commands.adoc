@@ -16,12 +16,12 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 [#command-tree]
 === The Verbs
 
-`pm-operator` is the operator's console. Without a verb it opens the console (xref:04-console.adoc[The Console]); inside it every verb is typed without the program name (`config roles --project .`), and the same verb also runs as one shell command (`pm-operator config roles --project .`), which does that one thing and exits, for scripts and quick changes. The verbs are those of the specification's command tree (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree]), which names each verb and the specification that owns its act; this listing gives their options, the aspects of `config`, and the console's own commands. The verbs of the console, the onboarding, and the work are operator verbs (`[op]`): a choice of the onboarding and an answer to a question are operator acts (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#two-channels[Operator Choices in the Web App and the Terminal], link:../../../../pm-mcp-core/doc/specification/store-schemas/14-plan-instance-waivers-questions.adoc#cli-answers[Answers from the Terminal Client]), and the entry issues a pairing code, which only an operator verb may do. There is no verb `start` and no verb `onboard`: what to do first follows from the state of the machine.
+`pm-operator` is the operator's console. Without a verb it opens the console (xref:04-console.adoc[The Console]); inside it every verb is typed without the program name (`config roles --project .`), and the same verb also runs as one shell command (`pm-operator config roles --project .`), which does that one thing and exits, for scripts and quick changes. The verbs are those of the specification's command tree (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[Command Tree]), which names each verb and the specification that owns its act; this listing gives their options, the aspects of `config`, and the console's own commands. `[op]` marks an operator act: it runs only where the operator checks pass (an interactive terminal, no coding-agent environment; xref:04-console.adoc#console-security[The Operator Checks]), and a verb without the mark is not an act — a read, or one of the exceptions `drain` and `runtime start`, which keep their own rules. A choice of the onboarding and an answer to a question are operator acts (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#two-channels[Operator Choices in the Web App and the Terminal], link:../../../../pm-mcp-core/doc/specification/store-schemas/14-plan-instance-waivers-questions.adoc#cli-answers[Answers from the Terminal Client]), and the entry issues a pairing code, which only an operator act may do — so it does so only where the checks pass. There is no verb `start` and no verb `onboard`: what to do first follows from the state of the machine.
 
 ----
-pm-operator                                               [op]  the console; first the onboarding while it is not complete, here or in
-                                                                the web app; once complete, the web app connected (UC-ONB-1, UC-ENT-1)
-pm-operator config                                        [op]  the machine settings: the aspects, the providers, the credentials, the remembered
+pm-operator                                                    the console; entered without the operator checks; first the onboarding while it is not
+                                                                complete, here or in the web app; once complete, the web app connected (UC-ONB-1, UC-ENT-1)
+pm-operator config                                             the machine settings: the aspects, the providers, the credentials, the remembered
                                                                 consents, the documents mode (settings.choose, UC-ONB-10, 08-transcripts-later)
 pm-operator config <aspect> [<level>] [<choices>]         [op]  one aspect of the onboarding as a later change (UC-ONB-3 to UC-ONB-9)
     language       [--interface <locale>] [--model same|<locale>]
@@ -35,7 +35,7 @@ pm-operator config <aspect> [<level>] [<choices>]         [op]  one aspect of th
                    [--asking every-phase|key-points|questions-only] [--posture minimal|standard|full|unset]
     consents       the remembered consents, to withdraw one (08-transcripts-later)
     documents      [--mode copy|move|ask]   how documents are taken into a plan (UC-ONB-10)
-pm-operator projects [--list]                             [op]  the explorer of the machine's projects; full screen in the console (17-projects)
+pm-operator projects [--list]                                  the explorer of the machine's projects; full screen in the console (17-projects)
 pm-operator project add [<path>]                          [op]  onboard a project; the working directory is the proposed checkout
 pm-operator project setup <project_id> [<step>]           [op]  a later run of a project's onboarding, or the open one continued
 pm-operator project favourite <project_id> [--off]        [op]  mark or unmark a favourite
@@ -54,27 +54,28 @@ pm-operator plan cancel|abandon <plan_id> [--reason <text>] [--close-pr|--keep-p
 pm-operator plan chat <plan_id>
                                                           [op]  act on a plan by its state (19-actions)
 pm-operator plan report <plan_id> [--tokens [--components]]
-                                                          [op]  an ended plan's completion report (24-reports)
+                                                                 an ended plan's completion report (24-reports)
 pm-operator epic next <epic_id> [--raise-scope]
 pm-operator epic auto <epic_id> on|off | --common-files <n>
 pm-operator epic decompose <epic_id> [--instruction <text>]
 pm-operator epic archive|findings|watches|chat <epic_id>
 pm-operator epic cancel <epic_id> [--reason <text>] [--with-plans|--without-plans]
-                                                          [op]  act on an epic, review its findings or watches, chat (19-actions)
+                                                          [op]  act on an epic, or chat; `findings` and `watches` read the review without the checks (19-actions)
 pm-operator abort plan|epic <id> --reason <text>        [op]  the shell form of plan cancel or abandon by the plan's state, and of epic cancel (19-actions)
 pm-operator web enable|disable [--lan]                    [op]  open the loopback listener, or with --lan the LAN listener beside it; close both
 pm-operator web pair [--label <label>]                    [op]  a pairing code, its URL, and its QR code
 pm-operator web open [--pair]                             [op]  open the web app in this machine's browser, pairing it where needed
 pm-operator web devices [list|rename <device_id> <label>|revoke <device_id>|revoke --others|revoke --all|listener-off]
                                                           [op]  the paired devices: list, rename, revoke one, revoke all others or all (from
-                                                                the terminal the same: every paired device), turn the LAN listener off (UC-ENT-2)
-pm-operator config show [<aspect>|<key>] [<level>]           [op]  effective values with their origin
+                                                                the terminal the same: every paired device), turn the LAN listener off (UC-ENT-2);
+                                                                `list` alone is a read and runs without the checks
+pm-operator config show [<aspect>|<key>] [<level>]                effective values with their origin
 pm-operator config set <key> <value> [<level>]                [op]  one plain key at one level
 pm-operator config unset <key> [<level>]                      [op]  remove a key at one level; the next level's value applies
 pm-operator status [--project <project_id>] [--by epic] [--watch]
                                                                 the running work as a tree, and the runtime (15-overview)
 pm-operator status --ended [--project <project_id>]             the ended work as a tree, opened read-only as it ended (15-overview)
-pm-operator reports [--project <project_id>|.] [--older]  [op]  the unread reports, grouped, newest first (24-reports)
+pm-operator reports [--project <project_id>|.] [--older]        the unread reports, grouped, newest first (24-reports)
 pm-operator reports read <report_id>...|--all             [op]  mark reports read: those named, or all the last listing showed
 pm-operator reports open <report_id>                      [op]  a report's detail; reads it
 pm-operator system [--project <project_id>|.] [--window hour|today|7d] [--by model|role] [--watch]
@@ -82,10 +83,11 @@ pm-operator system [--project <project_id>|.] [--window hour|today|7d] [--by mod
 pm-operator runtime stop|restart [--drain|--now] [--yes]   [op]  stop or restart the runtime (UC-SYS-1, 25-system)
 pm-operator runtime stop --withdraw                       [op]  withdraw a drain asked from a client
 pm-operator runtime upgrade [<version>|--check|--withdraw|--notes] [--drain|--now] [--yes]
-                                                          [op]  a newer version: check, upgrade, withdraw (25-system)
+                                                          [op]  a newer version: check, upgrade, withdraw (25-system); --check and --notes
+                                                                read and run without the checks
 pm-operator drain                                               signal the runtime to stop by its drain
 pm-operator runtime start|install|uninstall                     start the runtime on demand; write or remove its per-user service unit
-pm-operator client install|update|remove|status ...             the host bundles (Client Bundle Installer)
+pm-operator client install|update|remove|status ...        [op]  the host bundles; `install`, `update` and `remove` are acts, `status` is a read (Client Bundle Installer)
 pm-operator cleanup [--delete|--remind|--ignore|--exclude <item>...|--kept|--release <item>...] [--yes]
                                                           [op]  the cleanup job of work history (UC-SYS-3, 26-cleanup)
 pm-operator config cleanup [--project <project_id>|.] [<duration options>]
@@ -102,8 +104,9 @@ common:    --no-input   never ask; stop at the first choice not given (exit code
 
 In the console only:
   plans                       the overview of running work, full screen (15-overview); E shows the ended work, R the reports
-  plan <plan_id> [--all|--depth <n>] [--tokens [--components]] [--activity <task_id> [--watch]]
-                              a plan's process as a tree, its tokens so far, what a task's worker does (16-plan-view)
+  plan <plan_id> [--print] [--all|--depth <n>] [--tokens [--components]] [--activity <task_id> [--watch]]
+                              a plan's process as a tree, its tokens so far, what a task's worker does;
+                              opens full screen in a terminal, prints with --print (16-plan-view)
   epic <epic_id> [--tokens]   an epic's view as a tree, with its tokens per plan (19-actions)
   questions                   the open decisions and waiver requests, with what they block and the recommendation
   answer <id> [<option>]      open a decision or a waiver request as a dialogue, or answer a decision with an option
@@ -113,9 +116,9 @@ In the console only:
   exit                        leave the console (as Ctrl+D)
 ----
 
-* *`pm-operator`* without a verb opens the console after the operator checks; it starts the runtime on demand, as every verb that needs the runtime does (the exceptions that never start it: `status`, `system`, `drain`, `client status`, and `runtime stop`; link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[Runtime Access & On-Demand Start], link:../shared/system.adoc#channels[System, Who May]), and then follows the state of the machine:
+* *`pm-operator`* without a verb opens the console without the operator checks (a read of the questions, the reports and the views is not an act; every act typed in it is checked, xref:04-console.adoc#console-security[The Operator Checks]); it starts the runtime on demand, as every verb that needs the runtime does (the exceptions that never start it: `status`, `system`, `drain`, `client status`, and `runtime stop`; link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[Runtime Access & On-Demand Start], link:../shared/system.adoc#channels[System, Who May]), and then follows the state of the machine:
 ** *Not fully onboarded* (`entry.check-onboarded` finds that the onboarding has not reached `onboard.completed`): `entry.where-to-onboard` asks where to go on, here or in the web app (xref:05-transcripts-entry.adoc#t-entry-first[Not Fully Onboarded]). _In the web app_ connects the web app as the flow of link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1] does, and the web app shows the onboarding where it stands; the console stays open beside it. _Here_ runs the onboarding dialogue from where it stands: the first run from `onboard.mode`, an interrupted run from the state it stopped in. Left before it completes, the prompt shows the step it stopped at (`pm [setup 3/7] ›`), and `Enter` on the empty prompt continues it.
-** *Onboarded*, or once the onboarding run here completes (`onboard.completed`, as for a ready machine): it connects the web app as the flow of link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1] does, without waiting: the web listener is opened, the browser is opened with a pairing code only when no browser of this machine is paired yet, otherwise the URL is printed, and over SSH the ways in are printed (xref:05-transcripts-entry.adoc#t-entry-desktop[Onboarded, on the Desktop], xref:05-transcripts-entry.adoc#t-entry-ssh[Onboarded, over SSH]). Then the prompt, with what is pending. `entry.wait` is the console itself: a pairing is reported above the prompt, and `web` shows the ways in again. The terminal client's own views are reached by its verbs, typed at that prompt or given as a shell command (`plans`, the overview of running work; `projects`; `status`); the command without a verb never opens one of them, it connects the web app.
+** *Onboarded*, or once the onboarding run here completes (`onboard.completed`, as for a ready machine): it connects the web app as the flow of link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1] does, without waiting: the web listener is opened, the browser is opened with a pairing code only when no browser of this machine is paired yet, otherwise the URL is printed, and over SSH the ways in are printed (xref:05-transcripts-entry.adoc#t-entry-desktop[Onboarded, on the Desktop], xref:05-transcripts-entry.adoc#t-entry-ssh[Onboarded, over SSH]). Opening the listener and issuing a code are acts, so where the checks refuse them the console opens without the web app and the refusal appears when an act is typed. Then the prompt, with what is pending. `entry.wait` is the console itself: a pairing is reported above the prompt, and `web` shows the ways in again. The terminal client's own views are reached by its verbs, typed at that prompt or given as a shell command (`plans`, the overview of running work; `projects`; `status`); the command without a verb never opens one of them, it connects the web app.
 ** `pm-operator --help` prints the verbs, as every picocli command does; it opens no console.
 * *`config <aspect>`* starts the sub-workflow of one aspect as a later run (`onboard_run: reconfigure`), with the current values as the proposal, and answers each choice state from its arguments where they give one (<<direct-verbs>>). The aspects are the seven steps of the onboarding: `language`, `harnesses`, `models`, `roles`, `credentials`, `providers`, `plan-defaults`. `config providers --verify` checks the recorded providers again and changes nothing unless a check fails (xref:08-transcripts-later.adoc#t-providers-verify[Providers Checked Again]).
 * *The machine settings* (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]): `config` without an aspect renders `settings.choose`, every aspect with its value, the providers, the credentials with their status, the remembered consents, and the documents mode, each a number that opens it (xref:08-transcripts-later.adoc#t-settings[The Machine Settings]). Its acts that are no step of the onboarding have verbs of their own: `config consents` lists the remembered consents to withdraw one (`settings.withdraw`, xref:08-transcripts-later.adoc#t-consents[The Remembered Consents]); `config documents` sets `sources.documents_mode` (`settings.documents-mode`, xref:08-transcripts-later.adoc#t-documents[The Documents Mode]); the verbs of the specification `credentials rotate <credential_key>` and `credentials set <credential_key>` (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-operator-channel.adoc#operator-credential-cli[Operator Credential Acts]) give a credential a new secret, or a new entry of another kind, and verify the providers that use it (`settings.credential`, xref:08-transcripts-later.adoc#t-credential[A Token Rotated or Replaced]). `config credentials` is step 5, the store.
@@ -126,7 +129,7 @@ In the console only:
 * *`config show|set|unset`* read and change the operator's configuration keys of `machine-config.json` and `local-config.json`. A key that an aspect or a setting owns (`language.*`, `credentials.store`, `providers.*`, `plan_defaults.*`, `sources.documents_mode`, the role assignment) is changed only through its aspect or setting, because the aspect validates and checks it; `config set` is refused with `aspect_owned` (`409`), and the client names the aspect verb (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#two-channels[Operator Choices in the Web App and the Terminal], item 5). `show` lists every key, the aspect-owned ones included.
 * *`status`* prints the overview of running work as a tree, `--project <project_id>` for one project and `--by epic` with the plans below their epics (xref:15-overview.adoc#status-tree[The Tree]); `status --ended` prints the ended work instead (link:../shared/plan-overview.adoc#ended[Plan Overview, Ended Work]).
 * *`system`* shows the runtime and what it does, and *`runtime stop|restart|upgrade`* act on it (xref:25-system.adoc[System]; link:../shared/system.adoc[System] is what both clients show). `system` is a read like `status` and never starts the runtime; the acts are operator verbs. The signal `drain` and `runtime start|install|uninstall` keep running without the operator checks.
-* *`reports`* lists the unread reports, `reports read` marks them read, and `reports open` opens a report's detail, which reads it (xref:24-reports.adoc[Reports]; link:../shared/reports.adoc[Reports] is what both clients show). They are operator verbs because reading changes the state every client shows; the console prints the count of unread reports when it opens.
+* *`reports`* lists the unread reports and *`plan report`* renders a plan's completion report; both read. `reports read` marks them read, and `reports open` opens a report's detail, which reads it (xref:24-reports.adoc[Reports]; link:../shared/reports.adoc[Reports] is what both clients show). Those two are operator acts because reading changes the state every client shows; the console prints the count of unread reports when it opens.
 * *The flags of the actions* on plans and epics are those of xref:19-actions.adoc[Actions on Plans and Epics], which says what each does; the listing above repeats them, 19 is the reference.
 * *No designer*: designing a plan's process (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3]) is offered in the web app only (link:../web-app/process-designer.adoc[Web App, Process Designer]); `help` says so in one line (`operator.help.designer`, link:../web-app/process-designer-texts.adoc#texts[its text]) and offers no verb for it.
 * *The console commands* (`plans`, `plan`, `epic`, `questions`, `answer`, `web` without a verb of the specification, `help`, `exit`) exist only inside the console; they are not shell verbs. `web qr` prints the QR code of the open pairing code again, with its URL, and `web pair` replaces the code (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#fresh-code[A Fresh Code after a Redemption]).
@@ -156,7 +159,7 @@ A consent is never implied: no argument but `--consent <kind>` answers a consent
 [#exit-codes]
 === Exit Codes
 
-The exit codes are those of a verb run as one shell command; the console itself exits with `0` (`exit`, `Ctrl+D`) or `4` (operator checks).
+The exit codes are those of a verb run as one shell command; the console itself always exits with `0` (`exit`, `Ctrl+D`), and a refused act prints the refusal and leaves the console open.
 
 [cols="1,4",options="header"]
 |===

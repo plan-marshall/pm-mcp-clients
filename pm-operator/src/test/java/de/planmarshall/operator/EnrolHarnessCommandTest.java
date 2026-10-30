@@ -28,8 +28,10 @@ import java.time.Duration;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HexFormat;
+import java.util.Map;
 import org.jline.terminal.impl.DumbTerminal;
 
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.resource.HarnessEnrolmentResource;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -268,7 +270,8 @@ class EnrolHarnessCommandTest {
                             "enrol-harness", "claude", "--yes");
 
         assertEquals(4, code);
-        assertTrue(error.toString().contains("coding-agent environment detected (claude)"), error.toString());
+        assertTrue(error.toString().contains(MessageCatalogue.format("en", OperatorGate.AGENT_REFUSED_KEY,
+                            Map.of(OperatorGate.MARKER_PARAM, "CLAUDE_CODE"))), error.toString());
         assertTrue(writer.toString().isEmpty());
         assertFalse(Files.exists(marker), "the probe was never reached");
     }
