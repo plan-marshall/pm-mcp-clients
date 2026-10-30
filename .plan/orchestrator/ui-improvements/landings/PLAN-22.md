@@ -85,7 +85,9 @@ both confirmed at the base before the rewrite.
 ## Follow-Ups
 
 - **Incomplete landing facts** (`total_tokens`, `plugin_version` unknown): recurrence on the Open Defect.
-- **Follow-up PR #276 is open** (`fix/22-cli-state-dialogue-followup`, state `open`, `mergeable`, merge state `clean`,
+- **Addendum 2026-10-30: PR #276 merged** as `44803a77` through the merge queue, at the operator's word; the branch and the
+  local worktree are gone. The paragraph below is the state at the time of the analysis.
+- **Follow-up PR #276 was open** (`fix/22-cli-state-dialogue-followup`, state `open`, `mergeable`, merge state `clean`,
   checked through `ci pr view`). It carries the two round-3 fixes: the German `--auto` line repeating the runtime's
   English summary, and `onboard.auto.consent.title` and `onboard.auto.result.title` defined twice per locale in
   `onboarding.{en,de}.properties`. The run reports CI and Sonar green at `eebbeeb6` and CodeRabbit refused on quota
