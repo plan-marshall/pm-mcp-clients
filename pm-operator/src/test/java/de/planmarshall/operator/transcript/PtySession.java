@@ -44,6 +44,10 @@ public final class PtySession implements AutoCloseable {
     private static final String SHELL = "/bin/sh";
     private static final Duration POLL = Duration.ofMillis(25);
 
+    /** The console's prompt without badges and with them; a screen line ends at the last glyph. */
+    private static final String CONSOLE_PROMPT_BARE = "pm \u203a";
+    private static final String CONSOLE_PROMPT_BADGED = "pm [";
+
     private final Process process;
     private final OutputStream stdin;
     private final ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -129,6 +133,36 @@ public final class PtySession implements AutoCloseable {
                 throw new InterruptedException();
             }
         }
+    }
+
+    /**
+     * Waits until the console's prompt is on screen, with or without the badges the runtime's
+     * {@code needs_operator} summary yields (04-console.adoc#prompt).
+     *
+     * @param timeout the maximum wait
+     * @return {@code true} when the prompt appeared, {@code false} on the timeout or an ended process
+     * @throws InterruptedException if interrupted while waiting
+     */
+    public boolean awaitConsolePrompt(Duration timeout) throws InterruptedException {
+        Objects.requireNonNull(timeout, "timeout");
+        var deadline = System.nanoTime() + timeout.toNanos();
+        while (true) {
+            if (atConsolePrompt()) {
+                return true;
+            }
+            if (!process.isAlive() || System.nanoTime() >= deadline) {
+                return atConsolePrompt();
+            }
+            LockSupport.parkNanos(POLL.toNanos());
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
+        }
+    }
+
+    private boolean atConsolePrompt() {
+        var screen = screenText();
+        return screen.contains(CONSOLE_PROMPT_BARE) || screen.contains(CONSOLE_PROMPT_BADGED);
     }
 
     /**

@@ -320,6 +320,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String ENROL_CURRENT_SHA256 =
             "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
     private static final String CONST_DECISION = "decision";
+    private static final String DECISION_OPENED = EventName.DECISION_OPENED.wire();
+    private static final String DECISION_ANSWERED = EventName.DECISION_ANSWERED.wire();
+    private static final String DECISION_CLOSED = EventName.DECISION_CLOSED.wire();
     private static final String PATH_CONNECTION_STATUS = "/api/v1/status/connection";
     private static final String PATH_LAN_LISTENER = "/api/v1/web/listeners/lan";
     private static final String PATH_CREDENTIALS = "/api/v1/credentials/";
@@ -5343,6 +5346,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         applyStateRuntimeToStatus(copy);
         copy.put("lifecycle_state", lifecycleState.name().toLowerCase());
         copy.put("listeners", listenerMaps());
+        copy.put("needs_operator", waitingCounts());
         synchronized (devicesLock) {
             copy.put("paired_devices_count", pairedDevices.size());
         }
@@ -5358,6 +5362,29 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
         response.json(route.status(), copy);
+    }
+
+    /**
+     * Counts what waits for the operator, by the kind the clients badge it as
+     * (04-console.adoc#prompt): the decisions the runtime holds open, and the holds a plan or epic
+     * carries. The clients never count these themselves; they read this map.
+     *
+     * @return the waiting count per kind, in the order the kinds became non-empty
+     */
+    private Map<String, Object> waitingCounts() {
+        var kinds = new LinkedHashMap<String, Integer>();
+        synchronized (decisionsLock) {
+            for (var decision : openDecisions.values()) {
+                kinds.merge(decision.isWaiver() ? "waiver_request" : "decision", 1, Integer::sum);
+            }
+        }
+        synchronized (controlLock) {
+            for (var hold : controlHolds.values()) {
+                var kind = hold.kind() != null && !hold.kind().isBlank() ? hold.kind() : "held";
+                kinds.merge(kind, 1, Integer::sum);
+            }
+        }
+        return new LinkedHashMap<>(kinds);
     }
 
     private void handleRouteWithDynamicStatus(RouteDefinition route, String path, MockHttpResponse response) throws IOException {
@@ -5996,8 +6023,49 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 // Ignore parse errors from broadcast body
             }
         }
+        applyStateEffectOf(event, data);
         broadcastEvent(event, data);
         response.json(200, Map.of(KEY_STATUS, "broadcasted", KEY_EVENT, event));
+    }
+
+    /**
+     * Applies the state effect an event announces, so a simulated event leaves a coherent runtime:
+     * an opened decision joins the open ones, an answer or a close removes it, and the console's
+     * badge therefore follows.
+     *
+     * @param event the event name
+     * @param data  the event payload
+     */
+    private void applyStateEffectOf(String event, Object data) {
+        if (!(DECISION_OPENED.equals(event) || DECISION_ANSWERED.equals(event)
+                || DECISION_CLOSED.equals(event))) {
+            return;
+        }
+        var payload = JsonTree.asObject(data);
+        if (payload == null) {
+            return;
+        }
+        var decision = JsonTree.object(payload, "decision");
+        var source = decision != null ? decision : payload;
+        var id = JsonTree.string(source, "id");
+        if (id == null) {
+            return;
+        }
+        if (DECISION_OPENED.equals(event)) {
+            try {
+                var opened = DecisionEnvelope.fromMap(source);
+                synchronized (decisionsLock) {
+                    openDecisions.putIfAbsent(id, opened);
+                }
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (RuntimeException _) {
+                // a payload that is not a decision envelope opens nothing; the notice still goes out
+            }
+        } else {
+            synchronized (decisionsLock) {
+                openDecisions.remove(id);
+            }
+        }
     }
 
     /**
@@ -7994,7 +8062,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decisionsLock) {
             openDecisions.put(decision.id(), decision);
         }
-        broadcastEvent("decision.opened", Map.of(CONST_DECISION, decision.toMap()));
+        broadcastEvent(DECISION_OPENED, Map.of(CONST_DECISION, decision.toMap()));
     }
 
     private static @Nullable String extractPlan(DecisionEnvelope entry) {
@@ -8181,13 +8249,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decisionsLock) {
             openDecisions.remove(decisionId);
         }
-        broadcastEvent("decision.answered", Map.of(
+        broadcastEvent(DECISION_ANSWERED, Map.of(
                 "id", decisionId,
                 "answer", outcome + " (" + reason + ")",
                 "channel", answerReq.channel(),
                 "device", answerReq.device() != null ? answerReq.device() : ""
         ));
-        broadcastEvent("decision.closed", Map.of(
+        broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", outcome,
                 "reason", reason
@@ -8217,13 +8285,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         var channel = answerReq.channel();
         var device = answerReq.device() != null ? answerReq.device() : "";
-        broadcastEvent("decision.answered", Map.of(
+        broadcastEvent(DECISION_ANSWERED, Map.of(
                 "id", decisionId,
                 "answer", chosen,
                 "channel", channel,
                 "device", device
         ));
-        broadcastEvent("decision.closed", Map.of(
+        broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", "answered",
                 "answer", chosen
@@ -8293,7 +8361,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
 
-        broadcastEvent("decision.closed", Map.of(
+        broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
                 "outcome", "withdrawn",
                 "reason", "none_fits"
@@ -8309,7 +8377,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (decisionsLock) {
             openDecisions.put("Q-009", replacement);
         }
-        broadcastEvent("decision.opened", Map.of(CONST_DECISION, replacement.toMap()));
+        broadcastEvent(DECISION_OPENED, Map.of(CONST_DECISION, replacement.toMap()));
 
         response.json(200, Map.of(KEY_STATUS, "withdrawn", "id", decisionId));
     }

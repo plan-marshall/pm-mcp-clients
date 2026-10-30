@@ -71,7 +71,6 @@ class TuiCapabilityIT {
     private static final String TERM = "TERM";
     private static final String TERM_PROGRAM = "TERM_PROGRAM";
     private static final String PATH = "PATH";
-    private static final String PROMPT = "pm \u203a";
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
                         MachinePaths.class, CommandLine.class, JsonFactory.class,
@@ -318,14 +317,14 @@ class TuiCapabilityIT {
     void systemInConsoleOpens() throws Exception {
         startScenario(StandardScenarios.REPORTS_AND_SYSTEM);
         try (var session = start(List.of(), Map.of(), 120, 30)) {
-            assertTrue(session.awaitText(PROMPT, TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitConsolePrompt(TIMEOUT), session.rawOutput());
 
             session.send("system\n");
             assertTrue(session.awaitText("System", TIMEOUT), session.rawOutput());
             assertTrue(session.alternateScreenActive(), session.screenText());
 
             session.send("q");
-            assertTrue(session.awaitText(PROMPT, TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitConsolePrompt(TIMEOUT), session.rawOutput());
             assertTrue(session.alternateScreenExits() >= 1, session.screenText());
 
             session.send("exit\n");
@@ -406,7 +405,7 @@ class TuiCapabilityIT {
     @DisplayName("typing plans in the console opens the same view and returns to the prompt")
     void consolePlansHandsOff() throws Exception {
         try (var session = start(List.of(), Map.of(), 120, 30)) {
-            assertTrue(session.awaitText(PROMPT, TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitConsolePrompt(TIMEOUT), session.rawOutput());
 
             session.send("plans\n");
             assertTrue(session.awaitText("Running work", TIMEOUT), session.rawOutput());
@@ -414,7 +413,7 @@ class TuiCapabilityIT {
             assertEquals(1, session.alternateScreenEntries(), session.rawOutput());
 
             session.send("q");
-            assertTrue(session.awaitText(PROMPT, TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitConsolePrompt(TIMEOUT), session.rawOutput());
             assertTrue(session.alternateScreenExits() >= 1, session.screenText());
             assertTrue(session.cursorVisible(), session.screenText());
 
@@ -428,14 +427,14 @@ class TuiCapabilityIT {
     @DisplayName("typing tui in the console opens the same view and returns to the prompt")
     void consoleTuiHandsOff() throws Exception {
         try (var session = start(List.of(), Map.of(), 120, 30)) {
-            assertTrue(session.awaitText(PROMPT, TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitConsolePrompt(TIMEOUT), session.rawOutput());
 
             session.send("tui\n");
             assertTrue(session.awaitText("Running work", TIMEOUT), session.rawOutput());
             assertTrue(session.alternateScreenActive(), session.screenText());
 
             session.send("q");
-            assertTrue(session.awaitText(PROMPT, TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitConsolePrompt(TIMEOUT), session.rawOutput());
             assertTrue(session.alternateScreenExits() >= 1, session.screenText());
 
             session.send("exit\n");
