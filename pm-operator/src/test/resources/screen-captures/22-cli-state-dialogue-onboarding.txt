@@ -30,7 +30,7 @@ project-setup-80x24-en | projects-and-start | projects.being-added | project set
 project-setup-120x30-de | projects-and-start | projects.being-added | project setup cui-parent | - | 120x30 | de_DE.UTF-8 | -
 project-setup-80x24-de | projects-and-start | projects.being-added | project setup cui-parent | - | 80x24 | de_DE.UTF-8 | -
 
-entry-guided-completed-120x30-en | onboarding | - |  | - | 120x30 | en_US.UTF-8 | - | h\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
-entry-guided-completed-80x24-en | onboarding | - |  | - | 80x24 | en_US.UTF-8 | - | h\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
-entry-guided-completed-120x30-de | onboarding | - |  | - | 120x30 | de_DE.UTF-8 | - | h\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
-entry-guided-completed-80x24-de | onboarding | - |  | - | 80x24 | de_DE.UTF-8 | - | h\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
+entry-guided-completed-120x30-en | onboarding | - |  | - | 120x30 | en_US.UTF-8 | - | h\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
+entry-guided-completed-80x24-en | onboarding | - |  | - | 80x24 | en_US.UTF-8 | - | h\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
+entry-guided-completed-120x30-de | onboarding | - |  | - | 120x30 | de_DE.UTF-8 | - | h\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n
+entry-guided-completed-80x24-de | onboarding | - |  | - | 80x24 | de_DE.UTF-8 | - | h\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n

@@ -44,7 +44,7 @@ class OnboardingCatalogueTest {
 
     @Test
     @DisplayName("every state the scenario reaches carries a title in both locales")
-    void everyReachableStateHasATitle() throws IOException {
+    void everyReachableStateHasATitle() throws Exception {
         var missing = new ArrayList<String>();
         for (var stateId : reachableStates()) {
             var key = titleKey(stateId);
@@ -59,7 +59,7 @@ class OnboardingCatalogueTest {
 
     @Test
     @DisplayName("every link a reachable state offers carries a label in both locales")
-    void everyLinkHasALabel() throws IOException {
+    void everyLinkHasALabel() throws Exception {
         var missing = new ArrayList<String>();
         for (var entry : reachableLinks().entrySet()) {
             for (var linkId : entry.getValue()) {
@@ -76,7 +76,7 @@ class OnboardingCatalogueTest {
 
     @Test
     @DisplayName("the traversal reads the scenario it guards")
-    void traversalReadsTheScenario() throws IOException {
+    void traversalReadsTheScenario() throws Exception {
         var states = reachableStates();
         assertTrue(states.size() > 20, "the traversal found only " + states);
         assertTrue(states.contains(START), states.toString());

@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
@@ -21,7 +22,6 @@ import org.jspecify.annotations.Nullable;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.runtime.RuntimeClient;
-
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 import de.planmarshall.operator.dialogue.OnboardingSource;
 import de.planmarshall.operator.dialogue.StateDialogue;
@@ -196,7 +196,7 @@ public final class OnboardCommand implements Callable<Integer> {
                             "aspect", MessageCatalogue.format(locale, "onboard.auto.result.aspect", Map.of()),
                             "value", MessageCatalogue.format(locale, "onboard.auto.result.value", Map.of()),
                             "reason", MessageCatalogue.format(locale, "onboard.auto.result.reason", Map.of()))));
-        if (!(frame.facts().get("results") instanceof java.util.List<?> results)) {
+        if (!(frame.facts().get("results") instanceof List<?> results)) {
             return;
         }
         for (var item : results) {

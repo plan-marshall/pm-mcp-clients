@@ -6983,7 +6983,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (path.startsWith("/api/v1/projects/") && path.endsWith("/setup")) {
             var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/setup".length());
             response.json(200, projectSetupState(prjId,
-                                projectSetupStates.getOrDefault(prjId, PROJECT_SETUP_IDENTITY)));
+                    projectSetupStates.getOrDefault(prjId, PROJECT_SETUP_IDENTITY)));
             return true;
         }
         if (declaresProjects()
@@ -7348,7 +7348,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @throws IOException if the body cannot be read
      */
     private void handleSetupProject(MockHttpRequest request, MockHttpResponse response,
-                        String projectId) throws IOException {
+            String projectId) throws IOException {
         var body = readBodyMap(request);
         var linkName = JsonTree.string(body, "link");
         var current = projectSetupStates.getOrDefault(projectId, PROJECT_SETUP_IDENTITY);
@@ -7375,17 +7375,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
         body.put("name", displayNameOf(projectId));
         body.put("pilot", false);
         body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
-                            "/api/v1/projects/" + projectId + "/setup", KEY_METHOD, "POST")));
+                "/api/v1/projects/" + projectId + "/setup", KEY_METHOD, "POST")));
         return body;
     }
 
     private String displayNameOf(String projectId) {
         synchronized (projectsLock) {
             return enrolledProjects.stream()
-                                .filter(project -> project.projectId().equals(projectId))
-                                .map(EnrolledProject::displayName)
-                                .findFirst()
-                                .orElse(projectId);
+                    .filter(project -> project.projectId().equals(projectId))
+                    .map(EnrolledProject::displayName)
+                    .findFirst()
+                    .orElse(projectId);
         }
     }
 

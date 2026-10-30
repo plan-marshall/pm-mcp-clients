@@ -22,7 +22,6 @@ import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.ProjectReleaseRequest;
-
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 import de.planmarshall.operator.dialogue.ProjectOnboardingSource;
 import de.planmarshall.operator.dialogue.StateDialogue;

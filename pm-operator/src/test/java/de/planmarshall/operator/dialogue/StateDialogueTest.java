@@ -15,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -93,7 +92,7 @@ class StateDialogueTest {
 
     @Test
     @DisplayName("drives three states, renders each frame and sends the chosen links")
-    void drivesThreeStates() throws IOException {
+    void drivesThreeStates() throws Exception {
         var source = new FakeSource(mode(), language(), completed());
         var writer = new StringWriter();
 

@@ -12,6 +12,7 @@ package de.planmarshall.operator.dialogue;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -80,7 +81,7 @@ public final class StateDialogue {
 
         public Frame {
             Objects.requireNonNull(stateId, "stateId");
-            facts = java.util.Collections.unmodifiableMap(new LinkedHashMap<>(
+            facts = Collections.unmodifiableMap(new LinkedHashMap<>(
                                 Objects.requireNonNull(facts, "facts")));
             links = List.copyOf(Objects.requireNonNull(links, "links"));
         }
@@ -452,7 +453,7 @@ public final class StateDialogue {
         var id = stateId.substring(PROJECT_PREFIX.length());
         return switch (id) {
             case "checkout", "identity", "enrolment", "own", "team", "architecture", "landing",
-                                    "roles", "descriptions", "commit" -> id;
+                "roles", "descriptions", "commit" -> id;
             default -> "done";
         };
     }
@@ -531,10 +532,10 @@ public final class StateDialogue {
     private static boolean isStructural(String key) {
         return switch (key) {
             case "state", "scope", "links", "facts", "summary", "runtime", "operator",
-                                    "completed_steps", "steps", "step", "total_steps", "auto",
-                                    "step_summaries", "harnesses", "models", "roles",
-                                    "stores", "providers", "checks", "aspects", "verification",
-                                    "usage", "link" -> true;
+                "completed_steps", "steps", "step", "total_steps", "auto",
+                "step_summaries", "harnesses", "models", "roles",
+                "stores", "providers", "checks", "aspects", "verification",
+                "usage", "link" -> true;
             default -> false;
         };
     }
