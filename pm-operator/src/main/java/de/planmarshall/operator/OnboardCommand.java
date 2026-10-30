@@ -88,7 +88,7 @@ public final class OnboardCommand implements Callable<Integer> {
         var out = spec.commandLine().getOut();
         var runtime = context.runtime(true);
         var locale = context.clientEnvironment().locale();
-        var source = new OnboardingSource(runtime);
+        var source = new OnboardingSource(runtime, context.gate());
         try {
             if (auto) {
                 return runAutomatic(out, runtime, source, locale);

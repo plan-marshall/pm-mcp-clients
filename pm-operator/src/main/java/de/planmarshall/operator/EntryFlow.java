@@ -227,12 +227,15 @@ public final class EntryFlow {
      */
     private void runOnboardingDialogue(RuntimeClient runtime, PrintWriter out, LineReader reader,
                         String locale) {
-        var dialogue = new StateDialogue(new OnboardingSource(runtime), out, locale,
+        var dialogue = new StateDialogue(new OnboardingSource(runtime, context.gate()), out, locale,
                             stateId -> new ChoicePrompt(reader, out, locale, stateId));
         try {
             dialogue.run();
         } catch (StartPrompt.StartLeftException | StartPrompt.MissingInputException _) {
             // leaving the dialogue sends nothing; the runtime keeps the state it reports
+        } catch (OperatorRefusedException e) {
+            out.println(e.getMessage());
+            out.flush();
         } catch (IOException _) {
             out.println(MessageCatalogue.format(locale, "onboard.error.no_state", Map.of()));
             out.flush();

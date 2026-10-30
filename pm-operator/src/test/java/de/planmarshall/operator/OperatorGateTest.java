@@ -64,7 +64,9 @@ class OperatorGateTest {
             var ex = assertThrows(OperatorSecurityException.class, gate::verify);
             assertAll(
                                 () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
-                                () -> assertEquals(terminalRefusal("en"), ex.getMessage())
+                                () -> assertEquals(terminalRefusal("en"), ex.getMessage()),
+                                () -> assertTrue(ex.getMessage().contains("not attached to an interactive terminal")),
+                                () -> assertTrue(ex.getMessage().contains("terminal of your own"))
             );
         }
     }

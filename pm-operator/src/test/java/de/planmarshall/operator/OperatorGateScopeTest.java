@@ -33,6 +33,8 @@ import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.actions.WorkActionsClient;
+import de.planmarshall.operator.dialogue.OnboardingSource;
+import de.planmarshall.operator.dialogue.ProjectOnboardingSource;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -379,6 +381,12 @@ class OperatorGateScopeTest {
                                                 () -> client.chatProposal("plan", "fix-relay", true)),
                             () -> assertThrows(OperatorRefusedException.class,
                                                 () -> client.performLanding("pm-mcp-clients", "unit", "land")),
+                            () -> assertThrows(OperatorRefusedException.class,
+                                                () -> new OnboardingSource(context.runtime(true), context.gate())
+                                                                    .choose("begin")),
+                            () -> assertThrows(OperatorRefusedException.class,
+                                                () -> new ProjectOnboardingSource(context.runtime(true),
+                                                                    context.gate(), "c1").choose("begin")),
                             () -> assertTrue(requests.isEmpty(), requests.toString()));
     }
 

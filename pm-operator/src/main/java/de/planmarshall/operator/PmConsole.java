@@ -261,12 +261,15 @@ public final class PmConsole {
     private void continueOnboarding(PrintWriter out, LineReader reader, String locale) {
         try {
             var runtime = context.runtime(true);
-            var dialogue = new StateDialogue(new OnboardingSource(runtime), out, locale,
+            var dialogue = new StateDialogue(new OnboardingSource(runtime, context.gate()), out, locale,
                                 stateId -> new ChoicePrompt(reader, out, locale, stateId));
             dialogue.run();
             refreshSetupBadge(runtime, locale);
         } catch (StartPrompt.StartLeftException | StartPrompt.MissingInputException _) {
             // leaving the dialogue sends nothing; the runtime keeps the state it reports
+        } catch (OperatorRefusedException e) {
+            out.println(e.getMessage());
+            out.flush();
         } catch (IOException _) {
             out.println(MessageCatalogue.format(locale, "onboard.error.no_state", Map.of()));
             out.flush();

@@ -301,7 +301,7 @@ public final class WebCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            if (changesADevice()) {
+            if (changesADevice() || interactive) {
                 context.gate().verify();
             }
             var runtime = context.runtime(true);

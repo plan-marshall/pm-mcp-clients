@@ -32,6 +32,8 @@ final class OperatorActs {
 
     private static final String LIST = "list";
 
+    private static final String COPY = "copy";
+
     private static final String CHAT = "chat";
 
     private static final String CANCEL = "cancel";
@@ -101,6 +103,9 @@ final class OperatorActs {
     }
 
     private static boolean webAct(List<String> rest) {
+        if (!rest.isEmpty() && COPY.equals(rest.get(0))) {
+            return false;
+        }
         if (rest.isEmpty() || !DEVICES.equals(rest.get(0))) {
             return true;
         }

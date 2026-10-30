@@ -78,7 +78,8 @@ class DialogueSourceTest {
             }
         });
 
-        var source = new OnboardingSource(context().runtime(true));
+        var context = context();
+        var source = new OnboardingSource(context.runtime(true), context.gate());
         var frame = source.fetch();
         var next = source.choose("begin");
 
@@ -110,7 +111,7 @@ class DialogueSourceTest {
             }
         });
 
-        var source = new ProjectOnboardingSource(context().runtime(true), "cui-parent");
+        var source = new ProjectOnboardingSource(context().runtime(true), context().gate(), "cui-parent");
         var frame = source.fetch();
         var next = source.choose("set");
 
@@ -126,8 +127,8 @@ class DialogueSourceTest {
     void refusesAnUnreadableState() throws Exception {
         fixture.start((request, response) -> response.send(500, null, ""));
 
-        var onboarding = new OnboardingSource(context().runtime(true));
-        var project = new ProjectOnboardingSource(context().runtime(true), "cui-parent");
+        var onboarding = new OnboardingSource(context().runtime(true), context().gate());
+        var project = new ProjectOnboardingSource(context().runtime(true), context().gate(), "cui-parent");
         assertAll(
                             () -> assertThrows(IOException.class, onboarding::fetch),
                             () -> assertThrows(IOException.class, project::fetch));
