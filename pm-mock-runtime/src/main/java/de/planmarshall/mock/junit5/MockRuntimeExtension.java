@@ -266,9 +266,9 @@ public class MockRuntimeExtension implements BeforeEachCallback, AfterEachCallba
     }
 
     /**
-     * Logs a failed runtime start. Package-private so that the logging contract is testable: the
-     * ledger record of this message is asserted beside the failing start, and the close that follows
-     * an already-broken runtime is not reachable from the production seams.
+     * Logs a failed runtime start. The record is asserted through a failing {@code beforeEach}; the
+     * method stays package-private beside {@link #logCloseFailure} so both production messages have
+     * the same surface.
      *
      * @param failure the failure that ended the setup
      */
@@ -277,7 +277,9 @@ public class MockRuntimeExtension implements BeforeEachCallback, AfterEachCallba
     }
 
     /**
-     * Logs a failed runtime close.
+     * Logs a failed runtime close. Package-private so that the logging contract is testable: a
+     * {@link MockRuntime} is final and its {@code close()} catches every {@link IOException}, so no
+     * production path reaches the catch that calls this method.
      *
      * @param failure the failure that ended the close
      */

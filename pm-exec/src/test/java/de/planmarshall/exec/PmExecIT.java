@@ -174,7 +174,7 @@ class PmExecIT {
     @Test
     @DisplayName("a plain exec runs the program with its arguments and reports first")
     void plainExec() throws Exception {
-        // One argument that carries a space: the vector reaches the program element by element.
+        // The generated argument carries a space; echo prints it back unchanged.
         var argument = Generators.letterStrings(1, 6).next() + " " + Generators.letterStrings(1, 6).next();
         var result = run(confinedOptions(), "/bin/echo", argument);
 
