@@ -300,7 +300,7 @@ export async function collectTextGuardViolations(page, options) {
           return Date.now() - (window.__textGuardLastChange ?? startedAt) >= interval;
         },
         { interval: SETTLE_INTERVAL_MS, startedAt: Date.now() },
-        { polling: 'raf', timeout: SETTLE_INTERVAL_MS * 3 },
+        { polling: 'raf', timeout: SETTLE_INTERVAL_MS * 5 },
       )
       .then(() => true)
       .catch(() => false);

@@ -92,8 +92,9 @@ hard rules:
 - No arbitrary timer wait in a test: no `waitForTimeout` and no `setTimeout` that only passes time. Wait on the
   condition the code produces — an awaited event, a `waitFor` or fake timers.
 - The npm scripts `lint`, `format`, `test`, `test:ci-strict` and `quality` stay in every web `package.json`. `quality`
-  is the local full check (lint plus tests); the Maven build runs `lint` and the tests that need no browser (`test:ci`
-  in `pm-web-app`, `test:ports-guard` in `pm-web-e2e`).
+  is the module's local full check (`lint` plus `format:check` in `pm-web-e2e`, `lint` plus `test:ci` in `pm-web-app`);
+  the Maven build runs `lint` and the tests that need no browser (`test:ci` in `pm-web-app`, `test:ports-guard` in
+  `pm-web-e2e`).
 - The Svelte and SvelteKit layout under `src/` is this project's own structure and stands in for the standard project
   types of `pm-dev-frontend-cui:cui-javascript-project` (no `src/main/resources/static/js/`, `src/main/webapp/js/` or
   `src/main/js/`).
