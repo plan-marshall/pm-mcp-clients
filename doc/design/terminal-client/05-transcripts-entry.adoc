@@ -156,7 +156,15 @@ plan-marshall is running. This machine is not set up yet.
 Where do you want to set it up?   h) here, in the terminal [Enter]   w) in the web app   ?   › ⏎
 
 Set up this machine for plan-marshall
-Begin with step 1? [Enter]   a) decide everything for me   ?   ›
+  Seven steps. Nothing on this machine is looked at, run, or changed until you
+  say so in that step. You can stop at any point; the next visit, here or in
+  pm-operator, continues where you stopped.
+  1  Language: the language of plan-marshall and of the models' texts
+  …
+  7  Plans: how plans run unless a project says otherwise
+  1) Decide everything for me…
+  2) Begin with step 1 ←
+  ›
 ----
 
 * `entry.check-onboarded` prints nothing of its own; it leads to `entry.where-to-onboard` while the onboarding has not reached `onboard.completed`, otherwise to `entry.pairing` (<<t-entry-desktop>>).
@@ -183,8 +191,10 @@ pm [setup 0/7] ›
 [source,text]
 ----
 Set up this machine for plan-marshall
-Begin with step 1? [Enter]   a) decide everything for me   ?   › q
-Left the setup before step 1. Nothing was sent. Enter continues the setup.
+  1) Decide everything for me…
+  2) Begin with step 1 ←
+  › q
+Left Set up this machine for plan-marshall. Nothing was sent.
 pm [setup 0/7] › status
 …
 pm [setup 0/7] › ⏎
@@ -342,7 +352,10 @@ $
 
 [source,text]
 ----
-Begin with step 1? [Enter]   a) decide everything for me   ?   › a
+Set up this machine for plan-marshall
+  1) Decide everything for me…
+  2) Begin with step 1 ←
+  › 1
 Decide everything for me?
   For this run only, without asking again, the server will:
     look for harnesses             claude, opencode, codex, agy in your PATH,
@@ -379,7 +392,10 @@ Decide everything for me?
 y) yes   n) not now   ? lists every action   › n
   Nothing was done.
 Set up this machine for plan-marshall
-Begin with step 1? [Enter]   a) decide everything for me   ?   › a
+Set up this machine for plan-marshall
+  1) Decide everything for me…
+  2) Begin with step 1 ←
+  › 1
 Decide everything for me?
   …
 y) yes   n) not now   ? lists every action   › y
@@ -457,14 +473,15 @@ After _here_ in `entry.where-to-onboard` (<<t-entry-first>>), or in a console wh
 Set up this machine for plan-marshall
 
   Seven steps. Nothing on this machine is looked at, run, or changed until
-  you say so in that step. You can stop at any point; the next run, here or
-  in the web app, continues where you stopped.
+  you say so in that step. You can stop at any point; the next visit, here or
+  in pm-operator, continues where you stopped.
 
-    1  Language     the language of plan-marshall and of the models' texts
+    1  Language: the language of plan-marshall and of the models' texts
     …
-    7  Plans        how plans run unless a project says otherwise
-
-Begin with step 1? [Enter]   a) decide everything for me   ?   › ⏎
+    7  Plans: how plans run unless a project says otherwise
+    1) Decide everything for me…
+    2) Begin with step 1 ←
+    › ⏎
 ----
 
 * The intro of `onboard.mode` is the shared `onboard.entry.intro` with `onboard.mode.resume`; the entry's question says the same with the console's own hint (`operator.entry.resume_hint`).

@@ -105,8 +105,8 @@ class StateDialogueTest {
         assertTrue(output.contains("1) Decide everything for me\u2026"), output);
         assertTrue(output.contains("2) Begin with step 1"), output);
         assertTrue(output.contains("[1/7] Language \u00b7 Choose your languages"), output);
-        assertTrue(output.contains("Interface language: de"), output);
-        assertTrue(output.contains("Model language: same"), output);
+        assertTrue(output.contains("Interface language: Deutsch"), output);
+        assertTrue(output.contains("Model language: same as above"), output);
         assertTrue(output.contains("This machine is ready"), output);
         assertFalse(output.contains(MODE), "a raw state id reached the screen: " + output);
         assertFalse(output.contains(LANGUAGE), "a raw state id reached the screen: " + output);
@@ -126,16 +126,38 @@ class StateDialogueTest {
     }
 
     @Test
-    @DisplayName("balances only the facts whose field the catalogue labels")
+    @DisplayName("renders only the facts whose field the catalogue labels, and a list's items")
     void rendersOnlyLabelledFacts() {
+        var item = new java.util.LinkedHashMap<String, Object>();
+        item.put("name", "Claude Code");
+        item.put("version", "2.4.1");
+        item.put("default", true);
+        var facts = new java.util.LinkedHashMap<String, Object>();
+        facts.put("looks_for", "claude, opencode");
+        facts.put("unlabelled_field", "raw");
+        facts.put("harnesses", List.of(item));
         var frame = new StateDialogue.Frame("harness.consent", "operator_wait", 2, 7, null,
-                            Map.of("looks_for", "claude, opencode", "unlabelled_field", "raw"),
-                            List.of());
+                            facts, List.of());
         var writer = new StringWriter();
         var dialogue = dialogue(new FakeSource(frame), "", writer);
 
         var content = dialogue.content(frame);
 
-        assertEquals(List.of("Looks for: claude, opencode"), content);
+        assertEquals(List.of("Looks for: claude, opencode", "Found harnesses",
+                            "  - Claude Code \u00b7 2.4.1 \u00b7 yes"), content);
+    }
+
+    @Test
+    @DisplayName("leaves a wire token out unless the catalogue names it")
+    void hidesAnUnnamedWireToken() {
+        var facts = new java.util.LinkedHashMap<String, Object>();
+        facts.put("landing", "landing.main");
+        facts.put("posture", "posture.unknown");
+        var frame = new StateDialogue.Frame("defaults.review", "operator_wait", 7, 7, null, facts,
+                            List.of());
+        var writer = new StringWriter();
+        var dialogue = dialogue(new FakeSource(frame), "", writer);
+
+        assertEquals(List.of("Landing: Main branch"), dialogue.content(frame));
     }
 }

@@ -92,9 +92,8 @@ public final class OnboardCommand implements Callable<Integer> {
                 return runStep(out, source, locale);
             }
             return runDialogue(out, source, locale);
-        } catch (IOException e) {
-            out.println(MessageCatalogue.format(locale, "operator.onboard.refused",
-                                Map.of("reason", e.getMessage())));
+        } catch (IOException _) {
+            out.println(MessageCatalogue.format(locale, "operator.onboard.unreadable", Map.of()));
             out.flush();
             return 1;
         }
@@ -168,6 +167,7 @@ public final class OnboardCommand implements Callable<Integer> {
                 LockSupport.parkNanos(POLL_PAUSE_NANOS);
                 frame = source.fetch();
             } else {
+                LockSupport.parkNanos(POLL_PAUSE_NANOS);
                 var link = frame.primary() != null ? frame.primary() : frame.links().getFirst();
                 frame = source.choose(link.id());
             }
@@ -207,12 +207,17 @@ public final class OnboardCommand implements Callable<Integer> {
             var value = Objects.toString(row.get("value"), "");
             var reason = Objects.toString(row.get("reason"), "");
             out.println(MessageCatalogue.format(locale, "onboard.state.result_row", Map.of(
-                                "aspect", MessageCatalogue.format(locale, "onboard.auto.aspect." + aspect,
-                                                    Map.of()),
-                                "value", value,
-                                "reason", MessageCatalogue.format(locale,
-                                                    "onboard.auto.reason." + reason, Map.of()))));
+                                "aspect", autoText("onboard.auto.aspect.", locale, aspect),
+                                "value", TerminalSanitizer.sanitizeLine(value),
+                                "reason", autoText("onboard.auto.reason.", locale, reason))));
         }
+    }
+
+    private static String autoText(String prefix, String locale, String token) {
+        var key = prefix + token;
+        return MessageCatalogue.hasKey(locale, key)
+                            ? MessageCatalogue.format(locale, key, Map.of())
+                            : TerminalSanitizer.sanitizeLine(token);
     }
 
     private boolean confirm(String prompt) throws IOException {

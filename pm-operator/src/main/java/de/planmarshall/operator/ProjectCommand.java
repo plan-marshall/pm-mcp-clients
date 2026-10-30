@@ -194,8 +194,9 @@ public final class ProjectCommand implements Callable<Integer> {
                 return 0;
             } catch (StartPrompt.StartLeftException _) {
                 return 0;
-            } catch (IOException e) {
-                err.printf("Failed to setup project %s: %s%n", sanitizedId, e.getMessage());
+            } catch (IOException _) {
+                err.println(MessageCatalogue.format(locale, "project.setup.unreadable",
+                                    Map.of("project", sanitizedId)));
                 err.flush();
                 return 1;
             }

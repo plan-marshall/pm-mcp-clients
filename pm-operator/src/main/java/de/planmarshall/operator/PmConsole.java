@@ -237,8 +237,6 @@ public final class PmConsole {
             }
         }
         if (hasSetup) {
-            out.println(MessageCatalogue.format(locale, "operator.entry.setup_title", Map.of()));
-            out.flush();
             continueOnboarding(out, reader, locale);
         }
     }

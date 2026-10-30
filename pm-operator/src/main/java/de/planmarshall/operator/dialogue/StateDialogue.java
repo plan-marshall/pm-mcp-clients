@@ -17,12 +17,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.Function;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.operator.TerminalSanitizer;
 
 /**
  * One dialogue over the states a runtime reports ({@code CLI-UC-S-06}, {@code CLI-UC-P-01}): fetch
@@ -48,6 +50,9 @@ public final class StateDialogue {
     private static final String ONBOARD_PREFIX = "onboard.";
     private static final String COMPLETED_KIND = "completed";
     private static final int CONTENT_WIDTH = 76;
+    private static final Set<String> BARE_FIELDS = Set.of(
+                        "name", "summary", "value", "reason", "model_id", "role", "effort",
+                        "aspect", "provider", "harness", "version", "kind", "current", "default");
     private static final List<String> STEP_KEYS = List.of(
                         "language", "harnesses", "models", "roles", "credentials", "providers", "plans");
 
@@ -161,6 +166,7 @@ public final class StateDialogue {
             if (!frame.equals(last)) {
                 render(frame);
                 last = frame;
+                deadline = System.nanoTime() + WORKING_TIMEOUT_NANOS;
             }
             if (frame.isFinal()) {
                 return frame;
@@ -193,7 +199,7 @@ public final class StateDialogue {
                 return link;
             }
         }
-        return frame.links().getFirst();
+        throw new IllegalStateException("the prompt answered a choice the state does not offer");
     }
 
     private void render(Frame frame) {
@@ -265,19 +271,87 @@ public final class StateDialogue {
         }
         var title = title(frame);
         if (frame.summary() != null && !frame.summary().isBlank() && !frame.summary().equals(title)) {
-            lines.add(frame.summary());
+            lines.add(TerminalSanitizer.sanitizeLine(frame.summary()));
         }
         for (var entry : frame.facts().entrySet()) {
             var label = factLabel(frame.stateId(), entry.getKey());
             if (label != null && isScalar(entry.getValue())) {
                 var value = rendered(entry.getValue());
-                if (!isRawToken(value)) {
+                if (value != null) {
                     lines.add(MessageCatalogue.format(locale, "onboard.state.fact_line",
-                                        Map.of("label", label, "value", value)));
+                                        Map.of("label", label,
+                                                            "value", TerminalSanitizer.sanitizeLine(value))));
                 }
+            } else if (label != null && entry.getValue() instanceof List<?> items) {
+                addList(lines, label, items);
             }
         }
         return lines;
+    }
+
+    /**
+     * Renders a list a state reports, one item per line: the fields a catalogue label names, and
+     * the bare content fields (a name, a value, a model) as they stand. A field with neither is left
+     * out, so no id or wire token of the runtime reaches the screen.
+     *
+     * @param lines the content lines to complete
+     * @param label the list's own label
+     * @param items the reported items
+     */
+    private void addList(List<String> lines, String label, List<?> items) {
+        lines.add(label);
+        for (var item : items) {
+            if (!(item instanceof Map<?, ?> map)) {
+                continue;
+            }
+            var parts = new ArrayList<String>();
+            for (var entry : map.entrySet()) {
+                var field = String.valueOf(entry.getKey());
+                var value = rendered(entry.getValue());
+                if (value == null) {
+                    continue;
+                }
+                var own = itemLabel(field);
+                if (own != null) {
+                    parts.add(own + " " + TerminalSanitizer.sanitizeLine(value));
+                } else if (BARE_FIELDS.contains(field)) {
+                    parts.add(TerminalSanitizer.sanitizeLine(itemValue(field, value)));
+                }
+            }
+            if (!parts.isEmpty()) {
+                lines.add(MessageCatalogue.format(locale, "onboard.state.item_line",
+                                    Map.of("item", String.join(" \u00b7 ", parts))));
+            }
+        }
+    }
+
+    private @Nullable String itemLabel(String field) {
+        var key = "onboard.item." + field;
+        return MessageCatalogue.hasKey(locale, key)
+                            ? MessageCatalogue.format(locale, key, Map.of())
+                            : null;
+    }
+
+    /**
+     * @param field the item's field
+     * @param value the rendered value
+     * @return the value as its own catalogue name where the field names an aspect or a reason
+     */
+    private String itemValue(String field, String value) {
+        if ("aspect".equals(field)) {
+            return autoText("onboard.auto.aspect.", value);
+        }
+        if ("reason".equals(field)) {
+            return autoText("onboard.auto.reason.", value);
+        }
+        return value;
+    }
+
+    private String autoText(String prefix, String token) {
+        var key = prefix + token;
+        return MessageCatalogue.hasKey(locale, key)
+                            ? MessageCatalogue.format(locale, key, Map.of())
+                            : token;
     }
 
     private void addStepOverview(List<String> lines) {
@@ -293,18 +367,39 @@ public final class StateDialogue {
 
     /**
      * @param value a reported value
+     * @return the value as the screen may show it, or {@code null} where the value is a wire token
+     *         the catalogue does not name; such a value is left out rather than printed raw
+     */
+    static @Nullable String rendered(String locale, Object value) {
+        if (value instanceof Boolean flag) {
+            return MessageCatalogue.format(locale, "onboard.state.boolean." + flag, Map.of());
+        }
+        var text = String.valueOf(value);
+        var own = "onboard.value." + text;
+        if (MessageCatalogue.hasKey(locale, own)) {
+            return MessageCatalogue.format(locale, own, Map.of());
+        }
+        if (!isRawToken(text)) {
+            return text;
+        }
+        var unit = "unit." + text;
+        if (MessageCatalogue.hasKey(locale, unit)) {
+            return MessageCatalogue.format(locale, unit, Map.of());
+        }
+        return null;
+    }
+
+    private @Nullable String rendered(Object value) {
+        return rendered(locale, value);
+    }
+
+    /**
+     * @param value a reported value
      * @return whether the value is a raw wire token (a dotted enum such as {@code landing.pull-request})
      *         that only the catalogue may render; such a value is left out rather than printed raw
      */
     private static boolean isRawToken(String value) {
         return value.matches("[a-z][a-z0-9_-]*(\\.[a-z][a-z0-9_-]*)+");
-    }
-
-    private String rendered(Object value) {
-        if (value instanceof Boolean flag) {
-            return MessageCatalogue.format(locale, "onboard.state.boolean." + flag, Map.of());
-        }
-        return String.valueOf(value);
     }
 
     private static boolean isScalar(@Nullable Object value) {
@@ -335,7 +430,7 @@ public final class StateDialogue {
             }
         }
         if (frame.summary() != null && !frame.summary().isBlank() && frame.summary().indexOf('{') < 0) {
-            return frame.summary();
+            return TerminalSanitizer.sanitizeLine(frame.summary());
         }
         return MessageCatalogue.format(locale, "onboard.state.untitled", Map.of());
     }
@@ -370,6 +465,10 @@ public final class StateDialogue {
         var shared = "onboard.link." + linkId;
         if (MessageCatalogue.hasKey(locale, shared)) {
             return MessageCatalogue.format(locale, shared, Map.of());
+        }
+        var mode = "onboard.mode." + linkId;
+        if (MessageCatalogue.hasKey(locale, mode)) {
+            return MessageCatalogue.format(locale, mode, Map.of());
         }
         var consent = "common.consent." + linkId;
         if (MessageCatalogue.hasKey(locale, consent)) {
@@ -533,9 +632,7 @@ public final class StateDialogue {
         return switch (key) {
             case "state", "scope", "links", "facts", "summary", "runtime", "operator",
                 "completed_steps", "steps", "step", "total_steps", "auto",
-                "step_summaries", "harnesses", "models", "roles",
-                "stores", "providers", "checks", "aspects", "verification",
-                "usage", "link" -> true;
+                "step_summaries", "verification", "usage", "link" -> true;
             default -> false;
         };
     }

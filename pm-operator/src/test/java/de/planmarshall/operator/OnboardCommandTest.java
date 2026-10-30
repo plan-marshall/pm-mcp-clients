@@ -122,7 +122,7 @@ class OnboardCommandTest {
     class Onboard {
 
         @Test
-        @DisplayName("shows the current state and its offered steps")
+        @DisplayName("shows the current state as the dialogue's first frame")
         void showsCurrentState() throws Exception {
             seedOnboardingRoutes();
 
@@ -453,7 +453,8 @@ class OnboardCommandTest {
 
         assertAll(
                             () -> assertEquals(1, code),
-                            () -> assertTrue(writer.toString().contains("Refused")));
+                            () -> assertTrue(writer.toString().contains("The onboarding could not be read."),
+                                                writer.toString()));
     }
 
     @Test

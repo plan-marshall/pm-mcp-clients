@@ -65,6 +65,7 @@ class OnboardingCatalogueTest {
             for (var linkId : entry.getValue()) {
                 for (var locale : LOCALES) {
                     if (!MessageCatalogue.hasKey(locale, "onboard.link." + linkId)
+                                        && !MessageCatalogue.hasKey(locale, "onboard.mode." + linkId)
                                         && !MessageCatalogue.hasKey(locale, "common.consent." + linkId)) {
                         missing.add(locale + ": " + entry.getKey() + " -> " + linkId);
                     }
