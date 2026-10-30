@@ -7445,7 +7445,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         body.put(KEY_TOTAL_STEPS, 10);
         if (PROJECT_SETUP_COMPLETED.equals(stateId)) {
             body.put(KEY_STEP, 10);
-            body.put("summary", projectId + PROJECT_SETUP_READY_SUFFIX);
+            body.put(FIXTURE_SUMMARY, projectId + PROJECT_SETUP_READY_SUFFIX);
             body.put(KEY_LINKS, Map.of());
             return body;
         }

@@ -61,6 +61,7 @@ public final class StateDialogue {
     private static final String LINKS = "links";
     private static final String STEP_KEY_PREFIX = "onboard.step.";
     private static final String STEP_OWN = "own";
+    private static final String STEP_ENROLMENT = "enrolment";
     private static final String STEP_ROLES = "roles";
     private static final String STEP_DONE = "onboard.step.done";
     private static final String DONE = "done";
@@ -619,7 +620,7 @@ public final class StateDialogue {
         var id = stateId.substring(PROJECT_PREFIX.length());
         return switch (id) {
             case "consent", "detect", "run-consent", "probe", "checkout" -> "checkout";
-            case "enrol", "enrolment" -> "enrolment";
+            case "enrol", STEP_ENROLMENT -> STEP_ENROLMENT;
             case "operator", STEP_OWN -> STEP_OWN;
             case "identity", "team", "architecture", "landing",
                 STEP_ROLES, "descriptions", "commit" -> id;
