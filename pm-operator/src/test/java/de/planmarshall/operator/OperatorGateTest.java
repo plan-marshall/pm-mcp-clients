@@ -74,54 +74,13 @@ class OperatorGateTest {
     class HostDetectionGate {
 
         @ParameterizedTest
-        @ValueSource(strings = {"CLAUDE_CODE_SESSION_ID", "CLAUDECODE", "CLAUDE_CODE", "CLAUDE_PROJECT_ROOT"})
-        @DisplayName("detects and refuses Claude Code host signals")
-        void detectsClaudeCode(String varName) {
-            var env = Map.of(varName, "1");
-            var context = new OperatorContext(env, home, true);
-            var gate = new OperatorGate(context);
-
-            var ex = assertThrows(OperatorSecurityException.class, gate::verify);
-            assertAll(
-                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
-                                () -> assertEquals(agentRefusal("en", varName), ex.getMessage())
-            );
-        }
-
-        @ParameterizedTest
-        @ValueSource(strings = {"ANTIGRAVITY_AGENT", "GEMINI_CLI"})
-        @DisplayName("detects and refuses Antigravity host signals")
-        void detectsAntigravity(String varName) {
-            var env = Map.of(varName, "1");
-            var context = new OperatorContext(env, home, true);
-            var gate = new OperatorGate(context);
-
-            var ex = assertThrows(OperatorSecurityException.class, gate::verify);
-            assertAll(
-                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
-                                () -> assertEquals(agentRefusal("en", varName), ex.getMessage())
-            );
-        }
-
-        @ParameterizedTest
-        @ValueSource(strings = {"OPENCODE", "OPENCODE_PID", "OPENCODE_CLIENT"})
-        @DisplayName("detects and refuses OpenCode host signals")
-        void detectsOpenCode(String varName) {
-            var env = Map.of(varName, "1");
-            var context = new OperatorContext(env, home, true);
-            var gate = new OperatorGate(context);
-
-            var ex = assertThrows(OperatorSecurityException.class, gate::verify);
-            assertAll(
-                                () -> assertEquals(OperatorGate.EXIT_OPERATOR_CHECKS, ex.exitCode()),
-                                () -> assertEquals(agentRefusal("en", varName), ex.getMessage())
-            );
-        }
-
-        @ParameterizedTest
-        @ValueSource(strings = {"CODEX_SANDBOX", "CODEX_CI", "CODEX_THREAD_ID", "CODEX_ENV"})
-        @DisplayName("detects and refuses Codex host signals")
-        void detectsCodex(String varName) {
+        @ValueSource(strings = {
+                            "CLAUDE_CODE_SESSION_ID", "CLAUDECODE", "CLAUDE_CODE", "CLAUDE_PROJECT_ROOT",
+                            "ANTIGRAVITY_AGENT", "GEMINI_CLI",
+                            "OPENCODE", "OPENCODE_PID", "OPENCODE_CLIENT",
+                            "CODEX_SANDBOX", "CODEX_CI", "CODEX_THREAD_ID", "CODEX_ENV"})
+        @DisplayName("detects and refuses the marker of every host")
+        void detectsEveryHostMarker(String varName) {
             var env = Map.of(varName, "1");
             var context = new OperatorContext(env, home, true);
             var gate = new OperatorGate(context);

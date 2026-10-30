@@ -257,6 +257,15 @@ public final class WebCommand implements Callable<Integer> {
     @Command(name = "devices", description = "Lists, renames, or revokes paired devices.")
     @OperatorVerb
     static final class DevicesCommand implements Callable<Integer> {
+
+        private static final String RENAME = "rename";
+
+        private static final String REVOKE = "revoke";
+
+        private static final String LISTENER_OFF = "listener-off";
+
+        private static final String LISTENER_OFF_ALT = "listener_off";
+
         @Spec
         CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
@@ -298,11 +307,11 @@ public final class WebCommand implements Callable<Integer> {
             var runtime = context.runtime(true);
             var out = spec.commandLine().getOut();
 
-            if ("rename".equalsIgnoreCase(action)) {
+            if (isRename()) {
                 handleRename(runtime, out);
-            } else if ("revoke".equalsIgnoreCase(action) || others || all) {
+            } else if (isRevoke()) {
                 handleRevoke(runtime, out);
-            } else if ("listener-off".equalsIgnoreCase(action) || "listener_off".equalsIgnoreCase(action)) {
+            } else if (isListenerOff()) {
                 handleListenerOff(runtime, out);
             } else {
                 handleList(runtime, out);
@@ -316,8 +325,19 @@ public final class WebCommand implements Callable<Integer> {
          *         itself is a read and runs without the operator checks
          */
         private boolean changesADevice() {
-            return "rename".equalsIgnoreCase(action) || "revoke".equalsIgnoreCase(action) || others || all
-                                || "listener-off".equalsIgnoreCase(action) || "listener_off".equalsIgnoreCase(action);
+            return isRename() || isRevoke() || isListenerOff();
+        }
+
+        private boolean isRename() {
+            return RENAME.equalsIgnoreCase(action);
+        }
+
+        private boolean isRevoke() {
+            return REVOKE.equalsIgnoreCase(action) || others || all;
+        }
+
+        private boolean isListenerOff() {
+            return LISTENER_OFF.equalsIgnoreCase(action) || LISTENER_OFF_ALT.equalsIgnoreCase(action);
         }
 
         private void handleRename(RuntimeClient runtime, PrintWriter out) throws IOException {

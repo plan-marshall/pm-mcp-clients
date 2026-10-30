@@ -42,14 +42,8 @@ import picocli.CommandLine.Spec;
 @SuppressWarnings("java:S1075")
 public final class SettingsCommand implements Callable<Integer> {
 
-    private final OperatorContext context;
-
     @Spec
     CommandSpec spec = CommandSpec.create();
-
-    SettingsCommand(OperatorContext context) {
-        this.context = Objects.requireNonNull(context, "context");
-    }
 
     @Override
     public Integer call() {

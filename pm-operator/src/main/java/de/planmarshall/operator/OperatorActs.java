@@ -22,24 +22,34 @@ import java.util.Set;
  */
 final class OperatorActs {
 
-    private static final Set<String> PLAN_SUBCOMMANDS = Set.of(
-                        "add", "pause", "start", "findings", "watches", "cancel", "abandon", "resolve",
-                        "settings", "chat", "report");
+    private static final String FINDINGS = "findings";
 
-    private static final Set<String> PLAN_READ_SUBCOMMANDS = Set.of("findings", "watches", "report");
+    private static final String WATCHES = "watches";
+
+    private static final String REPORT = "report";
+
+    private static final String DEVICES = "devices";
+
+    private static final String LIST = "list";
+
+    private static final Set<String> PLAN_SUBCOMMANDS = Set.of(
+                        "add", "pause", "start", FINDINGS, WATCHES, "cancel", "abandon", "resolve",
+                        "settings", "chat", REPORT);
+
+    private static final Set<String> PLAN_READ_SUBCOMMANDS = Set.of(FINDINGS, WATCHES, REPORT);
 
     private static final Set<String> EPIC_SUBCOMMANDS = Set.of(
-                        "add", "next", "auto", "decompose", "review", "instruct", "archive", "findings",
-                        "watches", "chat", "cancel");
+                        "add", "next", "auto", "decompose", "review", "instruct", "archive", FINDINGS,
+                        WATCHES, "chat", "cancel");
 
-    private static final Set<String> EPIC_READ_SUBCOMMANDS = Set.of("findings", "watches");
+    private static final Set<String> EPIC_READ_SUBCOMMANDS = Set.of(FINDINGS, WATCHES);
 
     private static final Set<String> PROJECT_ACT_SUBCOMMANDS = Set.of(
                         "add", "setup", "favourite", "release", "unenrol");
 
     private static final Set<String> CLIENT_ACT_SUBCOMMANDS = Set.of("install", "remove", "update");
 
-    private static final Set<String> WEB_READ_ACTIONS = Set.of("list");
+    private static final Set<String> WEB_READ_ACTIONS = Set.of(LIST);
 
     private static final Set<String> CONFIG_READ_SUBCOMMANDS = Set.of("show");
 
@@ -79,10 +89,10 @@ final class OperatorActs {
     }
 
     private static boolean webAct(List<String> rest) {
-        if (rest.isEmpty() || !"devices".equals(rest.get(0))) {
+        if (rest.isEmpty() || !DEVICES.equals(rest.get(0))) {
             return true;
         }
-        return rest.size() > 1 && !"list".equals(rest.get(1));
+        return rest.size() > 1 && !WEB_READ_ACTIONS.contains(rest.get(1));
     }
 
     private static boolean planAct(List<String> rest) {

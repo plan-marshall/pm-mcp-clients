@@ -72,7 +72,6 @@ class PmOperatorProcessIT {
     private static final int STARTUP_RUNS = 15;
     private static final long BUDGET_MS = 50;
 
-    /** One environment marker per coding-agent host of the Host Integration Table (PM-SEC-3). */
     /** One representative environment marker per coding-agent host of the Host Integration Table (PM-SEC-3). */
     private static final List<String> HOST_SIGNALS = List.of(
                         "ANTIGRAVITY_AGENT", "CLAUDE_CODE", "OPENCODE_CLIENT", "CODEX_HOME");
@@ -184,7 +183,7 @@ class PmOperatorProcessIT {
         for (var verb : List.of("config", "questions", "settings")) {
             try (var process = operator(environment(), verb)) {
                 assertEquals(0, process.awaitExit(WAIT), verb + " stderr: " + process.stderr());
-                assertFalse(process.stdout().length == 0, verb + " printed nothing");
+                assertNotEquals(0, process.stdout().length, verb + " printed nothing");
                 assertFalse(process.stderr().contains(
                                                         MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
                                     verb + " stderr: " + process.stderr());
@@ -303,7 +302,7 @@ class PmOperatorProcessIT {
                             "{\"items\":[],\"unread_count\":0,\"has_older\":false,\"older_count\":0}"));
         try (var process = operator(environment(), "reports")) {
             assertEquals(0, process.awaitExit(WAIT), process.stderr());
-            assertFalse(process.stdout().length == 0, "reports printed nothing");
+            assertNotEquals(0, process.stdout().length, "reports printed nothing");
         }
 
         try (var process = operator(environment(), "reports", "read", "--all")) {
@@ -432,7 +431,7 @@ class PmOperatorProcessIT {
         fixture.start((request, response) -> response.json(200, "{}"));
         try (var process = operator(environment(), "projects", "--list")) {
             assertEquals(0, process.awaitExit(WAIT), process.stderr());
-            assertFalse(process.stdout().length == 0, "projects printed nothing");
+            assertNotEquals(0, process.stdout().length, "projects printed nothing");
         }
     }
 
@@ -455,7 +454,7 @@ class PmOperatorProcessIT {
         fixture.start((request, response) -> response.json(200, "{}"));
         try (var process = operator(environment(), "plan", "fix-relay", "--print")) {
             assertEquals(0, process.awaitExit(WAIT), process.stderr());
-            assertFalse(process.stdout().length == 0, "plan printed nothing");
+            assertNotEquals(0, process.stdout().length, "plan printed nothing");
         }
 
         try (var process = operator(environment(), "plan", "pause", "fix-relay")) {
@@ -473,7 +472,7 @@ class PmOperatorProcessIT {
         fixture.start((request, response) -> response.json(200, "{}"));
         try (var process = operator(environment(), "epic", "relay-hardening")) {
             assertEquals(0, process.awaitExit(WAIT), process.stderr());
-            assertFalse(process.stdout().length == 0, "epic printed nothing");
+            assertNotEquals(0, process.stdout().length, "epic printed nothing");
         }
     }
 
