@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { pair, switchScenario } from './helpers/pairing.js';
-import { startMockRuntime, stopMockRuntime, ensureMockRuntime, mockRuntimeOwned } from './helpers/mockRuntime.js';
+import {
+  startMockRuntime,
+  stopMockRuntime,
+  ensureMockRuntime,
+  mockRuntimeOwned,
+} from './helpers/mockRuntime.js';
 
 /**
  * The web chrome, navigation and action advisories: the frame is a rail with three groups and a
@@ -254,7 +259,10 @@ test.describe('The live indicator', () => {
   });
 
   test('reaches Offline after the retries and comes back on Try again', async ({ page }) => {
-    test.skip(!mockRuntimeOwned(), 'the mock runtime was already running; this suite did not start it');
+    test.skip(
+      !mockRuntimeOwned(),
+      'the mock runtime was already running; this suite did not start it',
+    );
     // Ten attempts at two seconds, then the restart and the reconnect: the default is too short.
     test.setTimeout(90_000);
 
@@ -276,7 +284,10 @@ test.describe('The live indicator', () => {
 
   test('turns amber when the mock stops and live again when it restarts', async ({ page }) => {
     // A suite that found a mock already running (the developer loop) must never stop it.
-    test.skip(!mockRuntimeOwned(), 'the mock runtime was already running; this suite did not start it');
+    test.skip(
+      !mockRuntimeOwned(),
+      'the mock runtime was already running; this suite did not start it',
+    );
     // The bounded waits below add up to 120 seconds; the default 30-second deadline is too short.
     test.setTimeout(120_000);
 

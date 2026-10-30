@@ -486,50 +486,79 @@
     return s === 'waiting_for_you' ? 'waiting' : s;
   }
 
+  // The overview endpoints answer with the snake_case spelling of the API contract or with the
+  // camelCase one. The contract types declare the snake_case keys, so the accessors read the
+  // alternate spelling through one typed alias instead of a per-site cast.
+  type CamelCaseAliases = {
+    needsOperatorCount?: number | null;
+    needsOperatorKind?: string | null;
+    tasksTotal?: number;
+    tasksDone?: number;
+    epicTitle?: string | null;
+    epicId?: string | null;
+    offTrackSignal?: string | null;
+    pullRequestNumber?: number | null;
+    pullRequestUrl?: string | null;
+    phaseEnteredAt?: string | null;
+    runningPlansCount?: number;
+    stagedPlansCount?: number;
+    planId?: string;
+  };
+
+  function withAliases<T extends object>(value: T): T & CamelCaseAliases {
+    return value as T & CamelCaseAliases;
+  }
+
+  function planIdOf(plan: ActivePlanSummary): string {
+    return plan.plan_id || withAliases(plan).planId || '';
+  }
+
+  function epicIdOf(epic: ActiveEpicSummary): string {
+    return epic.epic_id || withAliases(epic).epicId || '';
+  }
+
   function getNeedsOperatorCount(item: ActivePlanSummary | ActiveEpicSummary): number {
-    return (item as any).needs_operator_count ?? (item as any).needsOperatorCount ?? 0;
+    return item.needs_operator_count ?? withAliases(item).needsOperatorCount ?? 0;
   }
 
   function getNeedsOperatorKind(item: ActivePlanSummary | ActiveEpicSummary): string {
-    return (item as any).needs_operator_kind ?? (item as any).needsOperatorKind ?? '';
+    return item.needs_operator_kind ?? withAliases(item).needsOperatorKind ?? '';
   }
 
   function getPlanTasksTotal(p: ActivePlanSummary): number {
-    return (p as any).tasks_total ?? (p as any).tasksTotal ?? 0;
+    return p.tasks_total ?? withAliases(p).tasksTotal ?? 0;
   }
 
   function getPlanTasksDone(p: ActivePlanSummary): number {
-    return (p as any).tasks_done ?? (p as any).tasksDone ?? 0;
+    return p.tasks_done ?? withAliases(p).tasksDone ?? 0;
   }
 
   function getPlanEpicTitle(p: ActivePlanSummary): string {
-    return (
-      (p as any).epic_title || (p as any).epicTitle || (p as any).epic_id || (p as any).epicId || ''
-    );
+    return p.epic_title || withAliases(p).epicTitle || p.epic_id || withAliases(p).epicId || '';
   }
 
   function getPlanOffTrack(p: ActivePlanSummary): string {
-    return (p as any).off_track_signal || (p as any).offTrackSignal || '';
+    return p.off_track_signal || withAliases(p).offTrackSignal || '';
   }
 
   function getPlanPrNumber(p: ActivePlanSummary): number | null {
-    return (p as any).pull_request_number ?? (p as any).pullRequestNumber ?? null;
+    return p.pull_request_number ?? withAliases(p).pullRequestNumber ?? null;
   }
 
   function getPlanPrUrl(p: ActivePlanSummary): string {
-    return (p as any).pull_request_url || (p as any).pullRequestUrl || '#';
+    return p.pull_request_url || withAliases(p).pullRequestUrl || '#';
   }
 
   function getPlanPhaseEnteredAt(p: ActivePlanSummary): string | null {
-    return (p as any).phase_entered_at || (p as any).phaseEnteredAt || null;
+    return p.phase_entered_at || withAliases(p).phaseEnteredAt || null;
   }
 
   function getEpicRunningCount(e: ActiveEpicSummary): number {
-    return (e as any).running_plans_count ?? (e as any).runningPlansCount ?? 0;
+    return e.running_plans_count ?? withAliases(e).runningPlansCount ?? 0;
   }
 
   function getEpicStagedCount(e: ActiveEpicSummary): number {
-    return (e as any).staged_plans_count ?? (e as any).stagedPlansCount ?? 0;
+    return e.staged_plans_count ?? withAliases(e).stagedPlansCount ?? 0;
   }
 
   function formatProjectCounts(p: ProjectSummary): string {
@@ -883,10 +912,8 @@
                     data-testid="plan-card"
                     role="button"
                     tabindex="0"
-                    on:click={() => openPlanView((plan as any).plan_id || (plan as any).planId)}
-                    on:keydown={(e) =>
-                      e.key === 'Enter' &&
-                      openPlanView((plan as any).plan_id || (plan as any).planId)}
+                    on:click={() => openPlanView(planIdOf(plan))}
+                    on:keydown={(e) => e.key === 'Enter' && openPlanView(planIdOf(plan))}
                   >
                     <div class="work-card__header">
                       <div class="work-card__title-group">
@@ -982,10 +1009,8 @@
                     data-testid="epic-card"
                     role="button"
                     tabindex="0"
-                    on:click={() => openEpicView((epic as any).epic_id || (epic as any).epicId)}
-                    on:keydown={(e) =>
-                      e.key === 'Enter' &&
-                      openEpicView((epic as any).epic_id || (epic as any).epicId)}
+                    on:click={() => openEpicView(epicIdOf(epic))}
+                    on:keydown={(e) => e.key === 'Enter' && openEpicView(epicIdOf(epic))}
                   >
                     <div class="work-card__header">
                       <div class="work-card__title-group">
@@ -997,11 +1022,9 @@
                       <button
                         type="button"
                         class="card-action"
-                        data-testid="overview-actions-epic-{(epic as any).epic_id ||
-                          (epic as any).epicId}"
+                        data-testid="overview-actions-epic-{epicIdOf(epic)}"
                         data-advisory={$t('control.actions.open.title')}
-                        on:click|stopPropagation={() =>
-                          openControls('epic', (epic as any).epic_id || (epic as any).epicId)}
+                        on:click|stopPropagation={() => openControls('epic', epicIdOf(epic))}
                       >
                         {$t('control.actions.open')}
                       </button>
@@ -1029,11 +1052,9 @@
                             class="nested-plan-row"
                             role="button"
                             tabindex="0"
-                            on:click|stopPropagation={() =>
-                              openPlanView((childPlan as any).plan_id || (childPlan as any).planId)}
+                            on:click|stopPropagation={() => openPlanView(planIdOf(childPlan))}
                             on:keydown|stopPropagation={(e) =>
-                              e.key === 'Enter' &&
-                              openPlanView((childPlan as any).plan_id || (childPlan as any).planId)}
+                              e.key === 'Enter' && openPlanView(planIdOf(childPlan))}
                           >
                             <span class="nested-tree-char"
                               >{idx === epic.plans.length - 1 ? '└─' : '├─'}</span
@@ -1051,14 +1072,10 @@
                             <button
                               type="button"
                               class="card-action"
-                              data-testid="overview-actions-{(childPlan as any).plan_id ||
-                                (childPlan as any).planId}"
+                              data-testid="overview-actions-{planIdOf(childPlan)}"
                               data-advisory={$t('control.actions.open.title')}
                               on:click|stopPropagation={() =>
-                                openControls(
-                                  'plan',
-                                  (childPlan as any).plan_id || (childPlan as any).planId,
-                                )}
+                                openControls('plan', planIdOf(childPlan))}
                             >
                               {$t('control.actions.open')}
                             </button>
@@ -1070,18 +1087,16 @@
                 {/each}
 
                 <!-- Without Epic Section -->
-                {#if filteredPlans.some((p) => !p.epic_id && !(p as any).epicId)}
+                {#if filteredPlans.some((p) => !p.epic_id && !withAliases(p).epicId)}
                   <div class="without-epic-section">
                     <h4 class="section-subtitle">{$t('overview.group.without_epic')}</h4>
-                    {#each filteredPlans.filter((p) => !p.epic_id && !(p as any).epicId) as plan}
+                    {#each filteredPlans.filter((p) => !p.epic_id && !withAliases(p).epicId) as plan}
                       <div
                         class="work-card work-card--plan"
                         role="button"
                         tabindex="0"
-                        on:click={() => openPlanView((plan as any).plan_id || (plan as any).planId)}
-                        on:keydown={(e) =>
-                          e.key === 'Enter' &&
-                          openPlanView((plan as any).plan_id || (plan as any).planId)}
+                        on:click={() => openPlanView(planIdOf(plan))}
+                        on:keydown={(e) => e.key === 'Enter' && openPlanView(planIdOf(plan))}
                       >
                         <div class="work-card__header">
                           <div class="work-card__title-group">

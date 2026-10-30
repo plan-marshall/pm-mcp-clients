@@ -520,7 +520,11 @@ const GUARD_JOURNEYS = [
     views: ['EpicDecompositionView'],
     async open(page, request, locale) {
       await pairInLocale(page, request, 'decomposition', locale);
-      await gotoInLocale(page, locale, '/epics/relay-hardening/decomposition?project=pm-mcp-clients');
+      await gotoInLocale(
+        page,
+        locale,
+        '/epics/relay-hardening/decomposition?project=pm-mcp-clients',
+      );
     },
     async walk(page, record) {
       await expect(page.getByTestId('epic-decomposition')).toBeVisible();
@@ -616,7 +620,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
 
           // 1. Overview page
           await page.goto('/overview');
-            await expect(page.locator('.overview')).toBeVisible();
+          await expect(page.locator('.overview')).toBeVisible();
           await expect(page.locator('[data-testid="plan-card"]').first()).toBeVisible();
 
           // 2. Switch to by epic
@@ -694,7 +698,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await setTheme(page, theme);
 
           await page.goto('/overview');
-            await expect(page.locator('.overview')).toBeVisible();
+          await expect(page.locator('.overview')).toBeVisible();
 
           // Audit by-plan
           await page.getByRole('radio', { name: /by plan/i }).click();
@@ -712,7 +716,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await setTheme(page, theme);
 
           await page.goto('/overview');
-            await expect(page.locator('.overview')).toBeVisible();
+          await expect(page.locator('.overview')).toBeVisible();
 
           const planCard = page.locator('[data-testid="plan-card"]').first();
           await expect(planCard).toBeVisible();
@@ -728,7 +732,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await setTheme(page, theme);
 
           await page.goto('/overview');
-            await expect(page.locator('.overview')).toBeVisible();
+          await expect(page.locator('.overview')).toBeVisible();
 
           const byEpicRadio = page.getByRole('radio', { name: /by epic/i });
           await byEpicRadio.click({ force: true });

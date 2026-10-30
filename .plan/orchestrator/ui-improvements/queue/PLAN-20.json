@@ -2,10 +2,10 @@
   "id": "PLAN-20",
   "slug": "cli-actions-by-state",
   "workstream": "WS-04",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "20-cli-actions-by-state",
+  "pr": "273",
+  "landing": "landings/PLAN-20.md",
   "seq": 20
 }
