@@ -115,7 +115,7 @@ final class OperatorActs {
         if (PLAN_READ_SUBCOMMANDS.contains(subcommand)) {
             return false;
         }
-        if ("settings".equals(subcommand)) {
+        if (SETTINGS.equals(subcommand)) {
             return hasAny(rest, "--set", "--remove");
         }
         return true;
