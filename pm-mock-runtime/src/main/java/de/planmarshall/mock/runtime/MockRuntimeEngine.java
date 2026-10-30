@@ -63,6 +63,7 @@ import de.planmarshall.api.control.PlanSettingsUpdateResult;
 import de.planmarshall.api.control.PlanSettingsValue;
 import de.planmarshall.api.control.ReviewResource;
 import de.planmarshall.api.control.WorkActions;
+import de.planmarshall.api.control.WorkRow;
 import de.planmarshall.api.decision.DecisionAnswerRequest;
 import de.planmarshall.api.decision.DecisionEnvelope;
 import de.planmarshall.api.decision.DecisionInterpretation;
@@ -349,12 +350,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_PLAN_DEFAULTS = "plan_defaults";
     private static final String KEY_PLANS_AFTER_DAYS = "plans_after_days";
     private static final String KEY_EPICS_AFTER_DAYS = "epics_after_days";
+    /** The epic a plan belongs to, as the plan view reads it. */
+    private static final String KEY_EPIC_ID = "epic_id";
     private static final String KEY_LOGS_AFTER_DAYS = "logs_after_days";
     private static final String KEY_REPORTS_AFTER_DAYS = "reports_after_days";
     private static final String KEY_UNENROLLED_AFTER_DAYS = "unenrolled_after_days";
     private static final String KEY_REMIND_AFTER_DAYS = "remind_after_days";
     private static final String STATE_ONBOARD_COMPLETED = "onboard.completed";
+    private static final String PROJECT_SETUP_IDENTITY = "project.identity";
+    private static final String PROJECT_SETUP_COMPLETED = "project.completed";
+    private static final String PROJECT_SETUP_READY_SUFFIX = " is ready";
     private static final String STATE_ONBOARD_SUMMARY = "onboard.summary";
+    /** The plan state a landed or merged epic row maps to. */
+    private static final String STATE_DONE = "done";
     /** The engine-only fixture data a state's operator facts carry beside its domain facts. */
     private static final String FIXTURE_RUNTIME = "runtime";
     private static final String FIXTURE_DEVICES = "devices";
@@ -470,6 +478,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final DateTimeFormatter RECIPE_ID_TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss");
     private static final String PATH_WORKFLOWS = "/api/v1/workflows";
     private static final String PATH_PROJECTS_PREFIX = "/api/v1/projects/";
+    private static final String SEGMENT_SETUP = "/setup";
+    private static final String METHOD_POST = "POST";
+    private static final String KEY_STEP = "step";
+    private static final String KEY_TOTAL_STEPS = "total_steps";
+    private static final String PATH_SYSTEM_CLEANUP = "/api/v1/system/cleanup/";
+    private static final String SEGMENT_DELETE = "/delete";
+    private static final String SEGMENT_REMIND = "/remind";
+    private static final String SEGMENT_IGNORE = "/ignore";
     private static final String SEGMENT_WORKFLOWS = "/workflows";
     private static final String SEGMENT_CATALOGUE = "/catalogue";
     private static final String SEGMENT_VALIDATE = "/validate";
@@ -591,6 +607,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final List<EnrolledProject> enrolledProjects = new ArrayList<>();
     private final List<String> favouriteProjectIds = new ArrayList<>();
     private final List<BeingAddedProject> beingAddedProjects = new ArrayList<>();
+    private final Map<String, String> projectSetupStates = new ConcurrentHashMap<>();
     private final Object storeLock = new Object();
     private final Map<String, MockStore> mockStores = new LinkedHashMap<>();
     private final StartRegistry startRegistry;
@@ -2218,7 +2235,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var path = request.path();
         return switch (request.method()) {
             case "GET" -> handleGetDeviceRoutes(path, response);
-            case "POST" -> handlePostDeviceRoutes(request, response, path, isWeb);
+            case METHOD_POST -> handlePostDeviceRoutes(request, response, path, isWeb);
             case "PATCH", "PUT" -> handlePutDeviceRoutes(request, response, path, isWeb);
             case METHOD_DELETE -> handleDeleteDeviceRoutes(request, response, path, isWeb);
             default -> false;
@@ -2372,7 +2389,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return serveDesignerCatalogue(response, method, projectId);
         }
         if (SEGMENT_VALIDATE.equals(sub)) {
-            if (!"POST".equals(method)) {
+            if (!METHOD_POST.equals(method)) {
                 return false;
             }
             handleDesignerValidate(request, response);
@@ -2853,7 +2870,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (slash <= 0 || slash == tail.length() - 1) {
             return false;
         }
-        if (!"POST".equals(request.method())) {
+        if (!METHOD_POST.equals(request.method())) {
             return false;
         }
         var lessonId = tail.substring(0, slash);
@@ -3137,19 +3154,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 handleGetDecomposition(response, projectId, epicId);
             }
             case "check" -> {
-                if (!"POST".equals(request.method())) {
+                if (!METHOD_POST.equals(request.method())) {
                     return false;
                 }
                 handleCheckDecomposition(response, projectId, epicId);
             }
             case "instruct" -> {
-                if (!"POST".equals(request.method())) {
+                if (!METHOD_POST.equals(request.method())) {
                     return false;
                 }
                 handleInstructDecomposition(request, response, projectId, epicId);
             }
             case "commit" -> {
-                if (!"POST".equals(request.method())) {
+                if (!METHOD_POST.equals(request.method())) {
                     return false;
                 }
                 handleCommitDecomposition(response, projectId, epicId);
@@ -3369,11 +3386,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleListRecipes(response);
             return true;
         }
-        if ("POST".equals(request.method()) && PATH_INTAKE_DRAFT.equals(path)) {
+        if (METHOD_POST.equals(request.method()) && PATH_INTAKE_DRAFT.equals(path)) {
             handleIntakeDraft(request, response);
             return true;
         }
-        if ("POST".equals(request.method()) && path.startsWith(PREFIX_PROJECTS)) {
+        if (METHOD_POST.equals(request.method()) && path.startsWith(PREFIX_PROJECTS)) {
             if (path.endsWith(SUFFIX_PLANS_START)) {
                 handleStartPlan(request, response, projectIdOf(path, SUFFIX_PLANS_START));
                 return true;
@@ -3398,7 +3415,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleProjectFiles(request, response, projectId, isWeb);
             return true;
         }
-        if ("POST".equals(request.method()) && path.endsWith(SEGMENT_PROJECT_ENTRIES)) {
+        if (METHOD_POST.equals(request.method()) && path.endsWith(SEGMENT_PROJECT_ENTRIES)) {
             var projectId = path.substring(PATH_PROJECTS_PREFIX.length(),
                     path.length() - SEGMENT_PROJECT_ENTRIES.length());
             handleOpenEntry(request, response, projectId);
@@ -3424,7 +3441,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleEndedChat(response, subjectId);
             return true;
         }
-        if ("POST".equals(method) && path.endsWith(SEGMENT_ENDED_CHAT_ACCEPT)) {
+        if (METHOD_POST.equals(method) && path.endsWith(SEGMENT_ENDED_CHAT_ACCEPT)) {
             var rest = path.substring(PATH_ENDED.length());
             var marker = rest.indexOf(SEGMENT_ENDED_CHAT);
             var projectId = marker > 0 ? rest.substring(0, marker) : null;
@@ -3491,7 +3508,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             response.json(200, state.toMap());
             return true;
         }
-        if ("POST".equals(request.method()) && act != null) {
+        if (METHOD_POST.equals(request.method()) && act != null) {
             handleEntryAct(request, response, entryId, act);
             return true;
         }
@@ -3500,7 +3517,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private boolean handleEntryChatRoutes(MockHttpRequest request, MockHttpResponse response, String rest)
             throws IOException {
-        if (!"POST".equals(request.method())) {
+        if (!METHOD_POST.equals(request.method())) {
             return false;
         }
         if (rest.endsWith(SEGMENT_ENTRY_CHAT_TURNS)) {
@@ -3808,11 +3825,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (!path.startsWith(PREFIX_PROJECTS)) {
             return false;
         }
-        if ("POST".equals(method) && path.endsWith(SUFFIX_PR_OBSERVE)) {
+        if (METHOD_POST.equals(method) && path.endsWith(SUFFIX_PR_OBSERVE)) {
             handlePrObserve(request, response, projectIdOf(path, SUFFIX_PR_OBSERVE));
             return true;
         }
-        if ("POST".equals(method) && path.endsWith(SUFFIX_PR_ADOPT)) {
+        if (METHOD_POST.equals(method) && path.endsWith(SUFFIX_PR_ADOPT)) {
             handlePrAdopt(request, response, projectIdOf(path, SUFFIX_PR_ADOPT));
             return true;
         }
@@ -3820,7 +3837,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleLocalChangesPreview(response, projectIdOf(path, SUFFIX_LOCAL_PREVIEW));
             return true;
         }
-        if ("POST".equals(method) && path.endsWith(SUFFIX_LOCAL_CAPTURE)) {
+        if (METHOD_POST.equals(method) && path.endsWith(SUFFIX_LOCAL_CAPTURE)) {
             handleLocalChangesCapture(request, response, projectIdOf(path, SUFFIX_LOCAL_CAPTURE));
             return true;
         }
@@ -4259,7 +4276,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        if ("POST".equals(method)) {
+        if (METHOD_POST.equals(method)) {
             var prefix = isPlan ? PATH_PLANS_PREFIX : PATH_EPICS_PREFIX;
             var sub = path.substring(prefix.length());
             String subjectId = null;
@@ -4295,7 +4312,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        if (isPlan && "POST".equals(method) && path.contains(SEGMENT_HOLDS_PATH)
+        if (isPlan && METHOD_POST.equals(method) && path.contains(SEGMENT_HOLDS_PATH)
                 && path.endsWith("/resolve")) {
             var sub = path.substring(PATH_PLANS_PREFIX.length());
             var marker = sub.indexOf(SEGMENT_HOLDS_PATH);
@@ -4346,13 +4363,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
 
-        if (isPlan && "POST".equals(method) && path.endsWith(SEGMENT_ENTRY_CHAT_TURNS)) {
+        if (isPlan && METHOD_POST.equals(method) && path.endsWith(SEGMENT_ENTRY_CHAT_TURNS)) {
             handleChatTurn(request, response, controlSubjectId(path, PATH_PLANS_PREFIX,
                     SEGMENT_ENTRY_CHAT_TURNS));
             return true;
         }
 
-        if (isPlan && "POST".equals(method) && (path.endsWith("/chat/proposal/accept")
+        if (isPlan && METHOD_POST.equals(method) && (path.endsWith("/chat/proposal/accept")
                 || path.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT))) {
             var accept = path.endsWith(SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT);
             var suffix = accept ? SEGMENT_ENTRY_CHAT_PROPOSAL_ACCEPT : SEGMENT_ENTRY_CHAT_PROPOSAL_REJECT;
@@ -5141,13 +5158,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleListReports(request, response);
             return true;
         }
-        if ("POST".equals(method) && "/api/v1/reports/read".equals(path)) {
+        if (METHOD_POST.equals(method) && "/api/v1/reports/read".equals(path)) {
             handleMarkReportsRead(request, response, isWeb);
             return true;
         }
         if (path.startsWith(PATH_REPORTS_PREFIX)) {
             var sub = path.substring(PATH_REPORTS_PREFIX.length());
-            if (sub.endsWith("/read") && "POST".equals(method)) {
+            if (sub.endsWith("/read") && METHOD_POST.equals(method)) {
                 var reportId = sub.substring(0, sub.length() - "/read".length());
                 handleMarkSingleReportRead(response, reportId, isWeb);
                 return true;
@@ -5538,7 +5555,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @throws IOException on write failure
      */
     private void handleMcp(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        if (!"POST".equals(request.method())) {
+        if (!METHOD_POST.equals(request.method())) {
             response.send(405, "application/json",
                     JsonTree.write(Map.of(KEY_ERROR, "method_not_allowed", KEY_MESSAGE, "POST /mcp only")));
             return;
@@ -5575,7 +5592,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return;
         }
 
-        var scenarioRoute = currentScenario.get().route("POST", request.path());
+        var scenarioRoute = currentScenario.get().route(METHOD_POST, request.path());
         if (scenarioRoute != null && !"tools/list".equals(method)) {
             response.json(scenarioRoute.status(), scenarioRoute.representation());
             return;
@@ -5889,19 +5906,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleControlState(response);
             return;
         }
-        if ("/mock/reset".equals(path) && "POST".equals(request.method())) {
+        if ("/mock/reset".equals(path) && METHOD_POST.equals(request.method())) {
             handleControlReset(response);
             return;
         }
-        if ("/mock/scenario".equals(path) && "POST".equals(request.method())) {
+        if ("/mock/scenario".equals(path) && METHOD_POST.equals(request.method())) {
             handleControlScenario(request, response);
             return;
         }
-        if (path.startsWith("/mock/goto/") && "POST".equals(request.method())) {
+        if (path.startsWith("/mock/goto/") && METHOD_POST.equals(request.method())) {
             handleControlGoto(path.substring("/mock/goto/".length()), response);
             return;
         }
-        if ("/mock/broadcast".equals(path) && "POST".equals(request.method())) {
+        if ("/mock/broadcast".equals(path) && METHOD_POST.equals(request.method())) {
             handleControlBroadcast(request, response);
             return;
         }
@@ -5911,7 +5928,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         // The development loop has no terminal client to ask for a replacement code. This route
         // returns the open code or issues a fresh one; it never makes a consumed code valid again.
-        if ("/mock/pairing".equals(path) && "POST".equals(request.method())) {
+        if ("/mock/pairing".equals(path) && METHOD_POST.equals(request.method())) {
             handleCreatePairing(response);
             return;
         }
@@ -6157,11 +6174,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleOnboardingState(response);
             return true;
         }
-        if ("/api/v1/onboarding/step".equals(path) && "POST".equals(method)) {
+        if ("/api/v1/onboarding/step".equals(path) && METHOD_POST.equals(method)) {
             handleOnboardingStep(request, response);
             return true;
         }
-        if ("/api/v1/onboarding/auto".equals(path) && "POST".equals(method)) {
+        if ("/api/v1/onboarding/auto".equals(path) && METHOD_POST.equals(method)) {
             handleOnboardingAuto(response);
             return true;
         }
@@ -6384,7 +6401,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             response.json(200, buildMachineSettings());
             return true;
         }
-        if ("PUT".equals(request.method()) || "POST".equals(request.method())) {
+        if ("PUT".equals(request.method()) || METHOD_POST.equals(request.method())) {
             handleUpdateMachineSettings(request, response);
             return true;
         }
@@ -6863,11 +6880,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var path = request.path();
         var method = request.method();
 
-        if ("POST".equals(method) && PATH_ENROL.equals(path)) {
+        if (METHOD_POST.equals(method) && PATH_ENROL.equals(path)) {
             handleEnrol(request, response, null);
             return true;
         }
-        if ("POST".equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_ENROL)) {
+        if (METHOD_POST.equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_ENROL)) {
             var prjId = path.substring(PATH_PROJECTS_PREFIX.length(), path.length() - SEGMENT_ENROL.length());
             handleEnrol(request, response, prjId);
             return true;
@@ -6877,7 +6894,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleStoreDigest(request, response, prjId);
             return true;
         }
-        if ("POST".equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_STORES_ACCEPT_EDIT)) {
+        if (METHOD_POST.equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_STORES_ACCEPT_EDIT)) {
             var prjId = path.substring(PATH_PROJECTS_PREFIX.length(),
                     path.length() - SEGMENT_STORES_ACCEPT_EDIT.length());
             handleAcceptEdit(request, response, prjId);
@@ -7021,7 +7038,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return switch (method) {
             case "GET" -> handleProjectExplorerGet(request, response, path);
             case "PUT" -> handleProjectExplorerPut(request, response, path);
-            case "POST" -> handleProjectExplorerPost(request, response, path);
+            case METHOD_POST -> handleProjectExplorerPost(request, response, path);
             case METHOD_DELETE -> handleProjectExplorerDelete(response, path);
             default -> false;
         };
@@ -7042,6 +7059,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 && ((request.query() != null && request.query().contains("all"))
                 || declaresProjects()))) {
             handleGetProjectsExplorer(response);
+            return true;
+        }
+        if (path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_SETUP)) {
+            var prjId = URLDecoder.decode(path.substring(PATH_PROJECTS_PREFIX.length(),
+                    path.length() - SEGMENT_SETUP.length()), StandardCharsets.UTF_8);
+            response.json(200, projectSetupState(prjId,
+                    projectSetupStates.getOrDefault(prjId, PROJECT_SETUP_IDENTITY)));
             return true;
         }
         if (declaresProjects()
@@ -7091,9 +7115,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleUnenrolProject(response, prjId);
             return true;
         }
-        if (path.startsWith("/api/v1/projects/") && path.endsWith("/setup")) {
-            var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/setup".length());
-            handleSetupProject(response, prjId);
+        if (path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_SETUP)) {
+            var prjId = URLDecoder.decode(path.substring(PATH_PROJECTS_PREFIX.length(),
+                    path.length() - SEGMENT_SETUP.length()), StandardCharsets.UTF_8);
+            handleSetupProject(request, response, prjId);
             return true;
         }
         return false;
@@ -7286,7 +7311,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "checkout_path", path,
                     "current_step", STEP_IDENTITY,
                     "step_number", 2,
-                    "total_steps", 10
+                    KEY_TOTAL_STEPS, 10
             ));
         }
     }
@@ -7375,6 +7400,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             enrolledProjects.removeIf(p -> p.projectId().equals(projectId));
             favouriteProjectIds.remove(projectId);
+            projectSetupStates.remove(projectId);
             synchronized (storeLock) {
                 mockStores.remove(projectId);
             }
@@ -7395,8 +7421,56 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
-    private void handleSetupProject(MockHttpResponse response, String projectId) throws IOException {
-        response.json(200, Map.of(KEY_STATUS, "setup_started", KEY_PROJECT_ID, projectId));
+    /**
+     * Serves a project's onboarding run as the state dialogue reads it ({@code CLI-UC-P-01}): the
+     * first call reports the run's current state, a call that names a link advances it. A run of a
+     * project that is only being added has no enrolment yet, so its id is the one the caller named.
+     *
+     * @param request   the setup call
+     * @param response  the response to complete
+     * @param projectId the project or checkout the run belongs to
+     * @throws IOException if the body cannot be read
+     */
+    private void handleSetupProject(MockHttpRequest request, MockHttpResponse response,
+            String projectId) throws IOException {
+        var body = readBodyMap(request);
+        var linkName = JsonTree.string(body, "link");
+        var current = projectSetupStates.getOrDefault(projectId, PROJECT_SETUP_IDENTITY);
+        if (linkName != null && PROJECT_SETUP_IDENTITY.equals(current)) {
+            current = PROJECT_SETUP_COMPLETED;
+        }
+        projectSetupStates.put(projectId, current);
+        response.json(200, projectSetupState(projectId, current));
+    }
+
+    private Map<String, Object> projectSetupState(String projectId, String stateId) {
+        var body = new LinkedHashMap<String, Object>();
+        body.put(KEY_PROJECT_ID, projectId);
+        body.put(KEY_STATE, stateId);
+        body.put(KEY_TOTAL_STEPS, 10);
+        if (PROJECT_SETUP_COMPLETED.equals(stateId)) {
+            body.put(KEY_STEP, 10);
+            body.put(FIXTURE_SUMMARY, projectId + PROJECT_SETUP_READY_SUFFIX);
+            body.put(KEY_LINKS, Map.of());
+            return body;
+        }
+        body.put(KEY_STEP, 2);
+        body.put("id", projectId);
+        body.put("name", displayNameOf(projectId));
+        body.put("pilot", false);
+        body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
+                PATH_PROJECTS_PREFIX + projectId + SEGMENT_SETUP, KEY_METHOD, METHOD_POST)));
+        return body;
+    }
+
+    private String displayNameOf(String projectId) {
+        synchronized (projectsLock) {
+            return enrolledProjects.stream()
+                    .filter(project -> project.projectId().equals(projectId))
+                    .map(EnrolledProject::displayName)
+                    .findFirst()
+                    .orElse(projectId);
+        }
     }
 
     private boolean handleSystemRoutes(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
@@ -7411,7 +7485,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleGetReleaseNotes(request, response);
             return true;
         }
-        if ("POST".equals(method) && ("/api/v1/operator/runtime/stop".equals(path) || "/api/v1/runtime/stop".equals(path))) {
+        if (METHOD_POST.equals(method) && ("/api/v1/operator/runtime/stop".equals(path) || "/api/v1/runtime/stop".equals(path))) {
             handlePostStopRuntime(request, response, isWeb);
             return true;
         }
@@ -7419,7 +7493,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleDeleteStopRuntime(response);
             return true;
         }
-        if ("POST".equals(method) && "/api/v1/operator/runtime/upgrade".equals(path)) {
+        if (METHOD_POST.equals(method) && "/api/v1/operator/runtime/upgrade".equals(path)) {
             handlePostUpgradeRuntime(request, response);
             return true;
         }
@@ -7427,7 +7501,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleDeleteUpgradeRuntime(response);
             return true;
         }
-        if ("POST".equals(method) && "/api/v1/operator/runtime/upgrade/check".equals(path)) {
+        if (METHOD_POST.equals(method) && "/api/v1/operator/runtime/upgrade/check".equals(path)) {
             handleCheckUpgradeRuntime(response);
             return true;
         }
@@ -7443,20 +7517,20 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handlePutKeptCleanup(request, response);
             return true;
         }
-        if (path.startsWith("/api/v1/system/cleanup/") && "POST".equals(method)) {
-            var sub = path.substring("/api/v1/system/cleanup/".length());
-            if (sub.endsWith("/delete")) {
-                var jobId = sub.substring(0, sub.length() - "/delete".length());
+        if (path.startsWith(PATH_SYSTEM_CLEANUP) && METHOD_POST.equals(method)) {
+            var sub = path.substring(PATH_SYSTEM_CLEANUP.length());
+            if (sub.endsWith(SEGMENT_DELETE)) {
+                var jobId = sub.substring(0, sub.length() - SEGMENT_DELETE.length());
                 handleDeleteCleanupJob(request, response, jobId, isWeb);
                 return true;
             }
-            if (sub.endsWith("/remind")) {
-                var jobId = sub.substring(0, sub.length() - "/remind".length());
+            if (sub.endsWith(SEGMENT_REMIND)) {
+                var jobId = sub.substring(0, sub.length() - SEGMENT_REMIND.length());
                 handleRemindCleanupJob(response, jobId, isWeb);
                 return true;
             }
-            if (sub.endsWith("/ignore")) {
-                var jobId = sub.substring(0, sub.length() - "/ignore".length());
+            if (sub.endsWith(SEGMENT_IGNORE)) {
+                var jobId = sub.substring(0, sub.length() - SEGMENT_IGNORE.length());
                 handleIgnoreCleanupJob(response, jobId, isWeb);
                 return true;
             }
@@ -8136,15 +8210,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 handleGetDecision(response, decisionId);
                 return true;
             }
-            if ("POST".equals(method) && ("answer".equals(action) || "answers".equals(action))) {
+            if (METHOD_POST.equals(method) && ("answer".equals(action) || "answers".equals(action))) {
                 handleAnswerDecision(request, response, decisionId, isWeb);
                 return true;
             }
-            if ("POST".equals(method) && "interpret".equals(action)) {
+            if (METHOD_POST.equals(method) && "interpret".equals(action)) {
                 handleInterpretDecision(request, response, decisionId);
                 return true;
             }
-            if ("POST".equals(method) && "withdraw".equals(action)) {
+            if (METHOD_POST.equals(method) && "withdraw".equals(action)) {
                 handleWithdrawDecision(request, response, decisionId);
                 return true;
             }
@@ -8479,8 +8553,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     /**
-     * Looks a plan id up in the plan list the active scenario (or its state) serves, or among the
-     * plans a start flow created in this run.
+     * Looks a plan id up in the plan list the active scenario (or its state) serves, among the
+     * plans a start flow created in this run, or among the members an epic lists.
      *
      * @param planId the requested plan id
      * @return the plan's summary entry, or {@code null} when the scenario does not serve the id
@@ -8497,17 +8571,73 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return summary;
         }
         var listRoute = activeRoute("GET", "/api/v1/plans");
-        if (listRoute == null || !(listRoute.representation() instanceof Map<?, ?> list)
-                || !(list.get("plans") instanceof List<?> plans)) {
-            return null;
+        if (listRoute != null && listRoute.representation() instanceof Map<?, ?> list
+                && list.get("plans") instanceof List<?> plans) {
+            for (var element : plans) {
+                var plan = JsonTree.asObject(element);
+                if (plan != null && planId.equals(JsonTree.string(plan, "id"))) {
+                    return plan;
+                }
+            }
         }
-        for (var element : plans) {
-            var plan = JsonTree.asObject(element);
-            if (plan != null && planId.equals(JsonTree.string(plan, "id"))) {
-                return plan;
+        return planListedByAnEpic(planId);
+    }
+
+    /**
+     * Looks a plan id up among the members an epic lists in the state's control fixture.
+     *
+     * A staged, paused or shipped member can live only inside its epic's workstreams; without this
+     * lookup the plan view of such a member answered {@code plan_not_found} although the scenario
+     * lists it.
+     *
+     * @param planId the requested plan id
+     * @return the summary built from the epic's row, or {@code null} when no epic lists the id
+     */
+    private @Nullable Map<String, Object> planListedByAnEpic(String planId) {
+        synchronized (controlLock) {
+            for (var epic : controlEpics.values()) {
+                for (var workstream : epic.workstreams()) {
+                    for (var row : workstream.rows()) {
+                        if (planId.equals(row.planId())) {
+                            return planRowSummary(row, planId, epic.projectId(), epic.epicId());
+                        }
+                    }
+                }
             }
         }
         return null;
+    }
+
+    /**
+     * @param row       the epic's row for the plan
+     * @param planId    the plan id
+     * @param projectId the project the epic belongs to
+     * @param epicId    the epic that lists the plan
+     * @return the summary the process synthesis reads
+     */
+    private static Map<String, Object> planRowSummary(WorkRow row, String planId,
+            @Nullable String projectId, String epicId) {
+        var summary = new LinkedHashMap<String, Object>();
+        summary.put("id", planId);
+        summary.put(KEY_TITLE, row.title() != null && !row.title().isBlank() ? row.title() : planId);
+        if (projectId != null) {
+            summary.put("project", projectId);
+        }
+        summary.put("epic", Map.of(KEY_EPIC_ID, epicId));
+        summary.put(KEY_PHASE, PHASE_EXECUTE);
+        summary.put("state", planStateOf(row.status()));
+        return summary;
+    }
+
+    /**
+     * @param status the row's status as the epic lists it
+     * @return the plan state the view understands
+     */
+    private static String planStateOf(String status) {
+        return switch (status) {
+            case "shipped", "merged", "landed" -> STATE_DONE;
+            default -> status;
+        };
     }
 
     /**
@@ -8556,6 +8686,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (projectId != null) {
             copy.put("project", planProjectRef(projectId));
         }
+        // A plan synthesized from its epic's row names that epic, so the view links back to it.
+        if (summary.get("epic") instanceof Map<?, ?> epicRef) {
+            copy.put("epic", epicRef);
+        }
         copy.put("current_phase", phase);
         copy.put("phase_state", phaseState);
         if ("waiting_for_you".equals(phaseState)) {
@@ -8576,7 +8710,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static List<Map<String, Object>> phaseNodes(@Nullable Map<?, ?> template, String currentPhase,
             String phaseState) {
         if (template == null || !(template.get("nodes") instanceof List<?> nodes)) {
-            var state = "running".equals(phaseState) ? "running" : "waiting_for_operator";
+            var state = STATE_DONE.equals(phaseState) ? STATE_DONE : phaseFallbackState(phaseState);
             return List.of(phaseNode(currentPhase, state, "phase " + currentPhase));
         }
         var current = currentPhaseIndex(nodes, currentPhase);
@@ -8597,6 +8731,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "phase " + currentPhase));
         }
         return result;
+    }
+
+    /**
+     * @param phaseState the plan's state
+     * @return the state of a phase a plan without a template names
+     */
+    private static String phaseFallbackState(String phaseState) {
+        return "running".equals(phaseState) ? "running" : "waiting_for_operator";
     }
 
     /**
@@ -8643,6 +8785,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @return the node's state: done before the current phase, the current phase's own, planned after
      */
     private static String phaseNodeState(int index, int current, String phaseState) {
+        if (STATE_DONE.equals(phaseState)) {
+            return STATE_DONE;
+        }
         if (current >= 0 && index < current) {
             return "done";
         }

@@ -195,13 +195,19 @@ class PmConsoleTest {
                 response.json(200, """
                                     {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":1},"web":{"enabled":true,"port":7420}}
                                     """);
+            } else if (OnboardCommand.STATE_PATH.equals(request.target())) {
+                response.json(200, """
+                                    {"state":"onboard.mode","summary":"Set up this machine for plan-marshall",
+                                     "completed_steps":1,
+                                     "links":{"begin":{"href":"/api/v1/onboarding/language","method":"POST","next":"language.choose","preselected":true}}}
+                                    """);
             } else {
                 response.send(404, null, "");
             }
         });
 
         // Entry flow choice: "h", then "q" to enter REPL.
-        // Then in REPL: empty Enter ("\n"), then "q" to abort continuation, then "exit"
+        // Then in REPL: empty Enter (the dialogue), "q" to leave it, then "exit"
         var input = "h\nq\n\nq\nexit\n";
         var inStream = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
         var outStream = new ByteArrayOutputStream();
@@ -218,7 +224,8 @@ class PmConsoleTest {
 
         assertAll(
                             () -> assertEquals(0, exitCode),
-                            () -> assertTrue(output.contains("Left the setup before step 1. Nothing was sent. Enter continues the setup."))
+                            () -> assertTrue(output.contains("Begin with step 1"), output),
+                            () -> assertTrue(output.contains("Nothing was sent."), output)
         );
     }
 

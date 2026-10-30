@@ -33,26 +33,30 @@ test.describe('System View, Runtime Lifecycle & Cleanup (UC-SYS-1..3)', () => {
   });
 
   test('renders 6-part system dashboard with metrics and cards', async ({ page }) => {
+    // The rail's "Work" group and the System view's "Work" card share a word: the dashboard
+    // assertions read the view, never the frame.
+    const view = page.getByTestId('system-view');
+
     // 1. Runtime Card
-    await expect(page.getByRole('heading', { name: 'Runtime' })).toBeVisible();
-    await expect(page.getByText(/pm-mcpd 0\.9\.1/i).first()).toBeVisible();
-    await expect(page.getByText(/CPU/i)).toBeVisible();
+    await expect(view.getByRole('heading', { name: 'Runtime' })).toBeVisible();
+    await expect(view.getByText(/pm-mcpd 0\.9\.1/i).first()).toBeVisible();
+    await expect(view.getByText(/CPU/i)).toBeVisible();
 
     // 2. Work Card
-    await expect(page.getByRole('heading', { name: 'Work', exact: true })).toBeVisible();
-    await expect(page.getByText('Plans', { exact: true })).toBeVisible();
+    await expect(view.getByRole('heading', { name: 'Work', exact: true })).toBeVisible();
+    await expect(view.getByText('Plans', { exact: true })).toBeVisible();
 
     // 3. Workers Card
-    await expect(page.getByRole('heading', { name: 'Workers' })).toBeVisible();
-    await expect(page.getByText(/busy/i).first()).toBeVisible();
-    await expect(page.getByText(/idle/i).first()).toBeVisible();
+    await expect(view.getByRole('heading', { name: 'Workers' })).toBeVisible();
+    await expect(view.getByText(/busy/i).first()).toBeVisible();
+    await expect(view.getByText(/idle/i).first()).toBeVisible();
 
     // 4. Jobs Card
-    await expect(page.getByRole('heading', { name: 'Jobs' })).toBeVisible();
-    await expect(page.getByText(/build/i).first()).toBeVisible();
+    await expect(view.getByRole('heading', { name: 'Jobs' })).toBeVisible();
+    await expect(view.getByText(/build/i).first()).toBeVisible();
 
     // 5. Models Card
-    await expect(page.getByRole('heading', { name: 'Models' })).toBeVisible();
+    await expect(view.getByRole('heading', { name: 'Models' })).toBeVisible();
 
     // 6. Cleanup banner
     await expect(page.getByRole('region', { name: /Cleanup banner/i })).toBeVisible();

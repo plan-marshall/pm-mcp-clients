@@ -16,7 +16,7 @@ test.describe('Overview View (UC-PLN-4)', () => {
     await expect(page.locator('.app-header__machine')).toContainText('Machine:');
 
     // Navigate to Running Work overview
-    const overviewNav = page.locator('.app-header').getByRole('button', { name: /Running work/i });
+    const overviewNav = page.locator('.nav-rail').getByRole('button', { name: /Running work/i });
     await expect(overviewNav).toBeVisible();
     await overviewNav.click();
 

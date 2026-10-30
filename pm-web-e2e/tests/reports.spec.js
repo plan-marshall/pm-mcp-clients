@@ -17,7 +17,7 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
   });
 
   test('opens the reports view from the header navigation', async ({ page }) => {
-    const reportsBtn = page.locator('.app-header').getByRole('button', { name: /Reports/i });
+    const reportsBtn = page.locator('.nav-rail').getByRole('button', { name: /Reports/i });
     await expect(reportsBtn).toBeVisible();
     await reportsBtn.click();
 
@@ -34,7 +34,7 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
   test('marks a single report read and removes it from view', async ({ page }) => {
     // Navigate to reports view
     await page
-      .locator('.app-header')
+      .locator('.nav-rail')
       .getByRole('button', { name: /Reports/i })
       .click();
     await expect(page.locator('.reports-view')).toBeVisible();
@@ -57,7 +57,7 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
   test('opens completion report from report detail', async ({ page }) => {
     // Navigate to reports view
     await page
-      .locator('.app-header')
+      .locator('.nav-rail')
       .getByRole('button', { name: /Reports/i })
       .click();
     await expect(page.locator('.reports-view')).toBeVisible();
@@ -88,7 +88,7 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
 
   test('marks all shown reports read and shows empty state', async ({ page }) => {
     await page
-      .locator('.app-header')
+      .locator('.nav-rail')
       .getByRole('button', { name: /Reports/i })
       .click();
     await expect(page.locator('.reports-view')).toBeVisible();
@@ -117,7 +117,7 @@ test.describe('Reports: paths, details, and the quiet notice (UC-PLN-6)', () => 
     await page.goto('/#code=KXQB-MRTN');
     await expect(page.locator('.app-header__machine')).toContainText('Machine:');
     await page
-      .locator('.app-header')
+      .locator('.nav-rail')
       .getByRole('button', { name: /Reports/i })
       .click();
     await expect(page.locator('.reports-view')).toBeVisible();
@@ -131,7 +131,7 @@ test.describe('Reports: paths, details, and the quiet notice (UC-PLN-6)', () => 
     await expect(page).toHaveURL(/\/plans\/fix-relay$/);
 
     await page
-      .locator('.app-header')
+      .locator('.nav-rail')
       .getByRole('button', { name: /Reports/i })
       .click();
     await expect(page.getByText('Ended: merged (#214)')).toBeVisible();

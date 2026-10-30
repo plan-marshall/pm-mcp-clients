@@ -1106,8 +1106,11 @@
 
   .plan-header__actions {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
+    min-inline-size: 0;
+    max-inline-size: 100%;
   }
 
   .pr-badge-link {

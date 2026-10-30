@@ -144,7 +144,7 @@ describe('the app shell', () => {
     expect(screen.queryByTestId('nav-designer-btn')).not.toBeInTheDocument();
   });
 
-  it('marks the LAN mode and keeps the detail when the connection status fails', async () => {
+  it('names the network mode in the pill title and keeps its data hook', async () => {
     localStorage.setItem('pm_device_secret', 'pmw_valid');
     vi.spyOn(apiClient, 'getStatus').mockResolvedValue(STATUS);
     vi.spyOn(apiClient, 'getConnectionStatus').mockRejectedValue(new Error('unavailable'));
@@ -165,7 +165,7 @@ describe('the app shell', () => {
     );
   });
 
-  it('probes the connection again after 30 seconds and clears the offline banner', async () => {
+  it('probes the connection again after 30 seconds and reports the machine online again', async () => {
     // Only the interval is faked: promise callbacks and `waitFor` keep real time, so the probe's
     // completion and the store update it triggers are observed without clock gymnastics.
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
@@ -190,7 +190,8 @@ describe('the app shell', () => {
       render(Layout);
       await waitFor(() => expect(probe).toHaveBeenCalledTimes(1));
 
-      // The machine was reported offline; the next heartbeat reaches it again.
+      // The machine was reported offline; the next heartbeat reaches it again and clears the flag
+      // the requests keep, which the live indicator no longer needs to paint a banner for.
       runtimeStore.update((state) => ({ ...state, isOffline: true }));
       expect(get(runtimeStore).isOffline).toBe(true);
       vi.advanceTimersByTime(30_000);

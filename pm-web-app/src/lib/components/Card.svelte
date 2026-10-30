@@ -84,6 +84,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
+    min-inline-size: 0;
     padding: var(--space-5);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
@@ -93,13 +94,17 @@
 
   .card__head {
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-start;
     justify-content: space-between;
     gap: var(--space-3);
+    min-inline-size: 0;
   }
 
   .card__title {
     margin: 0;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
     font-size: var(--text-md);
     font-weight: var(--weight-semibold);
     line-height: var(--line-height-md);
@@ -120,6 +125,7 @@
 
   .card__actions {
     display: flex;
+    flex-wrap: wrap;
     flex: 0 0 auto;
     align-items: center;
     gap: var(--space-2);

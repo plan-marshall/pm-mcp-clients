@@ -9,6 +9,7 @@
  */
 package de.planmarshall.mock.runtime;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -801,6 +802,40 @@ class MockRuntimeEngineTest {
                   }
                 }
                 """;
+    }
+
+    @Test
+    @DisplayName("a project's setup serves its identity and advances to completed")
+    void projectSetupServesItsState() throws Exception {
+        engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
+        var auth = Map.of("Authorization", "Bearer test-token");
+
+        var identity = send("GET", "/api/v1/projects/cui-parent/setup", auth, new byte[0], false);
+        var advanced = send("POST", "/api/v1/projects/cui-parent/setup", auth,
+                "{\"link\":\"set\"}".getBytes(StandardCharsets.UTF_8), false);
+        var again = send("GET", "/api/v1/projects/cui-parent/setup", auth, new byte[0], false);
+
+        assertAll(
+                () -> assertEquals(200, identity.status()),
+                () -> assertEquals("project.identity", JsonTree.string(identity.json(), "state")),
+                () -> assertEquals("cui-parent", JsonTree.string(identity.json(), "id")),
+                () -> assertEquals(Boolean.FALSE, JsonTree.bool(identity.json(), "pilot")),
+                () -> assertEquals(200, advanced.status()),
+                () -> assertEquals("project.completed", JsonTree.string(advanced.json(), "state")),
+                () -> assertEquals("project.completed", JsonTree.string(again.json(), "state")));
+    }
+
+    @Test
+    @DisplayName("a project setup id that arrives percent-encoded is decoded")
+    void projectSetupDecodesTheId() throws Exception {
+        engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
+        var auth = Map.of("Authorization", "Bearer test-token");
+
+        var res = send("GET", "/api/v1/projects/new%20service/setup", auth, new byte[0], false);
+
+        assertAll(
+                () -> assertEquals(200, res.status()),
+                () -> assertEquals("new service", JsonTree.string(res.json(), "id")));
     }
 
     @Test

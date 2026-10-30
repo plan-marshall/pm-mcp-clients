@@ -29,9 +29,9 @@ test.describe('Fully onboarded showroom', () => {
     }
   });
 
-  test('shows the populated header badges and the running work overview', async ({ page }) => {
-    await expect(page.locator('.header-action-btn--decisions .reports-badge')).toHaveText('3');
-    await expect(page.locator('.header-action-btn--reports .reports-badge')).toHaveText('5');
+  test('shows the populated rail badges and the running work overview', async ({ page }) => {
+    await expect(page.getByTestId('nav-decisions-btn-count')).toHaveText('3');
+    await expect(page.getByTestId('nav-reports-btn-count')).toHaveText('5');
 
     await expect(page.locator('.overview')).toBeVisible();
     await expect(page.locator('.project-list')).toBeVisible();
@@ -116,7 +116,7 @@ test.describe('Fully onboarded showroom', () => {
   test('answers the three decisions, revealing a recommendation and switching parts', async ({
     page,
   }) => {
-    await page.locator('.header-action-btn--decisions').click();
+    await page.getByTestId('nav-decisions-btn').click();
     await expect(page.locator('.decisions-view')).toBeVisible();
 
     const cards = page.locator('.decision-card');
@@ -134,7 +134,7 @@ test.describe('Fully onboarded showroom', () => {
   });
 
   test('reads the unread reports and opens the completion report', async ({ page }) => {
-    await page.locator('.header-action-btn--reports').click();
+    await page.getByTestId('nav-reports-btn').click();
     await expect(page.locator('.reports-view')).toBeVisible();
     await expect(page.locator('.report-card')).toHaveCount(5);
 
