@@ -475,6 +475,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String PATH_PROJECTS_PREFIX = "/api/v1/projects/";
     private static final String SEGMENT_SETUP = "/setup";
     private static final String METHOD_POST = "POST";
+    private static final String KEY_STEP = "step";
+    private static final String KEY_TOTAL_STEPS = "total_steps";
     private static final String PATH_SYSTEM_CLEANUP = "/api/v1/system/cleanup/";
     private static final String SEGMENT_DELETE = "/delete";
     private static final String SEGMENT_REMIND = "/remind";
@@ -7304,7 +7306,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     "checkout_path", path,
                     "current_step", STEP_IDENTITY,
                     "step_number", 2,
-                    "total_steps", 10
+                    KEY_TOTAL_STEPS, 10
             ));
         }
     }
@@ -7440,14 +7442,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var body = new LinkedHashMap<String, Object>();
         body.put(KEY_PROJECT_ID, projectId);
         body.put(KEY_STATE, stateId);
-        body.put("total_steps", 10);
+        body.put(KEY_TOTAL_STEPS, 10);
         if (PROJECT_SETUP_COMPLETED.equals(stateId)) {
-            body.put("step", 10);
+            body.put(KEY_STEP, 10);
             body.put("summary", projectId + PROJECT_SETUP_READY_SUFFIX);
             body.put(KEY_LINKS, Map.of());
             return body;
         }
-        body.put("step", 2);
+        body.put(KEY_STEP, 2);
         body.put("id", projectId);
         body.put("name", displayNameOf(projectId));
         body.put("pilot", false);

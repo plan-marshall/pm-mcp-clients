@@ -59,6 +59,8 @@ public final class StateDialogue {
     private static final String STATE = "state";
     private static final String FACTS = "facts";
     private static final String LINKS = "links";
+    private static final String STEP_KEY_PREFIX = "onboard.step.";
+    private static final String STEP_OWN = "own";
     private static final String STEP_ROLES = "roles";
     private static final String STEP_DONE = "onboard.step.done";
     private static final String DONE = "done";
@@ -393,7 +395,7 @@ public final class StateDialogue {
 
     private void addStepOverview(List<String> lines) {
         for (var aspect : OnboardingAspect.values()) {
-            var suffix = aspect.stepNameKey().substring("onboard.step.".length());
+            var suffix = aspect.stepNameKey().substring(STEP_KEY_PREFIX.length());
             lines.add(MessageCatalogue.format(locale, "onboard.state.step_entry", Map.of(
                                 "number", aspect.step(),
                                 "name", MessageCatalogue.format(locale, aspect.stepNameKey(), Map.of()),
@@ -564,7 +566,7 @@ public final class StateDialogue {
         if (stateId.startsWith(PROJECT_PREFIX)) {
             return stepText("project.step." + projectStepOf(stateId));
         }
-        return stepText("onboard.step." + machineStepOf(stateId));
+        return stepText(STEP_KEY_PREFIX + machineStepOf(stateId));
     }
 
     private String stepText(String key) {
@@ -600,7 +602,7 @@ public final class StateDialogue {
     static String machineStepOf(String stateId) {
         for (var aspect : OnboardingAspect.values()) {
             if (stateId.startsWith(aspect.wireValue() + ".")) {
-                return aspect.stepNameKey().substring("onboard.step.".length());
+                return aspect.stepNameKey().substring(STEP_KEY_PREFIX.length());
             }
         }
         if (stateId.startsWith("github.") || stateId.startsWith("sonar.")) {
@@ -618,7 +620,7 @@ public final class StateDialogue {
         return switch (id) {
             case "consent", "detect", "run-consent", "probe", "checkout" -> "checkout";
             case "enrol", "enrolment" -> "enrolment";
-            case "operator", "own" -> "own";
+            case "operator", STEP_OWN -> STEP_OWN;
             case "identity", "team", "architecture", "landing",
                 STEP_ROLES, "descriptions", "commit" -> id;
             default -> DONE;
