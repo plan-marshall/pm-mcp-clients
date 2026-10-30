@@ -36,20 +36,24 @@ final class OperatorActs {
 
     private static final String CANCEL = "cancel";
 
+    private static final String ADD = "add";
+
+    private static final String SETTINGS = "settings";
+
     private static final Set<String> PLAN_SUBCOMMANDS = Set.of(
-                        "add", "pause", "start", FINDINGS, WATCHES, CANCEL, "abandon", "resolve",
-                        "settings", CHAT, REPORT);
+                        ADD, "pause", "start", FINDINGS, WATCHES, CANCEL, "abandon", "resolve",
+                        SETTINGS, CHAT, REPORT);
 
     private static final Set<String> PLAN_READ_SUBCOMMANDS = Set.of(FINDINGS, WATCHES, REPORT);
 
     private static final Set<String> EPIC_SUBCOMMANDS = Set.of(
-                        "add", "next", "auto", "decompose", "review", "instruct", "archive", FINDINGS,
+                        ADD, "next", "auto", "decompose", "review", "instruct", "archive", FINDINGS,
                         WATCHES, CHAT, CANCEL);
 
     private static final Set<String> EPIC_READ_SUBCOMMANDS = Set.of(FINDINGS, WATCHES);
 
     private static final Set<String> PROJECT_ACT_SUBCOMMANDS = Set.of(
-                        "add", "setup", "favourite", "release", "unenrol");
+                        ADD, "setup", "favourite", "release", "unenrol");
 
     private static final Set<String> CLIENT_ACT_SUBCOMMANDS = Set.of("install", "remove", "update");
 
