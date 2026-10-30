@@ -513,6 +513,15 @@ public final class StateDialogue {
      * @return whether the catalogue names a title for the state
      */
     private boolean hasTitle(Frame frame) {
+        return hasTitleOf(locale, frame);
+    }
+
+    /**
+     * @param locale the interface locale
+     * @param frame  the state
+     * @return whether the catalogue names a title for the state
+     */
+    public static boolean hasTitleOf(String locale, Frame frame) {
         return MessageCatalogue.hasKey(locale,
                             prefix(frame.stateId()) + normalise(frame.stateId()) + ".title");
     }
