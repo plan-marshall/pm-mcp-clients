@@ -20,10 +20,11 @@ import de.planmarshall.api.message.MessageCatalogue;
  * says why, and a fix that names what to do next. The texts live in the catalogue area {@code error}
  * ({@code error.<code>.title}, {@code error.<code>.cause} and {@code error.<code>.fix}).
  * <p>
- * The lookup is renderer-independent, so both clients say the same thing: the terminal prints the
- * three lines through it, and the web app reads the same keys through its display layer. A code the
- * lookup does not know — an unknown wire value or no code at all — falls back to the area's
- * {@code error.unknown.*} texts, never to the bare key and never to an empty line.
+ * The lookup is renderer-independent, so both clients can say the same thing: the terminal's
+ * refusal renderer prints the three lines through it, and the web app reads the same keys through
+ * its display layer. A code the lookup does not know — an unknown wire value or no code at all —
+ * falls back to the area's {@code error.unknown.*} texts, never to the bare key and never to an
+ * empty line.
  */
 @UtilityClass
 public class ErrorTexts {
