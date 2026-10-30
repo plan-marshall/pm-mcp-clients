@@ -14,22 +14,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.planmarshall.mock.StandardScenarios;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
 /**
- * The project setup dialogue on a real pseudo-terminal (CLI-CC-S-01): {@code q} sends nothing, an
- * unknown input re-asks, and the main path sends the setup.
+ * The project setup dialogue on a real pseudo-terminal (CLI-CC-S-01, CLI-UC-P-01): {@code q} sends
+ * nothing, an unknown input re-asks, and the identity state shows the project's id, name and pilot
+ * choice before the setup act is sent.
  */
 @DisplayName("pm-operator project setup dialogue on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
-@Disabled("PLAN-22-cli-state-dialogue-onboarding gives project setup one state dialogue")
 class ProjectSetupDialogueIT {
 
-    private static final String PROMPT = "cui-parent";
+    private static final String PROMPT = "How should the project be named?";
 
     @Test
     @DisplayName("q first: the dialogue leaves and sends nothing")
@@ -38,6 +37,8 @@ class ProjectSetupDialogueIT {
                                  .goTo("projects.being-added");
              var session = harness.open("project", "setup", "cui-parent")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitText("Record this choice", DialogueHarness.TIMEOUT),
+                                session.rawOutput());
 
             DialogueHarness.type(session, "q\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
@@ -55,6 +56,8 @@ class ProjectSetupDialogueIT {
                                  .goTo("projects.being-added");
              var session = harness.open("project", "setup", "cui-parent")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitText("Record this choice", DialogueHarness.TIMEOUT),
+                                session.rawOutput());
 
             DialogueHarness.type(session, "zzz\nq\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
@@ -65,17 +68,26 @@ class ProjectSetupDialogueIT {
     }
 
     @Test
-    @DisplayName("the main path: the setup act arrives")
-    void mainPathStartsSetup() throws Exception {
+    @DisplayName("the identity state shows id, name and the pilot choice")
+    void identityShowsIdNameAndPilot() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.PROJECTS_AND_START)
                                  .goTo("projects.being-added");
              var session = harness.open("project", "setup", "cui-parent")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitText("Record this choice", DialogueHarness.TIMEOUT),
+                                session.rawOutput());
+
+            var screen = session.screenText();
+            assertTrue(screen.contains("Id"), screen);
+            assertTrue(screen.contains("cui-parent"), screen);
+            assertTrue(screen.contains("Name"), screen);
+            assertTrue(screen.contains(
+                                "Pilot: this version of PM-MCP runs plans only in pilot projects: no"), screen);
 
             DialogueHarness.type(session, "\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
-            assertTrue(session.screenText().contains("Project setup for cui-parent"), session.screenText());
+            assertTrue(session.screenText().contains("The project is ready"), session.screenText());
             harness.assertAct("POST", "/api/v1/projects/cui-parent/setup");
         }
     }

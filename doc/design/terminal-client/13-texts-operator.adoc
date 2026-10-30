@@ -328,10 +328,6 @@ One letter per link relation, the mnemonic of its label; the build checks of the
 |This machine is not set up yet. Set it up in the console (pm-operator) or in the web app.
 |Diese Maschine ist noch nicht eingerichtet. Richte sie in der Konsole (pm-operator) oder in der Web-App ein.
 
-|`operator.entry.left_before_start`
-|Left the setup before step 1. Nothing was sent. Enter continues the setup.
-|Einrichtung vor Schritt 1 verlassen. Es wurde nichts gesendet. Enter setzt die Einrichtung fort.
-
 |`operator.entry.web_app_paired`
 |Web app: {url}   (paired: {label})
 |Web-App: {url}   (gekoppelt: {label})

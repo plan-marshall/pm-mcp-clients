@@ -39,6 +39,10 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.SseEvent;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.runtime.RuntimeClient;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
+import de.planmarshall.operator.dialogue.OnboardingSource;
+import de.planmarshall.operator.dialogue.StateDialogue;
 import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiScreenDriver;
 
@@ -242,19 +246,45 @@ public final class PmConsole {
             }
         }
         if (hasSetup) {
-            out.println(MessageCatalogue.format(locale, "operator.entry.setup_title", Map.of()));
+            continueOnboarding(out, reader, locale);
+        }
+    }
+
+    /**
+     * Continues the open onboarding on the empty prompt: the one state dialogue reads the state the
+     * runtime reports and follows it ({@code CLI-UC-S-06}).
+     *
+     * @param out    the console's writer
+     * @param reader the console's line reader
+     * @param locale the interface locale
+     */
+    private void continueOnboarding(PrintWriter out, LineReader reader, String locale) {
+        try {
+            var runtime = context.runtime(true);
+            var dialogue = new StateDialogue(new OnboardingSource(runtime), out, locale,
+                                stateId -> new ChoicePrompt(reader, out, locale, stateId));
+            dialogue.run();
+            refreshSetupBadge(runtime, locale);
+        } catch (StartPrompt.StartLeftException | StartPrompt.MissingInputException _) {
+            // leaving the dialogue sends nothing; the runtime keeps the state it reports
+        } catch (IOException _) {
+            out.println(MessageCatalogue.format(locale, "onboard.error.no_state", Map.of()));
             out.flush();
-            String beginChoice = null;
-            try {
-                beginChoice = reader.readLine(MessageCatalogue.format(locale,
-                                    "operator.console.setup.begin_prompt", Map.of()));
-            } catch (EndOfFileException | UserInterruptException _) {
-                // abort continuation on interrupt/EOF
-            }
-            if (beginChoice != null && "q".equalsIgnoreCase(beginChoice.trim())) {
-                out.println(MessageCatalogue.format(locale, "operator.console.setup.left", Map.of()));
-                out.flush();
-            }
+        }
+    }
+
+    /**
+     * Replaces the setup badge after the dialogue, so a completed onboarding leaves no badge and a
+     * stopped one names the step it stopped at.
+     *
+     * @param runtime the runtime client
+     * @param locale  the interface locale
+     */
+    private void refreshSetupBadge(RuntimeClient runtime, String locale) {
+        try {
+            badges.set(List.copyOf(EntryFlow.badges(locale, StatusCommand.fetch(runtime))));
+        } catch (IOException _) {
+            // the badge keeps what the entry flow reported
         }
     }
 

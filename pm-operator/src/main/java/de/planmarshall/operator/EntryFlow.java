@@ -35,6 +35,9 @@ import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.report.ReportsPage;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.runtime.RuntimeRecord;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
+import de.planmarshall.operator.dialogue.OnboardingSource;
+import de.planmarshall.operator.dialogue.StateDialogue;
 
 /**
  * Evaluates the runtime and machine onboarding status upon entering {@code pm-operator}
@@ -187,20 +190,46 @@ public final class EntryFlow {
             return new EntryResult(status, badges, pairing.code(), pairing.url());
         } else {
             out.println();
-            out.println(MessageCatalogue.format(locale, "operator.entry.setup_title", Map.of()));
             out.flush();
-            String beginChoice = null;
-            try {
-                beginChoice = reader.readLine(MessageCatalogue.format(locale,
-                                    "operator.console.setup.begin_prompt", Map.of()));
-            } catch (EndOfFileException | UserInterruptException _) {
-                // abort setup on interrupt/EOF
-            }
-            if (beginChoice != null && "q".equalsIgnoreCase(beginChoice.trim())) {
-                out.println(MessageCatalogue.format(locale, "operator.entry.left_before_start", Map.of()));
-                out.flush();
-            }
-            return new EntryResult(status, badges, null, null);
+            runOnboardingDialogue(runtime, out, reader, locale);
+            return refreshedAfterDialogue(runtime);
+        }
+    }
+
+    /**
+     * Re-reads the status after the dialogue, so the badge the console keeps matches the state the
+     * dialogue left: no setup badge once the machine is onboarded, the completed step otherwise.
+     *
+     * @param runtime the runtime client
+     * @return the entry result with the refreshed status and badges
+     * @throws IOException on transport failure
+     */
+    private EntryResult refreshedAfterDialogue(RuntimeClient runtime) throws IOException {
+        var refreshed = StatusCommand.fetch(runtime);
+        return new EntryResult(refreshed, badges(context.clientEnvironment().locale(), refreshed),
+                            null, null);
+    }
+
+    /**
+     * Hands the guided path over to the one state dialogue ({@code CLI-UC-S-06}): the operator
+     * follows the runtime's onboarding states until the machine is ready or leaves with {@code q}.
+     *
+     * @param runtime the runtime client
+     * @param out     the output
+     * @param reader  the console's line reader
+     * @param locale  the interface locale
+     */
+    private void runOnboardingDialogue(RuntimeClient runtime, PrintWriter out, LineReader reader,
+                        String locale) {
+        var dialogue = new StateDialogue(new OnboardingSource(runtime), out, locale,
+                            stateId -> new ChoicePrompt(reader, out, locale, stateId));
+        try {
+            dialogue.run();
+        } catch (StartPrompt.StartLeftException | StartPrompt.MissingInputException _) {
+            // leaving the dialogue sends nothing; the runtime keeps the state it reports
+        } catch (IOException _) {
+            out.println(MessageCatalogue.format(locale, "onboard.error.no_state", Map.of()));
+            out.flush();
         }
     }
 
