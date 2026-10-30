@@ -472,6 +472,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String PATH_PROJECTS_PREFIX = "/api/v1/projects/";
     private static final String SEGMENT_SETUP = "/setup";
     private static final String PATH_SYSTEM_CLEANUP = "/api/v1/system/cleanup/";
+    private static final String SEGMENT_DELETE = "/delete";
     private static final String SEGMENT_WORKFLOWS = "/workflows";
     private static final String SEGMENT_CATALOGUE = "/catalogue";
     private static final String SEGMENT_VALIDATE = "/validate";
@@ -7439,8 +7440,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         if (path.startsWith(PATH_SYSTEM_CLEANUP) && "POST".equals(method)) {
             var sub = path.substring(PATH_SYSTEM_CLEANUP.length());
-            if (sub.endsWith("/delete")) {
-                var jobId = sub.substring(0, sub.length() - "/delete".length());
+            if (sub.endsWith(SEGMENT_DELETE)) {
+                var jobId = sub.substring(0, sub.length() - SEGMENT_DELETE.length());
                 handleDeleteCleanupJob(request, response, jobId, isWeb);
                 return true;
             }

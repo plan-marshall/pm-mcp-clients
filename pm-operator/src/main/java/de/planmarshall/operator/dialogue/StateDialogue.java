@@ -66,6 +66,7 @@ public final class StateDialogue {
     private static final String STEP_PROVIDERS = "providers";
     private static final String STEP_PLANS = "plans";
     private static final String STEP_DONE = "onboard.step.done";
+    private static final String DONE = "done";
     private static final String UNKNOWN = "onboard.state.unknown";
     private static final String LABEL = "label";
     private static final int CONTENT_WIDTH = 76;
@@ -627,7 +628,7 @@ public final class StateDialogue {
         if (stateId.startsWith("defaults.")) {
             return STEP_PLANS;
         }
-        return "done";
+        return DONE;
     }
 
     /**
@@ -638,8 +639,8 @@ public final class StateDialogue {
         var id = stateId.substring(PROJECT_PREFIX.length());
         return switch (id) {
             case "checkout", "identity", "enrolment", "own", "team", "architecture", "landing",
-                "roles", "descriptions", "commit" -> id;
-            default -> "done";
+                STEP_ROLES, "descriptions", "commit" -> id;
+            default -> DONE;
         };
     }
 
