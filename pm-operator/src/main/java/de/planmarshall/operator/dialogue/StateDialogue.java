@@ -62,6 +62,7 @@ public final class StateDialogue {
     private static final String STEP_KEY_PREFIX = "onboard.step.";
     private static final String STEP_OWN = "own";
     private static final String STEP_ENROLMENT = "enrolment";
+    private static final String OPERATOR = "operator";
     private static final String STEP_ROLES = "roles";
     private static final String STEP_DONE = "onboard.step.done";
     private static final String DONE = "done";
@@ -621,7 +622,7 @@ public final class StateDialogue {
         return switch (id) {
             case "consent", "detect", "run-consent", "probe", "checkout" -> "checkout";
             case "enrol", STEP_ENROLMENT -> STEP_ENROLMENT;
-            case "operator", STEP_OWN -> STEP_OWN;
+            case OPERATOR, STEP_OWN -> STEP_OWN;
             case "identity", "team", "architecture", "landing",
                 STEP_ROLES, "descriptions", "commit" -> id;
             default -> DONE;
@@ -643,7 +644,7 @@ public final class StateDialogue {
         if (map == null) {
             throw new IOException("the runtime reported no state");
         }
-        var envelope = JsonTree.asObject(map.get("operator"));
+        var envelope = JsonTree.asObject(map.get(OPERATOR));
         var source = envelope != null ? envelope : map;
         var stateId = stateIdOf(source, map);
         return new Frame(stateId, kindOf(source), stepOf(source, map, stateId, totalSteps, project),
@@ -711,7 +712,7 @@ public final class StateDialogue {
 
     private static boolean isStructural(String key) {
         return switch (key) {
-            case STATE, "scope", LINKS, FACTS, SUMMARY, "runtime", "operator",
+            case STATE, "scope", LINKS, FACTS, SUMMARY, "runtime", OPERATOR,
                 "completed_steps", "steps", "step", "total_steps", "auto",
                 "step_summaries", "verification", "usage", "link" -> true;
             default -> false;
