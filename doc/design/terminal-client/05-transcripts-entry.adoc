@@ -191,6 +191,7 @@ pm [setup 0/7] ›
 [source,text]
 ----
 Set up this machine for plan-marshall
+  … the intro and the seven steps, then:
   1) Decide everything for me…
   2) Begin with step 1 ←
   › q
@@ -353,6 +354,7 @@ $
 [source,text]
 ----
 Set up this machine for plan-marshall
+  … the intro and the seven steps, then:
   1) Decide everything for me…
   2) Begin with step 1 ←
   › 1
@@ -392,7 +394,7 @@ Decide everything for me?
 y) yes   n) not now   ? lists every action   › n
   Nothing was done.
 Set up this machine for plan-marshall
-Set up this machine for plan-marshall
+  … the intro and the seven steps, then:
   1) Decide everything for me…
   2) Begin with step 1 ←
   › 1
@@ -431,7 +433,7 @@ Finish? [Enter]   1-7) change that step   ?   › ⏎
 pm ›
 ----
 
-* The automatic run is the choice `a` of `onboard.mode`, after _here_ in `entry.where-to-onboard`; there is no option for it.
+* The automatic run is the choice `auto` (`1`) of `onboard.mode`, after _here_ in `entry.where-to-onboard`; there is no option for it.
 * `auto.consent` has no `r`: the automatic run's consent is never remembered. `n` returns to `onboard.mode` with `Nothing was done.`; nothing of the run has happened.
 * `auto.consent` lists the consents the run needs, each by its kind's title (`common.consent.kind.<kind>`) with what it looks for and runs (link:../shared/consents.adoc#auto[Consents, The Automatic Run's One Consent]); `?` lists every check. It covers exactly these, for this run only, and remembers none of them. A kind remembered earlier is listed with `remembered` in place of its detail and is not part of this consent. The automatic run asks no model, so `model_advice` is not listed; `fetch_icons` is, since the runtime fetches the icons for the web app whichever client runs the onboarding.
 * The headless call is named because the consent is asked before the scan: whether a harness without a login probe is found is not known yet (link:../../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#login-probe[Login Probe]).
@@ -471,17 +473,15 @@ After _here_ in `entry.where-to-onboard` (<<t-entry-first>>), or in a console wh
 [source,text]
 ----
 Set up this machine for plan-marshall
-
-  Seven steps. Nothing on this machine is looked at, run, or changed until
-  you say so in that step. You can stop at any point; the next visit, here or
-  in pm-operator, continues where you stopped.
-
-    1  Language: the language of plan-marshall and of the models' texts
-    …
-    7  Plans: how plans run unless a project says otherwise
-    1) Decide everything for me…
-    2) Begin with step 1 ←
-    › ⏎
+  Seven steps. Nothing on this machine is looked at, run, or changed until you
+  say so in that step. You can stop at any point; the next visit, here or in
+  pm-operator, continues where you stopped.
+  1  Language: the language of plan-marshall and of the models' texts
+  …
+  7  Plans: how plans run unless a project says otherwise
+  1) Decide everything for me…
+  2) Begin with step 1 ←
+  › ⏎
 ----
 
 * The intro of `onboard.mode` is the shared `onboard.entry.intro` with `onboard.mode.resume`; the entry's question says the same with the console's own hint (`operator.entry.resume_hint`).

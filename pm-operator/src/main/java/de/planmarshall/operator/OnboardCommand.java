@@ -51,6 +51,7 @@ public final class OnboardCommand implements Callable<Integer> {
     static final String AUTO_PATH = "/api/v1/onboarding/auto";
 
     private static final int EXIT_NEEDS_INPUT = 3;
+    private static final int WRAP_WIDTH = 76;
     private static final long POLL_PAUSE_NANOS = 100_000_000L;
     private static final long AUTO_TIMEOUT_NANOS = 60_000_000_000L;
     private static final String AUTO_RESULT = "auto.result";
@@ -174,6 +175,7 @@ public final class OnboardCommand implements Callable<Integer> {
             if (!frame.stateId().equals(last)) {
                 printStateLine(out, locale, frame);
                 last = frame.stateId();
+                deadline = System.nanoTime() + AUTO_TIMEOUT_NANOS;
             }
         }
         return frame;
@@ -181,9 +183,12 @@ public final class OnboardCommand implements Callable<Integer> {
 
     private void printStateLine(PrintWriter out, String locale, StateDialogue.Frame frame) {
         var title = StateDialogue.titleOf(locale, frame);
-        if (frame.summary() != null && !frame.summary().isBlank()) {
-            out.println(MessageCatalogue.format(locale, "onboard.state.line",
-                                Map.of("title", title, "summary", frame.summary())));
+        if (frame.summary() != null && !frame.summary().isBlank() && !frame.summary().equals(title)) {
+            for (var line : StateDialogue.wrap(MessageCatalogue.format(locale, "onboard.state.line",
+                                Map.of("title", title, "summary", frame.summary())),
+                                WRAP_WIDTH)) {
+                out.println(line);
+            }
         } else {
             out.println(MessageCatalogue.format(locale, "onboard.state.line_no_summary",
                                 Map.of("title", title)));
@@ -206,10 +211,14 @@ public final class OnboardCommand implements Callable<Integer> {
             var aspect = Objects.toString(row.get("aspect"), "");
             var value = Objects.toString(row.get("value"), "");
             var reason = Objects.toString(row.get("reason"), "");
-            out.println(MessageCatalogue.format(locale, "onboard.state.result_row", Map.of(
-                                "aspect", autoText("onboard.auto.aspect.", locale, aspect),
-                                "value", TerminalSanitizer.sanitizeLine(value),
-                                "reason", autoText("onboard.auto.reason.", locale, reason))));
+            for (var line : StateDialogue.wrap(MessageCatalogue.format(locale,
+                                "onboard.state.result_row", Map.of(
+                                                    "aspect", autoText("onboard.auto.aspect.", locale, aspect),
+                                                    "value", TerminalSanitizer.sanitizeLine(value),
+                                                    "reason", autoText("onboard.auto.reason.", locale, reason))),
+                                WRAP_WIDTH)) {
+                out.println(line);
+            }
         }
     }
 
@@ -217,7 +226,7 @@ public final class OnboardCommand implements Callable<Integer> {
         var key = prefix + token;
         return MessageCatalogue.hasKey(locale, key)
                             ? MessageCatalogue.format(locale, key, Map.of())
-                            : TerminalSanitizer.sanitizeLine(token);
+                            : MessageCatalogue.format(locale, "onboard.state.unknown", Map.of());
     }
 
     private boolean confirm(String prompt) throws IOException {

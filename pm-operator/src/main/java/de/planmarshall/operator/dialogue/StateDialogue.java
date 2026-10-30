@@ -52,7 +52,7 @@ public final class StateDialogue {
     private static final int CONTENT_WIDTH = 76;
     private static final Set<String> BARE_FIELDS = Set.of(
                         "name", "summary", "value", "reason", "model_id", "role", "effort",
-                        "aspect", "provider", "harness", "version", "kind", "current", "default");
+                        "aspect", "version", "current", "default", "cause", "fix");
     private static final List<String> STEP_KEYS = List.of(
                         "language", "harnesses", "models", "roles", "credentials", "providers", "plans");
 
@@ -217,7 +217,7 @@ public final class StateDialogue {
      * @param width the width of the content column
      * @return the line broken at its spaces, never inside a word
      */
-    private static List<String> wrap(String text, int width) {
+    public static List<String> wrap(String text, int width) {
         var lines = new ArrayList<String>();
         var current = new StringBuilder();
         for (var word : text.split(" ")) {
@@ -269,8 +269,7 @@ public final class StateDialogue {
             lines.add(MessageCatalogue.format(locale, "onboard.completed.next", Map.of()));
             return lines;
         }
-        var title = title(frame);
-        if (frame.summary() != null && !frame.summary().isBlank() && !frame.summary().equals(title)) {
+        if (!hasTitle(frame) && frame.summary() != null && !frame.summary().isBlank()) {
             lines.add(TerminalSanitizer.sanitizeLine(frame.summary()));
         }
         for (var entry : frame.facts().entrySet()) {
@@ -344,6 +343,9 @@ public final class StateDialogue {
         if ("reason".equals(field)) {
             return autoText("onboard.auto.reason.", value);
         }
+        if ("provider".equals(field)) {
+            return autoText("onboard.provider.", value);
+        }
         return value;
     }
 
@@ -351,7 +353,7 @@ public final class StateDialogue {
         var key = prefix + token;
         return MessageCatalogue.hasKey(locale, key)
                             ? MessageCatalogue.format(locale, key, Map.of())
-                            : token;
+                            : MessageCatalogue.format(locale, "onboard.state.unknown", Map.of());
     }
 
     private void addStepOverview(List<String> lines) {
@@ -426,13 +428,22 @@ public final class StateDialogue {
         if (MessageCatalogue.hasKey(locale, key)) {
             var rendered = MessageCatalogue.format(locale, key, frame.facts());
             if (rendered.indexOf('{') < 0) {
-                return rendered;
+                return TerminalSanitizer.sanitizeLine(rendered);
             }
         }
         if (frame.summary() != null && !frame.summary().isBlank() && frame.summary().indexOf('{') < 0) {
             return TerminalSanitizer.sanitizeLine(frame.summary());
         }
         return MessageCatalogue.format(locale, "onboard.state.untitled", Map.of());
+    }
+
+    /**
+     * @param frame the state
+     * @return whether the catalogue names a title for the state
+     */
+    private boolean hasTitle(Frame frame) {
+        return MessageCatalogue.hasKey(locale,
+                            prefix(frame.stateId()) + normalise(frame.stateId()) + ".title");
     }
 
     private @Nullable String factLabel(String stateId, String field) {
