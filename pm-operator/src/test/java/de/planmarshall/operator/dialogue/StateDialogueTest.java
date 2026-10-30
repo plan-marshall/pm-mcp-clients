@@ -19,6 +19,7 @@ import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -128,11 +129,11 @@ class StateDialogueTest {
     @Test
     @DisplayName("renders only the facts whose field the catalogue labels, and a list's items")
     void rendersOnlyLabelledFacts() {
-        var item = new java.util.LinkedHashMap<String, Object>();
+        var item = new LinkedHashMap<String, Object>();
         item.put("name", "Claude Code");
         item.put("version", "2.4.1");
         item.put("default", true);
-        var facts = new java.util.LinkedHashMap<String, Object>();
+        var facts = new LinkedHashMap<String, Object>();
         facts.put("looks_for", "claude, opencode");
         facts.put("unlabelled_field", "raw");
         facts.put("harnesses", List.of(item));
@@ -150,7 +151,7 @@ class StateDialogueTest {
     @Test
     @DisplayName("leaves a wire token out unless the catalogue names it")
     void hidesAnUnnamedWireToken() {
-        var facts = new java.util.LinkedHashMap<String, Object>();
+        var facts = new LinkedHashMap<String, Object>();
         facts.put("landing", "landing.main");
         facts.put("posture", "posture.unknown");
         var frame = new StateDialogue.Frame("defaults.review", "operator_wait", 7, 7, null, facts,
