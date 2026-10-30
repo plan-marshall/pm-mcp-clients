@@ -6987,8 +6987,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
         if (path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_SETUP)) {
-            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(),
-                    path.length() - SEGMENT_SETUP.length());
+            var prjId = URLDecoder.decode(path.substring(PATH_PROJECTS_PREFIX.length(),
+                    path.length() - SEGMENT_SETUP.length()), StandardCharsets.UTF_8);
             response.json(200, projectSetupState(prjId,
                     projectSetupStates.getOrDefault(prjId, PROJECT_SETUP_IDENTITY)));
             return true;
@@ -7041,8 +7041,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
         if (path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_SETUP)) {
-            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(),
-                    path.length() - SEGMENT_SETUP.length());
+            var prjId = URLDecoder.decode(path.substring(PATH_PROJECTS_PREFIX.length(),
+                    path.length() - SEGMENT_SETUP.length()), StandardCharsets.UTF_8);
             handleSetupProject(request, response, prjId);
             return true;
         }
@@ -7325,6 +7325,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
             enrolledProjects.removeIf(p -> p.projectId().equals(projectId));
             favouriteProjectIds.remove(projectId);
+            projectSetupStates.remove(projectId);
             synchronized (storeLock) {
                 mockStores.remove(projectId);
             }

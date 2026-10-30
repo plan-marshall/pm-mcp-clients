@@ -39,6 +39,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.SseEvent;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 import de.planmarshall.operator.dialogue.OnboardingSource;
 import de.planmarshall.operator.dialogue.StateDialogue;
@@ -251,14 +252,36 @@ public final class PmConsole {
      */
     private void continueOnboarding(PrintWriter out, LineReader reader, String locale) {
         try {
-            var dialogue = new StateDialogue(new OnboardingSource(context.runtime(true)), out, locale,
+            var runtime = context.runtime(true);
+            var dialogue = new StateDialogue(new OnboardingSource(runtime), out, locale,
                                 stateId -> new ChoicePrompt(reader, out, locale, stateId));
             dialogue.run();
+            refreshSetupBadge(runtime, locale);
         } catch (StartPrompt.StartLeftException | StartPrompt.MissingInputException _) {
             // leaving the dialogue sends nothing; the runtime keeps the state it reports
         } catch (IOException _) {
             out.println(MessageCatalogue.format(locale, "onboard.error.no_state", Map.of()));
             out.flush();
+        }
+    }
+
+    /**
+     * Replaces the setup badge after the dialogue, so a completed onboarding leaves no badge and a
+     * stopped one names the step it stopped at.
+     *
+     * @param runtime the runtime client
+     * @param locale  the interface locale
+     */
+    private void refreshSetupBadge(RuntimeClient runtime, String locale) {
+        try {
+            var status = StatusCommand.fetch(runtime);
+            badges.removeIf(badge -> badge.startsWith("setup") || badge.startsWith("Einrichtung"));
+            if (!EntryFlow.isMachineOnboarded(status)) {
+                badges.add(ConsolePrompt.formatMachineSetupBadge(locale,
+                                    EntryFlow.getCompletedOnboardStep(status), 7));
+            }
+        } catch (IOException _) {
+            // the badge keeps what the entry flow reported
         }
     }
 

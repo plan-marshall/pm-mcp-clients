@@ -9,12 +9,14 @@
  */
 package de.planmarshall.operator.dialogue;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
@@ -160,5 +162,129 @@ class StateDialogueTest {
         var dialogue = dialogue(new FakeSource(frame), "", writer);
 
         assertEquals(List.of("Landing: Main branch"), dialogue.content(frame));
+    }
+
+    @Test
+    @DisplayName("reads an operator envelope: kind, step, summary, facts and the preselection")
+    void readsAnOperatorEnvelope() throws IOException {
+        var frame = StateDialogue.fromJson("""
+                            {"state":"harness.consent","completed_steps":1,
+                             "operator":{"state":{"state_id":"harness.consent","kind":"operator_wait"},
+                               "facts":{"summary":"Look for harnesses on this machine?","looks_for":"claude"},
+                               "links":[{"id":"no","method":"POST"},{"id":"yes","method":"POST","preselected":true}]}}
+                            """, 7, false);
+
+        assertAll(
+                            () -> assertEquals("harness.consent", frame.stateId()),
+                            () -> assertEquals("operator_wait", frame.kind()),
+                            () -> assertEquals(2, frame.step()),
+                            () -> assertEquals("Look for harnesses on this machine?", frame.summary()),
+                            () -> assertEquals("claude", frame.facts().get("looks_for")),
+                            () -> assertEquals("yes", frame.primary().id()),
+                            () -> assertEquals(2, frame.links().size()));
+    }
+
+    @Test
+    @DisplayName("reads a flat state and marks its last link as the primary one")
+    void readsAFlatState() throws IOException {
+        var frame = StateDialogue.fromJson("""
+                            {"state":"onboard.mode","summary":"Set up this machine",
+                             "links":{"auto":{"href":"/auto"},"begin":{"href":"/language"}}}
+                            """, 7, false);
+
+        assertAll(
+                            () -> assertEquals(0, frame.step()),
+                            () -> assertEquals("begin", frame.primary().id()));
+    }
+
+    @Test
+    @DisplayName("refuses a body without a state")
+    void refusesABodyWithoutState() {
+        assertAll(
+                            () -> assertThrows(IOException.class,
+                                                () -> StateDialogue.fromJson("[]", 7, false)),
+                            () -> assertThrows(IOException.class,
+                                                () -> StateDialogue.fromJson("{}", 7, false)));
+    }
+
+    @Test
+    @DisplayName("names step lines, titles and labels from the catalogue")
+    void namesTheFrameParts() throws IOException {
+        var frame = StateDialogue.fromJson("""
+                            {"state":"harness.consent","completed_steps":1,
+                             "operator":{"state":{"state_id":"harness.consent","kind":"operator_wait"},
+                               "facts":{"summary":"Look for harnesses on this machine?"},
+                               "links":[{"id":"yes","method":"POST","preselected":true}]}}
+                            """, 7, false);
+        var writer = new StringWriter();
+        var dialogue = dialogue(new FakeSource(frame), "", writer);
+
+        assertAll(
+                            () -> assertEquals("[2/7] Harnesses \u00b7 Look for harnesses on this machine?",
+                                                dialogue.stepLine(frame)),
+                            () -> assertEquals("Look for harnesses on this machine?", dialogue.title(frame)),
+                            () -> assertEquals("Yes", dialogue.label(frame, "yes")),
+                            () -> assertEquals("Continue", dialogue.label(frame, "unmapped")),
+                            () -> assertEquals("Harnesses", dialogue.stepName(frame)),
+                            () -> assertEquals("Checkout", dialogue.stepName(new StateDialogue.Frame(
+                                                "project.consent", "operator_wait", 1, 10, null,
+                                                Map.of(), List.of()))),
+                            () -> assertEquals("Checkout", dialogue.stepName(new StateDialogue.Frame(
+                                                "project.checkout", "operator_wait", 1, 10, null,
+                                                Map.of(), List.of()))),
+                            () -> assertEquals("Done", dialogue.stepName(new StateDialogue.Frame(
+                                                "project.unknown", "operator_wait", 1, 10, null,
+                                                Map.of(), List.of()))));
+    }
+
+    @Test
+    @DisplayName("wraps a content line at its width without breaking a word")
+    void wrapsContent() {
+        assertEquals(List.of("one two", "three"), StateDialogue.wrap("one two three", 8));
+        assertEquals(List.of("unbreakable"), StateDialogue.wrap("unbreakable", 5));
+    }
+
+    @Test
+    @DisplayName("re-reads a linkless working state until the runtime moves on")
+    void reReadsAWorkingState() throws IOException {
+        var working = new StateDialogue.Frame("harness.probe", "working", 2, 7,
+                            "Checking 2 harnesses", Map.of(), List.of());
+        var source = new WorkingSource(List.of(working, working, mode(), language(), completed()));
+        var writer = new StringWriter();
+
+        var last = dialogue(source, "\n\n", writer).run();
+
+        assertEquals(COMPLETED, last.stateId());
+        assertEquals(List.of("begin", "set"), source.sent);
+    }
+
+    /**
+     * A runtime whose linkless state advances on the next read, as a working state does.
+     */
+    private static final class WorkingSource implements StateDialogue.Source {
+
+        private final List<StateDialogue.Frame> frames;
+        private final List<String> sent = new ArrayList<>();
+        private int index;
+
+        WorkingSource(List<StateDialogue.Frame> frames) {
+            this.frames = frames;
+        }
+
+        @Override
+        public StateDialogue.Frame fetch() {
+            var frame = frames.get(index);
+            if (frame.links().isEmpty() && index < frames.size() - 1) {
+                index++;
+            }
+            return frame;
+        }
+
+        @Override
+        public StateDialogue.Frame choose(String linkId) {
+            sent.add(linkId);
+            index++;
+            return frames.get(index);
+        }
     }
 }

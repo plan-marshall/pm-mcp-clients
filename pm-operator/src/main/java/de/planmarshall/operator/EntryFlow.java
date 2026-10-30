@@ -192,8 +192,26 @@ public final class EntryFlow {
             out.println();
             out.flush();
             runOnboardingDialogue(runtime, out, reader, locale);
-            return new EntryResult(status, badges, null, null);
+            return refreshedAfterDialogue(runtime);
         }
+    }
+
+    /**
+     * Re-reads the status after the dialogue, so the badge the console keeps matches the state the
+     * dialogue left: no setup badge once the machine is onboarded, the completed step otherwise.
+     *
+     * @param runtime the runtime client
+     * @return the entry result with the refreshed status and badges
+     * @throws IOException on transport failure
+     */
+    private EntryResult refreshedAfterDialogue(RuntimeClient runtime) throws IOException {
+        var refreshed = StatusCommand.fetch(runtime);
+        var badges = new ArrayList<String>();
+        if (!isMachineOnboarded(refreshed)) {
+            badges.add(ConsolePrompt.formatMachineSetupBadge(context.clientEnvironment().locale(),
+                                getCompletedOnboardStep(refreshed), 7));
+        }
+        return new EntryResult(refreshed, badges, null, null);
     }
 
     /**

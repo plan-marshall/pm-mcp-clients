@@ -24,6 +24,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.operator.TerminalSanitizer;
 
 /**
@@ -58,13 +59,7 @@ public final class StateDialogue {
     private static final String STATE = "state";
     private static final String FACTS = "facts";
     private static final String LINKS = "links";
-    private static final String STEP_LANGUAGE = "language";
-    private static final String STEP_HARNESSES = "harnesses";
-    private static final String STEP_MODELS = "models";
     private static final String STEP_ROLES = "roles";
-    private static final String STEP_CREDENTIALS = "credentials";
-    private static final String STEP_PROVIDERS = "providers";
-    private static final String STEP_PLANS = "plans";
     private static final String STEP_DONE = "onboard.step.done";
     private static final String DONE = "done";
     private static final String UNKNOWN = "onboard.state.unknown";
@@ -73,9 +68,6 @@ public final class StateDialogue {
     private static final Set<String> BARE_FIELDS = Set.of(
                         NAME, SUMMARY, VALUE, REASON, "model_id", "role", "effort",
                         ASPECT, PROVIDER, "version", "current", "default", "cause", "fix");
-    private static final List<String> STEP_KEYS = List.of(
-                        STEP_LANGUAGE, STEP_HARNESSES, STEP_MODELS, STEP_ROLES, STEP_CREDENTIALS,
-                        STEP_PROVIDERS, STEP_PLANS);
 
     /**
      * One link a state offers.
@@ -400,13 +392,13 @@ public final class StateDialogue {
     }
 
     private void addStepOverview(List<String> lines) {
-        for (var i = 0; i < STEP_KEYS.size(); i++) {
+        for (var aspect : OnboardingAspect.values()) {
+            var suffix = aspect.stepNameKey().substring("onboard.step.".length());
             lines.add(MessageCatalogue.format(locale, "onboard.state.step_entry", Map.of(
-                                "number", i + 1,
-                                "name", MessageCatalogue.format(locale, "onboard.step." + STEP_KEYS.get(i),
-                                                    Map.of()),
+                                "number", aspect.step(),
+                                "name", MessageCatalogue.format(locale, aspect.stepNameKey(), Map.of()),
                                 "what", MessageCatalogue.format(locale,
-                                                    "onboard.entry.step." + STEP_KEYS.get(i), Map.of()))));
+                                                    "onboard.entry.step." + suffix, Map.of()))));
         }
     }
 
@@ -606,27 +598,13 @@ public final class StateDialogue {
      * @return the catalogue suffix of its step name
      */
     static String machineStepOf(String stateId) {
-        if (stateId.startsWith(STEP_LANGUAGE + ".")) {
-            return STEP_LANGUAGE;
+        for (var aspect : OnboardingAspect.values()) {
+            if (stateId.startsWith(aspect.wireValue() + ".")) {
+                return aspect.stepNameKey().substring("onboard.step.".length());
+            }
         }
-        if (stateId.startsWith("harness.")) {
-            return STEP_HARNESSES;
-        }
-        if (stateId.startsWith("catalogue.")) {
-            return STEP_MODELS;
-        }
-        if (stateId.startsWith(STEP_ROLES + ".")) {
-            return STEP_ROLES;
-        }
-        if (stateId.startsWith("store.")) {
-            return STEP_CREDENTIALS;
-        }
-        if (stateId.startsWith(STEP_PROVIDERS + ".") || stateId.startsWith("github.")
-                            || stateId.startsWith("sonar.")) {
-            return STEP_PROVIDERS;
-        }
-        if (stateId.startsWith("defaults.")) {
-            return STEP_PLANS;
+        if (stateId.startsWith("github.") || stateId.startsWith("sonar.")) {
+            return "providers";
         }
         return DONE;
     }
@@ -638,7 +616,10 @@ public final class StateDialogue {
     static String projectStepOf(String stateId) {
         var id = stateId.substring(PROJECT_PREFIX.length());
         return switch (id) {
-            case "checkout", "identity", "enrolment", "own", "team", "architecture", "landing",
+            case "consent", "detect", "run-consent", "probe", "checkout" -> "checkout";
+            case "enrol", "enrolment" -> "enrolment";
+            case "operator", "own" -> "own";
+            case "identity", "team", "architecture", "landing",
                 STEP_ROLES, "descriptions", "commit" -> id;
             default -> DONE;
         };

@@ -81,6 +81,9 @@ class OnboardCommandTest {
             if (OnboardCommand.STATE_PATH.equals(path)) {
                 response.json(200, autoStarted[0] ? AUTO_RESULT : HARNESS_CONSENT);
             } else if (OnboardCommand.STEP_PATH.equals(path) && "POST".equals(method)) {
+                if (autoStarted[0]) {
+                    assertTrue(request.bodyText().contains("\"link\":\"yes\""), request.bodyText());
+                }
                 response.json(200, autoStarted[0] ? AUTO_RESULT : HARNESS_CHOOSE);
             } else if (OnboardCommand.AUTO_PATH.equals(path) && "POST".equals(method)) {
                 autoStarted[0] = true;

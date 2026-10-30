@@ -81,7 +81,8 @@ class ProjectSetupDialogueIT {
             assertTrue(screen.contains("Id"), screen);
             assertTrue(screen.contains("cui-parent"), screen);
             assertTrue(screen.contains("Name"), screen);
-            assertTrue(screen.contains("Pilot"), screen);
+            assertTrue(screen.contains(
+                                "Pilot: this version of PM-MCP runs plans only in pilot projects: no"), screen);
 
             DialogueHarness.type(session, "\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());

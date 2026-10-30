@@ -187,9 +187,10 @@ public final class OnboardCommand implements Callable<Integer> {
 
     private void printStateLine(PrintWriter out, String locale, StateDialogue.Frame frame) {
         var title = StateDialogue.titleOf(locale, frame);
-        if (frame.summary() != null && !frame.summary().isBlank() && !frame.summary().equals(title)) {
+        var summary = TerminalSanitizer.sanitizeLine(frame.summary());
+        if (!summary.isBlank() && !summary.equals(title)) {
             for (var line : StateDialogue.wrap(MessageCatalogue.format(locale, "onboard.state.line",
-                                Map.of("title", title, "summary", frame.summary())),
+                                Map.of("title", title, "summary", summary)),
                                 WRAP_WIDTH)) {
                 out.println(line);
             }
