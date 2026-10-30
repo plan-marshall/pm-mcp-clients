@@ -193,7 +193,7 @@ pm ›
 ----
 
 * The tree uses words for the states, so that it reads the same without glyphs and colour; sub-workflows carry the word `sub-workflow`. A plan of the land lane shows its `land.*` states as the sub-workflow `land` within `execute`, and the phases the lane does not call as not in this plan; `land` is never a phase.
-* `plan fix-relay --all` opens every level; `--depth 2` opens two; `--tokens` prints the tokens so far by phase and by role after the tree, and `--components` adds their raw components. An ended plan's line shows its final figure.
+* `plan fix-relay` opens the view in a terminal; `--print` prints the same tree into the scrollback instead (the way in a pipe or a capture), as `--all`, `--depth <n>`, `--tokens` and `--watch` also run without it. `--all` opens every level; `--depth 2` opens two; `--tokens` prints the tokens so far by phase and by role after the tree, and `--components` adds their raw components. An ended plan's line shows its final figure.
 * The third line is the plan's tokens so far (link:../shared/plan-view.adoc#tokens[Plan View, Tokens So Far]); `none yet` before the first model call.
 * The second line names the plan's project and its epic, where it has one, each with the command that opens it (`status --project <project_id>`, `epic <epic_id>`), so that each is one command away.
 * The first line carries the state from the same closed list as the full-screen header, the hold with its kind where one holds, and the plan's pull request by its number and its URL. An ended plan prints `ended` with its outcome instead (`fix-relay · ended: cancelled · 2 d ago`) and the tree as it ended.

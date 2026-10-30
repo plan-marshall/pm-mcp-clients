@@ -37,7 +37,11 @@ final class OperatorActs {
     private static final Set<String> PROJECT_ACT_SUBCOMMANDS = Set.of(
                         "add", "setup", "favourite", "release", "unenrol");
 
-    private static final Set<String> CLIENT_ACT_SUBCOMMANDS = Set.of("install", "uninstall", "update");
+    private static final Set<String> CLIENT_ACT_SUBCOMMANDS = Set.of("install", "remove", "update");
+
+    private static final Set<String> CONFIG_READ_SUBCOMMANDS = Set.of("show");
+
+    private static final Set<String> WEB_READ_ACTIONS = Set.of("list");
 
     private static final Set<String> ACT_VERBS = Set.of(
                         "answer", "cleanup", "enrol", "unenrol", "enrol-harness", "accept-edit", "onboard",
@@ -61,7 +65,7 @@ final class OperatorActs {
         return switch (verb) {
             case "plan" -> planAct(rest);
             case "epic" -> epicAct(rest);
-            case "config" -> !rest.isEmpty() && !"show".equals(rest.get(0));
+            case "config" -> !rest.isEmpty() && !CONFIG_READ_SUBCOMMANDS.contains(rest.get(0));
             case "settings" -> settingsAct(rest);
             case "credentials" -> !rest.isEmpty() && !"status".equals(rest.get(0));
             case "roles" -> !rest.isEmpty() && "qualify".equals(rest.get(0));
@@ -69,8 +73,16 @@ final class OperatorActs {
             case "reports" -> !rest.isEmpty() && !rest.get(0).startsWith("-");
             case "project" -> !rest.isEmpty() && PROJECT_ACT_SUBCOMMANDS.contains(rest.get(0));
             case "client" -> !rest.isEmpty() && CLIENT_ACT_SUBCOMMANDS.contains(rest.get(0));
+            case "web" -> webAct(rest);
             default -> ACT_VERBS.contains(verb);
         };
+    }
+
+    private static boolean webAct(List<String> rest) {
+        if (rest.isEmpty() || !"devices".equals(rest.get(0))) {
+            return true;
+        }
+        return rest.size() > 1 && !WEB_READ_ACTIONS.contains(rest.get(1));
     }
 
     private static boolean planAct(List<String> rest) {

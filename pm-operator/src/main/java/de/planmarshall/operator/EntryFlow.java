@@ -206,8 +206,32 @@ public final class EntryFlow {
 
     private EntryResult runOnboarded(RuntimeClient runtime, Map<String, Object> status,
                         PrintWriter out, boolean isSsh, int webPort) throws IOException {
-        ensureLoopbackListener(runtime, webPort);
         var badges = badges(context.clientEnvironment().locale(), status);
+        var result = context.gate().permits()
+                            ? openWebAccess(runtime, status, out, isSsh, webPort, badges)
+                            : new EntryResult(status, badges, null, null);
+        printReportsArrivalNotice(runtime, out);
+        out.flush();
+        return result;
+    }
+
+    /**
+     * Offers the web app and a pairing code: enabling the loopback listener and issuing a code are
+     * acts, so the entry flow offers them only where the operator gate would let an act run. A
+     * refused act leaves the console a read-only view, and the refusal appears when one is typed.
+     *
+     * @param runtime the runtime client
+     * @param status  the status the entry flow read
+     * @param out     the console's writer
+     * @param isSsh   whether this is an SSH session
+     * @param webPort the web port
+     * @param badges  the prompt badges
+     * @return the entry result carrying the pairing code
+     * @throws IOException on transport failure
+     */
+    private EntryResult openWebAccess(RuntimeClient runtime, Map<String, Object> status, PrintWriter out,
+                        boolean isSsh, int webPort, List<String> badges) throws IOException {
+        ensureLoopbackListener(runtime, webPort);
 
         EntryResult result;
         var locale = context.clientEnvironment().locale();
@@ -232,8 +256,6 @@ public final class EntryFlow {
                 result = new EntryResult(status, badges, pairing.code(), pairing.url());
             }
         }
-        printReportsArrivalNotice(runtime, out);
-        out.flush();
         return result;
     }
 

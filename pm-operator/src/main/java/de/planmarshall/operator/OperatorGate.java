@@ -94,6 +94,22 @@ public final class OperatorGate {
     }
 
     /**
+     * Tells whether an act may run, for a caller that keeps going without it: the console's entry
+     * flow offers the web app and a pairing code, which are acts, and a refused act leaves the
+     * console a read-only view instead of closing it.
+     *
+     * @return {@code true} when {@link #verify()} would pass
+     */
+    public boolean permits() {
+        try {
+            verify();
+            return true;
+        } catch (OperatorSecurityException _) {
+            return false;
+        }
+    }
+
+    /**
      * Detects a coding-agent host from the environment variables according to the normative precedence:
      * {@code antigravity -> opencode -> claude -> codex}.
      *
@@ -112,18 +128,32 @@ public final class OperatorGate {
      * @return the marker, or {@code null} when the environment carries none
      */
     private static @Nullable Marker detectMarker(Map<String, String> environment) {
-        for (var host : HOST_PRECEDENCE) {
+        for (var host : hostsInPrecedence()) {
             var variable = matchedSignal(host, environment);
             if (variable != null) {
                 return new Marker(host, variable);
             }
         }
 
-        if (HostDetection.agentSignalPresent(environment) || environment.containsKey(UNMAPPED_MARKER)) {
+        if (HostDetection.agentSignalPresent(environment)) {
             return new Marker(HostDetection.UNKNOWN, UNMAPPED_MARKER);
         }
 
         return null;
+    }
+
+    /**
+     * @return the client ids of the Host Integration Table in the normative precedence, then any
+     *         host a later profile adds after it
+     */
+    private static List<String> hostsInPrecedence() {
+        var hosts = new ArrayList<>(HOST_PRECEDENCE);
+        for (var host : HostDetection.HOSTS) {
+            if (!hosts.contains(host.client())) {
+                hosts.add(host.client());
+            }
+        }
+        return hosts;
     }
 
     /**

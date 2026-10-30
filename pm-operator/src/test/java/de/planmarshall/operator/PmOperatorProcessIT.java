@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
 
@@ -546,12 +547,17 @@ class PmOperatorProcessIT {
     @DisplayName("lesson check runs without an interactive terminal; start still refuses (PM-SEC-3)")
     void lessonCheckRunsWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        fixture.start((request, response) -> response.json(200, "{}"));
+        var requests = new CopyOnWriteArrayList<String>();
+        fixture.start((request, response) -> {
+            requests.add(request.target());
+            response.json(200, "{}");
+        });
         try (var process = operator(environment(), "lesson", "check", "les-0007", "--project", "pm-mcp-clients")) {
             assertNotEquals(4, process.awaitExit(WAIT), process.stderr());
             assertFalse(process.stderr()
                                                     .contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
                                 "stderr: " + process.stderr());
+            assertFalse(requests.isEmpty(), "the check never reached the runtime");
         }
 
         try (var process = operator(environment(), "start", "plan", "pm-mcp-clients", "--lesson", "les-0007")) {
@@ -636,16 +642,23 @@ class PmOperatorProcessIT {
     @DisplayName("roles list and show run without an interactive terminal; roles qualify still refuses (PM-SEC-3)")
     void rolesListAndShowRunWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        fixture.start((request, response) -> response.json(200, "{}"));
+        var requests = new CopyOnWriteArrayList<String>();
+        fixture.start((request, response) -> {
+            requests.add(request.target());
+            response.json(200, "{}");
+        });
         for (var verb : List.of(
                             List.of("roles", "list"),
                             List.of("roles", "show", "implementer"))) {
+            requests.clear();
             var args = verb.toArray(String[]::new);
             try (var process = operator(environment(), args)) {
                 assertNotEquals(4, process.awaitExit(WAIT), verb.toString());
                 assertFalse(process.stderr()
                                                         .contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
                                     verb + " stderr: " + process.stderr());
+                assertTrue(requests.stream().anyMatch(target -> target.startsWith("/api/v1/roles")),
+                                    verb + " never reached the runtime: " + requests);
             }
         }
 

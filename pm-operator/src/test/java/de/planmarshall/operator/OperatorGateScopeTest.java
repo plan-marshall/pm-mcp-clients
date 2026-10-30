@@ -9,18 +9,24 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
@@ -86,6 +92,7 @@ class OperatorGateScopeTest {
                             new String[]{"settings"},
                             new String[]{"settings", "machine"},
                             new String[]{"credentials", "status", "github"},
+                            new String[]{"web", "devices"},
                             new String[]{"project", "pm-mcp-clients"},
                             new String[]{"runtime", "upgrade", "--check"},
                             new String[]{"runtime", "upgrade", "--notes"},
@@ -96,6 +103,8 @@ class OperatorGateScopeTest {
     static List<Arguments> actVerbs() {
         return asArguments(
                             new String[]{"answer", "Q-007"},
+                            new String[]{"plan", "add", "--project", "pm-mcp-clients", "--description", "x"},
+                            new String[]{"plan", "chat", "fix-relay", "--message", "hello"},
                             new String[]{"plan", "pause", "fix-relay"},
                             new String[]{"plan", "start", "fix-relay"},
                             new String[]{"plan", "cancel", "fix-relay", "--reason", "because"},
@@ -103,6 +112,7 @@ class OperatorGateScopeTest {
                             new String[]{"plan", "resolve", "fix-relay", "HLD-0001", "--act", "resume"},
                             new String[]{"plan", "settings", "fix-relay", "--set", "models.plan=opus"},
                             new String[]{"epic", "next", "relay-hardening"},
+                            new String[]{"epic", "add", "--project", "pm-mcp-clients", "--description", "x"},
                             new String[]{"epic", "archive", "relay-hardening"},
                             new String[]{"epic", "cancel", "relay-hardening", "--reason", "because"},
                             new String[]{"epic", "chat", "relay-hardening", "--message", "hello"},
@@ -117,11 +127,15 @@ class OperatorGateScopeTest {
                             new String[]{"abort", "plan", "fix-relay", "--reason", "because"},
                             new String[]{"credentials", "rotate", "github"},
                             new String[]{"credentials", "remove", "github"},
+                            new String[]{"credentials", "set", "github", "--kind", "fine-grained"},
                             new String[]{"config", "set", "language.ui", "de"},
                             new String[]{"config", "unset", "language.ui"},
+                            new String[]{"config", "language", "--interface", "de"},
+                            new String[]{"config", "consents"},
                             new String[]{"cleanup"},
                             new String[]{"cleanup", "--delete", "--yes"},
                             new String[]{"cleanup", "--kept"},
+                            new String[]{"cleanup", "--release", "1"},
                             new String[]{"runtime", "stop"},
                             new String[]{"runtime", "restart"},
                             new String[]{"runtime", "upgrade"},
@@ -134,6 +148,7 @@ class OperatorGateScopeTest {
                             new String[]{"web", "devices", "revoke", "dev-1"},
                             new String[]{"roles", "qualify", "implementer", "--yes"},
                             new String[]{"project", "setup", "my-service"},
+                            new String[]{"project", "add", "."},
                             new String[]{"project", "favourite", "my-service"},
                             new String[]{"project", "release", "my-service", "--reason", "archived", "--yes"},
                             new String[]{"project", "unenrol", "my-service", "--yes"},
@@ -142,7 +157,9 @@ class OperatorGateScopeTest {
                             new String[]{"onboard", "--auto", "--yes"},
                             new String[]{"recipe", "run", "--project", "pm-mcp-clients"},
                             new String[]{"client", "install", "claude"},
-                            new String[]{"git-source", "adopt-pr", "4711", "--project", "pm-mcp-clients"});
+                            new String[]{"client", "remove", "claude"},
+                            new String[]{"git-source", "adopt-pr", "4711", "--project", "pm-mcp-clients"},
+                            new String[]{"git-source", "local-changes", "--project", "pm-mcp-clients"});
     }
 
     /**
@@ -233,6 +250,45 @@ class OperatorGateScopeTest {
 
         assertNotEquals(OperatorGate.EXIT_OPERATOR_CHECKS, code, err.toString());
         assertFalse(err.toString().contains(refusalText("en")), err.toString());
+        assertTrue(err.toString().contains("no terminal in this test"), "the console was not entered: " + err);
+    }
+
+    @Test
+    @DisplayName("the console dispatcher refuses a typed act, sends nothing, and the entry flow sends no act")
+    void consoleRefusesAct() throws Exception {
+        var requests = new CopyOnWriteArrayList<String>();
+        server.close();
+        server = fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true,\"version\":\"0.9.0\","
+                                    + "\"needs_operator\":{},\"web\":{\"enabled\":true,\"port\":7420}}");
+            } else {
+                response.json(200, "{}");
+            }
+        });
+        var environment = markerEnvironment();
+        var rendered = new ByteArrayOutputStream();
+        var typed = "answer Q-007\nexit\n";
+        var context = new OperatorContext(environment, fixture.base().getParent(), true,
+                            ClientEnvironment.capture(environment),
+                            () -> new DumbTerminal(new ByteArrayInputStream(typed.getBytes(StandardCharsets.UTF_8)),
+                                                rendered),
+                            null);
+
+        var code = new PmConsole(context).run();
+
+        var text = rendered.toString(StandardCharsets.UTF_8);
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(text.contains(refusalText("en")), text),
+                            () -> assertFalse(requests.stream().anyMatch(r -> r.contains("/decisions")),
+                                                requests.toString()),
+                            () -> assertFalse(requests.stream()
+                                                                    .anyMatch(r -> r.startsWith("PUT") && r.contains("/api/v1/web")),
+                                                requests.toString()),
+                            () -> assertFalse(requests.stream().anyMatch(r -> r.contains("pairings")),
+                                                requests.toString()));
     }
 
     /** @return the refusal text the catalogue answers in the given locale */

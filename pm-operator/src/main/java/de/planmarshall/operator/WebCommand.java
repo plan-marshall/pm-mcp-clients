@@ -292,7 +292,9 @@ public final class WebCommand implements Callable<Integer> {
 
         @Override
         public Integer call() throws IOException {
-            context.gate().verify();
+            if (changesADevice()) {
+                context.gate().verify();
+            }
             var runtime = context.runtime(true);
             var out = spec.commandLine().getOut();
 
@@ -307,6 +309,15 @@ public final class WebCommand implements Callable<Integer> {
             }
             out.flush();
             return 0;
+        }
+
+        /**
+         * @return {@code true} when the action renames, revokes, or closes the listener: the list
+         *         itself is a read and runs without the operator checks
+         */
+        private boolean changesADevice() {
+            return "rename".equalsIgnoreCase(action) || "revoke".equalsIgnoreCase(action) || others || all
+                                || "listener-off".equalsIgnoreCase(action) || "listener_off".equalsIgnoreCase(action);
         }
 
         private void handleRename(RuntimeClient runtime, PrintWriter out) throws IOException {

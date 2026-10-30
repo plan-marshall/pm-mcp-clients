@@ -102,8 +102,9 @@ common:    --no-input   never ask; stop at the first choice not given (exit code
 
 In the console only:
   plans                       the overview of running work, full screen (15-overview); E shows the ended work, R the reports
-  plan <plan_id> [--all|--depth <n>] [--tokens [--components]] [--activity <task_id> [--watch]]
-                              a plan's process as a tree, its tokens so far, what a task's worker does (16-plan-view)
+  plan <plan_id> [--print] [--all|--depth <n>] [--tokens [--components]] [--activity <task_id> [--watch]]
+                              a plan's process as a tree, its tokens so far, what a task's worker does;
+                              opens full screen in a terminal, prints with --print (16-plan-view)
   epic <epic_id> [--tokens]   an epic's view as a tree, with its tokens per plan (19-actions)
   questions                   the open decisions and waiver requests, with what they block and the recommendation
   answer <id> [<option>]      open a decision or a waiver request as a dialogue, or answer a decision with an option
