@@ -507,3 +507,16 @@ Simulates asynchronous backend progress (e.g. background job finishing) by advan
 
 If any invariant is violated, a `ScenarioValidationException` is thrown, naming the file, state, field, and violation reason (e.g. `routes.GET /api/v1/status: route definition must be an object`).
 
+== Log Messages
+
+The production log messages of the module are declared in `de.planmarshall.mock.junit5.MockRuntimeLogMessages` and carry the component prefix `MOCK`. `DEBUG` messages are not listed: they carry no `LogRecord` and no identifier. All messages follow the format `[Component]-[identifier]: [message]`.
+
+=== ERROR Level (200-299)
+
+[cols="1,1,2,2", options="header"]
+|===
+|ID |Component |Message |Description
+|MOCK-200 |MOCK |Error during MockRuntime setup: %s |Logged when the JUnit 5 extension cannot start the mock runtime; the placeholder carries the failure's message
+|MOCK-201 |MOCK |Failed to close MockRuntime: %s |Logged when the JUnit 5 extension cannot close a started mock runtime; the placeholder carries the failure's message
+|===
+
