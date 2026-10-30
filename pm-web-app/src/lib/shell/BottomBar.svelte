@@ -37,6 +37,14 @@
   /** Whether the sheet of the remaining destinations is open. */
   let sheetOpen = $state(false);
 
+  /** The shown route, so a change of page closes the sheet (a Back would leave it over it). */
+  const currentRoute = $derived($runtimeStore.currentRoute);
+
+  $effect(() => {
+    void currentRoute;
+    sheetOpen = false;
+  });
+
   // The sheet is the phone's; a window that grows past the breakpoint shows the rail instead, so
   // an open sheet would sit over a frame that no longer has the bar it came from.
   onMount(() => {

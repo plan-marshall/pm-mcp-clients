@@ -482,8 +482,9 @@ export async function initRuntime(): Promise<void> {
       ...s,
       isInitialized: true,
       isOffline: true,
-      // No stream opens on this path, so the indicator must offer the one way back.
-      streamState: 'offline',
+      // No stream opens on this path, so the indicator must offer the one way back — unless the
+      // retry already connected one, whose state then stands.
+      streamState: s.streamState === 'connected' ? 'connected' : 'offline',
     }));
   }
 }
@@ -495,7 +496,9 @@ export async function initRuntime(): Promise<void> {
  * follows settles whether the machine is reachable again.
  */
 export function retryEventStream(): void {
-  runtimeStore.update((s) => ({ ...s, streamState: 'connecting', isOffline: false }));
+  // The offline flag stays until the status request settles: it is what keeps the indicator — and
+  // its Try again — on screen while the retried read is in flight.
+  runtimeStore.update((s) => ({ ...s, streamState: 'connecting' }));
   apiClient.retryEventStream();
   void initRuntime();
 }

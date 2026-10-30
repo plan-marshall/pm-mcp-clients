@@ -47,6 +47,7 @@ describe('the shell navigation model', () => {
     expect(activeNavRoute('start')).toBe('overview');
     expect(activeNavRoute('cleanup')).toBe('system');
     expect(activeNavRoute('machine-settings')).toBe('settings');
+    expect(activeNavRoute('project-onboarding')).toBe('projects');
     expect(activeNavRoute('reports')).toBe('reports');
   });
 

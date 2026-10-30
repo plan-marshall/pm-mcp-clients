@@ -114,6 +114,20 @@ describe('the event stream state', () => {
     expect(states.at(-1)).toBe('offline');
   });
 
+  it('keeps an entry stream retrying past the shared stream limit', async () => {
+    // An entry has no indicator and no Try again: it must outlast the shared stream's limit.
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('the machine is away'));
+    const unsubscribe = client.subscribeEntryEvents('ent-1', () => {});
+
+    await vi.advanceTimersByTimeAsync(25_000);
+
+    expect((globalThis.fetch as unknown as { mock: { calls: unknown[] } }).mock.calls.length).toBeGreaterThan(
+      10,
+    );
+
+    unsubscribe();
+  });
+
   it('does nothing on a retry while the stream is live', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, body: hangingBody() });
     const unsubscribe = client.subscribeEvents(() => {});

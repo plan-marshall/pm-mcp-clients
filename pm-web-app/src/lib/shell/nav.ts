@@ -144,6 +144,8 @@ export function activeNavRoute(route: AppRoute): AppRoute {
       return 'system';
     case 'machine-settings':
       return 'settings';
+    case 'project-onboarding':
+      return 'projects';
     default:
       return route;
   }

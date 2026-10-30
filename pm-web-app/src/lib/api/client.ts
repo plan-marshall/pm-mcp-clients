@@ -3612,10 +3612,15 @@ export class ApiClient {
     onEvent: (event: string, data: unknown) => void,
     signal?: AbortSignal,
   ): () => void {
+    // An entry's stream has no indicator and no Try again: it keeps retrying, so a long outage
+    // does not leave an open entry without its progress and chat events until the view remounts.
     return this.subscribeStream(
       `/api/v1/entries/${encodeURIComponent(entryId)}/events`,
       onEvent,
       signal,
+      undefined,
+      undefined,
+      Number.POSITIVE_INFINITY,
     );
   }
 
@@ -3640,6 +3645,7 @@ export class ApiClient {
     signal?: AbortSignal,
     onState?: (state: EventStreamState) => void,
     registerRetry?: (retry: () => void) => void,
+    retryLimit: number = STREAM_RETRY_LIMIT,
   ): () => void {
     let active = true;
     let currentReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
@@ -3676,7 +3682,7 @@ export class ApiClient {
     /** Schedules the next attempt, or reports the stream offline once the limit is spent. */
     const reconnect = () => {
       failures += 1;
-      if (failures >= STREAM_RETRY_LIMIT) {
+      if (failures >= retryLimit) {
         onState?.('offline');
         return;
       }
