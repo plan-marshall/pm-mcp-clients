@@ -353,6 +353,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_REMIND_AFTER_DAYS = "remind_after_days";
     private static final String STATE_ONBOARD_COMPLETED = "onboard.completed";
     private static final String STATE_ONBOARD_SUMMARY = "onboard.summary";
+    /** The plan state a landed or merged epic row maps to. */
+    private static final String STATE_DONE = "done";
     /** The engine-only fixture data a state's operator facts carry beside its domain facts. */
     private static final String FIXTURE_RUNTIME = "runtime";
     private static final String FIXTURE_DEVICES = "devices";
@@ -8491,9 +8493,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private static String planStateOf(String status) {
         return switch (status) {
-            case "shipped", "merged", "landed" -> "done";
-            case "paused", "staged", "running", "waiting", "held" -> status;
-            default -> "running";
+            case "shipped", "merged", "landed" -> STATE_DONE;
+            default -> status;
         };
     }
 
