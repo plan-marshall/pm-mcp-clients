@@ -79,6 +79,23 @@ them with a fixture project below `src/guard-controls`:
 - `pm-exec`'s Linux-only kernel class `LinuxCalls` is excluded from the JaCoCo report and check on macOS only
   (profile `macos-coverage` in its POM); on Linux it counts in full.
 
+## Web Standards
+
+The web modules (`pm-web-app`, `pm-web-e2e`) follow the `pm-dev-frontend` standards. The hard rules:
+
+- ES modules only: `"type": "module"` and `import`/`export`, no CommonJS in new code.
+- A flat ESLint config (`eslint.config.js`) only — no `.eslintrc.*` files.
+- No `innerHTML`, `outerHTML`, `insertAdjacentHTML` or `{@html}` with untrusted or model-written text. Render text
+  through a text-treating sink (a text node, `{expression}` or `textContent`). A sanitizer is a dependency and needs
+  the operator's decision; there is none today.
+- No arbitrary timer wait in a test: no `waitForTimeout` and no `setTimeout` that only passes time. Wait on the
+  condition the code produces — an awaited event, a `waitFor` or fake timers.
+- The npm scripts `lint`, `format`, `test`, `test:ci-strict` and `quality` stay in every web `package.json`; the Maven
+  build runs them.
+- The Svelte and SvelteKit layout under `src/` is this project's own structure and stands in for the standard project
+  types of `pm-dev-frontend-cui:cui-javascript-project` (no `src/main/resources/static/js/`, `src/main/webapp/js/` or
+  `src/main/js/`).
+
 ## Publishing Only to the Organisation's Registry
 
 The product is proprietary. Artifacts go to the GitHub Packages registry of the organisation `plan-marshall`
