@@ -13,7 +13,7 @@
     "test:ports-guard": "node scripts/guard-ports.js",
     "test:headed": "playwright test --headed",
     "test:ui": "playwright test --ui",
-    "//test:ci-strict": "Departure from a plain test run: the Playwright suite needs a running mock and app, so the strict CI run is the ports guard it would otherwise trip over. Maven runs it at the test phase; the suite itself runs under -Pe2e.",
+    "//test:ci-strict": "Departure from a plain test run: the Playwright suite needs a running mock and app, so the strict CI run is the ports guard it would otherwise trip over. Maven runs test:ports-guard directly at the test phase; test:ci-strict delegates to it. The suite itself runs under -Pe2e.",
     "test:ci-strict": "npm run test:ports-guard",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",

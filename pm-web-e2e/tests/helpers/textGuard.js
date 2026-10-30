@@ -267,10 +267,10 @@ export async function collectTextGuardViolations(page, options) {
     page.evaluate(() => {
       window.__textGuardObserver?.disconnect();
       window.__textGuardChanges = 0;
-      window.__textGuardLastChange = Date.now();
+      window.__textGuardLastChange = performance.now();
       window.__textGuardObserver = new MutationObserver((records) => {
         window.__textGuardChanges += records.length;
-        window.__textGuardLastChange = Date.now();
+        window.__textGuardLastChange = performance.now();
       });
       window.__textGuardObserver.observe(document.body, {
         subtree: true,
@@ -292,15 +292,19 @@ export async function collectTextGuardViolations(page, options) {
   const awaitQuietWindow = () =>
     page
       .waitForFunction(
-        ({ interval, startedAt }) => {
+        ({ interval }) => {
           if (!window.__textGuardObserver) {
             // A navigation replaced the document and with it the observer; the caller re-attaches it.
             return true;
           }
-          return Date.now() - (window.__textGuardLastChange ?? startedAt) >= interval;
+          // performance.now() is monotonic: a system clock step cannot shorten or lengthen the window.
+          return (
+            performance.now() - (window.__textGuardLastChange ?? performance.now()) >= interval
+          );
         },
-        { interval: SETTLE_INTERVAL_MS, startedAt: Date.now() },
-        { polling: 'raf', timeout: SETTLE_INTERVAL_MS * 5 },
+        { interval: SETTLE_INTERVAL_MS },
+        // A timer, not animation frames: a hidden window stops producing frames.
+        { polling: SETTLE_INTERVAL_MS / 10, timeout: SETTLE_INTERVAL_MS * 5 },
       )
       .then(() => true)
       .catch(() => false);
