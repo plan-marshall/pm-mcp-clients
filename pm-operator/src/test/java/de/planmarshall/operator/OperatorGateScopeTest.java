@@ -46,7 +46,9 @@ import org.junit.jupiter.params.provider.MethodSource;
  *
  * <p>Every row of the two matrices is one verb of the client. A read-only row runs in a
  * non-interactive context, so no verb can open a dialogue; an act row runs in an interactive one,
- * so the agent marker alone decides. Both carry {@code CLAUDECODE=1}.
+ * so the agent marker alone decides. Both carry {@code CLAUDECODE=1}. "Runs" means the gate did not
+ * refuse the read: the runtime behind it is a fake that answers {@code {}}, so a verb that needs a
+ * field it does not get may still fail for that reason.
  */
 @DisplayName("the operator gate on act paths")
 class OperatorGateScopeTest {
@@ -132,6 +134,8 @@ class OperatorGateScopeTest {
                             new String[]{"config", "unset", "language.ui"},
                             new String[]{"config", "language", "--interface", "de"},
                             new String[]{"config", "consents"},
+                            new String[]{"settings", "machine", "--set", "documents_mode=copy"},
+                            new String[]{"settings", "machine", "--withdraw", "scan_harnesses"},
                             new String[]{"cleanup"},
                             new String[]{"cleanup", "--delete", "--yes"},
                             new String[]{"cleanup", "--kept"},
@@ -146,6 +150,11 @@ class OperatorGateScopeTest {
                             new String[]{"web", "qr"},
                             new String[]{"web", "open"},
                             new String[]{"web", "devices", "revoke", "dev-1"},
+                            new String[]{"web", "devices", "revoke", "--all"},
+                            new String[]{"web", "devices", "rename", "dev-1", "laptop"},
+                            new String[]{"web", "devices", "listener-off"},
+                            new String[]{"reports", "read", "--all"},
+                            new String[]{"reports", "open", "rep-0142"},
                             new String[]{"roles", "qualify", "implementer", "--yes"},
                             new String[]{"project", "setup", "my-service"},
                             new String[]{"project", "add", "."},
@@ -267,9 +276,58 @@ class OperatorGateScopeTest {
                 response.json(200, "{}");
             }
         });
+        // `web pair` is the console's own handler: only the dispatcher can refuse it before it
+        // issues a code, so the refusal and the absent pairing request prove the dispatcher's check.
+        var text = runConsole(requests, "web pair\nexit\n");
+
+        assertAll(
+                            () -> assertTrue(text.contains(refusalText("en")), text),
+                            () -> assertFalse(requests.stream()
+                                                                    .anyMatch(r -> r.contains("pairings")),
+                                                requests.toString()),
+                            () -> assertFalse(requests.stream()
+                                                                    .anyMatch(r -> r.startsWith("PUT") && r.contains("/api/v1/web")),
+                                                requests.toString()));
+    }
+
+    @Test
+    @DisplayName("the un-onboarded entry offers the web app only where the gate permits")
+    void unonboardedEntrySendsNoAct() throws Exception {
+        var requests = new CopyOnWriteArrayList<String>();
+        server.close();
+        server = fixture.start((request, response) -> {
+            requests.add(request.method() + " " + request.target());
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"needs_setup\",\"version\":\"0.9.0\","
+                                    + "\"web\":{\"enabled\":true,\"port\":7420}}");
+            } else {
+                response.json(200, "{}");
+            }
+        });
+
+        var text = runConsole(requests, "w\nq\nexit\n");
+
+        assertAll(
+                            () -> assertFalse(requests.stream()
+                                                                    .anyMatch(r -> r.startsWith("PUT") && r.contains("/api/v1/web")),
+                                                requests.toString()),
+                            () -> assertFalse(requests.stream()
+                                                                    .anyMatch(r -> r.contains("pairings")),
+                                                requests.toString()),
+                            () -> assertTrue(text.contains(
+                                                                    MessageCatalogue.format("en",
+                                                                                        "operator.entry.setup_here_only", Map.of())),
+                                                text));
+    }
+
+    /**
+     * @param requests the requests the fake runtime received
+     * @param typed    the lines typed into the console
+     * @return what the console rendered
+     */
+    private String runConsole(CopyOnWriteArrayList<String> requests, String typed) throws Exception {
         var environment = markerEnvironment();
         var rendered = new ByteArrayOutputStream();
-        var typed = "answer Q-007\nexit\n";
         var context = new OperatorContext(environment, fixture.base().getParent(), true,
                             ClientEnvironment.capture(environment),
                             () -> new DumbTerminal(new ByteArrayInputStream(typed.getBytes(StandardCharsets.UTF_8)),
@@ -278,17 +336,9 @@ class OperatorGateScopeTest {
 
         var code = new PmConsole(context).run();
 
-        var text = rendered.toString(StandardCharsets.UTF_8);
-        assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(text.contains(refusalText("en")), text),
-                            () -> assertFalse(requests.stream().anyMatch(r -> r.contains("/decisions")),
-                                                requests.toString()),
-                            () -> assertFalse(requests.stream()
-                                                                    .anyMatch(r -> r.startsWith("PUT") && r.contains("/api/v1/web")),
-                                                requests.toString()),
-                            () -> assertFalse(requests.stream().anyMatch(r -> r.contains("pairings")),
-                                                requests.toString()));
+        assertEquals(0, code);
+        requests.removeIf(request -> request.endsWith("/api/v1/events"));
+        return rendered.toString(StandardCharsets.UTF_8);
     }
 
     /** @return the refusal text the catalogue answers in the given locale */

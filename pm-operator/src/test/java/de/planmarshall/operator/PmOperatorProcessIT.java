@@ -73,11 +73,9 @@ class PmOperatorProcessIT {
     private static final long BUDGET_MS = 50;
 
     /** One environment marker per coding-agent host of the Host Integration Table (PM-SEC-3). */
-    private static final Map<String, String> HOST_SIGNALS = Map.of(
-                        "ANTIGRAVITY_AGENT", "antigravity",
-                        "CLAUDE_CODE", "claude",
-                        "OPENCODE_CLIENT", "opencode",
-                        "CODEX_HOME", "codex");
+    /** One representative environment marker per coding-agent host of the Host Integration Table (PM-SEC-3). */
+    private static final List<String> HOST_SIGNALS = List.of(
+                        "ANTIGRAVITY_AGENT", "CLAUDE_CODE", "OPENCODE_CLIENT", "CODEX_HOME");
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
                         MachinePaths.class, CommandLine.class, JsonFactory.class,
@@ -170,11 +168,11 @@ class PmOperatorProcessIT {
     @DisplayName("refuses a coding-agent host signal of every host with exit code 4 (PM-SEC-3)")
     void refusesCodingAgentHostSignals() throws Exception {
         // one representative marker per host; the exhaustive marker set is the unit-level OperatorGateTest
-        for (var signal : HOST_SIGNALS.entrySet()) {
-            assertHostRefusal(signal.getKey(), signal.getValue(), "runtime", "stop");
-            assertHostRefusal(signal.getKey(), signal.getValue(), "plan", "pause", "fix-relay");
-            assertHostRefusal(signal.getKey(), signal.getValue(), "enrol-harness", "claude");
-            assertHostRefusal(signal.getKey(), signal.getValue(), "cleanup");
+        for (var signal : HOST_SIGNALS) {
+            assertHostRefusal(signal, "runtime", "stop");
+            assertHostRefusal(signal, "plan", "pause", "fix-relay");
+            assertHostRefusal(signal, "enrol-harness", "claude");
+            assertHostRefusal(signal, "cleanup");
         }
     }
 
@@ -187,7 +185,8 @@ class PmOperatorProcessIT {
             try (var process = operator(environment(), verb)) {
                 assertEquals(0, process.awaitExit(WAIT), verb + " stderr: " + process.stderr());
                 assertFalse(process.stdout().length == 0, verb + " printed nothing");
-                assertFalse(process.stderr().contains(agentRefusal("CLAUDE_CODE")),
+                assertFalse(process.stderr().contains(
+                                                        MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
                                     verb + " stderr: " + process.stderr());
             }
         }
@@ -198,7 +197,7 @@ class PmOperatorProcessIT {
                             Map.of(OperatorGate.MARKER_PARAM, marker));
     }
 
-    private void assertHostRefusal(String signal, String host, String... verb) throws Exception {
+    private void assertHostRefusal(String signal, String... verb) throws Exception {
         var environment = environment();
         environment.put(signal, "1");
         try (var process = operator(environment, verb)) {

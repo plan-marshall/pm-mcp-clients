@@ -174,7 +174,7 @@ public final class EntryFlow {
         var badges = new ArrayList<String>();
         badges.add(ConsolePrompt.formatMachineSetupBadge(locale, completedStep, 7));
 
-        if (choice.startsWith("w")) {
+        if (choice.startsWith("w") && context.gate().permits()) {
             ensureLoopbackListener(runtime, webPort);
             var pairing = issuePairingCode(runtime, webPort);
             if (!isSsh) {
@@ -185,23 +185,29 @@ public final class EntryFlow {
             out.println(MessageCatalogue.format(locale, "operator.entry.web_opens_setup", Map.of()));
             out.flush();
             return new EntryResult(status, badges, pairing.code(), pairing.url());
+        }
+        if (choice.startsWith("w")) {
+            // The web app is offered by opening the listener and issuing a pairing code, both acts:
+            // where the gate refuses an act the setup continues here instead, and the refusal
+            // appears when one is typed.
+            out.println(MessageCatalogue.format(locale, "operator.entry.setup_here_only", Map.of()));
         } else {
             out.println();
-            out.println(MessageCatalogue.format(locale, "operator.entry.setup_title", Map.of()));
-            out.flush();
-            String beginChoice = null;
-            try {
-                beginChoice = reader.readLine(MessageCatalogue.format(locale,
-                                    "operator.console.setup.begin_prompt", Map.of()));
-            } catch (EndOfFileException | UserInterruptException _) {
-                // abort setup on interrupt/EOF
-            }
-            if (beginChoice != null && "q".equalsIgnoreCase(beginChoice.trim())) {
-                out.println(MessageCatalogue.format(locale, "operator.entry.left_before_start", Map.of()));
-                out.flush();
-            }
-            return new EntryResult(status, badges, null, null);
         }
+        out.println(MessageCatalogue.format(locale, "operator.entry.setup_title", Map.of()));
+        out.flush();
+        String beginChoice = null;
+        try {
+            beginChoice = reader.readLine(MessageCatalogue.format(locale,
+                                "operator.console.setup.begin_prompt", Map.of()));
+        } catch (EndOfFileException | UserInterruptException _) {
+            // abort setup on interrupt/EOF
+        }
+        if (beginChoice != null && "q".equalsIgnoreCase(beginChoice.trim())) {
+            out.println(MessageCatalogue.format(locale, "operator.entry.left_before_start", Map.of()));
+            out.flush();
+        }
+        return new EntryResult(status, badges, null, null);
     }
 
     private EntryResult runOnboarded(RuntimeClient runtime, Map<String, Object> status,

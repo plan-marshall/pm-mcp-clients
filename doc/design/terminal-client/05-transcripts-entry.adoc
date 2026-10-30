@@ -51,7 +51,7 @@ pm [1 question] ›
 * `entry.runtime` prints `✓ Runtime running` when one was running already. On the desktop `entry.pairing` issues no code when a browser of this machine is paired (`paired_by: open`); the browser is then not opened again, and `web` opens it (`web pair` pairs another one). In an SSH session it always issues a code (<<t-entry-ssh>>).
 * `entry.browser` that cannot start the browser prints `– No browser opened: <reason>` and shows the ways in as over SSH.
 * `entry.wait` is the console itself: a pairing is reported above the prompt (`✓ Paired: …`), and a redeemed code is replaced by a new one for a further device, which `web` shows.
-* The console's own views are its verbs at that prompt (`status` above, `plans` for the overview of running work); `pm-operator` without a verb never opens one of them, it connects the web app (xref:01-commands.adoc#command-tree[The Verbs]).
+* The console's own views are its verbs at that prompt (`status` above, `plans` for the overview of running work); `pm-operator` without a verb never opens one of them, it connects the web app (xref:01-commands.adoc#command-tree[The Verbs]). Connecting it is an act — the listener is enabled and a code is issued — so where the operator checks refuse an act the console opens without the web app, and the refusal names it when an act is typed (xref:04-console.adoc#console-security[The Operator Checks]).
 
 [#t-entry-ssh]
 ==== Onboarded, over SSH (`entry.where`, `entry.show`, `entry.wait`)

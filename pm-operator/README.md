@@ -160,13 +160,13 @@ If you run an operator act from an environment where AI assistant signals are ex
 pm-operator: Operator acts are refused here: this terminal belongs to a coding agent (CLAUDECODE is set). Run pm-operator in a terminal of your own.
 ```
 The read-only verbs (`questions`, `reports`, `projects --list`, the `roles`, `config`, `settings`, `plan` and `epic` views, `credentials status`, `lesson check`) and the console itself run without the gate.
-To run the act that was refused, launch it in an environment of your own:
+To run the act that was refused, launch it in an environment of your own, with the agent's markers unset:
 ```bash
-env -u ANTIGRAVITY_AGENT -u GEMINI_CLI -u CLAUDE_CODE -u OPENCODE_CLIENT java -jar pm-operator/target/pm-operator-0.1.0-SNAPSHOT.jar status
+env -u CLAUDECODE -u CLAUDE_CODE -u OPENCODE -u OPENCODE_CLIENT -u ANTIGRAVITY_AGENT -u GEMINI_CLI java -jar pm-operator/target/pm-operator-0.1.0-SNAPSHOT.jar runtime stop
 ```
 
 ### Interactive Terminal Required
-An operator act requires an interactive terminal (TTY). If standard input is piped or redirected (e.g. `echo "status" | pm-operator`), the act is refused; the read-only verbs print into the pipe.
+An operator act requires an interactive terminal (TTY). If standard input is piped or redirected (e.g. `echo "x" | pm-operator answer Q-007`), the act is refused; the read-only verbs print into the pipe.
 
 ---
 

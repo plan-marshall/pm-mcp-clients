@@ -22,7 +22,7 @@ What a report is, what it shows, and how it is read is link:../shared/reports.ad
   plan report <plan_id> [--tokens [--components]]   an ended plan's completion report; with its tokens by phase, role, and model
 ----
 
-* All are operator verbs, in the console and as one shell command; they ask nothing, so `--no-input` changes nothing, with one exception: `reports open` on a report whose detail is a start still open continues `plan add`, a direct verb.
+* All are operator acts, in the console and as one shell command, except the two reads `reports` and `plan report`, which run without the checks; they ask nothing, so `--no-input` changes nothing, with one exception: `reports open` on a report whose detail is a start still open continues `plan add`, a direct verb.
 * *A report's id* is the one the runtime gives it (`rep-0142`); `Tab` completes the ids of the unread ones.
 * `reports` without a project prints every project's; `--project .` the project of the working directory.
 * `reports read --all` marks read the reports the last `reports` of this console printed, by their ids (link:../shared/reports.adoc#read[Reports, Reading a Report]); as one shell command, or before any listing, it reads the list first and marks read what it read, and prints how many. A report that arrived since stays unread.
