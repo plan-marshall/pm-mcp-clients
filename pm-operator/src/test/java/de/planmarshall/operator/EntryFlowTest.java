@@ -112,6 +112,22 @@ class EntryFlowTest {
         }
 
         @Test
+        @DisplayName("badges keep the machine's onboarding badge until the machine is onboarded")
+        void badgesKeepTheOnboardingBadge() {
+            var notOnboarded = Map.<String, Object>of(
+                                "onboard", Map.of("step", 2),
+                                "needs_operator", Map.of("decision", 1));
+            var onboarded = Map.<String, Object>of(
+                                "onboarded", true,
+                                "needs_operator", Map.of("decision", 1));
+
+            assertAll(
+                                () -> assertEquals(List.of("setup 2/7", "1 question"), EntryFlow.badges("en", notOnboarded)),
+                                () -> assertEquals(List.of("1 question"), EntryFlow.badges("en", onboarded))
+            );
+        }
+
+        @Test
         @DisplayName("extractWaitingBadges formats badges from needs_operator map")
         void extractsBadges() {
             var status = Map.<String, Object>of(
@@ -348,12 +364,18 @@ class EntryFlowTest {
         }
 
         @Test
-        @DisplayName("unonboarded step 0 with choice 'h' and quit 'q' prints abort message")
+        @DisplayName("unonboarded step 0 with choice 'h' hands over to the dialogue, and 'q' leaves it")
         void unonboardedChoiceHereAndQuit() throws Exception {
             fixture.start((request, response) -> {
                 if ("/api/v1/status".equals(request.target())) {
                     response.json(200, """
                                         {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":0},"web":{"enabled":true,"port":7420}}
+                                        """);
+                } else if (OnboardCommand.STATE_PATH.equals(request.target())) {
+                    response.json(200, """
+                                        {"state":"onboard.mode","summary":"Set up this machine for plan-marshall",
+                                         "completed_steps":0,
+                                         "links":{"begin":{"href":"/api/v1/onboarding/language","method":"POST","next":"language.choose","preselected":true}}}
                                         """);
                 } else {
                     response.send(404, null, "");
@@ -370,7 +392,7 @@ class EntryFlowTest {
             var text = writer.toString();
             assertAll(
                                 () -> assertTrue(text.contains("Set up this machine for plan-marshall")),
-                                () -> assertTrue(text.contains("Left the setup before step 1. Nothing was sent. Enter continues the setup.")),
+                                () -> assertTrue(text.contains("Nothing was sent.")),
                                 () -> assertEquals(List.of("setup 0/7"), result.initialBadges())
             );
         }

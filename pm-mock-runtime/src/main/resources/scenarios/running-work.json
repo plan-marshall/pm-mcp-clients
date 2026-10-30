@@ -577,6 +577,42 @@
         "duration_seconds": 7800
       }
     },
+    "GET /api/v1/plans/relay-cursor-order/process": {
+      "representation": {
+        "plan_id": "relay-cursor-order",
+        "title": "Relay cursor order",
+        "project": {
+          "project_id": "pm-mcp-clients",
+          "display_name": "pm-mcp-clients",
+          "link": "/api/v1/projects/pm-mcp-clients"
+        },
+        "current_phase": "execute",
+        "phase_state": "waiting_for_you",
+        "needs_operator": true,
+        "instance_version": 1,
+        "tokens_so_far": {
+          "total": 0,
+          "input": 0,
+          "output": 0,
+          "tasks_total": 0,
+          "tasks_measured": 0,
+          "none_yet": true
+        },
+        "nodes": [
+          {
+            "node_id": "execute",
+            "title": "phase execute",
+            "kind": "phase",
+            "state": "waiting_for_operator",
+            "run_count": 1,
+            "current_run": 1,
+            "duration_seconds": 0
+          }
+        ],
+        "current_position_path": [],
+        "duration_seconds": 0
+      }
+    },
     "GET /api/v1/plans/docs-typo/process": {
       "representation": {
         "plan_id": "docs-typo",

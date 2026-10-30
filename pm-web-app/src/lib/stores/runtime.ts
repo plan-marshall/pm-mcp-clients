@@ -8,6 +8,7 @@ import {
   type MachineSettingsRecord,
   type MachineSettingsUpdateResult,
   type ProjectOverviewResponse,
+  type EventStreamState,
 } from '../api/client';
 import {
   matchPath,
@@ -20,6 +21,15 @@ import {
 import { currentLocale, translate } from '../i18n';
 
 export type { AppRoute, RouteParams, StartPath };
+
+/**
+ * The state of the one event stream (UX-P-12).
+ *
+ * `connecting` is the first attempt, `connected` a live stream, `reconnecting` a dropped stream
+ * that retries, and `offline` the state after the retries gave up — the one that offers `Try
+ * again`.
+ */
+export type StreamState = EventStreamState;
 
 export interface RevokedInfo {
   reason?: string;
@@ -44,6 +54,8 @@ export interface RuntimeState {
   /** A code in the address bar was refused; the pairing page shows why. */
   pairingFailed?: boolean;
   isOffline: boolean;
+  /** The state of the event stream, for the live indicator. */
+  streamState: StreamState;
   /** The network listener this browser reached the machine over was turned off. */
   isListenerClosed: boolean;
   /** When that listener was turned off, for the page that waits for it. */
@@ -112,6 +124,7 @@ const initialState: RuntimeState = {
   revokedInfo: null,
   pairingFailed: false,
   isOffline: false,
+  streamState: 'connecting',
   isListenerClosed: false,
   listenerClosedAt: null,
   isDraining: false,
@@ -396,6 +409,14 @@ export async function initRuntime(): Promise<void> {
     }
   });
 
+  // The stream reports its own state, so the live indicator says what the connection does instead
+  // of inferring it from a request that happened to fail.
+  apiClient.setOnStreamState((state) => {
+    if (get(runtimeStore).streamState !== state) {
+      runtimeStore.update((s) => ({ ...s, streamState: state }));
+    }
+  });
+
   const hasCodeInHash = await checkUrlHashForCode();
   if (hasCodeInHash) {
     return;
@@ -441,6 +462,11 @@ export async function initRuntime(): Promise<void> {
       startEntryId: requested?.entryId ?? null,
       currentState,
       activeStep: deriveStepFromState(currentState?.state),
+      isDraining: status.lifecycle_state === 'draining',
+      drainInfo: status.lifecycle_state === 'draining'
+        ? { who: status.draining_by, count: status.drain_remaining_count }
+        : null,
+      isStopped: status.lifecycle_state === 'stopped',
       isOffline: false,
       isRevoked: false,
     }));
@@ -456,8 +482,25 @@ export async function initRuntime(): Promise<void> {
       ...s,
       isInitialized: true,
       isOffline: true,
+      // No stream opens on this path, so the indicator must offer the one way back — unless the
+      // retry already connected one, whose state then stands.
+      streamState: s.streamState === 'connected' ? 'connected' : 'offline',
     }));
   }
+}
+
+/**
+ * Retries the event stream after it gave up, and re-reads the runtime.
+ *
+ * The indicator's `Try again` calls it: the stream reconnects at once, and the status read that
+ * follows settles whether the machine is reachable again.
+ */
+export function retryEventStream(): void {
+  // The offline flag stays until the status request settles: it is what keeps the indicator — and
+  // its Try again — on screen while the retried read is in flight.
+  runtimeStore.update((s) => ({ ...s, streamState: 'connecting' }));
+  apiClient.retryEventStream();
+  void initRuntime();
 }
 
 export async function refreshReportsCount(): Promise<void> {
@@ -574,10 +617,21 @@ function handleDecisionEvent(event: string, data: unknown): void {
 /** The runtime's lifecycle: a drain, a withdrawn drain, or a stop. */
 function handleLifecycleEvent(event: string, data: unknown): void {
   if (event === 'runtime.draining') {
+    const payload = (data || {}) as {
+      who?: string;
+      count?: number;
+      draining_by?: string;
+      remaining_count?: number;
+      remaining_work_count?: number;
+    };
     runtimeStore.update((s) => ({
       ...s,
       isDraining: true,
-      drainInfo: (data || {}) as RuntimeState['drainInfo'],
+      isStopped: false,
+      drainInfo: {
+        who: payload.who ?? payload.draining_by,
+        count: payload.count ?? payload.remaining_count ?? payload.remaining_work_count,
+      },
     }));
   } else if (event === 'runtime.drain_withdrawn') {
     runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));

@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator.transcript;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -27,6 +28,7 @@ import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
 
 import de.planmarshall.api.MachinePaths;
+import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.testsupport.BinaryUnderTest;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
@@ -72,16 +74,26 @@ class ScreenCaptureIT {
     private static final Duration READY_TIMEOUT = Duration.ofSeconds(40);
     private static final Duration POLL = Duration.ofMillis(50);
 
+    /** The console prompt's two forms: the bare one and the one carrying the runtime's badges. */
+    private static final String CONSOLE_PROMPT = "pm \u203a";
+    private static final String BADGED_CONSOLE_PROMPT = "pm [";
+
+    /** How long a broadcast may take to draw before a capture settles without it. */
+    private static final Duration BROADCAST_GRACE = Duration.ofSeconds(3);
+
     /**
      * One capture line of the set.
      *
      * @param keys       the keys typed after the capture, usually {@code q} to leave the view
-     * @param beforeKeys the keys typed before the capture, so that the captured screen shows their
-     *                   state; empty when the capture is the screen the verb opens
+     * @param beforeKeys the keys typed after the capture screen is written, so that the
+     *                   {@code .after} screen shows their state; empty when the capture is the
+     *                   screen the verb opens
+     * @param broadcast  the body {@code POST /mock/broadcast} is sent once the screen settled, so
+     *                   that the capture shows what the pushed event drew; empty for none
      */
     private record Capture(String name, String scenario, List<String> states, List<String> command,
     String keys, int columns, int rows, String locale, Map<String, String> environment,
-    String beforeKeys) {
+    String beforeKeys, String broadcast) {
     }
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
@@ -118,8 +130,15 @@ class ScreenCaptureIT {
                 runtime.goToState(state);
             }
             try (var session = start(runtime, capture)) {
-                assertTrue(awaitQuiet(session, !capture.keys().isEmpty()),
+                var consoleCapture = capture.command().isEmpty();
+                assertTrue(awaitQuiet(session, !capture.keys().isEmpty(), consoleCapture),
                                     capture.name() + " did not settle within " + READY_TIMEOUT);
+                if (!capture.broadcast().isEmpty()) {
+                    var drawn = session.rawOutput().length();
+                    broadcast(runtime, capture.broadcast());
+                    assertTrue(awaitBroadcast(session, drawn, consoleCapture),
+                                        capture.name() + " did not settle after the broadcast within " + READY_TIMEOUT);
+                }
                 var screen = session.screen();
                 var raw = session.rawOutput();
                 assertFalse(raw.isEmpty(), capture.name() + " wrote nothing to the terminal");
@@ -159,6 +178,32 @@ class ScreenCaptureIT {
         }
     }
 
+    /**
+     * Waits out the broadcast: until it drew something and the screen settled, or until the grace
+     * window passed with nothing drawn (a before-capture of a tree that does not render the event).
+     *
+     * @param session the running session
+     * @param drawn   the output length before the broadcast was sent
+     * @return {@code true} when the screen settled
+     * @throws InterruptedException if interrupted
+     */
+    private static boolean awaitBroadcast(PtySession session, int drawn, boolean consoleCapture)
+                        throws InterruptedException {
+        var graceEnd = System.nanoTime() + BROADCAST_GRACE.toNanos();
+        while (session.rawOutput().length() == drawn && System.nanoTime() < graceEnd) {
+            LockSupport.parkNanos(POLL.toNanos());
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
+        }
+        return awaitQuiet(session, false, consoleCapture);
+    }
+
+    private static void broadcast(MockRuntime runtime, String body) throws IOException {
+        var response = runtime.client().send(HttpRequest.json("POST", "/mock/broadcast", body));
+        assertEquals(200, response.status(), "POST /mock/broadcast refused: " + body);
+    }
+
     private PtySession start(MockRuntime runtime, Capture capture) throws IOException {
         var environment = new HashMap<String, String>();
         // A PTY test clears the environment: the operator gate refuses a coding agent by design
@@ -185,10 +230,13 @@ class ScreenCaptureIT {
      *
      * @param session     the running session
      * @param expectsView whether the capture types keys and therefore expects an answer
+     * @param console     whether the capture drives the line-oriented console, whose prompt is
+     *                    itself a settled state
      * @return {@code true} when the screen settled before the deadline
      * @throws InterruptedException if interrupted
      */
-    private static boolean awaitQuiet(PtySession session, boolean expectsView) throws InterruptedException {
+    private static boolean awaitQuiet(PtySession session, boolean expectsView, boolean console)
+                        throws InterruptedException {
         var start = System.nanoTime();
         var deadline = start + READY_TIMEOUT.toNanos();
         var lastLength = 0;
@@ -200,7 +248,7 @@ class ScreenCaptureIT {
                 if (quietSince == 0L) {
                     quietSince = System.nanoTime();
                 } else if (System.nanoTime() - quietSince >= SETTLE.toNanos()
-                                    && (!expectsView || settled(session, raw, start))) {
+                                    && (!expectsView || settled(session, raw, start, console))) {
                     return true;
                 }
             } else {
@@ -223,8 +271,9 @@ class ScreenCaptureIT {
      *         prompt suffix and past {@link #MIN_WAIT}, or a full-screen view that entered the
      *         alternate screen
      */
-    private static boolean settled(PtySession session, String raw, long start) {
-        if (raw.contains(StartPrompt.SUFFIX)) {
+    private static boolean settled(PtySession session, String raw, long start, boolean console) {
+        if (raw.contains(StartPrompt.SUFFIX) || (console
+                            && (raw.contains(CONSOLE_PROMPT) || raw.contains(BADGED_CONSOLE_PROMPT)))) {
             return System.nanoTime() - start >= MIN_WAIT.toNanos();
         }
         return session.screen().alternateScreenActive();
@@ -310,9 +359,9 @@ class ScreenCaptureIT {
 
     private static Capture parse(String line) {
         var fields = line.split("\\|", -1);
-        if (fields.length != 8 && fields.length != 9) {
+        if (fields.length != 8 && fields.length != 9 && fields.length != 10) {
             throw new IllegalArgumentException(
-                                "A capture line names 8 fields and an optional 9th, got " + fields.length + ": " + line);
+                                "A capture line names 8 fields and up to 2 optional ones, got " + fields.length + ": " + line);
         }
         var size = fields[5].strip().split("x");
         if (size.length != 2) {
@@ -342,11 +391,12 @@ class ScreenCaptureIT {
             }
             environment.put(pair.substring(0, split), pair.substring(split + 1));
         }
-        var beforeKeys = fields.length == 9 ? keys(fields[8].strip()) : "";
+        var beforeKeys = fields.length >= 9 ? keys(fields[8].strip()) : "";
+        var broadcast = fields.length == 10 && !"-".equals(fields[9].strip()) ? fields[9].strip() : "";
         return new Capture(fields[0].strip(), fields[1].strip(), List.copyOf(states), List.copyOf(command),
                             keys(fields[4].strip()), Integer.parseInt(size[0].strip()),
                             Integer.parseInt(size[1].strip()), fields[6].strip(), Map.copyOf(environment),
-                            beforeKeys);
+                            beforeKeys, broadcast);
     }
 
     private static String keys(String raw) {

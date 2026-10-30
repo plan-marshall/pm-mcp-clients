@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.ReviewResource;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.system.CleanupKind;
 import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.http.MockHttpResponse;
@@ -108,6 +109,32 @@ class FixtureConsistencyTest {
                 assertEquals(JsonTree.number(summary, "freed_bytes").longValue()
                         - JsonTree.number(entry, "size_bytes").longValue(),
                         JsonTree.number(deleted, "freed_bytes").longValue(), "freed_bytes");
+            }
+        }
+
+        @Test
+        @DisplayName("a kept item's kind is one the contract's closed set knows")
+        void keptItemKindIsFromTheClosedSet() throws Exception {
+            try (var engine = engine(StandardScenarios.REPORTS_AND_SYSTEM)) {
+                var body = JsonTree.write(Map.of("unchecked_ids", List.of("logs-relay-docs")))
+                        .getBytes(StandardCharsets.UTF_8);
+                body(engine, "POST", "/api/v1/system/cleanup/cln-0012/delete", body);
+
+                var kept = JsonTree.asArray(JsonTree.parse(body(engine, "/api/v1/system/cleanup/kept")));
+                assertNotNull(kept, "the kept list must answer an array");
+                var added = JsonTree.asObject(kept.get(kept.size() - 1));
+                assertNotNull(added, "the delete must append a kept item");
+                assertEquals("logs-relay-docs", JsonTree.string(added, "id"),
+                        "id of the item the delete added");
+                assertEquals("logs", JsonTree.string(added, "kind"),
+                        "kind of the item the delete added");
+                assertEquals("logs of relay-docs", JsonTree.string(added, "title"),
+                        "title of the item the delete added");
+                for (var element : kept) {
+                    var kind = JsonTree.string(JsonTree.asObject(element), "kind");
+                    assertNotNull(CleanupKind.fromValue(kind),
+                            "kept item kind " + kind + " is outside CleanupKind");
+                }
             }
         }
 

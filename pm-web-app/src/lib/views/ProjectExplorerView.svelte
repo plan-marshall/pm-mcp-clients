@@ -1416,6 +1416,8 @@
 <style>
   .project-explorer {
     max-width: 1200px;
+    min-inline-size: 0;
+    max-inline-size: 100%;
     margin: 0 auto;
     padding: var(--space-6);
     display: flex;
@@ -1956,7 +1958,11 @@
     }
 
     .project-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .project-card {
+      min-inline-size: 0;
     }
 
     .modal-card {

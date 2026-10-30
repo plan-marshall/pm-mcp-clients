@@ -22,6 +22,14 @@ export interface ConnectionStatus {
   onboarded: boolean;
 }
 
+/**
+ * The state of the shared event stream, for the live indicator (UX-P-12).
+ *
+ * `connecting` is the first attempt, `connected` a live stream, `reconnecting` a dropped stream
+ * that retries, and `offline` the state after the retries gave up.
+ */
+export type EventStreamState = 'connecting' | 'connected' | 'reconnecting' | 'offline';
+
 export interface RevokedEventData {
   reason?: string;
   revoked_by?: string;
@@ -35,6 +43,9 @@ export interface StatusResponse {
   version?: string;
   listener?: string;
   onboarded?: boolean;
+  lifecycle_state?: string;
+  draining_by?: string;
+  drain_remaining_count?: number;
   machine?: {
     name?: string;
     onboarded?: boolean;
@@ -2007,9 +2018,15 @@ export class ApiClient {
   private onRevokedCallback?: (info?: string | RevokedEventData) => void;
   private onOfflineCallback?: () => void;
   private onOnlineCallback?: () => void;
+  /** Called with the state of the shared event stream, for the live indicator. */
+  private onStreamStateCallback?: (state: EventStreamState) => void;
   /** The listeners of the one shared `/api/v1/events` connection. */
   private readonly eventSubscribers = new Set<(event: string, data: unknown) => void>();
   private eventStreamAbort: (() => void) | null = null;
+  /** Retries the shared stream now, after it gave up; `null` while no stream is open. */
+  private eventStreamRetry: (() => void) | null = null;
+  /** The last state the shared stream reported, so a late subscriber hears it at once. */
+  private streamState: EventStreamState = 'connecting';
 
   constructor(baseUrl = '') {
     this.baseUrl = baseUrl;
@@ -2033,6 +2050,44 @@ export class ApiClient {
    */
   public setOnOnline(callback: () => void): void {
     this.onOnlineCallback = callback;
+  }
+
+  /**
+   * Registers the callback for the state of the shared event stream.
+   *
+   * The runtime store mirrors it, so the live indicator names what the stream does instead of
+   * inferring it from a request that happened to fail.
+   *
+   * @param callback called on every state change of the stream
+   */
+  public setOnStreamState(callback: (state: EventStreamState) => void): void {
+    this.onStreamStateCallback = callback;
+    // The stream may already be live when the runtime registers: a subscriber that missed the
+    // transition is told the current state instead of waiting for the next one.
+    callback(this.streamState);
+  }
+
+  /**
+   * Retries the shared event stream at once, after it gave up.
+   *
+   * The stream reports `connecting` and then either `connected` or, after its limit, `offline`
+   * again; a call while the stream is live does nothing.
+   */
+  public retryEventStream(): void {
+    this.eventStreamRetry?.();
+  }
+
+  /**
+   * Records a state of the shared stream and tells the subscriber.
+   *
+   * @param state the state the stream entered
+   */
+  private reportStreamState(state: EventStreamState): void {
+    if (this.streamState === state) {
+      return;
+    }
+    this.streamState = state;
+    this.onStreamStateCallback?.(state);
   }
 
   public getSecret(): string | null {
@@ -3507,15 +3562,23 @@ export class ApiClient {
       }
       signal.addEventListener('abort', () => this.unsubscribeEvent(onEvent), { once: true });
     }
-    this.eventStreamAbort ??= this.subscribeStream('/api/v1/events', (event, data) => {
-      this.eventSubscribers.forEach((listener) => {
-        try {
-          listener(event, data);
-        } catch {
-          // One broken listener must not starve the others or look like a stream failure.
-        }
-      });
-    });
+    this.eventStreamAbort ??= this.subscribeStream(
+      '/api/v1/events',
+      (event, data) => {
+        this.eventSubscribers.forEach((listener) => {
+          try {
+            listener(event, data);
+          } catch {
+            // One broken listener must not starve the others or look like a stream failure.
+          }
+        });
+      },
+      undefined,
+      (state) => this.reportStreamState(state),
+      (retry) => {
+        this.eventStreamRetry = retry;
+      },
+    );
     return () => this.unsubscribeEvent(onEvent);
   }
 
@@ -3529,6 +3592,9 @@ export class ApiClient {
     if (removed && this.eventSubscribers.size === 0 && this.eventStreamAbort) {
       this.eventStreamAbort();
       this.eventStreamAbort = null;
+      this.eventStreamRetry = null;
+      // The shared stream is gone: the indicator must not keep claiming a connection it lost.
+      this.reportStreamState('offline');
     }
   }
 
@@ -3546,28 +3612,46 @@ export class ApiClient {
     onEvent: (event: string, data: unknown) => void,
     signal?: AbortSignal,
   ): () => void {
+    // An entry's stream has no indicator and no Try again: it keeps retrying, so a long outage
+    // does not leave an open entry without its progress and chat events until the view remounts.
     return this.subscribeStream(
       `/api/v1/entries/${encodeURIComponent(entryId)}/events`,
       onEvent,
       signal,
+      undefined,
+      undefined,
+      Number.POSITIVE_INFINITY,
     );
   }
 
   /**
    * The one server-sent-events reader of the client.
    *
+   * A dropped stream retries at once after a short pause, reports `reconnecting` while it does,
+   * and gives up after {@link STREAM_RETRY_LIMIT} attempts with `offline` — the state whose
+   * `Try again` calls {@link retryEventStream}. The retry is the stream's own, so a subscription
+   * that is already open is revived instead of being replaced.
+   *
    * @param path the stream's path
    * @param onEvent the callback per event
    * @param signal an optional abort signal
+   * @param onState the reporter of the stream's state
+   * @param registerRetry receives the function that retries the stream now
    * @returns the unsubscribe function
    */
   private subscribeStream(
     path: string,
     onEvent: (event: string, data: unknown) => void,
     signal?: AbortSignal,
+    onState?: (state: EventStreamState) => void,
+    registerRetry?: (retry: () => void) => void,
+    retryLimit: number = STREAM_RETRY_LIMIT,
   ): () => void {
     let active = true;
     let currentReader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+    let connecting = false;
+    let failures = 0;
+    let retryTimer: ReturnType<typeof setTimeout> | null = null;
     const internalController = new AbortController();
 
     if (signal) {
@@ -3578,8 +3662,16 @@ export class ApiClient {
       }
     }
 
+    const clearRetry = () => {
+      if (retryTimer !== null) {
+        clearTimeout(retryTimer);
+        retryTimer = null;
+      }
+    };
+
     const abortAll = () => {
       active = false;
+      clearRetry();
       internalController.abort();
       if (currentReader) {
         void currentReader.cancel().catch(() => {});
@@ -3587,16 +3679,39 @@ export class ApiClient {
       }
     };
 
+    /** Schedules the next attempt, or reports the stream offline once the limit is spent. */
+    const reconnect = () => {
+      failures += 1;
+      if (failures >= retryLimit) {
+        onState?.('offline');
+        return;
+      }
+      onState?.('reconnecting');
+      clearRetry();
+      retryTimer = setTimeout(() => {
+        retryTimer = null;
+        void connect();
+      }, STREAM_RETRY_DELAY_MS);
+    };
+
     const connect = async () => {
       const secret = this.getSecret();
       if (!secret || !active || internalController.signal.aborted) return;
+      if (connecting || currentReader) return;
+      connecting = true;
+      onState?.(failures === 0 ? 'connecting' : 'reconnecting');
+
+      // A connect that is accepted and never answers must end like a failed one, or `connecting`
+      // would stay true (and the retry limit uncounted) for as long as the machine kept the socket.
+      const attempt = new AbortController();
+      const deadline = setTimeout(() => attempt.abort(), CONNECT_TIMEOUT_MS);
 
       try {
         const res = await fetch(`${this.baseUrl}${path}`, {
           headers: {
             Authorization: `Bearer ${secret}`,
           },
-          signal: internalController.signal,
+          signal: AbortSignal.any([internalController.signal, attempt.signal]),
         });
 
         if (res.status === 401) {
@@ -3606,6 +3721,7 @@ export class ApiClient {
             this.onRevokedCallback?.('unauthorized');
           }
           abortAll();
+          onState?.('offline');
           return;
         }
 
@@ -3613,6 +3729,7 @@ export class ApiClient {
           throw new Error(`SSE failed: ${res.status}`);
         }
 
+        onState?.('connected');
         this.onOnlineCallback?.();
         const reader = res.body.getReader();
         currentReader = reader;
@@ -3624,13 +3741,14 @@ export class ApiClient {
           if (done) {
             currentReader = undefined;
             if (active && !internalController.signal.aborted) {
-              setTimeout(() => {
-                void connect();
-              }, 2000);
+              reconnect();
             }
             return;
           }
 
+          // Data arrived: the connection is genuinely alive, so the failures before it are past.
+          // A stream that is accepted and ends again without data stays on its way to `offline`.
+          failures = 0;
           buffer += decoder.decode(value, { stream: true });
           const parts = buffer.split(/(?:\r\n|\r|\n){2}/);
           buffer = parts.pop() || '';
@@ -3651,20 +3769,30 @@ export class ApiClient {
 
             if (revoked) {
               abortAll();
+              onState?.('offline');
               return;
             }
           }
         }
-      } catch (err: unknown) {
+      } catch {
         currentReader = undefined;
-        if ((err as Error)?.name === 'AbortError') return;
+        if (internalController.signal.aborted) return;
         if (active && !internalController.signal.aborted) {
-          setTimeout(() => {
-            void connect();
-          }, 2000);
+          reconnect();
         }
+      } finally {
+        clearTimeout(deadline);
+        connecting = false;
       }
     };
+
+    registerRetry?.(() => {
+      if (!active || internalController.signal.aborted || currentReader || connecting) return;
+      clearRetry();
+      failures = 0;
+      onState?.('connecting');
+      void connect();
+    });
 
     void connect();
 
@@ -3673,6 +3801,15 @@ export class ApiClient {
     };
   }
 }
+
+/** The pause between two attempts of a dropped stream. */
+const STREAM_RETRY_DELAY_MS = 2000;
+
+/** The deadline for a connect attempt to answer with a response. */
+const CONNECT_TIMEOUT_MS = 10_000;
+
+/** The attempts after which the stream reports `offline` and waits for `Try again`. */
+const STREAM_RETRY_LIMIT = 10;
 
 function parseSseChunk(chunk: string): { eventType: string; eventData: string } | null {
   const lines = chunk.split(/\r\n|\r|\n/);

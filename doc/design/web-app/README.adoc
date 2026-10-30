@@ -115,7 +115,33 @@ How the app is organised and how one moves from one part to another and back. Un
 |link:../shared/texts-and-languages.adoc[Texts and Languages]; the keys of the area `web` are listed with the design that uses them (link:onboarding-texts.adoc#texts-web[Onboarding], link:entry.adoc#texts[Entry], link:machine-settings.adoc#texts[Machine Settings]); the area `designer` with link:process-designer-texts.adoc#texts[Process Designer]
 |===
 
-How the parts are laid out in one app (the header, the navigation between the explorer, the overview and the settings, the routes) is worked out with the visual language below.
+How the parts are laid out in one app (the rail, the top bar, the phone's bottom bar, the routes) is worked out with the visual language below.
+
+[#shell]
+=== The App Shell
+
+One frame holds every view: a rail on the left, a top bar above the view, and — on a phone — a bottom bar below it. The view itself never draws the frame.
+
+[cols="1,3",options="header"]
+|===
+|Part |Design
+
+|Rail
+|`232 px` wide, collapsible to `64 px` (icons with their labels as tooltips); this browser keeps the choice (`pm_rail_collapsed`). The head carries the `BrandMark` on its `28 px` brand square and the project's name, the mark and the name opening the start page. Three groups, in this order: *Work* (Running work, Projects, Decisions), *Records* (Reports), *Machine* (System, Process Designer, Settings). A destination that carries a count shows it beside its label: the open decisions and the unread reports. The tab title and the tab icon carry only the open decisions. A detail page keeps the destination it belongs to selected: a plan and an epic are Work, the cleanup is part of System, and the machine settings are Settings. The foot carries the language switch (`EN`/`DE`), the theme choice, and the control that collapses the rail.
+
+|Top bar
+|The path of the page — its group and its title, with the cleanup as `Machine › System › Cleanup` — the search trigger of the command palette, the live indicator (<<live-state>>), and the machine's name in a neutral pill. The pill is neutral in both modes: the machine's name is a fact, never a warning, and the connection mode travels in its title.
+
+|Bottom bar
+|Below `768 px` the rail has no room, so the four destinations a person opens most stand at the foot of the page: Running work, Decisions, Reports, and *More*. *More* opens a sheet with every destination of the three groups — the same list the rail carries — and with the language switch and the theme choice the rail's foot offers on a desktop. Each item keeps a visible label: a phone has no hover for a tooltip. The top bar still carries the path and the search trigger.
+
+|===
+
+[#live-state]
+=== The Live Indicator
+
+The top bar says what the event stream does, in one line: `● Live` while it is connected, `Reconnecting…` in the attention colour while it retries, and `Offline` in the danger colour with *Try again* once the retries gave up. It replaces the offline banner of the earlier frame, so the state of the connection lives in the one always-visible row rather than above the view (link:../../claude_review/ux/proposals.adoc#UX-P-12[UX-P-12]). A colour never carries the state alone: the word stands beside the dot.
+
 
 [#visual-language]
 == Visual Language
@@ -125,27 +151,29 @@ Every screen is built from the same frame, the same grid, the same tokens, and t
 [#frame]
 === The Frame
 
-The app is one column of five tiers, always in this order:
+The app is one rail, one column of four tiers beside it, and — on a phone — one bottom bar:
 
 ----
-header       brand · machine · overview · projects · explorer · decisions ·
-             reports · system · settings · language · theme
-──────────────────────────────────────────────────────────────────────────
-notices      runtime progress (a drain, an upgrade), connection state,
-             the arrival line of reports or decisions
-──────────────────────────────────────────────────────────────────────────
-context      the view's own head: title, path (project › epic › plan),
-             its actions, and its filters or view switches
-──────────────────────────────────────────────────────────────────────────
-body         the view: a list, a table, a process tree, a form, a dialogue
-──────────────────────────────────────────────────────────────────────────
-live region  polite announcements, visually hidden
+rail      ▣ plan-marshall        │ top bar   path › path › title   [search]  ● live  machine
+          WORK                   │ ──────────────────────────────────────────────────────────
+           Running               │ notices   runtime progress (a drain, an upgrade),
+           Projects              │           the arrival line of reports or decisions
+           Decisions 3           │ ──────────────────────────────────────────────────────────
+          RECORDS                │ context   the view's own head: title, path, its actions,
+           Reports 5             │           and its filters or view switches
+          MACHINE                │ ──────────────────────────────────────────────────────────
+           System                │ body      the view: a list, a table, a process tree, a form,
+           Designer              │           a dialogue
+           Settings              │ ──────────────────────────────────────────────────────────
+          ◐ de  ⚙  ‹             │ live region  polite announcements, visually hidden
 ----
 
-* *Header*: the brand and the machine's name; the entries to the overview, the projects, the explorer, the decisions, the reports (with the unread count), the system, and the machine settings; the language switch (`EN`/`DE`) and the theme choice (light, dark, or system). The reports entry is present while there are unread reports, with its count; the decisions entry carries the open count.
-* *Notices*: at most one line per kind, above the view and below the header, never over the body. The progress line of a drain or an upgrade is on every paired device (link:../shared/system.adoc[System]); the offline and listener-closed banners say what the app does about them (link:entry.adoc[Entry]); the arrival line names what arrived and holds the one step to it (link:../shared/reports.adoc#arrival[Reports, On Start], link:../shared/decisions.adoc#announce[Decisions, Announcing a Decision]).
-* *Context*: the view's title, its breadcrumb where it has a path, its actions on the right, and its filter, sort, or grouping controls directly below the title. A dialogue is never a tier of the frame: it opens over the body and keeps the header and the notices in place.
+* *Rail*: the three groups of destinations (<<shell>>), their counts, the brand in the head and the language, theme and collapse controls in the foot. It stays while the person moves between views; only a phone hides it.
+* *Top bar*: the path of the page, the search trigger, the live indicator, and the machine's name in a neutral pill. The path is the frame's trail; a view that has a path of its own inside its body (the plan view) keeps it, and the two say the same thing.
+* *Notices*: at most one line per kind, above the view and below the top bar, never over the body. The progress line of a drain or an upgrade is on every paired device (link:../shared/system.adoc[System]); the arrival line names what arrived and holds the one step to it (link:../shared/reports.adoc#arrival[Reports, On Start], link:../shared/decisions.adoc#announce[Decisions, Announcing a Decision]). The connection state is not a notice: the live indicator of the top bar carries it (<<live-state>>).
+* *Context*: the view's title, its breadcrumb where it has a path, its actions on the right, and its filter, sort, or grouping controls directly below the title. A dialogue is never a tier of the frame: it opens over the body and keeps the rail and the top bar in place.
 * *Body*: one scroll container. The page itself does not scroll sideways; a wide table scrolls inside its own wrapper.
+* *Bottom bar*: below `768 px`, the four destinations of the phone (<<shell>>); the rail is hidden and the body ends above the bar.
 * *Live region*: a polite `aria-live` region at the end of the frame, visually hidden, carrying the quiet notices (a new report, a new decision, a project change). It never repeats a notice the operator already sees.
 
 [#grid]
@@ -185,7 +213,7 @@ Two-column views (a list beside a detail, the process tree beside the inspector,
 
 |Desktop
 |`>= 1280px`
-|The frame in one header row; two-column views side by side; tables show every column; the header entries show their labels.
+|The frame in one rail beside one column; two-column views side by side; tables show every column; the rail shows its labels and a count beside the destination it belongs to.
 
 |Tablet
 |`768px` to `1279px`
@@ -193,7 +221,7 @@ Two-column views (a list beside a detail, the process tree beside the inspector,
 
 |Phone
 |< `768px`
-|One column throughout; the header keeps the icons and hides the words of the system and settings entries; breadcrumbs shorten in the middle; a table becomes a list of rows, each row a labelled pair (the terminal's field list, link:../terminal-client/03-dialogues.adoc#content[Terminal Client, Content]); a dialogue takes the whole body; a badge stays visible but never widens its row.
+|One column throughout; the rail is hidden and the bottom bar (Running work, Decisions, Reports, More) carries the destinations, with a visible label each and the rest in the More sheet; the top bar keeps the path and the search trigger; breadcrumbs shorten in the middle; a table becomes a list of rows, each row a labelled pair (the terminal's field list, link:../terminal-client/03-dialogues.adoc#content[Terminal Client, Content]); a dialogue takes the whole body; a badge stays visible but never widens its row.
 |===
 
 The layout is usable down to `320px` without horizontal scrolling. A touch target is at least `2.75rem` high on the phone. Focus is never hidden: every interactive element carries the `--focus-ring`, and the focus order follows the reading order.
@@ -343,7 +371,7 @@ A badge is at most one per kind per row; a row that carries both a state and a h
 [#themes]
 === Light and Dark Themes
 
-The theme is a choice this browser remembers: light, dark, or system, offered together in the header. `system` follows the operating system (`prefers-color-scheme`) and is what a browser with no choice, no readable storage, or a stored value that names no theme gets. The choice is kept under `pm_theme` and applied before the first paint, so a reload never shows the other theme first. Every token is defined in both themes, and a view uses only the tokens, so a theme switch never requires a view to change.
+The theme is a choice this browser remembers: light, dark, or system, offered together in the rail foot on a desktop and in the More sheet on a phone. `system` follows the operating system (`prefers-color-scheme`) and is what a browser with no choice, no readable storage, or a stored value that names no theme gets. The choice is kept under `pm_theme` and applied before the first paint, so a reload never shows the other theme first. Every token is defined in both themes, and a view uses only the tokens, so a theme switch never requires a view to change.
 
 * *Light*: the app's ground is the lightest step, a card is white, text is the darkest step. The primary, success, warning, and danger roles take their darker variants so that text on a subtle background keeps a contrast ratio of at least `4.5:1`.
 * *Dark*: the ground is the darkest step and a card one step above it, so a card reads as raised, never as a hole. Text is the lightest step; the roles take their lighter variants. A filled control takes `--color-on-brand` on the brand fill: white in light, the app ground in dark.

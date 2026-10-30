@@ -21,6 +21,7 @@ export function makeRuntimeState(overrides: Partial<RuntimeState> = {}): Runtime
     isRevoked: false,
     revokedReason: '',
     isOffline: false,
+    streamState: 'connected',
     isListenerClosed: false,
     isDraining: false,
     isStopped: false,

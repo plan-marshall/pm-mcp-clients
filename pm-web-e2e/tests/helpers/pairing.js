@@ -61,10 +61,7 @@ export async function pair(page, request) {
  * @param projectId the project to select
  */
 export async function openProject(page, projectId) {
-  await page
-    .locator('.app-header')
-    .getByRole('button', { name: /Running work/i })
-    .click();
+  await page.goto('/overview');
   await expect(page.locator('.overview')).toBeVisible();
   await page
     .locator('.project-list')

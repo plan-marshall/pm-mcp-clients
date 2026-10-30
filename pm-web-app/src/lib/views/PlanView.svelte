@@ -174,7 +174,11 @@
         selection = defaultSelection(res.nodes);
       }
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('plan.view.load_failed');
+      const message = (err as Error)?.message;
+      errorMessage =
+        message === 'plan_not_found'
+          ? $t('plan.view.not_found')
+          : message || $t('plan.view.load_failed');
     } finally {
       if (initial) isLoading = false;
     }
@@ -1102,8 +1106,11 @@
 
   .plan-header__actions {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
+    min-inline-size: 0;
+    max-inline-size: 100%;
   }
 
   .pr-badge-link {
