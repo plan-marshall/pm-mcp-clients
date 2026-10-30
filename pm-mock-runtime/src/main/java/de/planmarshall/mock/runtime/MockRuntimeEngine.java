@@ -470,6 +470,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final DateTimeFormatter RECIPE_ID_TIMESTAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss");
     private static final String PATH_WORKFLOWS = "/api/v1/workflows";
     private static final String PATH_PROJECTS_PREFIX = "/api/v1/projects/";
+    private static final String SEGMENT_SETUP = "/setup";
     private static final String SEGMENT_WORKFLOWS = "/workflows";
     private static final String SEGMENT_CATALOGUE = "/catalogue";
     private static final String SEGMENT_VALIDATE = "/validate";
@@ -6980,8 +6981,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleGetProjectsExplorer(response);
             return true;
         }
-        if (path.startsWith("/api/v1/projects/") && path.endsWith("/setup")) {
-            var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/setup".length());
+        if (path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_SETUP)) {
+            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(),
+                    path.length() - SEGMENT_SETUP.length());
             response.json(200, projectSetupState(prjId,
                     projectSetupStates.getOrDefault(prjId, PROJECT_SETUP_IDENTITY)));
             return true;
@@ -7033,8 +7035,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleUnenrolProject(response, prjId);
             return true;
         }
-        if (path.startsWith("/api/v1/projects/") && path.endsWith("/setup")) {
-            var prjId = path.substring("/api/v1/projects/".length(), path.length() - "/setup".length());
+        if (path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_SETUP)) {
+            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(),
+                    path.length() - SEGMENT_SETUP.length());
             handleSetupProject(request, response, prjId);
             return true;
         }
@@ -7375,7 +7378,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         body.put("name", displayNameOf(projectId));
         body.put("pilot", false);
         body.put(KEY_LINKS, Map.of("set", Map.of(KEY_HREF,
-                "/api/v1/projects/" + projectId + "/setup", KEY_METHOD, "POST")));
+                PATH_PROJECTS_PREFIX + projectId + SEGMENT_SETUP, KEY_METHOD, "POST")));
         return body;
     }
 

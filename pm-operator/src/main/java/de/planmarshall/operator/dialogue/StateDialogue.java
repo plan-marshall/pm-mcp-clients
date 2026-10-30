@@ -49,10 +49,21 @@ public final class StateDialogue {
     private static final String PROJECT_PREFIX = "project.";
     private static final String ONBOARD_PREFIX = "onboard.";
     private static final String COMPLETED_KIND = "completed";
+    private static final String NAME = "name";
+    private static final String SUMMARY = "summary";
+    private static final String VALUE = "value";
+    private static final String REASON = "reason";
+    private static final String PROVIDER = "provider";
+    private static final String ASPECT = "aspect";
+    private static final String STATE = "state";
+    private static final String FACTS = "facts";
+    private static final String LINKS = "links";
+    private static final String STEP_DONE = "onboard.step.done";
+    private static final String UNKNOWN = "onboard.state.unknown";
     private static final int CONTENT_WIDTH = 76;
     private static final Set<String> BARE_FIELDS = Set.of(
-                        "name", "summary", "value", "reason", "model_id", "role", "effort",
-                        "aspect", "provider", "version", "current", "default", "cause", "fix");
+                        NAME, SUMMARY, VALUE, REASON, "model_id", "role", "effort",
+                        ASPECT, PROVIDER, "version", "current", "default", "cause", "fix");
     private static final List<String> STEP_KEYS = List.of(
                         "language", "harnesses", "models", "roles", "credentials", "providers", "plans");
 
@@ -87,8 +98,8 @@ public final class StateDialogue {
         public Frame {
             Objects.requireNonNull(stateId, "stateId");
             facts = Collections.unmodifiableMap(new LinkedHashMap<>(
-                                Objects.requireNonNull(facts, "facts")));
-            links = List.copyOf(Objects.requireNonNull(links, "links"));
+                                Objects.requireNonNull(facts, FACTS)));
+            links = List.copyOf(Objects.requireNonNull(links, LINKS));
         }
 
         /**
@@ -259,33 +270,47 @@ public final class StateDialogue {
      * @return the rendered content lines
      */
     List<String> content(Frame frame) {
-        var lines = new ArrayList<String>();
         if ("onboard.mode".equals(frame.stateId())) {
-            lines.add(MessageCatalogue.format(locale, "onboard.entry.intro", Map.of()));
-            addStepOverview(lines);
-            return lines;
+            return modeContent();
         }
         if ("onboard.completed".equals(frame.stateId())) {
-            lines.add(MessageCatalogue.format(locale, "onboard.completed.next", Map.of()));
-            return lines;
+            return List.of(MessageCatalogue.format(locale, "onboard.completed.next", Map.of()));
         }
+        var lines = new ArrayList<String>();
         if (!hasTitle(frame) && frame.summary() != null && !frame.summary().isBlank()) {
             lines.add(TerminalSanitizer.sanitizeLine(frame.summary()));
         }
+        addFacts(lines, frame);
+        return lines;
+    }
+
+    private List<String> modeContent() {
+        var lines = new ArrayList<String>();
+        lines.add(MessageCatalogue.format(locale, "onboard.entry.intro", Map.of()));
+        addStepOverview(lines);
+        return lines;
+    }
+
+    private void addFacts(List<String> lines, Frame frame) {
         for (var entry : frame.facts().entrySet()) {
             var label = factLabel(frame.stateId(), entry.getKey());
-            if (label != null && isScalar(entry.getValue())) {
-                var value = rendered(entry.getValue());
-                if (value != null) {
-                    lines.add(MessageCatalogue.format(locale, "onboard.state.fact_line",
-                                        Map.of("label", label,
-                                                            "value", TerminalSanitizer.sanitizeLine(value))));
-                }
-            } else if (label != null && entry.getValue() instanceof List<?> items) {
+            if (label == null) {
+                continue;
+            }
+            if (isScalar(entry.getValue())) {
+                addFact(lines, label, entry.getValue());
+            } else if (entry.getValue() instanceof List<?> items) {
                 addList(lines, label, items);
             }
         }
-        return lines;
+    }
+
+    private void addFact(List<String> lines, String label, Object raw) {
+        var value = rendered(raw);
+        if (value != null) {
+            lines.add(MessageCatalogue.format(locale, "onboard.state.fact_line",
+                                Map.of("label", label, "value", TerminalSanitizer.sanitizeLine(value))));
+        }
     }
 
     /**
@@ -300,30 +325,33 @@ public final class StateDialogue {
     private void addList(List<String> lines, String label, List<?> items) {
         lines.add(label);
         for (var item : items) {
-            if (!(item instanceof Map<?, ?> map)) {
-                continue;
+            if (item instanceof Map<?, ?> map) {
+                addItem(lines, map);
             }
-            var parts = new ArrayList<String>();
-            for (var entry : map.entrySet()) {
-                var field = String.valueOf(entry.getKey());
-                var value = rendered(entry.getValue());
-                if (value == null) {
-                    continue;
-                }
-                if ("name".equals(field) && map.containsKey("provider")) {
-                    continue;
-                }
-                var own = itemLabel(field);
-                if (own != null) {
-                    parts.add(own + " " + TerminalSanitizer.sanitizeLine(value));
-                } else if (BARE_FIELDS.contains(field)) {
-                    parts.add(TerminalSanitizer.sanitizeLine(itemValue(field, value)));
-                }
-            }
-            if (!parts.isEmpty()) {
-                lines.add(MessageCatalogue.format(locale, "onboard.state.item_line",
-                                    Map.of("item", String.join(" \u00b7 ", parts))));
-            }
+        }
+    }
+
+    private void addItem(List<String> lines, Map<?, ?> map) {
+        var parts = new ArrayList<String>();
+        for (var entry : map.entrySet()) {
+            addItemPart(parts, map, String.valueOf(entry.getKey()), entry.getValue());
+        }
+        if (!parts.isEmpty()) {
+            lines.add(MessageCatalogue.format(locale, "onboard.state.item_line",
+                                Map.of("item", String.join(" \u00b7 ", parts))));
+        }
+    }
+
+    private void addItemPart(List<String> parts, Map<?, ?> map, String field, Object raw) {
+        var value = rendered(raw);
+        if (value == null || (NAME.equals(field) && map.containsKey(PROVIDER))) {
+            return;
+        }
+        var own = itemLabel(field);
+        if (own != null) {
+            parts.add(own + " " + TerminalSanitizer.sanitizeLine(value));
+        } else if (BARE_FIELDS.contains(field)) {
+            parts.add(TerminalSanitizer.sanitizeLine(itemValue(field, value)));
         }
     }
 
@@ -340,13 +368,13 @@ public final class StateDialogue {
      * @return the value as its own catalogue name where the field names an aspect or a reason
      */
     private String itemValue(String field, String value) {
-        if ("aspect".equals(field)) {
+        if (ASPECT.equals(field)) {
             return autoText("onboard.auto.aspect.", value);
         }
-        if ("reason".equals(field)) {
+        if (REASON.equals(field)) {
             return autoText("onboard.auto.reason.", value);
         }
-        if ("provider".equals(field)) {
+        if (PROVIDER.equals(field)) {
             return autoText("onboard.provider.", value);
         }
         return value;
@@ -356,7 +384,7 @@ public final class StateDialogue {
         var key = prefix + token;
         return MessageCatalogue.hasKey(locale, key)
                             ? MessageCatalogue.format(locale, key, Map.of())
-                            : MessageCatalogue.format(locale, "onboard.state.unknown", Map.of());
+                            : MessageCatalogue.format(locale, UNKNOWN, Map.of());
     }
 
     private void addStepOverview(List<String> lines) {
@@ -404,7 +432,39 @@ public final class StateDialogue {
      *         that only the catalogue may render; such a value is left out rather than printed raw
      */
     private static boolean isRawToken(String value) {
-        return value.matches("[a-z][a-z0-9_-]*(\\.[a-z][a-z0-9_-]*)+");
+        var dot = value.indexOf('.');
+        if (dot <= 0 || dot == value.length() - 1) {
+            return false;
+        }
+        return isTokenPart(value.substring(0, dot))
+                            && isTokenTail(value.substring(dot + 1));
+    }
+
+    private static boolean isTokenTail(String tail) {
+        var start = 0;
+        for (var i = 0; i < tail.length(); i++) {
+            var c = tail.charAt(i);
+            if (c == '.') {
+                if (!isTokenPart(tail.substring(start, i))) {
+                    return false;
+                }
+                start = i + 1;
+            }
+        }
+        return isTokenPart(tail.substring(start));
+    }
+
+    private static boolean isTokenPart(String part) {
+        if (part.isEmpty() || part.charAt(0) < 'a' || part.charAt(0) > 'z') {
+            return false;
+        }
+        for (var i = 1; i < part.length(); i++) {
+            var c = part.charAt(i);
+            if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-')) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean isScalar(@Nullable Object value) {
@@ -501,12 +561,12 @@ public final class StateDialogue {
             var key = "project.step." + projectStepOf(stateId);
             return MessageCatalogue.hasKey(locale, key)
                                 ? MessageCatalogue.format(locale, key, Map.of())
-                                : MessageCatalogue.format(locale, "onboard.step.done", Map.of());
+                                : MessageCatalogue.format(locale, STEP_DONE, Map.of());
         }
         var key = "onboard.step." + machineStepOf(stateId);
         return MessageCatalogue.hasKey(locale, key)
                             ? MessageCatalogue.format(locale, key, Map.of())
-                            : MessageCatalogue.format(locale, "onboard.step.done", Map.of());
+                            : MessageCatalogue.format(locale, STEP_DONE, Map.of());
     }
 
     private static String prefix(String stateId) {
@@ -589,10 +649,17 @@ public final class StateDialogue {
         var envelope = JsonTree.asObject(map.get("operator"));
         var source = envelope != null ? envelope : map;
         var stateId = stateIdOf(source, map);
-        var stateBlock = JsonTree.asObject(source.get("state"));
-        var kind = stateBlock != null ? JsonTree.string(stateBlock, "kind") : null;
-        var facts = factsOf(source, stateId);
-        var links = linksOf(source);
+        return new Frame(stateId, kindOf(source), stepOf(source, map, stateId, totalSteps, project),
+                            totalSteps, summaryOf(source), factsOf(source), linksOf(source));
+    }
+
+    private static @Nullable String kindOf(Map<String, Object> source) {
+        var stateBlock = JsonTree.asObject(source.get(STATE));
+        return stateBlock != null ? JsonTree.string(stateBlock, "kind") : null;
+    }
+
+    private static int stepOf(Map<String, Object> source, Map<String, Object> map, String stateId,
+                        int totalSteps, boolean project) {
         var completed = JsonTree.integer(map, "completed_steps");
         int step = completed != null ? Math.min(completed + 1, totalSteps) : 0;
         var reportedStep = JsonTree.integer(source, "step");
@@ -605,23 +672,27 @@ public final class StateDialogue {
         if ("onboard.mode".equals(stateId) || stateId.startsWith("auto.")) {
             step = 0;
         }
-        var factsBlock = JsonTree.asObject(source.get("facts"));
-        var summary = JsonTree.string(source, "summary");
-        if (summary == null && factsBlock != null) {
-            summary = JsonTree.string(factsBlock, "summary");
+        return step;
+    }
+
+    private static @Nullable String summaryOf(Map<String, Object> source) {
+        var summary = JsonTree.string(source, SUMMARY);
+        if (summary == null) {
+            var factsBlock = JsonTree.asObject(source.get(FACTS));
+            summary = factsBlock != null ? JsonTree.string(factsBlock, SUMMARY) : null;
         }
-        return new Frame(stateId, kind, step, totalSteps, summary, facts, links);
+        return summary;
     }
 
     private static String stateIdOf(Map<String, Object> source, Map<String, Object> map)
                         throws IOException {
-        var stateBlock = JsonTree.asObject(source.get("state"));
+        var stateBlock = JsonTree.asObject(source.get(STATE));
         var stateId = stateBlock != null ? JsonTree.string(stateBlock, "state_id") : null;
         if (stateId == null) {
-            stateId = JsonTree.string(source, "state");
+            stateId = JsonTree.string(source, STATE);
         }
         if (stateId == null) {
-            stateId = JsonTree.string(map, "state");
+            stateId = JsonTree.string(map, STATE);
         }
         if (stateId == null) {
             throw new IOException("the runtime reported no state id");
@@ -629,22 +700,21 @@ public final class StateDialogue {
         return stateId;
     }
 
-    private static Map<String, Object> factsOf(Map<String, Object> source, String stateId) {
+    private static Map<String, Object> factsOf(Map<String, Object> source) {
         var facts = new LinkedHashMap<String, Object>();
-        var block = JsonTree.asObject(source.get("facts"));
+        var block = JsonTree.asObject(source.get(FACTS));
         var from = block != null ? block : source;
         for (var entry : from.entrySet()) {
-            if (isStructural(entry.getKey())) {
-                continue;
+            if (!isStructural(entry.getKey())) {
+                facts.put(entry.getKey(), entry.getValue());
             }
-            facts.put(entry.getKey(), entry.getValue());
         }
         return facts;
     }
 
     private static boolean isStructural(String key) {
         return switch (key) {
-            case "state", "scope", "links", "facts", "summary", "runtime", "operator",
+            case STATE, "scope", LINKS, FACTS, SUMMARY, "runtime", "operator",
                 "completed_steps", "steps", "step", "total_steps", "auto",
                 "step_summaries", "verification", "usage", "link" -> true;
             default -> false;
@@ -658,21 +728,20 @@ public final class StateDialogue {
      */
     private static List<Link> linksOf(Map<String, Object> source) {
         var links = new ArrayList<Link>();
-        if (source.get("links") instanceof List<?> reported) {
+        if (source.get(LINKS) instanceof List<?> reported) {
             for (var item : reported) {
                 var map = JsonTree.asObject(item);
-                if (map == null) {
-                    continue;
-                }
-                var id = JsonTree.string(map, "id");
-                if (id != null) {
-                    links.add(new Link(id, JsonTree.string(map, "rel"),
-                                        Boolean.TRUE.equals(JsonTree.bool(map, "preselected"))));
+                if (map != null) {
+                    var id = JsonTree.string(map, "id");
+                    if (id != null) {
+                        links.add(new Link(id, JsonTree.string(map, "rel"),
+                                            Boolean.TRUE.equals(JsonTree.bool(map, "preselected"))));
+                    }
                 }
             }
             return links;
         }
-        var flat = JsonTree.object(source, "links");
+        var flat = JsonTree.object(source, LINKS);
         if (flat == null) {
             return links;
         }

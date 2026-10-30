@@ -53,6 +53,10 @@ public final class OnboardCommand implements Callable<Integer> {
     private static final int EXIT_NEEDS_INPUT = 3;
     private static final int WRAP_WIDTH = 76;
     private static final long POLL_PAUSE_NANOS = 100_000_000L;
+    private static final String ASPECT = "aspect";
+    private static final String VALUE = "value";
+    private static final String REASON = "reason";
+    private static final String UNKNOWN = "onboard.state.unknown";
     private static final long AUTO_TIMEOUT_NANOS = 60_000_000_000L;
     private static final String AUTO_RESULT = "auto.result";
 
@@ -137,7 +141,7 @@ public final class OnboardCommand implements Callable<Integer> {
         var response = runtime.send(HttpRequest.json("POST", AUTO_PATH, "{}"));
         if (response.status() != 200) {
             out.println(MessageCatalogue.format("operator.onboard.refused",
-                                Map.of("reason", "HTTP " + response.status())));
+                                Map.of(REASON, "HTTP " + response.status())));
             out.flush();
             return 1;
         }
@@ -198,27 +202,30 @@ public final class OnboardCommand implements Callable<Integer> {
 
     private void printResults(PrintWriter out, String locale, StateDialogue.Frame frame) {
         out.println(MessageCatalogue.format(locale, "onboard.state.result_header", Map.of(
-                            "aspect", MessageCatalogue.format(locale, "onboard.auto.result.aspect", Map.of()),
-                            "value", MessageCatalogue.format(locale, "onboard.auto.result.value", Map.of()),
-                            "reason", MessageCatalogue.format(locale, "onboard.auto.result.reason", Map.of()))));
+                            ASPECT, MessageCatalogue.format(locale, "onboard.auto.result.aspect", Map.of()),
+                            VALUE, MessageCatalogue.format(locale, "onboard.auto.result.value", Map.of()),
+                            REASON, MessageCatalogue.format(locale, "onboard.auto.result.reason", Map.of()))));
         if (!(frame.facts().get("results") instanceof List<?> results)) {
             return;
         }
         for (var item : results) {
-            if (!(item instanceof Map<?, ?> row)) {
-                continue;
+            if (item instanceof Map<?, ?> row) {
+                printResultRow(out, locale, row);
             }
-            var aspect = Objects.toString(row.get("aspect"), "");
-            var value = Objects.toString(row.get("value"), "");
-            var reason = Objects.toString(row.get("reason"), "");
-            for (var line : StateDialogue.wrap(MessageCatalogue.format(locale,
-                                "onboard.state.result_row", Map.of(
-                                                    "aspect", autoText("onboard.auto.aspect.", locale, aspect),
-                                                    "value", TerminalSanitizer.sanitizeLine(value),
-                                                    "reason", autoText("onboard.auto.reason.", locale, reason))),
-                                WRAP_WIDTH)) {
-                out.println(line);
-            }
+        }
+    }
+
+    private void printResultRow(PrintWriter out, String locale, Map<?, ?> row) {
+        var aspect = Objects.toString(row.get(ASPECT), "");
+        var value = Objects.toString(row.get(VALUE), "");
+        var reason = Objects.toString(row.get(REASON), "");
+        for (var line : StateDialogue.wrap(MessageCatalogue.format(locale,
+                            "onboard.state.result_row", Map.of(
+                                                ASPECT, autoText("onboard.auto.aspect.", locale, aspect),
+                                                VALUE, TerminalSanitizer.sanitizeLine(value),
+                                                REASON, autoText("onboard.auto.reason.", locale, reason))),
+                            WRAP_WIDTH)) {
+            out.println(line);
         }
     }
 
@@ -226,7 +233,7 @@ public final class OnboardCommand implements Callable<Integer> {
         var key = prefix + token;
         return MessageCatalogue.hasKey(locale, key)
                             ? MessageCatalogue.format(locale, key, Map.of())
-                            : MessageCatalogue.format(locale, "onboard.state.unknown", Map.of());
+                            : MessageCatalogue.format(locale, UNKNOWN, Map.of());
     }
 
     private boolean confirm(String prompt) throws IOException {

@@ -256,7 +256,7 @@ public final class PmConsole {
             dialogue.run();
         } catch (StartPrompt.StartLeftException | StartPrompt.MissingInputException _) {
             // leaving the dialogue sends nothing; the runtime keeps the state it reports
-        } catch (IOException e) {
+        } catch (IOException _) {
             out.println(MessageCatalogue.format(locale, "onboard.error.no_state", Map.of()));
             out.flush();
         }

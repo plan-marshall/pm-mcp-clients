@@ -23,6 +23,7 @@ import de.planmarshall.api.runtime.RuntimeClient;
  * /api/v1/onboarding/step} with the link's id, which is how both clients drive the machine
  * onboarding.
  */
+@SuppressWarnings("java:S1075")
 public final class OnboardingSource implements StateDialogue.Source {
 
     /** The path of the current onboarding state. */
