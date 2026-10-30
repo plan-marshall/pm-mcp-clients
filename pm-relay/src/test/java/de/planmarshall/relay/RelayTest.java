@@ -48,11 +48,21 @@ import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.StandardScenarios;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 @DisplayName("Relay")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class RelayTest {
 
     private static final Duration WAIT = Duration.ofSeconds(5);
+
+    private final String token = "token-" + Generators.letterStrings(4, 10).next();
+    private final String clientName = Generators.letterStrings(4, 10).next();
+    private final String workspace = "/" + Generators.letterStrings(4, 10).next();
+    private final String jobToken = "job-" + Generators.letterStrings(8, 16).next();
+    private final String generation = "generation-" + Generators.letterStrings(4, 10).next();
 
     private RuntimeFixture fixture;
     private LineSink out;
@@ -64,7 +74,7 @@ class RelayTest {
     @BeforeEach
     void setUp() throws IOException {
         fixture = RuntimeFixture.create();
-        fixture.writeToken("token-1");
+        fixture.writeToken(token);
         out = new LineSink();
         err = new LineSink();
     }
@@ -106,7 +116,7 @@ class RelayTest {
         void againstMockRuntime() throws Exception {
             try (var mock = MockRuntime.start(
                          StandardScenarios.STATUS_ONLY)) {
-                startRelay(mock.client(), RelayMode.session("claude", "/work/space"));
+                startRelay(mock.client(), RelayMode.session(clientName, workspace));
 
                 send("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":"
                         + "\"2025-11-25\",\"clientInfo\":{\"name\":\"relay-test\",\"version\":\"1\"},\"capabilities\":{}}}");
@@ -136,15 +146,15 @@ class RelayTest {
             var request = awaitRequest();
             assertEquals("POST", request.method());
             assertEquals("/mcp", request.target());
-            assertEquals("Bearer token-1", request.header("Authorization"));
+            assertEquals("Bearer " + token, request.header("Authorization"));
             assertEquals("initialize", request.header("Mcp-Method"));
             assertNull(request.header("Mcp-Name"));
             assertEquals(PmVersion.current(), request.header("PM-MCP-Relay-Version"));
             assertEquals("2025-11-25", request.header("PM-MCP-Protocol-Version"));
             assertEquals("{\"name\":\"opencode\",\"version\":\"1.0\"}", request.header("PM-MCP-Client-Info"));
             assertEquals("{\"elicitation\":{}}", request.header("PM-MCP-Client-Capabilities"));
-            assertEquals("claude", request.header("PM-MCP-Client"));
-            assertEquals("/work/space", request.header("PM-MCP-Workspace"));
+            assertEquals(clientName, request.header("PM-MCP-Client"));
+            assertEquals(workspace, request.header("PM-MCP-Workspace"));
             assertNull(request.header("PM-MCP-Generation"));
             assertTrue(request.bodyText().contains("\"method\":\"initialize\""));
         }
@@ -166,7 +176,7 @@ class RelayTest {
 
         private void startCapturing(FakeRuntimeServer.Handler handler) throws IOException {
             server = fixture.start(handler);
-            startRelay(sessionClient(null), RelayMode.session("claude", "/work/space"));
+            startRelay(sessionClient(null), RelayMode.session(clientName, workspace));
         }
 
         @Test
@@ -363,7 +373,7 @@ class RelayTest {
             startRelay(sessionClient(() -> {
                 starts.incrementAndGet();
                 throw new RuntimeUnavailableException("did not answer within 5000 ms");
-            }), RelayMode.session("neutral", "/w"));
+            }), RelayMode.session(clientName, workspace));
 
             send("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\"}");
             assertEquals("{\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32000,\"message\":\"runtime_unavailable\"}}",
@@ -373,13 +383,13 @@ class RelayTest {
 
             assertEquals(2, starts.get());
             assertTrue(err.text().contains("did not answer within 5000 ms"));
-            assertFalse(err.text().contains("token-1"));
+            assertFalse(err.text().contains(token));
         }
 
         @Test
         @DisplayName("diagnoses a refused notification without writing to stdout")
         void notificationWithoutRuntime() throws Exception {
-            startRelay(sessionClient(null), RelayMode.session("neutral", "/w"));
+            startRelay(sessionClient(null), RelayMode.session(clientName, workspace));
 
             send("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}");
 
@@ -400,16 +410,16 @@ class RelayTest {
         @DisplayName("sends the job token and the generation, and no session headers")
         void jobHeaders() throws Exception {
             var server = fixture.start((request, response) -> response.json(200, "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{}}"));
-            fixture.acceptJobToken("job-secret");
-            startRelay(RuntimeAccess.job(fixture.paths().socket(), "job-secret", Map.of()), RelayMode.worker("job-42"));
+            fixture.acceptJobToken(jobToken);
+            startRelay(RuntimeAccess.job(fixture.paths().socket(), jobToken, Map.of()), RelayMode.worker(generation));
 
             send("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}");
 
             assertNotNull(out.next(5));
             var request = server.awaitRequest(WAIT);
-            assertEquals("job-secret", request.header("PM-MCP-Job-Token"));
+            assertEquals(jobToken, request.header("PM-MCP-Job-Token"));
             assertNull(request.header("Authorization"));
-            assertEquals("job-42", request.header("PM-MCP-Generation"));
+            assertEquals(generation, request.header("PM-MCP-Generation"));
             assertNull(request.header("PM-MCP-Client"));
             assertNull(request.header("PM-MCP-Workspace"));
         }
@@ -418,22 +428,22 @@ class RelayTest {
         @DisplayName("ends with a diagnostic when the runtime refuses the job token")
         void refused() throws Exception {
             fixture.start((request, response) -> response.json(200, "{}"));
-            fixture.acceptJobToken("other");
-            startRelay(RuntimeAccess.job(fixture.paths().socket(), "job-secret", Map.of()), RelayMode.worker("job-42"));
+            fixture.acceptJobToken("another-" + Generators.letterStrings(8, 16).next());
+            startRelay(RuntimeAccess.job(fixture.paths().socket(), jobToken, Map.of()), RelayMode.worker(generation));
 
             send("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}");
             relayThread.join(WAIT.toMillis());
 
             assertEquals(1, exit.get());
             assertTrue(err.text().contains("refused the job token"));
-            assertFalse(err.text().contains("job-secret"));
+            assertFalse(err.text().contains(jobToken));
         }
 
         @Test
         @DisplayName("ends with a diagnostic when a notification is refused")
         void refusedNotification() throws Exception {
             fixture.start((request, response) -> response.json(200, "{}"));
-            startRelay(RuntimeAccess.job(fixture.paths().socket(), "job-secret", Map.of()), RelayMode.worker("job-42"));
+            startRelay(RuntimeAccess.job(fixture.paths().socket(), jobToken, Map.of()), RelayMode.worker(generation));
 
             send("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}");
             relayThread.join(WAIT.toMillis());

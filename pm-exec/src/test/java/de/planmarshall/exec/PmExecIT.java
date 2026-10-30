@@ -38,12 +38,16 @@ import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 /**
  * Gate 3 (Linux) and the process-group contract (all platforms): {@code pm-exec} started as a child
  * process, the native binary {@code target/pm-exec} when it was built ({@code -Pnative}), otherwise
  * the JVM. Writes {@code target/verification-results/gate3-pm-exec-<os>-<native|jvm>.json}.
  */
 @DisplayName("pm-exec as a child process")
+@EnableGeneratorController
 class PmExecIT {
 
     private static final Pattern REPORT_PID = Pattern.compile("\"pid\":(\\d+)");
@@ -59,6 +63,10 @@ class PmExecIT {
     private Path base;
     private Path project;
     private Path other;
+    private String tokenText;
+    private String promptText;
+    private String credentialText;
+    private String siblingText;
 
     record Result(int exit, String out, String err, long millis) {
 
@@ -67,18 +75,26 @@ class PmExecIT {
         }
     }
 
+    private static String canary(String name) {
+        return name + "-canary-" + Generators.letterStrings(6, 12).next();
+    }
+
     @BeforeEach
     void fixture() throws IOException {
         var root = temp.toRealPath();
-        base = Files.createDirectories(root.resolve("base"));
+        base = Files.createDirectories(root.resolve(Generators.letterStrings(4, 10).next()));
         Files.createDirectories(base.resolve("run/jobs/l1"));
-        Files.writeString(base.resolve("run/runtime.token"), "runtime-token-canary");
-        Files.writeString(base.resolve("run/jobs/l1/prompt.md"), "prompt-canary");
+        tokenText = canary("runtime-token");
+        Files.writeString(base.resolve("run/runtime.token"), tokenText);
+        promptText = canary("prompt");
+        Files.writeString(base.resolve("run/jobs/l1/prompt.md"), promptText);
         Files.createDirectories(base.resolve("credentials"));
-        Files.writeString(base.resolve("credentials/github.json"), "credential-canary");
-        project = Files.createDirectories(root.resolve("project"));
-        other = Files.createDirectories(root.resolve("other-project"));
-        Files.writeString(root.resolve("sibling.txt"), "sibling-canary");
+        credentialText = canary("credential");
+        Files.writeString(base.resolve("credentials/github.json"), credentialText);
+        project = Files.createDirectories(root.resolve(Generators.letterStrings(4, 10).next()));
+        other = Files.createDirectories(root.resolve(Generators.letterStrings(4, 10).next()));
+        siblingText = canary("sibling");
+        Files.writeString(root.resolve("sibling.txt"), siblingText);
     }
 
     static List<String> launcher() {
@@ -159,13 +175,15 @@ class PmExecIT {
     @Test
     @DisplayName("a plain exec runs the program with its arguments and reports first")
     void plainExec() throws Exception {
-        var result = run(confinedOptions(), "/bin/echo", "hello", "a b");
+        var first = Generators.letterStrings(1, 6).next();
+        var second = Generators.letterStrings(1, 6).next();
+        var result = run(confinedOptions(), "/bin/echo", first, second);
 
         measured("plain_exec_exit", result.exit(), result.exit() == 0);
         measured("plain_exec_ms", result.millis(), true);
         measured("report_line", result.reportLine(), result.reportLine().startsWith("{\"pm_exec\":\"launched\""));
         assertEquals(0, result.exit(), result.err());
-        assertEquals("hello a b", result.out().strip());
+        assertEquals(first + " " + second, result.out().strip());
         assertTrue(result.reportLine().startsWith("{\"pm_exec\":\"launched\",\"pid\":"), result.err());
     }
 
@@ -241,7 +259,7 @@ class PmExecIT {
         @Test
         @DisplayName("a write outside the write set is denied (EACCES)")
         void writeOutsideDenied() throws Exception {
-            var target = other.resolve("f");
+            var target = other.resolve(Generators.letterStrings(1, 6).next());
 
             var result = run(confinedOptions(), "/bin/sh", "-c", "echo x > " + target);
 
@@ -255,7 +273,7 @@ class PmExecIT {
         @Test
         @DisplayName("a write into PM_MCP_BASE is denied")
         void writeBaseDenied() throws Exception {
-            var target = base.resolve("run/injected");
+            var target = base.resolve("run/" + Generators.letterStrings(1, 6).next());
 
             var result = run(confinedOptions(), "/bin/sh", "-c", "echo x > " + target);
 
@@ -270,8 +288,8 @@ class PmExecIT {
             var token = run(confinedOptions(), "/bin/cat", base.resolve("run/runtime.token").toString());
             var credential = run(confinedOptions(), "/bin/cat", base.resolve("credentials/github.json").toString());
 
-            boolean denied = token.exit() != 0 && !token.out().contains("canary") && credential.exit() != 0
-                    && !credential.out().contains("canary") && token.err().contains("Permission denied");
+            boolean denied = token.exit() != 0 && !token.out().contains(tokenText) && credential.exit() != 0
+                    && !credential.out().contains(credentialText) && token.err().contains("Permission denied");
             measured("read_base_denied", denied, denied);
             assertTrue(denied, token.err() + credential.err());
         }
@@ -279,7 +297,7 @@ class PmExecIT {
         @Test
         @DisplayName("a write inside the write set works")
         void writeInsideAllowed() throws Exception {
-            var target = project.resolve("f");
+            var target = project.resolve(Generators.letterStrings(1, 6).next());
 
             var result = run(confinedOptions(), "/bin/sh", "-c", "echo x > " + target);
 
@@ -293,7 +311,7 @@ class PmExecIT {
         void siblingReadable() throws Exception {
             var result = run(confinedOptions(), "/bin/cat", base.resolveSibling("sibling.txt").toString());
 
-            boolean ok = result.exit() == 0 && result.out().contains("sibling-canary");
+            boolean ok = result.exit() == 0 && result.out().contains(siblingText);
             measured("read_sibling_allowed", ok, ok);
             assertTrue(ok, result.err());
         }
@@ -302,10 +320,12 @@ class PmExecIT {
         @DisplayName("several denied paths: each is unreadable, their siblings stay readable")
         void severalDeniedPaths() throws Exception {
             var root = temp.toRealPath();
-            var secrets = Files.createDirectories(root.resolve("secrets"));
-            Files.writeString(secrets.resolve("token"), "secrets-canary");
-            var checkout = Files.createDirectories(root.resolve("checkout"));
-            Files.writeString(checkout.resolve("readme.md"), "checkout-canary");
+            var secrets = Files.createDirectories(root.resolve(Generators.letterStrings(4, 10).next()));
+            var secretsText = canary("secrets");
+            Files.writeString(secrets.resolve("token"), secretsText);
+            var checkout = Files.createDirectories(root.resolve(Generators.letterStrings(4, 10).next()));
+            var checkoutText = canary("checkout");
+            Files.writeString(checkout.resolve("readme.md"), checkoutText);
             var options = new ArrayList<>(List.of("--deny-read", base.toString(),
                     "--deny-read", secrets.toString(), "--write", project.toString(), "--write", "/dev"));
 
@@ -314,10 +334,10 @@ class PmExecIT {
             var siblingRun = run(options, "/bin/cat", root.resolve("sibling.txt").toString());
             var checkoutRun = run(options, "/bin/cat", checkout.resolve("readme.md").toString());
 
-            boolean denied = baseRun.exit() != 0 && !baseRun.out().contains("canary")
-                    && secretsRun.exit() != 0 && !secretsRun.out().contains("canary");
-            boolean readable = siblingRun.exit() == 0 && siblingRun.out().contains("sibling-canary")
-                    && checkoutRun.exit() == 0 && checkoutRun.out().contains("checkout-canary");
+            boolean denied = baseRun.exit() != 0 && !baseRun.out().contains(tokenText)
+                    && secretsRun.exit() != 0 && !secretsRun.out().contains(secretsText);
+            boolean readable = siblingRun.exit() == 0 && siblingRun.out().contains(siblingText)
+                    && checkoutRun.exit() == 0 && checkoutRun.out().contains(checkoutText);
             measured("several_denied_paths_denied", denied, denied);
             measured("several_denied_paths_siblings_readable", readable, readable);
             assertTrue(denied, baseRun.err() + secretsRun.err());
@@ -333,8 +353,8 @@ class PmExecIT {
             var read = run(options, "/bin/cat", jobDir.resolve("prompt.md").toString());
             var write = run(options, "/bin/sh", "-c", "echo x > " + jobDir.resolve("prompt.md"));
 
-            boolean ok = read.exit() == 0 && read.out().contains("prompt-canary") && write.exit() != 0
-                    && "prompt-canary".equals(Files.readString(jobDir.resolve("prompt.md")));
+            boolean ok = read.exit() == 0 && read.out().contains(promptText) && write.exit() != 0
+                    && promptText.equals(Files.readString(jobDir.resolve("prompt.md")));
             measured("job_private_read_only", ok, ok);
             assertTrue(ok, read.err() + write.err());
             assertFalse(Files.readString(jobDir.resolve("prompt.md")).contains("x"));
@@ -347,7 +367,7 @@ class PmExecIT {
             var abiMatcher = PROBE_ABI.matcher(probe.out());
             assertTrue(abiMatcher.find(), probe.out());
             int abi = Integer.parseInt(abiMatcher.group(1));
-            var runtimeDir = Files.createDirectories(temp.toRealPath().resolve("xdg-run"));
+            var runtimeDir = Files.createDirectories(temp.toRealPath().resolve(Generators.letterStrings(4, 10).next()));
             var bus = runtimeDir.resolve("bus");
             var relaySocket = base.resolve("run/runtime.sock");
             var projectSocket = project.resolve("tool.sock");

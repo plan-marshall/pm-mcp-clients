@@ -20,6 +20,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 /**
  * The Linux-only FFM calls that are safe inside the test JVM, reached through {@link NativeKernel} as
  * the launcher reaches them. {@code landlock_restrict_self} changes the process for good and runs in
@@ -27,6 +30,7 @@ import org.junit.jupiter.api.condition.OS;
  */
 @EnabledOnOs(OS.LINUX)
 @DisplayName("LinuxCalls: no-new-privileges, O_PATH and Landlock in the test JVM")
+@EnableGeneratorController
 class LinuxCallsTest {
 
     private final Kernel kernel = new NativeKernel(Os.LINUX);
@@ -34,11 +38,12 @@ class LinuxCallsTest {
     @Test
     @DisplayName("opens an existing path with O_PATH and refuses a missing one")
     void openPath() {
+        var missing = Path.of("/nonexistent/" + Generators.letterStrings(6, 12).next());
         var fd = kernel.openPath(Path.of("/"));
 
         assertTrue(fd.isPresent());
         kernel.close(fd.getAsInt());
-        assertTrue(kernel.openPath(Path.of("/nonexistent/pm-exec")).isEmpty());
+        assertTrue(kernel.openPath(missing).isEmpty());
     }
 
     @Test
