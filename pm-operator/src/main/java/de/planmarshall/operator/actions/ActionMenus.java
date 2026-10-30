@@ -25,31 +25,46 @@ import de.planmarshall.operator.tui.TuiMenuEntry;
 /**
  * Builds the entries of the actions menu from what the runtime offers for one subject.
  *
- * <p>Only an action the runtime lists is shown, and a disabled one keeps the reason the runtime
- * names. The acts of a hold stand first and are taken from the hold record, so a hold that clears
- * or gains an act changes the menu without a new client release.
+ * <p>The entries follow what the runtime offers: only an action it lists is shown, and a disabled
+ * one keeps the reason the runtime names. The decision a waiting plan waits for comes first, named
+ * by the runtime's decisions read because the actions resource does not carry it
+ * ({@code doc/design/terminal-client/19-actions.adoc#full-screen}); the acts of a hold come next and
+ * are taken from the hold record, so a hold that clears or gains an act changes the menu without a
+ * new client release.
  */
 public final class ActionMenus {
 
     private static final String KEY_PREFIX = "operator.actions.key.";
     private static final String ELLIPSIS = "\u2026";
     private static final String ACTION_CHAT = "chat";
+    private static final String ACTION_DECIDE = "decide";
+    private static final Set<String> WAITING_STATES = Set.of("waiting", "waiting_for_you");
 
     private ActionMenus() {
     }
 
     /**
-     * @param locale  the interface locale
-     * @param actions the actions the runtime offers for the plan
-     * @param hold    the plan's hold, or {@code null} when it has none
-     * @param rowId   the row the menu is drawn below, or {@code null}
+     * @param state the plan's state as the runtime names it
+     * @return {@code true} when the design gives that state the decision it waits for first
+     */
+    public static boolean waitsForDecision(String state) {
+        return WAITING_STATES.contains(state);
+    }
+
+    /**
+     * @param locale       the interface locale
+     * @param actions      the actions the runtime offers for the plan
+     * @param hold         the plan's hold, or {@code null} when it has none
+     * @param openDecision the decision a waiting plan waits for, or {@code null}
+     * @param rowId        the row the menu is drawn below, or {@code null}
      * @return the plan's menu
      */
     public static ActionsMenu plan(String locale, WorkActions actions, @Nullable HoldRecord hold,
-                        @Nullable String rowId) {
+                        @Nullable String openDecision, @Nullable String rowId) {
         var entries = new ArrayList<TuiMenuEntry>();
         var used = new HashSet<String>();
         var dropped = new ArrayList<String>();
+        addDecision(entries, used, dropped, locale, actions.state(), openDecision);
         boolean holdEnds = false;
         if (hold != null) {
             holdEnds = addHoldActs(entries, used, dropped, locale, hold);
@@ -136,6 +151,21 @@ public final class ActionMenus {
             addHoldAct(entries, used, dropped, locale, "retry");
         }
         return new ActionsMenu(landingId, ActionsMenu.Subject.LANDING, rowId, entries, dropped);
+    }
+
+    private static void addDecision(List<TuiMenuEntry> entries, Set<String> used, List<String> dropped,
+                        String locale, String state, @Nullable String openDecision) {
+        if (openDecision == null || openDecision.isBlank() || !waitsForDecision(state)) {
+            return;
+        }
+        var trigger = key(locale, ACTION_DECIDE);
+        if (!used.add(trigger)) {
+            dropped.add(ACTION_DECIDE);
+            return;
+        }
+        entries.add(TuiMenuEntry.enabled(trigger, ACTION_DECIDE,
+                            MessageCatalogue.format(locale, "operator.actions.decide",
+                                                Map.of("id", openDecision))));
     }
 
     private static boolean addHoldActs(List<TuiMenuEntry> entries, Set<String> used, List<String> dropped,

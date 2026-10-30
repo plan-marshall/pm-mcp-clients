@@ -1,0 +1,14 @@
+# Screen captures for PLAN-20: Terminal: Action Menus by State
+# name | scenario | states | command | keys | columnsxrows | locale | environment | keys before the capture
+# The keys before the capture open the actions menu of the row's plan (`a`), so the screen is the
+# menu itself; the keys after it close the menu and leave the view.
+
+actions-waiting-120x30-en | running-work | control.ready | plan drop-legacy-api | aq | 120x30 | en_US.UTF-8 | - | a
+actions-waiting-80x24-en | running-work | control.ready | plan drop-legacy-api | aq | 80x24 | en_US.UTF-8 | - | a
+actions-waiting-120x30-de | running-work | control.ready | plan drop-legacy-api | aq | 120x30 | de_DE.UTF-8 | - | a
+actions-waiting-80x24-de | running-work | control.ready | plan drop-legacy-api | aq | 80x24 | de_DE.UTF-8 | - | a
+
+actions-paused-120x30-en | running-work | control.ready | plan relay-metrics | aq | 120x30 | en_US.UTF-8 | - | a
+actions-paused-80x24-en | running-work | control.ready | plan relay-metrics | aq | 80x24 | en_US.UTF-8 | - | a
+actions-paused-120x30-de | running-work | control.ready | plan relay-metrics | aq | 120x30 | de_DE.UTF-8 | - | a
+actions-paused-80x24-de | running-work | control.ready | plan relay-metrics | aq | 80x24 | de_DE.UTF-8 | - | a

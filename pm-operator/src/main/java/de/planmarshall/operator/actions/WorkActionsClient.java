@@ -37,13 +37,16 @@ import de.planmarshall.operator.OperatorUrlUtil;
  *
  * <p>Every method is fail-closed: a status other than the one the contract names is raised as an
  * {@link OperatorRefusedException}, so the view never invents an action result and never shows a
- * success the runtime did not confirm. The client is read-only on {@code pm-mock-runtime} and
+ * success the runtime did not confirm. The one exception is the plan's decisions read
+ * ({@link #openDecision(String)}), which falls back to the scoped decisions list where the
+ * plan-scoped collection is absent. The client is read-only on {@code pm-mock-runtime} and
  * {@code pm-api}; it only sends what those contracts define.
  */
 public final class WorkActionsClient {
 
     private static final String PLANS = "/api/v1/plans/";
     private static final String EPICS = "/api/v1/epics/";
+    private static final String DECISIONS = "/api/v1/decisions";
     private static final String ACTIONS = "/actions";
     private static final String HOLDS = "/holds/";
 
@@ -68,6 +71,33 @@ public final class WorkActionsClient {
             throw new OperatorRefusedException(kind + " actions", response);
         }
         return WorkActions.fromJson(response.bodyText());
+    }
+
+    /**
+     * @param planId the plan
+     * @return the id of the plan's first open decision, or {@code null} when it waits for none
+     * @throws IOException when the runtime refuses or cannot be reached
+     */
+    public @Nullable String openDecision(String planId) throws IOException {
+        var response = context.runtime(true).send(HttpRequest.get(PLANS + path(planId) + "/decisions"));
+        if (response.status() == 404) {
+            // The scope query of the decisions list is the read the console's `questions` makes.
+            response = context.runtime(true).send(HttpRequest.get(DECISIONS + "?plan=" + path(planId)));
+        }
+        if (response.status() != 200) {
+            throw new OperatorRefusedException("plan decisions", response);
+        }
+        var parsed = JsonTree.parse(response.bodyText());
+        if (parsed instanceof List<?> list) {
+            for (var item : list) {
+                var map = JsonTree.asObject(item);
+                var id = map != null ? JsonTree.string(map, "id") : null;
+                if (id != null && !id.isBlank()) {
+                    return id;
+                }
+            }
+        }
+        return null;
     }
 
     /**

@@ -35,6 +35,14 @@ The texts of the actions, the dialogues, the settings, the review, and the holds
 |{name} has ended: its view, and a chat about it
 |{name} ist beendet: seine Ansicht und ein Chat darüber
 
+|`operator.actions.decide`
+|Decide {id}…
+|Entscheide {id}…
+
+|`operator.actions.decision_unreadable`
+|{plan} waits for a decision the runtime did not return: its other actions stand
+|{plan} wartet auf eine Entscheidung, die die Laufzeit nicht geliefert hat: seine übrigen Aktionen gelten
+
 |`operator.actions.chat_end`
 |an empty line ends it
 |eine leere Zeile beendet ihn
@@ -199,7 +207,7 @@ The texts of the actions, the dialogues, the settings, the review, and the holds
 [#actions-keys]
 === Keys of the Actions
 
-The mnemonics of the action menu, of the acts of a hold, and of the review, one letter per link relation, in the catalogue like the keys of xref:13-texts-operator.adoc#texts-operator-keys[Keys]; `e) edit`, `b) back`, `y) yes`, and `n) no` are the common ones there, and _instruct again_ and _discard_ are those of the decomposition (xref:21-texts-starting.adoc#starting-keys[Starting Work, Keys]). No mnemonic of the menu is `a`, in any language. _Chat_ is `h` in English and `t` in German, the first free letter of its label: `c` is taken in the menu of a plan that holds (_add the credential_, in English also _accept the change_), `h` in German by _pause_. Within each menu and prompt every key is unique, in both languages.
+The mnemonics of the action menu, of the acts of a hold, and of the review, one key per link relation, and `!` for the decision a waiting plan waits for, in the catalogue like the keys of xref:13-texts-operator.adoc#texts-operator-keys[Keys]; `e) edit`, `b) back`, `y) yes`, and `n) no` are the common ones there, and _instruct again_ and _discard_ are those of the decomposition (xref:21-texts-starting.adoc#starting-keys[Starting Work, Keys]). No mnemonic of the menu is `a`, in any language. _Chat_ is `h` in English and `t` in German, the first free letter of its label: `c` is taken in the menu of a plan that holds (_add the credential_, in English also _accept the change_), `h` in German by _pause_. Within each menu and prompt every key is unique, in both languages.
 
 [cols="3,3,3",options="header"]
 |===
@@ -224,6 +232,10 @@ The mnemonics of the action menu, of the acts of a hold, and of the review, one 
 |`operator.actions.key.settings`
 |o
 |e
+
+|`operator.actions.key.decide`
+|!
+|!
 
 |`operator.actions.key.keep_current`
 |k

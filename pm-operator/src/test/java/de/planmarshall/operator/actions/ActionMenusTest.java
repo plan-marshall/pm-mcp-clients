@@ -48,7 +48,7 @@ class ActionMenusTest {
     @DisplayName("a running plan offers Pause, Cancel, Chat, and Settings, in that order")
     void runningPlan() {
         var menu = ActionMenus.plan("en", actions("plan", "running", null, "pause", "cancel", "chat",
-                            "settings"), null, "row");
+                            "settings"), null, null, "row");
         var labels = menu.entries().stream().map(TuiMenuEntry::label).toList();
         assertEquals(4, labels.size());
         assertTrue(labels.get(0).startsWith("Pause"), labels.toString());
@@ -64,19 +64,77 @@ class ActionMenusTest {
     }
 
     @Test
-    @DisplayName("a paused plan offers Start and Abandon; a pausing one Start and Cancel")
-    void pausedAndPausing() {
+    @DisplayName("a paused plan offers Start, Abandon, Chat, and Settings")
+    void pausedPlan() {
         var paused = ActionMenus.plan("en", actions("plan", "paused", null, "start", "abandon", "chat",
-                            "settings"), null, null);
+                            "settings"), null, null, null);
+        var labels = paused.entries().stream().map(TuiMenuEntry::label).toList();
+        assertEquals(4, labels.size(), labels.toString());
         assertEquals("s", paused.entries().get(0).trigger());
-        assertTrue(paused.entries().get(0).label().startsWith("Start"));
+        assertTrue(labels.get(0).startsWith("Start"));
         assertEquals("x", paused.entries().get(1).trigger());
-        assertTrue(paused.entries().get(1).label().startsWith("Abandon"));
+        assertTrue(labels.get(1).startsWith("Abandon"));
+        assertTrue(labels.get(2).startsWith("Chat"), labels.toString());
+        assertTrue(labels.get(3).startsWith("Settings"), labels.toString());
+    }
 
+    @Test
+    @DisplayName("a pausing plan offers Start and Cancel")
+    void pausingPlan() {
         var pausing = ActionMenus.plan("en", actions("plan", "pausing", null, "start", "cancel", "chat"),
-                            null, null);
+                            null, null, null);
         assertEquals("s", pausing.entries().get(0).trigger());
         assertTrue(pausing.entries().get(1).label().startsWith("Cancel"));
+    }
+
+    @Test
+    @DisplayName("a waiting plan offers the decision it waits for first, then Pause, Cancel, Chat, Settings")
+    void waitingPlan() {
+        var menu = ActionMenus.plan("en", actions("plan", "waiting", null, "pause", "cancel", "chat",
+                            "settings"), null, "Q-009", "row");
+        var labels = menu.entries().stream().map(TuiMenuEntry::label).toList();
+        assertEquals(5, labels.size(), labels.toString());
+        assertEquals("Decide Q-009\u2026", labels.get(0));
+        assertEquals("!", menu.entries().get(0).trigger());
+        assertEquals("decide", menu.entries().get(0).action());
+        assertTrue(menu.entries().get(0).enabled());
+        assertTrue(labels.get(1).startsWith("Pause"), labels.toString());
+        assertEquals("p", menu.entries().get(1).trigger());
+        assertTrue(labels.get(2).startsWith("Cancel"), labels.toString());
+        assertTrue(labels.get(3).startsWith("Chat"), labels.toString());
+        assertTrue(labels.get(4).startsWith("Settings"), labels.toString());
+        assertTrue(menu.droppedActions().isEmpty(), menu.droppedActions().toString());
+    }
+
+    @Test
+    @DisplayName("the runtime's other spelling of the waiting state offers the decision first too")
+    void waitingForYouPlan() {
+        var menu = ActionMenus.plan("en", actions("plan", "waiting_for_you", null, "pause", "cancel",
+                            "chat", "settings"), null, "Q-009", null);
+        assertEquals("decide", menu.entries().get(0).action(), menu.entries().toString());
+        assertEquals("!", menu.entries().get(0).trigger());
+    }
+
+    @Test
+    @DisplayName("a paused plan keeps its own order even while a decision stays open")
+    void pausedPlanKeepsItsOrder() {
+        var menu = ActionMenus.plan("en", actions("plan", "paused", null, "start", "abandon", "chat",
+                            "settings"), null, "Q-009", null);
+        var labels = menu.entries().stream().map(TuiMenuEntry::label).toList();
+        assertEquals(4, labels.size(), labels.toString());
+        assertTrue(labels.get(0).startsWith("Start"), labels.toString());
+        assertTrue(menu.entries().stream().noneMatch(entry -> "decide".equals(entry.action())),
+                            menu.entries().toString());
+    }
+
+    @Test
+    @DisplayName("a waiting plan with no open decision offers its actions alone")
+    void waitingPlanWithoutDecision() {
+        var menu = ActionMenus.plan("en", actions("plan", "waiting", null, "pause", "cancel", "chat",
+                            "settings"), null, null, null);
+        assertEquals(4, menu.entries().size(), menu.entries().toString());
+        assertTrue(menu.entries().stream().noneMatch(entry -> "decide".equals(entry.action())),
+                            menu.entries().toString());
     }
 
     @Test
@@ -85,7 +143,7 @@ class ActionMenusTest {
         var offered = new ArrayList<ActionAvailability>();
         offered.add(ActionAvailability.disabled("chat", "no configuration of replan qualifies yet"));
         var menu = ActionMenus.plan("en", new WorkActions("subject", "plan", "running", null, null, null,
-                            offered), null, null);
+                            offered), null, null, null);
         assertFalse(menu.entries().getFirst().enabled());
         assertEquals("no configuration of replan qualifies yet", menu.entries().getFirst().reason());
     }
@@ -94,7 +152,7 @@ class ActionMenusTest {
     @DisplayName("a held plan shows the acts of its hold first and drops its own Cancel")
     void held() {
         var menu = ActionMenus.plan("en", actions("plan", "held", "condition", "pause", "cancel", "chat",
-                            "settings"), hold("retry", "grant", "end_plan"), null);
+                            "settings"), hold("retry", "grant", "end_plan"), null, null);
         var labels = menu.entries().stream().map(TuiMenuEntry::label).toList();
         assertTrue(labels.get(0).startsWith("Retry now"), labels.toString());
         assertTrue(labels.get(1).startsWith("Grant read access"), labels.toString());
@@ -110,7 +168,7 @@ class ActionMenusTest {
     @DisplayName("an integrity pause offers Accept the change and Abort the plan")
     void integrityPause() {
         var menu = ActionMenus.plan("en", actions("plan", "held", "integrity_pause", "pause", "cancel"),
-                            hold("retry", "accept", "abort"), null);
+                            hold("retry", "accept", "abort"), null, null);
         var labels = menu.entries().stream().map(TuiMenuEntry::label).toList();
         assertTrue(labels.stream().anyMatch(label -> label.startsWith("Accept the change")), labels.toString());
         assertTrue(labels.stream().anyMatch(label -> label.startsWith("Abort the plan")), labels.toString());
@@ -184,9 +242,9 @@ class ActionMenusTest {
     @DisplayName("the mnemonics are the catalogue's: German differs from English, and none is a")
     void germanMnemonics() {
         var en = ActionMenus.plan("en", actions("plan", "running", null, "pause", "cancel", "chat",
-                            "settings"), null, null);
+                            "settings"), null, null, null);
         var de = ActionMenus.plan("de", actions("plan", "running", null, "pause", "cancel", "chat",
-                            "settings"), null, null);
+                            "settings"), null, null, null);
         assertEquals("p", en.entries().get(0).trigger());
         assertEquals("h", de.entries().get(0).trigger());
         assertEquals("o", en.entries().get(3).trigger());

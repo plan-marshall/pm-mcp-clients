@@ -80,18 +80,20 @@ class ActionsCatalogueTest {
                                                 List.of("retry", "recycle", "end_plan"), null));
         for (var locale : List.of("en", "de")) {
             assertUnique(ActionMenus.plan(locale, actions("running", null, "pause", "cancel", "chat",
-                                "settings"), null, null), locale);
+                                "settings"), null, null, null), locale);
             assertUnique(ActionMenus.plan(locale, actions("pausing", null, "start", "cancel", "chat",
-                                "settings"), null, null), locale);
+                                "settings"), null, null, null), locale);
             assertUnique(ActionMenus.plan(locale, actions("paused", null, "start", "abandon", "chat",
-                                "settings"), null, null), locale);
+                                "settings"), null, null, null), locale);
             for (var hold : holds) {
                 assertUnique(ActionMenus.plan(locale, actions("held", hold.kind(), "pause", "cancel", "chat",
-                                    "settings"), hold, null), locale);
+                                    "settings"), hold, null, null), locale);
             }
             assertUnique(ActionMenus.epic(locale, actions("running", null, "next", "auto", "common_files",
                                 "decompose", "findings", "watches", "chat", "archive", "cancel"),
                                 "next", List.of(), true, 0, 1, 2, null), locale);
+            assertUnique(ActionMenus.plan(locale, actions("waiting", null, "pause", "cancel", "chat",
+                                "settings"), null, "Q-009", null), locale);
             assertUnique(ActionMenus.ended(locale, "p", "p", null), locale);
             assertUnique(ActionMenus.landing(locale, "l", "landing_failed", null), locale);
         }
@@ -159,7 +161,7 @@ class ActionsCatalogueTest {
         for (var locale : List.of("en", "de")) {
             for (var hold : holds) {
                 assertOffered(ActionMenus.plan(locale, actions("held", hold.kind(),
-                                    planActions.toArray(String[]::new)), hold, null), planActions, locale);
+                                    planActions.toArray(String[]::new)), hold, null, null), planActions, locale);
             }
             for (var holdKind : List.of("stalled", "condition", "integrity_pause", "held",
                                 "landing_failed")) {
@@ -195,7 +197,7 @@ class ActionsCatalogueTest {
                             null, null, null, List.of("retry", "show_pr", "give_up_removal", "end_plan"),
                             "https://x/pull/1");
         var menu = ActionMenus.plan("en", actions("held", "landing_failed", "pause", "cancel", "chat",
-                            "settings"), hold, null);
+                            "settings"), hold, null, null);
         assertTrue(menu.entries().stream().anyMatch(entry -> "pause".equals(entry.action())));
         assertTrue(menu.entries().stream().noneMatch(entry -> "show_pr".equals(entry.action())));
         assertTrue(menu.entries().stream().noneMatch(entry -> "give_up_removal".equals(entry.action())));

@@ -499,6 +499,12 @@ class ControlDialoguesTest {
             var path = request.target();
             if (path.contains("/holds/H-1/resolve")) {
                 response.json(200, new HoldResolutionResult("H-1", true, null, "p").toJson());
+            } else if (path.contains("/plans/p/decisions")) {
+                response.json(200, "[{\"id\":\"Q-009\",\"title\":\"Delete published v1 endpoints?\"}]");
+            } else if (path.contains("/plans/quiet/decisions")) {
+                response.json(200, "[]");
+            } else if (path.startsWith("/api/v1/decisions?plan=legacy")) {
+                response.json(200, "[{\"id\":\"Q-011\"}]");
             } else if (path.endsWith("/holds")) {
                 response.json(200, STALLED_HOLD);
             } else if (path.contains("/plans/conflict/settings") && "GET".equals(request.method())) {
@@ -541,6 +547,9 @@ class ControlDialoguesTest {
         WorkActions actions = client.actions("plan", "p");
         assertNotNull(actions);
         assertEquals("running", actions.state());
+        assertEquals("Q-009", client.openDecision("p"));
+        assertNull(client.openDecision("quiet"));
+        assertEquals("Q-011", client.openDecision("legacy"));
         List<HoldRecord> holds = client.holds("p");
         assertEquals(1, holds.size());
         assertNotNull(client.hold("p"));
@@ -973,6 +982,7 @@ class ControlDialoguesTest {
         var client = new WorkActionsClient(context);
         assertThrows(OperatorRefusedException.class, () -> client.actions("plan", "p"));
         assertThrows(OperatorRefusedException.class, () -> client.holds("p"));
+        assertThrows(OperatorRefusedException.class, () -> client.openDecision("p"));
         assertThrows(OperatorRefusedException.class, () -> client.perform("plan", "p", "start", Map.of()));
         assertThrows(OperatorRefusedException.class, () -> client.resolveHold("p", "h", "retry", null));
         assertThrows(OperatorRefusedException.class, () -> client.settings("p"));
