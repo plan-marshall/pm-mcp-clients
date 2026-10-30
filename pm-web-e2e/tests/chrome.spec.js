@@ -277,6 +277,8 @@ test.describe('The live indicator', () => {
   test('turns amber when the mock stops and live again when it restarts', async ({ page }) => {
     // A suite that found a mock already running (the developer loop) must never stop it.
     test.skip(!mockRuntimeOwned(), 'the mock runtime was already running; this suite did not start it');
+    // The bounded waits below add up to 120 seconds; the default 30-second deadline is too short.
+    test.setTimeout(120_000);
 
     const indicator = page.getByTestId('live-indicator');
     await expect(indicator).toHaveAttribute('data-state', 'connected', { timeout: 15000 });

@@ -3701,12 +3701,17 @@ export class ApiClient {
       connecting = true;
       onState?.(failures === 0 ? 'connecting' : 'reconnecting');
 
+      // A connect that is accepted and never answers must end like a failed one, or `connecting`
+      // would stay true (and the retry limit uncounted) for as long as the machine kept the socket.
+      const attempt = new AbortController();
+      const deadline = setTimeout(() => attempt.abort(), CONNECT_TIMEOUT_MS);
+
       try {
         const res = await fetch(`${this.baseUrl}${path}`, {
           headers: {
             Authorization: `Bearer ${secret}`,
           },
-          signal: internalController.signal,
+          signal: AbortSignal.any([internalController.signal, attempt.signal]),
         });
 
         if (res.status === 401) {
@@ -3771,11 +3776,12 @@ export class ApiClient {
         }
       } catch (err: unknown) {
         currentReader = undefined;
-        if ((err as Error)?.name === 'AbortError') return;
+        if (internalController.signal.aborted) return;
         if (active && !internalController.signal.aborted) {
           reconnect();
         }
       } finally {
+        clearTimeout(deadline);
         connecting = false;
       }
     };
@@ -3798,6 +3804,9 @@ export class ApiClient {
 
 /** The pause between two attempts of a dropped stream. */
 const STREAM_RETRY_DELAY_MS = 2000;
+
+/** The deadline for a connect attempt to answer with a response. */
+const CONNECT_TIMEOUT_MS = 10_000;
 
 /** The attempts after which the stream reports `offline` and waits for `Try again`. */
 const STREAM_RETRY_LIMIT = 10;

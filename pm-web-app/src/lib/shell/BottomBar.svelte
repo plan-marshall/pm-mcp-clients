@@ -34,6 +34,35 @@
       !($runtimeStore.isListenerClosed && $runtimeStore.currentRoute === 'listener-off'),
   );
 
+  /**
+   * The count a destination carries, as the rail shows it at desktop width.
+   *
+   * @param item the destination
+   * @returns the open decisions or the unread reports, or `0` when it carries none
+   */
+  function countOf(item: ShellNavItem): number {
+    if (item.count === 'decisions') {
+      return $runtimeStore.openDecisionsCount;
+    }
+    if (item.count === 'reports') {
+      return $runtimeStore.unreadReportsCount;
+    }
+    return 0;
+  }
+
+  /**
+   * The accessible name of the count the phone bar shows beside a label.
+   *
+   * @param item the destination
+   * @param count the count it shows
+   * @returns the catalogue text the badge carries
+   */
+  function countLabel(item: ShellNavItem, count: number): string {
+    return item.count === 'decisions'
+      ? $t('decisions.list.open', { count })
+      : $t('report.list.unread', { count });
+  }
+
   /** Whether the sheet of the remaining destinations is open. */
   let sheetOpen = $state(false);
 
@@ -85,6 +114,15 @@
       >
         <Icon name={item.icon} size={20} />
         <span class="bottom-bar__label">{$t(item.labelKey)}</span>
+        {#if countOf(item) > 0}
+          <span
+            class="bottom-bar__count"
+            data-testid={`bottom-${item.id}-count`}
+            aria-label={countLabel(item, countOf(item))}
+          >
+            {countOf(item)}
+          </span>
+        {/if}
       </button>
     {/each}
 
@@ -365,6 +403,21 @@
       text-overflow: ellipsis;
       white-space: nowrap;
       max-inline-size: 100%;
+    }
+
+    /* The desktop rail is hidden, so the phone carries the same counts beside the labels. */
+    .bottom-bar__count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-inline-size: 1rem;
+      block-size: 1rem;
+      padding-inline: 0.25rem;
+      border-radius: var(--radius-full);
+      background-color: var(--color-brand);
+      color: var(--color-on-brand);
+      font-size: 0.65rem;
+      font-weight: 700;
     }
   }
 </style>

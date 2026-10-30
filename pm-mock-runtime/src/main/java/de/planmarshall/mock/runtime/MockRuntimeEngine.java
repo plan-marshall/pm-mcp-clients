@@ -350,6 +350,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_PLAN_DEFAULTS = "plan_defaults";
     private static final String KEY_PLANS_AFTER_DAYS = "plans_after_days";
     private static final String KEY_EPICS_AFTER_DAYS = "epics_after_days";
+    /** The epic a plan belongs to, as the plan view reads it. */
+    private static final String KEY_EPIC_ID = "epic_id";
     private static final String KEY_LOGS_AFTER_DAYS = "logs_after_days";
     private static final String KEY_REPORTS_AFTER_DAYS = "reports_after_days";
     private static final String KEY_UNENROLLED_AFTER_DAYS = "unenrolled_after_days";
@@ -8597,7 +8599,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 for (var workstream : epic.workstreams()) {
                     for (var row : workstream.rows()) {
                         if (planId.equals(row.planId())) {
-                            return planRowSummary(row, planId, epic.projectId());
+                            return planRowSummary(row, planId, epic.projectId(), epic.epicId());
                         }
                     }
                 }
@@ -8610,15 +8612,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param row       the epic's row for the plan
      * @param planId    the plan id
      * @param projectId the project the epic belongs to
+     * @param epicId    the epic that lists the plan
      * @return the summary the process synthesis reads
      */
-    private static Map<String, Object> planRowSummary(WorkRow row, String planId, @Nullable String projectId) {
+    private static Map<String, Object> planRowSummary(WorkRow row, String planId,
+            @Nullable String projectId, String epicId) {
         var summary = new LinkedHashMap<String, Object>();
         summary.put("id", planId);
         summary.put(KEY_TITLE, row.title() != null && !row.title().isBlank() ? row.title() : planId);
         if (projectId != null) {
             summary.put("project", projectId);
         }
+        summary.put("epic", Map.of(KEY_EPIC_ID, epicId));
         summary.put(KEY_PHASE, PHASE_EXECUTE);
         summary.put("state", planStateOf(row.status()));
         return summary;
@@ -8681,6 +8686,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (projectId != null) {
             copy.put("project", planProjectRef(projectId));
         }
+        // A plan synthesized from its epic's row names that epic, so the view links back to it.
+        if (summary.get("epic") instanceof Map<?, ?> epicRef) {
+            copy.put("epic", epicRef);
+        }
         copy.put("current_phase", phase);
         copy.put("phase_state", phaseState);
         if ("waiting_for_you".equals(phaseState)) {
@@ -8701,7 +8710,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static List<Map<String, Object>> phaseNodes(@Nullable Map<?, ?> template, String currentPhase,
             String phaseState) {
         if (template == null || !(template.get("nodes") instanceof List<?> nodes)) {
-            var state = "running".equals(phaseState) ? "running" : "waiting_for_operator";
+            var state = STATE_DONE.equals(phaseState) ? STATE_DONE
+                    : ("running".equals(phaseState) ? "running" : "waiting_for_operator");
             return List.of(phaseNode(currentPhase, state, "phase " + currentPhase));
         }
         var current = currentPhaseIndex(nodes, currentPhase);
@@ -8768,6 +8778,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @return the node's state: done before the current phase, the current phase's own, planned after
      */
     private static String phaseNodeState(int index, int current, String phaseState) {
+        if (STATE_DONE.equals(phaseState)) {
+            return STATE_DONE;
+        }
         if (current >= 0 && index < current) {
             return "done";
         }

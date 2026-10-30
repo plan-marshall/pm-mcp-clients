@@ -128,6 +128,25 @@ describe('the event stream state', () => {
     unsubscribe();
   });
 
+  it('ends a connect attempt that never answers and counts it as a failure', async () => {
+    // A socket that is accepted and never answers must not pin the stream in `connecting`.
+    globalThis.fetch = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+        }),
+    ) as unknown as typeof fetch;
+
+    const unsubscribe = client.subscribeEvents(() => {});
+    await vi.advanceTimersByTimeAsync(0);
+    expect(states).toEqual(['connecting']);
+
+    await vi.advanceTimersByTimeAsync(10_500);
+    expect(states).toContain('reconnecting');
+
+    unsubscribe();
+  });
+
   it('does nothing on a retry while the stream is live', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, body: hangingBody() });
     const unsubscribe = client.subscribeEvents(() => {});

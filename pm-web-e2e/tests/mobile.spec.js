@@ -134,6 +134,10 @@ test.describe('Mobile viewports (WEB-1)', () => {
 
     await expect(page.getByTestId('nav-rail')).toBeHidden();
 
+    // The rail is hidden on a phone, so the counts it carries must stand beside the labels here.
+    await expect(page.getByTestId('bottom-decisions-count')).toHaveText('3');
+    await expect(page.getByTestId('bottom-reports-count')).toHaveText('5');
+
     await bar.getByRole('button', { name: /More/i }).click();
     const sheet = page.getByTestId('dialog');
     await expect(sheet).toBeVisible();
@@ -178,6 +182,35 @@ test.describe('Mobile viewports (WEB-1)', () => {
       // The routed view renders after its data: measure the page once it is on screen, not while
       // the loading state still owns the body.
       await expect.soft(page.locator(route.view)).toBeVisible();
+      await expectNoHorizontalOverflow(page);
+    }
+  });
+
+  test('keeps the start and decomposition pages without horizontal scroll at 390 px', async ({
+    page,
+    request,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+
+    // These two pages need a scenario of their own, so they stand beside the route sweep above.
+    const pages = [
+      {
+        scenario: 'start-epic-adopt',
+        path: '/entries/ent-7a2e4f01',
+        view: '[data-testid="start-view"]',
+      },
+      {
+        scenario: 'decomposition',
+        path: '/epics/relay-hardening/decomposition?project=pm-mcp-clients',
+        view: '[data-testid="epic-decomposition"]',
+      },
+    ];
+
+    for (const entry of pages) {
+      await useScenario(request, entry.scenario);
+      await pair(page);
+      await page.goto(entry.path);
+      await expect(page.locator(entry.view)).toBeVisible({ timeout: 15000 });
       await expectNoHorizontalOverflow(page);
     }
   });
