@@ -283,28 +283,33 @@ export async function collectTextGuardViolations(page, options) {
    * Waits until the document has been mutation-free for one settle interval.
    *
    * A quiet window is the condition the read samples; waiting for it rather than for a fixed
-   * duration keeps the loop from reading a page that is mid-update.
+   * duration keeps the loop from reading a page that is mid-update. A page that keeps changing
+   * never reaches the window: the wait is bounded, so the loop still ends in its own error
+   * instead of hanging on the frame clock.
    *
-   * @returns {Promise<unknown>} the waitForFunction handle
+   * @returns {Promise<boolean>} whether the document reached a quiet window
    */
   const awaitQuietWindow = () =>
-    page.waitForFunction(
-      ({ interval, startedAt }) => {
-        if (!window.__textGuardObserver) {
-          // A navigation replaced the document and with it the observer; the caller re-attaches it.
-          return true;
-        }
-        return Date.now() - (window.__textGuardLastChange ?? startedAt) >= interval;
-      },
-      { interval: SETTLE_INTERVAL_MS, startedAt: Date.now() },
-      { polling: 'raf' },
-    );
+    page
+      .waitForFunction(
+        ({ interval, startedAt }) => {
+          if (!window.__textGuardObserver) {
+            // A navigation replaced the document and with it the observer; the caller re-attaches it.
+            return true;
+          }
+          return Date.now() - (window.__textGuardLastChange ?? startedAt) >= interval;
+        },
+        { interval: SETTLE_INTERVAL_MS, startedAt: Date.now() },
+        { polling: 'raf', timeout: SETTLE_INTERVAL_MS * 3 },
+      )
+      .then(() => true)
+      .catch(() => false);
 
   await startObserving();
   let previous = await read();
   let quietWindows = 0;
   for (let attempt = 0; attempt < SETTLE_ATTEMPTS; attempt += 1) {
-    await awaitQuietWindow();
+    const reachedQuietWindow = await awaitQuietWindow();
     const { seen, observing } = await countChanges();
     const current = await read();
     const unchanged = JSON.stringify(current) === JSON.stringify(previous);
@@ -315,7 +320,7 @@ export async function collectTextGuardViolations(page, options) {
       quietWindows = 0;
       continue;
     }
-    if (seen > 0 || !unchanged) {
+    if (seen > 0 || !unchanged || !reachedQuietWindow) {
       quietWindows = 0;
       continue;
     }

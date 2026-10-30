@@ -14,18 +14,29 @@
 export async function setTheme(page, theme) {
   await page.evaluate((t) => {
     document.documentElement.setAttribute('data-theme', t);
+    // The quiet-frame count is per call: a previous call must not count for this one.
+    window.__themeTransitionSettled = false;
   }, theme);
-  // Wait for the theme's CSS transitions to finish instead of guessing a duration. A style
-  // change starts its transitions on the next frame, so two consecutive quiet frames are
-  // required: one to let the transitions start, one to see them finished.
-  await page.waitForFunction(() => {
-    const quiet = document
-      .getAnimations()
-      .every((animation) => animation.playState !== 'running');
-    const settled = quiet && window.__themeTransitionSettled === true;
-    window.__themeTransitionSettled = quiet;
-    return settled;
-  }, undefined, { polling: 'raf' });
+  // Wait for the theme's finite CSS transitions to finish instead of guessing a duration. A
+  // style change starts its transitions on the next frame, so two consecutive quiet frames are
+  // required: one to let the transitions start, one to see them finished. Infinite animations
+  // (a spinner) never finish and are not part of what the theme changes.
+  await page.waitForFunction(
+    () => {
+      const quiet = !document
+        .getAnimations()
+        .some(
+          (animation) =>
+            animation.playState === 'running' &&
+            animation.effect?.getTiming().iterations !== Infinity,
+        );
+      const settled = quiet && window.__themeTransitionSettled === true;
+      window.__themeTransitionSettled = quiet;
+      return settled;
+    },
+    undefined,
+    { polling: 'raf', timeout: 5000 },
+  );
 }
 
 /**

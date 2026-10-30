@@ -486,9 +486,9 @@
     return s === 'waiting_for_you' ? 'waiting' : s;
   }
 
-  // The overview endpoints answer with the snake_case spelling of the API contract or, from an
-  // older daemon, with camelCase. The contract types declare the snake_case keys, so the
-  // accessors read the alternate spelling through one typed alias instead of a per-site cast.
+  // The overview endpoints answer with the snake_case spelling of the API contract or with the
+  // camelCase one. The contract types declare the snake_case keys, so the accessors read the
+  // alternate spelling through one typed alias instead of a per-site cast.
   type CamelCaseAliases = {
     needsOperatorCount?: number | null;
     needsOperatorKind?: string | null;

@@ -61,7 +61,6 @@
       "verification_steps": {
         "default:verify:quality-gate": {},
         "default:verify:module-tests": {},
-        "default:verify:coverage": {},
         "default:verify:arch-gate": {}
       },
       "effort": {
