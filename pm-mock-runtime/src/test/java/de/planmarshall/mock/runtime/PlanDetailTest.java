@@ -81,6 +81,24 @@ class PlanDetailTest {
         }
     }
 
+    @Test
+    @DisplayName("a plan listed only inside an epic answers its own process")
+    void servesAPlanListedInsideAnEpic() throws Exception {
+        try (var engine = engine()) {
+            var process = get(engine, "/api/v1/plans/relay-reconnect-backoff/process");
+
+            assertAll("the row's own facts",
+                    () -> assertEquals("relay-reconnect-backoff", JsonTree.string(process, "plan_id")),
+                    () -> assertEquals("relay-reconnect-backoff", JsonTree.string(process, "title")),
+                    () -> assertEquals("pm-mcp-clients",
+                            JsonTree.string(JsonTree.object(process, "project"), "project_id")),
+                    () -> assertEquals("done", JsonTree.string(process, "phase_state"),
+                            "the shipped row is a done plan"),
+                    () -> assertNotNull(JsonTree.asArray(process.get("nodes")),
+                            "the plan answers a node list"));
+        }
+    }
+
     private static @Nullable String phaseState(Map<String, Object> plan, String nodeId) {
         var nodes = JsonTree.asArray(plan.get("nodes"));
         assertNotNull(nodes, "the plan must answer a node list");

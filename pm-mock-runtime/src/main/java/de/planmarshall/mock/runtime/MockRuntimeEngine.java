@@ -63,6 +63,7 @@ import de.planmarshall.api.control.PlanSettingsUpdateResult;
 import de.planmarshall.api.control.PlanSettingsValue;
 import de.planmarshall.api.control.ReviewResource;
 import de.planmarshall.api.control.WorkActions;
+import de.planmarshall.api.control.WorkRow;
 import de.planmarshall.api.decision.DecisionAnswerRequest;
 import de.planmarshall.api.decision.DecisionEnvelope;
 import de.planmarshall.api.decision.DecisionInterpretation;
@@ -8411,8 +8412,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     /**
-     * Looks a plan id up in the plan list the active scenario (or its state) serves, or among the
-     * plans a start flow created in this run.
+     * Looks a plan id up in the plan list the active scenario (or its state) serves, among the
+     * plans a start flow created in this run, or among the members an epic lists.
      *
      * @param planId the requested plan id
      * @return the plan's summary entry, or {@code null} when the scenario does not serve the id
@@ -8429,17 +8430,71 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return summary;
         }
         var listRoute = activeRoute("GET", "/api/v1/plans");
-        if (listRoute == null || !(listRoute.representation() instanceof Map<?, ?> list)
-                || !(list.get("plans") instanceof List<?> plans)) {
-            return null;
+        if (listRoute != null && listRoute.representation() instanceof Map<?, ?> list
+                && list.get("plans") instanceof List<?> plans) {
+            for (var element : plans) {
+                var plan = JsonTree.asObject(element);
+                if (plan != null && planId.equals(JsonTree.string(plan, "id"))) {
+                    return plan;
+                }
+            }
         }
-        for (var element : plans) {
-            var plan = JsonTree.asObject(element);
-            if (plan != null && planId.equals(JsonTree.string(plan, "id"))) {
-                return plan;
+        return planListedByAnEpic(planId);
+    }
+
+    /**
+     * Looks a plan id up among the members an epic lists in the state's control fixture.
+     *
+     * A staged, paused or shipped member can live only inside its epic's workstreams; without this
+     * lookup the plan view of such a member answered {@code plan_not_found} although the scenario
+     * lists it.
+     *
+     * @param planId the requested plan id
+     * @return the summary built from the epic's row, or {@code null} when no epic lists the id
+     */
+    private @Nullable Map<String, Object> planListedByAnEpic(String planId) {
+        synchronized (controlLock) {
+            for (var epic : controlEpics.values()) {
+                for (var workstream : epic.workstreams()) {
+                    for (var row : workstream.rows()) {
+                        if (planId.equals(row.planId())) {
+                            return planRowSummary(row, planId, epic.projectId());
+                        }
+                    }
+                }
             }
         }
         return null;
+    }
+
+    /**
+     * @param row       the epic's row for the plan
+     * @param planId    the plan id
+     * @param projectId the project the epic belongs to
+     * @return the summary the process synthesis reads
+     */
+    private static Map<String, Object> planRowSummary(WorkRow row, String planId, @Nullable String projectId) {
+        var summary = new LinkedHashMap<String, Object>();
+        summary.put("id", planId);
+        summary.put(KEY_TITLE, row.title() != null && !row.title().isBlank() ? row.title() : planId);
+        if (projectId != null) {
+            summary.put("project", projectId);
+        }
+        summary.put(KEY_PHASE, PHASE_EXECUTE);
+        summary.put("state", planStateOf(row.status()));
+        return summary;
+    }
+
+    /**
+     * @param status the row's status as the epic lists it
+     * @return the plan state the view understands
+     */
+    private static String planStateOf(String status) {
+        return switch (status) {
+            case "shipped", "merged", "landed" -> "done";
+            case "paused", "staged", "running", "waiting", "held" -> status;
+            default -> "running";
+        };
     }
 
     /**
