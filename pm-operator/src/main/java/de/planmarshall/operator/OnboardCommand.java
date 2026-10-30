@@ -231,9 +231,10 @@ public final class OnboardCommand implements Callable<Integer> {
 
     private static String autoText(String prefix, String locale, String token) {
         var key = prefix + token;
-        return MessageCatalogue.hasKey(locale, key)
-                            ? MessageCatalogue.format(locale, key, Map.of())
-                            : MessageCatalogue.format(locale, UNKNOWN, Map.of());
+        if (MessageCatalogue.hasKey(locale, key)) {
+            return MessageCatalogue.format(locale, key, Map.of());
+        }
+        return MessageCatalogue.format(locale, UNKNOWN, Map.of());
     }
 
     private boolean confirm(String prompt) throws IOException {
