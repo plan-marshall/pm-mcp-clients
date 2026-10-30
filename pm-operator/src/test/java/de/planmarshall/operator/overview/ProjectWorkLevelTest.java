@@ -67,10 +67,10 @@ class ProjectWorkLevelTest {
     void byPlanRows() {
         var plan1 = new ActivePlanSummary("pln-1", "Plan One", "execute", "running",
                             null, baseInstant.minusSeconds(300), baseInstant.minusSeconds(1200),
-                            2, 5, "epc-1", "Epic Alpha", 42, "https://github.com/org/repo/pull/42", null, null, null);
+                            2, 5, "epc-1", "Epic Alpha", 42, "https://github.com/org/repo/pull/42", null, null, null, null);
         var plan2 = new ActivePlanSummary("pln-2", "Plan Two", "refine", "waiting_for_you",
                             null, baseInstant.minusSeconds(100), baseInstant.minusSeconds(600),
-                            0, 0, null, null, null, null, null, "decision", 1);
+                            0, 0, null, null, null, null, null, "decision", 1, null);
 
         var detail = new ProjectDetailResponse("proj-a", "Project Alpha", List.of(plan1, plan2), List.of(), List.of());
         var level = new ProjectWorkLevel(detail, false);
@@ -108,10 +108,10 @@ class ProjectWorkLevelTest {
     void byEpicRows() {
         var childPlan = new ActivePlanSummary("pln-1", "Child Plan", "execute", "running",
                             null, baseInstant.minusSeconds(60), baseInstant.minusSeconds(600),
-                            1, 3, "epc-1", "Epic Alpha", null, null, null, null, null);
+                            1, 3, "epc-1", "Epic Alpha", null, null, null, null, null, null);
         var orphanedPlan = new ActivePlanSummary("pln-2", "Solo Plan", "refine", "running",
                             null, baseInstant.minusSeconds(50), baseInstant.minusSeconds(300),
-                            0, 0, null, null, null, null, null, null, null);
+                            0, 0, null, null, null, null, null, null, null, null);
 
         var epic = new ActiveEpicSummary("epc-1", "Epic Alpha", baseInstant.minusSeconds(1800), 1, 0,
                             0, 1, null, null, List.of(childPlan));
@@ -147,7 +147,7 @@ class ProjectWorkLevelTest {
     void byEpicRowsWithUnreferencedEpicId() {
         var orphanWithClosedEpic = new ActivePlanSummary("pln-3", "Plan of Closed Epic", "refine", "running",
                             null, baseInstant.minusSeconds(50), baseInstant.minusSeconds(300),
-                            0, 0, "epc-closed", null, null, null, null, null, null);
+                            0, 0, "epc-closed", null, null, null, null, null, null, null);
 
         var detail = new ProjectDetailResponse("proj-a", "Project Alpha", List.of(orphanWithClosedEpic), List.of(), List.of());
         var level = new ProjectWorkLevel(detail, true);

@@ -177,7 +177,13 @@
             "epic_title": "Relay Hardening",
             "pull_request_number": 214,
             "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
-            "off_track_signal": "repeating"
+            "off_track_signal": "repeating",
+            "change": {
+              "files": 12,
+              "insertions": 340,
+              "deletions": 27,
+              "unplanned": 2
+            }
           },
           {
             "plan_id": "drop-legacy-api",
@@ -227,7 +233,13 @@
                 "epic_title": "Relay Hardening",
                 "pull_request_number": 214,
                 "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
-                "off_track_signal": "repeating"
+                "off_track_signal": "repeating",
+                "change": {
+                  "files": 12,
+                  "insertions": 340,
+                  "deletions": 27,
+                  "unplanned": 2
+                }
               }
             ]
           }
@@ -2975,6 +2987,164 @@
             },
             "plan_id": "drop-legacy-api",
             "outcome": "merged"
+          }
+        }
+      ]
+    },
+    "overview.needs-changed": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "overview.needs-changed"
+        },
+        "facts": {
+          "summary": "An item stops needing the operator and another starts, so their rows move",
+          "runtime": {
+            "routes": {
+              "GET /api/v1/projects": {
+                "projects": [
+                  {
+                    "project_id": "pm-mcp-clients",
+                    "display_name": "pm-mcp-clients",
+                    "active_plans_count": 3,
+                    "active_epics_count": 1,
+                    "needs_operator_count": 1,
+                    "needs_operator_summary": "condition",
+                    "setup_needs_operator": false,
+                    "last_activity_at": "2026-10-16T15:45:00Z"
+                  },
+                  {
+                    "project_id": "plan-marshall",
+                    "display_name": "plan-marshall",
+                    "active_plans_count": 0,
+                    "active_epics_count": 1,
+                    "needs_operator_count": 0,
+                    "needs_operator_summary": null,
+                    "setup_needs_operator": false,
+                    "last_activity_at": "2026-10-16T14:38:00Z"
+                  },
+                  {
+                    "project_id": "pm-mcp-core",
+                    "display_name": "pm-mcp-core",
+                    "active_plans_count": 2,
+                    "active_epics_count": 0,
+                    "needs_operator_count": 0,
+                    "needs_operator_summary": null,
+                    "setup_needs_operator": false,
+                    "last_activity_at": "2026-10-16T15:29:00Z"
+                  }
+                ]
+              },
+              "GET /api/v1/projects/pm-mcp-clients": {
+                "project_id": "pm-mcp-clients",
+                "display_name": "pm-mcp-clients",
+                "plans": [
+                  {
+                    "plan_id": "fix-relay",
+                    "title": "Fix Relay Transport",
+                    "current_phase": "execute",
+                    "phase_state": "running",
+                    "running_since": "2026-10-16T13:28:00Z",
+                    "phase_entered_at": "2026-10-16T15:13:00Z",
+                    "tasks_done": 2,
+                    "tasks_total": 3,
+                    "epic_id": "relay-hardening",
+                    "epic_title": "Relay Hardening",
+                    "pull_request_number": 214,
+                    "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+                    "off_track_signal": "repeating"
+                  },
+                  {
+                    "plan_id": "relay-metrics",
+                    "title": "Relay metrics",
+                    "current_phase": "execute",
+                    "phase_state": "waiting_for_you",
+                    "needs_operator_kind": "condition",
+                    "needs_operator_count": 1,
+                    "running_since": "2026-10-16T09:20:00Z",
+                    "phase_entered_at": "2026-10-16T14:20:00Z",
+                    "tasks_done": 8,
+                    "tasks_total": 8,
+                    "epic_id": "relay-hardening",
+                    "epic_title": "Relay Hardening"
+                  },
+                  {
+                    "plan_id": "drop-legacy-api",
+                    "title": "Drop the legacy endpoints",
+                    "current_phase": "finalize",
+                    "phase_state": "running",
+                    "running_since": "2026-10-16T12:10:00Z",
+                    "phase_entered_at": "2026-10-16T15:45:00Z",
+                    "tasks_done": 4,
+                    "tasks_total": 4
+                  }
+                ],
+                "epics": [
+                  {
+                    "epic_id": "relay-hardening",
+                    "title": "Relay Hardening",
+                    "running_since": "2026-10-13T15:38:00Z",
+                    "running_plans_count": 2,
+                    "staged_plans_count": 3,
+                    "plans_done": 4,
+                    "plans_total": 9,
+                    "plans": [
+                      {
+                        "plan_id": "fix-relay",
+                        "title": "Fix Relay Transport",
+                        "current_phase": "execute",
+                        "phase_state": "running",
+                        "running_since": "2026-10-16T13:28:00Z",
+                        "phase_entered_at": "2026-10-16T15:13:00Z",
+                        "tasks_done": 2,
+                        "tasks_total": 3,
+                        "epic_id": "relay-hardening",
+                        "epic_title": "Relay Hardening",
+                        "pull_request_number": 214,
+                        "pull_request_url": "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+                        "off_track_signal": "repeating"
+                      },
+                      {
+                        "plan_id": "relay-metrics",
+                        "title": "Relay metrics",
+                        "current_phase": "execute",
+                        "phase_state": "waiting_for_you",
+                        "needs_operator_kind": "condition",
+                        "needs_operator_count": 1,
+                        "running_since": "2026-10-16T09:20:00Z",
+                        "phase_entered_at": "2026-10-16T14:20:00Z",
+                        "tasks_done": 8,
+                        "tasks_total": 8,
+                        "epic_id": "relay-hardening",
+                        "epic_title": "Relay Hardening"
+                      }
+                    ]
+                  }
+                ],
+                "alongside_landings": []
+              }
+            }
+          }
+        },
+        "links": []
+      },
+      "links": {},
+      "events": [
+        {
+          "after_ms": 100,
+          "event": "needs_operator.changed",
+          "data": {
+            "event": "needs_operator.changed",
+            "at": "2026-10-16T15:45:00Z",
+            "scope": {
+              "kind": "workspace",
+              "project_id": "pm-mcp-clients"
+            },
+            "project_id": "pm-mcp-clients",
+            "plan_id": "relay-metrics"
           }
         }
       ]

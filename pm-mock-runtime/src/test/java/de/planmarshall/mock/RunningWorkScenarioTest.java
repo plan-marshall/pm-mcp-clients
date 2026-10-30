@@ -251,7 +251,10 @@ class RunningWorkScenarioTest {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#overview.plan-ending")) {
                 var detail = ProjectDetailResponse.fromJson(
                         get(runtime, "/api/v1/projects/pm-mcp-clients").bodyText());
-                assertEquals("ended", detail.plans().get(1).phaseState());
+                var ended = detail.plans().stream()
+                        .filter(plan -> "drop-legacy-api".equals(plan.planId()))
+                        .findFirst().orElseThrow();
+                assertEquals("ended", ended.phaseState());
 
                 var page = EndedWorkPage.fromJson(
                         get(runtime, "/api/v1/projects/pm-mcp-clients/ended").bodyText());
@@ -262,6 +265,125 @@ class RunningWorkScenarioTest {
                         "merged", "no_change", "aborted", "handed_back", "cancelled", "abandoned",
                         "released", "completed")));
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("The stable order")
+    class TheStableOrder {
+
+        @Test
+        @DisplayName("serves projects that need the operator first, then the oldest active work")
+        void projectsInStableOrder() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                // pm-mcp-clients and plan-marshall need the operator; of the rest, pm-mcp-core's
+                // oldest active work (09:38) started before plan-marshall's (14:38).
+                assertEquals(List.of("pm-mcp-clients", "plan-marshall", "pm-mcp-core"), projectIds(client, auth));
+
+                var gotoRes = client.send(HttpRequest.json("POST", "/mock/goto/overview.needs-changed", "{}"));
+                assertEquals(200, gotoRes.status());
+
+                // plan-marshall answered its setup, so it falls behind pm-mcp-core, whose work
+                // started first.
+                assertEquals(List.of("pm-mcp-clients", "pm-mcp-core", "plan-marshall"), projectIds(client, auth));
+            }
+        }
+
+        @Test
+        @DisplayName("an activity event moves no row")
+        void activityMovesNoRow() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                var before = planIds(client, auth);
+                assertEquals(List.of("drop-legacy-api", "fix-relay", "relay-metrics"), before);
+
+                var broadcast = JsonTree.write(Map.of(
+                        "event", "activity.changed",
+                        "data", Map.of("plan_id", "relay-metrics", "phase", "execute")));
+                assertEquals(200, client.send(HttpRequest.json("POST", "/mock/broadcast", broadcast)).status());
+
+                assertEquals(before, planIds(client, auth));
+            }
+        }
+
+        @Test
+        @DisplayName("a row moves when its item stops needing the operator and another starts")
+        void needsChangeMovesTheRow() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                assertEquals(List.of("drop-legacy-api", "fix-relay", "relay-metrics"), planIds(client, auth));
+
+                var gotoRes = client.send(HttpRequest.json("POST", "/mock/goto/overview.needs-changed", "{}"));
+                assertEquals(200, gotoRes.status());
+
+                // relay-metrics now needs the operator and stands first; drop-legacy-api answered
+                // its decision and falls behind fix-relay, which started later.
+                assertEquals(List.of("relay-metrics", "fix-relay", "drop-legacy-api"), planIds(client, auth));
+            }
+        }
+
+        @Test
+        @DisplayName("a row moves when its item ends")
+        void endedRowMoves() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                assertEquals(List.of("drop-legacy-api", "fix-relay", "relay-metrics"), planIds(client, auth));
+
+                var gotoRes = client.send(HttpRequest.json("POST", "/mock/goto/overview.plan-ending", "{}"));
+                assertEquals(200, gotoRes.status());
+
+                // An ended row is no running work: it stands after the active rows.
+                assertEquals(List.of("fix-relay", "relay-metrics", "drop-legacy-api"), planIds(client, auth));
+            }
+        }
+
+        @Test
+        @DisplayName("serves a measured size of change on a plan and none on a plan without one")
+        void servesTheChangeSize() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var detail = JsonTree.asObject(JsonTree.parse(
+                        get(runtime, "/api/v1/projects/pm-mcp-clients").bodyText()));
+                var plans = JsonTree.asArray(detail.get("plans"));
+
+                var measured = JsonTree.asObject(plans.get(1));
+                assertEquals("fix-relay", JsonTree.string(measured, "plan_id"));
+                var change = JsonTree.asObject(measured.get("change"));
+                assertNotNull(change, "a plan of a measured scenario carries change");
+                assertEquals(12, JsonTree.integer(change, "files"));
+                assertEquals(340, JsonTree.integer(change, "insertions"));
+                assertEquals(27, JsonTree.integer(change, "deletions"));
+                assertEquals(2, JsonTree.integer(change, "unplanned"));
+
+                var unmeasured = JsonTree.asObject(plans.get(0));
+                assertEquals("drop-legacy-api", JsonTree.string(unmeasured, "plan_id"));
+                assertNull(unmeasured.get("change"), "a plan with no capture carries no size");
+            }
+        }
+
+        private static List<String> planIds(UnixSocketHttpClient client, String auth) throws Exception {
+            var res = client.send(HttpRequest.get("/api/v1/projects/pm-mcp-clients")
+                    .withHeader("Authorization", auth));
+            assertEquals(200, res.status());
+            return ProjectDetailResponse.fromJson(new String(res.body())).plans().stream()
+                    .map(plan -> plan.planId())
+                    .toList();
+        }
+
+        private static List<String> projectIds(UnixSocketHttpClient client, String auth) throws Exception {
+            var res = client.send(HttpRequest.get("/api/v1/projects").withHeader("Authorization", auth));
+            assertEquals(200, res.status());
+            return ProjectOverviewResponse.fromJson(new String(res.body())).projects().stream()
+                    .map(summary -> summary.projectId())
+                    .toList();
         }
     }
 

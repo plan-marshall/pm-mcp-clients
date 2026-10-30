@@ -956,6 +956,12 @@
                 "duration_seconds": 9600,
                 "paused_seconds": 1200,
                 "paused_by": "you",
+                "change": {
+                  "files": 12,
+                  "insertions": 340,
+                  "deletions": 27,
+                  "unplanned": 2
+                },
                 "deliverables": [
                   {
                     "name": "cursor write order",
@@ -1564,6 +1570,12 @@
                 "duration_seconds": 9600,
                 "paused_seconds": 1200,
                 "paused_by": "you",
+                "change": {
+                  "files": 12,
+                  "insertions": 340,
+                  "deletions": 27,
+                  "unplanned": 2
+                },
                 "deliverables": [
                   {
                     "name": "cursor write order",
@@ -2018,6 +2030,12 @@
                 "duration_seconds": 9600,
                 "paused_seconds": 1200,
                 "paused_by": "you",
+                "change": {
+                  "files": 12,
+                  "insertions": 340,
+                  "deletions": 27,
+                  "unplanned": 2
+                },
                 "deliverables": [
                   {
                     "name": "cursor write order",

@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -5404,35 +5405,180 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return new LinkedHashMap<>(kinds);
     }
 
+    /**
+     * Serves one scenario route, applying the one stable order of running work to the overview
+     * families: what needs the operator first, then the newest started; projects by the start of
+     * their oldest active work, the oldest first. The mock derives the order on every read from the
+     * records it serves rather than trusting the fixture's spelling of it, so an activity event
+     * moves no row while a row moves as soon as its item starts or ends, or starts or stops needing
+     * the operator.
+     */
     private void handleRouteWithDynamicStatus(RouteDefinition route, String path, MockHttpResponse response) throws IOException {
         var rep = route.representation();
         if ("/api/v1/status".equals(path) && rep instanceof Map<?, ?> map) {
             handleStatusRoute(route, map, response);
             return;
         }
-        if (PATH_PROJECTS.equals(path) && rep instanceof Map<?, ?> map && map.get(CONST_PROJECTS) instanceof List<?> list) {
-            var sorted = new ArrayList<>(list);
-            sorted.sort((a, b) -> {
-                if (a instanceof Map<?, ?> ma && b instanceof Map<?, ?> mb) {
-                    var countA = JsonTree.integer(JsonTree.asObject(ma), "needs_operator_count");
-                    boolean needA = (countA != null && countA > 0) || Boolean.TRUE.equals(ma.get("setup_needs_operator"));
-                    var countB = JsonTree.integer(JsonTree.asObject(mb), "needs_operator_count");
-                    boolean needB = (countB != null && countB > 0) || Boolean.TRUE.equals(mb.get("setup_needs_operator"));
-                    if (needA != needB) {
-                        return needA ? -1 : 1;
-                    }
-                }
-                return 0;
-            });
-            var copy = new LinkedHashMap<String, Object>();
-            for (var entry : map.entrySet()) {
-                copy.put(String.valueOf(entry.getKey()), entry.getValue());
-            }
-            copy.put(CONST_PROJECTS, sorted);
+        if (rep instanceof Map<?, ?> map && (PATH_PROJECTS.equals(path) || "/api/v1/overview".equals(path))
+                && map.get(CONST_PROJECTS) instanceof List<?> list) {
+            var copy = orderedMap(map);
+            copy.put(CONST_PROJECTS, orderedProjects(list));
             response.json(route.status(), copy);
             return;
         }
+        if (rep instanceof Map<?, ?> map && path.startsWith(PATH_PROJECTS_PREFIX) && !path.endsWith("/ended")) {
+            var detail = JsonTree.asObject(rep);
+            if (detail != null && (detail.get("plans") instanceof List<?> || detail.get("epics") instanceof List<?>)) {
+                var copy = orderedMap(map);
+                copy.put("plans", orderedActiveWork(rowsOf(detail, "plans")));
+                var epics = new ArrayList<Object>();
+                for (var epicRow : rowsOf(detail, "epics")) {
+                    var epicMap = JsonTree.asObject(epicRow);
+                    if (epicMap != null && epicMap.get("plans") instanceof List<?> epicPlans) {
+                        var epicCopy = orderedMap(epicMap);
+                        epicCopy.put("plans", orderedActiveWork(epicPlans));
+                        epics.add(epicCopy);
+                    } else {
+                        epics.add(epicRow);
+                    }
+                }
+                copy.put("epics", orderedActiveWork(epics));
+                response.json(route.status(), copy);
+                return;
+            }
+        }
         response.json(route.status(), rep);
+    }
+
+    /**
+     * @param projects the projects of the overview as the scenario serves them
+     * @return the projects in the one stable order: what needs the operator first, then the project
+     *         whose oldest active work started first
+     */
+    private List<Object> orderedProjects(List<?> projects) {
+        var ordered = new ArrayList<Object>(projects);
+        ordered.sort((a, b) -> {
+            var needsA = needsTheOperator(a);
+            var needsB = needsTheOperator(b);
+            if (needsA != needsB) {
+                return needsA ? -1 : 1;
+            }
+            return oldestActiveWorkStart(a).compareTo(oldestActiveWorkStart(b));
+        });
+        return ordered;
+    }
+
+    /**
+     * @param rows the plans or epics of one project or epic as the scenario serves them
+     * @return the rows in the one stable order: an ended row last, then what needs the operator
+     *         first, then the newest started
+     */
+    private List<Object> orderedActiveWork(List<?> rows) {
+        var ordered = new ArrayList<Object>(rows);
+        ordered.sort((a, b) -> {
+            var endedA = ended(a);
+            var endedB = ended(b);
+            if (endedA != endedB) {
+                return endedA ? 1 : -1;
+            }
+            var needsA = needsTheOperator(a);
+            var needsB = needsTheOperator(b);
+            if (needsA != needsB) {
+                return needsA ? -1 : 1;
+            }
+            return createdAt(b).compareTo(createdAt(a));
+        });
+        return ordered;
+    }
+
+    private static boolean needsTheOperator(@Nullable Object row) {
+        var map = JsonTree.asObject(row);
+        if (map == null) {
+            return false;
+        }
+        var count = JsonTree.integer(map, "needs_operator_count");
+        return (count != null && count > 0)
+                || JsonTree.string(map, "needs_operator_kind") != null
+                || Boolean.TRUE.equals(map.get("setup_needs_operator"));
+    }
+
+    private static boolean ended(@Nullable Object row) {
+        var map = JsonTree.asObject(row);
+        return map != null && "ended".equals(JsonTree.string(map, "phase_state"));
+    }
+
+    /**
+     * @param row a plan, an epic, or a project row
+     * @return the row's {@code created_at}, the start it fell back to, or the far future when the
+     *         fixture measures neither, so an unmeasurable row never jumps ahead
+     */
+    private static Instant createdAt(@Nullable Object row) {
+        var map = JsonTree.asObject(row);
+        if (map == null) {
+            return Instant.MAX;
+        }
+        var created = JsonTree.string(map, "created_at");
+        if (created == null) {
+            created = JsonTree.string(map, "running_since");
+        }
+        if (created == null) {
+            return Instant.MAX;
+        }
+        try {
+            return Instant.parse(created);
+        } catch (DateTimeParseException _) {
+            return Instant.MAX;
+        }
+    }
+
+    /**
+     * @param projectRow a project row of the overview
+     * @return the start of the project's oldest active work, read from the project's own record;
+     *         the far future when the scenario serves no work for it
+     */
+    private Instant oldestActiveWorkStart(@Nullable Object projectRow) {
+        var map = JsonTree.asObject(projectRow);
+        if (map == null) {
+            return Instant.MAX;
+        }
+        var projectId = JsonTree.string(map, "project_id");
+        if (projectId == null) {
+            return Instant.MAX;
+        }
+        var detailRoute = activeRoute("GET", PATH_PROJECTS_PREFIX + projectId);
+        if (detailRoute == null) {
+            return Instant.MAX;
+        }
+        var detail = JsonTree.asObject(detailRoute.representation());
+        if (detail == null) {
+            return Instant.MAX;
+        }
+        var oldest = Instant.MAX;
+        for (var row : rowsOf(detail, "plans")) {
+            var start = createdAt(row);
+            if (start.isBefore(oldest)) {
+                oldest = start;
+            }
+        }
+        for (var row : rowsOf(detail, "epics")) {
+            var start = createdAt(row);
+            if (start.isBefore(oldest)) {
+                oldest = start;
+            }
+        }
+        return oldest;
+    }
+
+    private static List<?> rowsOf(Map<String, Object> map, String key) {
+        return map.get(key) instanceof List<?> list ? list : List.of();
+    }
+
+    private static Map<String, Object> orderedMap(Map<?, ?> map) {
+        var copy = new LinkedHashMap<String, Object>();
+        for (var entry : map.entrySet()) {
+            copy.put(String.valueOf(entry.getKey()), entry.getValue());
+        }
+        return copy;
     }
 
     private boolean handleProjectOverviewRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {

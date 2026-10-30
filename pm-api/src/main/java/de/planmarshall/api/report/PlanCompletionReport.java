@@ -24,6 +24,7 @@ import org.jspecify.annotations.Nullable;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.overview.ChangeSize;
 
 /**
  * Immutable completion report of an ended plan ({@code GET /api/v1/plans/{plan_id}/completion}).
@@ -49,6 +50,7 @@ import de.planmarshall.api.json.JsonTree;
  * @param changeMap         the change map the runtime rendered, or {@code null}
  * @param rawEnded          the end time as the runtime wrote it, when it is not an instant
  * @param rawRan            the run duration as the runtime wrote it, or {@code null}
+ * @param change            the size of the plan's change at its last capture, or {@code null}
  */
 public record PlanCompletionReport(
         String planId,
@@ -71,7 +73,8 @@ public record PlanCompletionReport(
         List<OwnCallRecord> ownCalls,
         @Nullable ChangeMapRecord changeMap,
         @Nullable String rawEnded,
-        @Nullable String rawRan
+        @Nullable String rawRan,
+        @Nullable ChangeSize change
 ) {
     public PlanCompletionReport(
             String planId,
@@ -92,7 +95,7 @@ public record PlanCompletionReport(
             List<DecisionRecord> decisionRecords,
             @Nullable TokenUsageRecord tokenUsage
     ) {
-        this(planId, title, from, outcome, terminalReason, pullRequestNumber, pullRequestUrl, reason, startedAt, endedAt, durationSeconds, pausedSeconds, pausedBy, deliverables, replanningRecords, decisionRecords, tokenUsage, List.of(), null, null, null);
+        this(planId, title, from, outcome, terminalReason, pullRequestNumber, pullRequestUrl, reason, startedAt, endedAt, durationSeconds, pausedSeconds, pausedBy, deliverables, replanningRecords, decisionRecords, tokenUsage, List.of(), null, null, null, null);
     }
 
     public PlanCompletionReport(
@@ -116,7 +119,7 @@ public record PlanCompletionReport(
             List<OwnCallRecord> ownCalls,
             @Nullable ChangeMapRecord changeMap
     ) {
-        this(planId, title, from, outcome, terminalReason, pullRequestNumber, pullRequestUrl, reason, startedAt, endedAt, durationSeconds, pausedSeconds, pausedBy, deliverables, replanningRecords, decisionRecords, tokenUsage, ownCalls, changeMap, null, null);
+        this(planId, title, from, outcome, terminalReason, pullRequestNumber, pullRequestUrl, reason, startedAt, endedAt, durationSeconds, pausedSeconds, pausedBy, deliverables, replanningRecords, decisionRecords, tokenUsage, ownCalls, changeMap, null, null, null);
     }
 
     public String ended() {
@@ -145,6 +148,7 @@ public record PlanCompletionReport(
     private static final String FIELD_TOKEN_USAGE = "token_usage";
     private static final String FIELD_OWN_CALLS = "own_calls";
     private static final String FIELD_CHANGE_MAP = "change_map";
+    private static final String FIELD_CHANGE = "change";
 
     public PlanCompletionReport {
         Objects.requireNonNull(planId, "planId");
@@ -188,6 +192,9 @@ public record PlanCompletionReport(
         map.put(FIELD_OWN_CALLS, ownCalls.stream().map(OwnCallRecord::toMap).toList());
         if (changeMap != null) {
             map.put(FIELD_CHANGE_MAP, changeMap.toMap());
+        }
+        if (change != null) {
+            map.put(FIELD_CHANGE, change.toMap());
         }
         return map;
     }
@@ -241,8 +248,9 @@ public record PlanCompletionReport(
         var tokenUsage = parseTokenUsage(map);
         var ownCalls = parseOwnCalls(map);
         var changeMap = parseChangeMap(map);
+        var change = ChangeSize.fromMap(JsonTree.asObject(map.get(FIELD_CHANGE)));
 
-        return new PlanCompletionReport(planId, title, from, outcome, termReason, prNumber, prUrl, reason, startedAt, ended.instant(), duration, paused, pausedBy, deliverables, replan, decisions, tokenUsage, ownCalls, changeMap, ended.raw(), rawRan);
+        return new PlanCompletionReport(planId, title, from, outcome, termReason, prNumber, prUrl, reason, startedAt, ended.instant(), duration, paused, pausedBy, deliverables, replan, decisions, tokenUsage, ownCalls, changeMap, ended.raw(), rawRan, change);
     }
 
     private static ReportFrom parseFrom(Object fromObj, String planId) throws IOException {
