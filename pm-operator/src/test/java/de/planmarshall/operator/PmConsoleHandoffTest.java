@@ -47,7 +47,9 @@ import org.junit.jupiter.api.condition.OS;
 class PmConsoleHandoffTest {
 
     private static final long AWAIT_MILLIS = 15_000L;
-    private static final String PROMPT = "pm \u203a";
+
+    /** The showroom's prompt: three decisions, one integrity pause, one held epic wait. */
+    private static final String PROMPT = "pm [3 questions · 1 integrity pause · 1 held] \u203a";
 
     private MockRuntime runtime;
 

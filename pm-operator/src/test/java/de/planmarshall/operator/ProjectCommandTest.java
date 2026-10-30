@@ -14,10 +14,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -55,6 +59,50 @@ class ProjectCommandTest {
     private int execute(String... args) {
         var context = new OperatorContext(fixture.environment(), tempDir, true);
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    }
+
+    private int executeWithInput(String input, String... args) throws IOException {
+        var inStream = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
+        var outStream = new ByteArrayOutputStream();
+        var terminal = new DumbTerminal(inStream, outStream);
+        var context = new OperatorContext(fixture.environment(), tempDir, true,
+                            ClientEnvironment.capture(fixture.environment()), () -> terminal, null);
+        var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+        out.write(outStream.toString(StandardCharsets.UTF_8));
+        return code;
+    }
+
+    @Test
+    @DisplayName("project setup runs the state dialogue on the project's onboarding resource")
+    void projectSetupRunsTheDialogue() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
+                if (request.bodyText().contains("\"link\"")) {
+                    response.json(200, """
+                                        {"project_id":"cui-parent","state":"project.completed","step":10,
+                                         "total_steps":10,"summary":"cui-parent is ready","links":{}}
+                                        """);
+                } else {
+                    response.json(200, """
+                                        {"project_id":"cui-parent","state":"project.identity","step":2,
+                                         "total_steps":10,"id":"cui-parent","name":"cui-parent","pilot":false,
+                                         "links":{"set":{"href":"/api/v1/projects/cui-parent/setup"}}}
+                                        """);
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = executeWithInput("\n", "project", "setup", "cui-parent");
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, output),
+                            () -> assertTrue(output.contains("Id"), output),
+                            () -> assertTrue(output.contains("cui-parent"), output),
+                            () -> assertTrue(output.contains("The project is ready"), output));
     }
 
     @Test

@@ -35,6 +35,9 @@ import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.report.ReportsPage;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.runtime.RuntimeRecord;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
+import de.planmarshall.operator.dialogue.OnboardingSource;
+import de.planmarshall.operator.dialogue.StateDialogue;
 
 /**
  * Evaluates the runtime and machine onboarding status upon entering {@code pm-operator}
@@ -187,27 +190,53 @@ public final class EntryFlow {
             return new EntryResult(status, badges, pairing.code(), pairing.url());
         } else {
             out.println();
-            out.println(MessageCatalogue.format(locale, "operator.entry.setup_title", Map.of()));
             out.flush();
-            String beginChoice = null;
-            try {
-                beginChoice = reader.readLine(MessageCatalogue.format(locale,
-                                    "operator.console.setup.begin_prompt", Map.of()));
-            } catch (EndOfFileException | UserInterruptException _) {
-                // abort setup on interrupt/EOF
-            }
-            if (beginChoice != null && "q".equalsIgnoreCase(beginChoice.trim())) {
-                out.println(MessageCatalogue.format(locale, "operator.entry.left_before_start", Map.of()));
-                out.flush();
-            }
-            return new EntryResult(status, badges, null, null);
+            runOnboardingDialogue(runtime, out, reader, locale);
+            return refreshedAfterDialogue(runtime);
+        }
+    }
+
+    /**
+     * Re-reads the status after the dialogue, so the badge the console keeps matches the state the
+     * dialogue left: no setup badge once the machine is onboarded, the completed step otherwise.
+     *
+     * @param runtime the runtime client
+     * @return the entry result with the refreshed status and badges
+     * @throws IOException on transport failure
+     */
+    private EntryResult refreshedAfterDialogue(RuntimeClient runtime) throws IOException {
+        var refreshed = StatusCommand.fetch(runtime);
+        return new EntryResult(refreshed, badges(context.clientEnvironment().locale(), refreshed),
+                            null, null);
+    }
+
+    /**
+     * Hands the guided path over to the one state dialogue ({@code CLI-UC-S-06}): the operator
+     * follows the runtime's onboarding states until the machine is ready or leaves with {@code q}.
+     *
+     * @param runtime the runtime client
+     * @param out     the output
+     * @param reader  the console's line reader
+     * @param locale  the interface locale
+     */
+    private void runOnboardingDialogue(RuntimeClient runtime, PrintWriter out, LineReader reader,
+                        String locale) {
+        var dialogue = new StateDialogue(new OnboardingSource(runtime), out, locale,
+                            stateId -> new ChoicePrompt(reader, out, locale, stateId));
+        try {
+            dialogue.run();
+        } catch (StartPrompt.StartLeftException | StartPrompt.MissingInputException _) {
+            // leaving the dialogue sends nothing; the runtime keeps the state it reports
+        } catch (IOException _) {
+            out.println(MessageCatalogue.format(locale, "onboard.error.no_state", Map.of()));
+            out.flush();
         }
     }
 
     private EntryResult runOnboarded(RuntimeClient runtime, Map<String, Object> status,
                         PrintWriter out, boolean isSsh, int webPort) throws IOException {
         ensureLoopbackListener(runtime, webPort);
-        var badges = extractWaitingBadges(status);
+        var badges = badges(context.clientEnvironment().locale(), status);
 
         EntryResult result;
         var locale = context.clientEnvironment().locale();
@@ -440,30 +469,71 @@ public final class EntryFlow {
         return DEFAULT_WEB_PORT;
     }
 
-    static List<String> extractWaitingBadges(Map<String, Object> status) {
+    /**
+     * The prompt badges of a status (04-console.adoc#prompt): one per {@code needs_operator} kind
+     * that is not zero, and the machine's onboarding badge while the machine is not onboarded.
+     *
+     * @param locale the interface locale
+     * @param status the runtime's status
+     * @return the badges, in the order the prompt shows them
+     */
+    static List<String> badges(String locale, Map<String, Object> status) {
         var badges = new ArrayList<String>();
-        if (status.get("needs_operator") instanceof Map<?, ?> needs) {
-            for (var entry : needs.entrySet()) {
-                var kind = String.valueOf(entry.getKey());
-                int countVal = -1;
-                if (entry.getValue() instanceof Number count) {
-                    countVal = count.intValue();
-                } else if (entry.getValue() instanceof JsonNumber jn) {
-                    try {
-                        countVal = (int) jn.longValue();
-                    } catch (NumberFormatException _) {
-                        // ignore invalid
-                    }
-                }
-                if (countVal >= 0) {
-                    var badge = ConsolePrompt.formatBadge(kind, countVal);
-                    if (badge != null) {
-                        badges.add(badge);
-                    }
-                }
+        if (!isMachineOnboarded(status)) {
+            badges.add(ConsolePrompt.formatMachineSetupBadge(locale, getCompletedOnboardStep(status),
+                                STEP_KEYS.size()));
+        }
+        badges.addAll(extractWaitingBadges(locale, status));
+        return badges;
+    }
+
+    static List<String> extractWaitingBadges(Map<String, Object> status) {
+        return extractWaitingBadges("en", status);
+    }
+
+    /**
+     * The badges of what waits for the operator, in the machine's language: one per
+     * {@code needs_operator} kind whose count is not zero (04-console.adoc#prompt).
+     *
+     * @param locale the interface locale
+     * @param status the runtime's status
+     * @return the badges, in the order the status names the kinds
+     */
+    static List<String> extractWaitingBadges(String locale, Map<String, Object> status) {
+        if (!(status.get("needs_operator") instanceof Map<?, ?> needs)) {
+            return List.of();
+        }
+        var badges = new ArrayList<String>();
+        for (var entry : needs.entrySet()) {
+            var count = countOf(entry.getValue());
+            if (count < 0) {
+                continue;
+            }
+            var badge = ConsolePrompt.formatBadge(locale, String.valueOf(entry.getKey()), count);
+            if (badge != null) {
+                badges.add(badge);
             }
         }
         return badges;
+    }
+
+    /**
+     * @param value the count the status reports for one kind
+     * @return the count, or {@code -1} when the value is no number
+     */
+    private static int countOf(@Nullable Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value instanceof JsonNumber jsonNumber) {
+            try {
+                return (int) jsonNumber.longValue();
+                // cui-rewrite:disable InvalidExceptionUsageRecipe
+            } catch (NumberFormatException _) {
+                return -1;
+            }
+        }
+        return -1;
     }
 
     private String getHostname() {

@@ -24,9 +24,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
@@ -39,6 +39,10 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.SseEvent;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.runtime.RuntimeClient;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
+import de.planmarshall.operator.dialogue.OnboardingSource;
+import de.planmarshall.operator.dialogue.StateDialogue;
 import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiScreenDriver;
 
@@ -62,11 +66,19 @@ public final class PmConsole {
     /** The verbs that draw their full-screen view on the terminal the console already owns. */
     private static final Set<String> FULL_SCREEN_VERBS = Set.of(PLANS, "plan", "projects", "system");
 
+    /** The notice kind of a question, named once for the switch labels and the badge-text scan. */
+    private static final String KIND_QUESTION = "question";
+
+    /** The kinds that only report or withdraw something: nothing is put in front of the operator. */
+    private static final Set<String> UNNOTIFIED_KINDS = Set.of("report", "answered_elsewhere", "paired",
+                        "fresh_code");
+
     private final OperatorContext context;
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
     private final AtomicInteger controlDCounter = new AtomicInteger();
-    private final List<String> badges = new CopyOnWriteArrayList<>();
+    /** The prompt's badges, replaced as a whole so a draw never sees a half-updated set. */
+    private final AtomicReference<List<String>> badges = new AtomicReference<>(List.of());
     private final ConsoleNoticeBuffer noticeBuffer;
 
     private volatile @Nullable String activePairingCode;
@@ -122,7 +134,7 @@ public final class PmConsole {
         activePairingCode = entryResult.activeCode();
         activePairingUrl = entryResult.activeUrl();
         webPort = EntryFlow.getWebPort(entryResult.status());
-        badges.addAll(entryResult.initialBadges());
+        badges.set(List.copyOf(entryResult.initialBadges()));
         updateWindowTitle(terminal);
         printFullScreenHint(out, terminal);
 
@@ -166,7 +178,7 @@ public final class PmConsole {
     private @Nullable String readCommand(LineReader reader, PrintWriter out, String locale) {
         while (running.get()) {
             try {
-                var line = reader.readLine(ConsolePrompt.format(locale, badges, reconnecting.get()));
+                var line = reader.readLine(ConsolePrompt.format(locale, badges.get(), reconnecting.get()));
                 return line == null ? null : line.trim();
             } catch (UserInterruptException e) {
                 if (e.getPartialLine() == null || e.getPartialLine().isEmpty()) {
@@ -186,9 +198,9 @@ public final class PmConsole {
     }
 
     private boolean hasOpenQuestions() {
-        for (var badge : badges) {
+        for (var badge : badges.get()) {
             var lower = badge.toLowerCase(Locale.ROOT);
-            if (lower.contains("question") || lower.contains("frage") || lower.contains("waiver")) {
+            if (lower.contains(KIND_QUESTION) || lower.contains("frage") || lower.contains("waiver")) {
                 return true;
             }
         }
@@ -197,9 +209,9 @@ public final class PmConsole {
 
     private int questionCount() {
         int total = 0;
-        for (var badge : badges) {
+        for (var badge : badges.get()) {
             var lower = badge.toLowerCase(Locale.ROOT);
-            if (lower.contains("question") || lower.contains("frage") || lower.contains("waiver")) {
+            if (lower.contains(KIND_QUESTION) || lower.contains("frage") || lower.contains("waiver")) {
                 total += leadingCount(badge);
             }
         }
@@ -227,26 +239,52 @@ public final class PmConsole {
     private void handleEmptyEnter(PrintWriter out, LineReader reader) {
         var locale = locale();
         boolean hasSetup = false;
-        for (var b : badges) {
+        for (var b : badges.get()) {
             if (b.startsWith("setup") || b.startsWith("Einrichtung")) {
                 hasSetup = true;
                 break;
             }
         }
         if (hasSetup) {
-            out.println(MessageCatalogue.format(locale, "operator.entry.setup_title", Map.of()));
+            continueOnboarding(out, reader, locale);
+        }
+    }
+
+    /**
+     * Continues the open onboarding on the empty prompt: the one state dialogue reads the state the
+     * runtime reports and follows it ({@code CLI-UC-S-06}).
+     *
+     * @param out    the console's writer
+     * @param reader the console's line reader
+     * @param locale the interface locale
+     */
+    private void continueOnboarding(PrintWriter out, LineReader reader, String locale) {
+        try {
+            var runtime = context.runtime(true);
+            var dialogue = new StateDialogue(new OnboardingSource(runtime), out, locale,
+                                stateId -> new ChoicePrompt(reader, out, locale, stateId));
+            dialogue.run();
+            refreshSetupBadge(runtime, locale);
+        } catch (StartPrompt.StartLeftException | StartPrompt.MissingInputException _) {
+            // leaving the dialogue sends nothing; the runtime keeps the state it reports
+        } catch (IOException _) {
+            out.println(MessageCatalogue.format(locale, "onboard.error.no_state", Map.of()));
             out.flush();
-            String beginChoice = null;
-            try {
-                beginChoice = reader.readLine(MessageCatalogue.format(locale,
-                                    "operator.console.setup.begin_prompt", Map.of()));
-            } catch (EndOfFileException | UserInterruptException _) {
-                // abort continuation on interrupt/EOF
-            }
-            if (beginChoice != null && "q".equalsIgnoreCase(beginChoice.trim())) {
-                out.println(MessageCatalogue.format(locale, "operator.console.setup.left", Map.of()));
-                out.flush();
-            }
+        }
+    }
+
+    /**
+     * Replaces the setup badge after the dialogue, so a completed onboarding leaves no badge and a
+     * stopped one names the step it stopped at.
+     *
+     * @param runtime the runtime client
+     * @param locale  the interface locale
+     */
+    private void refreshSetupBadge(RuntimeClient runtime, String locale) {
+        try {
+            badges.set(List.copyOf(EntryFlow.badges(locale, StatusCommand.fetch(runtime))));
+        } catch (IOException _) {
+            // the badge keeps what the entry flow reported
         }
     }
 
@@ -445,32 +483,98 @@ public final class PmConsole {
      */
     void applyConsoleEvent(@Nullable String eventName, Map<String, Object> eventMap, LineReader reader) {
         var locale = locale();
-        var notice = ConsoleNotice.fromEventMap(locale, eventMap);
+        var kind = noticeKind(eventName, eventMap);
+        var notice = ConsoleNotice.fromEventMap(locale, eventName, eventMap);
         if (notice != null) {
-            var category = categoryOf(eventMap);
+            var category = categoryOf(kind);
             if (!noticeBuffer.hold(category, countOf(eventMap, category))) {
                 reader.printAbove(notice);
             }
-            notifyOperator(reader.getTerminal(), eventMap);
+            notifyOperator(reader.getTerminal(), kind, eventMap);
+        }
+        if (notice != null || changesWaitingItems(eventName)) {
+            refreshBadges(reader.getTerminal());
         }
         var name = eventName != null ? eventName : "";
-        var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
+        var payload = ConsoleNotice.payloadOf(eventMap);
+        var type = kind != null ? kind : "";
         if ("device.paired".equals(name) || "paired".equals(type)) {
-            var label = JsonTree.string(eventMap, "label");
+            var label = JsonTree.string(payload, "label");
             printAboveOrHold(reader, MessageCatalogue.format(locale, "operator.console.paired",
                                 Map.of("label", TerminalSanitizer.sanitize(label != null ? label : "local"))));
             if ("device.paired".equals(name)) {
                 issueFreshCodeAbove(reader);
             }
         } else if ("fresh_code".equals(type)) {
-            activePairingCode = JsonTree.string(eventMap, "code");
-            activePairingUrl = JsonTree.string(eventMap, "url");
+            activePairingCode = JsonTree.string(payload, "code");
+            activePairingUrl = JsonTree.string(payload, "url");
         }
     }
 
+    /**
+     * Resolves the notice kind of one event, so the buffer and the notification name the same kind
+     * the notice was rendered from.
+     *
+     * @param eventName the SSE event name, or {@code null}
+     * @param eventMap  the parsed event payload
+     * @return the notice kind, or {@code null} when the event becomes no notice
+     */
+    private static @Nullable String noticeKind(@Nullable String eventName, Map<String, Object> eventMap) {
+        var notice = ConsoleNotice.noticeKindOf(eventName, eventMap);
+        return notice != null ? notice.notice() : null;
+    }
+
+    /**
+     * Rebuilds the prompt badges from the runtime's {@code needs_operator} summary after an event,
+     * so a question answered in the web app leaves the badge at once (04-console.adoc#prompt). The
+     * counts stay the runtime's; the client never counts them itself.
+     *
+     * <p>JLine offers no way to replace the prompt of a line that is already being read, so the
+     * prompt itself shows the refreshed badges at its next draw; the window title, which carries
+     * the same badges, is updated here and now.
+     *
+     * @param terminal the terminal whose window title carries the badges
+     */
+    private void refreshBadges(Terminal terminal) {
+        List<String> refreshed;
+        try {
+            refreshed = EntryFlow.badges(locale(), StatusCommand.fetch(context.runtime(false)));
+        } catch (IOException _) {
+            // the runtime did not answer this read: keep the badges it last gave us
+            return;
+        }
+        if (refreshed.equals(badges.get())) {
+            return;
+        }
+        badges.set(List.copyOf(refreshed));
+        updateWindowTitle(terminal);
+    }
+
+    /**
+     * @param kind the notice kind
+     * @return the catalogue key of the label a desktop notification names the kind by
+     */
+    private static String notificationLabelKey(String kind) {
+        return switch (kind) {
+            case KIND_QUESTION -> "overview.needs.decision";
+            case "waiver_request" -> "overview.needs.waiver_request";
+            default -> "overview.needs." + kind;
+        };
+    }
+
+    /**
+     * @param eventName the SSE event name, or {@code null}
+     * @return {@code true} when the event can change what waits for the operator
+     */
+    private static boolean changesWaitingItems(@Nullable String eventName) {
+        return eventName != null && (eventName.startsWith("decision.") || eventName.startsWith("hold.")
+                            || eventName.startsWith("condition.") || eventName.startsWith("needs_operator."));
+    }
+
     private static int countOf(Map<String, Object> eventMap, ConsoleNoticeBuffer.Category category) {
+        var payload = ConsoleNotice.payloadOf(eventMap);
         if (category == ConsoleNoticeBuffer.Category.REPORT
-                            && eventMap.get("count") instanceof Number number && number.intValue() > 1) {
+                            && payload.get("count") instanceof Number number && number.intValue() > 1) {
             return Math.min(number.intValue(), 10_000);
         }
         return 1;
@@ -488,11 +592,10 @@ public final class PmConsole {
         }
     }
 
-    private static ConsoleNoticeBuffer.Category categoryOf(Map<String, Object> eventMap) {
-        var type = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
-        return switch (type) {
-            case "question", "decision", "waiver_request" -> ConsoleNoticeBuffer.Category.DECISION;
-            case "report", "report.sent" -> ConsoleNoticeBuffer.Category.REPORT;
+    private static ConsoleNoticeBuffer.Category categoryOf(@Nullable String kind) {
+        return switch (kind != null ? kind : "") {
+            case KIND_QUESTION, "decision", "waiver_request", "answered_elsewhere" -> ConsoleNoticeBuffer.Category.DECISION;
+            case "report" -> ConsoleNoticeBuffer.Category.REPORT;
             default -> ConsoleNoticeBuffer.Category.NEED;
         };
     }
@@ -526,15 +629,28 @@ public final class PmConsole {
         out.flush();
     }
 
-    private void notifyOperator(Terminal terminal, Map<String, Object> eventMap) {
-        if (!notify) {
+    /**
+     * Sends one desktop notification for an event that puts something in front of the operator: the
+     * payload names the scope and the localized label of the kind, never the text of the item
+     * (04-console.adoc#notifications). An event that only reports or withdraws something — a report,
+     * an answer given elsewhere, a pairing — notifies nothing.
+     *
+     * @param terminal the terminal to notify on
+     * @param kind     the notice kind, or {@code null}
+     * @param eventMap the event frame
+     */
+    private void notifyOperator(Terminal terminal, @Nullable String kind, Map<String, Object> eventMap) {
+        if (!notify || kind == null || UNNOTIFIED_KINDS.contains(kind)) {
             return;
         }
-        var kind = String.valueOf(eventMap.getOrDefault("type", eventMap.getOrDefault("event", "")));
-        var scope = String.valueOf(eventMap.getOrDefault("scope", ""));
+        var scope = ConsoleNotice.scopeOf(eventMap);
+        if (scope.isBlank()) {
+            return;
+        }
+        var label = MessageCatalogue.format(locale(), notificationLabelKey(kind), Map.of());
         var payload = MessageCatalogue.format(locale(), "operator.console.notification.line",
                             Map.of("scope", TerminalSanitizer.sanitize(scope),
-                                                "kind", TerminalSanitizer.sanitize(kind)));
+                                                "kind", TerminalSanitizer.sanitize(label)));
         terminal.writer().write("\u001B]9;" + TerminalSanitizer.sanitizeNotification(payload) + "\u0007");
         terminal.writer().flush();
     }
@@ -566,8 +682,8 @@ public final class PmConsole {
 
     private void updateWindowTitle(Terminal terminal) {
         var title = new StringBuilder("pm-operator");
-        if (!badges.isEmpty()) {
-            title.append(" [").append(String.join(" \u00b7 ", badges)).append(']');
+        if (!badges.get().isEmpty()) {
+            title.append(" [").append(String.join(" \u00b7 ", badges.get())).append(']');
         }
         TerminalTitle.set(terminal, title.toString());
     }

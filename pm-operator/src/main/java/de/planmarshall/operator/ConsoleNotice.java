@@ -9,10 +9,13 @@
  */
 package de.planmarshall.operator;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.event.EventKind;
+import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 
 /**
@@ -37,8 +40,14 @@ public final class ConsoleNotice {
     private static final String CONDITION = "condition";
     private static final String COUNT = "count";
     private static final String SUBJECT = "subject";
+    private static final String ID = "id";
+    private static final String LABEL = "label";
+    private static final String CHANNEL = "channel";
     private static final String KEY_PROJECT = "project";
     private static final String DETAIL = "detail";
+
+    /** The channel of an answer this console posted itself (02-operator-channel.adoc). */
+    private static final String CHANNEL_CLI = "cli";
 
     private ConsoleNotice() {
     }
@@ -87,7 +96,7 @@ public final class ConsoleNotice {
         Objects.requireNonNull(scope, SCOPE);
         var sb = new StringBuilder(BULLET);
         sb.append(MessageCatalogue.format(locale, "operator.console.question.notice",
-                            Map.of("id", id, SCOPE, scope)));
+                            Map.of(ID, id, SCOPE, scope)));
         if (summary != null && !summary.isBlank()) {
             sb.append(" \u00b7 ").append(TerminalSanitizer.sanitize(summary));
         }
@@ -100,7 +109,7 @@ public final class ConsoleNotice {
             sb.append(MessageCatalogue.format(locale, "operator.console.question.recommended",
                                 Map.of(OPTION, TerminalSanitizer.sanitize(recommendation)))).append('\n');
         }
-        sb.append(MessageCatalogue.format(locale, "operator.console.question.hint", Map.of("id", id)));
+        sb.append(MessageCatalogue.format(locale, "operator.console.question.hint", Map.of(ID, id)));
         return sb.toString();
     }
 
@@ -131,13 +140,13 @@ public final class ConsoleNotice {
         var sb = new StringBuilder(BULLET);
         if (gate != null && !gate.isBlank()) {
             sb.append(MessageCatalogue.format(locale, "operator.console.notice.waiver_request",
-                                Map.of("id", id, SCOPE, scope, "gate", TerminalSanitizer.sanitize(gate))));
+                                Map.of(ID, id, SCOPE, scope, "gate", TerminalSanitizer.sanitize(gate))));
         } else {
             sb.append(MessageCatalogue.format(locale, "operator.console.notice.waiver_request_plain",
-                                Map.of("id", id, SCOPE, scope)));
+                                Map.of(ID, id, SCOPE, scope)));
         }
         sb.append('\n');
-        sb.append(MessageCatalogue.format(locale, "operator.console.question.hint", Map.of("id", id)));
+        sb.append(MessageCatalogue.format(locale, "operator.console.question.hint", Map.of(ID, id)));
         return sb.toString();
     }
 
@@ -206,7 +215,7 @@ public final class ConsoleNotice {
      */
     public static String formatPairedNotice(String locale, String label) {
         return CHECK + MessageCatalogue.format(locale, "operator.console.paired",
-                            Map.of("label", TerminalSanitizer.sanitize(label)));
+                            Map.of(LABEL, TerminalSanitizer.sanitize(label)));
     }
 
     /**
@@ -266,11 +275,11 @@ public final class ConsoleNotice {
         var safeAnswer = TerminalSanitizer.sanitize(answer);
         if (device != null && !device.isBlank()) {
             return DASH + MessageCatalogue.format(locale, "operator.console.question.answered_elsewhere",
-                                Map.of("id", id, "channel", channel, "device", TerminalSanitizer.sanitize(device),
+                                Map.of(ID, id, CHANNEL, channel, "device", TerminalSanitizer.sanitize(device),
                                                     OPTION, safeAnswer));
         }
         return DASH + MessageCatalogue.format(locale, "operator.console.question.answered_elsewhere_plain",
-                            Map.of("id", id, "channel", channel, OPTION, safeAnswer));
+                            Map.of(ID, id, CHANNEL, channel, OPTION, safeAnswer));
     }
 
     /**
@@ -280,7 +289,7 @@ public final class ConsoleNotice {
      * @return formatted notice, or {@code null} if event requires no notice
      */
     public static @Nullable String fromEventMap(@Nullable Map<String, Object> event) {
-        return fromEventMap(DEFAULT_LOCALE, event);
+        return fromEventMap(DEFAULT_LOCALE, null, event);
     }
 
     /**
@@ -291,35 +300,297 @@ public final class ConsoleNotice {
      * @return formatted notice, or {@code null} if event requires no notice
      */
     public static @Nullable String fromEventMap(String locale, @Nullable Map<String, Object> event) {
+        return fromEventMap(locale, null, event);
+    }
+
+    /**
+     * Formats the notice an SSE event becomes: the event name decides the notice through the
+     * shared table of {@link EventKind}, and the {@code type} member of the data is the fallback
+     * only (CLI-UC-P-04).
+     *
+     * @param locale    the interface locale
+     * @param eventName the SSE event name, or {@code null} when the caller has none
+     * @param event     the event data map
+     * @return formatted notice, or {@code null} if event requires no notice
+     */
+    public static @Nullable String fromEventMap(String locale, @Nullable String eventName,
+                        @Nullable Map<String, Object> event) {
         if (event == null) {
             return null;
         }
-        var type = String.valueOf(event.getOrDefault("type", event.getOrDefault("event", "")));
-        return switch (type) {
-            case "question", "decision" -> formatQuestion(locale,
-                                TerminalSanitizer.sanitize(String.valueOf(event.getOrDefault("id", "Q-???"))),
-                                TerminalSanitizer.sanitize(String.valueOf(event.getOrDefault(SCOPE, "plan"))),
-                                stringOf(event, "summary"),
-                                stringOf(event, "text"),
-                                stringOf(event, "recommendation"));
-            case "waiver_request" -> formatWaiverRequest(locale,
-                                TerminalSanitizer.sanitize(String.valueOf(event.getOrDefault("id", "WR-?"))),
-                                TerminalSanitizer.sanitize(String.valueOf(event.getOrDefault(SCOPE, "plan"))),
-                                stringOf(event, "gate"));
-            case "paired" -> formatPairedNotice(locale,
-                                String.valueOf(event.getOrDefault("label", "unknown")));
-            case "fresh_code" -> formatFreshCodeNotice(locale,
-                                TerminalSanitizer.sanitize(String.valueOf(event.get("code"))),
-                                TerminalSanitizer.sanitize(String.valueOf(event.getOrDefault("valid_until", ""))),
-                                String.valueOf(event.getOrDefault("url", "")));
-            case "operator_wait", "integrity_pause", "stalled", CONDITION, "held", "landing_failed", "findings", "setup" ->
-                formatHoldNotice(locale,
-                                    type,
-                                    String.valueOf(event.getOrDefault(SCOPE, "")),
-                                    String.valueOf(event.getOrDefault(DETAIL, event.getOrDefault(REASON, ""))));
-            case "report.sent", "report" -> formatReportNotice(locale, event);
-            default -> null;
+        var payload = payloadOf(event);
+        var kind = noticeKindOf(eventName, event);
+        if (kind == null) {
+            return null;
+        }
+        return switch (kind) {
+            case QUESTION -> questionNotice(locale, payload);
+            case WAIVER_REQUEST -> waiverNotice(locale, payload);
+            case ANSWERED_ELSEWHERE -> answeredElsewhere(locale, payload);
+            case PAIRED -> formatPairedNotice(locale,
+                                String.valueOf(payload.getOrDefault(LABEL, "unknown")));
+            case FRESH_CODE -> formatFreshCodeNotice(locale,
+                                TerminalSanitizer.sanitize(String.valueOf(payload.get("code"))),
+                                TerminalSanitizer.sanitize(String.valueOf(payload.getOrDefault("valid_until", ""))),
+                                String.valueOf(payload.getOrDefault("url", "")));
+            case OPERATOR_WAIT, INTEGRITY_PAUSE, STALLED, CONDITION, HELD, LANDING_FAILED, FINDINGS, SETUP ->
+                formatHoldNotice(locale, kind.notice(), scopeOf(event), detailOf(payload));
+            case REPORT -> formatReportNotice(locale, reportOf(payload));
+            case HOLD -> null;
         };
+    }
+
+    /**
+     * The data of one streamed event: the runtime frames every event in its envelope
+     * ({@code event}, {@code id}, {@code at}, {@code scope}, {@code data}), so the payload is the
+     * {@code data} member; a legacy event that carries its fields at the top is its own payload.
+     *
+     * @param event the parsed event frame
+     * @return the payload to render from
+     */
+    public static Map<String, Object> payloadOf(Map<String, Object> event) {
+        var data = JsonTree.object(event, "data");
+        return data != null ? data : event;
+    }
+
+    /**
+     * Resolves the notice kind of one event: the event name first, the data's {@code type} only as
+     * the fallback, and the hold family's own {@code kind} for a hold.
+     *
+     * @param eventName the SSE event name, or {@code null}
+     * @param event     the event data
+     * @return the notice kind, or {@code null} when the event becomes no notice
+     */
+    public static @Nullable EventKind noticeKindOf(@Nullable String eventName, Map<String, Object> event) {
+        var payload = payloadOf(event);
+        var byName = EventKind.fromEventName(eventName);
+        if (byName == null) {
+            byName = EventKind.fromEventName(JsonTree.string(event, "event"));
+        }
+        if (byName == EventKind.HOLD) {
+            return EventKind.fromType(stringOf(payload, "kind"));
+        }
+        if (byName != null) {
+            return byName == EventKind.QUESTION && isWaiver(payload) ? EventKind.WAIVER_REQUEST : byName;
+        }
+        var byType = EventKind.fromType(textOr(payload, "type", ""));
+        if (byType == EventKind.QUESTION && isWaiver(payload)) {
+            return EventKind.WAIVER_REQUEST;
+        }
+        return byType == EventKind.HOLD ? EventKind.fromType(stringOf(payload, "kind")) : byType;
+    }
+
+    /**
+     * Formats the answered-elsewhere notice of a decision that another channel answered, or
+     * {@code null} for an answer over the console's own channel: a console cannot tell its own
+     * answer from another console's, and it never claims that nothing was sent from here about an
+     * answer it may have sent itself.
+     *
+     * @param locale the interface locale
+     * @param event  the event data
+     * @return the notice, or {@code null}
+     */
+    private static @Nullable String answeredElsewhere(String locale, Map<String, Object> event) {
+        var channel = stringOf(event, CHANNEL);
+        if (channel == null || channel.isBlank() || CHANNEL_CLI.equalsIgnoreCase(channel)) {
+            return null;
+        }
+        return formatAnsweredElsewhere(locale,
+                            TerminalSanitizer.sanitize(textOr(event, ID, "Q-???")),
+                            channelText(locale, channel),
+                            stringOf(event, "device"),
+                            stringOf(event, "answer"));
+    }
+
+    private static String channelText(String locale, String channel) {
+        var key = "operator.console.channel." + channel;
+        return MessageCatalogue.hasKey(locale, key)
+                            ? MessageCatalogue.format(locale, key, Map.of())
+                            : TerminalSanitizer.sanitize(channel);
+    }
+
+    /**
+     * Formats the question notice of a decision: the envelope the runtime pushes nests it under
+     * {@code decision}, the legacy data carries the fields at the top; the summary is the shared
+     * {@code decision.blocks.<what>} label and the recommendation names its option's label.
+     *
+     * @param locale the interface locale
+     * @param event  the event data
+     * @return the question notice
+     */
+    private static String questionNotice(String locale, Map<String, Object> event) {
+        var source = decisionSource(event);
+        return formatQuestion(locale,
+                            TerminalSanitizer.sanitize(textOr(source, ID, textOr(event, ID, "Q-???"))),
+                            TerminalSanitizer.sanitize(firstText(source, event, SCOPE, SUBJECT, "plan")),
+                            summaryOf(locale, source),
+                            firstText(source, event, "description", "text", null),
+                            recommendationOf(source));
+    }
+
+    /**
+     * Formats the waiver notice: a waiver request shares the decision envelope (and the
+     * {@code decision.opened} event) with a question, and names its gate instead of a recommendation.
+     *
+     * @param locale the interface locale
+     * @param event  the event data
+     * @return the waiver notice
+     */
+    private static String waiverNotice(String locale, Map<String, Object> event) {
+        var source = decisionSource(event);
+        return formatWaiverRequest(locale,
+                            TerminalSanitizer.sanitize(textOr(source, ID, textOr(event, ID, "WR-?"))),
+                            TerminalSanitizer.sanitize(firstText(source, event, SCOPE, SUBJECT, "plan")),
+                            firstText(source, event, "waiver_gate", "gate", null));
+    }
+
+    /**
+     * @param event the event data
+     * @return the decision envelope the event nests, or the data itself when it is the envelope
+     */
+    private static Map<String, Object> decisionSource(Map<String, Object> event) {
+        var decision = JsonTree.object(event, "decision");
+        if (decision == null) {
+            decision = JsonTree.object(event, "question");
+        }
+        return decision != null ? decision : event;
+    }
+
+    /**
+     * @param event the event data, or the decision envelope
+     * @return {@code true} when the runtime opened a waiver request rather than a question
+     */
+    private static boolean isWaiver(Map<String, Object> event) {
+        var source = decisionSource(event);
+        return Boolean.TRUE.equals(JsonTree.bool(source, "is_waiver"))
+                            || "waiver".equals(stringOf(source, "kind"))
+                            || stringOf(source, "waiver_gate") != null
+                            || textOr(source, ID, "").startsWith("WR-");
+    }
+
+    private static @Nullable String summaryOf(String locale, Map<String, Object> source) {
+        var blocks = stringOf(source, "blocks");
+        if (blocks != null) {
+            var key = "decision.blocks." + blocks;
+            return MessageCatalogue.hasKey(locale, key) ? MessageCatalogue.format(locale, key, Map.of()) : blocks;
+        }
+        return firstText(source, source, "summary", "title", null);
+    }
+
+    private static @Nullable String recommendationOf(Map<String, Object> source) {
+        var parts = JsonTree.asArray(source.get("parts"));
+        if (parts != null && !parts.isEmpty()) {
+            var part = JsonTree.asObject(parts.get(0));
+            if (part != null) {
+                var key = stringOf(part, "recommendation");
+                var label = key != null ? optionLabel(part, key) : null;
+                if (label != null) {
+                    return key + ") " + label;
+                }
+            }
+        }
+        return stringOf(source, "recommendation");
+    }
+
+    private static @Nullable String optionLabel(Map<String, Object> part, String key) {
+        var options = JsonTree.asArray(part.get("options"));
+        if (options == null) {
+            return null;
+        }
+        for (var option : options) {
+            var map = JsonTree.asObject(option);
+            if (map != null && key.equals(stringOf(map, "key"))) {
+                return stringOf(map, LABEL);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param source the map to read first
+     * @param event  the map to read when {@code source} carries no value
+     * @param first  the first key to try
+     * @param second the second key to try
+     * @param absent the value to answer when neither map carries either key
+     * @return the first present text
+     */
+    private static @Nullable String firstText(Map<String, Object> source, Map<String, Object> event,
+                        String first, String second, @Nullable String absent) {
+        var value = stringOf(source, first);
+        if (value == null) {
+            value = stringOf(source, second);
+        }
+        if (value == null && source != event) {
+            value = firstText(event, event, first, second, absent);
+        }
+        return value != null ? value : absent;
+    }
+
+    private static String textOr(Map<String, Object> map, String key, String absent) {
+        var value = stringOf(map, key);
+        return value != null ? value : absent;
+    }
+
+    /**
+     * @param event the event frame, its payload, or a decision envelope
+     * @return the scope a notice names: the subject of a hold, the subject of a decision, the plan,
+     *         epic, or scope it carries, or the scope the runtime's envelope declares
+     */
+    static String scopeOf(Map<String, Object> event) {
+        var payload = payloadOf(event);
+        var candidates = List.of(event, payload, decisionSource(payload), decisionSource(event));
+        for (var candidate : candidates) {
+            var found = firstScopeString(candidate);
+            if (found != null) {
+                return found;
+            }
+        }
+        var declared = JsonTree.object(event, SCOPE);
+        if (declared != null) {
+            var id = stringOf(declared, ID);
+            if (id != null && !id.isBlank()) {
+                return id;
+            }
+            var projectId = stringOf(declared, "project_id");
+            if (projectId != null && !projectId.isBlank()) {
+                return projectId;
+            }
+        }
+        var project = stringOf(event, KEY_PROJECT);
+        return project != null && !project.isBlank() ? project : "";
+    }
+
+    private static @Nullable String firstScopeString(Map<String, Object> map) {
+        for (var key : List.of(SCOPE, "subject_id", SUBJECT, "epic", "plan", "plan_id", "epic_id")) {
+            var value = stringOf(map, key);
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param event the event data
+     * @return the detail a notice names: what the hold holds it for, else the reason it carries
+     */
+    private static String detailOf(Map<String, Object> event) {
+        for (var key : List.of(DETAIL, REASON, "cause")) {
+            var value = stringOf(event, key);
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return "";
+    }
+
+    /**
+     * @param event the event data
+     * @return the report the event carries, or the data itself when it is the report
+     */
+    private static Map<String, Object> reportOf(Map<String, Object> event) {
+        var report = JsonTree.object(event, "report");
+        return report != null ? report : event;
     }
 
     /**
@@ -345,7 +616,7 @@ public final class ConsoleNotice {
             return QUIET + MessageCatalogue.format(locale, "operator.console.notice.reports_many",
                                 Map.of(COUNT, num.intValue(), SCOPE, TerminalSanitizer.sanitize(scope)));
         }
-        var id = String.valueOf(event.getOrDefault("id", ""));
+        var id = String.valueOf(event.getOrDefault(ID, ""));
         var subject = stringOf(event, SUBJECT);
         var leaf = extractLeaf(event);
 
@@ -362,7 +633,7 @@ public final class ConsoleNotice {
                                 Map.of("leaf", safeLeaf, SUBJECT, safeSubject));
         }
         return QUIET + MessageCatalogue.format(locale, "operator.console.notice.report_line_open",
-                            Map.of("leaf", safeLeaf, SUBJECT, safeSubject, "id", TerminalSanitizer.sanitize(id)));
+                            Map.of("leaf", safeLeaf, SUBJECT, safeSubject, ID, TerminalSanitizer.sanitize(id)));
     }
 
     private static @Nullable String stringOf(Map<String, Object> event, String key) {

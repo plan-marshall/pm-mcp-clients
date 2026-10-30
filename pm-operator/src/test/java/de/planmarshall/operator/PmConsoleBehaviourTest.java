@@ -21,6 +21,7 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
 
@@ -136,6 +137,67 @@ class PmConsoleBehaviourTest {
     }
 
     @Test
+    @DisplayName("an envelope decision notifies with the scope the envelope declares")
+    void notificationFromEnvelope() throws Exception {
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            new PmConsole(context).applyConsoleEvent("decision.opened", Map.of(
+                                                    "event", "decision.opened",
+                                                    "id", 7,
+                                                    "scope", Map.of("kind", "plan", "id", "fix-relay"),
+                                                    "data", Map.of("decision", Map.of(
+                                                                        "id", "Q-007", "subject", "plan fix-relay", "blocks", "plan"))),
+                                reader);
+        }
+        var text = rendered.toString(StandardCharsets.UTF_8);
+        final var start = text.indexOf("\u001B]9;");
+        final var notification = text.substring(start, text.indexOf('\u0007', start));
+        assertAll(
+                            () -> assertTrue(notification.contains("plan fix-relay"), notification),
+                            () -> assertTrue(notification.contains("decision"), notification),
+                            () -> assertFalse(notification.contains("Q-007"), notification)
+        );
+    }
+
+    @Test
+    @DisplayName("an event rebuilds the prompt badges and the window title from the status")
+    void badgesRefreshFromTheStatus() throws Exception {
+        var calls = new AtomicInteger();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                var count = calls.getAndIncrement() == 0 ? 3 : 2;
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true,"
+                                    + "\"needs_operator\":{\"question\":" + count + "}}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            var decision = Map.<String, Object>of("event", "decision.opened",
+                                "data", Map.of("decision", Map.of(
+                                                    "id", "Q-007", "subject", "plan fix-relay", "blocks", "plan")));
+
+            console.applyConsoleEvent("decision.opened", decision, reader);
+            console.applyConsoleEvent("decision.opened", decision, reader);
+        }
+        var text = rendered.toString(StandardCharsets.UTF_8);
+        assertAll(
+                            () -> assertTrue(text.contains("pm-operator [3 questions]"), text),
+                            () -> assertTrue(text.contains("pm-operator [2 questions]"), text)
+        );
+    }
+
+    @Test
     @DisplayName("the notification payload names the scope and the kind, never the question text")
     void notificationPayload() throws Exception {
         var rendered = new ByteArrayOutputStream();
@@ -152,7 +214,7 @@ class PmConsoleBehaviourTest {
         var notification = text.substring(text.indexOf("\u001B]9;"));
         notification = notification.substring(0, notification.indexOf('\u0007'));
         assertTrue(notification.contains("plan fix-relay"), notification);
-        assertTrue(notification.contains("question"), notification);
+        assertTrue(notification.contains("decision"), notification);
         assertFalse(notification.contains("a secret summary"), notification);
         assertFalse(notification.contains("the text of the question"), notification);
     }
