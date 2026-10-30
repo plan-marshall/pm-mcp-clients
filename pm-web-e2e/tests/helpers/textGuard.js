@@ -33,7 +33,15 @@ export const TEXT_GUARD_RULES = Object.freeze([
  */
 const FOREIGN_INTERFACE_WORDS = Object.freeze({
   de: Object.freeze(['running', 'done', 'failed', 'paused', 'busy', 'idle', 'ago']),
-  en: Object.freeze(['läuft', 'fertig', 'fehlgeschlagen', 'pausiert', 'beschäftigt', 'untätig', 'vor']),
+  en: Object.freeze([
+    'läuft',
+    'fertig',
+    'fehlgeschlagen',
+    'pausiert',
+    'beschäftigt',
+    'untätig',
+    'vor',
+  ]),
 });
 
 /**
