@@ -21,6 +21,7 @@ Status: `FINAL`. The design of the web app, the specification its implementation
 * link:brand-mark.adoc[Brand Mark]: the project's own `24 × 24` mark: construction, the brand colour, meaning of the parts, provenance, delivery as an inline `currentColor` drawing and as the two tab copies, the uses (rail head, pairing page, empty states, favicon with the attention dot), theme, accessibility, and usage.
 * link:theme-readability.adoc[Theme Readability]: the design token contract, WCAG 2.1 AA contrast compliance, the audit allowlist, and automated verification across light and dark themes.
 * link:process-designer.adoc[Process Designer] with link:process-designer-texts.adoc[its Texts]: designing a workflow unit, the one part only the web app offers: the input (an uploaded file, a pasted text, an installed unit), the text and the structure side by side, the building blocks, the unit's frontmatter, validating with the composed process, placing on the machine or in the project with the difference first, removing.
+* link:needs-and-find.adoc[What Waits and Find]: where the two views of link:../shared/needs-and-find.adoc[What Waits, and Going to Work by Name] live in the app: the list of what waits as the start page at `/`, its rail destination with the count, the top-bar search button that opens the find panel over the view, and the keys of this document's own parts.
 
 Everything else the web app shows is designed once for both clients in the shared designs (<<structure>>).
 
@@ -77,6 +78,9 @@ How the app is organised and how one moves from one part to another and back. Un
 
 |Running work and ended work
 |link:../shared/plan-overview.adoc[Plan Overview] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]), with the ended plans and epics (link:../shared/plan-overview.adoc#ended[Ended Work]) and their read-only chat (link:../shared/work-actions.adoc#chat-ended[A Chat About Ended Work])
+
+|What waits, and finding work by name
+|link:../shared/needs-and-find.adoc[What Waits, and Going to Work by Name] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-8[UC-PLN-8]). Where they live: the list as the start page (`/`) and the first rail entry with its total, the find panel over the current view behind the top bar's search button (`Ctrl+K`, `/`), as link:needs-and-find.adoc[What Waits and Find] says; built by link:../../plans/needs-and-find.adoc[`needs-and-find`]
 
 |A plan
 |link:../shared/plan-view.adoc[Plan View] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1]) with link:plan-view-interaction.adoc[Plan View Interaction] for the tree/narrative selection semantics; a plan's reference to its epic is a link

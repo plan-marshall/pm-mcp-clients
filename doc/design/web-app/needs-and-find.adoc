@@ -1,0 +1,101 @@
+= Design: What Waits and Find in the Web App
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:README.adoc[Web App] » What Waits and Find
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-8[UC-PLN-8]_
+
+_Relies on: link:../shared/needs-and-find.adoc[What Waits, and Going to Work by Name], link:../shared/plan-overview.adoc[Plan Overview], link:../web-app/view-density-and-filtering.adoc[View Density and Filtering], link:../web-app/interaction-affordances.adoc[Interaction Affordances]_
+
+Status: `AGREED` (accepted by the operator on 2026-10-31, together with the shared design). The web part of the work package link:../../plans/needs-and-find.adoc[`needs-and-find`]: where the two views of link:../shared/needs-and-find.adoc[What Waits, and Going to Work by Name] live in the app, and how they are reached. What each view shows is the shared design's; this document adds only the route, the rail, the search button, and the start page.
+
+[#start-page]
+== The Start Page Is What Waits
+
+*The decision of 2026-10-31*: the list of what waits is the web app's start page, at `/`, and the app opens there after pairing and whenever the operator opens it without a remembered place. PLAN-49 built no route beyond this one; its text that assumed `/` stands confirmed.
+
+The reason is the question the operator opens the app with: "what needs me now?". An app that opens on what runs answers a question the operator asked second. Nothing is lost on the way: the running work is one step away, because the list's empty state names it and the rail carries it beside the list.
+
+A remembered place still wins, as it does today (link:../shared/plan-overview.adoc#persistence[Plan Overview, Where the Operator Left It]): a browser that left the app on a plan opens that plan, and only a browser without one opens on the list.
+
+[#route]
+== The Route and the Rail
+
+* *One route of its own*: `/` for the list, in the frame of the app, with the tab title carrying the total while there is one (`What waits · 4`), as the reports' and the system's routes do with their own counts.
+* *A destination of the rail*: the first entry, named by `web.rail.needs`, with the list's total as its count while there is one (`! 4`), so the count is visible from every other view. The rail entry stays visible when nothing waits, without a count.
+* *The running work* keeps its rail entry and its routes (link:../shared/plan-overview.adoc[Plan Overview]); the list is not a second way into it, and the running work is not a second way into the list, apart from the empty state's one line.
+* *The phone* shows the same list as the first item of its bottom bar, with the total; the table/list switch of the view density design applies to the rows (link:view-density-and-filtering.adoc[View Density and Filtering]).
+* *The page keeps its place*: scrolling the list loads the next page at its end (`Show more`), never on scroll alone, so the count beside the rail entry and the rows on screen never disagree about being complete.
+
+[#list-layout]
+== The List in the Frame
+
+* *The rows* are the shared design's (link:../shared/needs-and-find.adoc#waits[The List of What Waits]): kind with icon, colour and word, title, path, since, what it blocks, and the act. The act is a button that opens the place the act belongs to; the list itself performs no act, so an item resolved elsewhere leaves rather than being answered twice.
+* *Nothing waits*: the empty state (`overview.needs.empty`) and, below it, the projects with running work as the overview's project rows (link:../shared/plan-overview.adoc#project-row[A Project]), each one step to its project.
+* *A quiet notice* for an item resolved in another client, in the frame's polite live region (as a new report is, link:../shared/reports.adoc#notice[Reports]): one line, no sound, never a browser notification, the tab title updated.
+* *A due cleanup* is an item here and opens the cleanup job (link:../shared/cleanup.adoc[Cleanup]); the report `system.cleanup_due` remains a report and adds nothing to the list.
+* *A credential* is an item here and opens the machine settings' providers (link:machine-settings.adoc[Machine Settings]); a credential an onboarding still owes is a project's `setup` item and opens that onboarding step.
+
+[#search]
+== The Search Button of the Top Bar
+
+The button of the top bar that is disabled today with `web.frame.search.pending` becomes the way into going to work by name (link:../shared/needs-and-find.adoc#find[Going to Work by Name]):
+
+* *The label* is `web.frame.search` with the advisory `web.frame.search.title`; the pending key is retired by the plan that enables the button (PLAN-46).
+* *It opens a panel over the view the operator is on*, never a route: the operator is looking for a place, so the view behind the panel stays where it was and `Esc` returns to it. `Ctrl+K` (and `/` while nothing in a field has the focus) opens the same panel; `Esc` closes it; the field has the focus when the panel opens.
+* *The panel* holds the one field and the matches (link:../shared/needs-and-find.adoc#find[Going to Work by Name]): grouped by kind in the order served, running work first, ended work marked, each match one step. It reads `GET /api/v1/find?q=` when the text pauses, never on every keystroke, and the last answer wins.
+* *An empty field* shows the hint (`overview.find.hint`), never a request; *no match* says so and keeps the text (`overview.find.empty`); *a match* is opened with the keyboard (`↑`, `↓`, `Enter`) or the pointer, and the selection is anchored to the match's kind and id, not to its row.
+* *Plain text only*: a title may come from a project or from a report, so the panel renders every title as a text node, never as markup and never as a link the app follows (link:../shared/needs-and-find.adoc#find[Going to Work by Name]).
+* *On the phone* the panel covers the view it was opened from, with the keyboard raised once the operator taps the field; the tab title is unchanged and the rail is not reachable while it is open, as with every dialogue of the app.
+
+[#texts]
+== Texts
+
+The keys of the two views are the shared design's, area `overview` (link:../shared/needs-and-find.adoc#texts[The Texts]). The keys of this document's own parts, area `web`:
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`web.rail.needs`
+|What waits
+|Was wartet
+
+|`web.frame.search`
+|Search
+|Suchen
+
+|`web.frame.search.title`
+|Find a project, an epic, a plan, a decision, or a report by name
+|Finde ein Projekt, ein Epic, einen Plan, eine Entscheidung oder einen Bericht nach Namen
+
+|`web.inbox.title`
+|{count, plural, one {1 item waits} other {# items wait}}
+|{count, plural, one {1 Eintrag wartet} other {# Einträge warten}}
+|===
+
+`web.frame.search.pending` (the disabled button's advisory) is retired with the button's enabling. No view of this design carries a text of its own apart from these keys and the shared ones.
+
+[#rely]
+== What the Staged Plans Rely On
+
+Each plan of the work package `needs-and-find` reads one part of this design; a plan that finds the lines below changed is re-scoped before it starts.
+
+[cols="1,3",options="header"]
+|===
+|Plan |The lines of this design (and the shared one) it relies on
+
+|`PLAN-36` (terminal `needs` verb, badges, `!` on the overview)
+|link:../shared/needs-and-find.adoc#waits[The List of What Waits]: the order kept from the runtime, a row's fields (kind, subject, what it blocks, since, the act), the machine's own `credential` and `cleanup_due` items, the kinds' words `overview.needs.credential` and `overview.needs.cleanup_due`; link:../shared/needs-and-find.adoc#terminal[The Terminal Client]: `needs`, the badges counting the machine's summary, the overview's `Needs you` group and `!`.
+
+|`PLAN-46` (web command palette)
+|link:#search[The Search Button of the Top Bar]: the button with `web.frame.search` and its advisory, the panel over the view, `Ctrl+K` and `/`, one read per pause against `GET /api/v1/find?q=`, plain text titles; and link:../shared/needs-and-find.adoc#find[Going to Work by Name] for the panel's content.
+
+|`PLAN-49` (web attention inbox as home)
+|link:#start-page[The Start Page Is What Waits]: `/` is the list and the app opens there without a remembered place; link:#route[The Route and the Rail]: the rail entry with the total and the tab title; link:#list-layout[The List in the Frame]: the empty state, the quiet notice for an item resolved elsewhere, the button-per-act rule, a due cleanup opening the cleanup job.
+
+|`PLAN-84` (terminal `find` command)
+|link:../shared/needs-and-find.adoc#find[Going to Work by Name]: the matches, their order, ended work marked, no match keeping the text, the empty text refused; link:../shared/needs-and-find.adoc#terminal[The Terminal Client]: `find <text>`, `--print`, the matches as a choice, and `/` at the empty prompt as the key that opens the find field.
+|===
