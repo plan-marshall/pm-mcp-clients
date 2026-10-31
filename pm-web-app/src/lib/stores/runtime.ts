@@ -18,7 +18,7 @@ import {
   type RouteParams,
   type StartPath,
 } from '../routes';
-import { currentLocale, translate } from '../i18n';
+import { adoptRecordedLocale, currentLocale, translate } from '../i18n';
 
 export type { AppRoute, RouteParams, StartPath };
 
@@ -713,6 +713,7 @@ export async function pairBrowser(code: string): Promise<void> {
   subscribeToEvents();
   void refreshReportsCount();
   void refreshDecisionsCount();
+  await adoptRecordedLocale();
 }
 
 export async function executeLink(link: HypermediaLink | string, body?: unknown): Promise<void> {
@@ -966,9 +967,12 @@ export async function loadOnboardingState(): Promise<OnboardingState | null> {
   }
 }
 
-export async function stepOnboarding(link: string): Promise<void> {
+export async function stepOnboarding(
+  link: string,
+  body: Record<string, unknown> = {},
+): Promise<void> {
   try {
-    applyOnboardingState(await apiClient.stepOnboarding(link));
+    applyOnboardingState(await apiClient.stepOnboarding(link, body));
   } catch {
     // A refused step leaves the state as it is.
   }

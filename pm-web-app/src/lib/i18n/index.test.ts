@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   formatString,
   translate,
   setLocale,
+  setCatalogueVersion,
   currentLocale,
   loadCachedCatalogue,
   loadMessages,
@@ -127,6 +128,11 @@ describe('i18n dynamic message formatting', () => {
 describe('i18n catalogue cache and the never-display-keys shield', () => {
   const CACHED_AT = '2026-10-01T08:00:00.000Z';
 
+  /** @param locale the locale @returns the cache key a browser with no known runtime version uses */
+  function cacheKey(locale: string): string {
+    return `pm_i18n_messages_${locale}@unversioned`;
+  }
+
   /** @param locale the locale @param messages its catalogue @returns a stored entry */
   function catalogueEntry(locale: string, messages: Record<string, string>): string {
     return JSON.stringify({ locale, cachedAt: CACHED_AT, messages });
@@ -143,7 +149,7 @@ describe('i18n catalogue cache and the never-display-keys shield', () => {
     // Arrange
     localStorage.setItem('pm_locale', 'de');
     localStorage.setItem(
-      'pm_i18n_messages_de',
+      cacheKey('de'),
       catalogueEntry('de', { 'boot.cached.label': 'Aus dem Speicher' }),
     );
 
@@ -160,7 +166,7 @@ describe('i18n catalogue cache and the never-display-keys shield', () => {
     // Arrange
     localStorage.setItem('pm_locale', 'de');
     localStorage.setItem(
-      'pm_i18n_messages_de',
+      cacheKey('de'),
       catalogueEntry('de', { 'swr.cached.label': 'Aus dem Speicher' }),
     );
     let resolveFetch: (messages: Record<string, string>) => void = () => {};
@@ -191,7 +197,7 @@ describe('i18n catalogue cache and the never-display-keys shield', () => {
     await loadMessages('de', 'all');
 
     // Assert
-    const stored = JSON.parse(localStorage.getItem('pm_i18n_messages_de') as string);
+    const stored = JSON.parse(localStorage.getItem(cacheKey('de')) as string);
     expect(stored.locale).toBe('de');
     expect(stored.cachedAt).toEqual(expect.any(String));
     expect(stored.messages['cache.write.label']).toBe('Gespeichert');
@@ -200,7 +206,7 @@ describe('i18n catalogue cache and the never-display-keys shield', () => {
   it('keeps the cached messages when the runtime is unreachable', async () => {
     // Arrange
     localStorage.setItem(
-      'pm_i18n_messages_en',
+      cacheKey('en'),
       catalogueEntry('en', { 'offline.cached.label': 'Cached label' }),
     );
     vi.spyOn(apiClient, 'getMessages').mockRejectedValue(new Error('network down'));
@@ -215,7 +221,7 @@ describe('i18n catalogue cache and the never-display-keys shield', () => {
   it('switches to a cached locale while offline', async () => {
     // Arrange
     localStorage.setItem(
-      'pm_i18n_messages_de',
+      cacheKey('de'),
       catalogueEntry('de', { 'locale.offline.label': 'Offline Deutsch' }),
     );
     vi.spyOn(apiClient, 'getMessages').mockRejectedValue(new Error('network down'));
@@ -231,7 +237,7 @@ describe('i18n catalogue cache and the never-display-keys shield', () => {
   it('falls back to the cached English catalogue for a gap in the active locale', async () => {
     // Arrange
     localStorage.setItem(
-      'pm_i18n_messages_en',
+      cacheKey('en'),
       catalogueEntry('en', { 'fallback.only.in.en': 'English only' }),
     );
     vi.resetModules();
@@ -275,14 +281,14 @@ describe('i18n catalogue cache and the never-display-keys shield', () => {
 
   it('ignores and drops a corrupt cached catalogue', () => {
     // Arrange
-    localStorage.setItem('pm_i18n_messages_en', '{not json');
+    localStorage.setItem(cacheKey('en'), '{not json');
 
     // Act
     const cached = loadCachedCatalogue('en');
 
     // Assert
     expect(cached).toBeNull();
-    expect(localStorage.getItem('pm_i18n_messages_en')).toBeNull();
+    expect(localStorage.getItem(cacheKey('en'))).toBeNull();
   });
 
   it('keeps the newly chosen locale when an older full response arrives late', async () => {
@@ -324,7 +330,7 @@ describe('i18n catalogue cache and the never-display-keys shield', () => {
     const store = get(messagesStore);
     expect(store['owned.en.label']).toBe('English');
     expect(store['partial.de.label']).toBeUndefined();
-    const cachedGerman = JSON.parse(localStorage.getItem('pm_i18n_messages_de') as string);
+    const cachedGerman = JSON.parse(localStorage.getItem(cacheKey('de')) as string);
     expect(cachedGerman.messages['partial.de.label']).toBe('Deutsch');
     expect(cachedGerman.messages['owned.en.label']).toBeUndefined();
   });
@@ -337,5 +343,93 @@ describe('i18n catalogue cache and the never-display-keys shield', () => {
 
     // Act & Assert
     expect(() => persistCatalogue('en', { 'quota.label': 'Fits in memory' })).not.toThrow();
+  });
+});
+
+describe('the locale switch never mixes the two catalogues', () => {
+  const SUMMARY_KEY = 'overview.project.counts';
+  const SUMMARIES: Record<string, Record<string, string>> = {
+    de: {
+      [SUMMARY_KEY]:
+        '{plans, plural, one {# Plan} other {# Pläne}} · {epics, plural, one {# Epic} other {# Epics}}',
+    },
+    en: {
+      [SUMMARY_KEY]:
+        '{plans, plural, one {# plan} other {# plans}} · {epics, plural, one {# epic} other {# epics}}',
+    },
+  };
+
+  /** @returns the summary a view composes from the active catalogue */
+  function summary(): string {
+    return get(t)(SUMMARY_KEY, { plans: 3, epics: 1 });
+  }
+
+  beforeEach(async () => {
+    localStorage.clear();
+    messagesStore.set({});
+    currentLocale.set('en');
+    vi.restoreAllMocks();
+    vi.spyOn(apiClient, 'getMessages').mockImplementation((locale) =>
+      Promise.resolve(SUMMARIES[locale] ?? {}),
+    );
+    currentLocale.set('de');
+    await loadMessages('de', 'all');
+  });
+
+  afterEach(() => {
+    setCatalogueVersion(null);
+  });
+
+  it('switches de → en → de without a word of the other locale in a summary', async () => {
+    expect(summary()).toBe('3 Pläne · 1 Epic');
+
+    await setLocale('en');
+    expect(summary()).toBe('3 plans · 1 epic');
+
+    await setLocale('de');
+    expect(summary()).toBe('3 Pläne · 1 Epic');
+  });
+
+  it('keeps the old locale and catalogue while the new one is still loading', async () => {
+    let resolveEnglish: (messages: Record<string, string>) => void = () => {};
+    vi.spyOn(apiClient, 'getMessages').mockImplementation((locale) =>
+      locale === 'en'
+        ? new Promise<Record<string, string>>((resolve) => {
+            resolveEnglish = resolve;
+          })
+        : Promise.resolve(SUMMARIES[locale] ?? {}),
+    );
+
+    const switching = setLocale('en');
+
+    expect(get(currentLocale)).toBe('de');
+    expect(summary()).toBe('3 Pläne · 1 Epic');
+
+    resolveEnglish(SUMMARIES.en);
+    await switching;
+    expect(summary()).toBe('3 plans · 1 epic');
+  });
+
+  it('keeps the old locale when the new catalogue cannot be loaded at all', async () => {
+    vi.spyOn(apiClient, 'getMessages').mockRejectedValue(new Error('runtime unreachable'));
+
+    await setLocale('en');
+
+    expect(get(currentLocale)).toBe('de');
+    expect(summary()).toBe('3 Pläne · 1 Epic');
+  });
+
+  it('does not serve a catalogue cached for an older runtime version', async () => {
+    // Arrange: a cache written by the runtime this browser saw last time.
+    setCatalogueVersion('0.9.1');
+    persistCatalogue('de', { [SUMMARY_KEY]: 'Aus der alten Fassung' });
+
+    // Act: the runtime now reports a new version.
+    setCatalogueVersion('0.9.2');
+
+    // Assert: the stale entry is not read, and the newer one replaces it.
+    expect(loadCachedCatalogue('de')).toBeNull();
+    persistCatalogue('de', SUMMARIES.de);
+    expect(loadCachedCatalogue('de')?.[SUMMARY_KEY]).toBe(SUMMARIES.de[SUMMARY_KEY]);
   });
 });
