@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { t } from '../i18n';
+  import { t, currentLocale } from '../i18n';
+  import { formatTime } from '../display/format';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
   import Spinner from '../components/Spinner.svelte';
@@ -679,12 +680,14 @@
               plan: dec.subject || $t('decision.waiver.plan_fallback'),
             })}
           </h2>
-          <span class="waiting-time">
-            {$t('decision.waiting', {
-              subject: dec.scope || 'plan',
-              time: dec.delivered_at || 'now',
-            })}
-          </span>
+          {#if dec.delivered_at}
+            <span class="waiting-time">
+              {$t('decision.waiting', {
+                subject: dec.scope || 'plan',
+                time: formatTime(dec.delivered_at, 'short', $currentLocale),
+              })}
+            </span>
+          {/if}
         </header>
 
         <div class="waiver-details">
@@ -1227,12 +1230,14 @@
                     {$t(`decision.reversibility.${dec.reversibility}`)}
                   </span>
                 </span>
-                <span class="waiting-time">
-                  {$t('decision.waiting', {
-                    subject: dec.scope || 'plan',
-                    time: dec.delivered_at || 'now',
-                  })}
-                </span>
+                {#if dec.delivered_at}
+                  <span class="waiting-time">
+                    {$t('decision.waiting', {
+                      subject: dec.scope || 'plan',
+                      time: formatTime(dec.delivered_at, 'short', $currentLocale),
+                    })}
+                  </span>
+                {/if}
               </button>
             {/each}
           </div>

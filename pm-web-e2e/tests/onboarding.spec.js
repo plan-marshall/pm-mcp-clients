@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { MOCK_RUNTIME_URL } from './helpers/ports.js';
+import { openPairingCode } from './helpers/pairing.js';
 
 /**
  * The onboarding route (UC-ONB-1..10) at desktop and phone width, in light and dark.
@@ -101,6 +102,43 @@ test.describe('Onboarding route (UC-ONB-1..10)', () => {
       getComputedStyle(document.documentElement).getPropertyValue('--color-bg-app').trim(),
     );
     expect(background).toBe('#0E1116');
+  });
+});
+
+test.describe('The recorded interface language', () => {
+  test('a fresh browser opens in German after onboarding recorded Deutsch for both', async ({
+    page,
+    request,
+    browser,
+  }) => {
+    // Arrange: onboarding records German for the interface and the models.
+    await openOnboarding(page, request);
+    await page.getByRole('button', { name: /Begin with step 1/i }).click();
+    await page.locator('input[name="interface-language"][value="de"]').check();
+    await page.locator('input[name="model-language"][value="de"]').check();
+    await page.getByTestId('language-record').click();
+    await expect(
+      page.getByRole('heading', { name: 'Look for harnesses on this machine?' }),
+    ).toBeVisible();
+
+    // Act: a fresh browser — empty storage — pairs with the same machine.
+    const freshContext = await browser.newContext();
+    const freshPage = await freshContext.newPage();
+    const code = await openPairingCode(request);
+    await freshPage.goto('/');
+    await freshPage.evaluate(() => localStorage.clear());
+    await freshPage.goto(`/#code=${code}`);
+
+    // Assert: it opens in the recorded language, without a reload. The onboarding state is shared
+    // with the browser above, so the page may stand on any step; the frame is German either way.
+    await expect(freshPage.getByTestId('onboarding-view')).toBeVisible({ timeout: 20000 });
+    await expect(freshPage.getByRole('button', { name: 'Startseite' })).toBeVisible({
+      timeout: 20000,
+    });
+    await expect(freshPage.getByRole('button', { name: 'Sprache wechseln' })).toBeVisible();
+    const stored = await freshPage.evaluate(() => localStorage.getItem('pm_locale'));
+    expect(stored).toBeNull();
+    await freshContext.close();
   });
 });
 

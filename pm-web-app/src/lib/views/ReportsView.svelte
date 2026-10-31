@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { t } from '../i18n';
+  import { t, currentLocale } from '../i18n';
+  import { formatDay, formatTime as formatInstant } from '../display/format';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
   import Spinner from '../components/Spinner.svelte';
@@ -25,6 +26,9 @@
   let noticeFrom = $state('');
   let noticeSubject = $state('');
   let noticeTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The moment the ages are measured at; a quiet timer moves it so an idle list stays true. */
+  let clock = $state(Date.now());
+  let clockTimer: ReturnType<typeof setInterval> | null = null;
 
   let activeDetailPlanId = $state<string | null>(null);
   let syncedRouteReportPlan: string | null | undefined;
@@ -154,7 +158,7 @@
       item.summary,
       item.status,
       readState,
-      formatTime(item),
+      formatReportTime(item),
       item.created_at,
     ];
   }
@@ -227,11 +231,18 @@
     unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
       handleEvent(event, data);
     });
+    clockTimer = setInterval(() => {
+      clock = Date.now();
+    }, 30_000);
     await loadReports();
   });
 
   onDestroy(() => {
     isMounted = false;
+    if (clockTimer !== null) {
+      clearInterval(clockTimer);
+      clockTimer = null;
+    }
     if (noticeTimer) {
       clearTimeout(noticeTimer);
       noticeTimer = null;
@@ -593,17 +604,33 @@
     return report.from?.plan ?? report.from?.epic ?? report.subject;
   }
 
-  function formatTime(item: ReportItem): string {
-    const createdStr = item.created || item.created_at;
-    const isSentLater =
-      (item.sent && item.created && item.sent !== item.created) ||
-      (item.sent_at && item.created_at && item.sent_at !== item.created_at);
+  function formatReportTime(item: ReportItem): string {
+    const now = new Date(clock);
+    const created = formatInstant(item.created_at, 'relative', $currentLocale, now);
+    const isSentLater = Boolean(item.sent_at && item.created_at && item.sent_at !== item.created_at);
 
     if (isSentLater) {
-      const sentStr = item.sent || item.sent_at || '';
-      return `${createdStr} · ${$t('report.list.sent_at', { time: sentStr })}`;
+      const sent =
+        formatInstant(item.sent_at, 'short', $currentLocale, now) || item.sent || '';
+      return `${created} · ${$t('report.list.sent_at', { time: sent })}`;
     }
-    return createdStr;
+    return created;
+  }
+
+  /**
+   * @param item a report
+   * @returns the moment itself, for the row's hover advisory
+   */
+  function reportMoment(item: ReportItem): string {
+    return formatInstant(item.created_at, 'short', $currentLocale, new Date(clock));
+  }
+
+  /**
+   * @param item a report
+   * @returns the day the report was made, in the interface language
+   */
+  function reportDay(item: ReportItem): string {
+    return formatDay(item.created_at, $currentLocale);
   }
 </script>
 
@@ -666,7 +693,9 @@
             {$t('report.state.read')}
           </span>
         {/if}
-        <span class="item-time text-muted">{formatTime(item)}</span>
+        <span class="item-time text-muted" title={reportMoment(item)}
+          >{formatReportTime(item)}</span
+        >
       </div>
 
       {#if item.body || item.summary}
@@ -698,7 +727,7 @@
               disabled
               data-advisory={$t('report.action.details.deleted.title', {
                 item: subjectLabelOf(item),
-                date: item.created || item.created_at,
+                date: reportDay(item),
               })}
             >
               {$t('report.action.details')}
@@ -706,7 +735,7 @@
             <span class="deleted-note text-muted">
               {$t('report.detail.deleted_by_cleanup', {
                 item: subjectLabelOf(item),
-                date: item.created || item.created_at,
+                date: reportDay(item),
               })}
             </span>
           {:else}

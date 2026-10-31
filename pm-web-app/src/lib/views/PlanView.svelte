@@ -26,7 +26,14 @@
     goBack,
     navigateTo,
   } from '../stores/runtime';
-  import { formatSplit, formatTokens, formatDurationSeconds } from '../utils/tokenFormat';
+  import {
+    formatSplit,
+    formatTokens,
+    formatDuration,
+    formatDay,
+    formatTime,
+    type Locale,
+  } from '../display/format';
   import { stripControlSequences } from '../utils/outputSafety';
   import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
   import { displayState } from '../display';
@@ -43,6 +50,8 @@
   let isLoadingBreakdown = $state(false);
   let reportPhaseBreakdown = $state<TokenBreakdownItem[] | null>(null);
   let reportRoleBreakdown = $state<TokenBreakdownItem[] | null>(null);
+  /** The moment the day headers are measured at; a quiet timer moves it across midnight. */
+  let clock = $state(Date.now());
 
   /**
    * How the plan ended: the process resource's own record, or what Ended Work handed the view.
@@ -97,6 +106,7 @@
 
   let unsubscribeEvents: (() => void) | null = null;
   let unsubscribeActivity: (() => void) | null = null;
+  let clockTimer: ReturnType<typeof setInterval> | null = null;
   /**
    * The activity load that owns the panel.
    *
@@ -118,11 +128,18 @@
         void loadPlanProcess(false);
       }
     });
+    clockTimer = setInterval(() => {
+      clock = Date.now();
+    }, 30_000);
 
     await loadPlanProcess(true);
   });
 
   onDestroy(() => {
+    if (clockTimer !== null) {
+      clearInterval(clockTimer);
+      clockTimer = null;
+    }
     if (unsubscribeEvents) {
       unsubscribeEvents();
       unsubscribeEvents = null;
@@ -405,7 +422,7 @@
     });
   }
 
-  function formatTokensLine(tokens?: ProcessTokens | null, loc = 'en'): string {
+  function formatTokensLine(tokens?: ProcessTokens | null, loc: Locale = 'en'): string {
     if (!tokens || tokens.none_yet) {
       return $t('plan.view.tokens_none');
     }
@@ -485,11 +502,50 @@
    * Formats the end time the ended plan carries.
    *
    * @param iso the runtime's ISO timestamp
-   * @returns the timestamp in the operator's locale, or the raw value when it is not a date
+   * @returns the moment to the minute, in the interface language
    */
   function formatEndedAt(iso: string): string {
-    const date = new Date(iso);
-    return Number.isNaN(date.getTime()) ? iso : date.toLocaleString($currentLocale);
+    return formatTime(iso, 'short', $currentLocale);
+  }
+
+  /**
+   * The wall clock of an activity entry.
+   *
+   * The contract allows either an instant or the clock the runtime has already formatted
+   * (`pm-api` `ActivityEntry`): an instant is rendered by the one format, a clock is shown as it
+   * arrives.
+   *
+   * @param timestamp the entry's time as the runtime sends it
+   * @returns the clock, `14:02:11`
+   */
+  function entryClock(timestamp: string): string {
+    return formatTime(timestamp, 'clock', $currentLocale) || timestamp;
+  }
+
+  /**
+   * The day a row opens, where the wire sent an instant for it.
+   *
+   * A clock alone carries no date, so it opens no day: the header appears only for the first row
+   * of each day the runtime dates.
+   *
+   * @param entries the entries of the task's activity
+   * @param index the entry's position
+   * @returns the day to print above the row, or an empty string
+   */
+  function dayLabel(entries: ActivityEntry[], index: number): string {
+    const iso = entries[index]?.timestamp;
+    const day = formatDay(iso, $currentLocale, new Date(clock));
+    if (!day) return '';
+    if (index === 0) return day;
+    const previous = entries[index - 1]?.timestamp;
+    return sameCalendarDay(iso, previous) ? '' : day;
+  }
+
+  /**
+   * @param left an instant @param right another instant @returns whether they fall on one day
+   */
+  function sameCalendarDay(left?: string | null, right?: string | null): boolean {
+    return new Date(left ?? '').toDateString() === new Date(right ?? '').toDateString();
   }
 
   /**
@@ -660,7 +716,7 @@
             {displayState('plan', plan.phase_state, $t)}
           </span>
           {#if plan.duration_seconds > 0}
-            <span class="duration-tag">{formatDurationSeconds(plan.duration_seconds)}</span>
+            <span class="duration-tag">{formatDuration(plan.duration_seconds * 1000, $currentLocale)}</span>
           {/if}
         </div>
       </div>
@@ -860,7 +916,7 @@
                 <span class="node-title font-semibold">{stripControlSequences(node.title)}</span>
                 <span class="node-state-text">{getNodeStateText(node, $t)}</span>
                 {#if node.duration_seconds > 0}
-                  <span class="node-duration">{formatDurationSeconds(node.duration_seconds)}</span>
+                  <span class="node-duration">{formatDuration(node.duration_seconds * 1000, $currentLocale)}</span>
                 {/if}
               </button>
             </div>
@@ -955,9 +1011,9 @@
                   <span class="task-meta">attempt {taskActivity.attempt}</span>
                 </div>
                 <div class="task-metrics mono">
-                  <span>{formatDurationSeconds(taskActivity.duration_seconds)}</span>
+                  <span>{formatDuration(taskActivity.duration_seconds * 1000, $currentLocale)}</span>
                   {#if taskActivity.tokens_so_far > 0}
-                    <span>· {taskActivity.tokens_so_far} tokens</span>
+                    <span>· {formatTokens(taskActivity.tokens_so_far, false, $currentLocale)} {$t('plan.view.tokens')}</span>
                   {/if}
                 </div>
               </div>
@@ -982,12 +1038,16 @@
                 {#if taskActivity.entries.length === 0}
                   <div class="activity-empty text-muted">{$t('plan.activity.empty')}</div>
                 {:else}
-                  {#each taskActivity.entries as entry}
+                  {#each taskActivity.entries as entry, index}
+                    {@const label = dayLabel(taskActivity.entries, index)}
+                    {#if label}
+                      <div class="activity-day mono" data-testid="activity-day">{label}</div>
+                    {/if}
                     <div
                       class="activity-entry activity-entry--{entry.kind}"
                       data-testid="activity-entry"
                     >
-                      <span class="entry-time mono">{entry.timestamp}</span>
+                      <span class="entry-time mono">{entryClock(entry.timestamp)}</span>
                       <span class="entry-kind-tag entry-kind-tag--{entry.kind}"
                         >{displayState('activity', entry.kind, $t)}</span
                       >
@@ -1558,6 +1618,13 @@
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-sm);
     font-size: var(--text-xs);
+  }
+
+  .activity-day {
+    padding: var(--space-1) 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    font-weight: 600;
   }
 
   .entry-time {

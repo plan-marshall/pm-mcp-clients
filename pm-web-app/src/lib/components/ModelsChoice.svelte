@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from '../i18n';
   import Button from './Button.svelte';
-  import { formatTokens } from '../utils/tokenFormat';
+  import { formatTokens } from '../display/format';
   import { currentLocale } from '../i18n';
 
   /**

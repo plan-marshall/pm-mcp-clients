@@ -102,15 +102,11 @@
     return undefined;
   }
 
-  async function handleLinkClick(id: string, link: HypermediaLink, body?: unknown) {
+  async function handleLinkClick(id: string, link: HypermediaLink, body: Record<string, unknown> = {}) {
     if (isSubmitting) return;
     isSubmitting = true;
     try {
-      if (onboardingState) {
-        await stepOnboarding(id);
-      } else {
-        await stepOnboarding(id);
-      }
+      await stepOnboarding(id, body);
       void link;
     } catch {
       // A refused step leaves the state as it is.
@@ -430,9 +426,14 @@
                 model: stringField('model') ?? 'same',
               }}
               busy={isSubmitting}
-              onRecord={() => {
+              onRecord={(choice) => {
                 const target = linkBy('set', 'record') ?? offeredLinks[offeredLinks.length - 1];
-                if (target) void handleLinkClick(target.id, target.link);
+                if (target) {
+                  void handleLinkClick(target.id, target.link, {
+                    language_interface: choice.interface,
+                    language_model: choice.model === 'same' ? choice.interface : choice.model,
+                  });
+                }
               }}
             />
           </div>

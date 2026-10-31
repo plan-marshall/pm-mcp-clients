@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import ReportsView from './ReportsView.svelte';
+import { formatTime } from '../display/format';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
@@ -124,7 +125,11 @@ describe('ReportsView component', () => {
     expect(screen.getByText('Onboarded')).toBeInTheDocument();
 
     // Check sent delay display
-    expect(screen.getByText('today 09:02 · sent today 09:40')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `${formatTime('2026-10-16T09:02:00Z', 'relative', 'en')} · sent ${formatTime('2026-10-16T09:40:00Z', 'short', 'en')}`,
+      ),
+    ).toBeInTheDocument();
   });
 
   it('follows the route report plan while the reports route stays mounted', async () => {
@@ -398,7 +403,7 @@ describe('ReportsView component', () => {
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
     expect(screen.queryByText('Ended: no change')).toBeNull();
 
-    await typeFilter('yesterday');
+    await typeFilter('2026-10-15');
     expect(screen.getByText('Onboarded')).toBeInTheDocument();
     expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
   });
