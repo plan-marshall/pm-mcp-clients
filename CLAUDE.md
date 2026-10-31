@@ -73,6 +73,12 @@ them with a fixture project below `src/guard-controls`:
 - No `System.out`/`System.err` except where a CLI writes its own output.
 - JUnit 5 only (`@DisplayName`, `@Nested`, AAA, `@ParameterizedTest` for 3+ variants). Forbidden: Mockito,
   PowerMock, Hamcrest.
+- Input test data comes from `Generators` (`de.cuioss.test:cui-test-generator`), and every test class that takes
+  input data carries `@EnableGeneratorController`; a hand-written literal is not input. The expected value of a
+  contract — catalogue text, wire name, golden capture — stays literal, because it is the expectation, not input.
+- Logging uses `CuiLogger`; INFO and above logs through `LogRecord` constants of one DSL-style `LogMessages` class per
+  module that logs, never one holder for the repository. `LogAsserts` covers every `LogRecord`.
+- `@NullMarked` (`org.jspecify.annotations`) sits on every package of a module that declares JSpecify.
 - Behaviour of the packaged binaries belongs in `*IT` tests (run with `-Pintegration-tests`, natively with
   `-Pnative`). The CLI modules run against the stub daemon of the test scope of `pm-api`; the binaries against the
   real `pm-mcpd` are covered by `pm-e2e` in `plan-marshall/plan-marshall-mcp`.

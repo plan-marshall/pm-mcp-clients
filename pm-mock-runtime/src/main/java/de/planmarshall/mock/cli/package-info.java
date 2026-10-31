@@ -10,4 +10,7 @@
 /**
  * Command-line interface launcher for standalone mock runtime execution.
  */
+@NullMarked
 package de.planmarshall.mock.cli;
+
+import org.jspecify.annotations.NullMarked;

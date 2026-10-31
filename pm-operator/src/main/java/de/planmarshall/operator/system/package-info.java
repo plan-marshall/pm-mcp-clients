@@ -18,4 +18,7 @@
  * {@link de.planmarshall.operator.system.SystemFormatting} holds the figure formatting the printed
  * and the full-screen view share.
  */
+@NullMarked
 package de.planmarshall.operator.system;
+
+import org.jspecify.annotations.NullMarked;

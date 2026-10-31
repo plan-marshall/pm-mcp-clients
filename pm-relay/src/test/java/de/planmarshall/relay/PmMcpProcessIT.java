@@ -36,6 +36,7 @@ import org.junit.jupiter.api.condition.OS;
 import com.fasterxml.jackson.core.JsonFactory;
 
 import de.planmarshall.api.MachinePaths;
+import de.planmarshall.api.host.HostDetection;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.testsupport.BinaryUnderTest;
 import de.planmarshall.api.testsupport.CliProcess;
@@ -47,6 +48,9 @@ import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import picocli.CommandLine;
 
 /**
@@ -57,6 +61,7 @@ import picocli.CommandLine;
  */
 @DisplayName("pm-mcp serve as a process")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class PmMcpProcessIT {
 
     private static final Duration WAIT = Duration.ofSeconds(10);
@@ -68,6 +73,8 @@ class PmMcpProcessIT {
     private static final int STARTUP_RUNS = 15;
     private static final long BUDGET_MS = 50;
 
+    private final String clientName = Generators.fixedValues(String.class,
+            HostDetection.clientIds().toArray(String[]::new)).next();
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-mcp", PmMcp.class, MachinePaths.class,
             CommandLine.class, JsonFactory.class);
     private RuntimeFixture fixture;
@@ -106,7 +113,7 @@ class PmMcpProcessIT {
 
     private CliProcess relay(Map<String, String> environment) throws IOException {
         var parent = mock != null ? mock.base().getParent() : fixture.base().getParent();
-        return CliProcess.start(binary.with("serve", "--client", "claude"), environment, parent);
+        return CliProcess.start(binary.with("serve", "--client", clientName), environment, parent);
     }
 
     private static FakeRuntimeServer.Handler mcp() {
@@ -245,7 +252,7 @@ class PmMcpProcessIT {
     @DisplayName("refuses a session relay inside a worker with nothing on stdout")
     void refusesInsideWorker() throws Exception {
         var environment = environment();
-        environment.put("PM_MCP_JOB_ID", "job-1");
+        environment.put("PM_MCP_JOB_ID", "job-" + Generators.letterStrings(4, 10).next());
         try (var process = relay(environment)) {
             assertEquals(ServeCommand.EXIT_REFUSED, process.awaitExit(WAIT));
             assertEquals(0, process.stdout().length);

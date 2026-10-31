@@ -97,7 +97,7 @@ public class MockRuntimeExtension implements BeforeEachCallback, AfterEachCallba
         }
         // cui-rewrite:disable InvalidExceptionUsageRecipe
         catch (IOException | RuntimeException e) {
-            LOGGER.error(e, "Error during MockRuntime setup: %s", e.getMessage());
+            logSetupFailure(e);
             throw e;
         } finally {
             if (runtime != null) {
@@ -118,7 +118,7 @@ public class MockRuntimeExtension implements BeforeEachCallback, AfterEachCallba
             }
             // cui-rewrite:disable InvalidExceptionUsageRecipe
             catch (RuntimeException e) {
-                LOGGER.error(e, "Failed to close MockRuntime: %s", e.getMessage());
+                logCloseFailure(e);
                 throw new IllegalStateException("Failed to properly close MockRuntime", e);
             } finally {
                 remove(context);
@@ -263,5 +263,27 @@ public class MockRuntimeExtension implements BeforeEachCallback, AfterEachCallba
                     Joiner.on(", ").join(classHierarchy));
         }
         return classHierarchy;
+    }
+
+    /**
+     * Logs a failed runtime start. The record is asserted through a failing {@code beforeEach}; the
+     * method stays package-private beside {@link #logCloseFailure} so both production messages have
+     * the same surface.
+     *
+     * @param failure the failure that ended the setup
+     */
+    static void logSetupFailure(Exception failure) {
+        LOGGER.error(failure, MockRuntimeLogMessages.ERROR.SETUP_FAILED, failure.getMessage());
+    }
+
+    /**
+     * Logs a failed runtime close. Package-private so that the logging contract is testable: a
+     * {@link MockRuntime} is final and its {@code close()} catches every {@link IOException}, so no
+     * production path reaches the catch that calls this method.
+     *
+     * @param failure the failure that ended the close
+     */
+    static void logCloseFailure(RuntimeException failure) {
+        LOGGER.error(failure, MockRuntimeLogMessages.ERROR.CLOSE_FAILED, failure.getMessage());
     }
 }

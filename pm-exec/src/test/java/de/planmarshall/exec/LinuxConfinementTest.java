@@ -26,7 +26,11 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 @DisplayName("LinuxConfinement: no-new-privileges and the Landlock ruleset")
+@EnableGeneratorController
 class LinuxConfinementTest {
 
     @TempDir
@@ -38,18 +42,23 @@ class LinuxConfinementTest {
     private Path cacheFile;
     private Path jobDir;
     private Path bus;
+    private Path userDir;
+    private Path runtimeDir;
+    private Path systemd;
 
     @BeforeEach
     void tree() throws IOException {
         root = temp.toRealPath();
         Files.createDirectories(root.resolve("usr"));
-        project = Files.createDirectories(root.resolve("home/u/project"));
-        cacheFile = Files.writeString(root.resolve("home/u/.netrc-like"), "x");
-        base = Files.createDirectories(root.resolve("home/u/.plan-marshall-mcp"));
+        var user = Generators.letterStrings(3, 8).next();
+        userDir = Files.createDirectories(root.resolve("home/" + user));
+        project = Files.createDirectories(userDir.resolve(Generators.letterStrings(4, 10).next()));
+        cacheFile = Files.writeString(userDir.resolve(".netrc-like"), "x");
+        base = Files.createDirectories(userDir.resolve(".plan-marshall-mcp"));
         jobDir = Files.createDirectories(base.resolve("run/jobs/l1"));
-        var runtime = Files.createDirectories(root.resolve("run/user/1000"));
-        bus = Files.writeString(runtime.resolve("bus"), "socket");
-        Files.createDirectories(runtime.resolve("systemd"));
+        runtimeDir = Files.createDirectories(root.resolve("run/user/" + Generators.letterStrings(3, 8).next()));
+        bus = Files.writeString(runtimeDir.resolve("bus"), "socket");
+        systemd = Files.createDirectories(runtimeDir.resolve("systemd"));
     }
 
     private Command.Launch launch(List<Path> denied, List<Path> writes) {
@@ -74,6 +83,7 @@ class LinuxConfinementTest {
         assertEquals(0xdL, kernel.accessOf(jobDir));
         assertEquals(-1L, kernel.accessOf(base));
         assertEquals(-1L, kernel.accessOf(root.resolve("home")));
+        assertEquals(-1L, kernel.accessOf(userDir));
         assertTrue(kernel.closed.contains(100));
         assertEquals(kernel.rules.size() + 1, kernel.closed.size());
     }
@@ -87,9 +97,9 @@ class LinuxConfinementTest {
 
         assertEquals(-1L, kernel.accessOf(base));
         assertEquals(-1L, kernel.accessOf(bus));
-        assertEquals(-1L, kernel.accessOf(root.resolve("home/u")));
-        assertEquals(-1L, kernel.accessOf(root.resolve("run/user/1000")));
-        assertEquals(0xdL, kernel.accessOf(root.resolve("run/user/1000/systemd")));
+        assertEquals(-1L, kernel.accessOf(userDir));
+        assertEquals(-1L, kernel.accessOf(runtimeDir));
+        assertEquals(0xdL, kernel.accessOf(systemd));
         assertEquals(0xdL, kernel.accessOf(root.resolve("usr")));
     }
 

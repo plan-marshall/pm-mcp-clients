@@ -16,4 +16,7 @@
  * the runtime themselves. The view stack, the keys, and the terminal belong to
  * {@code de.planmarshall.operator.overview} and {@code de.planmarshall.operator.tui}.
  */
+@NullMarked
 package de.planmarshall.operator.reports;
+
+import org.jspecify.annotations.NullMarked;

@@ -29,6 +29,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 /**
  * The FFM calls of every platform that are safe inside the test JVM, and the downcall plumbing. Calls
  * that change the process for good ({@code setpgid}, a successful {@code execve}) run in
@@ -36,6 +39,7 @@ import org.junit.jupiter.api.condition.OS;
  * {@link LinuxCallsTest}.
  */
 @DisplayName("NativeKernel: plumbing and the calls of every platform in the test JVM")
+@EnableGeneratorController
 class NativeKernelTest {
 
     private final NativeKernel kernel = new NativeKernel(Os.of(System.getProperty("os.name")));
@@ -43,7 +47,9 @@ class NativeKernelTest {
     @Test
     @DisplayName("execve of a missing program returns ENOENT and keeps the process")
     void execveMissing() {
-        assertEquals(2, kernel.execve(List.of("/nonexistent/pm-exec-test-program")));
+        var missing = "/nonexistent/" + Generators.letterStrings(6, 12).next();
+
+        assertEquals(2, kernel.execve(List.of(missing)));
     }
 
     @Test
@@ -72,17 +78,18 @@ class NativeKernelTest {
         @Test
         @DisplayName("a zero result passes, a non-zero result fails with the captured errno")
         void check() {
+            var errno = Generators.integers(1, 4095).next();
             try (var arena = Arena.ofConfined()) {
                 var state = arena.allocate(NativeKernel.CALL_STATE);
-                state.set(JAVA_INT, NativeKernel.CALL_STATE.byteOffset(PathElement.groupElement("errno")), 13);
+                state.set(JAVA_INT, NativeKernel.CALL_STATE.byteOffset(PathElement.groupElement("errno")), errno);
 
-                assertEquals(13, NativeKernel.errno(state));
+                assertEquals(errno, NativeKernel.errno(state));
                 assertDoesNotThrow(() -> NativeKernel.check("setpgid", 0, state, "setpgid(0, 0)"));
                 var e = assertThrows(NativeCallException.class,
                         () -> NativeKernel.check("setpgid", -1, state, "setpgid(0, 0)"));
                 assertEquals("setpgid", e.stage());
-                assertEquals(13, e.errno());
-                assertEquals("setpgid(0, 0) failed with errno 13", e.getMessage());
+                assertEquals(errno, e.errno());
+                assertEquals("setpgid(0, 0) failed with errno " + errno, e.getMessage());
             }
         }
 
