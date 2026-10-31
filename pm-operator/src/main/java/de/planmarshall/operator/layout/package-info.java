@@ -13,4 +13,7 @@
  * runtime {@code pm-mcpd} and the relay {@code pm-mcp} of that same version directory by absolute
  * path (PM-ARCH-1, PM-ARCH-7).
  */
+@NullMarked
 package de.planmarshall.operator.layout;
+
+import org.jspecify.annotations.NullMarked;

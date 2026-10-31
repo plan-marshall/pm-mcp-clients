@@ -10,4 +10,7 @@
 /**
  * Mock runtime state machine, request router, and control engine.
  */
+@NullMarked
 package de.planmarshall.mock.runtime;
+
+import org.jspecify.annotations.NullMarked;

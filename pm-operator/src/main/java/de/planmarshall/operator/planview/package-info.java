@@ -18,4 +18,7 @@
  * {@code pm-api} into rows for the shared TUI stack. They never talk to the runtime themselves and
  * every external text passes through {@code OutputSafety} before it becomes a cell.
  */
+@NullMarked
 package de.planmarshall.operator.planview;
+
+import org.jspecify.annotations.NullMarked;

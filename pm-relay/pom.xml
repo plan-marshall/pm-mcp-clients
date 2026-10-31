@@ -35,6 +35,16 @@
             <artifactId>junit-jupiter</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>de.cuioss.test</groupId>
+            <artifactId>cui-test-generator</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>de.cuioss.test</groupId>
+            <artifactId>cui-test-juli-logger</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- The fake runtime server of the pm-api tests (fault injection only) -->
         <dependency>
             <groupId>de.planmarshall</groupId>

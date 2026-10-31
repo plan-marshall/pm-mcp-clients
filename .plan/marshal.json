@@ -289,6 +289,11 @@
     }
   ],
   "skill_domains": {
+    "active_profiles": [
+      "implementation",
+      "module_testing",
+      "quality"
+    ],
     "system": {
       "defaults": [],
       "optionals": [],
@@ -322,7 +327,9 @@
         "**/*.js",
         "**/*.mjs",
         "**/*.jsx",
-        "**/*.css"
+        "**/*.css",
+        "**/*.ts",
+        "**/*.svelte"
       ]
     },
     "java": {
@@ -344,11 +351,17 @@
         "**/*.java"
       ]
     },
-    "active_profiles": [
-      "implementation",
-      "module_testing",
-      "quality"
-    ]
+    "javascript-cui": {
+      "bundle": "pm-dev-frontend-cui",
+      "file_globs": [
+        "**/*.js",
+        "**/*.mjs",
+        "**/*.jsx",
+        "**/*.css",
+        "**/*.ts",
+        "**/*.svelte"
+      ]
+    }
   },
   "system": {
     "retention": {

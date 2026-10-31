@@ -473,7 +473,8 @@ describe('EpicView component', () => {
     await waitFor(() => expect(resource).toHaveBeenCalledTimes(2));
 
     deliver!('stream.closed');
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    // The subscription handler and the reload it would start both run synchronously, so the
+    // count right after the delivery is decisive: a refresh would already have called the API.
     expect(resource).toHaveBeenCalledTimes(2);
   });
 

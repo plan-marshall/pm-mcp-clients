@@ -36,10 +36,15 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import de.planmarshall.api.PmVersion;
+import de.planmarshall.api.host.HostDetection;
 import de.planmarshall.api.testsupport.RuntimeFixture;
+
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 
 @DisplayName("pm-mcp command line")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class PmMcpTest {
 
     private RuntimeFixture fixture;
@@ -65,6 +70,14 @@ class PmMcpTest {
 
     private int run(String... args) {
         return run(fixture.environment(), new ByteArrayInputStream(new byte[0]), args);
+    }
+
+    /**
+     * Any host client {@code serve --client} accepts: the tool takes no free-text client name, so the
+     * generated value comes from the accepted set.
+     */
+    private static String anyClient() {
+        return Generators.fixedValues(String.class, HostDetection.clientIds().toArray(String[]::new)).next();
     }
 
     @Test
@@ -94,7 +107,7 @@ class PmMcpTest {
         @DisplayName("a session relay inside a worker (PM_MCP_JOB_ID set without --job)")
         void insideWorker() {
             var environment = new HashMap<>(fixture.environment());
-            environment.put("PM_MCP_JOB_ID", "job-1");
+            environment.put("PM_MCP_JOB_ID", "job-" + Generators.letterStrings(4, 10).next());
 
             assertEquals(ServeCommand.EXIT_REFUSED,
                     run(environment, new ByteArrayInputStream(new byte[0]), "serve", "--client", "claude"));
@@ -127,11 +140,12 @@ class PmMcpTest {
         @Test
         @DisplayName("a session through the runtime token until stdin closes")
         void session() throws Exception {
+            var client = anyClient();
             var server = fixture.start((request, response) -> response.json(200, "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{}}"));
             var host = new PipedOutputStream();
             var stdin = new PipedInputStream(host);
             var exit = new AtomicInteger(-1);
-            var relay = Thread.ofPlatform().start(() -> exit.set(run(fixture.environment(), stdin, "serve", "--client", "codex")));
+            var relay = Thread.ofPlatform().start(() -> exit.set(run(fixture.environment(), stdin, "serve", "--client", client)));
 
             host.write("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}\n".getBytes(StandardCharsets.UTF_8));
             host.flush();
@@ -141,19 +155,21 @@ class PmMcpTest {
 
             assertEquals(0, exit.get());
             var request = server.awaitRequest(Duration.ofSeconds(1));
-            assertEquals("codex", request.header("PM-MCP-Client"));
+            assertEquals(client, request.header("PM-MCP-Client"));
             assertEquals(Workspace.resolve(Path.of("").toAbsolutePath()).toString(), request.header("PM-MCP-Workspace"));
         }
 
         @Test
         @DisplayName("a worker through its job token, reading no file of PM_MCP_BASE")
         void worker() throws Exception {
+            var jobToken = "job-" + Generators.letterStrings(8, 16).next();
+            var jobId = "job-" + Generators.letterStrings(4, 10).next();
             var server = fixture.start((request, response) -> response.json(200, "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{}}"));
-            fixture.acceptJobToken("jt");
+            fixture.acceptJobToken(jobToken);
             Files.delete(fixture.paths().runtimeToken());
             var environment = new HashMap<String, String>();
-            environment.put("PM_MCP_JOB_TOKEN", "jt");
-            environment.put("PM_MCP_JOB_ID", "job-7");
+            environment.put("PM_MCP_JOB_TOKEN", jobToken);
+            environment.put("PM_MCP_JOB_ID", jobId);
             environment.put("PM_MCP_BASE", "/nonexistent");
             var stdin = new ByteArrayInputStream("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"ping\"}\n"
                     .getBytes(StandardCharsets.UTF_8));
@@ -165,8 +181,8 @@ class PmMcpTest {
             relay.join(5000);
 
             assertEquals(0, exit.get());
-            assertEquals("job-7", request.header("PM-MCP-Generation"));
-            assertEquals("jt", request.header("PM-MCP-Job-Token"));
+            assertEquals(jobId, request.header("PM-MCP-Generation"));
+            assertEquals(jobToken, request.header("PM-MCP-Job-Token"));
         }
     }
 
@@ -178,10 +194,10 @@ class PmMcpTest {
         @DisplayName("is the nearest directory with a .git entry, else the working directory")
         void gitTopLevel() throws Exception {
             var root = fixture.base().getParent().toRealPath();
-            var repository = Files.createDirectories(root.resolve("repo"));
+            var repository = Files.createDirectories(root.resolve(Generators.letterStrings(4, 10).next()));
             Files.writeString(repository.resolve(".git"), "gitdir: elsewhere");
             var nested = Files.createDirectories(repository.resolve("a/b"));
-            var outside = Files.createDirectories(root.resolve("plain"));
+            var outside = Files.createDirectories(root.resolve("plain-" + Generators.letterStrings(4, 10).next()));
 
             assertEquals(repository, Workspace.resolve(nested));
             assertEquals(repository, Workspace.resolve(repository));

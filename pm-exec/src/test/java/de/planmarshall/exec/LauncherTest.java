@@ -25,7 +25,11 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 @DisplayName("Launcher: probe and launch")
+@EnableGeneratorController
 class LauncherTest {
 
     private final ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -96,12 +100,13 @@ class LauncherTest {
         @DisplayName("macOS: process group, report line, execve with the argument vector")
         void macos() throws Exception {
             var kernel = new FakeKernel(0);
+            var argument = Generators.letterStrings(1, 5).next() + " " + Generators.letterStrings(1, 5).next();
 
-            int exit = launcher(Os.MACOS, kernel).run(List.of("--", "/bin/echo", "a b"));
+            int exit = launcher(Os.MACOS, kernel).run(List.of("--", "/bin/echo", argument));
 
             assertEquals(Launcher.EXIT_EXEC, exit);
             assertEquals(List.of("setpgid", "execve"), kernel.calls);
-            assertEquals(List.of("/bin/echo", "a b"), kernel.executed);
+            assertEquals(List.of("/bin/echo", argument), kernel.executed);
             var lines = err().lines().toList();
             assertEquals(2, lines.size());
             assertTrue(lines.getFirst().startsWith("{\"pm_exec\":\"launched\",\"pid\":" + ProcessHandle.current().pid()
@@ -115,7 +120,7 @@ class LauncherTest {
         @Test
         @DisplayName("Linux: confinement before the process group, reported with its ABI")
         void linux() throws Exception {
-            var base = Files.createDirectories(temp.toRealPath().resolve("base"));
+            var base = Files.createDirectories(temp.toRealPath().resolve(Generators.letterStrings(4, 10).next()));
             var kernel = new FakeKernel(3);
 
             launcher(Os.LINUX, kernel).run(List.of("--deny-read", base.toString(), "--", "/bin/true"));
@@ -129,11 +134,14 @@ class LauncherTest {
         @DisplayName("Linux: every --deny-read path is carved out, the siblings of the way stay readable")
         void linuxSeveralDeniedPaths() throws Exception {
             var root = temp.toRealPath();
-            var base = Files.createDirectories(root.resolve("home/u/.plan-marshall-mcp"));
-            var sibling = Files.createDirectories(root.resolve("home/u/project"));
+            var user = Generators.letterStrings(3, 8).next();
+            var base = Files.createDirectories(root.resolve("home/" + user + "/.plan-marshall-mcp"));
+            var sibling = Files.createDirectories(
+                    root.resolve("home/" + user + "/" + Generators.letterStrings(4, 10).next()));
+            var runtimeDir = root.resolve("run/user/" + Generators.letterStrings(3, 8).next());
             var bus = Files.writeString(
-                    Files.createDirectories(root.resolve("run/user/1000")).resolve("bus"), "socket");
-            Files.createDirectories(root.resolve("run/user/1000/systemd"));
+                    Files.createDirectories(runtimeDir).resolve("bus"), "socket");
+            var systemd = Files.createDirectories(runtimeDir.resolve("systemd"));
             var kernel = new FakeKernel(3);
 
             launcher(Os.LINUX, kernel).run(List.of(
@@ -141,10 +149,10 @@ class LauncherTest {
 
             assertEquals(-1L, kernel.accessOf(base));
             assertEquals(-1L, kernel.accessOf(bus));
-            assertEquals(-1L, kernel.accessOf(root.resolve("home/u")));
-            assertEquals(-1L, kernel.accessOf(root.resolve("run/user/1000")));
+            assertEquals(-1L, kernel.accessOf(root.resolve("home/" + user)));
+            assertEquals(-1L, kernel.accessOf(runtimeDir));
             assertEquals(0xdL, kernel.accessOf(sibling));
-            assertEquals(0xdL, kernel.accessOf(root.resolve("run/user/1000/systemd")));
+            assertEquals(0xdL, kernel.accessOf(systemd));
             assertTrue(err().lines().findFirst().orElseThrow().endsWith(
                     ",\"confinement\":\"confined\",\"landlock_abi\":3,\"no_new_privs\":true}"));
         }

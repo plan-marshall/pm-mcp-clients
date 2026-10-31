@@ -13,7 +13,7 @@ Make the web modules follow the frontend standards of the marketplace: `pm-dev-f
 ## Deliverables
 
 1. **Domain configuration and the rule**
-   - What: through the configuration verbs of `marshall-steward` (never by editing `.plan/marshal.json` by hand), make the `javascript` domain match `**/*.ts` and `**/*.svelte` as well, and configure `pm-dev-frontend-cui` as the additive domain for the web modules. Add a "Web standards" paragraph to `CLAUDE.md` § Code Standards: ES modules; flat ESLint config only; no `innerHTML`, `outerHTML`, `insertAdjacentHTML` or `{@html}` with untrusted or model-written text (text-treating sinks only, a sanitizer is a dependency and needs the operator); no arbitrary timer wait in a test; the required npm scripts; the Svelte and SvelteKit layout under `src/` is the project's own structure and stands in for the standard types of `cui-javascript-project`.
+   - What: through the configuration verbs of `marshall-steward` (never by editing `.plan/marshal.json` by hand), make the `javascript` domain match `**/*.ts` and `**/*.svelte` as well, and configure `pm-dev-frontend-cui` as the additive domain for the web modules. Add a "Web Standards" section of its own to `CLAUDE.md`, directly after § Code Standards and not inside it (so it cannot conflict with the paragraph `PLAN-77` adds to § Code Standards when both run at once): ES modules; flat ESLint config only; no `innerHTML`, `outerHTML`, `insertAdjacentHTML` or `{@html}` with untrusted or model-written text (text-treating sinks only, a sanitizer is a dependency and needs the operator); no arbitrary timer wait in a test; the required npm scripts; the Svelte and SvelteKit layout under `src/` is the project's own structure and stands in for the standard types of `cui-javascript-project`.
    - Persona: plan-marshall:persona-implementer
    - Skills: pm-dev-frontend:javascript, pm-dev-frontend-cui:cui-javascript-project
    - Done when:
@@ -73,7 +73,7 @@ Make the web modules follow the frontend standards of the marketplace: `pm-dev-f
 ## Dependencies and Sequencing
 
 - Depends on: none
-- Overlaps with: `PLAN-77` (`CLAUDE.md`: both add a paragraph under § Code Standards, in different paragraphs; run one after the other or merge by hand); `PLAN-09`, `PLAN-52` (`OverviewView.svelte`)
+- Overlaps with: `PLAN-77` (`CLAUDE.md`: `PLAN-77` adds a paragraph inside § Code Standards, this plan a section of its own after it; the two edits touch different lines, and either order merges cleanly; run one after the other or merge by hand); `PLAN-09`, `PLAN-52` (`OverviewView.svelte`)
 - Adjacent to: `PLAN-77` (the Java counterpart)
 
 ## Hand-Off Command
