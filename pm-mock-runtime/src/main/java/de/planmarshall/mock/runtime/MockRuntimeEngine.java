@@ -6008,7 +6008,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     copy.put("items", List.of());
                 }
             }
-            copy.remove("pages");
+            copy.remove(KEY_PAGES);
             response.json(route.status(), copy);
             return;
         }
