@@ -5610,8 +5610,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return oldest;
     }
 
-    private static List<?> rowsOf(Map<String, Object> map, String key) {
-        return map.get(key) instanceof List<?> list ? list : List.of();
+    private static List<?> rowsOf(@Nullable Map<String, Object> map, String key) {
+        return map != null && map.get(key) instanceof List<?> list ? list : List.of();
     }
 
     private static Map<String, Object> orderedMap(Map<?, ?> map) {
@@ -5694,21 +5694,20 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private void serveNeedsOperatorPage(MockHttpResponse response) throws IOException {
         var route = activeRoute("GET", MachineApiPaths.NEEDS_OPERATOR);
-        if (route != null && (route.status() < 200 || route.status() >= 300)) {
+        if (route == null) {
+            response.json(200, new NeedsOperatorPage(1, 1, false, false, 0, List.of()).toMap());
+            return;
+        }
+        if (route.status() < 200 || route.status() >= 300) {
             response.json(route.status(), route.representation());
             return;
         }
         var items = new ArrayList<NeedsOperatorItem>();
-        var rep = Optional.ofNullable(route)
-                .map(RouteDefinition::representation)
-                .map(JsonTree::asObject)
-                .orElse(null);
-        if (rep != null) {
-            for (var raw : rowsOf(rep, KEY_ITEMS)) {
-                var item = JsonTree.asObject(raw);
-                if (item != null) {
-                    items.add(NeedsOperatorItem.fromMap(item));
-                }
+        var rep = JsonTree.asObject(route.representation());
+        for (var raw : rowsOf(rep, KEY_ITEMS)) {
+            var item = JsonTree.asObject(raw);
+            if (item != null) {
+                items.add(NeedsOperatorItem.fromMap(item));
             }
         }
         items.sort((a, b) -> {
@@ -5891,13 +5890,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 JsonTree.string(row, KEY_OUTCOME)));
     }
 
+    private static final String KEY_PAGES = "pages";
+
     /**
      * @param page the ended-work representation of one project
      * @return the rows of every page it declares: page 1 from {@code pages["1"]} where it exists,
      *         the {@code items} member otherwise, then the later pages in their order
      */
     private static List<?> endedRowsOf(Map<String, Object> page) {
-        if (!(page.get("pages") instanceof Map<?, ?> pages)) {
+        if (!(page.get(KEY_PAGES) instanceof Map<?, ?> pages)) {
             return rowsOf(page, KEY_ITEMS);
         }
         var rows = new ArrayList<Object>();
