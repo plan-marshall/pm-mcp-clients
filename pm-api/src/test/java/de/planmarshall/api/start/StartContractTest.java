@@ -33,6 +33,8 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.config.ConfigOrigin;
 import de.planmarshall.api.control.ChatProposalResource;
 import de.planmarshall.api.control.ChatRole;
@@ -46,6 +48,7 @@ import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.source.git.ChangedFile;
 
+@EnableGeneratorController
 @DisplayName("Start contract")
 class StartContractTest {
 
@@ -366,10 +369,12 @@ class StartContractTest {
         @Test
         @DisplayName("EntryOpenRequest round-trips and refuses a recipe on an epic")
         void entryOpenRequest() throws Exception {
-            var plan = new EntryOpenRequest(EntryKind.PLAN, "Add a Codeberg provider", null, "audit", null);
+            var planTitle = Generators.nonEmptyStrings().next();
+            var plan = new EntryOpenRequest(EntryKind.PLAN, planTitle, null, "audit", null);
             assertEquals(plan, EntryOpenRequest.fromJson(plan.toJson()));
 
-            var epic = new EntryOpenRequest(EntryKind.EPIC, null, "Relay hardening", null, null);
+            var epicTitle = Generators.nonEmptyStrings().next();
+            var epic = new EntryOpenRequest(EntryKind.EPIC, null, epicTitle, null, null);
             assertEquals(epic, EntryOpenRequest.fromJson(epic.toJson()));
 
             assertThrows(IllegalArgumentException.class,
@@ -426,9 +431,14 @@ class StartContractTest {
         @Test
         @DisplayName("EntryResource round-trips with its sources, offers, and chat link")
         void entryResource() throws Exception {
-            var entry = new EntryResource("ent-3f9a2c41", EntryKind.PLAN, "pm-mcp-clients", StartState.SOURCES,
-                    "Add a Codeberg provider", "add-a-codeberg-provider", List.of(
-                            SourceResource.local("src-1", SourceKind.DESCRIPTION, "Add a Codeberg provider")),
+            var entryId = Generators.nonEmptyStrings().next();
+            var entryTitle = Generators.nonEmptyStrings().next();
+            var entrySlug = Generators.nonEmptyStrings().next();
+            var sourceId = Generators.nonEmptyStrings().next();
+            var projectId = Generators.nonEmptyStrings().next();
+            var entry = new EntryResource(entryId, EntryKind.PLAN, projectId, StartState.SOURCES,
+                    entryTitle, entrySlug, List.of(
+                            SourceResource.local(sourceId, SourceKind.DESCRIPTION, entryTitle)),
                     List.of(SourceKindOffer.available(SourceKind.DOCUMENTS),
                             SourceKindOffer.refused(SourceKind.LOCAL_CHANGES,
                                     SourceKindOffer.REASON_LOCAL_CHANGES_LANDING,
