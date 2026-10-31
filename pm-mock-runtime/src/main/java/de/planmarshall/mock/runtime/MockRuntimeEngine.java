@@ -8106,7 +8106,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var workMetrics = new WorkMetrics(plansByState, epicsByState, tasksRunning, tasksQueued, activeProjects, List.of());
 
         var workers = List.of(
-                new WorkerMetric("planner", CONST_CLAUDE, "opus-4.5", WorkerState.BUSY, "fix-relay"),
+                new WorkerMetric("planner", CONST_CLAUDE, "opus-4.5", WorkerState.BUSY, CONST_FIX_RELAY),
                 new WorkerMetric("implementer", CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, "relay-docs"),
                 new WorkerMetric("implementer", "codex", "gpt-5", WorkerState.IDLE, null),
                 new WorkerMetric("implementer", CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, "token-usage"),
