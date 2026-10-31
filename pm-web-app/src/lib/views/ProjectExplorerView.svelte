@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { t } from '../i18n';
+  import { t, currentLocale } from '../i18n';
+  import { formatTime } from '../display/format';
   import { runtimeStore, navigateTo, openProjectOnboarding } from '../stores/runtime';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
@@ -401,25 +402,20 @@
     }
   }
 
+  /**
+   * @param timeStr the instant the runtime sends
+   * @returns its age in the unit that age has
+   */
   function formatRelative(timeStr?: string | null): string {
-    if (!timeStr) return '';
-    try {
-      const diffMs = Date.now() - new Date(timeStr).getTime();
-      const mins = Math.floor(diffMs / 60000);
-      if (mins < 1) return $t('project.time.just_now');
-      if (mins < 60) return $t('project.time.minutes', { count: mins });
-      const hours = Math.floor(mins / 60);
-      if (hours < 24) return $t('project.time.hours', { count: hours });
-      const days = Math.floor(hours / 24);
-      if (days === 1) return $t('project.time.yesterday');
-      if (days < 7) return $t('project.time.days', { count: days });
-      const weeks = Math.floor(days / 7);
-      if (weeks < 5) return $t('project.time.weeks', { count: weeks });
-      const months = Math.floor(days / 30);
-      return $t('project.time.months', { count: months });
-    } catch {
-      return timeStr;
-    }
+    return formatTime(timeStr, 'relative', $currentLocale);
+  }
+
+  /**
+   * @param timeStr the instant the runtime sends
+   * @returns the moment itself, for the row's hover advisory
+   */
+  function formatMoment(timeStr?: string | null): string {
+    return formatTime(timeStr, 'short', $currentLocale);
   }
 
   const filteredProjects = $derived.by(() => {
@@ -602,7 +598,10 @@
                   </span>
 
                   {#if project.last_active}
-                    <span class="project-last-active text-xs text-muted">
+                    <span
+                      class="project-last-active text-xs text-muted"
+                      title={formatMoment(project.last_active)}
+                    >
                       {formatRelative(project.last_active)}
                     </span>
                   {/if}
@@ -806,7 +805,10 @@
                   </span>
 
                   {#if project.last_active}
-                    <span class="project-last-active text-xs text-muted">
+                    <span
+                      class="project-last-active text-xs text-muted"
+                      title={formatMoment(project.last_active)}
+                    >
                       {formatRelative(project.last_active)}
                     </span>
                   {/if}
@@ -935,7 +937,10 @@
                   </span>
 
                   {#if project.last_active}
-                    <span class="project-last-active text-xs text-muted">
+                    <span
+                      class="project-last-active text-xs text-muted"
+                      title={formatMoment(project.last_active)}
+                    >
                       {formatRelative(project.last_active)}
                     </span>
                   {/if}
@@ -1077,7 +1082,10 @@
                   </span>
 
                   {#if project.last_active}
-                    <span class="project-last-active text-xs text-muted">
+                    <span
+                      class="project-last-active text-xs text-muted"
+                      title={formatMoment(project.last_active)}
+                    >
                       {formatRelative(project.last_active)}
                     </span>
                   {/if}

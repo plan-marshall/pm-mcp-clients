@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { t } from '../i18n';
+  import { t, currentLocale } from '../i18n';
+  import { formatTime } from '../display/format';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
   import Spinner from '../components/Spinner.svelte';
@@ -682,7 +683,7 @@
           <span class="waiting-time">
             {$t('decision.waiting', {
               subject: dec.scope || 'plan',
-              time: dec.delivered_at || 'now',
+              time: formatTime(dec.delivered_at ?? new Date().toISOString(), 'short', $currentLocale),
             })}
           </span>
         </header>
@@ -1230,7 +1231,11 @@
                 <span class="waiting-time">
                   {$t('decision.waiting', {
                     subject: dec.scope || 'plan',
-                    time: dec.delivered_at || 'now',
+                    time: formatTime(
+                      dec.delivered_at ?? new Date().toISOString(),
+                      'short',
+                      $currentLocale,
+                    ),
                   })}
                 </span>
               </button>

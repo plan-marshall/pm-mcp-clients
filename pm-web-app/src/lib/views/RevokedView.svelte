@@ -1,12 +1,13 @@
 <script lang="ts">
-  import { t } from '../i18n';
+  import { t, currentLocale } from '../i18n';
+  import { formatTime } from '../display/format';
   import Button from '../components/Button.svelte';
   import { runtimeStore } from '../stores/runtime';
 
   $: info = $runtimeStore.revokedInfo;
   $: reasonKey = info?.reason || $runtimeStore.revokedReason || 'device_revoked';
   $: by = info?.revoked_by || 'the terminal client';
-  $: time = info?.revoked_at || '';
+  $: time = formatTime(info?.revoked_at, 'short', $currentLocale);
 
   function handlePair() {
     runtimeStore.update((s) => ({

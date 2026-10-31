@@ -6,6 +6,7 @@
   import CredentialEntry from '../components/CredentialEntry.svelte';
   import { apiClient, type PairedDevice } from '../api/client';
   import { currentLocale } from '../i18n';
+  import { formatDay, formatTime } from '../display/format';
   import { runtimeStore, navigateTo, goBack } from '../stores/runtime';
 
   /**
@@ -172,29 +173,18 @@
 
   /**
    * @param rawDate an ISO timestamp
-   * @returns the day and month, in the interface language
+   * @returns the day, in the interface language
    */
   function formatDate(rawDate?: string): string {
-    if (!rawDate) return '';
-    const date = new Date(rawDate);
-    if (Number.isNaN(date.getTime())) return rawDate;
-    return date.toLocaleDateString($currentLocale, { day: 'numeric', month: 'short' });
+    return formatDay(rawDate, $currentLocale);
   }
 
   /**
    * @param rawDate an ISO timestamp
-   * @returns the day, month and time, in the interface language
+   * @returns the moment to the minute, in the interface language
    */
   function formatDateTime(rawDate?: string): string {
-    if (!rawDate) return '';
-    const date = new Date(rawDate);
-    if (Number.isNaN(date.getTime())) return rawDate;
-    return date.toLocaleString($currentLocale, {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatTime(rawDate, 'short', $currentLocale);
   }
 
   $: otherDevicesCount = devices.filter((d) => !isThisBrowser(d)).length;

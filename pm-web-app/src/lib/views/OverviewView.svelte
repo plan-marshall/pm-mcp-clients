@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
-  import { t } from '../i18n';
+  import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
   import FilterInput from '../components/FilterInput.svelte';
@@ -10,6 +10,7 @@
   import { phaseIconId } from '../icons/workflowIcons';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import { displayState, displayUnit, hasUnitName } from '../display';
+  import { formatDuration, formatTime } from '../display/format';
   import {
     apiClient,
     type ProjectSummary,
@@ -444,38 +445,31 @@
     }
   }
 
+  /**
+   * @param isoStr the instant the runtime sends
+   * @returns its age in the unit that age has, `9 d ago`
+   */
   function formatRelative(isoStr?: string | null): string {
-    if (!isoStr) return '';
-    try {
-      const date = new Date(isoStr);
-      const diffMs = Date.now() - date.getTime();
-      const mins = Math.floor(diffMs / 60000);
-      if (mins < 1) return 'just now';
-      if (mins < 60) return `${mins} min ago`;
-      const hours = Math.floor(mins / 60);
-      if (hours < 24) return `${hours} h ago`;
-      const days = Math.floor(hours / 24);
-      return `${days} d ago`;
-    } catch {
-      return '';
-    }
+    return formatTime(isoStr, 'relative', $currentLocale);
   }
 
-  function formatDuration(isoStr?: string | null): string {
+  /**
+   * @param isoStr the instant the runtime sends
+   * @returns the moment itself, for a list row's hover advisory
+   */
+  function formatMoment(isoStr?: string | null): string {
+    return formatTime(isoStr, 'short', $currentLocale);
+  }
+
+  /**
+   * @param isoStr the instant a phase started
+   * @returns how long the phase has run, `2 h 10 min`
+   */
+  function phaseDuration(isoStr?: string | null): string {
     if (!isoStr) return '';
-    try {
-      const date = new Date(isoStr);
-      const diffMs = Math.max(0, Date.now() - date.getTime());
-      const mins = Math.floor(diffMs / 60000);
-      const hours = Math.floor(mins / 60);
-      if (hours > 0) {
-        const remMins = mins % 60;
-        return remMins > 0 ? `${hours} h ${remMins} min` : `${hours} h`;
-      }
-      return `${mins} min`;
-    } catch {
-      return '';
-    }
+    const started = new Date(isoStr);
+    if (Number.isNaN(started.getTime())) return '';
+    return formatDuration(Math.max(0, Date.now() - started.getTime()), $currentLocale);
   }
 
   function getPlanPhase(p: ActivePlanSummary): string {
@@ -635,7 +629,11 @@
             <div class="project-item__meta">
               <span class="project-item__counts">{formatProjectCounts(proj)}</span>
               {#if proj.last_activity_at}
-                <span class="project-item__time">{formatRelative(proj.last_activity_at)}</span>
+                <span
+                  class="project-item__time"
+                  title={formatMoment(proj.last_activity_at)}
+                  >{formatRelative(proj.last_activity_at)}</span
+                >
               {/if}
             </div>
           </button>
@@ -753,7 +751,7 @@
                         —
                       {/if}
                     </td>
-                    <td class="text-muted">{formatRelative(item.ended_at)}</td>
+                    <td class="text-muted" title={formatMoment(item.ended_at)}>{formatRelative(item.ended_at)}</td>
                     <td>
                       {#if item.kind === 'plan'}
                         <button
@@ -956,8 +954,10 @@
                     <div class="work-card__details">
                       {#if getPlanPhaseEnteredAt(plan)}
                         <span class="detail-item">
-                          in {getPlanPhase(plan)}
-                          {formatDuration(getPlanPhaseEnteredAt(plan))}
+                          {$t('overview.time.in_phase', {
+                            phase: getPlanPhase(plan),
+                            duration: phaseDuration(getPlanPhaseEnteredAt(plan)),
+                          })}
                         </span>
                       {/if}
                       {#if getPlanTasksTotal(plan) > 0}
