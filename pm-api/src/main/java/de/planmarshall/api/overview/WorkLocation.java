@@ -56,9 +56,8 @@ public record WorkLocation(String id, @Nullable String title) {
      *
      * @param value the parsed JSON value
      * @return the location, or {@code null} when the value is no object with an id
-     * @throws IOException on a malformed member
      */
-    public static @Nullable WorkLocation fromValue(@Nullable Object value) throws IOException {
+    public static @Nullable WorkLocation fromValue(@Nullable Object value) {
         var map = JsonTree.asObject(value);
         if (map == null) {
             return null;

@@ -31,6 +31,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.overview.ActivePlanSummary;
 import de.planmarshall.api.overview.EndedOutcome;
 import de.planmarshall.api.overview.EndedWorkPage;
 import de.planmarshall.api.overview.ProjectDetailResponse;
@@ -398,7 +399,7 @@ class RunningWorkScenarioTest {
                     .withHeader("Authorization", auth));
             assertEquals(200, res.status());
             return ProjectDetailResponse.fromJson(new String(res.body())).plans().stream()
-                    .map(plan -> plan.planId())
+                    .map(ActivePlanSummary::planId)
                     .toList();
         }
 

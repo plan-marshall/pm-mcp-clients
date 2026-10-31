@@ -41,6 +41,7 @@ import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.MachineApiPaths;
 import de.planmarshall.api.control.ActionAvailability;
 import de.planmarshall.api.control.ArchiveCheck;
 import de.planmarshall.api.control.ChatReadBackResource;
@@ -115,6 +116,12 @@ import de.planmarshall.api.onboarding.MachineSettingsUpdateResult;
 import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.onboarding.OnboardingStepCompletedEvent;
 import de.planmarshall.api.onboarding.PlanDefaults;
+import de.planmarshall.api.overview.FindKind;
+import de.planmarshall.api.overview.FindMatch;
+import de.planmarshall.api.overview.FindPage;
+import de.planmarshall.api.overview.NeedsOperatorItem;
+import de.planmarshall.api.overview.NeedsOperatorPage;
+import de.planmarshall.api.overview.WorkLocation;
 import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.FavouritesUpdateRequest;
@@ -287,6 +294,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String SEGMENT_PROJECT_ENTRIES = "/entries";
     private static final String SEGMENT_PROJECT_FILES = "/files";
     private static final String PATH_ENDED = "/api/v1/projects/";
+    private static final String PATH_EPICS = "/api/v1/epics";
+    private static final String PROJECT_ROUTE_PREFIX = "GET /api/v1/projects/";
+    private static final String SEGMENT_ENDED = "/ended";
+    private static final String KEY_ITEMS = "items";
+    private static final String KEY_PLANS = "plans";
+    private static final String KEY_EPICS = "epics";
     private static final String SEGMENT_ENDED_CHAT = "/ended/";
     private static final String SEGMENT_ENDED_CHAT_ACCEPT = "/ended/accept";
     private static final String ERR_PROJECT_NOT_FOUND = "project_not_found";
@@ -5640,212 +5653,168 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return false;
         }
         var path = request.path();
-        if ("/api/v1/machine/needs-operator".equals(path)) {
+        if (MachineApiPaths.NEEDS_OPERATOR.equals(path)) {
             serveNeedsOperatorPage(request, response);
             return true;
         }
-        if ("/api/v1/find".equals(path)) {
+        if (MachineApiPaths.FIND.equals(path)) {
             serveFind(request, response);
             return true;
         }
         return false;
     }
 
+    /**
+     * Serves the page of the one list of what waits: the fixture's items, parsed through the
+     * contract's own record, in the runtime's order — the items that block running work first, then
+     * the oldest.
+     */
     private void serveNeedsOperatorPage(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        var route = activeRoute("GET", "/api/v1/machine/needs-operator");
-        var items = new ArrayList<Object>();
-        if (route != null) {
-            var rep = JsonTree.asObject(route.representation());
-            if (rep != null && rep.get("items") instanceof List<?> declared) {
-                items.addAll(declared);
+        var items = new ArrayList<NeedsOperatorItem>();
+        var route = activeRoute("GET", MachineApiPaths.NEEDS_OPERATOR);
+        var rep = route == null ? null : JsonTree.asObject(route.representation());
+        if (rep != null) {
+            for (var raw : rowsOf(rep, KEY_ITEMS)) {
+                var item = JsonTree.asObject(raw);
+                if (item != null) {
+                    items.add(NeedsOperatorItem.fromMap(item));
+                }
             }
         }
         items.sort((a, b) -> {
-            var blocksA = blocksWork(a);
-            var blocksB = blocksWork(b);
-            if (blocksA != blocksB) {
-                return blocksA ? -1 : 1;
+            if ((a.blocks() != null) != (b.blocks() != null)) {
+                return a.blocks() != null ? -1 : 1;
             }
-            return waitingSince(a).compareTo(waitingSince(b));
+            return sinceOf(a).compareTo(sinceOf(b));
         });
-
-        var page = new LinkedHashMap<String, Object>();
-        page.put("page", 1);
-        page.put("total_pages", 1);
-        page.put("has_newer", false);
-        page.put("has_older", false);
-        page.put("total", items.size());
-        page.put("items", items);
-        response.json(200, page);
+        response.json(200, new NeedsOperatorPage(1, 1, false, false, items.size(), items).toMap());
     }
 
-    private static boolean blocksWork(@Nullable Object item) {
-        var map = JsonTree.asObject(item);
-        return map != null && JsonTree.string(map, "blocks") != null;
-    }
-
-    private static Instant waitingSince(@Nullable Object item) {
-        var map = JsonTree.asObject(item);
-        return map == null ? Instant.MAX : instantOf(JsonTree.string(map, "since"));
-    }
-
-    private static Instant instantOf(@Nullable String value) {
-        if (value == null) {
-            return Instant.MAX;
-        }
-        try {
-            return Instant.parse(value);
-        } catch (DateTimeParseException _) {
-            return Instant.MAX;
-        }
+    private static Instant sinceOf(NeedsOperatorItem item) {
+        return Objects.requireNonNullElse(item.since(), Instant.MAX);
     }
 
     /**
-     * Answers {@code GET /api/v1/find?q=} over the running and the ended work the scenario serves.
+     * Answers {@code GET /api/v1/find?q=} over the running and the ended work the state serves.
      * Running work comes first, ended work after it, marked; within each by kind, in the order
      * project, epic, plan, decision, report. An empty text is refused.
      */
     private void serveFind(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        var query = queryParameter(request, "q");
+        var query = queryParameter(request, MachineApiPaths.QUERY_PARAM);
         if (query == null || query.isBlank()) {
-            response.json(400, Map.of(KEY_ERROR, "invalid_query",
-                    KEY_MESSAGE, "An empty search text is refused"));
+            response.json(400, Map.of(KEY_ERROR, "invalid_query", KEY_MESSAGE, "An empty search text is refused"));
             return;
         }
         var text = query.trim();
-        var matches = new ArrayList<Map<String, Object>>();
-
+        var matches = new ArrayList<FindMatch>();
         collectRunningProjects(text, matches);
         collectRunningEpics(text, matches);
         collectRunningPlans(text, matches);
         collectEndedWork(text, matches);
-
         matches.sort((a, b) -> {
-            var endedA = Boolean.TRUE.equals(a.get("ended"));
-            var endedB = Boolean.TRUE.equals(b.get("ended"));
-            if (endedA != endedB) {
-                return endedA ? 1 : -1;
+            if (a.ended() != b.ended()) {
+                return a.ended() ? 1 : -1;
             }
-            return Integer.compare(findKindRank(a), findKindRank(b));
+            return Integer.compare(a.kind().ordinal(), b.kind().ordinal());
         });
-
-        var page = new LinkedHashMap<String, Object>();
-        page.put("page", 1);
-        page.put("total_pages", 1);
-        page.put("has_newer", false);
-        page.put("has_older", false);
-        page.put("query", text);
-        page.put("matches", matches);
-        response.json(200, page);
+        response.json(200, new FindPage(1, 1, false, false, text, matches).toMap());
     }
 
-    private void collectRunningProjects(String text, List<Map<String, Object>> matches) throws IOException {
-        for (var row : rowsOfRoute("GET", "/api/v1/projects", CONST_PROJECTS)) {
+    private void collectRunningProjects(String text, List<FindMatch> matches) throws IOException {
+        for (var row : rowsOfRoute("GET", PATH_PROJECTS, CONST_PROJECTS)) {
             var id = JsonTree.string(row, "project_id");
             var title = JsonTree.string(row, "display_name");
             if (id != null && matchesText(text, id, title, null)) {
-                matches.add(findMatch("project", id, title, row, null, null, false, null));
+                matches.add(new FindMatch(FindKind.PROJECT, id, title, location(id, title), null, null,
+                        false, null));
             }
         }
     }
 
-    private void collectRunningEpics(String text, List<Map<String, Object>> matches) throws IOException {
-        for (var row : rowsOfRoute("GET", "/api/v1/epics", "epics")) {
+    private void collectRunningEpics(String text, List<FindMatch> matches) throws IOException {
+        for (var row : rowsOfRoute("GET", PATH_EPICS, KEY_EPICS)) {
             var id = JsonTree.string(row, "id");
             var title = JsonTree.string(row, "title");
             if (id != null && matchesText(text, id, title, null)) {
-                matches.add(findMatch("epic", id, title, null, row, null, false, null));
+                matches.add(new FindMatch(FindKind.EPIC, id, title,
+                        location(JsonTree.string(row, "project"), null), location(id, title), null, false, null));
             }
         }
     }
 
-    private void collectRunningPlans(String text, List<Map<String, Object>> matches) throws IOException {
+    private void collectRunningPlans(String text, List<FindMatch> matches) throws IOException {
         for (var entry : mergedRoutes().entrySet()) {
-            var key = entry.getKey();
-            if (!key.startsWith("GET /api/v1/projects/") || key.endsWith("/ended")) {
+            if (!isProjectDetailRoute(entry.getKey())) {
                 continue;
             }
             var detail = JsonTree.asObject(entry.getValue().representation());
-            if (detail == null || !(detail.get("plans") instanceof List<?> plans)) {
-                continue;
-            }
-            var projectId = JsonTree.string(detail, "project_id");
-            var projectName = JsonTree.string(detail, "display_name");
-            for (var raw : plans) {
-                var row = JsonTree.asObject(raw);
-                if (row == null) {
-                    continue;
-                }
-                var id = JsonTree.string(row, "plan_id");
-                var title = JsonTree.string(row, "title");
-                var prNumber = JsonTree.integer(row, "pull_request_number");
-                if (id == null || !matchesText(text, id, title, prNumber)) {
-                    continue;
-                }
-                var match = findMatch("plan", id, title, null, null, null, false, null);
-                var plan = new LinkedHashMap<String, Object>();
-                plan.put("id", id);
-                if (title != null) {
-                    plan.put("title", title);
-                }
-                match.put("plan", plan);
-                if (projectId != null) {
-                    var project = new LinkedHashMap<String, Object>();
-                    project.put("id", projectId);
-                    if (projectName != null) {
-                        project.put("title", projectName);
+            if (detail != null) {
+                var project = location(JsonTree.string(detail, "project_id"), JsonTree.string(detail, "display_name"));
+                for (var raw : rowsOf(detail, KEY_PLANS)) {
+                    var row = JsonTree.asObject(raw);
+                    if (row != null) {
+                        addPlanMatch(text, row, project, matches);
                     }
-                    match.put("project", project);
                 }
-                var epicTitle = JsonTree.string(row, "epic_title");
-                if (JsonTree.string(row, "epic_id") instanceof String epicId) {
-                    var epic = new LinkedHashMap<String, Object>();
-                    epic.put("id", epicId);
-                    if (epicTitle != null) {
-                        epic.put("title", epicTitle);
-                    }
-                    match.put("epic", epic);
-                }
-                matches.add(match);
             }
         }
     }
 
-    private void collectEndedWork(String text, List<Map<String, Object>> matches) throws IOException {
+    private static void addPlanMatch(String text, Map<String, Object> row, @Nullable WorkLocation project,
+            List<FindMatch> matches) {
+        var id = JsonTree.string(row, "plan_id");
+        var title = JsonTree.string(row, "title");
+        if (id == null || !matchesText(text, id, title, JsonTree.integer(row, "pull_request_number"))) {
+            return;
+        }
+        var epic = location(JsonTree.string(row, "epic_id"), JsonTree.string(row, "epic_title"));
+        matches.add(new FindMatch(FindKind.PLAN, id, title, project, epic, location(id, title), false, null));
+    }
+
+    private void collectEndedWork(String text, List<FindMatch> matches) throws IOException {
         for (var entry : mergedRoutes().entrySet()) {
-            var key = entry.getKey();
-            if (!key.startsWith("GET" + " /api/v1/projects/") || !key.endsWith("/ended")) {
+            if (!isEndedRoute(entry.getKey())) {
                 continue;
             }
-            var projectId = key.substring(("GET" + " /api/v1/projects/").length(),
-                    key.length() - "/ended".length());
             var rep = JsonTree.asObject(entry.getValue().representation());
-            if (rep == null) {
-                continue;
-            }
-            var project = new LinkedHashMap<String, Object>();
-            project.put("id", projectId);
-            var projectName = JsonTree.string(rep, "display_name");
-            if (projectName != null) {
-                project.put("title", projectName);
-            }
-            for (var raw : rowsOf(rep, "items")) {
-                var row = JsonTree.asObject(raw);
-                if (row == null) {
-                    continue;
+            if (rep != null) {
+                var project = location(endedProjectOf(entry.getKey()), JsonTree.string(rep, "display_name"));
+                for (var raw : rowsOf(rep, KEY_ITEMS)) {
+                    var row = JsonTree.asObject(raw);
+                    if (row != null) {
+                        addEndedMatch(text, row, project, matches);
+                    }
                 }
-                var id = JsonTree.string(row, "id");
-                var title = JsonTree.string(row, "title");
-                var prNumber = JsonTree.integer(row, "pull_request_number");
-                if (id == null || !matchesText(text, id, title, prNumber)) {
-                    continue;
-                }
-                var match = findMatch(JsonTree.string(row, "kind"), id, title, null, null, row, true,
-                        JsonTree.string(row, "outcome"));
-                match.put("project", project);
-                matches.add(match);
             }
         }
+    }
+
+    private static void addEndedMatch(String text, Map<String, Object> row, @Nullable WorkLocation project,
+            List<FindMatch> matches) {
+        var id = JsonTree.string(row, "id");
+        var title = JsonTree.string(row, "title");
+        if (id == null || !matchesText(text, id, title, JsonTree.integer(row, "pull_request_number"))) {
+            return;
+        }
+        var kind = Objects.requireNonNullElse(FindKind.fromValue(JsonTree.string(row, "kind")), FindKind.PLAN);
+        matches.add(new FindMatch(kind, id, title, project, null, null, true,
+                JsonTree.string(row, "outcome")));
+    }
+
+    private static boolean isProjectDetailRoute(String routeKey) {
+        return routeKey.startsWith(PROJECT_ROUTE_PREFIX) && !routeKey.endsWith(SEGMENT_ENDED);
+    }
+
+    private static boolean isEndedRoute(String routeKey) {
+        return routeKey.startsWith(PROJECT_ROUTE_PREFIX) && routeKey.endsWith(SEGMENT_ENDED);
+    }
+
+    private static String endedProjectOf(String routeKey) {
+        return routeKey.substring(PROJECT_ROUTE_PREFIX.length(), routeKey.length() - SEGMENT_ENDED.length());
+    }
+
+    private static @Nullable WorkLocation location(@Nullable String id, @Nullable String title) {
+        return id == null || id.isBlank() ? null : new WorkLocation(id, title);
     }
 
     private static boolean matchesText(String text, String id, @Nullable String title, @Nullable Integer prNumber) {
@@ -5857,79 +5826,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
         return prNumber != null && String.valueOf(prNumber).equals(text);
-    }
-
-    private static Map<String, Object> findMatch(String kind, String id, @Nullable String title,
-            @Nullable Map<String, Object> projectRow, @Nullable Map<String, Object> epicRow,
-            @Nullable Map<String, Object> planRow, boolean ended, @Nullable String outcome) {
-        var match = new LinkedHashMap<String, Object>();
-        match.put("kind", kind == null ? "plan" : kind);
-        match.put("id", id);
-        match.put("title", title == null ? id : title);
-        if (projectRow != null) {
-            var project = locationOf(projectRow, "project_id", "display_name");
-            if (project != null) {
-                match.put("project", project);
-            }
-        }
-        if (epicRow != null) {
-            var epic = locationOf(epicRow, "id", "title");
-            if (epic != null) {
-                match.put("epic", epic);
-            }
-            var projectId = JsonTree.string(epicRow, "project");
-            if (projectId != null && !match.containsKey("project")) {
-                match.put("project", Map.of("id", projectId));
-            }
-        }
-        if (planRow != null) {
-            var plan = locationOf(planRow, "id", "title");
-            if (plan != null) {
-                match.put("plan", plan);
-            }
-            var projectId = JsonTree.string(planRow, "project");
-            if (projectId != null && !match.containsKey("project")) {
-                match.put("project", Map.of("id", projectId));
-            }
-            var epicId = JsonTree.string(planRow, "epic_id");
-            if (epicId != null) {
-                match.put("epic", Map.of("id", epicId));
-            }
-        }
-        match.put("ended", ended);
-        if (outcome != null) {
-            match.put("outcome", outcome);
-        }
-        return match;
-    }
-
-    private static @Nullable Map<String, Object> locationOf(Map<String, Object> row, String idKey, String titleKey) {
-        var id = JsonTree.string(row, idKey);
-        if (id == null || id.isBlank()) {
-            return null;
-        }
-        var location = new LinkedHashMap<String, Object>();
-        location.put("id", id);
-        var title = JsonTree.string(row, titleKey);
-        if (title != null) {
-            location.put("title", title);
-        }
-        return location;
-    }
-
-    private static int findKindRank(Map<String, Object> match) {
-        var kind = JsonTree.string(match, "kind");
-        if (kind == null) {
-            return 9;
-        }
-        return switch (kind) {
-            case "project" -> 0;
-            case "epic" -> 1;
-            case "plan" -> 2;
-            case "decision" -> 3;
-            case "report" -> 4;
-            default -> 9;
-        };
     }
 
     /**
