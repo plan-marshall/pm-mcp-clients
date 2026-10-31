@@ -306,7 +306,7 @@ class OverviewRecordsTest {
         assertEquals("pausing", parsedActChanged.activity());
         assertEquals("task", parsedActChanged.point());
 
-        var needsChanged = new NeedsOperatorChangedEvent("pm-mcp-clients", "PLN-001", null, "decision", 1);
+        var needsChanged = new NeedsOperatorChangedEvent("pm-mcp-clients", "PLN-001", null, "decision", 1, null);
         assertEquals("needs_operator.changed", NeedsOperatorChangedEvent.EVENT_NAME);
         var parsedNeedsChanged = NeedsOperatorChangedEvent.fromJson(needsChanged.toJson());
         assertEquals("pm-mcp-clients", parsedNeedsChanged.projectId());

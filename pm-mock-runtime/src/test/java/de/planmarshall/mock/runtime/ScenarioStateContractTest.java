@@ -238,6 +238,7 @@ class ScenarioStateContractTest {
             return switch (stateId) {
                 case "overview.plan-ending" -> "/api/v1/projects/pm-mcp-clients";
                 case "overview.needs-changed" -> "/api/v1/projects";
+                case "overview.needs-resolved" -> "/api/v1/machine/needs-operator";
                 case "overview.running" -> null;
                 default -> "/api/v1/decisions";
             };

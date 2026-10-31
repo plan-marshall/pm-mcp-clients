@@ -62,6 +62,196 @@
         ]
       }
     },
+    "GET /api/v1/machine": {
+      "representation": {
+        "name": "mock-machine",
+        "onboarded": true,
+        "needs_operator": {
+          "count": 2,
+          "items": [
+            {
+              "kind": "credential",
+              "link": "/api/v1/credentials/github"
+            },
+            {
+              "kind": "cleanup_due",
+              "link": "/api/v1/system/cleanup"
+            }
+          ]
+        }
+      }
+    },
+    "GET /api/v1/machine/needs-operator": {
+      "representation": {
+        "items": [
+          {
+            "kind": "cleanup_due",
+            "link": "/api/v1/system/cleanup",
+            "since": "2026-10-15T08:00:00Z"
+          },
+          {
+            "kind": "decision",
+            "link": "/api/v1/plans/drop-legacy-api",
+            "project": {
+              "id": "pm-mcp-clients",
+              "title": "pm-mcp-clients"
+            },
+            "epic": {
+              "id": "relay-hardening",
+              "title": "Relay Hardening"
+            },
+            "plan": {
+              "id": "drop-legacy-api",
+              "title": "Drop the legacy endpoints"
+            },
+            "since": "2026-10-16T15:05:00Z",
+            "blocks": "plan"
+          },
+          {
+            "kind": "credential",
+            "link": "/api/v1/credentials/github",
+            "since": "2026-10-16T09:00:00Z"
+          },
+          {
+            "kind": "condition",
+            "link": "/api/v1/plans/session-log",
+            "project": {
+              "id": "pm-mcp-core",
+              "title": "pm-mcp-core"
+            },
+            "plan": {
+              "id": "session-log",
+              "title": "Session log and generations"
+            },
+            "since": "2026-10-16T14:40:00Z",
+            "blocks": "plan"
+          },
+          {
+            "kind": "setup",
+            "link": "/api/v1/projects/plan-marshall",
+            "project": {
+              "id": "plan-marshall",
+              "title": "plan-marshall"
+            },
+            "since": "2026-10-16T14:20:00Z"
+          },
+          {
+            "kind": "findings",
+            "link": "/api/v1/epics/relay-hardening",
+            "project": {
+              "id": "pm-mcp-clients",
+              "title": "pm-mcp-clients"
+            },
+            "epic": {
+              "id": "relay-hardening",
+              "title": "Relay Hardening"
+            },
+            "since": "2026-10-16T14:25:00Z",
+            "blocks": "epic"
+          },
+          {
+            "kind": "landing_failed",
+            "link": "/api/v1/plans/drop-legacy-api",
+            "project": {
+              "id": "pm-mcp-clients",
+              "title": "pm-mcp-clients"
+            },
+            "epic": {
+              "id": "relay-hardening",
+              "title": "Relay Hardening"
+            },
+            "plan": {
+              "id": "drop-legacy-api",
+              "title": "Drop the legacy endpoints"
+            },
+            "since": "2026-10-16T14:30:00Z",
+            "blocks": "epic"
+          },
+          {
+            "kind": "held",
+            "link": "/api/v1/plans/fix-relay",
+            "project": {
+              "id": "pm-mcp-clients",
+              "title": "pm-mcp-clients"
+            },
+            "epic": {
+              "id": "relay-hardening",
+              "title": "Relay Hardening"
+            },
+            "plan": {
+              "id": "fix-relay",
+              "title": "Fix Relay Transport"
+            },
+            "since": "2026-10-16T14:35:00Z",
+            "blocks": "plan"
+          },
+          {
+            "kind": "stalled",
+            "link": "/api/v1/plans/profile-loader",
+            "project": {
+              "id": "pm-mcp-core",
+              "title": "pm-mcp-core"
+            },
+            "plan": {
+              "id": "profile-loader",
+              "title": "Profile loader"
+            },
+            "since": "2026-10-16T14:45:00Z",
+            "blocks": "plan"
+          },
+          {
+            "kind": "integrity_pause",
+            "link": "/api/v1/plans/relay-metrics",
+            "project": {
+              "id": "pm-mcp-clients",
+              "title": "pm-mcp-clients"
+            },
+            "epic": {
+              "id": "relay-hardening",
+              "title": "Relay Hardening"
+            },
+            "plan": {
+              "id": "relay-metrics",
+              "title": "Relay metrics"
+            },
+            "since": "2026-10-16T14:50:00Z",
+            "blocks": "plan"
+          },
+          {
+            "kind": "operator_wait",
+            "link": "/api/v1/plans/session-log",
+            "project": {
+              "id": "pm-mcp-core",
+              "title": "pm-mcp-core"
+            },
+            "plan": {
+              "id": "session-log",
+              "title": "Session log and generations"
+            },
+            "since": "2026-10-16T14:55:00Z",
+            "blocks": "plan"
+          },
+          {
+            "kind": "waiver_request",
+            "link": "/api/v1/plans/fix-relay",
+            "project": {
+              "id": "pm-mcp-clients",
+              "title": "pm-mcp-clients"
+            },
+            "epic": {
+              "id": "relay-hardening",
+              "title": "Relay Hardening"
+            },
+            "plan": {
+              "id": "fix-relay",
+              "title": "Fix Relay Transport"
+            },
+            "since": "2026-10-16T14:58:00Z",
+            "blocks": "plan"
+          }
+        ]
+      }
+    },
     "GET /api/v1/projects": {
       "representation": {
         "projects": [
@@ -2643,6 +2833,9 @@
               "GET /api/v1/projects": {
                 "projects": []
               },
+              "GET /api/v1/machine/needs-operator": {
+                "items": []
+              },
               "GET /api/v1/overview": {
                 "projects": []
               },
@@ -3145,6 +3338,111 @@
             },
             "project_id": "pm-mcp-clients",
             "plan_id": "relay-metrics"
+          }
+        }
+      ]
+    },
+    "overview.needs-resolved": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "overview.needs-resolved"
+        },
+        "facts": {
+          "summary": "An item is resolved in another client and leaves the list",
+          "runtime": {
+            "routes": {
+              "GET /api/v1/machine/needs-operator": {
+                "items": [
+                  {
+                    "kind": "cleanup_due",
+                    "link": "/api/v1/system/cleanup",
+                    "since": "2026-10-15T08:00:00Z"
+                  },
+                  {
+                    "kind": "credential",
+                    "link": "/api/v1/credentials/github",
+                    "since": "2026-10-16T09:00:00Z"
+                  },
+                  {
+                    "kind": "setup",
+                    "link": "/api/v1/projects/plan-marshall",
+                    "since": "2026-10-16T14:20:00Z"
+                  },
+                  {
+                    "kind": "findings",
+                    "link": "/api/v1/epics/relay-hardening",
+                    "since": "2026-10-16T14:25:00Z",
+                    "blocks": "epic"
+                  },
+                  {
+                    "kind": "landing_failed",
+                    "link": "/api/v1/plans/drop-legacy-api",
+                    "since": "2026-10-16T14:30:00Z",
+                    "blocks": "epic"
+                  },
+                  {
+                    "kind": "held",
+                    "link": "/api/v1/plans/fix-relay",
+                    "since": "2026-10-16T14:35:00Z",
+                    "blocks": "plan"
+                  },
+                  {
+                    "kind": "condition",
+                    "link": "/api/v1/plans/session-log",
+                    "since": "2026-10-16T14:40:00Z",
+                    "blocks": "plan"
+                  },
+                  {
+                    "kind": "stalled",
+                    "link": "/api/v1/plans/profile-loader",
+                    "since": "2026-10-16T14:45:00Z",
+                    "blocks": "plan"
+                  },
+                  {
+                    "kind": "integrity_pause",
+                    "link": "/api/v1/plans/relay-metrics",
+                    "since": "2026-10-16T14:50:00Z",
+                    "blocks": "plan"
+                  },
+                  {
+                    "kind": "operator_wait",
+                    "link": "/api/v1/plans/session-log",
+                    "since": "2026-10-16T14:55:00Z",
+                    "blocks": "plan"
+                  },
+                  {
+                    "kind": "waiver_request",
+                    "link": "/api/v1/plans/fix-relay",
+                    "since": "2026-10-16T14:58:00Z",
+                    "blocks": "plan"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "links": []
+      },
+      "links": {},
+      "events": [
+        {
+          "after_ms": 100,
+          "event": "needs_operator.changed",
+          "data": {
+            "event": "needs_operator.changed",
+            "at": "2026-10-16T15:20:00Z",
+            "scope": {
+              "kind": "workspace",
+              "project_id": "pm-mcp-clients"
+            },
+            "project_id": "pm-mcp-clients",
+            "plan_id": "drop-legacy-api",
+            "kind": "decision",
+            "count": 11
           }
         }
       ]

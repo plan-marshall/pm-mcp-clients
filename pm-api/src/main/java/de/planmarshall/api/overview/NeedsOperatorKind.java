@@ -12,7 +12,9 @@ package de.planmarshall.api.overview;
 import org.jspecify.annotations.Nullable;
 
 /**
- * Closed enumeration of reasons why an item needs operator attention.
+ * Closed enumeration of reasons why an item needs operator attention, in the order of the
+ * specification: the decision, the waiver, any other operator wait, the holds, new findings, the
+ * setup, then the machine's own items.
  */
 public enum NeedsOperatorKind {
     DECISION("decision"),
@@ -24,7 +26,9 @@ public enum NeedsOperatorKind {
     HELD("held"),
     LANDING_FAILED("landing_failed"),
     FINDINGS("findings"),
-    SETUP("setup");
+    SETUP("setup"),
+    CREDENTIAL("credential"),
+    CLEANUP_DUE("cleanup_due");
 
     private final String value;
 
