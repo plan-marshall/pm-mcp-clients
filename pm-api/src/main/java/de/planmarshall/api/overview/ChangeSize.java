@@ -63,9 +63,13 @@ public record ChangeSize(int files, int insertions, int deletions, int unplanned
 
     /**
      * Parses the size from a JSON tree map.
+     * <p>
+     * The four figures stand together: a map that names no {@code files} figure, or that omits any
+     * of the other three, is no measurement and answers {@code null}, never a partial size with an
+     * unmeasured figure read as zero.
      *
      * @param map the map representation
-     * @return the parsed size, or {@code null} when the map carries no figure at all
+     * @return the parsed size, or {@code null} when the map carries no complete measurement
      */
     public static @Nullable ChangeSize fromMap(Map<String, Object> map) {
         if (map == null) {

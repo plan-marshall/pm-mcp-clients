@@ -52,7 +52,7 @@ Each decision is carried out by the step of the visual redesign that needs it; t
 [#structure]
 == Structure and Navigation
 
-How the app is organised and how one moves from one part to another and back. Until the machine is onboarded, the app shows the onboarding only (link:entry.adoc#after-pairing[Entry, Where the App Opens]); afterwards it opens where the operator left it, first in the explorer of the projects. Each part below is designed once for both clients; this list is where the web app finds it.
+How the app is organised and how one moves from one part to another and back. Until the machine is onboarded, the app shows the onboarding only (link:entry.adoc#after-pairing[Entry, Where the App Opens]); afterwards it opens where the operator left it, and without a remembered place on the list of what waits at `/` (link:needs-and-find.adoc#start-page[What Waits and Find, The Start Page Is What Waits]). Each part below is designed once for both clients; this list is where the web app finds it.
 
 [cols="1,3",options="header"]
 |===
@@ -485,7 +485,11 @@ Every view has a canonical path; the path is the view's address and the browser'
 
 |`/overview`
 |Running and ended work
-|The start point when work is running or waiting.
+|Reached from the rail; no longer the start point.
+
+|`/`
+|What waits
+|The start point when no place is remembered (link:needs-and-find.adoc#start-page[What Waits and Find]).
 
 |`/start`, `/projects/{id}/start`, `/entries/{id}`
 |Starting work

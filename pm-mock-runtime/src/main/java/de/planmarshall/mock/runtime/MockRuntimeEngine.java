@@ -5513,7 +5513,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
             if (needsA != needsB) {
                 return needsA ? -1 : 1;
             }
-            return createdAt(b).compareTo(createdAt(a));
+            var startA = createdAt(a);
+            var startB = createdAt(b);
+            var undatedA = Instant.MAX.equals(startA);
+            var undatedB = Instant.MAX.equals(startB);
+            if (undatedA != undatedB) {
+                return undatedA ? 1 : -1;
+            }
+            return startB.compareTo(startA);
         });
         return ordered;
     }
@@ -5741,6 +5748,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         collectRunningProjects(text, matches);
         collectRunningEpics(text, matches);
         collectRunningPlans(text, matches);
+        collectOpenDecisions(text, matches);
+        collectReports(text, matches);
         collectEndedWork(text, matches);
         matches.sort((a, b) -> {
             if (a.ended() != b.ended()) {
@@ -5827,6 +5836,29 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var epic = location(JsonTree.string(row, KEY_EPIC_ID), JsonTree.string(row, KEY_EPIC_TITLE));
         matches.add(new FindMatch(FindKind.PLAN, id, requireText(title, id), project, epic, location(id, title),
                 false, null));
+    }
+
+    private void collectOpenDecisions(String text, List<FindMatch> matches) {
+        for (var decision : openDecisions.values()) {
+            if (!matchesText(text, decision.id(), decision.title(), null)) {
+                continue;
+            }
+            matches.add(new FindMatch(FindKind.DECISION, decision.id(), decision.title(), null, null,
+                    location(decision.subject(), null), false, null));
+        }
+    }
+
+    private void collectReports(String text, List<FindMatch> matches) {
+        for (var report : mockReports) {
+            if (!matchesText(text, report.id(), report.subject(), null)) {
+                continue;
+            }
+            var from = report.from();
+            matches.add(new FindMatch(FindKind.REPORT, report.id(), report.subject(),
+                    location(from.projectId(), from.projectTitle()),
+                    location(from.epicId(), from.epicTitle()),
+                    location(from.planId(), from.planTitle()), false, null));
+        }
     }
 
     private void collectEndedWork(String text, List<FindMatch> matches) {

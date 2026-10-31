@@ -190,12 +190,14 @@ class NeedsAndFindScenarioTest {
 
                 var matches = matches(client, auth, "FIX-RELAY");
 
-                assertEquals(2, matches.size(), "the running plan and the ended one");
+                // The running plan and its ended predecessor both match; a decision or report about
+                // them may match too, and none of those stands before the running work.
+                assertTrue(matches.size() >= 2);
                 assertEquals("fix-relay", JsonTree.string(matches.getFirst(), "id"));
                 assertEquals(Boolean.FALSE, matches.getFirst().get("ended"));
-                assertEquals("fix-relay-v1", JsonTree.string(matches.get(1), "id"));
-                assertEquals(Boolean.TRUE, matches.get(1).get("ended"));
-                assertEquals("merged", matches.get(1).get("outcome"));
+                var ended = matches.stream().filter(match -> Boolean.TRUE.equals(match.get("ended"))).toList();
+                assertEquals("fix-relay-v1", JsonTree.string(ended.getFirst(), "id"));
+                assertEquals("merged", ended.getFirst().get("outcome"));
             }
         }
 
@@ -208,7 +210,7 @@ class NeedsAndFindScenarioTest {
 
                 var matches = matches(client, auth, "214");
 
-                assertEquals(2, matches.size(), "the running plan and its ended predecessor both carry #214");
+                assertTrue(matches.size() >= 2, "the running plan and its ended predecessor both carry #214");
                 assertEquals("fix-relay", JsonTree.string(matches.getFirst(), "id"));
                 assertEquals(Boolean.FALSE, matches.getFirst().get("ended"));
                 assertEquals("plan", JsonTree.string(matches.getFirst(), "kind"));
