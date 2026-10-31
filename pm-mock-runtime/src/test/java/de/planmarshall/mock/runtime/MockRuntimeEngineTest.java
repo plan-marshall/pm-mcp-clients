@@ -435,8 +435,6 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("an unoffered domain endpoint answers mock_no_route naming the state")
     void unofferedDomainIsNoRoute() throws Exception {
-        var auth = Map.of("Authorization", "Bearer " + runtimeToken);
-
         var system = send("GET", "/api/v1/system", auth, new byte[0], false);
         assertEquals(404, system.status());
         assertEquals("mock_no_route", system.json().get("error"));
@@ -524,7 +522,6 @@ class MockRuntimeEngineTest {
     @DisplayName("handles the flat plan control routes the operator verbs post to")
     void flatPlanControlRoutes() throws Exception {
         engine.switchScenario(StandardScenarios.FULLY_ONBOARDED);
-        var auth = Map.of("Authorization", "Bearer " + runtimeToken);
 
         var paused = send("POST", "/api/v1/plans/fix-relay/pause", auth,
                 "{\"point\":\"now\"}".getBytes(StandardCharsets.UTF_8), false);
@@ -546,7 +543,6 @@ class MockRuntimeEngineTest {
     @DisplayName("the flat plan control routes refuse an unknown plan and a bare verb")
     void flatPlanControlRoutesRefuse() throws Exception {
         engine.switchScenario(StandardScenarios.FULLY_ONBOARDED);
-        var auth = Map.of("Authorization", "Bearer " + runtimeToken);
 
         var unknown = send("POST", "/api/v1/plans/no-such-plan/pause", auth, new byte[0], false);
         assertEquals(404, unknown.status());
@@ -674,7 +670,6 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("manages paired devices and web listener routes")
     void webDevicesRoutes() throws Exception {
-        var auth = Map.of("Authorization", "Bearer " + runtimeToken);
 
         // 1. POST /api/v1/web/pairings
         var pairRes = send("POST", "/api/v1/web/pairings", auth, new byte[0], false);
@@ -778,7 +773,6 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("records the operator acts since the last reset and serves them at /mock/acts")
     void actLogRecordsActsAndResetEmptiesIt() throws Exception {
-        var auth = Map.of("Authorization", "Bearer " + runtimeToken);
         engine.switchScenario(StandardScenarios.FULLY_ONBOARDED);
 
         send("POST", "/api/v1/plans/fix-relay/pause", auth,
@@ -842,7 +836,6 @@ class MockRuntimeEngineTest {
     @DisplayName("a project's setup serves its identity and advances to completed")
     void projectSetupServesItsState() throws Exception {
         engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
-        var auth = Map.of("Authorization", "Bearer " + runtimeToken);
 
         var identity = send("GET", "/api/v1/projects/cui-parent/setup", auth, new byte[0], false);
         var advanced = send("POST", "/api/v1/projects/cui-parent/setup", auth,
@@ -863,7 +856,6 @@ class MockRuntimeEngineTest {
     @DisplayName("a project setup id that arrives percent-encoded is decoded")
     void projectSetupDecodesTheId() throws Exception {
         engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
-        var auth = Map.of("Authorization", "Bearer " + runtimeToken);
 
         var res = send("GET", "/api/v1/projects/new%20service/setup", auth, new byte[0], false);
 
