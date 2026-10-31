@@ -416,6 +416,17 @@ async function readCatalogueVersion(): Promise<void> {
   try {
     const status = await apiClient.getStatus();
     setCatalogueVersion(status.version ?? null);
+    // A catalogue loaded before the version was known is written again under it, so the next
+    // visit reads it instead of asking the runtime for the same pack.
+    const active = get(currentLocale);
+    const messages = get(messagesStore);
+    if (
+      catalogueVersion !== null &&
+      messagesLocale === active &&
+      Object.keys(messages).length > 0
+    ) {
+      persistCatalogue(active, messages);
+    }
   } catch {
     setCatalogueVersion(null);
   }
@@ -557,6 +568,7 @@ function rememberEnglish(locale: Locale, messages: Record<string, string>): void
  * the recorded language without a reload (UC-ONB-3).
  */
 export async function adoptRecordedLocale(): Promise<void> {
+  await readCatalogueVersion();
   if (storedLocale()) return;
   const recorded = await recordedLocale();
   if (!recorded || recorded === get(currentLocale)) return;

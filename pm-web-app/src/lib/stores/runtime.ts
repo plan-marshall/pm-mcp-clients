@@ -695,6 +695,10 @@ export async function pairBrowser(code: string): Promise<void> {
   const requested = matchPath(typeof window !== 'undefined' ? window.location.pathname : '/');
   const summary = onboarded ? await apiClient.getProjects().catch(() => null) : null;
 
+  // The recorded interface language is settled before the shell first renders, so the app never
+  // paints one language and then switches under the operator.
+  await adoptRecordedLocale();
+
   runtimeStore.update((s) => ({
     ...s,
     isInitialized: true,
@@ -713,7 +717,6 @@ export async function pairBrowser(code: string): Promise<void> {
   subscribeToEvents();
   void refreshReportsCount();
   void refreshDecisionsCount();
-  await adoptRecordedLocale();
 }
 
 export async function executeLink(link: HypermediaLink | string, body?: unknown): Promise<void> {

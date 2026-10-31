@@ -129,11 +129,13 @@ test.describe('The recorded interface language', () => {
     await freshPage.evaluate(() => localStorage.clear());
     await freshPage.goto(`/#code=${code}`);
 
-    // Assert: it opens in the recorded language, without a reload.
+    // Assert: it opens in the recorded language, without a reload. The onboarding state is shared
+    // with the browser above, so the page may stand on any step; the frame is German either way.
     await expect(freshPage.getByTestId('onboarding-view')).toBeVisible({ timeout: 20000 });
-    await expect(freshPage.getByRole('button', { name: 'Mit Schritt 1 beginnen' })).toBeVisible({
+    await expect(freshPage.getByRole('button', { name: 'Startseite' })).toBeVisible({
       timeout: 20000,
     });
+    await expect(freshPage.getByRole('button', { name: 'Sprache wechseln' })).toBeVisible();
     const stored = await freshPage.evaluate(() => localStorage.getItem('pm_locale'));
     expect(stored).toBeNull();
     await freshContext.close();
