@@ -311,6 +311,7 @@
                   {/if}
                 </td>
                 <td class="text-secondary" title={formatDateTime(device.last_used_at)}>
+                  <span class="visually-hidden">{formatDateTime(device.last_used_at)}</span>
                   {$t('devices.list.last_used', { time: formatRelative(device.last_used_at) })}
                 </td>
                 <td>
@@ -425,6 +426,18 @@
 </div>
 
 <style>
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .settings-view {
     max-width: 64rem;
     margin: 0 auto;

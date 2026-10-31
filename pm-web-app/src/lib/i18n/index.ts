@@ -432,7 +432,8 @@ async function readCatalogueVersion(): Promise<void> {
     const status = await apiClient.getStatus();
     setCatalogueVersion(status.version ?? null);
   } catch {
-    setCatalogueVersion(null);
+    // A status read that fails leaves the version this session already learned in place; an
+    // unknown version must not evict the catalogue of the runtime that is still serving.
   }
 }
 
@@ -575,14 +576,27 @@ function rememberEnglish(locale: Locale, messages: Record<string, string>): void
  */
 export async function adoptRecordedLocale(): Promise<void> {
   const generation = switchGeneration;
+  let expired = false;
+  const work = adoptRecordedLocaleUntimed(generation, () => expired);
+  await withinBound(work, ADOPTION_BOUND_MS, () => {
+    expired = true;
+  });
+}
+
+/**
+ * @param generation the switch generation the adoption was asked under
+ * @param hasExpired tells whether the pairing's bound has passed
+ */
+async function adoptRecordedLocaleUntimed(
+  generation: number,
+  hasExpired: () => boolean,
+): Promise<void> {
   await readCatalogueVersion();
-  if (storedLocale()) return;
+  if (storedLocale() || hasExpired()) return;
   const recorded = await recordedLocale();
   if (!recorded || recorded === get(currentLocale) || generation !== switchGeneration) return;
-  // A machine that accepts the request and never answers must not hold the pairing for ever; the
-  // load itself keeps running, but its result is dropped once the bound has passed.
-  const loaded = await withinBound(loadCatalogueFor(recorded), ADOPTION_BOUND_MS);
-  if (!loaded || generation !== switchGeneration || storedLocale()) return;
+  const loaded = await loadCatalogueFor(recorded);
+  if (!loaded || generation !== switchGeneration || hasExpired() || storedLocale()) return;
   currentLocale.set(recorded);
   messagesStore.set(loaded);
   messagesLocale = recorded;
@@ -594,13 +608,17 @@ const ADOPTION_BOUND_MS = 2000;
 /**
  * @param work the promise to bound
  * @param ms the bound in milliseconds
+ * @param onExpire called when the bound passes first
  * @returns the promise's value, or `null` when the bound passed first
  */
-function withinBound<T>(work: Promise<T>, ms: number): Promise<T | null> {
+function withinBound<T>(work: Promise<T>, ms: number, onExpire: () => void): Promise<T | null> {
   return Promise.race([
     work,
     new Promise<null>((resolve) => {
-      setTimeout(() => resolve(null), ms);
+      setTimeout(() => {
+        onExpire();
+        resolve(null);
+      }, ms);
     }),
   ]);
 }

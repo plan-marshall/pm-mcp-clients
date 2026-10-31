@@ -338,6 +338,14 @@ class OnboardingScenarioTest {
                 assertEquals("de", recorded.languageInterface());
                 assertEquals("de", recorded.languageModel());
 
+                // The completed card reads the same recorded choice as the settings view.
+                var stateMap = JsonTree.asObject(JsonTree.parse(new String(
+                        client.send(HttpRequest.get("/api/v1/onboarding/state").withHeader("Authorization", auth))
+                                .body(),
+                        StandardCharsets.UTF_8)));
+                var summaries = JsonTree.asObject(stateMap.get("step_summaries"));
+                assertEquals("Deutsch, models Deutsch", JsonTree.string(summaries, "1"));
+
                 assertEquals(200, put(client, auth,
                         "{\"key\":\"language_interface\",\"value\":\"en\",\"revision\":4}"));
                 // A code the machine does not support changes nothing.

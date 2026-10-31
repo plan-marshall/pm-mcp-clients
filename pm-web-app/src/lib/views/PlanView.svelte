@@ -50,6 +50,8 @@
   let isLoadingBreakdown = $state(false);
   let reportPhaseBreakdown = $state<TokenBreakdownItem[] | null>(null);
   let reportRoleBreakdown = $state<TokenBreakdownItem[] | null>(null);
+  /** The moment the day headers are measured at; a quiet timer moves it across midnight. */
+  let clock = $state(Date.now());
 
   /**
    * How the plan ended: the process resource's own record, or what Ended Work handed the view.
@@ -104,6 +106,7 @@
 
   let unsubscribeEvents: (() => void) | null = null;
   let unsubscribeActivity: (() => void) | null = null;
+  let clockTimer: ReturnType<typeof setInterval> | null = null;
   /**
    * The activity load that owns the panel.
    *
@@ -125,11 +128,18 @@
         void loadPlanProcess(false);
       }
     });
+    clockTimer = setInterval(() => {
+      clock = Date.now();
+    }, 30_000);
 
     await loadPlanProcess(true);
   });
 
   onDestroy(() => {
+    if (clockTimer !== null) {
+      clearInterval(clockTimer);
+      clockTimer = null;
+    }
     if (unsubscribeEvents) {
       unsubscribeEvents();
       unsubscribeEvents = null;
@@ -524,7 +534,7 @@
    */
   function dayLabel(entries: ActivityEntry[], index: number): string {
     const iso = entries[index]?.timestamp;
-    const day = formatDay(iso, $currentLocale);
+    const day = formatDay(iso, $currentLocale, new Date(clock));
     if (!day) return '';
     if (index === 0) return day;
     const previous = entries[index - 1]?.timestamp;

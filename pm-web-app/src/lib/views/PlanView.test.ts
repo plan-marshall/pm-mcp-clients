@@ -251,6 +251,9 @@ describe('PlanView component', () => {
         { timestamp: dayAt(0, 10), kind: 'text', content: 'first today' },
         { timestamp: dayAt(0, 11), kind: 'text', content: 'later today' },
         { timestamp: dayAt(1, 9), kind: 'text', content: 'yesterday' },
+        // The same day and month in two years: each opens its own header.
+        { timestamp: '2026-09-01T09:00:00Z', kind: 'text', content: 'this year' },
+        { timestamp: '2025-09-01T09:00:00Z', kind: 'text', content: 'last year' },
       ],
     });
 
@@ -258,7 +261,13 @@ describe('PlanView component', () => {
 
     await screen.findByTestId('task-inspector');
     const days = await screen.findAllByTestId('activity-day');
-    expect(days.map((node) => node.textContent)).toEqual(['today', 'yesterday']);
+    expect(days.map((node) => node.textContent)).toEqual([
+      'today',
+      'yesterday',
+      days[2]?.textContent,
+      days[2]?.textContent,
+    ]);
+    expect(days[2]?.textContent).toMatch(/Sep/);
   });
 
   it('normalizes live activity events and ignores malformed ones', async () => {

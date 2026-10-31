@@ -610,9 +610,9 @@
     const isSentLater = Boolean(item.sent_at && item.created_at && item.sent_at !== item.created_at);
 
     if (isSentLater) {
-      return `${created} · ${$t('report.list.sent_at', {
-        time: formatInstant(item.sent_at, 'short', $currentLocale, now),
-      })}`;
+      const sent =
+        formatInstant(item.sent_at, 'short', $currentLocale, now) || item.sent || '';
+      return `${created} · ${$t('report.list.sent_at', { time: sent })}`;
     }
     return created;
   }
