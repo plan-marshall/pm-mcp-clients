@@ -222,6 +222,7 @@ describe('PlanView component', () => {
 
     const entries = screen.getAllByTestId('activity-entry');
     expect(entries.length).toBe(4);
+    expect(entries[0]).toHaveTextContent('14:02:11');
     expect(entries[0]).toHaveTextContent('Reading the relay transport');
     expect(entries[1]).toHaveTextContent('read');
     expect(entries[2]).toHaveTextContent('failed · 4 KiB');

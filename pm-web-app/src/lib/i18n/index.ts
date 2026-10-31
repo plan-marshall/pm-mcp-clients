@@ -245,20 +245,26 @@ export function loadCachedCatalogue(locale: Locale): Record<string, string> | nu
   const storage = catalogueStorage();
   if (!storage) return null;
   const keys = catalogueVersion === null ? cachedKeysFor(storage, locale) : [storageKeyFor(locale)];
+  const entries: CachedCatalogue[] = [];
   for (const key of keys) {
     try {
       const raw = storage.getItem(key);
       if (!raw) continue;
       const parsed: unknown = JSON.parse(raw);
       if (isCachedCatalogue(parsed, locale)) {
-        return parsed.messages;
+        entries.push(parsed);
+      } else {
+        dropCachedCatalogue(storage, key);
       }
-      dropCachedCatalogue(storage, key);
     } catch {
       dropCachedCatalogue(storage, key);
     }
   }
-  return null;
+  if (entries.length === 0) return null;
+  // The newest entry the browser holds is the one rendered, so a stale pack of an older runtime
+  // is never preferred over a newer one.
+  entries.sort((left, right) => right.cachedAt.localeCompare(left.cachedAt));
+  return entries[0].messages;
 }
 
 /**
@@ -313,8 +319,8 @@ export function persistCatalogue(locale: Locale, messages: Record<string, string
  * Every message this session has resolved, per locale.
  *
  * A locale switch replaces the store but not this history, so a label seen before the switch
- * stays readable where the new catalogue has a gap — and the history of one locale is never read
- * while another is active, so no word of the other locale can reach the screen.
+ * stays readable where the new catalogue has a gap — and the history of another language is read
+ * only as the English fallback, so no word of a foreign language reaches an active screen.
  */
 const sessionMessages: Record<Locale, Record<string, string>> = {
   en: Object.create(null),
@@ -324,8 +330,12 @@ const sessionMessages: Record<Locale, Record<string, string>> = {
 /** The English catalogue, the fallback of every other locale. */
 let englishMessages: Record<string, string> | null = null;
 let englishLookupAttempted = false;
-/** The locale whose catalogue `messagesStore` currently holds. */
+/**
+ * The locale whose catalogue `messagesStore` currently holds.
+ */
 let messagesLocale: Locale = 'en';
+/** The number of the last switch asked for, so an older load cannot apply over a newer one. */
+let switchGeneration = 0;
 /** Keys already reported as missing, so a render loop cannot flood the console. */
 const warnedKeys = new Set<string>();
 
@@ -486,14 +496,16 @@ function baseFor(locale: Locale): Record<string, string> {
  * @param locale the locale to switch to
  */
 export async function setLocale(locale: Locale): Promise<void> {
+  const generation = ++switchGeneration;
   if (locale === get(currentLocale) && messagesLocale === locale) {
     rememberLocaleChoice(locale);
     return;
   }
 
   const loaded = await loadCatalogueFor(locale);
-  if (!loaded) {
-    // Nothing was loaded, so nothing is replaced: the old language and its catalogue stay whole.
+  if (!loaded || generation !== switchGeneration) {
+    // Nothing was loaded, or a later switch has been asked for since: the language and its
+    // catalogue stay as they are, whole.
     return;
   }
 
@@ -599,6 +611,8 @@ export async function initI18n(): Promise<void> {
   // rather than rendered, so a new runtime never serves a stale catalogue (CC-P-05).
   if (hydratedBefore && !hydrateFromCache(browserLocale)) {
     messagesStore.set({});
+    englishMessages = null;
+    englishLookupAttempted = false;
   }
 
   const initialLocale = storedLocale() ?? (await recordedLocale()) ?? browserLocale;

@@ -700,8 +700,8 @@
                 plans: snapshot.cleanup.plans_count,
                 epics: snapshot.cleanup.epics_count,
                 logs: snapshot.cleanup.logs_count,
-                reports: 0,
-                projects: 0,
+                reports: snapshot.cleanup.read_reports_count ?? 0,
+                projects: snapshot.cleanup.unenrolled_projects_count ?? 0,
               }),
               size: formatBytes(snapshot.cleanup.freed_bytes),
             })}

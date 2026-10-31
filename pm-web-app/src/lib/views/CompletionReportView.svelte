@@ -121,7 +121,7 @@
           </a>
         {/if}
         <span class="ended-time text-muted">
-          {formatTime(data.ended || data.ended_at, 'short', $currentLocale)}
+          {data.ended || formatTime(data.ended_at, 'short', $currentLocale)}
         </span>
       </div>
     </header>

@@ -30,7 +30,6 @@
     formatSplit,
     formatTokens,
     formatDuration,
-    formatDay,
     formatTime,
     type Locale,
   } from '../display/format';
@@ -496,21 +495,6 @@
    */
   function formatEndedAt(iso: string): string {
     return formatTime(iso, 'short', $currentLocale);
-  }
-
-  /**
-   * Tells whether an activity entry opens a new day in the stream.
-   *
-   * @param entries the entries of the task's activity
-   * @param index the entry's position
-   * @returns `true` for the first entry, and for the first entry of each further day
-   */
-  function startsDay(entries: ActivityEntry[], index: number): boolean {
-    if (index === 0) return true;
-    return (
-      formatDay(entries[index]?.timestamp, $currentLocale) !==
-      formatDay(entries[index - 1]?.timestamp, $currentLocale)
-    );
   }
 
   /**
@@ -1003,17 +987,12 @@
                 {#if taskActivity.entries.length === 0}
                   <div class="activity-empty text-muted">{$t('plan.activity.empty')}</div>
                 {:else}
-                  {#each taskActivity.entries as entry, index}
-                    {#if startsDay(taskActivity.entries, index)}
-                      <div class="activity-day mono">{formatDay(entry.timestamp, $currentLocale)}</div>
-                    {/if}
+                  {#each taskActivity.entries as entry}
                     <div
                       class="activity-entry activity-entry--{entry.kind}"
                       data-testid="activity-entry"
                     >
-                      <span class="entry-time mono"
-                        >{formatTime(entry.timestamp, 'clock', $currentLocale)}</span
-                      >
+                      <span class="entry-time mono">{entry.timestamp}</span>
                       <span class="entry-kind-tag entry-kind-tag--{entry.kind}"
                         >{displayState('activity', entry.kind, $t)}</span
                       >
@@ -1584,14 +1563,6 @@
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-sm);
     font-size: var(--text-xs);
-  }
-
-  .activity-day {
-    padding: var(--space-1) 0;
-    color: var(--color-text-muted);
-    font-size: var(--text-xs);
-    font-weight: 600;
-    text-transform: none;
   }
 
   .entry-time {

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
-  import { t, currentLocale } from '../i18n';
+  import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
   import {
@@ -11,7 +11,7 @@
     type CleanupKeptItem,
   } from '../api/client';
   import { navigateTo, runtimeStore } from '../stores/runtime';
-  import { formatBytes, formatTime } from '../display/format';
+  import { formatBytes } from '../display/format';
   import { displayState } from '../display';
 
   let job = $state<CleanupJob | null>(null);
@@ -178,14 +178,6 @@
   function openDeleteModal() {
     actionError = '';
     isDeleteModalOpen = true;
-  }
-
-  /**
-   * @param iso the instant the runtime sends
-   * @returns the moment to the minute, in the interface language
-   */
-  function moment(iso?: string | null): string {
-    return formatTime(iso, 'short', $currentLocale);
   }
 
   function closeDeleteModal() {
@@ -395,7 +387,7 @@
           <p class="text-muted text-sm">{$t('system.cleanup.preview.readonly')}</p>
           <dl class="preview-facts">
             {#if previewItem.ended_at}
-              <dt>{$t('system.cleanup.details.ended', { time: moment(previewItem.ended_at) })}</dt>
+              <dt>{$t('system.cleanup.details.ended', { time: previewItem.ended_at })}</dt>
               <dd></dd>
             {/if}
             {#if previewItem.detail}
@@ -459,7 +451,7 @@
                           <span class="badge badge--kind">{displayState('cleanup', item.kind, $t)}</span>
                           {#if item.ended_at}
                             <span class="text-muted text-xs">
-                              {$t('system.cleanup.details.ended', { time: moment(item.ended_at) })}
+                              {$t('system.cleanup.details.ended', { time: item.ended_at })}
                             </span>
                           {/if}
                           {#if item.detail}
@@ -547,7 +539,7 @@
                   <span class="text-muted text-xs">
                     {$t('system.cleanup.kept.why', {
                       how: k.why,
-                      time: moment(k.kept_at),
+                      time: k.kept_at,
                       who: k.who,
                     })}
                   </span>

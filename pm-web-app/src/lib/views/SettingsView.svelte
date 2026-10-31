@@ -6,8 +6,7 @@
   import CredentialEntry from '../components/CredentialEntry.svelte';
   import { apiClient, type PairedDevice } from '../api/client';
   import { currentLocale } from '../i18n';
-  import { formatDay, formatTime } from '../display/format';
-  import { runtimeStore, navigateTo, goBack } from '../stores/runtime';
+  import { formatDay, formatTime } from '../display/format';  import { runtimeStore, navigateTo, goBack } from '../stores/runtime';
 
   /**
    * The paired devices of the machine (UC-ENT-2): the list, renaming one inline, revoking one,
@@ -181,6 +180,14 @@
 
   /**
    * @param rawDate an ISO timestamp
+   * @returns its age in the unit that age has
+   */
+  function formatRelative(rawDate?: string): string {
+    return formatTime(rawDate, 'relative', $currentLocale);
+  }
+
+  /**
+   * @param rawDate an ISO timestamp
    * @returns the moment to the minute, in the interface language
    */
   function formatDateTime(rawDate?: string): string {
@@ -292,8 +299,8 @@
                     · {$t('devices.list.from', { from: device.paired_from })}
                   {/if}
                 </td>
-                <td class="text-secondary">
-                  {$t('devices.list.last_used', { time: formatDateTime(device.last_used_at) })}
+                <td class="text-secondary" title={formatDateTime(device.last_used_at)}>
+                  {$t('devices.list.last_used', { time: formatRelative(device.last_used_at) })}
                 </td>
                 <td>
                   <div class="device-actions">

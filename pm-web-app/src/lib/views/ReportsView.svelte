@@ -595,15 +595,13 @@
   }
 
   function formatReportTime(item: ReportItem): string {
-    const created =
-      item.created || formatInstant(item.created_at, 'relative', $currentLocale);
-    const isSentLater =
-      (item.sent && item.created && item.sent !== item.created) ||
-      (item.sent_at && item.created_at && item.sent_at !== item.created_at);
+    const created = formatInstant(item.created_at, 'relative', $currentLocale);
+    const isSentLater = Boolean(item.sent_at && item.created_at && item.sent_at !== item.created_at);
 
     if (isSentLater) {
-      const sent = item.sent || formatInstant(item.sent_at, 'short', $currentLocale);
-      return `${created} · ${$t('report.list.sent_at', { time: sent })}`;
+      return `${created} · ${$t('report.list.sent_at', {
+        time: formatInstant(item.sent_at, 'short', $currentLocale),
+      })}`;
     }
     return created;
   }
@@ -613,7 +611,7 @@
    * @returns the moment itself, for the row's hover advisory
    */
   function reportMoment(item: ReportItem): string {
-    return formatInstant(item.created || item.created_at, 'short', $currentLocale);
+    return formatInstant(item.created_at, 'short', $currentLocale);
   }
 
   /**
@@ -621,7 +619,7 @@
    * @returns the day the report was made, in the interface language
    */
   function reportDay(item: ReportItem): string {
-    return formatDay(item.created || item.created_at, $currentLocale);
+    return formatDay(item.created_at, $currentLocale);
   }
 </script>
 

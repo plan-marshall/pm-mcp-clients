@@ -147,7 +147,9 @@ describe('formatBytes', () => {
     [2048, '2 KB'],
     [412 * 1024 * 1024, '412 MB'],
     [1825361100, '1.7 GB'],
+    [1932735283, '1.8 GB'],
     [1073741824, '1 GB'],
+    [38 * 1024 * 1024 * 1024, '38 GB'],
   ])('renders %i bytes', (bytes, expected) => {
     expect(formatBytes(bytes)).toBe(expected);
   });

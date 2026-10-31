@@ -1,13 +1,14 @@
 <script lang="ts">
-  import { t, currentLocale } from '../i18n';
-  import { formatTime } from '../display/format';
+  import { t } from '../i18n';
   import Button from '../components/Button.svelte';
   import { runtimeStore } from '../stores/runtime';
 
   $: info = $runtimeStore.revokedInfo;
   $: reasonKey = info?.reason || $runtimeStore.revokedReason || 'device_revoked';
   $: by = info?.revoked_by || 'the terminal client';
-  $: time = formatTime(info?.revoked_at, 'short', $currentLocale);
+  // The runtime ships this value display-ready (`today at 14:10`); it is shown as it arrives, as
+  // the design says of the fields the wire already formats.
+  $: time = info?.revoked_at ?? '';
 
   function handlePair() {
     runtimeStore.update((s) => ({
