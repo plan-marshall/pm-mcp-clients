@@ -24,7 +24,8 @@ import de.planmarshall.api.message.MessageCatalogue;
 @DisplayName("Error texts of the local API")
 class ErrorTextsTest {
 
-    private static final List<String> LOCALES = List.of("en", "de");
+    private static final List<String> LOCALES =
+            MessageCatalogue.SUPPORTED_LOCALES.stream().sorted().toList();
     private static final List<String> PARTS = List.of("title", "cause", "fix");
 
     @Test
@@ -130,6 +131,8 @@ class ErrorTextsTest {
             assertEquals(messages.get(key("unknown", "cause")), ErrorTexts.cause(locale, (ApiErrorCode) null));
             assertEquals(messages.get(key("unknown", "fix")), ErrorTexts.fix(locale, (ApiErrorCode) null));
             assertEquals(messages.get(key("unknown", "title")), ErrorTexts.title(locale, (String) null));
+            assertEquals(messages.get(key("unknown", "cause")), ErrorTexts.cause(locale, (String) null));
+            assertEquals(messages.get(key("unknown", "fix")), ErrorTexts.fix(locale, (String) null));
         }
     }
 
