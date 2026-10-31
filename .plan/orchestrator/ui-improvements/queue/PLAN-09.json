@@ -2,10 +2,10 @@
   "id": "PLAN-09",
   "slug": "web-display-layer",
   "workstream": "WS-02",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "09-web-display-layer",
+  "pr": "287",
+  "landing": "landings/PLAN-09.md",
   "seq": 9
 }

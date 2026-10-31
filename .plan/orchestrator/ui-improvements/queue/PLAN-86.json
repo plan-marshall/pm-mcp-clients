@@ -2,10 +2,10 @@
   "id": "PLAN-86",
   "slug": "shared-error-texts",
   "workstream": "WS-01",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "86-shared-error-texts",
+  "pr": "283",
+  "landing": "landings/PLAN-86.md",
   "seq": 86
 }
