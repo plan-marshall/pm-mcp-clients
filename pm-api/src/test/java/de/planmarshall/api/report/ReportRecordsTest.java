@@ -24,8 +24,11 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 
+@EnableGeneratorController
 class ReportRecordsTest {
 
     @Test
@@ -67,22 +70,26 @@ class ReportRecordsTest {
 
     @Test
     void shouldRoundTripReportItem() throws Exception {
-        var created = Instant.parse("2026-10-16T11:20:00Z");
-        var sent = Instant.parse("2026-10-16T11:22:00Z");
-        var read = Instant.parse("2026-10-16T12:00:00Z");
+        var id = "rep-" + Generators.nonEmptyStrings().next();
+        var subject = Generators.nonEmptyStrings().next();
+        var body = Generators.nonEmptyStrings().next();
+        var device = Generators.nonEmptyStrings().next();
+        var created = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
+        var sent = created.plusSeconds(Generators.integers(61, 600).next());
+        var read = sent.plusSeconds(Generators.integers(1, 600).next());
 
         var item = new ReportItem(
-                "rep-0142",
+                id,
                 new ReportFrom("pm-mcp-clients", "relay-hardening", "fix-relay"),
                 ReportKind.PLAN_ENDED,
-                "fix-relay ended: merged (#214)",
+                subject,
                 Map.of("plan", "fix-relay", "outcome", "merged (#214)"),
-                "3 of 3 deliverables · 2 h 40 min",
+                body,
                 created,
                 sent,
                 read,
                 "web",
-                "iPad",
+                device,
                 "/api/v1/plans/fix-relay/completion"
         );
 
@@ -92,22 +99,24 @@ class ReportRecordsTest {
         var json = item.toJson();
         var parsed = ReportItem.fromJson(json);
 
-        assertEquals("rep-0142", parsed.id());
+        assertEquals(id, parsed.id());
         assertEquals(ReportKind.PLAN_ENDED, parsed.kind());
-        assertEquals("fix-relay ended: merged (#214)", parsed.subject());
+        assertEquals(subject, parsed.subject());
         assertEquals("fix-relay", parsed.subjectParams().get("plan"));
-        assertEquals("3 of 3 deliverables · 2 h 40 min", parsed.body());
+        assertEquals(body, parsed.body());
         assertEquals(created, parsed.createdAt());
         assertEquals(sent, parsed.sentAt());
         assertEquals(read, parsed.readAt());
         assertEquals("web", parsed.readChannel());
-        assertEquals("iPad", parsed.readDevice());
+        assertEquals(device, parsed.readDevice());
         assertEquals("/api/v1/plans/fix-relay/completion", parsed.detailLink());
     }
 
     @Test
     void shouldRoundTripReportsPage() throws Exception {
-        var created = Instant.parse("2026-10-16T11:20:00Z");
+        var created = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
+        var unreadCount = Generators.integers(1, 50).next();
+        var olderCount = Generators.integers(1, 50).next();
         var item = new ReportItem(
                 "rep-0142",
                 new ReportFrom("pm-mcp-clients", "relay-hardening", "fix-relay"),
@@ -123,15 +132,15 @@ class ReportRecordsTest {
                 null
         );
 
-        var page = new ReportsPage(List.of(item), 5, created, true, 4);
+        var page = new ReportsPage(List.of(item), unreadCount, created, true, olderCount);
         var json = page.toJson();
         var parsed = ReportsPage.fromJson(json);
 
         assertEquals(1, parsed.items().size());
-        assertEquals(5, parsed.unreadCount());
+        assertEquals(unreadCount, parsed.unreadCount());
         assertEquals(created, parsed.oldestUnreadTime());
         assertTrue(parsed.hasOlder());
-        assertEquals(4, parsed.olderCount());
+        assertEquals(olderCount, parsed.olderCount());
 
         // Parse from bare array
         var arrayJson = ReportItem.writeList(List.of(item));
@@ -143,40 +152,47 @@ class ReportRecordsTest {
 
     @Test
     void shouldRoundTripReadReportsRequestsAndResponses() throws Exception {
+        var reportId1 = Generators.nonEmptyStrings().next();
+        var reportId2 = Generators.nonEmptyStrings().next();
+        var markedCount = Generators.integers(0, 100).next();
+
         var req1 = ReadReportsRequest.markAll();
         assertTrue(req1.all());
         var parsed1 = ReadReportsRequest.fromJson(req1.toJson());
         assertTrue(parsed1.all());
         assertTrue(parsed1.reportIds().isEmpty());
 
-        var req2 = ReadReportsRequest.of(List.of("rep-0142", "rep-0143"));
+        var req2 = ReadReportsRequest.of(List.of(reportId1, reportId2));
         assertFalse(req2.all());
         var parsed2 = ReadReportsRequest.fromJson(req2.toJson());
         assertFalse(parsed2.all());
-        assertEquals(List.of("rep-0142", "rep-0143"), parsed2.reportIds());
+        assertEquals(List.of(reportId1, reportId2), parsed2.reportIds());
 
-        var resp = new ReadReportsResponse(5, "ok");
+        var resp = new ReadReportsResponse(markedCount, "ok");
         var parsedResp = ReadReportsResponse.fromJson(resp.toJson());
-        assertEquals(5, parsedResp.markedCount());
+        assertEquals(markedCount, parsedResp.markedCount());
         assertEquals("ok", parsedResp.status());
     }
 
     @Test
     void shouldRoundTripEvents() throws Exception {
-        var created = Instant.parse("2026-10-16T11:20:00Z");
-        var item = new ReportItem("rep-001", new ReportFrom("p1", null, null), ReportKind.PLAN_STARTED, "Started", Map.of(), null, created, null, null, null, null, null);
+        var created = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
+        var reportId = Generators.nonEmptyStrings().next();
+        var device = Generators.nonEmptyStrings().next();
+        var item = new ReportItem(reportId, new ReportFrom("p1", null, null), ReportKind.PLAN_STARTED,
+                "Started", Map.of(), null, created, null, null, null, null, null);
 
         var sentEvent = new ReportSentEvent(item);
         assertEquals("report.sent", ReportSentEvent.EVENT_NAME);
         var parsedSent = ReportSentEvent.fromJson(sentEvent.toJson());
-        assertEquals("rep-001", parsedSent.report().id());
+        assertEquals(reportId, parsedSent.report().id());
 
-        var readEvent = new ReportReadEvent("rep-001", created, "cli", "terminal");
+        var readEvent = new ReportReadEvent(reportId, created, "cli", device);
         assertEquals("report.read", ReportReadEvent.EVENT_NAME);
         var parsedRead = ReportReadEvent.fromJson(readEvent.toJson());
-        assertEquals("rep-001", parsedRead.reportId());
+        assertEquals(reportId, parsedRead.reportId());
         assertEquals("cli", parsedRead.channel());
-        assertEquals("terminal", parsedRead.device());
+        assertEquals(device, parsedRead.device());
     }
 
     private PlanCompletionReport createFullPlanCompletionReport() {
@@ -467,12 +483,18 @@ class ReportRecordsTest {
 
     @Test
     void shouldRoundTripTokenComponentRecord() {
-        var comp = new TokenComponentRecord(10000L, 2000L, 300L, 4000L, 500L);
-        assertEquals(10000L, comp.input());
-        assertEquals(2000L, comp.cacheRead());
-        assertEquals(300L, comp.cacheWrite());
-        assertEquals(4000L, comp.output());
-        assertEquals(500L, comp.reasoning());
+        var input = (long) Generators.integers(0, 1_000_000).next();
+        var cacheRead = (long) Generators.integers(0, 1_000_000).next();
+        var cacheWrite = (long) Generators.integers(0, 1_000_000).next();
+        var output = (long) Generators.integers(0, 1_000_000).next();
+        var reasoning = (long) Generators.integers(0, 1_000_000).next();
+
+        var comp = new TokenComponentRecord(input, cacheRead, cacheWrite, output, reasoning);
+        assertEquals(input, comp.input());
+        assertEquals(cacheRead, comp.cacheRead());
+        assertEquals(cacheWrite, comp.cacheWrite());
+        assertEquals(output, comp.output());
+        assertEquals(reasoning, comp.reasoning());
 
         var map = comp.toMap();
         var fromMap = TokenComponentRecord.fromMap(map);
@@ -481,23 +503,32 @@ class ReportRecordsTest {
 
     @Test
     void shouldRoundTripSupportingRecords() {
-        var deliv = new DeliverableSummary("doc updates", "done");
-        assertEquals("doc updates", deliv.name());
+        var deliverableName = Generators.nonEmptyStrings().next();
+        var replanTrigger = Generators.nonEmptyStrings().next();
+        var replanChange = Generators.nonEmptyStrings().next();
+        var wasteTokens = (long) Generators.integers(0, 1_000_000).next();
+        var wasteSharePercent = Generators.integers(0, 100).next();
+        var wasteTasksCount = Generators.integers(0, 100).next();
+        var wasteCause = Generators.nonEmptyStrings().next();
+
+        var deliv = new DeliverableSummary(deliverableName, "done");
+        assertEquals(deliverableName, deliv.name());
         assertEquals("done", deliv.state());
         assertEquals(deliv, DeliverableSummary.fromMap(deliv.toMap()));
 
-        var replan = new ReplanningRecord("scope changed", "14:00", "TASK-3 modified");
-        assertEquals("scope changed", replan.trigger());
+        var replan = new ReplanningRecord(replanTrigger, "14:00", replanChange);
+        assertEquals(replanTrigger, replan.trigger());
         assertEquals("14:00", replan.time());
-        assertEquals("TASK-3 modified", replan.change());
+        assertEquals(replanChange, replan.change());
         assertEquals(replan, ReplanningRecord.fromMap(replan.toMap()));
 
-        var waste = new TokenWasteRecord("retries", 12000L, 3, 2, "timeout 2");
+        var waste = new TokenWasteRecord("retries", wasteTokens, wasteSharePercent, wasteTasksCount,
+                wasteCause);
         assertEquals("retries", waste.wasteClass());
-        assertEquals(12000L, waste.tokens());
-        assertEquals(3, waste.sharePercent());
-        assertEquals(2, waste.tasksCount());
-        assertEquals("timeout 2", waste.causeSummary());
+        assertEquals(wasteTokens, waste.tokens());
+        assertEquals(wasteSharePercent, waste.sharePercent());
+        assertEquals(wasteTasksCount, waste.tasksCount());
+        assertEquals(wasteCause, waste.causeSummary());
         assertEquals(waste, TokenWasteRecord.fromMap(waste.toMap()));
     }
 

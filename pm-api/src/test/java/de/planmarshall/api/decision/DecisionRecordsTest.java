@@ -22,9 +22,12 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.message.MessageCatalogue;
 
 @DisplayName("Decision Records and Codecs (UC-PLN-2)")
+@EnableGeneratorController
 class DecisionRecordsTest {
 
     @Test
@@ -87,9 +90,16 @@ class DecisionRecordsTest {
     @Test
     @DisplayName("QuorumVote and QuorumSupport serialize and round-trip")
     void quorumSupportRoundTrip() {
-        var vote1 = new QuorumVote("architecture", "gemini-2.5-pro", 85, "Keeps history clean");
+        var role = Generators.nonEmptyStrings().next();
+        var model = Generators.nonEmptyStrings().next();
+        var confidence = Generators.integers(0, 100).next();
+        var reason = Generators.nonEmptyStrings().next();
+        var dissentSummary = Generators.nonEmptyStrings().next();
+
+        var vote1 = new QuorumVote(role, model, confidence, reason);
         var vote2 = new QuorumVote("implement", "claude-3.7-sonnet", 90, null);
-        var support = new QuorumSupport(2, 3, 2, QuorumBand.CLEAR_MAJORITY, "branch already pushed", List.of(vote1, vote2));
+        var support = new QuorumSupport(2, 3, 2, QuorumBand.CLEAR_MAJORITY, dissentSummary,
+                List.of(vote1, vote2));
 
         var map = support.toMap();
         var roundTrip = QuorumSupport.fromMap(map);
@@ -99,11 +109,11 @@ class DecisionRecordsTest {
                 () -> assertEquals(3, roundTrip.totalVotes()),
                 () -> assertEquals(2, roundTrip.modelsCount()),
                 () -> assertEquals(QuorumBand.CLEAR_MAJORITY, roundTrip.band()),
-                () -> assertEquals("branch already pushed", roundTrip.dissentSummary()),
+                () -> assertEquals(dissentSummary, roundTrip.dissentSummary()),
                 () -> assertEquals(2, roundTrip.votes().size()),
-                () -> assertEquals("architecture", roundTrip.votes().get(0).role()),
-                () -> assertEquals(85, roundTrip.votes().get(0).confidencePercent()),
-                () -> assertEquals("Keeps history clean", roundTrip.votes().get(0).reason())
+                () -> assertEquals(role, roundTrip.votes().get(0).role()),
+                () -> assertEquals(confidence, roundTrip.votes().get(0).confidencePercent()),
+                () -> assertEquals(reason, roundTrip.votes().get(0).reason())
         );
     }
 
@@ -118,9 +128,12 @@ class DecisionRecordsTest {
         var part1 = new DecisionPart("1", "How to resolve conflict?", AnswerType.ONE_OPTION, List.of(opt1, opt2),
                 "2", "Keeps history clean", "implement", null, true, true);
 
-        var now = Instant.parse("2026-10-16T14:02:00Z");
+        var revision = Generators.integers(1, 100).next();
+        var title = Generators.nonEmptyStrings().next();
+        var subject = "plan " + Generators.nonEmptyStrings().next();
+        var now = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
         var envelope = new DecisionEnvelope(
-                "Q-007", 1, "Conflict in RelayServer.java", "Conflict", "plan fix-relay",
+                "Q-007", revision, title, "Conflict", subject,
                 DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.REVERSIBLE,
                 "The change conflicts with main", Map.of("file", "RelayServer.java", "conflict_line", 42),
                 List.of(part1), now, false, null, null, null
@@ -134,9 +147,9 @@ class DecisionRecordsTest {
         var parsed = DecisionEnvelope.fromJson(json);
         assertAll(
                 () -> assertEquals("Q-007", parsed.id()),
-                () -> assertEquals(1, parsed.revision()),
-                () -> assertEquals("Conflict in RelayServer.java", parsed.title()),
-                () -> assertEquals("plan fix-relay", parsed.subject()),
+                () -> assertEquals(revision, parsed.revision()),
+                () -> assertEquals(title, parsed.title()),
+                () -> assertEquals(subject, parsed.subject()),
                 () -> assertEquals(DecisionScope.PLAN, parsed.scope()),
                 () -> assertEquals("execute", parsed.askingPhase()),
                 () -> assertEquals("implement", parsed.askingRole()),
@@ -165,44 +178,53 @@ class DecisionRecordsTest {
     @Test
     @DisplayName("Waiver request envelope sets isWaiver and parses gate fields")
     void waiverRequestEnvelope() throws Exception {
+        var waiverGate = "coverage:" + Generators.nonEmptyStrings().next();
+        var waiverResult = Generators.nonEmptyStrings().next();
+        var waiverReason = Generators.nonEmptyStrings().next();
         var envelope = new DecisionEnvelope(
                 "WR-2", 1, "Waiver for coverage gate", null, "plan fix-relay",
                 DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.COSTLY,
                 "Coverage below 80%", null, List.of(), Instant.now(),
-                true, "coverage:pm-relay", "76 %", "Generated classes"
+                true, waiverGate, waiverResult, waiverReason
         );
 
         var json = envelope.toJson();
         var parsed = DecisionEnvelope.fromJson(json);
         assertTrue(parsed.isWaiver());
-        assertEquals("coverage:pm-relay", parsed.waiverGate());
-        assertEquals("76 %", parsed.waiverResult());
-        assertEquals("Generated classes", parsed.waiverReason());
+        assertEquals(waiverGate, parsed.waiverGate());
+        assertEquals(waiverResult, parsed.waiverResult());
+        assertEquals(waiverReason, parsed.waiverReason());
     }
 
     @Test
     @DisplayName("DecisionAnswerRequest serializes and parses properly")
     void answerRequestJson() throws Exception {
-        var req = new DecisionAnswerRequest(Map.of("1", "2"), "2", "rebase please", "tested locally", "answer", null, "cli", "term-1");
+        var ownWords = Generators.nonEmptyStrings().next();
+        var note = Generators.nonEmptyStrings().next();
+        var device = Generators.nonEmptyStrings().next();
+        var req = new DecisionAnswerRequest(Map.of("1", "2"), "2", ownWords, note, "answer", null, "cli",
+                device);
         var json = req.toJson();
         var parsed = DecisionAnswerRequest.fromJson(json);
 
         assertAll(
                 () -> assertEquals("2", parsed.option()),
-                () -> assertEquals("rebase please", parsed.ownWords()),
-                () -> assertEquals("tested locally", parsed.note()),
+                () -> assertEquals(ownWords, parsed.ownWords()),
+                () -> assertEquals(note, parsed.note()),
                 () -> assertEquals("cli", parsed.channel()),
-                () -> assertEquals("term-1", parsed.device())
+                () -> assertEquals(device, parsed.device())
         );
     }
 
     @Test
     @DisplayName("DecisionInterpretation serializes and parses properly")
     void interpretationJson() throws Exception {
+        var condition = Generators.nonEmptyStrings().next();
+        var passages = List.of(Generators.nonEmptyStrings().next(), Generators.nonEmptyStrings().next());
         var interp = new DecisionInterpretation(
-                InterpretationType.OPTION_WITH_CONDITION, "2", "release/0.9 stays untouched",
+                InterpretationType.OPTION_WITH_CONDITION, "2", condition,
                 "Rebase onto main, provided release/0.9 stays as it is", null,
-                List.of("rebase", "leave release/0.9 alone")
+                passages
         );
 
         var json = interp.toJson();
@@ -211,14 +233,16 @@ class DecisionRecordsTest {
         assertAll(
                 () -> assertEquals(InterpretationType.OPTION_WITH_CONDITION, parsed.interpretationType()),
                 () -> assertEquals("2", parsed.mappedOptionKey()),
-                () -> assertEquals("release/0.9 stays untouched", parsed.condition()),
-                () -> assertEquals(2, parsed.underlyingPassages().size())
+                () -> assertEquals(condition, parsed.condition()),
+                () -> assertEquals(passages.size(), parsed.underlyingPassages().size())
         );
     }
 
     @Test
     @DisplayName("Decision SSE events round trip through JSON")
     void eventRoundTrips() throws Exception {
+        var changeSummary = Generators.nonEmptyStrings().next();
+        var answer = Generators.nonEmptyStrings().next();
         var env = new DecisionEnvelope("Q-001", 1, "Title", null, "plan pln-1", DecisionScope.PLAN,
                 "refine", "planner", "plan", Reversibility.REVERSIBLE, null, null, List.of(), Instant.now(),
                 false, null, null, null);
@@ -228,15 +252,15 @@ class DecisionRecordsTest {
         var openedParsed = DecisionOpenedEvent.fromJson(opened.toJson());
         assertEquals("Q-001", openedParsed.decision().id());
 
-        var changed = new DecisionChangedEvent(env, "Option 3 added");
+        var changed = new DecisionChangedEvent(env, changeSummary);
         assertEquals(DecisionChangedEvent.EVENT_NAME, "decision.changed");
         var changedParsed = DecisionChangedEvent.fromJson(changed.toJson());
-        assertEquals("Option 3 added", changedParsed.changeSummary());
+        assertEquals(changeSummary, changedParsed.changeSummary());
 
-        var answered = new DecisionAnsweredEvent("Q-001", "Option 2", "cli", "mbp-oliver");
+        var answered = new DecisionAnsweredEvent("Q-001", answer, "cli", "mbp-oliver");
         assertEquals(DecisionAnsweredEvent.EVENT_NAME, "decision.answered");
         var answeredParsed = DecisionAnsweredEvent.fromJson(answered.toJson());
-        assertEquals("Option 2", answeredParsed.answer());
+        assertEquals(answer, answeredParsed.answer());
 
         var closed = new DecisionClosedEvent("Q-001", "answered", null);
         assertEquals(DecisionClosedEvent.EVENT_NAME, "decision.closed");
@@ -247,12 +271,15 @@ class DecisionRecordsTest {
     @Test
     @DisplayName("DecisionPart handles dependency and id fallbacks")
     void decisionPartFallbacks() {
-        var part = new DecisionPart("part-1", "q", AnswerType.ONE_OPTION, List.of(), "rec", "rationale", "role", "dep-1", true, true);
+        var dependency = Generators.nonEmptyStrings().next();
+        var customId = Generators.nonEmptyStrings().next();
+        var part = new DecisionPart("part-1", "q", AnswerType.ONE_OPTION, List.of(), "rec", "rationale", "role",
+                dependency, true, true);
         var map = part.toMap();
-        assertEquals("dep-1", map.get("dependency"));
+        assertEquals(dependency, map.get("dependency"));
 
-        var fromId = DecisionPart.fromMap(Map.of("id", "custom-id", "question", "q"));
-        assertEquals("custom-id", fromId.partId());
+        var fromId = DecisionPart.fromMap(Map.of("id", customId, "question", "q"));
+        assertEquals(customId, fromId.partId());
 
         var fromDefault = DecisionPart.fromMap(Map.of("question", "q"));
         assertEquals("1", fromDefault.partId());

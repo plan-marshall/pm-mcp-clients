@@ -30,10 +30,13 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("API contract of /api/v1")
+@EnableGeneratorController
 class ApiContractTest {
 
     private static final JsonFactory FACTORY = new JsonFactory();
@@ -146,7 +149,8 @@ class ApiContractTest {
     @Test
     @DisplayName("the runtime status resource round-trips")
     void runtimeStatusRoundTrip() throws Exception {
-        var resource = new RuntimeStatusResource("running", "0.1.0-SNAPSHOT", 4321L, STARTED_AT,
+        var pid = (long) Generators.integers(0, 1_000_000).next();
+        var resource = new RuntimeStatusResource("running", "0.1.0-SNAPSHOT", pid, STARTED_AT,
                 "/home/oliver/.marshall/run/runtime.sock",
                 List.of(new ResourceLink("/api/v1/status", LinkRelation.SELF,
                         ResourceLink.METHOD_GET, false)));
@@ -160,7 +164,8 @@ class ApiContractTest {
     @Test
     @DisplayName("the web access resource round-trips")
     void webAccessRoundTrip() throws Exception {
-        var resource = new WebAccessResource(WebAccessResource.STATUS_ON, 7420, false, 2,
+        var pairedDevicesCount = Generators.integers(0, 10).next();
+        var resource = new WebAccessResource(WebAccessResource.STATUS_ON, 7420, false, pairedDevicesCount,
                 List.of(new ResourceLink("/api/v1/web/devices", LinkRelation.WEB,
                         ResourceLink.METHOD_GET, false)));
 
@@ -173,8 +178,9 @@ class ApiContractTest {
     @Test
     @DisplayName("the runtime stop resource round-trips both modes")
     void runtimeStopRoundTrip() throws Exception {
+        var timeoutSeconds = (long) Generators.integers(0, 3600).next();
         for (var mode : RuntimeStopResource.StopMode.values()) {
-            var resource = new RuntimeStopResource(mode, 30L, List.of());
+            var resource = new RuntimeStopResource(mode, timeoutSeconds, List.of());
             assertEquals(resource, RuntimeStopResource.fromJson(resource.toJson()));
             assertEquals(resource, readStreaming(resource.toJson(), RuntimeStopResource::readFrom));
         }
@@ -205,7 +211,9 @@ class ApiContractTest {
     @Test
     @DisplayName("the runtime event stream resource round-trips")
     void runtimeEventStreamRoundTrip() throws Exception {
-        var resource = new RuntimeEventStreamResource("open", 3, "evt-42",
+        var activeListeners = Generators.integers(0, 10).next();
+        var lastEventId = Generators.nonEmptyStrings().next();
+        var resource = new RuntimeEventStreamResource("open", activeListeners, lastEventId,
                 List.of(new ResourceLink("/api/v1/events", LinkRelation.EVENTS,
                         ResourceLink.METHOD_GET, false)));
 
