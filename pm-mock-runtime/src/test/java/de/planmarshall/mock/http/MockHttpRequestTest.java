@@ -45,7 +45,7 @@ class MockHttpRequestTest {
         assertEquals("param=value&foo=bar", req.query());
         assertEquals(headerValue, req.header(headerName.toLowerCase()));
         assertEquals(headerValue, req.header(headerName.toUpperCase()));
-        assertNull(req.header("unknown"));
+        assertNull(req.header(headerName + "-absent"));
         assertEquals(body, req.bodyText());
         assertEquals(receivedNanos, req.receivedNanos());
     }

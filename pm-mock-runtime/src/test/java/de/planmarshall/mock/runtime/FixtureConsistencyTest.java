@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.TreeSet;
 
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -47,9 +48,16 @@ import de.planmarshall.mock.scenario.ScenarioRegistry;
 @EnableGeneratorController
 class FixtureConsistencyTest {
 
-    private final String runtimeToken = Generators.letterStrings(8, 16).next();
-    private final String deviceSecret = Generators.letterStrings(8, 16).next();
-    private final String auth = "Bearer " + runtimeToken;
+    private String runtimeToken;
+    private String deviceSecret;
+    private String auth;
+
+    @BeforeEach
+    void drawCredentials() {
+        runtimeToken = Generators.letterStrings(8, 16).next();
+        deviceSecret = Generators.letterStrings(8, 16).next();
+        auth = "Bearer " + runtimeToken;
+    }
 
     /** The suffix every onboarding summary follows when it names a role count. */
     private static final String ROLE_COUNT_SUFFIX = " roles";

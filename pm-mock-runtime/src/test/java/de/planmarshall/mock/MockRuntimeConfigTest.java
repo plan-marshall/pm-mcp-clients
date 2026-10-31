@@ -55,16 +55,19 @@ class MockRuntimeConfigTest {
     @DisplayName("builder applies custom values")
     void customValues() {
         var base = Path.of("/tmp", Generators.letterStrings(4, 10).next());
+        var scenarioName = Generators.letterStrings(4, 10).next().toLowerCase();
+        var description = Generators.letterStrings(4, 10).next();
+        var stateName = "s" + Generators.letterStrings(3, 6).next().toLowerCase();
+        var member = Generators.letterStrings(3, 6).next();
         var registry = new ScenarioRegistry();
-        var stateName = Generators.letterStrings(4, 10).next();
-        var scenario = new Scenario(1, "in-mem", "desc", stateName, null, Map.of(),
-                Map.of(stateName, new StateDefinition(Map.of("ok", true), Map.of(), List.of(), null)));
-        var scenarioName = Generators.letterStrings(4, 12).next();
+        var scenario = new Scenario(1, scenarioName, description, stateName, null, Map.of(),
+                Map.of(stateName, new StateDefinition(Map.of(member, true), Map.of(), List.of(), null)));
+        var configName = Generators.letterStrings(4, 12).next().toLowerCase();
         var webPort = Generators.integers(1024, 65535).next().intValue();
         var token = Generators.letterStrings(8, 20).next();
         var secret = Generators.letterStrings(8, 20).next();
         var config = MockRuntimeConfig.builder()
-                .scenario(scenarioName)
+                .scenario(configName)
                 .base(base)
                 .webPort(webPort)
                 .runtimeToken(token)
@@ -74,7 +77,7 @@ class MockRuntimeConfigTest {
                 .initialScenario(scenario)
                 .build();
 
-        assertEquals(scenarioName, config.getScenario());
+        assertEquals(configName, config.getScenario());
         assertEquals(base, config.getBase());
         assertEquals(webPort, config.getWebPort());
         assertEquals(token, config.getRuntimeToken());

@@ -196,7 +196,7 @@ class MockRuntimeCliTest {
         var base = "/tmp/" + Generators.letterStrings(4, 10).next().toLowerCase();
         var port = Generators.integers(1024, 65535).next();
         var token = Generators.letterStrings(4, 12).next();
-        var secret = Generators.letterStrings(4, 12).next();
+        var secret = "pmw_" + Generators.letterStrings(4, 12).next();
         var args = new String[]{
                 "-s", StandardScenarios.WEB_PAIRING,
                 "-b", base,

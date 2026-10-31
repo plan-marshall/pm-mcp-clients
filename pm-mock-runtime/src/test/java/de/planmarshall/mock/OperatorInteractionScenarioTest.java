@@ -90,7 +90,7 @@ class OperatorInteractionScenarioTest {
                 assertEquals("wait.moved", JsonTree.string(error, "state"));
 
                 // a request that was never offered is still mock_no_route
-                var unknownLink = Generators.letterStrings(4, 10).next().toLowerCase();
+                var unknownLink = "unknown-" + Generators.letterStrings(4, 10).next().toLowerCase();
                 var unknown = client.send(HttpRequest.json("POST", "/api/v1/machine/links/" + unknownLink, "{}")
                         .withHeader("Authorization", auth));
                 assertEquals(404, unknown.status());

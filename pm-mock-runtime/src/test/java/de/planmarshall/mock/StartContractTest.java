@@ -260,7 +260,7 @@ class StartContractTest {
                 assertEquals(404, unknownEntry.status());
 
                 var unknownAct = client(runtime).send(HttpRequest.json("POST",
-                        "/api/v1/entries/ent-3f9a2c41/links/"
+                        "/api/v1/entries/ent-3f9a2c41/links/unknown-"
                                 + Generators.letterStrings(4, 10).next().toLowerCase(), "{}")
                         .withHeader("Authorization", auth));
                 assertEquals(409, unknownAct.status());

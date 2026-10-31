@@ -586,7 +586,7 @@ class MockRuntimeEngineTest {
     void delayedLink() throws Exception {
         var delayScenario = Generators.letterStrings(4, 10).next().toLowerCase();
         var nextStateId = "s" + Generators.letterStrings(3, 6).next().toLowerCase();
-        var delayMs = Generators.integers(15, 40).next().intValue();
+        var delayMs = Generators.integers(20, 40).next().intValue();
         var delayedLink = new LinkDefinition(nextStateId, "POST", "/api/v1/delayed", delayMs, 200, null);
         var startState = new StateDefinition(
                 Map.of("message", "start"),
