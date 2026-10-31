@@ -22,12 +22,15 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.process.ProcessNode;
 import de.planmarshall.api.process.ProcessProjectRef;
 import de.planmarshall.api.process.ProcessTokens;
 import de.planmarshall.api.process.ProcessTree;
 
+@EnableGeneratorController
 class DesignerRecordsTest {
 
     @Test
@@ -47,15 +50,20 @@ class DesignerRecordsTest {
 
     @Test
     void shouldRoundTripBuildingBlock() throws Exception {
+        var description = Generators.nonEmptyStrings().next();
+        var parameters = List.of(Generators.nonEmptyStrings().next(), Generators.nonEmptyStrings().next());
+        var requires = List.of(Generators.nonEmptyStrings().next());
+        var usedBy = List.of(Generators.nonEmptyStrings().next());
+
         var block = new BuildingBlock(
                 BlockKind.SUB_WORKFLOW,
                 "git.commit_and_push",
-                "Commits the changes of the plan's worktree and pushes its branch.",
+                description,
                 "call git.commit_and_push entry commit",
-                List.of("message_mode enum", "push_mode enum"),
-                List.of("a push remote"),
+                parameters,
+                requires,
                 List.of("done (success)", "stepped_out"),
-                List.of("the call clause of a state"),
+                usedBy,
                 false);
 
         var parsed = BuildingBlock.fromJson(block.toJson());
@@ -76,14 +84,16 @@ class DesignerRecordsTest {
 
     @Test
     void shouldRoundTripWorkflowUnitWithLevelsAndFrontmatter() throws Exception {
+        var description = Generators.nonEmptyStrings().next();
+        var author = Generators.nonEmptyStrings().next();
         var frontmatter = new WorkflowUnit.Frontmatter(
                 "Finalize",
-                "Settles and reviews the plan's change, lands it",
+                description,
                 "subworkflow",
                 "phase.finalize",
                 List.of("start", "adopt"),
                 List.of("merged", "no_change"),
-                "Oliver Wolff",
+                author,
                 "0.9.0",
                 false);
         var unit = new WorkflowUnit(
@@ -243,8 +253,11 @@ class DesignerRecordsTest {
 
     @Test
     void shouldRoundTripFindingListAndPlacingResult() throws Exception {
+        var author = Generators.nonEmptyStrings().next();
+        var line = Generators.integers(1, 1000).next();
+        var column = Generators.integers(1, 1000).next();
         var findings = List.of(
-                new WorkflowFinding(WorkflowFinding.STAGE_COMPOSITION, "INV-FIN-1", 42, 3,
+                new WorkflowFinding(WorkflowFinding.STAGE_COMPOSITION, "INV-FIN-1", line, column,
                         WorkflowFinding.SEVERITY_ERROR, "a mandatory finalize step is missing",
                         "pm-mcp-clients"));
         var parsedFindings = WorkflowFinding.parseList(WorkflowFinding.writeList(findings));
@@ -258,7 +271,7 @@ class DesignerRecordsTest {
                 List.of(UnitPlacingResult.STEP_WRITTEN, UnitPlacingResult.STEP_COMMITTED,
                         UnitPlacingResult.STEP_LANDED),
                 "sha256:cat2",
-                "Oliver Wolff",
+                author,
                 "0.9.0",
                 "sha256:3f9a",
                 null);

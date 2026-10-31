@@ -23,9 +23,12 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 
 @DisplayName("ProjectRecordsTest")
+@EnableGeneratorController
 class ProjectRecordsTest {
 
     @Test
@@ -62,16 +65,21 @@ class ProjectRecordsTest {
     @Test
     @DisplayName("validates EnrolledProject serialization and deserialization round-trip")
     void enrolledProjectRoundTrip() throws Exception {
-        var now = Instant.parse("2026-10-17T10:00:00Z");
+        var projectId = Generators.nonEmptyStrings().next();
+        var displayName = Generators.nonEmptyStrings().next();
+        var needsOperatorCount = Generators.integers(0, 10).next();
+        var activePlansCount = Generators.integers(0, 10).next();
+        var activeEpicsCount = Generators.integers(0, 10).next();
+        var now = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
         var project = new EnrolledProject(
-                "pm-mcp-clients",
-                "PM MCP Clients",
+                projectId,
+                displayName,
                 "https://github.com/plan-marshall/pm-mcp-clients",
                 ProjectReadiness.READY,
                 null,
-                2,
-                3,
-                1,
+                needsOperatorCount,
+                activePlansCount,
+                activeEpicsCount,
                 now,
                 true,
                 false
@@ -96,9 +104,10 @@ class ProjectRecordsTest {
         );
 
         // Fallback checks
-        var minimal = EnrolledProject.fromMap(Map.of("id", "prj-min"));
-        assertEquals("prj-min", minimal.projectId());
-        assertEquals("prj-min", minimal.displayName());
+        var minimalId = Generators.nonEmptyStrings().next();
+        var minimal = EnrolledProject.fromMap(Map.of("id", minimalId));
+        assertEquals(minimalId, minimal.projectId());
+        assertEquals(minimalId, minimal.displayName());
         assertEquals(ProjectReadiness.READY, minimal.readiness());
 
         assertThrows(JsonFormatException.class, () -> EnrolledProject.fromJson("[]"));
@@ -108,13 +117,18 @@ class ProjectRecordsTest {
     @Test
     @DisplayName("validates BeingAddedProject round-trip")
     void beingAddedProjectRoundTrip() throws Exception {
+        var checkoutPath = "/git/" + Generators.nonEmptyStrings().next();
+        var currentStep = Generators.nonEmptyStrings().next();
+        var stepNumber = Generators.integers(1, 5).next();
+        var totalSteps = stepNumber + Generators.integers(1, 5).next();
+        var entryId = Generators.nonEmptyStrings().next();
         var beingAdded = new BeingAddedProject(
-                "~/git/cui-parent",
-                "Identity",
-                2,
-                10,
-                "/api/v1/entries/ent-1/continue",
-                "/api/v1/entries/ent-1/abandon"
+                checkoutPath,
+                currentStep,
+                stepNumber,
+                totalSteps,
+                "/api/v1/entries/" + entryId + "/continue",
+                "/api/v1/entries/" + entryId + "/abandon"
         );
 
         var json = beingAdded.toJson();
@@ -137,14 +151,20 @@ class ProjectRecordsTest {
     @Test
     @DisplayName("validates ProjectExplorer round-trip")
     void projectExplorerRoundTrip() throws Exception {
+        var favouriteId = Generators.nonEmptyStrings().next();
+        var recentId = Generators.nonEmptyStrings().next();
+        var favouriteName = Generators.nonEmptyStrings().next();
+        var recentName = Generators.nonEmptyStrings().next();
+        var checkoutPath = "/tmp/" + Generators.nonEmptyStrings().next();
         var fav = new EnrolledProject(
-                "p1", "Project 1", null, ProjectReadiness.READY, null, 0, 1, 0, null, true, false
+                favouriteId, favouriteName, null, ProjectReadiness.READY, null, 0, 1, 0, null, true, false
         );
         var recent = new EnrolledProject(
-                "p2", "Project 2", null, ProjectReadiness.SETUP_NEEDS, "sonar credential", 1, 0, 0, null, false, false
+                recentId, recentName, null, ProjectReadiness.SETUP_NEEDS, "sonar credential", 1, 0, 0, null,
+                false, false
         );
         var beingAdded = new BeingAddedProject(
-                "/tmp/p3", "Checkout", 1, 10, null, null
+                checkoutPath, "Checkout", 1, 10, null, null
         );
 
         var explorer = new ProjectExplorer(
@@ -160,12 +180,12 @@ class ProjectRecordsTest {
         var roundTrip = ProjectExplorer.fromJson(json);
         assertAll(
                 () -> assertEquals(1, roundTrip.favourites().size()),
-                () -> assertEquals("p1", roundTrip.favourites().getFirst().projectId()),
+                () -> assertEquals(favouriteId, roundTrip.favourites().getFirst().projectId()),
                 () -> assertEquals(1, roundTrip.recent().size()),
-                () -> assertEquals("p2", roundTrip.recent().getFirst().projectId()),
+                () -> assertEquals(recentId, roundTrip.recent().getFirst().projectId()),
                 () -> assertEquals(2, roundTrip.allProjects().size()),
                 () -> assertEquals(1, roundTrip.beingAdded().size()),
-                () -> assertEquals("/tmp/p3", roundTrip.beingAdded().getFirst().checkoutPath())
+                () -> assertEquals(checkoutPath, roundTrip.beingAdded().getFirst().checkoutPath())
         );
 
         assertThrows(JsonFormatException.class, () -> ProjectExplorer.fromJson("[]"));
@@ -174,12 +194,14 @@ class ProjectRecordsTest {
     @Test
     @DisplayName("validates FavouritesUpdateRequest round-trip")
     void favouritesUpdateRequestRoundTrip() throws Exception {
-        var request = new FavouritesUpdateRequest(List.of("p1", "p2", "p3"));
+        var projectIds = List.of(Generators.nonEmptyStrings().next(), Generators.nonEmptyStrings().next(),
+                Generators.nonEmptyStrings().next());
+        var request = new FavouritesUpdateRequest(projectIds);
         var json = request.toJson();
         assertNotNull(json);
 
         var roundTrip = FavouritesUpdateRequest.fromJson(json);
-        assertEquals(List.of("p1", "p2", "p3"), roundTrip.projectIds());
+        assertEquals(projectIds, roundTrip.projectIds());
 
         assertThrows(JsonFormatException.class, () -> FavouritesUpdateRequest.fromJson("[]"));
     }
@@ -187,13 +209,18 @@ class ProjectRecordsTest {
     @Test
     @DisplayName("validates ProjectOnboarding round-trip")
     void projectOnboardingRoundTrip() throws Exception {
+        var onboardingId = Generators.nonEmptyStrings().next();
+        var checkoutPath = "/home/" + Generators.nonEmptyStrings().next();
+        var detectedDomains = List.of(Generators.nonEmptyStrings().next(), Generators.nonEmptyStrings().next());
+        var discoveredModules = List.of(Generators.nonEmptyStrings().next(), Generators.nonEmptyStrings().next());
+        var credentialsNeeded = List.of(Generators.nonEmptyStrings().next());
         var onboarding = new ProjectOnboarding(
-                "onb-123",
-                "/home/user/repo",
+                onboardingId,
+                checkoutPath,
                 ProjectOnboardingState.IDENTITY,
-                List.of("maven", "java-cui"),
-                List.of("core", "web"),
-                List.of("sonar")
+                detectedDomains,
+                discoveredModules,
+                credentialsNeeded
         );
 
         var json = onboarding.toJson();
@@ -201,12 +228,12 @@ class ProjectRecordsTest {
 
         var roundTrip = ProjectOnboarding.fromJson(json);
         assertAll(
-                () -> assertEquals("onb-123", roundTrip.onboardingId()),
-                () -> assertEquals("/home/user/repo", roundTrip.checkoutPath()),
+                () -> assertEquals(onboardingId, roundTrip.onboardingId()),
+                () -> assertEquals(checkoutPath, roundTrip.checkoutPath()),
                 () -> assertEquals(ProjectOnboardingState.IDENTITY, roundTrip.state()),
-                () -> assertEquals(List.of("maven", "java-cui"), roundTrip.detectedDomains()),
-                () -> assertEquals(List.of("core", "web"), roundTrip.discoveredModules()),
-                () -> assertEquals(List.of("sonar"), roundTrip.credentialsNeeded())
+                () -> assertEquals(detectedDomains, roundTrip.detectedDomains()),
+                () -> assertEquals(discoveredModules, roundTrip.discoveredModules()),
+                () -> assertEquals(credentialsNeeded, roundTrip.credentialsNeeded())
         );
 
         assertThrows(JsonFormatException.class, () -> ProjectOnboarding.fromJson("[]"));
@@ -216,16 +243,18 @@ class ProjectRecordsTest {
     @Test
     @DisplayName("validates ProjectReleaseRequest round-trip")
     void projectReleaseRequestRoundTrip() throws Exception {
-        var request = new ProjectReleaseRequest("prj-1", true, false, "End of lifecycle");
+        var projectId = Generators.nonEmptyStrings().next();
+        var reason = Generators.nonEmptyStrings().next();
+        var request = new ProjectReleaseRequest(projectId, true, false, reason);
         var json = request.toJson();
         assertNotNull(json);
 
         var roundTrip = ProjectReleaseRequest.fromJson(json);
         assertAll(
-                () -> assertEquals("prj-1", roundTrip.projectId()),
+                () -> assertEquals(projectId, roundTrip.projectId()),
                 () -> assertTrue(roundTrip.confirmRelease()),
                 () -> assertFalse(roundTrip.force()),
-                () -> assertEquals("End of lifecycle", roundTrip.reason())
+                () -> assertEquals(reason, roundTrip.reason())
         );
 
         assertThrows(JsonFormatException.class, () -> ProjectReleaseRequest.fromJson("[]"));
@@ -235,9 +264,14 @@ class ProjectRecordsTest {
     @Test
     @DisplayName("validates ProjectReleaseResult round-trip")
     void projectReleaseResultRoundTrip() throws Exception {
-        var now = Instant.parse("2026-10-17T12:00:00Z");
+        var projectId = Generators.nonEmptyStrings().next();
+        var plansEndedCount = Generators.integers(0, 10).next();
+        var epicsEndedCount = Generators.integers(0, 10).next();
+        var entriesDeletedCount = Generators.integers(0, 10).next();
+        var now = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
         var result = new ProjectReleaseResult(
-                "prj-1", 3, 1, 2, now, "git.land-removal", ReleaseWaitStatus.COMPLETED
+                projectId, plansEndedCount, epicsEndedCount, entriesDeletedCount, now,
+                "git.land-removal", ReleaseWaitStatus.COMPLETED
         );
 
         var json = result.toJson();
@@ -245,10 +279,10 @@ class ProjectRecordsTest {
 
         var roundTrip = ProjectReleaseResult.fromJson(json);
         assertAll(
-                () -> assertEquals("prj-1", roundTrip.projectId()),
-                () -> assertEquals(3, roundTrip.plansEndedCount()),
-                () -> assertEquals(1, roundTrip.epicsEndedCount()),
-                () -> assertEquals(2, roundTrip.entriesDeletedCount()),
+                () -> assertEquals(projectId, roundTrip.projectId()),
+                () -> assertEquals(plansEndedCount, roundTrip.plansEndedCount()),
+                () -> assertEquals(epicsEndedCount, roundTrip.epicsEndedCount()),
+                () -> assertEquals(entriesDeletedCount, roundTrip.entriesDeletedCount()),
                 () -> assertEquals(now, roundTrip.releasedAt()),
                 () -> assertEquals("git.land-removal", roundTrip.landingWaiting()),
                 () -> assertEquals(ReleaseWaitStatus.COMPLETED, roundTrip.waitStatus())
@@ -261,25 +295,31 @@ class ProjectRecordsTest {
     @Test
     @DisplayName("validates SSE events round-trip")
     void eventsRoundTrip() throws Exception {
-        var now = Instant.parse("2026-10-17T12:00:00Z");
+        var changedId = Generators.nonEmptyStrings().next();
+        var enrolledId = Generators.nonEmptyStrings().next();
+        var releasedId = Generators.nonEmptyStrings().next();
+        var displayName = Generators.nonEmptyStrings().next();
+        var plansEndedCount = Generators.integers(0, 10).next();
+        var epicsEndedCount = Generators.integers(0, 10).next();
+        var now = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
 
-        var changed = new ProjectChangedEvent("p1", ProjectReadiness.READY, now);
+        var changed = new ProjectChangedEvent(changedId, ProjectReadiness.READY, now);
         var changedRoundTrip = ProjectChangedEvent.fromJson(changed.toJson());
-        assertEquals("p1", changedRoundTrip.projectId());
+        assertEquals(changedId, changedRoundTrip.projectId());
         assertEquals(ProjectReadiness.READY, changedRoundTrip.readiness());
         assertEquals(now, changedRoundTrip.timestamp());
 
-        var enrolled = new ProjectEnrolledEvent("p2", "Project Two", now);
+        var enrolled = new ProjectEnrolledEvent(enrolledId, displayName, now);
         var enrolledRoundTrip = ProjectEnrolledEvent.fromJson(enrolled.toJson());
-        assertEquals("p2", enrolledRoundTrip.projectId());
-        assertEquals("Project Two", enrolledRoundTrip.displayName());
+        assertEquals(enrolledId, enrolledRoundTrip.projectId());
+        assertEquals(displayName, enrolledRoundTrip.displayName());
         assertEquals(now, enrolledRoundTrip.timestamp());
 
-        var released = new ProjectReleasedEvent("p3", 2, 1, now);
+        var released = new ProjectReleasedEvent(releasedId, plansEndedCount, epicsEndedCount, now);
         var releasedRoundTrip = ProjectReleasedEvent.fromJson(released.toJson());
-        assertEquals("p3", releasedRoundTrip.projectId());
-        assertEquals(2, releasedRoundTrip.plansEndedCount());
-        assertEquals(1, releasedRoundTrip.epicsEndedCount());
+        assertEquals(releasedId, releasedRoundTrip.projectId());
+        assertEquals(plansEndedCount, releasedRoundTrip.plansEndedCount());
+        assertEquals(epicsEndedCount, releasedRoundTrip.epicsEndedCount());
         assertEquals(now, releasedRoundTrip.timestamp());
 
         assertThrows(JsonFormatException.class, () -> ProjectChangedEvent.fromJson("[]"));

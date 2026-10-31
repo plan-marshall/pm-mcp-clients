@@ -20,9 +20,12 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 
 @DisplayName("Enrolment resource records")
+@EnableGeneratorController
 class EnrolRecordsTest {
 
     private static final String RECORDED_SHA =
@@ -33,15 +36,17 @@ class EnrolRecordsTest {
     @Test
     @DisplayName("EnrolRequest round-trips and rejects a missing path")
     void enrolRequest() throws Exception {
-        var request = new EnrolRequest("/home/oliver/git/new-service", true);
+        var projectPath = "/home/" + Generators.nonEmptyStrings().next();
+        var aliasPath = "/" + Generators.nonEmptyStrings().next();
+        var request = new EnrolRequest(projectPath, true);
         var roundTrip = EnrolRequest.fromJson(request.toJson());
         assertAll(
-                () -> assertEquals("/home/oliver/git/new-service", roundTrip.projectPath()),
+                () -> assertEquals(projectPath, roundTrip.projectPath()),
                 () -> assertTrue(roundTrip.pilot())
         );
 
-        var viaAlias = EnrolRequest.fromMap(Map.of("project_path", "/x"));
-        assertEquals("/x", viaAlias.projectPath());
+        var viaAlias = EnrolRequest.fromMap(Map.of("project_path", aliasPath));
+        assertEquals(aliasPath, viaAlias.projectPath());
         assertFalse(viaAlias.pilot());
 
         assertThrows(JsonFormatException.class, () -> EnrolRequest.fromJson("[]"));
@@ -52,19 +57,21 @@ class EnrolRecordsTest {
     @Test
     @DisplayName("EnrolResult round-trips and requires a project id")
     void enrolResult() throws Exception {
-        var result = new EnrolResult(EnrolResult.STATUS_ENROLLED, "new-service", true);
+        var projectId = Generators.nonEmptyStrings().next();
+        var result = new EnrolResult(EnrolResult.STATUS_ENROLLED, projectId, true);
         assertNotNull(result.toJson());
 
         var roundTrip = EnrolResult.fromJson(result.toJson());
         assertAll(
                 () -> assertEquals(EnrolResult.STATUS_ENROLLED, roundTrip.status()),
-                () -> assertEquals("new-service", roundTrip.projectId()),
+                () -> assertEquals(projectId, roundTrip.projectId()),
                 () -> assertTrue(roundTrip.pilot())
         );
 
-        var minimal = EnrolResult.fromMap(Map.of("id", "prj-1"));
+        var minimalId = Generators.nonEmptyStrings().next();
+        var minimal = EnrolResult.fromMap(Map.of("id", minimalId));
         assertEquals(EnrolResult.STATUS_ENROLLED, minimal.status());
-        assertEquals("prj-1", minimal.projectId());
+        assertEquals(minimalId, minimal.projectId());
 
         assertThrows(JsonFormatException.class, () -> EnrolResult.fromJson("[]"));
         assertThrows(JsonFormatException.class, () -> EnrolResult.fromMap(Map.of()));
@@ -73,8 +80,9 @@ class EnrolRecordsTest {
     @Test
     @DisplayName("UnenrolRequest round-trips and rejects a missing project id")
     void unenrolRequest() throws Exception {
-        var roundTrip = UnenrolRequest.fromJson(new UnenrolRequest("old-app").toJson());
-        assertEquals("old-app", roundTrip.projectId());
+        var projectId = Generators.nonEmptyStrings().next();
+        var roundTrip = UnenrolRequest.fromJson(new UnenrolRequest(projectId).toJson());
+        assertEquals(projectId, roundTrip.projectId());
 
         assertThrows(JsonFormatException.class, () -> UnenrolRequest.fromJson("[]"));
         assertThrows(JsonFormatException.class, () -> UnenrolRequest.fromMap(Map.of()));
@@ -95,33 +103,37 @@ class EnrolRecordsTest {
     @Test
     @DisplayName("StoreDigestComparison derives the mismatch and round-trips")
     void storeDigestComparison() throws Exception {
-        var mismatch = new StoreDigestComparison(".plan/marshal.json", 1248L, RECORDED_SHA,
-                1512L, CURRENT_SHA, "size and digest changed");
+        var recordedSize = (long) Generators.integers(0, 10_000).next();
+        var currentSize = recordedSize + Generators.integers(1, 1_000).next();
+        var mismatchDetails = Generators.nonEmptyStrings().next();
+        var mismatch = new StoreDigestComparison(".plan/marshal.json", recordedSize, RECORDED_SHA,
+                currentSize, CURRENT_SHA, mismatchDetails);
         assertNotNull(mismatch.toJson());
         assertTrue(mismatch.mismatch());
 
         var roundTrip = StoreDigestComparison.fromJson(mismatch.toJson());
         assertAll(
                 () -> assertEquals(".plan/marshal.json", roundTrip.storePath()),
-                () -> assertEquals(1248L, roundTrip.recordedSize()),
+                () -> assertEquals(recordedSize, roundTrip.recordedSize()),
                 () -> assertEquals(RECORDED_SHA, roundTrip.recordedSha256()),
-                () -> assertEquals(1512L, roundTrip.currentSize()),
+                () -> assertEquals(currentSize, roundTrip.currentSize()),
                 () -> assertEquals(CURRENT_SHA, roundTrip.currentSha256()),
                 () -> assertTrue(roundTrip.mismatch()),
-                () -> assertEquals("size and digest changed", roundTrip.mismatchDetails())
+                () -> assertEquals(mismatchDetails, roundTrip.mismatchDetails())
         );
 
-        var matched = new StoreDigestComparison(".plan/marshal.json", 1248L, RECORDED_SHA,
-                1248L, RECORDED_SHA, null);
+        var matched = new StoreDigestComparison(".plan/marshal.json", recordedSize, RECORDED_SHA,
+                recordedSize, RECORDED_SHA, null);
         assertFalse(matched.mismatch(), "mismatch is derived, never taken from input");
 
+        var aliasSize = (long) Generators.integers(0, 10_000).next();
         var viaAlias = StoreDigestComparison.fromMap(Map.of(
                 "path", ".plan/marshal.json",
-                "recorded_size", 10,
+                "recorded_size", aliasSize,
                 "recorded_digest", RECORDED_SHA,
-                "current_size", 10,
+                "current_size", aliasSize,
                 "current_digest", RECORDED_SHA));
-        assertEquals(10L, viaAlias.currentSize());
+        assertEquals(aliasSize, viaAlias.currentSize());
         assertFalse(viaAlias.mismatch());
 
         assertThrows(JsonFormatException.class, () -> StoreDigestComparison.fromJson("[]"));

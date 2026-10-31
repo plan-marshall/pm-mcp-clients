@@ -23,9 +23,12 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 
 @DisplayName("OverviewRecordsTest")
+@EnableGeneratorController
 class OverviewRecordsTest {
 
     @Test
@@ -74,18 +77,20 @@ class OverviewRecordsTest {
     @Test
     @DisplayName("round-trip serializes AlongsideLanding")
     void alongsideLanding() throws Exception {
-        var landing = new AlongsideLanding("remediation.ci-failure", "failed", null, "unit", "landing_failed");
+        var unit = Generators.nonEmptyStrings().next();
+        var landing = new AlongsideLanding(unit, "failed", null, "unit", "landing_failed");
         var map = landing.toMap();
         var parsed = AlongsideLanding.fromMap(map);
 
-        assertEquals("remediation.ci-failure", parsed.unit());
+        assertEquals(unit, parsed.unit());
         assertEquals("failed", parsed.state());
         assertEquals("unit", parsed.kind());
         assertEquals("landing_failed", parsed.holdKind());
 
-        var removal = new AlongsideLanding(null, "running", 2, "removal", null);
+        var count = Generators.integers(0, 100).next();
+        var removal = new AlongsideLanding(null, "running", count, "removal", null);
         var parsedRemoval = AlongsideLanding.fromMap(removal.toMap());
-        assertEquals(2, parsedRemoval.count());
+        assertEquals(count, parsedRemoval.count());
         assertEquals("removal", parsedRemoval.kind());
 
         var landingJson = landing.toJson();
@@ -97,13 +102,18 @@ class OverviewRecordsTest {
     @Test
     @DisplayName("round-trip serializes ProjectSummary and ProjectOverviewResponse")
     void projectSummaryAndOverviewResponse() throws Exception {
-        var now = Instant.parse("2026-10-16T14:00:00Z");
+        var now = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
+        var projectId = Generators.nonEmptyStrings().next();
+        var displayName = Generators.nonEmptyStrings().next();
+        var activePlansCount = Generators.integers(0, 100).next();
+        var activeEpicsCount = Generators.integers(0, 100).next();
+        var needsOperatorCount = Generators.integers(0, 100).next();
         var summary = new ProjectSummary(
-                "pm-mcp-clients",
-                "PM Clients",
-                3,
-                1,
-                2,
+                projectId,
+                displayName,
+                activePlansCount,
+                activeEpicsCount,
+                needsOperatorCount,
                 "decision",
                 false,
                 now
@@ -126,38 +136,46 @@ class OverviewRecordsTest {
         var parsedResp = ProjectOverviewResponse.fromJson(respJson);
 
         assertEquals(1, parsedResp.projects().size());
-        assertEquals("pm-mcp-clients", parsedResp.projects().getFirst().projectId());
+        assertEquals(projectId, parsedResp.projects().getFirst().projectId());
 
         // writeList and parseList
         var listJson = ProjectSummary.writeList(List.of(summary));
         var parsedList = ProjectSummary.parseList(listJson);
         assertEquals(1, parsedList.size());
-        assertEquals("pm-mcp-clients", parsedList.getFirst().projectId());
+        assertEquals(projectId, parsedList.getFirst().projectId());
     }
 
     @Test
     @DisplayName("round-trip serializes ActivePlanSummary")
     void activePlanSummary() throws Exception {
-        var entered = Instant.parse("2026-10-16T13:45:00Z");
-        var running = Instant.parse("2026-10-16T11:50:00Z");
+        var entered = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
+        var running = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
+        var planId = Generators.nonEmptyStrings().next();
+        var title = Generators.nonEmptyStrings().next();
+        var epicId = Generators.nonEmptyStrings().next();
+        var epicTitle = Generators.nonEmptyStrings().next();
+        var tasksDone = Generators.integers(0, 50).next();
+        var tasksTotal = Generators.integers(51, 100).next();
+        var pullRequestNumber = Generators.integers(1, 1000).next();
+        var needsOperatorCount = Generators.integers(0, 10).next();
 
         var plan = new ActivePlanSummary(
-                "PLN-001",
-                "Overview resource of the runtime",
+                planId,
+                title,
                 "execute",
                 "running",
                 null,
                 entered,
                 running,
-                7,
-                12,
-                "EPC-001",
-                "client work",
-                214,
-                "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
+                tasksDone,
+                tasksTotal,
+                epicId,
+                epicTitle,
+                pullRequestNumber,
+                "https://github.com/plan-marshall/pm-mcp-clients/pull/" + pullRequestNumber,
                 "repeating",
                 "decision",
-                1,
+                needsOperatorCount,
                 null
         );
 
@@ -170,22 +188,27 @@ class OverviewRecordsTest {
         assertEquals(plan.phaseState(), parsed.phaseState());
         assertEquals(entered, parsed.phaseEnteredAt());
         assertEquals(running, parsed.runningSince());
-        assertEquals(7, parsed.tasksDone());
-        assertEquals(12, parsed.tasksTotal());
-        assertEquals("EPC-001", parsed.epicId());
-        assertEquals(214, parsed.pullRequestNumber());
+        assertEquals(tasksDone, parsed.tasksDone());
+        assertEquals(tasksTotal, parsed.tasksTotal());
+        assertEquals(epicId, parsed.epicId());
+        assertEquals(pullRequestNumber, parsed.pullRequestNumber());
         assertEquals("repeating", parsed.offTrackSignal());
         assertEquals("decision", parsed.needsOperatorKind());
-        assertEquals(1, parsed.needsOperatorCount());
+        assertEquals(needsOperatorCount, parsed.needsOperatorCount());
     }
 
     @Test
     @DisplayName("round-trip serializes ActiveEpicSummary and ProjectDetailResponse")
     void activeEpicAndProjectDetail() throws Exception {
-        var running = Instant.parse("2026-10-13T10:00:00Z");
+        var running = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
+        var planId = Generators.nonEmptyStrings().next();
+        var planTitle = Generators.nonEmptyStrings().next();
+        var epicId = Generators.nonEmptyStrings().next();
+        var epicTitle = Generators.nonEmptyStrings().next();
+        var runningPlansCount = Generators.integers(0, 100).next();
         var plan = new ActivePlanSummary(
-                "PLN-002",
-                "Message catalogue",
+                planId,
+                planTitle,
                 "outline",
                 "pausing",
                 "task",
@@ -193,8 +216,8 @@ class OverviewRecordsTest {
                 null,
                 0,
                 0,
-                "EPC-001",
-                "client work",
+                epicId,
+                epicTitle,
                 null,
                 null,
                 null,
@@ -204,10 +227,10 @@ class OverviewRecordsTest {
         );
 
         var epic = new ActiveEpicSummary(
-                "EPC-001",
-                "client work",
+                epicId,
+                epicTitle,
                 running,
-                2,
+                runningPlansCount,
                 3,
                 4,
                 9,
@@ -218,14 +241,16 @@ class OverviewRecordsTest {
 
         var epicJson = epic.toJson();
         var parsedEpic = ActiveEpicSummary.fromJson(epicJson);
-        assertEquals("EPC-001", parsedEpic.epicId());
-        assertEquals(2, parsedEpic.runningPlansCount());
+        assertEquals(epicId, parsedEpic.epicId());
+        assertEquals(runningPlansCount, parsedEpic.runningPlansCount());
         assertEquals(1, parsedEpic.plans().size());
 
-        var landing = new AlongsideLanding("remediation.ci-failure", "failed", null, "unit", "landing_failed");
+        var unit = Generators.nonEmptyStrings().next();
+        var landing = new AlongsideLanding(unit, "failed", null, "unit", "landing_failed");
+        var projectId = Generators.nonEmptyStrings().next();
         var detail = new ProjectDetailResponse(
-                "pm-mcp-clients",
-                "pm-mcp-clients",
+                projectId,
+                projectId,
                 List.of(plan),
                 List.of(epic),
                 List.of(landing)
@@ -234,7 +259,7 @@ class OverviewRecordsTest {
         var detailJson = detail.toJson();
         var parsedDetail = ProjectDetailResponse.fromJson(detailJson);
 
-        assertEquals("pm-mcp-clients", parsedDetail.projectId());
+        assertEquals(projectId, parsedDetail.projectId());
         assertEquals(1, parsedDetail.plans().size());
         assertEquals(1, parsedDetail.epics().size());
         assertEquals(1, parsedDetail.alongsideLandings().size());
@@ -243,34 +268,39 @@ class OverviewRecordsTest {
     @Test
     @DisplayName("round-trip serializes EndedWorkItem and EndedWorkPage")
     void endedWork() throws Exception {
-        var ended = Instant.parse("2026-10-15T11:20:00Z");
+        var ended = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
+        var itemId = Generators.nonEmptyStrings().next();
+        var title = Generators.nonEmptyStrings().next();
+        var pullRequestNumber = Generators.integers(1, 1000).next();
+        var reason = Generators.nonEmptyStrings().next();
         var item = new EndedWorkItem(
-                "fix-relay",
+                itemId,
                 "plan",
-                "Fix the relay",
+                title,
                 "merged",
                 null,
-                214,
-                "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
-                "All tests passed",
+                pullRequestNumber,
+                "https://github.com/plan-marshall/pm-mcp-clients/pull/" + pullRequestNumber,
+                reason,
                 ended
         );
 
         var json = item.toJson();
         var parsed = EndedWorkItem.fromJson(json);
 
-        assertEquals("fix-relay", parsed.id());
+        assertEquals(itemId, parsed.id());
         assertEquals("plan", parsed.kind());
         assertEquals("merged", parsed.outcome());
-        assertEquals(214, parsed.pullRequestNumber());
-        assertEquals("All tests passed", parsed.reason());
+        assertEquals(pullRequestNumber, parsed.pullRequestNumber());
+        assertEquals(reason, parsed.reason());
         assertEquals(ended, parsed.endedAt());
 
-        var page = new EndedWorkPage("pm-mcp-clients", List.of(item), 1, 3, false, true);
+        var projectId = Generators.nonEmptyStrings().next();
+        var page = new EndedWorkPage(projectId, List.of(item), 1, 3, false, true);
         var pageJson = page.toJson();
         var parsedPage = EndedWorkPage.fromJson(pageJson);
 
-        assertEquals("pm-mcp-clients", parsedPage.projectId());
+        assertEquals(projectId, parsedPage.projectId());
         assertEquals(1, parsedPage.items().size());
         assertEquals(1, parsedPage.page());
         assertEquals(3, parsedPage.totalPages());
@@ -281,45 +311,53 @@ class OverviewRecordsTest {
     @Test
     @DisplayName("round-trip serializes overview SSE events")
     void overviewEvents() throws Exception {
-        var pChanged = new ProjectWorkChangedEvent("pm-mcp-clients", "work_started", 3, 1, 2);
+        var projectId = Generators.nonEmptyStrings().next();
+        var activePlansCount = Generators.integers(0, 100).next();
+        var activeEpicsCount = Generators.integers(0, 100).next();
+        var needsOperatorCount = Generators.integers(0, 100).next();
+        var pChanged = new ProjectWorkChangedEvent(projectId, "work_started", activePlansCount,
+                activeEpicsCount, needsOperatorCount);
         assertEquals("project.changed", ProjectWorkChangedEvent.EVENT_CHANGED);
         var parsedPChanged = ProjectWorkChangedEvent.fromJson(pChanged.toJson());
-        assertEquals("pm-mcp-clients", parsedPChanged.projectId());
+        assertEquals(projectId, parsedPChanged.projectId());
         assertEquals("work_started", parsedPChanged.changeType());
-        assertEquals(3, parsedPChanged.activePlansCount());
-        assertEquals(1, parsedPChanged.activeEpicsCount());
-        assertEquals(2, parsedPChanged.needsOperatorCount());
+        assertEquals(activePlansCount, parsedPChanged.activePlansCount());
+        assertEquals(activeEpicsCount, parsedPChanged.activeEpicsCount());
+        assertEquals(needsOperatorCount, parsedPChanged.needsOperatorCount());
 
-        var now = Instant.now();
-        var phChanged = new PhaseChangedEvent("PLN-001", "outline", "execute", now);
+        var phaseEnteredAt = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
+        var planId = Generators.nonEmptyStrings().next();
+        var phChanged = new PhaseChangedEvent(planId, "outline", "execute", phaseEnteredAt);
         assertEquals("phase.changed", PhaseChangedEvent.EVENT_NAME);
         var parsedPhChanged = PhaseChangedEvent.fromJson(phChanged.toJson());
-        assertEquals("PLN-001", parsedPhChanged.planId());
+        assertEquals(planId, parsedPhChanged.planId());
         assertEquals("outline", parsedPhChanged.oldPhase());
         assertEquals("execute", parsedPhChanged.newPhase());
         assertNotNull(parsedPhChanged.phaseEnteredAt());
 
-        var actChanged = new ActivityChangedEvent("PLN-001", "pausing", "task");
+        var actChanged = new ActivityChangedEvent(planId, "pausing", "task");
         assertEquals("activity.changed", ActivityChangedEvent.EVENT_NAME);
         var parsedActChanged = ActivityChangedEvent.fromJson(actChanged.toJson());
-        assertEquals("PLN-001", parsedActChanged.planId());
+        assertEquals(planId, parsedActChanged.planId());
         assertEquals("pausing", parsedActChanged.activity());
         assertEquals("task", parsedActChanged.point());
 
-        var needsChanged = new NeedsOperatorChangedEvent("pm-mcp-clients", "PLN-001", null, "decision", 1, null);
+        var needsCount = Generators.integers(0, 100).next();
+        var needsChanged = new NeedsOperatorChangedEvent(projectId, planId, null, "decision", needsCount, null);
         assertEquals("needs_operator.changed", NeedsOperatorChangedEvent.EVENT_NAME);
         var parsedNeedsChanged = NeedsOperatorChangedEvent.fromJson(needsChanged.toJson());
-        assertEquals("pm-mcp-clients", parsedNeedsChanged.projectId());
-        assertEquals("PLN-001", parsedNeedsChanged.planId());
+        assertEquals(projectId, parsedNeedsChanged.projectId());
+        assertEquals(planId, parsedNeedsChanged.planId());
         assertNull(parsedNeedsChanged.epicId());
         assertEquals("decision", parsedNeedsChanged.kind());
-        assertEquals(1, parsedNeedsChanged.count());
+        assertEquals(needsCount, parsedNeedsChanged.count());
 
-        var offTrack = new TaskOffTrackEvent("PLN-001", "TSK-003", "repeating", true);
+        var taskId = Generators.nonEmptyStrings().next();
+        var offTrack = new TaskOffTrackEvent(planId, taskId, "repeating", true);
         assertEquals("task.off_track", TaskOffTrackEvent.EVENT_NAME);
         var parsedOffTrack = TaskOffTrackEvent.fromJson(offTrack.toJson());
-        assertEquals("PLN-001", parsedOffTrack.planId());
-        assertEquals("TSK-003", parsedOffTrack.taskId());
+        assertEquals(planId, parsedOffTrack.planId());
+        assertEquals(taskId, parsedOffTrack.taskId());
         assertEquals("repeating", parsedOffTrack.signal());
         assertTrue(parsedOffTrack.offTrack());
     }
@@ -328,23 +366,28 @@ class OverviewRecordsTest {
     @DisplayName("tests fallback fields and parsing from arrays")
     void recordAliasesAndFallbacks() throws Exception {
         // ProjectSummary aliases (id, name, plans_count, epics_count, setupNeedsOperator)
+        var projectId = Generators.nonEmptyStrings().next();
+        var displayName = Generators.nonEmptyStrings().next();
+        var plansCount = Generators.integers(0, 100).next();
+        var epicsCount = Generators.integers(0, 100).next();
         var pSummaryMap = Map.<String, Object>of(
-                "id", "prj-alias",
-                "name", "Project Alias",
-                "plans_count", 5,
-                "epics_count", 2,
+                "id", projectId,
+                "name", displayName,
+                "plans_count", plansCount,
+                "epics_count", epicsCount,
                 "setupNeedsOperator", true
         );
         var parsedSummary = ProjectSummary.fromMap(pSummaryMap);
-        assertEquals("prj-alias", parsedSummary.projectId());
-        assertEquals("Project Alias", parsedSummary.displayName());
-        assertEquals(5, parsedSummary.activePlansCount());
-        assertEquals(2, parsedSummary.activeEpicsCount());
+        assertEquals(projectId, parsedSummary.projectId());
+        assertEquals(displayName, parsedSummary.displayName());
+        assertEquals(plansCount, parsedSummary.activePlansCount());
+        assertEquals(epicsCount, parsedSummary.activeEpicsCount());
         assertTrue(parsedSummary.setupNeedsOperator());
 
         // Null display name defaults to projectId
-        var nullNameSummary = new ProjectSummary("raw-id", null, 0, 0, 0, null, false, null);
-        assertEquals("raw-id", nullNameSummary.displayName());
+        var rawId = Generators.nonEmptyStrings().next();
+        var nullNameSummary = new ProjectSummary(rawId, null, 0, 0, 0, null, false, null);
+        assertEquals(rawId, nullNameSummary.displayName());
 
         // ProjectOverviewResponse from array
         var arrayResponse = ProjectOverviewResponse.fromJson("[{\"id\":\"p-arr\",\"name\":\"Arr Prj\"}]");
@@ -352,9 +395,11 @@ class OverviewRecordsTest {
         assertEquals("p-arr", arrayResponse.projects().getFirst().projectId());
 
         // ActivePlanSummary aliases (id, phase, state, created_at, off_track, needs_operator)
+        var planAliasId = Generators.nonEmptyStrings().next();
+        var planAliasTitle = Generators.nonEmptyStrings().next();
         var planAliasMap = Map.<String, Object>of(
-                "id", "pln-alias",
-                "title", "Alias Plan",
+                "id", planAliasId,
+                "title", planAliasTitle,
                 "phase", "finalize",
                 "state", "paused",
                 "created_at", "2026-10-16T12:00:00Z",
@@ -363,21 +408,23 @@ class OverviewRecordsTest {
                 "needs_operator_count", 1
         );
         var parsedPlan = ActivePlanSummary.fromMap(planAliasMap);
-        assertEquals("pln-alias", parsedPlan.planId());
+        assertEquals(planAliasId, parsedPlan.planId());
         assertEquals("finalize", parsedPlan.currentPhase());
         assertEquals("paused", parsedPlan.phaseState());
         assertEquals("timeout", parsedPlan.offTrackSignal());
         assertEquals("stalled", parsedPlan.needsOperatorKind());
 
         // ActiveEpicSummary aliases (id, created_at, needs_operator)
+        var epicAliasId = Generators.nonEmptyStrings().next();
+        var epicAliasTitle = Generators.nonEmptyStrings().next();
         var epicAliasMap = Map.<String, Object>of(
-                "id", "epc-alias",
-                "title", "Alias Epic",
+                "id", epicAliasId,
+                "title", epicAliasTitle,
                 "created_at", "2026-10-10T08:00:00Z",
                 "needs_operator", "decision"
         );
         var parsedEpic = ActiveEpicSummary.fromMap(epicAliasMap);
-        assertEquals("epc-alias", parsedEpic.epicId());
+        assertEquals(epicAliasId, parsedEpic.epicId());
         assertEquals("decision", parsedEpic.needsOperatorKind());
         assertTrue(parsedEpic.plans().isEmpty());
 
@@ -389,15 +436,17 @@ class OverviewRecordsTest {
         assertEquals("pln-ended-arr", parsedEndedPage.items().getFirst().id());
 
         // EndedWorkItem terminal_reason alias
+        var endedItemId = Generators.nonEmptyStrings().next();
+        var endedItemTitle = Generators.nonEmptyStrings().next();
         var endedItemMap = Map.<String, Object>of(
-                "id", "epc-ended",
+                "id", endedItemId,
                 "kind", "epic",
-                "title", "Ended Epic",
+                "title", endedItemTitle,
                 "terminal_reason", "completed",
                 "ended_at", "2026-10-16T08:00:00Z"
         );
         var parsedItem = EndedWorkItem.fromMap(endedItemMap);
-        assertEquals("epc-ended", parsedItem.id());
+        assertEquals(endedItemId, parsedItem.id());
         assertEquals("completed", parsedItem.terminalReason());
         assertNull(parsedItem.outcome());
     }

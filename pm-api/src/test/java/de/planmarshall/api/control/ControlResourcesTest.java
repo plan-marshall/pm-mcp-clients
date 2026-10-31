@@ -19,29 +19,34 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 
 @DisplayName("ControlResources")
+@EnableGeneratorController
 class ControlResourcesTest {
 
     @Test
     @DisplayName("round-trips an epic's tokens with a floor and its coverage")
     void epicTokens() throws Exception {
-        var total = new TokenFigure(3_860_000L, 3_520_000L, 340_000L, true, true, 4, 1);
+        var planId = Generators.nonEmptyStrings().next();
+        var measuredTasks = Generators.integers(0, 100).next();
+        var total = new TokenFigure(3_860_000L, 3_520_000L, 340_000L, true, true, measuredTasks, 1);
         var tokens = new EpicTokens(total,
                 new TokenFigure(120_000L, 110_000L, 10_000L, true, false, 1, 0),
-                List.of(new PlanTokenFigure("relay-reconnect-backoff",
+                List.of(new PlanTokenFigure(planId,
                         new TokenFigure(1_400_000L, 1_300_000L, 100_000L, true, false, 2, 0))));
 
         var parsed = EpicTokens.fromJson(tokens.toJson());
 
         assertEquals(3_860_000L, parsed.total().total());
         assertTrue(parsed.total().floor());
-        assertEquals(4, parsed.total().measuredTasks());
+        assertEquals(measuredTasks, parsed.total().measuredTasks());
         assertEquals(1, parsed.notMeasuredCount());
         assertFalse(parsed.notMeasured());
         assertEquals(1, parsed.plans().size());
-        assertEquals("relay-reconnect-backoff", parsed.plans().getFirst().planId());
+        assertEquals(planId, parsed.plans().getFirst().planId());
 
         var unmeasured = new EpicTokens(TokenFigure.notMeasured(), TokenFigure.notMeasured(), List.of());
         assertTrue(EpicTokens.fromJson(unmeasured.toJson()).notMeasured());
@@ -50,26 +55,38 @@ class ControlResourcesTest {
     @Test
     @DisplayName("round-trips the epic resource with its rows, waits, and tokens")
     void epicResource() throws Exception {
-        var row = new WorkRow("relay-token-rotation", "relay-token-rotation", "staged", "dependency",
-                "relay-auth-v2", List.of(), null, null, null, "rotate the tokens",
-                List.of("the rotation", "a test"), List.of("pm-api/src/token"), List.of("relay-auth-v2"));
-        var overlap = new WorkRow("relay-docs", "relay-docs", "staged", "overlap", "relay-auth-v2",
-                List.of("pm-api/src/store/Doc.java"), null, null, null, null, List.of(), List.of(), List.of());
-        var resource = new EpicResource("relay-hardening", "pm-mcp-clients", "pm-mcp-clients",
+        var epicId = Generators.nonEmptyStrings().next();
+        var projectId = Generators.nonEmptyStrings().next();
+        var waitingPlanId = Generators.nonEmptyStrings().next();
+        var rowPlanId = Generators.nonEmptyStrings().next();
+        var overlapPlanId = Generators.nonEmptyStrings().next();
+        var overlapPath = Generators.nonEmptyStrings().next();
+        var rowDescription = Generators.nonEmptyStrings().next();
+        var deliverable = Generators.nonEmptyStrings().next();
+        var testName = Generators.nonEmptyStrings().next();
+        var surface = Generators.nonEmptyStrings().next();
+        var eventAt = Generators.nonEmptyStrings().next();
+        var eventText = Generators.nonEmptyStrings().next();
+        var summary = Generators.nonEmptyStrings().next();
+        var row = new WorkRow(rowPlanId, rowPlanId, "staged", "dependency",
+                waitingPlanId, List.of(), null, null, null, rowDescription,
+                List.of(deliverable, testName), List.of(surface), List.of(waitingPlanId));
+        var overlap = new WorkRow(overlapPlanId, overlapPlanId, "staged", "overlap", waitingPlanId,
+                List.of(overlapPath), null, null, null, null, List.of(), List.of(), List.of());
+        var resource = new EpicResource(epicId, projectId, projectId,
                 "https://github.com/plan-marshall/pm-mcp-clients/tree/epic/relay-hardening",
                 "running", true, 0, 3, 2, null,
                 List.of(new EpicWorkstream("WS-2", "Authentication", true, List.of(row, overlap))),
-                List.of("2 documents · 1 issue"), 2,
+                List.of(summary), 2,
                 new RegisterSummary(3, 4, 2), new RegisterSummary(1, 4, 0),
                 new EpicTokens(new TokenFigure(3_860_000L, 3_520_000L, 340_000L, true, false, 4, 0),
                         TokenFigure.notMeasured(), List.of()),
-                List.of(new EpicEvent("2026-10-16T12:05:00Z",
-                        "relay-reconnect-backoff landed; relay-reconnect-metrics re-ordered")));
+                List.of(new EpicEvent(eventAt, eventText)));
 
         var parsed = EpicResource.fromJson(resource.toJson());
 
-        assertEquals("relay-hardening", parsed.epicId());
-        assertEquals("pm-mcp-clients", parsed.projectId());
+        assertEquals(epicId, parsed.epicId());
+        assertEquals(projectId, parsed.projectId());
         assertEquals("running", parsed.state());
         assertTrue(parsed.autoStart());
         assertEquals(3, parsed.scope());
@@ -77,10 +94,10 @@ class ControlResourcesTest {
         assertFalse(parsed.hasEnded());
         var parsedRow = parsed.workstreams().getFirst().rows().getFirst();
         assertEquals(EpicWaitReason.DEPENDENCY, parsedRow.waits());
-        assertEquals("relay-auth-v2", parsedRow.waitPlanId());
+        assertEquals(waitingPlanId, parsedRow.waitPlanId());
         var parsedOverlap = parsed.workstreams().getFirst().rows().get(1);
         assertEquals(EpicWaitReason.OVERLAP, parsedOverlap.waits());
-        assertEquals(List.of("pm-api/src/store/Doc.java"), parsedOverlap.overlapFiles());
+        assertEquals(List.of(overlapPath), parsedOverlap.overlapFiles());
         assertEquals(3, parsed.findings().newCount());
         assertEquals(1, parsed.events().size());
         assertEquals("WS-2", parsed.workstreams().getFirst().id());
@@ -102,35 +119,51 @@ class ControlResourcesTest {
     @Test
     @DisplayName("round-trips a decomposition draft with its checks")
     void decomposition() throws Exception {
-        var plan = new DecompositionPlan("relay-auth-v2", "relay-auth-v2", "the token work",
-                List.of("the auth flow"), List.of("pm-api/src/auth"), List.of(),
+        var planId = Generators.nonEmptyStrings().next();
+        var epicId = Generators.nonEmptyStrings().next();
+        var objective = Generators.nonEmptyStrings().next();
+        var deliverable = Generators.nonEmptyStrings().next();
+        var surface = Generators.nonEmptyStrings().next();
+        var workstreamTitle = Generators.nonEmptyStrings().next();
+        var checkMessage = Generators.nonEmptyStrings().next();
+        var plan = new DecompositionPlan(planId, planId, objective,
+                List.of(deliverable), List.of(surface), List.of(),
                 1, "changed", false);
-        var resource = new DecompositionResource("relay-hardening", "check", 7,
-                List.of(new DecompositionWorkstream("WS-2", "Authentication", "the token work", 2, List.of(plan))),
-                List.of(new DecompositionCheck("relay-auth-v2", DecompositionCheck.SEVERITY_ERROR,
-                        "surface overlaps relay-cursor-order (pm-api)")));
+        var resource = new DecompositionResource(epicId, "check", 7,
+                List.of(new DecompositionWorkstream("WS-2", workstreamTitle, objective, 2, List.of(plan))),
+                List.of(new DecompositionCheck(planId, DecompositionCheck.SEVERITY_ERROR,
+                        checkMessage)));
 
         var parsed = DecompositionResource.fromJson(resource.toJson());
 
-        assertEquals("relay-hardening", parsed.epicId());
+        assertEquals(epicId, parsed.epicId());
         assertEquals("check", parsed.state());
         assertEquals(7L, parsed.revision());
         assertEquals(1, parsed.planCount());
         assertFalse(parsed.everyCheckPasses());
         var parsedPlan = parsed.workstreams().getFirst().plans().getFirst();
         assertEquals("changed", parsedPlan.change());
-        assertEquals(List.of("pm-api/src/auth"), parsedPlan.surface());
+        assertEquals(List.of(surface), parsedPlan.surface());
         assertTrue(new DecompositionResource("e", "commit", 1L, List.of(), List.of()).everyCheckPasses());
     }
 
     @Test
     @DisplayName("round-trips a chat read-back with its transcript and proposal")
     void chatReadBack() throws Exception {
-        var chat = new ChatReadBackResource("C-1", "fix-relay", "plan", "replan", "plan", "read-back",
-                List.of(new ChatTurnResource("operator", "Can the cursor test cover SSE too?", "2026-10-16T14:02:00Z", false),
-                        new ChatTurnResource("replan", "Yes. I propose a second test.", "2026-10-16T14:03:00Z", false)),
-                new ChatProposalResource("a test per transport",
-                        "TASK-4  one transport", "TASK-4  a test per transport", "after the current task"));
+        var chatId = Generators.nonEmptyStrings().next();
+        var planId = Generators.nonEmptyStrings().next();
+        var operatorText = Generators.nonEmptyStrings().next();
+        var replanText = Generators.nonEmptyStrings().next();
+        var askedAt = Generators.nonEmptyStrings().next();
+        var answeredAt = Generators.nonEmptyStrings().next();
+        var proposalHeadline = Generators.nonEmptyStrings().next();
+        var currentDraft = Generators.nonEmptyStrings().next();
+        var proposedDraft = Generators.nonEmptyStrings().next();
+        var applies = Generators.nonEmptyStrings().next();
+        var chat = new ChatReadBackResource(chatId, planId, "plan", "replan", "plan", "read-back",
+                List.of(new ChatTurnResource("operator", operatorText, askedAt, false),
+                        new ChatTurnResource("replan", replanText, answeredAt, false)),
+                new ChatProposalResource(proposalHeadline, currentDraft, proposedDraft, applies));
 
         var parsed = ChatReadBackResource.fromJson(chat.toJson());
 
@@ -140,7 +173,7 @@ class ControlResourcesTest {
         assertTrue(parsed.hasProposal());
         assertEquals(2, parsed.turns().size());
         assertTrue(parsed.turns().getFirst().isOperator());
-        assertEquals("after the current task", parsed.proposal().applies());
+        assertEquals(applies, parsed.proposal().applies());
 
         var untrusted = new ChatTurnResource("replan", "from a comment", "2026-10-16T14:04:00Z", true);
         assertTrue(ChatTurnResource.fromJson(untrusted.toJson()).untrusted());
@@ -149,24 +182,36 @@ class ControlResourcesTest {
     @Test
     @DisplayName("round-trips a review with a promotion and a read-back")
     void review() throws Exception {
-        var item = new ReviewItemResource("F-0004", "findings", "Reconnect loses the last event",
-                List.of("a fix must hold for every transport"), "landing of relay-reconnect (#211)",
-                "untrusted", "open", "Promote to a plan");
-        var review = new ReviewResource("R-1", "relay-hardening", "findings", List.of(item), 3, 7,
+        var reviewId = Generators.nonEmptyStrings().next();
+        var epicId = Generators.nonEmptyStrings().next();
+        var itemId = Generators.nonEmptyStrings().next();
+        var itemTitle = Generators.nonEmptyStrings().next();
+        var rule = Generators.nonEmptyStrings().next();
+        var origin = Generators.nonEmptyStrings().next();
+        var promotion = Generators.nonEmptyStrings().next();
+        var draftedPlanId = Generators.nonEmptyStrings().next();
+        var draftedObjective = Generators.nonEmptyStrings().next();
+        var surface = Generators.nonEmptyStrings().next();
+        var total = Generators.integers(1, 20).next();
+        var decided = Generators.integers(0, total).next();
+        var item = new ReviewItemResource(itemId, "findings", itemTitle,
+                List.of(rule), origin,
+                "untrusted", "open", promotion);
+        var review = new ReviewResource(reviewId, epicId, "findings", List.of(item), decided, total,
                 "read-back",
-                new DraftedPlan("relay-reconnect-order", "reorder the cursor write",
-                        List.of("a test per transport"), List.of("pm-relay/src/net"), List.of()),
+                new DraftedPlan(draftedPlanId, draftedObjective,
+                        List.of(rule), List.of(surface), List.of()),
                 new ReviewReadBackResource(ReviewReadBackResource.KIND_PLAN, "old draft", "new draft", null));
 
         var parsed = ReviewResource.fromJson(review.toJson());
 
         assertEquals("findings", parsed.register());
-        assertEquals(3, parsed.decided());
-        assertEquals(7, parsed.total());
+        assertEquals(decided, parsed.decided());
+        assertEquals(total, parsed.total());
         assertEquals(1, parsed.openItems().size());
-        assertEquals(ReviewDisposition.OPEN, parsed.item("F-0004").disposition());
-        assertTrue(parsed.item("F-0004").isUntrusted());
-        assertEquals("relay-reconnect-order", parsed.draftedPlan().planId());
+        assertEquals(ReviewDisposition.OPEN, parsed.item(itemId).disposition());
+        assertTrue(parsed.item(itemId).isUntrusted());
+        assertEquals(draftedPlanId, parsed.draftedPlan().planId());
         assertEquals(ReviewReadBackResource.KIND_PLAN, parsed.readBack().kind());
         assertNull(parsed.readBack().plan());
     }
@@ -174,31 +219,37 @@ class ControlResourcesTest {
     @Test
     @DisplayName("round-trips an archive check and computes whether it passes")
     void archiveCheck() throws Exception {
-        var failing = new ArchiveCheck("relay-hardening",
+        var epicId = Generators.nonEmptyStrings().next();
+        var findingsAction = Generators.nonEmptyStrings().next();
+        var carriedFindings = Generators.integers(0, 10).next();
+        var carriedWatches = Generators.integers(0, 10).next();
+        var failing = new ArchiveCheck(epicId,
                 List.of(new ArchiveCheckLine("control.archive.no_plan_active", true, null, null),
-                        new ArchiveCheckLine("control.archive.open_findings", false, "2", "review-findings")),
-                3, 5, false);
+                        new ArchiveCheckLine("control.archive.open_findings", false, "2", findingsAction)),
+                carriedFindings, carriedWatches, false);
 
         var parsed = ArchiveCheck.fromJson(failing.toJson());
 
         assertFalse(parsed.passed());
         assertEquals(2, parsed.lines().size());
-        assertEquals("review-findings", parsed.lines().get(1).action());
-        assertEquals(3, parsed.carriedFindings());
-        assertEquals(5, parsed.carriedWatches());
+        assertEquals(findingsAction, parsed.lines().get(1).action());
+        assertEquals(carriedFindings, parsed.carriedFindings());
+        assertEquals(carriedWatches, parsed.carriedWatches());
 
-        var passing = new ArchiveCheck("relay-hardening",
-                List.of(new ArchiveCheckLine("control.archive.no_plan_active", true, null, null)), 3, 5, false);
+        var passing = new ArchiveCheck(epicId,
+                List.of(new ArchiveCheckLine("control.archive.no_plan_active", true, null, null)),
+                carriedFindings, carriedWatches, false);
         assertTrue(passing.passed());
 
-        var reviewFirst = new ArchiveCheck("relay-hardening", List.of(), 0, 0, true);
+        var reviewFirst = new ArchiveCheck(epicId, List.of(), 0, 0, true);
         assertFalse(reviewFirst.passed());
     }
 
     @Test
     @DisplayName("answers the derived states of the resources")
     void derivedStates() throws Exception {
-        var shipped = new WorkRow("p", "p", "shipped", null, null, List.of(), 211,
+        var shippedPlanId = Generators.nonEmptyStrings().next();
+        var shipped = new WorkRow(shippedPlanId, shippedPlanId, "shipped", null, null, List.of(), 211,
                 "https://github.com/plan-marshall/pm-mcp-clients/pull/211", null, null,
                 List.of(), List.of(), List.of());
         var staged = new WorkRow("q", "q", "staged", "none", null, List.of(), null, null, null, null,
