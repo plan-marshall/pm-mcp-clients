@@ -8,6 +8,7 @@ import {
   type TaskActivity,
 } from '../api/client';
 import { workflowIconUrl } from '../icons/workflowIcons';
+import { formatTime } from '../display/format';
 import { runtimeStore, navigateTo, openPlanView } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { get } from 'svelte/store';
@@ -221,10 +222,38 @@ describe('PlanView component', () => {
 
     const entries = screen.getAllByTestId('activity-entry');
     expect(entries.length).toBe(4);
+    // A clock the runtime already formatted carries no date, so it opens no day header.
+    expect(screen.queryAllByTestId('activity-day')).toHaveLength(0);
+    expect(entries[0]).toHaveTextContent('14:02:11');
     expect(entries[0]).toHaveTextContent('Reading the relay transport');
     expect(entries[1]).toHaveTextContent('read');
     expect(entries[2]).toHaveTextContent('failed · 4 KiB');
     expect(entries[3]).toHaveTextContent('Transport.java');
+  });
+
+  it('opens a day above the first activity row of each day the wire dates', async () => {
+    const today = new Date();
+    const dayAt = (daysAgo: number, hour: number): string =>
+      new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() - daysAgo,
+        hour,
+      ).toISOString();
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      ...mockActivity,
+      entries: [
+        { timestamp: dayAt(0, 10), kind: 'text', content: 'first today' },
+        { timestamp: dayAt(0, 11), kind: 'text', content: 'later today' },
+        { timestamp: dayAt(1, 9), kind: 'text', content: 'yesterday' },
+      ],
+    });
+
+    render(PlanView);
+
+    await screen.findByTestId('task-inspector');
+    const days = await screen.findAllByTestId('activity-day');
+    expect(days.map((node) => node.textContent)).toEqual(['today', 'yesterday']);
   });
 
   it('normalizes live activity events and ignores malformed ones', async () => {
@@ -486,7 +515,7 @@ describe('PlanView component', () => {
     await screen.findByTestId('plan-title');
 
     const banner = screen.getByTestId('plan-ended');
-    const endedAt = new Date('2026-10-16T11:20:00Z').toLocaleString('en');
+    const endedAt = formatTime('2026-10-16T11:20:00Z', 'short', 'en');
     expect(banner).toHaveTextContent('The plan has ended: merged');
     expect(banner).toHaveTextContent(`ended ${endedAt}`);
     expect(banner).toHaveTextContent('Reason: the fallback held');

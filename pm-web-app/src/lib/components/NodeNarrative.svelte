@@ -1,7 +1,7 @@
 <script lang="ts">
   import { currentLocale, t } from '../i18n';
   import type { LeafTask, ProcessNode, ProcessTree } from '../api/client';
-  import { formatDurationSeconds, formatTokens } from '../utils/tokenFormat';
+  import { formatDuration, formatTokens } from '../display/format';
   import { stripControlSequences } from '../utils/outputSafety';
   import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
   import { displayState } from '../display';
@@ -57,7 +57,7 @@
       {/if}
       {#if node.duration_seconds > 0}
         <span class="node-narrative__duration mono" data-testid="node-narrative-duration">
-          {formatDurationSeconds(node.duration_seconds)}
+          {formatDuration(node.duration_seconds * 1000, $currentLocale)}
         </span>
       {/if}
     </div>
@@ -110,7 +110,7 @@
             >
             {#if task.duration_seconds > 0}
               <span class="child-task__duration mono">
-                {formatDurationSeconds(task.duration_seconds)}
+                {formatDuration(task.duration_seconds * 1000, $currentLocale)}
               </span>
             {/if}
             {#if task.tokens_so_far > 0}

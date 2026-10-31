@@ -6,7 +6,9 @@
   $: info = $runtimeStore.revokedInfo;
   $: reasonKey = info?.reason || $runtimeStore.revokedReason || 'device_revoked';
   $: by = info?.revoked_by || 'the terminal client';
-  $: time = info?.revoked_at || '';
+  // The runtime ships this value display-ready (`today at 14:10`); it is shown as it arrives,
+  // like the other fields the wire already formats.
+  $: time = info?.revoked_at ?? '';
 
   function handlePair() {
     runtimeStore.update((s) => ({

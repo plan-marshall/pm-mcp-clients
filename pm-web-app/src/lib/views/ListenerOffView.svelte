@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { t } from '../i18n';
+  import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
+  import { formatTime } from '../display/format';
   import { runtimeStore, initRuntime } from '../stores/runtime';
 
   /**
@@ -50,10 +51,7 @@
     {#if closedAt}
       <p class="listener-off__reason">
         {$t('web.entry.lan_off.reason', {
-          time: new Date(closedAt).toLocaleTimeString(undefined, {
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
+          time: formatTime(closedAt, 'short', $currentLocale),
           command: 'pm-operator web lan',
         })}
       </p>

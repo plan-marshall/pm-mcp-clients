@@ -1,4 +1,5 @@
 import type { SourceKindOffer, StartSource, StartSourceFailure } from '../api/client';
+import { formatTime, type Locale } from '../display/format';
 
 /**
  * The parts of an issue or pull-request reference the client shows before the runtime fetches it.
@@ -155,7 +156,10 @@ export function repositoryOf(reference: string, projectRepository = ''): string 
  * @param failure the failure
  * @returns the catalogue key and its arguments
  */
-export function failureMessage(failure: StartSourceFailure): {
+export function failureMessage(
+  failure: StartSourceFailure,
+  locale: Locale = 'en',
+): {
   key: string;
   args: Record<string, string | number>;
 } {
@@ -163,7 +167,7 @@ export function failureMessage(failure: StartSourceFailure): {
     return {
       key: 'start.cause.rate_limited',
       args: {
-        time: resetTime(failure.resets_at),
+        time: resetTime(failure.resets_at, locale),
         credential: failure.detail ? 'present' : 'none',
         forge: failure.detail ?? '',
       },
@@ -192,16 +196,14 @@ export function failureMessage(failure: StartSourceFailure): {
 
 /**
  * @param resetsAt the epoch second a rate limit resets, if any
- * @returns the time of day the client shows, or its own clock where none is named
+ * @param locale the interface locale
+ * @returns the moment it resets, in the one time format, or an empty string where none is named
  */
-export function resetTime(resetsAt?: number | null): string {
+export function resetTime(resetsAt?: number | null, locale: Locale = 'en'): string {
   if (!resetsAt) {
     return '';
   }
-  return new Date(resetsAt * 1000).toLocaleTimeString(undefined, {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  return formatTime(new Date(resetsAt * 1000).toISOString(), 'short', locale);
 }
 
 /**

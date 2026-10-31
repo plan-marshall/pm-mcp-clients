@@ -6,6 +6,7 @@
   import CredentialEntry from '../components/CredentialEntry.svelte';
   import { apiClient, type PairedDevice } from '../api/client';
   import { currentLocale } from '../i18n';
+  import { formatDay, formatTime } from '../display/format';
   import { runtimeStore, navigateTo, goBack } from '../stores/runtime';
 
   /**
@@ -172,29 +173,26 @@
 
   /**
    * @param rawDate an ISO timestamp
-   * @returns the day and month, in the interface language
+   * @returns the day, in the interface language
    */
   function formatDate(rawDate?: string): string {
-    if (!rawDate) return '';
-    const date = new Date(rawDate);
-    if (Number.isNaN(date.getTime())) return rawDate;
-    return date.toLocaleDateString($currentLocale, { day: 'numeric', month: 'short' });
+    return formatDay(rawDate, $currentLocale);
   }
 
   /**
    * @param rawDate an ISO timestamp
-   * @returns the day, month and time, in the interface language
+   * @returns its age in the unit that age has
+   */
+  function formatRelative(rawDate?: string): string {
+    return formatTime(rawDate, 'relative', $currentLocale);
+  }
+
+  /**
+   * @param rawDate an ISO timestamp
+   * @returns the moment to the minute, in the interface language
    */
   function formatDateTime(rawDate?: string): string {
-    if (!rawDate) return '';
-    const date = new Date(rawDate);
-    if (Number.isNaN(date.getTime())) return rawDate;
-    return date.toLocaleString($currentLocale, {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatTime(rawDate, 'short', $currentLocale);
   }
 
   $: otherDevicesCount = devices.filter((d) => !isThisBrowser(d)).length;
@@ -302,8 +300,8 @@
                     · {$t('devices.list.from', { from: device.paired_from })}
                   {/if}
                 </td>
-                <td class="text-secondary">
-                  {$t('devices.list.last_used', { time: formatDateTime(device.last_used_at) })}
+                <td class="text-secondary" title={formatDateTime(device.last_used_at)}>
+                  {$t('devices.list.last_used', { time: formatRelative(device.last_used_at) })}
                 </td>
                 <td>
                   <div class="device-actions">
