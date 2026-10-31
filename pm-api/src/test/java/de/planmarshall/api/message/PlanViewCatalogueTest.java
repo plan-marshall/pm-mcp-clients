@@ -110,7 +110,8 @@ class PlanViewCatalogueTest {
                 "plan.activity.server_only",
                 "plan.activity.gap",
                 "plan.activity.off_track",
-                "plan.activity.select_item"
+                "plan.activity.select_item",
+                "plan.change.size"
         };
 
         for (String key : requiredKeys) {
@@ -193,5 +194,30 @@ class PlanViewCatalogueTest {
 
         var epicTitle = MessageCatalogue.format("en", "epic.view.title", Map.of("epic", "relay-hardening"));
         assertEquals("relay-hardening", epicTitle);
+    }
+
+    @Test
+    @DisplayName("should format the size of a plan's change in both languages")
+    void shouldFormatTheChangeSize() {
+        assertTrue(MessageCatalogue.hasKey("en", "plan.change.size"), "Missing English key plan.change.size");
+        assertTrue(MessageCatalogue.hasKey("de", "plan.change.size"), "Missing German key plan.change.size");
+
+        var measured = Map.<String, Object>of("files", 12, "insertions", 340, "deletions", 27, "unplanned", 2);
+        assertEquals("12 files \u00b7 +340 \u221227 \u00b7 2 unplanned",
+                MessageCatalogue.format("en", "plan.change.size", measured));
+        assertEquals("12 Dateien \u00b7 +340 \u221227 \u00b7 2 ungeplant",
+                MessageCatalogue.format("de", "plan.change.size", measured));
+
+        // Plural forms of the file count, in both languages.
+        var oneFile = Map.<String, Object>of("files", 1, "insertions", 3, "deletions", 0, "unplanned", 1);
+        assertEquals("1 file \u00b7 +3 \u22120 \u00b7 1 unplanned",
+                MessageCatalogue.format("en", "plan.change.size", oneFile));
+        assertEquals("1 Datei \u00b7 +3 \u22120 \u00b7 1 ungeplant",
+                MessageCatalogue.format("de", "plan.change.size", oneFile));
+
+        // A zero count of unplanned changes leaves the part out, in both languages.
+        var noneUnplanned = Map.<String, Object>of("files", 2, "insertions", 8, "deletions", 1, "unplanned", 0);
+        assertEquals("2 files \u00b7 +8 \u22121", MessageCatalogue.format("en", "plan.change.size", noneUnplanned));
+        assertEquals("2 Dateien \u00b7 +8 \u22121", MessageCatalogue.format("de", "plan.change.size", noneUnplanned));
     }
 }

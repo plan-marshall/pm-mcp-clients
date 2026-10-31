@@ -241,7 +241,7 @@ class IntentScenarioTest {
     @DisplayName("every state of the consolidated scenario decodes as an operator state")
     void everyStateDecodes() throws Exception {
         var scenario = ScenarioLoader.load(StandardScenarios.RUNNING_WORK);
-        assertEquals(38, scenario.states().size());
+        assertEquals(41, scenario.states().size());
         for (var entry : scenario.states().entrySet()) {
             var representation = JsonTree.asObject(entry.getValue().representation());
             assertNotNull(representation, entry.getKey());

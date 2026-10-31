@@ -20,21 +20,24 @@ import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
 /**
- * Event payload emitted when items waiting for the operator change on a project, plan, or epic
- * ({@code needs_operator.changed}).
+ * Event payload emitted when items waiting for the operator change on a project, plan, or epic, and,
+ * with the machine's summary, on the machine itself ({@code needs_operator.changed}).
  *
  * @param projectId project identifier, or {@code null}
  * @param planId    plan identifier, or {@code null}
  * @param epicId    epic identifier, or {@code null}
  * @param kind      kind of wait ("decision", "stalled", "condition", "none"), or {@code null}
  * @param count     number of items waiting
+ * @param summary   the machine's summary the event announces, or {@code null} for a plan, epic, or
+ *                  project change
  */
 public record NeedsOperatorChangedEvent(
         @Nullable String projectId,
         @Nullable String planId,
         @Nullable String epicId,
         @Nullable String kind,
-        int count
+        int count,
+        @Nullable NeedsOperatorSummary summary
 ) {
     public static final String EVENT_NAME = "needs_operator.changed";
 
@@ -58,6 +61,9 @@ public record NeedsOperatorChangedEvent(
             map.put("kind", kind);
         }
         map.put("count", count);
+        if (summary != null) {
+            map.put("needs_operator", summary.toMap());
+        }
         return map;
     }
 
@@ -95,8 +101,10 @@ public record NeedsOperatorChangedEvent(
         var kind = JsonTree.string(map, "kind");
         var countNum = JsonTree.number(map, "count");
         int count = countNum != null ? countNum.intValue() : 0;
+        var summaryMap = JsonTree.asObject(map.get("needs_operator"));
+        var summary = summaryMap != null ? NeedsOperatorSummary.fromMap(summaryMap) : null;
 
-        return new NeedsOperatorChangedEvent(projectId, planId, epicId, kind, count);
+        return new NeedsOperatorChangedEvent(projectId, planId, epicId, kind, count, summary);
     }
 
     /**

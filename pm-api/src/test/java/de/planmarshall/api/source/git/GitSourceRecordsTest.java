@@ -27,10 +27,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("Git source record contracts")
+@EnableGeneratorController
 class GitSourceRecordsTest {
 
     private static List<ChangedFile> changedFiles() {
@@ -111,8 +114,14 @@ class GitSourceRecordsTest {
     @Test
     @DisplayName("RateLimitStatus round-trips with its reset instant and clamps negatives")
     void rateLimitRoundTrips() throws Exception {
-        var limited = new RateLimitStatus(60, 0, Instant.parse("2026-10-12T14:05:00Z"), true);
+        var limit = Generators.integers(1_000, 10_000).next();
+        var remaining = Generators.integers(1, 1_000).next();
+        var limited = new RateLimitStatus(limit, remaining, Instant.parse("2026-10-12T14:05:00Z"), true);
         assertEquals(limited, RateLimitStatus.fromJson(limited.toJson()));
+
+        var exhausted = new RateLimitStatus(limit, 0, Instant.parse("2026-10-12T14:05:00Z"), true);
+        assertEquals(exhausted, RateLimitStatus.fromJson(exhausted.toJson()));
+        assertEquals(0, exhausted.remaining());
 
         var unlimited = RateLimitStatus.unlimited();
         assertFalse(unlimited.limited());
@@ -127,9 +136,11 @@ class GitSourceRecordsTest {
     @Test
     @DisplayName("PullRequestObservation round-trips with its changed files and screening")
     void pullRequestObservationRoundTrips() throws Exception {
+        var title = Generators.nonEmptyStrings().next();
+        var author = Generators.nonEmptyStrings().next();
+        var branch = Generators.nonEmptyStrings().next();
         var observation = new PullRequestObservation(
-                "https://codeberg.org/forgejo/forgejo/pulls/7001", 7001,
-                "Add a Codeberg provider for issues", "octocat", "codeberg-provider",
+                "https://codeberg.org/forgejo/forgejo/pulls/7001", 7001, title, author, branch,
                 PullRequestObservation.STATE_OPEN, true, changedFiles(),
                 ScreeningOutcome.CLEAN, RateLimitStatus.unlimited());
 
@@ -162,7 +173,8 @@ class GitSourceRecordsTest {
         assertFalse(clean.toMap().containsKey("screening_bypass_reason"));
         assertEquals(clean, PrAdoptRequest.fromJson(clean.toJson()));
 
-        var flagged = new PrAdoptRequest("pm-mcp-clients", "7001", "I read the flagged text");
+        var bypassReason = Generators.nonEmptyStrings().next();
+        var flagged = new PrAdoptRequest("pm-mcp-clients", "7001", bypassReason);
         assertEquals(flagged, PrAdoptRequest.fromJson(flagged.toJson()));
     }
 
@@ -180,13 +192,14 @@ class GitSourceRecordsTest {
     @Test
     @DisplayName("LocalChangesPreview round-trips with its preview id and sums its line counts")
     void localChangesPreviewRoundTrips() throws Exception {
-        var preview = new LocalChangesPreview(LocalChangesPreview.STATUS_PREVIEWED, "preview-1", "main",
+        var previewId = Generators.nonEmptyStrings().next();
+        var preview = new LocalChangesPreview(LocalChangesPreview.STATUS_PREVIEWED, previewId, "main",
                 changedFiles(), "pr", true, true, null);
 
         var roundTrip = LocalChangesPreview.fromJson(preview.toJson());
 
         assertEquals(preview, roundTrip);
-        assertEquals("preview-1", roundTrip.previewId());
+        assertEquals(previewId, roundTrip.previewId());
         assertEquals(16, roundTrip.totalAdditions());
         assertEquals(4, roundTrip.totalDeletions());
     }
@@ -205,10 +218,11 @@ class GitSourceRecordsTest {
     @Test
     @DisplayName("LocalChangesCaptureRequest round-trips with its preview id and confirmation flag")
     void localChangesCaptureRequestRoundTrips() throws Exception {
-        var unconfirmed = new LocalChangesCaptureRequest("pm-mcp-clients", "preview-1", false);
+        var previewId = Generators.nonEmptyStrings().next();
+        var unconfirmed = new LocalChangesCaptureRequest("pm-mcp-clients", previewId, false);
         assertEquals(unconfirmed, LocalChangesCaptureRequest.fromJson(unconfirmed.toJson()));
 
-        var confirmed = new LocalChangesCaptureRequest("pm-mcp-clients", "preview-1", true);
+        var confirmed = new LocalChangesCaptureRequest("pm-mcp-clients", previewId, true);
         assertEquals(Boolean.TRUE, confirmed.toMap().get("confirmed"));
         assertEquals(confirmed, LocalChangesCaptureRequest.fromJson(confirmed.toJson()));
 

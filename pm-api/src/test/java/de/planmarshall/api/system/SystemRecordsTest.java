@@ -20,9 +20,12 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonNumber;
 
+@EnableGeneratorController
 class SystemRecordsTest {
 
     @Test
@@ -57,28 +60,47 @@ class SystemRecordsTest {
 
     @Test
     void runtimeMetricsRoundTrip() throws Exception {
+        var version = Generators.nonEmptyStrings().next();
+        var build = Generators.nonEmptyStrings().next();
+        var startedAt = Generators.nonEmptyStrings().next();
+        var uptimeSeconds = Generators.integers(0, 1_000_000).next();
+        var heapUsed = (long) Generators.integers(0, 1_000_000).next();
+        var heapMax = (long) Generators.integers(1_000_000, 2_000_000).next();
+        var residentMemory = (long) Generators.integers(0, 1_000_000).next();
+        var cpuPercent = Generators.integers(0, 100).next() / 100.0;
+        var machineStore = (long) Generators.integers(0, 1_000_000).next();
+        var diskFree = (long) Generators.integers(0, 1_000_000).next();
+        var peakLabel = Generators.nonEmptyStrings().next();
+        var loopback = Generators.nonEmptyStrings().next();
+        var network = Generators.nonEmptyStrings().next();
+        var pairedDevices = Generators.integers(0, 20).next();
+        var newerVersion = Generators.nonEmptyStrings().next();
+        var newerVersionDate = Generators.nonEmptyStrings().next();
+        var upgradeSeenAt = Generators.nonEmptyStrings().next();
+        var releaseNotesUrl = Generators.nonEmptyStrings().next();
+
         var metrics = new RuntimeMetrics(
-                "0.9.1",
-                "2026-10-02 (a1b2c3d)",
-                "today 08:14",
-                22320,
-                432013312L,
-                1073741824L,
-                713031680L,
-                4.0,
-                2469606195L,
-                40802189312L,
-                "13:40",
+                version,
+                build,
+                startedAt,
+                uptimeSeconds,
+                heapUsed,
+                heapMax,
+                residentMemory,
+                cpuPercent,
+                machineStore,
+                diskFree,
+                peakLabel,
                 true,
-                "127.0.0.1:7420",
-                "192.168.1.20:7421",
-                2,
+                loopback,
+                network,
+                pairedDevices,
                 0,
                 null,
-                "0.10.0",
-                "2026-10-11",
-                "today 09:00",
-                "/api/v1/system/release-notes?version=0.10.0",
+                newerVersion,
+                newerVersionDate,
+                upgradeSeenAt,
+                releaseNotesUrl,
                 true,
                 null
         );
@@ -127,22 +149,27 @@ class SystemRecordsTest {
 
     @Test
     void workerMetricRoundTrip() throws Exception {
+        var role = Generators.nonEmptyStrings().next();
+        var harness = Generators.nonEmptyStrings().next();
+        var model = Generators.nonEmptyStrings().next();
+        var planTitle = Generators.nonEmptyStrings().next();
+
         var worker = new WorkerMetric(
-                "planner",
-                "claude",
-                "opus-4.5",
+                role,
+                harness,
+                model,
                 WorkerState.BUSY,
-                "fix-relay"
+                planTitle
         );
 
         var json = worker.toJson();
         var restored = WorkerMetric.fromJson(json);
 
-        assertEquals("planner", restored.role());
-        assertEquals("claude", restored.harness());
-        assertEquals("opus-4.5", restored.model());
+        assertEquals(role, restored.role());
+        assertEquals(harness, restored.harness());
+        assertEquals(model, restored.model());
         assertEquals(WorkerState.BUSY, restored.state());
-        assertEquals("fix-relay", restored.currentPlanTitle());
+        assertEquals(planTitle, restored.currentPlanTitle());
     }
 
     @Test

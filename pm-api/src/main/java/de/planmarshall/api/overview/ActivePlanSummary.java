@@ -41,6 +41,7 @@ import de.planmarshall.api.json.JsonTree;
  * @param offTrackSignal     signal string if worker is judged off-track (e.g. "repeating"), or {@code null}
  * @param needsOperatorKind  first reason why plan needs operator, or {@code null}
  * @param needsOperatorCount number of items needing operator attention, or {@code null}
+ * @param change             size of the plan's change at its last capture, or {@code null}
  */
 public record ActivePlanSummary(
         String planId,
@@ -58,7 +59,8 @@ public record ActivePlanSummary(
         @Nullable String pullRequestUrl,
         @Nullable String offTrackSignal,
         @Nullable String needsOperatorKind,
-        @Nullable Integer needsOperatorCount
+        @Nullable Integer needsOperatorCount,
+        @Nullable ChangeSize change
 ) {
     public ActivePlanSummary {
         Objects.requireNonNull(planId, "planId");
@@ -109,6 +111,9 @@ public record ActivePlanSummary(
         }
         if (needsOperatorCount != null) {
             map.put("needs_operator_count", needsOperatorCount);
+        }
+        if (change != null) {
+            map.put("change", change.toMap());
         }
         return map;
     }
@@ -184,6 +189,8 @@ public record ActivePlanSummary(
         var needsCountNum = JsonTree.number(map, "needs_operator_count");
         Integer needsOperatorCount = needsCountNum != null ? needsCountNum.intValue() : null;
 
+        var change = ChangeSize.fromMap(JsonTree.asObject(map.get("change")));
+
         return new ActivePlanSummary(
                 planId,
                 title != null ? title : planId,
@@ -200,7 +207,8 @@ public record ActivePlanSummary(
                 prUrl,
                 offTrackSignal,
                 needsKind,
-                needsOperatorCount
+                needsOperatorCount,
+                change
         );
     }
 

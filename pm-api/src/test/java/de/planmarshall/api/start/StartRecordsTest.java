@@ -26,9 +26,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 
 @DisplayName("Start record contracts")
+@EnableGeneratorController
 class StartRecordsTest {
 
     @Nested
@@ -59,8 +62,9 @@ class StartRecordsTest {
     @Test
     @DisplayName("SourceInput round-trips and omits an unresolved title")
     void sourceInputRoundTrips() throws Exception {
+        var title = Generators.nonEmptyStrings().next();
         var full = new SourceInput(SourceKind.ISSUE, "https://codeberg.org/forgejo/forgejo/issues/4711",
-                "Issue comments API");
+                title);
         assertEquals(full, SourceInput.fromJson(full.toJson()));
 
         var unresolved = new SourceInput(SourceKind.DOCUMENTS, "doc/concepts/forgejo.adoc", null);
@@ -71,9 +75,10 @@ class StartRecordsTest {
     @Test
     @DisplayName("StartPlanRequest round-trips with its recipe parameters and documents")
     void startPlanRequestRoundTrips() throws Exception {
-        var request = new StartPlanRequest("pm-mcp-clients", "Add a Codeberg provider for issues",
-                "code-review", Map.of("depth", "deep"), List.of("doc/concepts/forgejo.adoc"), "4711",
-                "Codeberg provider for issues");
+        var objective = Generators.nonEmptyStrings().next();
+        var title = Generators.nonEmptyStrings().next();
+        var request = new StartPlanRequest("pm-mcp-clients", objective, "code-review", Map.of("depth", "deep"),
+                List.of("doc/concepts/forgejo.adoc"), "4711", title);
 
         var roundTrip = StartPlanRequest.fromJson(request.toJson());
 
@@ -98,8 +103,8 @@ class StartRecordsTest {
     @Test
     @DisplayName("StartEpicRequest round-trips with its auto-start flag")
     void startEpicRequestRoundTrips() throws Exception {
-        var request = new StartEpicRequest("pm-mcp-clients", "Relay hardening", Boolean.FALSE,
-                "Relay hardening");
+        var objective = Generators.nonEmptyStrings().next();
+        var request = new StartEpicRequest("pm-mcp-clients", objective, Boolean.FALSE, objective);
 
         var roundTrip = StartEpicRequest.fromJson(request.toJson());
 
@@ -110,8 +115,9 @@ class StartRecordsTest {
     @Test
     @DisplayName("PlanStartResult round-trips and defaults the state to started")
     void planStartResultRoundTrips() throws Exception {
-        var result = new PlanStartResult("codeberg-provider-issues", PlanStartResult.KIND_PLAN,
-                "Codeberg provider for issues", null, "/api/v1/plans/codeberg-provider-issues");
+        var title = Generators.nonEmptyStrings().next();
+        var result = new PlanStartResult("codeberg-provider-issues", PlanStartResult.KIND_PLAN, title, null,
+                "/api/v1/plans/codeberg-provider-issues");
 
         var roundTrip = PlanStartResult.fromJson(result.toJson());
 
@@ -127,17 +133,17 @@ class StartRecordsTest {
                 null);
         assertEquals(parameter, RecipeParameter.fromJson(parameter.toJson()));
 
-        var blocked = new RecipeParameter("modules", null, List.of(), false, false,
-                "none the recipe can work on");
+        var reason = Generators.nonEmptyStrings().next();
+        var blocked = new RecipeParameter("modules", null, List.of(), false, false, reason);
         assertEquals(blocked, RecipeParameter.fromJson(blocked.toJson()));
     }
 
     @Test
     @DisplayName("RecipeRef round-trips with its parameters and takes-request flag")
     void recipeRefRoundTrips() throws Exception {
-        var recipe = new RecipeRef("audit", "audit", "audit the code against a request", "project",
-                true, List.of(new RecipeParameter("modules", "all 9", List.of("all 9"), true, true,
-                        null)));
+        var description = Generators.nonEmptyStrings().next();
+        var recipe = new RecipeRef("audit", "audit", description, "project", true,
+                List.of(new RecipeParameter("modules", "all 9", List.of("all 9"), true, true, null)));
 
         var roundTrip = RecipeRef.fromJson(recipe.toJson());
 
@@ -148,9 +154,10 @@ class StartRecordsTest {
     @Test
     @DisplayName("IntakeDraft round-trips with its sources and creation time")
     void intakeDraftRoundTrips() throws Exception {
-        var draft = new IntakeDraft("draft-1", "pm-mcp-clients", "start from this issue",
-                List.of(new SourceInput(SourceKind.ISSUE, "4711", null)),
-                Instant.parse("2026-10-12T14:05:00Z"));
+        var objective = Generators.nonEmptyStrings().next();
+        var createdAt = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
+        var draft = new IntakeDraft("draft-1", "pm-mcp-clients", objective,
+                List.of(new SourceInput(SourceKind.ISSUE, "4711", null)), createdAt);
 
         var roundTrip = IntakeDraft.fromJson(draft.toJson());
 

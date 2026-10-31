@@ -24,11 +24,14 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.core.JsonFactory;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.config.ConfigOrigin;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("Operator representation and link scheme")
+@EnableGeneratorController
 class OperatorStateResourceTest {
 
     private static final JsonFactory FACTORY = new JsonFactory();
@@ -167,8 +170,9 @@ class OperatorStateResourceTest {
     @Test
     @DisplayName("a text is either a message key with arguments or verbatim text with a source")
     void operatorTextBothForms() throws Exception {
+        var verbatimText = Generators.nonEmptyStrings().next();
         var key = OperatorText.ofKey("check.login.missing", Map.of("harness", "claude"));
-        var verbatim = OperatorText.ofVerbatim("claude: not logged in", TextSource.HARNESS);
+        var verbatim = OperatorText.ofVerbatim(verbatimText, TextSource.HARNESS);
 
         assertTrue(key.isKey());
         assertFalse(verbatim.isKey());
@@ -232,9 +236,14 @@ class OperatorStateResourceTest {
     @Test
     @DisplayName("the scope, progress, and proposal round-trip")
     void supportingRecordsRoundTrip() throws Exception {
-        var scope = new OperatorScope(OperatorScopeKind.EPIC, "epic-1", "p-1", "Demo");
-        var progress = new OperatorProgress(1, 3);
-        var proposal = new OperatorProposal("plan_defaults.asking", "always", ConfigOrigin.MACHINE);
+        var projectId = Generators.nonEmptyStrings().next();
+        var projectName = Generators.nonEmptyStrings().next();
+        var scope = new OperatorScope(OperatorScopeKind.EPIC, "epic-1", projectId, projectName);
+        var of = Generators.integers(1, 20).next();
+        var done = Generators.integers(0, of).next();
+        var progress = new OperatorProgress(done, of);
+        var proposalValue = Generators.nonEmptyStrings().next();
+        var proposal = new OperatorProposal("plan_defaults.asking", proposalValue, ConfigOrigin.MACHINE);
         var item = new OperatorItem("chk-1", Map.of("result", "pass"), List.of());
 
         assertEquals(scope, OperatorScope.fromMap(scope.toMap()));
