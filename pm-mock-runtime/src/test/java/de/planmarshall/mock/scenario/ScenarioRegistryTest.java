@@ -25,9 +25,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.mock.StandardScenarios;
 
 @DisplayName("ScenarioRegistry")
+@EnableGeneratorController
 class ScenarioRegistryTest {
 
     private ScenarioRegistry registry;
@@ -66,35 +69,38 @@ class ScenarioRegistryTest {
     @Test
     @DisplayName("resolves scenario from external filesystem path")
     void resolvesFromFilePath(@TempDir Path tempDir) throws Exception {
-        var scenarioFile = tempDir.resolve("custom-scenario.json");
+        var scenarioName = Generators.letterStrings(4, 12).next().toLowerCase();
+        var stateName = Generators.letterStrings(4, 12).next().toLowerCase();
+        var scenarioFile = tempDir.resolve(scenarioName + ".json");
         var json = """
                 {
                   "format_version": 1,
-                  "name": "custom-scenario",
-                  "start": "init",
+                  "name": "%s",
+                  "start": "%s",
                   "states": {
-                    "init": {
+                    "%s": {
                       "representation": {
                         "scope": { "kind": "machine" },
-                        "state": { "state_id": "init", "kind": "operator_wait" },
+                        "state": { "state_id": "%s", "kind": "operator_wait" },
                         "links": []
                       }
                     }
                   }
                 }
-                """;
+                """.formatted(scenarioName, stateName, stateName, stateName);
         Files.writeString(scenarioFile, json);
 
         var scenario = registry.resolve(scenarioFile.toString());
         assertNotNull(scenario);
-        assertEquals("custom-scenario", scenario.name());
-        assertTrue(scenario.states().containsKey("init"));
+        assertEquals(scenarioName, scenario.name());
+        assertTrue(scenario.states().containsKey(stateName));
     }
 
     @Test
     @DisplayName("throws IllegalArgumentException for unknown scenario")
     void throwsOnUnknownScenario() {
-        var ex = assertThrows(IllegalArgumentException.class, () -> registry.resolve("non-existent-scenario"));
+        var unknown = Generators.letterStrings(8, 16).next();
+        var ex = assertThrows(IllegalArgumentException.class, () -> registry.resolve(unknown));
         assertTrue(ex.getMessage().contains("Scenario not found"));
     }
 
@@ -112,26 +118,30 @@ class ScenarioRegistryTest {
         assertEquals(StandardScenarios.RUNNING_WORK, scenario.name());
         assertEquals("running_work.active", scenario.start());
 
+        var unknownState = Generators.letterStrings(4, 10).next();
         var refuses = assertThrows(IllegalArgumentException.class,
-                () -> registry.resolve(StandardScenarios.RUNNING_WORK + "#no.such.state"));
-        assertTrue(refuses.getMessage().contains("no.such.state"));
+                () -> registry.resolve(StandardScenarios.RUNNING_WORK + "#" + unknownState));
+        assertTrue(refuses.getMessage().contains(unknownState));
     }
 
     @Test
     @DisplayName("splits a composite reference into scenario and state")
     void splitsCompositeReference() {
-        assertEquals("running-work", ScenarioRegistry.scenarioNameOf("running-work#plan.paused"));
-        assertEquals("plan.paused", ScenarioRegistry.stateNameOf("running-work#plan.paused"));
-        assertEquals("running-work", ScenarioRegistry.scenarioNameOf("running-work"));
-        assertNull(ScenarioRegistry.stateNameOf("running-work"));
+        var scenarioName = Generators.letterStrings(4, 10).next();
+        var stateName = Generators.letterStrings(4, 10).next();
+        assertEquals(scenarioName, ScenarioRegistry.scenarioNameOf(scenarioName + "#" + stateName));
+        assertEquals(stateName, ScenarioRegistry.stateNameOf(scenarioName + "#" + stateName));
+        assertEquals(scenarioName, ScenarioRegistry.scenarioNameOf(scenarioName));
+        assertNull(ScenarioRegistry.stateNameOf(scenarioName));
     }
 
     @Test
     @DisplayName("resolves a legacy alias only when the legacy file is absent")
     void resolvesLegacyAliasAsFallback() {
-        registry.registerLegacyAlias("ghost-legacy", StandardScenarios.PROJECTS_AND_START
+        var alias = Generators.letterStrings(4, 12).next();
+        registry.registerLegacyAlias(alias, StandardScenarios.PROJECTS_AND_START
                 + "#projects.explorer");
-        var aliased = registry.resolve("ghost-legacy");
+        var aliased = registry.resolve(alias);
         assertEquals(StandardScenarios.PROJECTS_AND_START, aliased.name());
         assertEquals("projects.explorer", aliased.start());
 
@@ -166,9 +176,10 @@ class ScenarioRegistryTest {
     @Test
     @DisplayName("an alias does not overwrite the primary scenario's own start state")
     void aliasDoesNotOverwritePrimaryStart() {
-        registry.registerLegacyAlias("ghost-start", StandardScenarios.PROJECTS_AND_START
+        var alias = Generators.letterStrings(4, 12).next();
+        registry.registerLegacyAlias(alias, StandardScenarios.PROJECTS_AND_START
                 + "#start.sources");
-        assertEquals("start.sources", registry.resolve("ghost-start").start());
+        assertEquals("start.sources", registry.resolve(alias).start());
 
         var primary = registry.resolve(StandardScenarios.PROJECTS_AND_START);
         assertEquals("projects.explorer", primary.start(),
@@ -185,8 +196,9 @@ class ScenarioRegistryTest {
     @Test
     @DisplayName("finds scenario safely returning Optional and handles clear")
     void findAndClear() {
+        var unknown = Generators.letterStrings(8, 16).next();
         assertTrue(registry.find(StandardScenarios.STATUS_ONLY).isPresent());
-        assertTrue(registry.find("unknown-scenario").isEmpty());
+        assertTrue(registry.find(unknown).isEmpty());
         assertTrue(registry.find(null).isEmpty());
 
         registry.clear();

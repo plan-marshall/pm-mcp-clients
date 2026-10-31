@@ -22,6 +22,8 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
@@ -33,6 +35,7 @@ import de.planmarshall.api.json.JsonTree;
 @DisplayName("Scoped event streams")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 @Timeout(value = 30, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+@EnableGeneratorController
 class EventStreamScopeTest {
 
     @Test
@@ -41,31 +44,33 @@ class EventStreamScopeTest {
         try (var runtime = MockRuntime.start(StandardScenarios.STATUS_ONLY)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
+            var firstPlan = "p-" + Generators.integers(1, 99).next();
+            var secondPlan = "p-" + Generators.integers(100, 199).next();
 
             try (var machine = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", auth));
-                 var firstPlan = client.open(HttpRequest.get("/api/v1/plans/p-1/events")
+                 var firstPlanStream = client.open(HttpRequest.get("/api/v1/plans/" + firstPlan + "/events")
                          .withHeader("Authorization", auth));
-                 var secondPlan = client.open(HttpRequest.get("/api/v1/plans/p-2/events")
+                 var secondPlanStream = client.open(HttpRequest.get("/api/v1/plans/" + secondPlan + "/events")
                          .withHeader("Authorization", auth))) {
                 assertTrue(machine.isEventStream());
                 var machineEvents = machine.events();
-                var firstPlanEvents = firstPlan.events();
-                var secondPlanEvents = secondPlan.events();
+                var firstPlanEvents = firstPlanStream.events();
+                var secondPlanEvents = secondPlanStream.events();
 
                 runtime.engine().broadcast("phase.changed", Map.of(
-                        "plan_id", "p-1", "phase", "execute", "project_id", "pm-mcp-clients"));
+                        "plan_id", firstPlan, "phase", "execute", "project_id", "pm-mcp-clients"));
 
                 assertEquals("phase.changed", machineEvents.next().event());
                 var scoped = firstPlanEvents.next();
                 assertEquals("phase.changed", scoped.event());
                 var data = JsonTree.asObject(JsonTree.parse(scoped.data()));
-                assertEquals("p-1", JsonTree.string(data, "plan_id"));
+                assertEquals(firstPlan, JsonTree.string(data, "plan_id"));
                 assertEquals("plan", JsonTree.string(JsonTree.object(data, "scope"), "kind"));
 
                 // The unrelated plan stream sees only its own event.
-                runtime.engine().broadcast("phase.changed", Map.of("plan_id", "p-2", "phase", "refine"));
+                runtime.engine().broadcast("phase.changed", Map.of("plan_id", secondPlan, "phase", "refine"));
                 var other = secondPlanEvents.next();
-                assertEquals("p-2", JsonTree.string(JsonTree.asObject(JsonTree.parse(other.data())), "plan_id"));
+                assertEquals(secondPlan, JsonTree.string(JsonTree.asObject(JsonTree.parse(other.data())), "plan_id"));
             }
         }
     }
@@ -78,17 +83,20 @@ class EventStreamScopeTest {
             var auth = "Bearer " + runtime.token();
 
             String lastId;
+            var firstCheck = Generators.letterStrings(4, 10).next().toLowerCase();
+            var secondCheck = Generators.letterStrings(4, 10).next().toLowerCase();
+            var thirdCheck = Generators.letterStrings(4, 10).next().toLowerCase();
             try (var first = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", auth))) {
                 var events = first.events();
-                runtime.engine().broadcast("check.result", Map.of("check_id", "version", "result", "pass"));
+                runtime.engine().broadcast("check.result", Map.of("check_id", firstCheck, "result", "pass"));
                 var seen = events.next();
                 assertEquals("check.result", seen.event());
                 assertNotNull(seen.id());
                 lastId = seen.id();
             }
 
-            runtime.engine().broadcast("check.result", Map.of("check_id", "login", "result", "fail"));
-            runtime.engine().broadcast("check.result", Map.of("check_id", "token", "result", "pass"));
+            runtime.engine().broadcast("check.result", Map.of("check_id", secondCheck, "result", "fail"));
+            runtime.engine().broadcast("check.result", Map.of("check_id", thirdCheck, "result", "pass"));
 
             try (var resumed = client.open(HttpRequest.get("/api/v1/events")
                          .withHeader("Authorization", auth)
@@ -96,9 +104,9 @@ class EventStreamScopeTest {
                 var events = resumed.events();
                 var login = events.next();
                 assertEquals("check.result", login.event());
-                assertEquals("login", JsonTree.string(JsonTree.asObject(JsonTree.parse(login.data())), "check_id"));
+                assertEquals(secondCheck, JsonTree.string(JsonTree.asObject(JsonTree.parse(login.data())), "check_id"));
                 var token = events.next();
-                assertEquals("token", JsonTree.string(JsonTree.asObject(JsonTree.parse(token.data())), "check_id"));
+                assertEquals(thirdCheck, JsonTree.string(JsonTree.asObject(JsonTree.parse(token.data())), "check_id"));
             }
         }
     }
@@ -110,9 +118,10 @@ class EventStreamScopeTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
+            var staleId = String.valueOf(Generators.integers(1000, 9999).next());
             try (var stale = client.open(HttpRequest.get("/api/v1/events")
                          .withHeader("Authorization", auth)
-                         .withHeader("Last-Event-ID", "999999"))) {
+                         .withHeader("Last-Event-ID", staleId))) {
                 var reset = stale.events().next();
                 assertEquals("reset", reset.event());
                 assertEquals("reset", JsonTree.string(JsonTree.asObject(JsonTree.parse(reset.data())), "event"));

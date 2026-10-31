@@ -34,6 +34,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
@@ -46,6 +48,7 @@ import de.planmarshall.mock.scenario.StateDefinition;
 
 @DisplayName("MockRuntime")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class MockRuntimeTest {
 
     @Test
@@ -92,7 +95,7 @@ class MockRuntimeTest {
 
             // 2. Request with invalid token -> 401
             var badResponse = client.send(HttpRequest.get("/api/v1/status")
-                    .withHeader("Authorization", "Bearer invalid-token"));
+                    .withHeader("Authorization", "Bearer " + Generators.letterStrings(8, 16).next()));
             assertEquals(401, badResponse.status());
 
             // 3. Request with valid token -> 200
@@ -251,7 +254,8 @@ class MockRuntimeTest {
             var badPairReq = java.net.http.HttpRequest.newBuilder()
                     .uri(URI.create(baseUrl + "/api/v1/pair"))
                     .header("Content-Type", "application/json")
-                    .POST(java.net.http.HttpRequest.BodyPublishers.ofString("{\"code\":\"wrong-code\"}"))
+                    .POST(java.net.http.HttpRequest.BodyPublishers.ofString(
+                            "{\"code\":\"" + Generators.letterStrings(4, 10).next() + "\"}"))
                     .build();
             var badPairRes = httpClient.send(badPairReq, HttpResponse.BodyHandlers.ofString());
             assertEquals(400, badPairRes.statusCode());
@@ -331,19 +335,20 @@ class MockRuntimeTest {
                 storedSecret = runtime.deviceSecret();
             }
 
+            var explicitSecret = "pmw_" + Generators.letterStrings(8, 16).next();
             try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
                          .scenario(StandardScenarios.WEB_PAIRING)
                          .base(tempBase)
                          .cleanupBaseOnClose(false)
                          .webPort(0)
-                         .deviceSecret("pmw_explicit_override")
+                         .deviceSecret(explicitSecret)
                          .build())) {
-                assertEquals("pmw_explicit_override", runtime.deviceSecret());
+                assertEquals(explicitSecret, runtime.deviceSecret());
                 assertNotEquals(storedSecret, runtime.deviceSecret());
 
                 var authReq = java.net.http.HttpRequest.newBuilder()
                         .uri(URI.create("http://127.0.0.1:" + runtime.webPort() + "/api/v1/status"))
-                        .header("Authorization", "Bearer pmw_explicit_override")
+                        .header("Authorization", "Bearer " + explicitSecret)
                         .GET()
                         .build();
                 var authRes = HttpClient.newHttpClient().send(authReq, HttpResponse.BodyHandlers.ofString());
@@ -450,13 +455,17 @@ class MockRuntimeTest {
     @Test
     @DisplayName("starts successfully with in-memory programmatic Scenario and custom ScenarioRegistry")
     void startWithProgrammaticScenario() throws Exception {
-        var states = Map.of("initial", new StateDefinition(
-                Map.of("custom_key", "custom_val"),
+        var scenarioName = Generators.letterStrings(4, 10).next().toLowerCase();
+        var stateId = Generators.letterStrings(4, 10).next().toLowerCase();
+        var member = Generators.letterStrings(4, 10).next();
+        var value = Generators.letterStrings(4, 10).next();
+        var states = Map.of(stateId, new StateDefinition(
+                Map.of(member, value),
                 Map.of(),
                 List.of(),
                 null
         ));
-        var dynamicScenario = new Scenario(1, "synthetic-scenario", "Synthetic", "initial", null, Map.of(), states);
+        var dynamicScenario = new Scenario(1, scenarioName, "Synthetic", stateId, null, Map.of(), states);
         var registry = new ScenarioRegistry();
         var config = MockRuntimeConfig.builder()
                 .registry(registry)
@@ -464,8 +473,8 @@ class MockRuntimeTest {
                 .build();
 
         try (var runtime = MockRuntime.start(config)) {
-            assertEquals("synthetic-scenario", runtime.currentScenarioName());
-            assertEquals("initial", runtime.currentStateName());
+            assertEquals(scenarioName, runtime.currentScenarioName());
+            assertEquals(stateId, runtime.currentStateName());
             assertNotNull(runtime.currentScenario());
         }
     }
@@ -478,7 +487,9 @@ class MockRuntimeTest {
             assertNotNull(clientDefault);
             assertTrue(clientDefault.isLive());
 
-            var clientWithHeaders = runtime.client(Map.of("X-Trace", "123"));
+            var headerName = "X-" + Generators.letterStrings(4, 8).next();
+            var headerValue = Generators.letterStrings(4, 10).next();
+            var clientWithHeaders = runtime.client(Map.of(headerName, headerValue));
             assertNotNull(clientWithHeaders);
             assertTrue(clientWithHeaders.isLive());
 

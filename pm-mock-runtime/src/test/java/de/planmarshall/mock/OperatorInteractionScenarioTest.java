@@ -23,6 +23,8 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
@@ -32,6 +34,7 @@ import de.planmarshall.mock.scenario.ScenarioValidationException;
 @DisplayName("Operator interaction scenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 @Timeout(value = 60, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+@EnableGeneratorController
 class OperatorInteractionScenarioTest {
 
     @Test
@@ -87,7 +90,8 @@ class OperatorInteractionScenarioTest {
                 assertEquals("wait.moved", JsonTree.string(error, "state"));
 
                 // a request that was never offered is still mock_no_route
-                var unknown = client.send(HttpRequest.json("POST", "/api/v1/machine/links/never", "{}")
+                var unknownLink = Generators.letterStrings(4, 10).next().toLowerCase();
+                var unknown = client.send(HttpRequest.json("POST", "/api/v1/machine/links/" + unknownLink, "{}")
                         .withHeader("Authorization", auth));
                 assertEquals(404, unknown.status());
                 assertEquals("mock_no_route",
@@ -109,40 +113,46 @@ class OperatorInteractionScenarioTest {
     @Test
     @DisplayName("a scenario link no operator state offers, or an event no catalogue defines, fails the load")
     void invalidOperatorScenarioIsRefused() {
+        var suffix = Generators.letterStrings(3, 8).next().toLowerCase();
         var linkNotOffered = """
-                {"format_version":1,"name":"bad","start":"a.b",
+                {"format_version":1,"name":"%1$s","start":"a.b",
                  "states":{"a.b":{"representation":{"scope":{"kind":"machine"},"state":{"state_id":"onboarding.choose"},"links":[]},
                  "links":{"yes":{"next":"a.b"}}}}}
-                """;
-        assertThrows(ScenarioValidationException.class, () -> ScenarioLoader.load(linkNotOffered, "bad-link"));
+                """.formatted("bad-" + suffix);
+        assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(linkNotOffered, "bad-link-" + suffix));
 
         var linkWithoutRoute = """
-                {"format_version":1,"name":"bad","start":"a.b",
+                {"format_version":1,"name":"%1$s","start":"a.b",
                  "states":{"a.b":{"representation":{"scope":{"kind":"machine"},"state":{"state_id":"onboarding.choose"},
                  "links":[{"id":"yes","rel":"next","method":"POST","href":"/api/v1/machine/links/yes"}]},"links":{}}}}
-                """;
-        assertThrows(ScenarioValidationException.class, () -> ScenarioLoader.load(linkWithoutRoute, "bad-route"));
+                """.formatted("bad-" + suffix);
+        assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(linkWithoutRoute, "bad-route-" + suffix));
 
         var unknownEvent = """
-                {"format_version":1,"name":"bad","start":"a.b",
+                {"format_version":1,"name":"%1$s","start":"a.b",
                  "states":{"a.b":{"representation":{"scope":{"kind":"machine"},"state":{"state_id":"onboarding.choose"},"links":[]},
                  "events":[{"after_ms":1,"event":"check","data":{}}]}}}
-                """;
-        assertThrows(ScenarioValidationException.class, () -> ScenarioLoader.load(unknownEvent, "bad-event"));
+                """.formatted("bad-" + suffix);
+        assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(unknownEvent, "bad-event-" + suffix));
 
         var eventWithoutEnvelope = """
-                {"format_version":1,"name":"bad","start":"a.b",
+                {"format_version":1,"name":"%1$s","start":"a.b",
                  "states":{"a.b":{"representation":{"scope":{"kind":"machine"},"state":{"state_id":"onboarding.choose"},"links":[]},
                  "events":[{"after_ms":1,"event":"check.result","data":{"check_id":"version"}}]}}}
-                """;
-        assertThrows(ScenarioValidationException.class, () -> ScenarioLoader.load(eventWithoutEnvelope, "bad-envelope"));
+                """.formatted("bad-" + suffix);
+        assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(eventWithoutEnvelope, "bad-envelope-" + suffix));
 
         var unknownRelation = """
-                {"format_version":1,"name":"bad","start":"a.b",
+                {"format_version":1,"name":"%1$s","start":"a.b",
                  "states":{"a.b":{"representation":{"scope":{"kind":"machine"},"state":{"state_id":"onboarding.choose"},
                  "links":[{"id":"yes","rel":"nope","method":"POST","href":"/api/v1/x"}]}}}}
-                """;
-        assertThrows(ScenarioValidationException.class, () -> ScenarioLoader.load(unknownRelation, "bad-rel"));
+                """.formatted("bad-" + suffix);
+        assertThrows(ScenarioValidationException.class,
+                () -> ScenarioLoader.load(unknownRelation, "bad-rel-" + suffix));
     }
 
     private static void waitForState(MockRuntime runtime, String state) {

@@ -23,16 +23,23 @@ import java.time.Duration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 @DisplayName("MockHttpServer")
+@EnableGeneratorController
 class MockHttpServerTest {
 
     @Test
     @DisplayName("starts loopback TCP server, handles requests, and captures arrivals")
     void tcpServerLifecycle() throws Exception {
+        var echoPath = "/" + Generators.letterStrings(4, 10).next();
+        var errorPath = "/" + Generators.letterStrings(4, 10).next();
+        var payload = Generators.letterStrings(4, 12).next();
         try (var server = MockHttpServer.startTcp(0, (req, res) -> {
-                 if ("/echo".equals(req.path())) {
+                 if (echoPath.equals(req.path())) {
                      res.send(200, "text/plain", req.bodyText());
-                 } else if ("/error".equals(req.path())) {
+                 } else if (errorPath.equals(req.path())) {
                      throw new IllegalStateException("Intentional test failure");
                  } else {
                      res.send(404, "application/json", "{\"error\":\"not_found\"}");
@@ -44,23 +51,23 @@ class MockHttpServerTest {
             var client = HttpClient.newHttpClient();
 
             // 1. GET /echo with body
-            var echoUri = URI.create("http://127.0.0.1:" + server.port() + "/echo");
+            var echoUri = URI.create("http://127.0.0.1:" + server.port() + echoPath);
             var req1 = HttpRequest.newBuilder(echoUri)
-                    .POST(HttpRequest.BodyPublishers.ofString("echo-payload"))
+                    .POST(HttpRequest.BodyPublishers.ofString(payload))
                     .build();
             var res1 = client.send(req1, HttpResponse.BodyHandlers.ofString());
             assertEquals(200, res1.statusCode());
-            assertEquals("echo-payload", res1.body());
+            assertEquals(payload, res1.body());
 
             // 2. GET /error -> handler exception returns 500 internal_error
-            var errorUri = URI.create("http://127.0.0.1:" + server.port() + "/error");
+            var errorUri = URI.create("http://127.0.0.1:" + server.port() + errorPath);
             var req2 = HttpRequest.newBuilder(errorUri).GET().build();
             var res2 = client.send(req2, HttpResponse.BodyHandlers.ofString());
             assertEquals(500, res2.statusCode());
             assertTrue(res2.body().contains("internal_error"));
 
             // 3. GET /unknown -> 404
-            var unknownUri = URI.create("http://127.0.0.1:" + server.port() + "/unknown");
+            var unknownUri = URI.create("http://127.0.0.1:" + server.port() + "/" + payload);
             var req3 = HttpRequest.newBuilder(unknownUri).GET().build();
             var res3 = client.send(req3, HttpResponse.BodyHandlers.ofString());
             assertEquals(404, res3.statusCode());

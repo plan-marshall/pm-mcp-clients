@@ -27,6 +27,8 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.mock.http.MockHttpRequest;
@@ -40,9 +42,11 @@ import de.planmarshall.mock.scenario.ScenarioRegistry;
  * another plan's epic, pull request or tree.
  */
 @DisplayName("PlanDetailTest")
+@EnableGeneratorController
 class PlanDetailTest {
 
-    private static final String AUTH = "Bearer test-token";
+    private final String runtimeToken = Generators.letterStrings(8, 16).next();
+    private final String auth = "Bearer " + runtimeToken;
 
     @Test
     @DisplayName("two plan ids serve two different plans and an unknown id answers plan_not_found")
@@ -72,12 +76,13 @@ class PlanDetailTest {
                     () -> assertEquals("waiting_for_operator", phaseState(dropLegacy, "finalize"),
                             "the finalize phase is the current one"));
 
-            var unknown = answer(engine, "/api/v1/plans/nope/process");
+            var unknownPlan = Generators.letterStrings(4, 10).next().toLowerCase();
+            var unknown = answer(engine, "/api/v1/plans/" + unknownPlan + "/process");
             assertEquals(404, unknown.status(), "an unknown plan id answers 404");
             assertNotNull(unknown.json());
             assertEquals("plan_not_found", unknown.json().get("error"));
 
-            var unknownActivity = answer(engine, "/api/v1/plans/nope/tasks/TASK-001/activity");
+            var unknownActivity = answer(engine, "/api/v1/plans/" + unknownPlan + "/tasks/TASK-001/activity");
             assertEquals(404, unknownActivity.status(), "an unknown plan id has no task activity");
             assertEquals("plan_not_found", unknownActivity.json().get("error"));
         }
@@ -134,20 +139,20 @@ class PlanDetailTest {
         return List.copyOf(states);
     }
 
-    private static MockRuntimeEngine engine() {
+    private MockRuntimeEngine engine() {
         var registry = new ScenarioRegistry();
         return new MockRuntimeEngine(registry, registry.resolve(StandardScenarios.RUNNING_WORK),
-                "test-token", "test-secret");
+                runtimeToken, Generators.letterStrings(8, 16).next());
     }
 
-    private static Map<String, Object> get(MockRuntimeEngine engine, String path) throws IOException {
+    private Map<String, Object> get(MockRuntimeEngine engine, String path) throws IOException {
         var answer = answer(engine, path);
         assertEquals(200, answer.status(), path + " must answer 200");
         return answer.json();
     }
 
-    private static Response answer(MockRuntimeEngine engine, String path) throws IOException {
-        var request = new MockHttpRequest("GET", path, Map.of("Authorization", AUTH), new byte[0],
+    private Response answer(MockRuntimeEngine engine, String path) throws IOException {
+        var request = new MockHttpRequest("GET", path, Map.of("Authorization", auth), new byte[0],
                 System.nanoTime());
         var out = new ByteArrayOutputStream();
         engine.dispatch(request, new MockHttpResponse(out), false);

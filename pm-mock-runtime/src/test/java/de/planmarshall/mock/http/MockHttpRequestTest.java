@@ -22,30 +22,39 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 @DisplayName("MockHttpRequest")
+@EnableGeneratorController
 class MockHttpRequestTest {
 
     @Test
     @DisplayName("normalizes method to uppercase and parses path and query")
     void normalizeAndParse() {
+        var headerName = Generators.letterStrings(4, 10).next();
+        var headerValue = Generators.letterStrings(4, 10).next();
+        var body = Generators.letterStrings(4, 12).next();
+        var receivedNanos = Generators.integers(1, 1_000_000).next().longValue();
         var req = new MockHttpRequest("get", "/api/v1/status?param=value&foo=bar",
-                Map.of("Content-Type", "application/json"), "hello".getBytes(StandardCharsets.UTF_8), 1000L);
+                Map.of(headerName, headerValue), body.getBytes(StandardCharsets.UTF_8), receivedNanos);
 
         assertEquals("GET", req.method());
         assertEquals("/api/v1/status?param=value&foo=bar", req.target());
         assertEquals("/api/v1/status", req.path());
         assertEquals("param=value&foo=bar", req.query());
-        assertEquals("application/json", req.header("content-type"));
-        assertEquals("application/json", req.header("CONTENT-TYPE"));
+        assertEquals(headerValue, req.header(headerName.toLowerCase()));
+        assertEquals(headerValue, req.header(headerName.toUpperCase()));
         assertNull(req.header("unknown"));
-        assertEquals("hello", req.bodyText());
-        assertEquals(1000L, req.receivedNanos());
+        assertEquals(body, req.bodyText());
+        assertEquals(receivedNanos, req.receivedNanos());
     }
 
     @Test
     @DisplayName("handles target without query parameters")
     void targetWithoutQuery() {
-        var req = new MockHttpRequest("POST", "/api/v1/check", null, null, 2000L);
+        var receivedNanos = Generators.integers(1, 1_000_000).next().longValue();
+        var req = new MockHttpRequest("POST", "/api/v1/check", null, null, receivedNanos);
 
         assertEquals("POST", req.method());
         assertEquals("/api/v1/check", req.path());
@@ -58,10 +67,16 @@ class MockHttpRequestTest {
     @Test
     @DisplayName("implements equals, hashCode, and toString considering byte array contents")
     void equalsAndHashCode() {
-        var req1 = new MockHttpRequest("GET", "/test", Map.of("a", "b"), new byte[]{1, 2, 3}, 10L);
-        var req2 = new MockHttpRequest("GET", "/test", Map.of("a", "b"), new byte[]{1, 2, 3}, 10L);
-        var req3 = new MockHttpRequest("GET", "/test", Map.of("a", "b"), new byte[]{1, 2, 4}, 10L);
-        var req4 = new MockHttpRequest("POST", "/test", Map.of("a", "b"), new byte[]{1, 2, 3}, 10L);
+        var headerName = Generators.letterStrings(4, 10).next();
+        var headerValue = Generators.letterStrings(4, 10).next();
+        var bytes = new byte[]{1, 2, 3};
+        var otherBytes = new byte[]{1, 2, 4};
+        var headers = Map.of(headerName, headerValue);
+        var receivedNanos = Generators.integers(1, 1_000_000).next().longValue();
+        var req1 = new MockHttpRequest("GET", "/test", headers, bytes, receivedNanos);
+        var req2 = new MockHttpRequest("GET", "/test", headers, bytes, receivedNanos);
+        var req3 = new MockHttpRequest("GET", "/test", headers, otherBytes, receivedNanos);
+        var req4 = new MockHttpRequest("POST", "/test", headers, bytes, receivedNanos);
 
         assertEquals(req1, req1);
         assertEquals(req1, req2);

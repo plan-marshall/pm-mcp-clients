@@ -22,6 +22,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
@@ -29,6 +31,7 @@ import de.planmarshall.api.web.PairedDevice;
 
 @DisplayName("PairedDevicesScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class PairedDevicesScenarioTest {
 
     @Test
@@ -72,7 +75,8 @@ class PairedDevicesScenarioTest {
                 assertTrue(exchange.isEventStream());
                 var sse = exchange.events();
 
-                var renameBody = JsonTree.write(Map.of("label", "iPad Oliver"));
+                var newLabel = Generators.letterStrings(4, 12).next();
+                var renameBody = JsonTree.write(Map.of("label", newLabel));
                 var res = client.send(HttpRequest.json("PATCH", "/api/v1/web/devices/dev-2", renameBody)
                         .withHeader("Authorization", auth));
                 assertEquals(200, res.status());
@@ -82,12 +86,12 @@ class PairedDevicesScenarioTest {
                 assertEquals("device.renamed", event.event());
                 var eventData = JsonTree.asObject(JsonTree.parse(event.data()));
                 assertEquals("dev-2", JsonTree.string(eventData, "device_id"));
-                assertEquals("iPad Oliver", JsonTree.string(eventData, "label"));
+                assertEquals(newLabel, JsonTree.string(eventData, "label"));
 
                 // Verify updated in list
                 var listRes = client.send(HttpRequest.get("/api/v1/web/devices").withHeader("Authorization", auth));
                 var devices = PairedDevice.parseList(new String(listRes.body()));
-                assertEquals("iPad Oliver", devices.get(1).label());
+                assertEquals(newLabel, devices.get(1).label());
             }
         }
     }
@@ -154,8 +158,9 @@ class PairedDevicesScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            var renameBody = JsonTree.write(Map.of("label", "Unknown"));
-            var res = client.send(HttpRequest.json("PATCH", "/api/v1/web/devices/dev-unknown", renameBody)
+            var unknownDevice = "dev-" + Generators.letterStrings(4, 10).next();
+            var renameBody = JsonTree.write(Map.of("label", Generators.letterStrings(4, 12).next()));
+            var res = client.send(HttpRequest.json("PATCH", "/api/v1/web/devices/" + unknownDevice, renameBody)
                     .withHeader("Authorization", auth));
             assertEquals(404, res.status());
         }
@@ -168,7 +173,8 @@ class PairedDevicesScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            var res = client.send(new HttpRequest("DELETE", "/api/v1/web/devices/dev-unknown",
+            var unknownDevice = "dev-" + Generators.letterStrings(4, 10).next();
+            var res = client.send(new HttpRequest("DELETE", "/api/v1/web/devices/" + unknownDevice,
                     Map.of("Authorization", auth), null));
             assertEquals(404, res.status());
         }

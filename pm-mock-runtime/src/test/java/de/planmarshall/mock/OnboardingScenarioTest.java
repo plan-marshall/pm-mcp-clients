@@ -28,6 +28,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.interaction.OperatorScopeKind;
@@ -50,6 +52,7 @@ import de.planmarshall.mock.scenario.ScenarioLoader;
 
 @DisplayName("OnboardingScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class OnboardingScenarioTest {
 
     @Test
@@ -328,10 +331,11 @@ class OnboardingScenarioTest {
                         "{\"key\":\"cleanup_durations\",\"value\":\"7\",\"revision\":7}"));
                 // An unknown documents mode is accepted but changes nothing
                 assertEquals(200, put(client, auth,
-                        "{\"key\":\"documents_mode\",\"value\":\"nope\",\"revision\":8}"));
+                        "{\"key\":\"documents_mode\",\"value\":\"" + Generators.letterStrings(4, 8).next() + "\",\"revision\":8}"));
                 // An unknown consent kind changes nothing
                 assertEquals(200, put(client, auth,
-                        "{\"key\":\"consent:not_a_kind\",\"value\":\"x\",\"revision\":9}"));
+                        "{\"key\":\"consent:" + Generators.letterStrings(4, 8).next()
+                                + "\",\"value\":\"" + Generators.letterStrings(4, 8).next() + "\",\"revision\":9}"));
 
                 var settings = MachineSettingsRecord.fromJson(new String(
                         client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth)).body(),
@@ -368,15 +372,16 @@ class OnboardingScenarioTest {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
+                var credentialKind = Generators.letterStrings(4, 12).next();
                 assertEquals(200, put(client, auth,
-                        "{\"key\":\"credential:github\",\"value\":\"user token\",\"revision\":4}"));
+                        "{\"key\":\"credential:github\",\"value\":\"" + credentialKind + "\",\"revision\":4}"));
 
                 var settings = MachineSettingsRecord.fromJson(new String(
                         client.send(HttpRequest.get("/api/v1/machine/settings")
                                 .withHeader("Authorization", auth)).body(), StandardCharsets.UTF_8));
                 var github = settings.credentials().stream()
                         .filter(credential -> "github".equals(credential.key())).findFirst().orElseThrow();
-                assertEquals("user token", github.kind());
+                assertEquals(credentialKind, github.kind());
                 assertNull(github.expiresInDays());
                 assertFalse(github.expired());
             }

@@ -28,9 +28,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.mock.StandardScenarios;
 
 @DisplayName("MockRuntimeCli")
+@EnableGeneratorController
 class MockRuntimeCliTest {
 
     private ByteArrayOutputStream outBytes;
@@ -89,10 +92,11 @@ class MockRuntimeCliTest {
     @Test
     @DisplayName("falls back to PM_MOCK_WEB_PORT when CLI argument is not specified")
     void webPortEnvFallback() {
-        var result = MockRuntimeCli.parse(new String[0], out, err, Map.of("PM_MOCK_WEB_PORT", "9099"));
+        var envPort = Generators.integers(1024, 65535).next();
+        var result = MockRuntimeCli.parse(new String[0], out, err, Map.of("PM_MOCK_WEB_PORT", String.valueOf(envPort)));
         assertEquals(0, result.exitCode());
         assertTrue(result.isSuccess());
-        assertEquals(9099, result.config().getWebPort());
+        assertEquals(envPort.intValue(), result.config().getWebPort());
     }
 
     @Test
@@ -131,10 +135,13 @@ class MockRuntimeCliTest {
     @Test
     @DisplayName("CLI --web-port overrides PM_MOCK_WEB_PORT")
     void cliPortOverridesEnv() {
-        var result = MockRuntimeCli.parse(new String[]{"--web-port", "8088"}, out, err, Map.of("PM_MOCK_WEB_PORT", "9099"));
+        var cliPort = Generators.integers(1024, 30000).next();
+        var envPort = Generators.integers(30001, 65535).next();
+        var result = MockRuntimeCli.parse(new String[]{"--web-port", String.valueOf(cliPort)}, out, err,
+                Map.of("PM_MOCK_WEB_PORT", String.valueOf(envPort)));
         assertEquals(0, result.exitCode());
         assertTrue(result.isSuccess());
-        assertEquals(8088, result.config().getWebPort());
+        assertEquals(cliPort.intValue(), result.config().getWebPort());
     }
 
     @Test
@@ -149,11 +156,14 @@ class MockRuntimeCliTest {
     @Test
     @DisplayName("parses customized CLI arguments")
     void customOptions() {
+        var base = "/tmp/" + Generators.letterStrings(4, 10).next().toLowerCase();
+        var port = Generators.integers(1024, 65535).next();
+        var token = Generators.letterStrings(8, 20).next();
         var args = new String[]{
                 "--scenario", StandardScenarios.ONBOARDING_HAPPY,
-                "--base", "/tmp/pm-test-base",
-                "--web-port", "8088",
-                "--token", "secret-token-123"
+                "--base", base,
+                "--web-port", String.valueOf(port),
+                "--token", token
         };
         var result = MockRuntimeCli.parse(args, out, err);
         assertEquals(0, result.exitCode());
@@ -161,9 +171,9 @@ class MockRuntimeCliTest {
         var config = result.config();
         assertNotNull(config);
         assertEquals(StandardScenarios.ONBOARDING_HAPPY, config.getScenario());
-        assertEquals(Path.of("/tmp/pm-test-base"), config.getBase());
-        assertEquals(8088, config.getWebPort());
-        assertEquals("secret-token-123", config.effectiveRuntimeToken());
+        assertEquals(Path.of(base), config.getBase());
+        assertEquals(port.intValue(), config.getWebPort());
+        assertEquals(token, config.effectiveRuntimeToken());
     }
 
     @Test
@@ -183,21 +193,25 @@ class MockRuntimeCliTest {
     @Test
     @DisplayName("parses short flags correctly")
     void shortFlags() {
+        var base = "/tmp/" + Generators.letterStrings(4, 10).next().toLowerCase();
+        var port = Generators.integers(1024, 65535).next();
+        var token = Generators.letterStrings(4, 12).next();
+        var secret = Generators.letterStrings(4, 12).next();
         var args = new String[]{
                 "-s", StandardScenarios.WEB_PAIRING,
-                "-b", "/tmp/base-short",
-                "-p", "9999",
-                "-t", "tok",
-                "-d", "pmw_explicit"
+                "-b", base,
+                "-p", String.valueOf(port),
+                "-t", token,
+                "-d", secret
         };
         var result = MockRuntimeCli.parse(args, out, err);
         assertEquals(0, result.exitCode());
         assertTrue(result.isSuccess());
         assertEquals(StandardScenarios.WEB_PAIRING, result.config().getScenario());
-        assertEquals(Path.of("/tmp/base-short"), result.config().getBase());
-        assertEquals(9999, result.config().getWebPort());
-        assertEquals("tok", result.config().effectiveRuntimeToken());
-        assertEquals("pmw_explicit", result.config().effectiveDeviceSecret());
+        assertEquals(Path.of(base), result.config().getBase());
+        assertEquals(port.intValue(), result.config().getWebPort());
+        assertEquals(token, result.config().effectiveRuntimeToken());
+        assertEquals(secret, result.config().effectiveDeviceSecret());
     }
 
     @Test
@@ -210,7 +224,8 @@ class MockRuntimeCliTest {
     @Test
     @DisplayName("run returns 1 on startup failure (e.g. non-existent scenario)")
     void runStartupFailure() {
-        var exitCode = MockRuntimeCli.run(new String[]{"-s", "non-existent-scenario-file-1234"}, out, err);
+        var missingScenario = "non-existent-" + Generators.letterStrings(4, 10).next().toLowerCase();
+        var exitCode = MockRuntimeCli.run(new String[]{"-s", missingScenario}, out, err);
         assertEquals(1, exitCode);
         assertTrue(stderr().contains("Error starting mock runtime"));
     }

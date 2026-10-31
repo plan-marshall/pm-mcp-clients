@@ -26,6 +26,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.MachineApiPaths;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.SseReader;
@@ -41,6 +43,7 @@ import de.planmarshall.api.overview.NeedsOperatorSummary;
  */
 @DisplayName("NeedsAndFindScenarioTest")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class NeedsAndFindScenarioTest {
 
     private static final String AUTH_HEADER = "Authorization";
@@ -265,10 +268,12 @@ class NeedsAndFindScenarioTest {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
-                var none = client.send(HttpRequest.get(MachineApiPaths.FIND + "?q=zzzzz").withHeader(AUTH_HEADER, auth));
+                var noMatch = Generators.letterStrings(8, 14).next();
+                var none = client.send(HttpRequest.get(MachineApiPaths.FIND + "?q=" + noMatch)
+                        .withHeader(AUTH_HEADER, auth));
                 assertEquals(200, none.status());
                 var page = JsonTree.asObject(JsonTree.parse(new String(none.body())));
-                assertEquals("zzzzz", JsonTree.string(page, "query"));
+                assertEquals(noMatch, JsonTree.string(page, "query"));
                 assertTrue(JsonTree.asArray(page.get("matches")).isEmpty());
 
                 var empty = client.send(HttpRequest.get(MachineApiPaths.FIND + "?q=").withHeader(AUTH_HEADER, auth));

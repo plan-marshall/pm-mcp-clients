@@ -24,9 +24,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.mock.StandardScenarios;
 
 @DisplayName("ScenarioLoader")
+@EnableGeneratorController
 class ScenarioLoaderTest {
 
     static Stream<String> standardScenarioResources() {
@@ -65,13 +68,23 @@ class ScenarioLoaderTest {
     @Test
     @DisplayName("parses complete scenario details including routes, events, and auto-transitions")
     void parsesScenarioDetails() {
+        var scenarioName = Generators.letterStrings(4, 12).next().toLowerCase();
+        var description = Generators.letterStrings(4, 12).next();
+        var token = Generators.letterStrings(4, 10).next().toLowerCase();
+        var startState = token + ".start";
+        var secondState = token + ".second";
+        var linkId = Generators.letterStrings(4, 10).next().toLowerCase();
+        var pairingCode = Generators.integers(1000, 9999).next() + "-" + Generators.integers(1000, 9999).next();
+        var linkDelay = Generators.integers(1, 100).next().intValue();
+        var eventDelay = Generators.integers(1, 100).next().intValue();
+        var autoDelay = Generators.integers(1, 500).next().intValue();
         var json = """
                 {
                   "format_version": 1,
-                  "name": "full-test",
-                  "description": "A full scenario test",
-                  "start": "initial",
-                  "pairing_code": "4321-8765",
+                  "name": "%1$s",
+                  "description": "%2$s",
+                  "start": "%3$s",
+                  "pairing_code": "%6$s",
                   "routes": {
                     "GET /api/v1/ping": {
                       "status": 200,
@@ -79,51 +92,52 @@ class ScenarioLoaderTest {
                     }
                   },
                   "states": {
-                    "initial": {
+                    "%3$s": {
                       "representation": {
                         "scope": { "kind": "machine" },
-                        "state": { "state_id": "initial", "kind": "operator_wait" },
+                        "state": { "state_id": "%3$s", "kind": "operator_wait" },
                         "links": [
-                          { "id": "advance", "rel": "submit", "method": "POST",
+                          { "id": "%5$s", "rel": "submit", "method": "POST",
                             "href": "/api/v1/advance", "params": {} }
                         ]
                       },
                       "links": {
-                        "advance": {
+                        "%5$s": {
                           "method": "POST",
                           "href": "/api/v1/advance",
-                          "next": "second",
-                          "delay_ms": 10
+                          "next": "%4$s",
+                          "delay_ms": %7$d
                         }
                       },
                       "events": [
-                        { "after_ms": 50, "event": "check.result",
+                        { "after_ms": %8$d, "event": "check.result",
                           "data": { "event": "check.result", "at": "2026-10-16T12:00:00Z",
                                     "scope": { "kind": "machine" },
                                     "id": "version", "result": "pass" } }
                       ],
                       "auto": {
-                        "after_ms": 200,
-                        "next": "second"
+                        "after_ms": %9$d,
+                        "next": "%4$s"
                       }
                     },
-                    "second": {
+                    "%4$s": {
                       "representation": {
                         "scope": { "kind": "machine" },
-                        "state": { "state_id": "second", "kind": "operator_wait" },
+                        "state": { "state_id": "%4$s", "kind": "operator_wait" },
                         "links": []
                       }
                     }
                   }
                 }
-                """;
+                """.formatted(scenarioName, description, startState, secondState, linkId, pairingCode,
+                linkDelay, eventDelay, autoDelay);
 
         var scenario = ScenarioLoader.load(json, "test.json");
         assertEquals(1, scenario.formatVersion());
-        assertEquals("full-test", scenario.name());
-        assertEquals("A full scenario test", scenario.description());
-        assertEquals("initial", scenario.start());
-        assertEquals("4321-8765", scenario.pairingCode());
+        assertEquals(scenarioName, scenario.name());
+        assertEquals(description, scenario.description());
+        assertEquals(startState, scenario.start());
+        assertEquals(pairingCode, scenario.pairingCode());
 
         // Routes
         var route = scenario.route("GET", "/api/v1/ping");
@@ -131,25 +145,25 @@ class ScenarioLoaderTest {
         assertEquals(200, route.status());
 
         // States
-        var initial = scenario.state("initial");
+        var initial = scenario.state(startState);
         assertNotNull(initial);
         assertEquals(1, initial.links().size());
-        var link = initial.links().get("advance");
+        var link = initial.links().get(linkId);
         assertNotNull(link);
         assertEquals("POST", link.method());
         assertEquals("/api/v1/advance", link.href());
-        assertEquals("second", link.next());
-        assertEquals(10, link.delayMs());
+        assertEquals(secondState, link.next());
+        assertEquals(linkDelay, link.delayMs());
 
         // Events & Auto
         assertEquals(1, initial.events().size());
         assertEquals("check.result", initial.events().getFirst().event());
-        assertEquals(50, initial.events().getFirst().afterMs());
+        assertEquals(eventDelay, initial.events().getFirst().afterMs());
         assertNotNull(initial.auto());
-        assertEquals("second", initial.auto().next());
-        assertEquals(200, initial.auto().afterMs());
+        assertEquals(secondState, initial.auto().next());
+        assertEquals(autoDelay, initial.auto().afterMs());
 
-        var second = scenario.state("second");
+        var second = scenario.state(secondState);
         assertNotNull(second);
         assertNull(second.auto());
         assertTrue(second.links().isEmpty());
