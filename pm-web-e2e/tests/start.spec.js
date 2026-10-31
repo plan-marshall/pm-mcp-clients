@@ -22,7 +22,7 @@ test.describe('Web Client Starting Work (UC-STA-1..5)', () => {
     await continueAndStart(page);
 
     await expect(page.getByTestId('started-title')).toContainText(
-      'Add a Codeberg provider for issues has started',
+      '\u201cAdd a Codeberg provider for issues\u201d has started.',
     );
   });
 
@@ -51,7 +51,9 @@ test.describe('Web Client Starting Work (UC-STA-1..5)', () => {
 
     await continueAndStart(page);
 
-    await expect(page.getByTestId('started-title')).toContainText('Relay hardening has started');
+    await expect(page.getByTestId('started-title')).toContainText(
+      '\u201cRelay hardening\u201d has started.',
+    );
     await expect(page.getByTestId('started-decompose')).toBeVisible();
   });
 

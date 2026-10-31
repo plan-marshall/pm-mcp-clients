@@ -189,7 +189,7 @@ test.describe('Decisions, Waivers, Own Words & Quorum Voting (UC-PLN-2)', () => 
     await expect(page).toHaveTitle(/^\(\d+\) Decisions$/);
   });
 
-  test('cross-client update removes the decision and says where it was answered', async ({
+  test('cross-client update removes the decision and says what it was answered with', async ({
     page,
     request,
   }) => {
@@ -211,7 +211,7 @@ test.describe('Decisions, Waivers, Own Words & Quorum Voting (UC-PLN-2)', () => 
     expect(res.ok()).toBeTruthy();
 
     await expect(decisionCard).not.toBeVisible({ timeout: 5000 });
-    await expect(page.getByTestId('decision-notices')).toContainText('answered in the console');
+    await expect(page.getByTestId('decision-notices')).toContainText('Decided: Rebase onto main');
   });
 
   test('filters decisions by an option phrase and keeps the actions in compact mode', async ({

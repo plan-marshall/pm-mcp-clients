@@ -432,3 +432,102 @@ describe('the catalogue carries every text of the package', () => {
     expect(offenders).toEqual([]);
   });
 });
+
+describe('the catalogue carries the corrected strings of CC-F-05', () => {
+  /** A terminal key hint (`r) entfernen`): a key press that only a terminal client sends. */
+  const TERMINAL_KEY_HINT = /^\s*[a-zA-Z]\)\s/;
+
+  it('keeps every terminal key hint out of a text the web app renders', () => {
+    const offenders: string[] = [];
+    for (const locale of ['en', 'de']) {
+      const messages = loadMessages(locale);
+      for (const source of LOOKUP_SOURCES) {
+        const text = readSource(source.full);
+        for (const match of text.matchAll(/\$t\('([^']+)'/g)) {
+          const value = messages[match[1]];
+          if (value !== undefined && TERMINAL_KEY_HINT.test(value)) {
+            offenders.push(`${locale}: ${match[1]} = ${value}`);
+          }
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('starts a started plan with the quoted title and one sentence end', () => {
+    const en = loadMessages('en');
+    const de = loadMessages('de');
+
+    expect(en['start.started.title']).toBe('\u201c{name}\u201d has started.');
+    expect(de['start.started.title']).toBe('\u201e{name}\u201c ist gestartet.');
+  });
+
+  it('names both cleanup durations instead of putting the question after the number', () => {
+    const en = loadMessages('en');
+    const de = loadMessages('de');
+
+    expect(en['web.settings.cleanup.keep']).toBe('Keep finished work for');
+    expect(en['web.settings.cleanup.days']).toBe('days');
+    expect(en['web.settings.cleanup.remind']).toBe('Reminder after');
+    expect(en['web.settings.cleanup.days_after']).toBe('days');
+
+    expect(de['web.settings.cleanup.keep']).toBe('Beendete Arbeit');
+    expect(de['web.settings.cleanup.days']).toBe('Tage aufbewahren');
+    expect(de['web.settings.cleanup.remind']).toBe('Erinnerung nach');
+    expect(de['web.settings.cleanup.days_after']).toBe('Tagen');
+  });
+
+  it('says the stopping sentence once on the onboarding entry', () => {
+    const en = loadMessages('en');
+    const de = loadMessages('de');
+    const STOPPING_SENTENCE_EN = 'You can stop at any point;';
+    const STOPPING_SENTENCE_DE = 'Du kannst jederzeit aufh\u00f6ren;';
+
+    expect(en['onboard.entry.intro'].split(STOPPING_SENTENCE_EN)).toHaveLength(2);
+    expect(de['onboard.entry.intro'].split(STOPPING_SENTENCE_DE)).toHaveLength(2);
+  });
+
+  it('names the provider field by its own word in the failure detail', () => {
+    const en = loadMessages('en');
+    const de = loadMessages('de');
+
+    expect(en['onboard.providers.field']).toBe('Provider');
+    expect(de['onboard.providers.field']).toBe('Provider');
+  });
+
+  it('names a completed machine without repeating the title as the body', () => {
+    const en = loadMessages('en');
+    const de = loadMessages('de');
+
+    expect(en['onboard.completed.summary']).not.toBe(en['onboard.completed.title']);
+    expect(de['onboard.completed.summary']).not.toBe(de['onboard.completed.title']);
+  });
+
+  it('shows a system value without repeating the label beside it', () => {
+    const en = loadMessages('en');
+    const de = loadMessages('de');
+
+    expect(en['system.work.tasks']).toBe('{running} running \u00b7 {queued} queued');
+    expect(de['system.work.tasks']).toBe(
+      '{running} laufen \u00b7 {queued} in der Warteschlange',
+    );
+    expect(en['system.jobs.slots']).toBe(
+      '{used} of {total, plural, one {# slot} other {# slots}}{queued, plural, =0 {} other { \u00b7 # queued}}',
+    );
+    expect(de['system.jobs.slots']).toBe(
+      '{used} von {total, plural, one {# Slot} other {# Slots}}{queued, plural, =0 {} other { \u00b7 # wartend}}',
+    );
+    expect(en['system.runtime.listeners']).toMatch(/^socket/);
+    expect(de['system.runtime.listeners']).toMatch(/^Socket/);
+  });
+
+  it('answers a decision with the chosen option instead of a channel and an index', () => {
+    const en = loadMessages('en');
+    const de = loadMessages('de');
+
+    expect(en['decision.outcome.answered']).toBe('Decided: {answer}');
+    expect(de['decision.outcome.answered']).toBe('Entschieden: {answer}');
+    expect(en['decision.outcome.answered_elsewhere']).toBeUndefined();
+    expect(de['decision.outcome.answered_elsewhere']).toBeUndefined();
+  });
+});

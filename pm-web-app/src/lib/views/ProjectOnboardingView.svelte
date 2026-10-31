@@ -491,9 +491,6 @@
       <div class="state-card" data-testid="project-onboarding-step">
         <div class="state-card__header">
           <h2 class="state-card__title">{$t(stepKey(currentStep))}</h2>
-          {#if run.summary}
-            <p class="state-card__summary">{run.summary}</p>
-          {/if}
           {#if run.checkout_path}
             <p class="state-card__scope mono">{run.checkout_path}</p>
           {/if}

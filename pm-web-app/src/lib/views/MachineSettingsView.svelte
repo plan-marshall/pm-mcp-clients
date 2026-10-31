@@ -321,6 +321,7 @@
       <h2 class="settings-section__title">{$t('web.settings.cleanup.title')}</h2>
       <div class="choice-row">
         <label class="choice">
+          {$t('web.settings.cleanup.keep')}
           <input
             type="number"
             min="0"
@@ -331,9 +332,9 @@
           {$t('web.settings.cleanup.days')}
         </label>
         <label class="choice">
-          <input type="number" min="0" bind:value={cleanupRemindDays} />
           {$t('web.settings.cleanup.remind')}
-          {$t('web.settings.cleanup.days')}
+          <input type="number" min="0" bind:value={cleanupRemindDays} />
+          {$t('web.settings.cleanup.days_after')}
         </label>
         <Button variant="secondary" on:click={saveCleanup} data-testid="save-cleanup">
           {$t('web.settings.cleanup.save')}
