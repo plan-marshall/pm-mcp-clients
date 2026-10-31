@@ -284,9 +284,7 @@
           <h2 class="section-title">
             {$t('report.completion.change_map')}
             <span class="section-badge">
-              {$t('report.completion.change_map_state', {
-                state: data.change_map.state?.toLowerCase() ?? '',
-              })}
+              {displayState('change_map', data.change_map.state)}
             </span>
           </h2>
           {#if data.change_map.cause}

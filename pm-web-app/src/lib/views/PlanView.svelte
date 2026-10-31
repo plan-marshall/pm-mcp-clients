@@ -971,7 +971,7 @@
                       signal: displayState('signal', taskActivity.off_track.signal),
                       value: taskActivity.off_track.value ?? '?',
                       threshold: taskActivity.off_track.threshold ?? '?',
-                      action: taskActivity.off_track.action,
+                      action: displayState('action', taskActivity.off_track.action),
                     })}
                   </span>
                 </div>

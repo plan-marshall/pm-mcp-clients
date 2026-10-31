@@ -100,10 +100,14 @@ function withoutLiterals(expression: string): string {
 /**
  * @param expression one interpolation's expression
  * @returns whether the expression decides something rather than printing a value: a comparison,
- *   a filter, a conditional or another block's condition
+ *   a filter, a ternary or another block's condition. Optional chaining (`?.`) and nullish
+ *   coalescing (`??`) are no decision: they still print the value the expression reads.
  */
 function decidesRatherThanPrints(expression: string): boolean {
-  return /===|!==|==|!=|&&|\|\||\?|<|>|!/.test(expression);
+  if (/===|!==|==|!=|&&|\|\||<|>|!/.test(expression)) {
+    return true;
+  }
+  return /(?<!\?)\?(?![.?])/.test(expression);
 }
 
 /**
@@ -125,9 +129,61 @@ function readsField(expression: string, field: string): boolean {
   return new RegExp(`\\.${field}\\b`).test(expression);
 }
 
+/**
+ * @param markup the markup of a `.svelte` file, or a fragment written for this test
+ * @returns the text interpolations that print an enumerated field without the display layer
+ */
+function offendersIn(markup: string): string[] {
+  const offenders: string[] = [];
+  for (const expression of interpolations(textOf(markupOf(markup)))) {
+    if (
+      isBlockDirective(expression) ||
+      expression.includes('displayState(') ||
+      handsToHelper(expression)
+    ) {
+      continue;
+    }
+    const printed = withoutLiterals(expression);
+    if (decidesRatherThanPrints(printed)) continue;
+    const field = ENUM_FIELDS.find((candidate) => readsField(printed, candidate));
+    if (field !== undefined) {
+      offenders.push(expression);
+    }
+  }
+  return offenders;
+}
+
 describe('the enum guard', () => {
   it('lists the enumerated fields the display layer names', () => {
     expect(ENUM_FIELDS.length).toBeGreaterThan(0);
+  });
+
+  it('flags a bare read, an optional chain and a catalogue pass-through', () => {
+    const offenders = offendersIn(`
+      <p>{node.state}</p>
+      <p>{worker?.state}</p>
+      <p>{$t('system.workers.count', { state: worker.state })}</p>
+      <p>{plan.phase_state ?? 'staged'}</p>
+      <p>{task.off_track.signal}</p>
+    `);
+
+    expect(offenders).toEqual([
+      'node.state',
+      'worker?.state',
+      "$t('system.workers.count', { state: worker.state })",
+      "plan.phase_state ?? 'staged'",
+      'task.off_track.signal',
+    ]);
+  });
+
+  it('passes the display layer and a value a view only compares', () => {
+    const offenders = offendersIn(`
+      <p>{displayState('worker', worker.state)}</p>
+      <p>{workers.filter((w) => w.state === 'busy').length}</p>
+      <p>{node.state === 'done' ? 'a' : 'b'}</p>
+    `);
+
+    expect(offenders).toEqual([]);
   });
 
   it('finds no enumerated field printed without the display layer', () => {
@@ -137,21 +193,9 @@ describe('the enum guard', () => {
     const offenders: string[] = [];
     for (const file of screens) {
       const relative = path.relative(SOURCE_DIR, file);
-      const expressions = interpolations(textOf(markupOf(fs.readFileSync(file, 'utf-8'))));
-      for (const expression of expressions) {
-        if (
-          isBlockDirective(expression) ||
-          expression.includes('displayState(') ||
-          handsToHelper(expression)
-        ) {
-          continue;
-        }
-        const printed = withoutLiterals(expression);
-        if (decidesRatherThanPrints(printed)) continue;
-        const field = ENUM_FIELDS.find((candidate) => readsField(printed, candidate));
-        if (field !== undefined) {
-          offenders.push(`${relative}: ${expression}`);
-        }
+      const markup = fs.readFileSync(file, 'utf-8');
+      for (const expression of offendersIn(markup)) {
+        offenders.push(`${relative}: ${expression}`);
       }
     }
 

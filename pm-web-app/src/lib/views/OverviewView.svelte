@@ -483,8 +483,9 @@
   }
 
   function getPlanState(p: ActivePlanSummary): string {
-    const s = p.phase_state || 'running';
-    return s === 'waiting_for_you' ? 'waiting' : s;
+    // The wire value stays as the contract sends it: the display layer names it, and the badge
+    // class matches both spellings (`badge--state-waiting_for_you`).
+    return p.phase_state || 'running';
   }
 
   // The overview endpoints answer with the snake_case spelling of the API contract or with the

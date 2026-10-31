@@ -23,6 +23,8 @@ export type StateKind =
   | 'decision'
   | 'gate'
   | 'signal'
+  | 'action'
+  | 'change_map'
   | 'node_kind';
 
 /**

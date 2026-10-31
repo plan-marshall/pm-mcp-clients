@@ -58,6 +58,25 @@ describe('displayState', () => {
     expect(displayState('node_kind', 'phase')).toBe('Phase');
   });
 
+  it('names the action the runtime took, which the plan tree prints beside the signal', () => {
+    useCatalogue('en');
+    expect(displayState('action', 'show')).toBe('shown');
+    expect(displayState('action', 'restart')).toBe('restarted');
+
+    useCatalogue('de');
+    expect(displayState('action', 'show')).toBe('gemeldet');
+    expect(displayState('action', 'yield')).toBe('angehalten');
+  });
+
+  it('names the change map state of a completion report', () => {
+    useCatalogue('en');
+    expect(displayState('change_map', 'partial')).toBe('partial');
+
+    useCatalogue('de');
+    expect(displayState('change_map', 'partial')).toBe('teilweise');
+    expect(displayState('change_map', 'indeterminate')).toBe('unbestimmt');
+  });
+
   it('reads a value without regard to its case', () => {
     useCatalogue('en');
     expect(displayState('plan', 'RUNNING')).toBe('running');
