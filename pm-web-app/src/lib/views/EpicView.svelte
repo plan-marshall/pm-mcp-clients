@@ -306,9 +306,13 @@
     return status;
   }
 
-  /** The wall time of an event to the second, in the interface's own notation. */
+  /**
+   * The wall time of an event to the second, in the interface's own notation.
+   *
+   * The wire sends an instant; a value that is already a clock is shown as it arrives.
+   */
   function formatEventTime(at: string): string {
-    return formatTime(at, 'clock', $currentLocale);
+    return formatTime(at, 'clock', $currentLocale) || at;
   }
 
   /**

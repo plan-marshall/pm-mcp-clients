@@ -498,6 +498,19 @@
   }
 
   /**
+   * The wall clock of an activity entry.
+   *
+   * The wire sends either an instant or the clock it has already formatted; an instant is
+   * rendered by the one format, and a clock is shown as it arrives.
+   *
+   * @param timestamp the entry's time as the runtime sends it
+   * @returns the clock, `14:02:11`
+   */
+  function entryClock(timestamp: string): string {
+    return formatTime(timestamp, 'clock', $currentLocale) || timestamp;
+  }
+
+  /**
    * The cached tokens of a breakdown row: cache reads and cache writes, as the completion
    * report counts them.
    *
@@ -992,7 +1005,7 @@
                       class="activity-entry activity-entry--{entry.kind}"
                       data-testid="activity-entry"
                     >
-                      <span class="entry-time mono">{entry.timestamp}</span>
+                      <span class="entry-time mono">{entryClock(entry.timestamp)}</span>
                       <span class="entry-kind-tag entry-kind-tag--{entry.kind}"
                         >{displayState('activity', entry.kind, $t)}</span
                       >
