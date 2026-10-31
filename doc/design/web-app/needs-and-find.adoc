@@ -32,7 +32,7 @@ A remembered place still wins, as it does today (link:../shared/plan-overview.ad
 [#list-layout]
 == The List in the Frame
 
-* *The rows* are the shared design's (link:../shared/needs-and-find.adoc#waits[The List of What Waits]): kind with icon, colour and word, title, path, since, what it blocks, and the act. The act is a button that opens the place the act belongs to; the list itself performs no act, so an item resolved elsewhere leaves rather than being answered twice.
+* *The rows* are the shared design's (link:../shared/needs-and-find.adoc#waits[The List of What Waits]): kind with icon, colour and word, the name of the place it belongs to, the path, since, what it blocks, and the act. The act is a button that opens the place the act belongs to; the list itself performs no act, so an item resolved elsewhere leaves rather than being answered twice.
 * *Nothing waits*: the empty state (`overview.needs.empty`) and, below it, the projects with running work as the overview's project rows (link:../shared/plan-overview.adoc#project-row[A Project]), each one step to its project.
 * *A quiet notice* for an item resolved in another client, in the frame's polite live region (as a new report is, link:../shared/reports.adoc#notice[Reports]): one line, no sound, never a browser notification, the tab title updated.
 * *A due cleanup* is an item here and opens the cleanup job (link:../shared/cleanup.adoc[Cleanup]); the report `system.cleanup_due` remains a report and adds nothing to the list.

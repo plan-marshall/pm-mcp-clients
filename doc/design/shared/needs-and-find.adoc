@@ -25,14 +25,14 @@ One list of every item of every `needs_operator` summary: a plan's decision or w
   ───────────────────────────────────────────────────────────────────────────
   ! decision   Drop the legacy endpoints
                pm-mcp-clients › relay-hardening › drop-legacy-api
-               waits since 15:05 · blocks the plan · answer it
+               waits since 15:05 · blocks: plan · answer it
   ! condition  The credential store is locked
                pm-mcp-core › session-log
-               waits since 14:52 · blocks the plan · unlock the store
+               waits since 14:52 · blocks: plan · unlock the store
   ! credential GitHub token
                machine
                waits since 09:00 · blocks no work · check it in the settings
-  ! cleanup due  Cleanup of ended work is due
+  ! cleanup due  Cleanup of ended work
                machine
                waits since yesterday · blocks no work · open the cleanup
 ----
@@ -54,7 +54,7 @@ One list of every item of every `needs_operator` summary: a plan's decision or w
 The contract carries the *kind* of the work an item blocks — `plan`, `epic`, or `project` — and nothing when it blocks no work; the question, the reason and the provider stay at the item's own place.
 
 * `blocks` absent: `blocks no work` (`overview.needs.blocks_nothing`), for the machine's own items and for a setup that holds nothing yet.
-* `blocks` present: `blocks the plan` (`overview.needs.blocks`, filled with the word of the kind in the operator's language), and the row's act opens that work.
+* `blocks` present: `blocks: {what}`, `{what}` filled with the kind's word in the operator's language (`overview.kind.plan`, `overview.kind.epic`, and `overview.kind.project`, the last one added with this design), and the row's act opens that work.
 
 [#find]
 == Going to Work by Name
@@ -84,7 +84,7 @@ One field, one answer: the operator types a part of an id, a part of a title, or
 
 Two commands, one key, one count. The terminal client has no rail and no search field of its own; it has the console's prompt (link:../terminal-client/04-console.adoc[The Console]).
 
-* *`needs`* prints the list (<<waits>>): one line per item, its kind, its subject, what it blocks, since when, and the command that resolves it, in the order the runtime serves.
+* *`needs`* prints the list (<<waits>>): one line per item, its kind, the name of the place it belongs to, what it blocks, since when, and the command that resolves it, in the order the runtime serves.
 * *The badges* of the console's prompt count the machine's summary as one of their sources: each kind that is not zero is a badge, `credential` and `cleanup_due` included, with their notices when they arrive (link:../terminal-client/04-console.adoc#pushed[What the Runtime Pushes]).
 * *`find <text>`* prints the matches (<<find>>), grouped by kind in the order served, each with its title, where it belongs, and the command that opens it; `--print` prints and exits; in the console the matches are a choice, and selecting one opens it where it belongs.
 * *`/`* at the empty prompt opens the find field in the console: the operator types the text and `Enter` lists the matches, `Esc` returns to the prompt with nothing sent. `/` is free at the prompt and is not a verb of its own; the shell takes the verb `find` only.

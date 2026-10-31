@@ -2836,6 +2836,14 @@
               "GET /api/v1/machine/needs-operator": {
                 "items": []
               },
+              "GET /api/v1/machine": {
+                "name": "mock-machine",
+                "onboarded": true,
+                "needs_operator": {
+                  "count": 0,
+                  "items": []
+                }
+              },
               "GET /api/v1/overview": {
                 "projects": []
               },

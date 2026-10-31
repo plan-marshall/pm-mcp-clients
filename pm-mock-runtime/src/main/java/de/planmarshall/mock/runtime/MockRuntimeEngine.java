@@ -5513,7 +5513,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /**
      * @param row a plan, an epic, or a project row
      * @return the row's {@code created_at}, the start it fell back to, or the far future when the
-     *         fixture measures neither, so an unmeasurable row never jumps ahead
+     *         fixture measures neither, so an unmeasurable row never jumps ahead. The mock's fixtures
+     *         carry {@code running_since} only, so the fallback is the key they exercise; a fixture
+     *         that carries {@code created_at} keeps its row in place when the plan starts.
      */
     private static Instant createdAt(@Nullable Object row) {
         var map = JsonTree.asObject(row);

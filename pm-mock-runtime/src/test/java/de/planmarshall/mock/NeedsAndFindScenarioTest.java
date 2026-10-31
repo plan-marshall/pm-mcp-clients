@@ -31,6 +31,9 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.SseReader;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.overview.NeedsOperatorKind;
+import de.planmarshall.api.overview.NeedsOperatorPage;
+import de.planmarshall.api.overview.NeedsOperatorSummary;
 
 /**
  * The mock runtime's answers for the two views of UC-PLN-7 and UC-PLN-8: the list of everything that
@@ -61,6 +64,10 @@ class NeedsAndFindScenarioTest {
                 var items = JsonTree.asArray(page.get("items"));
                 assertEquals(12, items.size(), "one item of each kind of the closed list");
                 assertEquals(12, JsonTree.integer(page, "total"));
+                // The served list parses through the contract's own record.
+                var parsed = NeedsOperatorPage.fromJson(new String(res.body()));
+                assertEquals(12, parsed.items().size());
+                assertEquals(NeedsOperatorKind.FINDINGS, parsed.items().getFirst().kind());
 
                 // The items that block running work first, the oldest first; the machine's own
                 // items, which block nothing, after them.
@@ -82,7 +89,7 @@ class NeedsAndFindScenarioTest {
         }
 
         @Test
-        @DisplayName("serves an empty list when nothing waits")
+        @DisplayName("serves an empty list when nothing waits, and a machine with nothing of its own")
         void nothingWaits() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK + "#overview.empty")) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
@@ -91,8 +98,17 @@ class NeedsAndFindScenarioTest {
                 var res = client.send(HttpRequest.get(MachineApiPaths.NEEDS_OPERATOR)
                         .withHeader(AUTH_HEADER, auth));
                 assertEquals(200, res.status());
-                var page = JsonTree.asObject(JsonTree.parse(new String(res.body())));
-                assertTrue(JsonTree.asArray(page.get("items")).isEmpty());
+                // The served page parses through the contract's own record.
+                var page = NeedsOperatorPage.fromJson(new String(res.body()));
+                assertTrue(page.items().isEmpty());
+                assertEquals(0, page.total());
+
+                var machine = client.send(HttpRequest.get(MachineApiPaths.MACHINE).withHeader(AUTH_HEADER, auth));
+                var summaryMap = JsonTree.object(
+                        JsonTree.asObject(JsonTree.parse(new String(machine.body()))), "needs_operator");
+                var summary = NeedsOperatorSummary.fromMap(summaryMap);
+                assertEquals(0, summary.count());
+                assertTrue(summary.items().isEmpty());
             }
         }
 

@@ -70,6 +70,9 @@ public record NeedsOperatorPage(
 
     /**
      * Parses a page.
+     * <p>
+     * A page that names no {@code total} takes the rows it carries as its total: a runtime that omits
+     * the figure never makes a client invent a larger one.
      *
      * @param map the map representation
      * @return the parsed page
