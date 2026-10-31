@@ -12,12 +12,12 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -106,7 +106,7 @@ class RuntimeActDialogueTest {
                             () -> assertEquals(0, answer.exitCode()),
                             () -> assertTrue(screen.contains("Stop the runtime?"), screen),
                             () -> assertTrue(screen.contains(
-                                                "Running now: 3 plans \u00b7 1 epic \u00b7 4 tasks \u00b7 1 job \u00b7 5 workers"),
+                                                                    "Running now: 3 plans \u00b7 1 epic \u00b7 4 tasks \u00b7 1 job \u00b7 5 workers"),
                                                 screen),
                             () -> assertTrue(screen.contains("Every client sees that it stops."), screen),
                             () -> assertTrue(screen.contains("When"), screen),
@@ -234,7 +234,7 @@ class RuntimeActDialogueTest {
                             () -> assertNull(answer.when()),
                             () -> assertEquals(3, answer.exitCode()),
                             () -> assertTrue(out.toString().contains(
-                                                "runtime stop needs the choice of when; answer it with --when-done or --now."),
+                                                                    "runtime stop needs the choice of when; answer it with --when-done or --now."),
                                                 out.toString())
         );
     }
@@ -322,7 +322,7 @@ class RuntimeActDialogueTest {
                             "0.10.0", "2026-10-16", "today 08:14",
                             "/api/v1/system/release-notes?version=0.10.0", true, null);
         var work = new WorkMetrics(Map.of("running", plans), Map.of("running", epics), tasks, 0, 1, List.of());
-        var roster = new java.util.ArrayList<WorkerMetric>();
+        var roster = new ArrayList<WorkerMetric>();
         for (int index = 0; index < workers; index++) {
             roster.add(new WorkerMetric("implementer", "claude", "sonnet-4.5", WorkerState.BUSY, null));
         }
