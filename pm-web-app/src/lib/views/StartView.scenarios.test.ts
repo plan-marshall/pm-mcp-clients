@@ -694,7 +694,7 @@ describe('start-epic-adopt: adopting an epic and its failure', () => {
     );
     await fireEvent.click(screen.getByTestId('adopt-relay-hardening'));
     expect(await screen.findByTestId('started-title')).toHaveTextContent(
-      'Relay hardening has started',
+      '\u201cRelay hardening\u201d has started.',
     );
   });
 

@@ -274,7 +274,7 @@ public final class StartCommand implements Callable<Integer> {
         if (response.status() == 200 || response.status() == 201) {
             var result = PlanStartResult.fromJson(response.bodyText());
             var id = OutputSafety.stripControlSequences(result.id());
-            out.println("✓ " + MessageCatalogue.format("start.started.title", Map.of("name", id)));
+            out.println("✓ " + MessageCatalogue.format("start.started.console_title", Map.of("name", id)));
             if (result.followHref() != null) {
                 out.println("    " + MessageCatalogue.get("start.started.follow") + ": " + result.followHref());
             }

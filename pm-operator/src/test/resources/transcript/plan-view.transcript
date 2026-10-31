@@ -7,9 +7,9 @@ fix-relay · execute · running · <duration> · pull request #214 https://githu
   ✓ done      phase outline                  <duration>
   ✓ done      phase plan                     <duration>
   ▶ running   phase execute                  <duration>
-    ▶ running   execute.envelope               <duration> · tasks: 2 of 3 done
+    ▶ running   Execute the envelope           <duration> · tasks: 2 of 3 done
       ✓ done      TASK-001 (implement)           <duration>
       ✓ done      TASK-002 (module-tester)       <duration>
       ▶ running   TASK-003 (implement)           <duration> · off-track: repeating
-    ○ planned   sub-workflow remediation.ci-failure
+    ○ planned   sub-workflow CI failure
   ○ planned   phase finalize

@@ -743,7 +743,7 @@
                 "kind": "plan",
                 "title": "fix-relay",
                 "outcome": "merged (#214)",
-                "ended_at": "ended 12 Sep",
+                "ended_at": "12 Sep",
                 "size_bytes": 88080384,
                 "logs_count": 6
               },
@@ -752,7 +752,7 @@
                 "kind": "plan",
                 "title": "docs-typo",
                 "outcome": "no change",
-                "ended_at": "ended 11 Sep",
+                "ended_at": "11 Sep",
                 "size_bytes": 2097152,
                 "logs_count": 1
               }
@@ -771,7 +771,7 @@
                 "kind": "plan",
                 "title": "token-usage",
                 "outcome": "merged (#88)",
-                "ended_at": "ended 9 Sep",
+                "ended_at": "9 Sep",
                 "size_bytes": 125829120,
                 "logs_count": 11
               }
@@ -956,6 +956,12 @@
                 "duration_seconds": 9600,
                 "paused_seconds": 1200,
                 "paused_by": "you",
+                "change": {
+                  "files": 12,
+                  "insertions": 340,
+                  "deletions": 27,
+                  "unplanned": 2
+                },
                 "deliverables": [
                   {
                     "name": "cursor write order",
@@ -1564,6 +1570,12 @@
                 "duration_seconds": 9600,
                 "paused_seconds": 1200,
                 "paused_by": "you",
+                "change": {
+                  "files": 12,
+                  "insertions": 340,
+                  "deletions": 27,
+                  "unplanned": 2
+                },
                 "deliverables": [
                   {
                     "name": "cursor write order",
@@ -2018,6 +2030,12 @@
                 "duration_seconds": 9600,
                 "paused_seconds": 1200,
                 "paused_by": "you",
+                "change": {
+                  "files": 12,
+                  "insertions": 340,
+                  "deletions": 27,
+                  "unplanned": 2
+                },
                 "deliverables": [
                   {
                     "name": "cursor write order",
@@ -3059,7 +3077,7 @@
                     "kind": "plan",
                     "title": "fix-relay",
                     "outcome": "merged (#214)",
-                    "ended_at": "ended 12 Sep",
+                    "ended_at": "12 Sep",
                     "size_bytes": 88080384,
                     "logs_count": 6
                   },
@@ -3068,7 +3086,7 @@
                     "kind": "plan",
                     "title": "docs-typo",
                     "outcome": "no change",
-                    "ended_at": "ended 11 Sep",
+                    "ended_at": "11 Sep",
                     "size_bytes": 2097152,
                     "logs_count": 1
                   }
@@ -3087,7 +3105,7 @@
                     "kind": "plan",
                     "title": "token-usage",
                     "outcome": "merged (#88)",
-                    "ended_at": "ended 9 Sep",
+                    "ended_at": "9 Sep",
                     "size_bytes": 125829120,
                     "logs_count": 11
                   }

@@ -2,10 +2,10 @@
   "id": "PLAN-80",
   "slug": "web-standards-conformance",
   "workstream": "WS-02",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "80-web-standards-conformance",
+  "pr": "281",
+  "landing": "landings/PLAN-80.md",
   "seq": 80
 }

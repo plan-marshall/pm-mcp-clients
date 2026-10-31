@@ -346,7 +346,7 @@ final class StartDialogue {
             }
             options.add(text("start.source.accept_untrusted", Map.of()));
         }
-        options.add(text("start.source.remove_it", Map.of()));
+        options.add(text("start.source.remove_option", Map.of()));
         return String.join("   ", options);
     }
 
@@ -460,7 +460,7 @@ final class StartDialogue {
         var entry = created.entry();
         var name = entry != null && entry.planId() != null ? entry.planId() : id;
         var display = name != null ? name : "";
-        prompt.line("start.started.title", Map.of("name", OutputSafety.stripControlSequences(display)));
+        prompt.line("start.started.console_title", Map.of("name", OutputSafety.stripControlSequences(display)));
         prompt.line("start.started.follow", Map.of());
         if (kind.epic() && name != null) {
             new EpicDecompositionDialogue(api, prompt, project, name, answers.instruction).run();

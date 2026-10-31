@@ -175,7 +175,8 @@ class OverviewRecordsTest {
                 "https://github.com/plan-marshall/pm-mcp-clients/pull/" + pullRequestNumber,
                 "repeating",
                 "decision",
-                needsOperatorCount
+                needsOperatorCount,
+                null
         );
 
         var json = plan.toJson();
@@ -217,6 +218,7 @@ class OverviewRecordsTest {
                 0,
                 epicId,
                 epicTitle,
+                null,
                 null,
                 null,
                 null,
@@ -341,7 +343,7 @@ class OverviewRecordsTest {
         assertEquals("task", parsedActChanged.point());
 
         var needsCount = Generators.integers(0, 100).next();
-        var needsChanged = new NeedsOperatorChangedEvent(projectId, planId, null, "decision", needsCount);
+        var needsChanged = new NeedsOperatorChangedEvent(projectId, planId, null, "decision", needsCount, null);
         assertEquals("needs_operator.changed", NeedsOperatorChangedEvent.EVENT_NAME);
         var parsedNeedsChanged = NeedsOperatorChangedEvent.fromJson(needsChanged.toJson());
         assertEquals(projectId, parsedNeedsChanged.projectId());
@@ -453,7 +455,7 @@ class OverviewRecordsTest {
     @DisplayName("validates error conditions on missing required fields or bad JSON")
     void recordValidationErrors() {
         assertThrows(NullPointerException.class, () -> new ProjectSummary(null, "Name", 0, 0, 0, null, false, null));
-        assertThrows(NullPointerException.class, () -> new ActivePlanSummary(null, "T", "p", "s", null, null, null, 0, 0, null, null, null, null, null, null, null));
+        assertThrows(NullPointerException.class, () -> new ActivePlanSummary(null, "T", "p", "s", null, null, null, 0, 0, null, null, null, null, null, null, null, null));
         assertThrows(NullPointerException.class, () -> new ActiveEpicSummary(null, "T", null, 0, 0, 0, 0, null, null, null));
         assertThrows(NullPointerException.class, () -> new ProjectDetailResponse(null, "D", null, null, null));
         assertThrows(NullPointerException.class, () -> new EndedWorkPage(null, null, 1, 1, false, false));
