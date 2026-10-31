@@ -349,6 +349,14 @@ plan spec names the plan, proposal and finding documents it comes from.
   plans (design and contract first, consumers after) and its terminal "find" is its own plan (PLAN-84) rather than a
   deliverable of PLAN-36; PLAN-83 keeps the three parts of its package together. The packages' own rows in
   `doc/plans/README.adoc` stay `open` and are set to `done` by the plans that complete them.
+- 2026-10-31 — PLAN-78 revision message analysed (`rb-78-cui-testing-api-002.md`, written 16:03Z): the plan is NOT landed.
+  PR #288 (the replacement of the closed #285, same head `0860ba13`) is open: CI green, full `verify` green, Sonar a
+  confirmed `0`, every comment handled, but the required reviewer CodeRabbit has never reviewed any head of either PR (six
+  triggers incl. one escalation, all "Review rate limited"; its own notice names plan capacity). The standing review
+  authorization does not apply without a qualifying review. The lane is stopped before the merge and waits for the operator:
+  clear the CodeRabbit account, or authorise the merge with the gap named. The row stays `running`, no landing is stamped,
+  the message is archived as the observation. Recorded as a decision for the operator in the Watches. The ledger was
+  landed in between ("land all and prepare to restart").
 - 2026-10-31 — PLAN-16 recorded launched and then running on the operator's word ("#16 is running"): four running (16,
   17, 78, 82) is N=4 and no slot is free until one lands.
 - 2026-10-31 — PLAN-09 and PLAN-78 messages analysed. PLAN-09 landed (PR #287, `5f9e60da`): row shipped. PLAN-78 did NOT
@@ -493,6 +501,12 @@ plan spec names the plan, proposal and finding documents it comes from.
   projects with project onboarding" was withdrawn after reading PLAN-64: the project onboarding view and the machine
   onboarding screens are different views and documents. — re-check the split at each emit of the plans it touched.
 > ↪ Relocated to `settled.md` § "Retired Watches (2026-10-28 to 2026-10-30)" — the watch is retired, its subject is closed (PR #276 merged as `44803a77`)
+- DECISION FOR THE OPERATOR, PLAN-78 is blocked on the required reviewer (2026-10-31): PR #288 is open and complete except
+  that CodeRabbit refuses every review ("Review rate limited", plan capacity). The lane waits. Options: clear or upgrade the
+  CodeRabbit capacity and let the lane re-trigger, or authorise the merge of #288 with the missing review named in the
+  landing. Until then PLAN-78 holds a slot and its worktree. The same limit hit the other lanes' re-triggers (PLAN-77, 80,
+  86 and 09 each saw "Review rate limited" on their last head and merged under the standing authorization because an
+  earlier head had a qualifying review; PLAN-78 is the first plan whose PR never got one).
 - Pull requests over 100 files cannot be reviewed (PLAN-78 run, 2026-10-31): CodeRabbit, the required reviewer, refuses
   more than 100 files and, once its quota is spent, every retry; Sourcery refuses above 150,000 diff characters. PLAN-78's
   first PR (197 files) was never reviewed and was closed; the second (#288) is open. The 197 came from the `pre-commit` gate
