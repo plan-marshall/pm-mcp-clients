@@ -7116,9 +7116,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
             cleanupResidues.add(new CleanupResidue("retired_lessons", 4, 0L, SWEEP_TODAY));
 
             var clientsEntries = List.of(
-                    new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged (#214)", "ended 12 Sep", 88080384L, 6, 0, null),
-                    new CleanupItemEntry("docs-typo", "plan", "docs-typo", "no change", "ended 11 Sep", 2097152L, 1, 0, null),
-                    new CleanupItemEntry("relay-hardening", "epic", "relay-hardening", "completed", "ended 10 Sep", 12582912L, 0, 0, null),
+                    new CleanupItemEntry(CONST_FIX_RELAY, CLEANUP_KIND_PLAN, CONST_FIX_RELAY, "merged (#214)", "ended 12 Sep", 88080384L, 6, 0, null),
+                    new CleanupItemEntry(CONST_DOCS_TYPO, CLEANUP_KIND_PLAN, CONST_DOCS_TYPO, "no change", "ended 11 Sep", 2097152L, 1, 0, null),
+                    new CleanupItemEntry(CONST_RELAY_HARDENING, CLEANUP_KIND_EPIC, CONST_RELAY_HARDENING, FIELD_COMPLETED, "ended 10 Sep", 12582912L, 0, 0, null),
                     new CleanupItemEntry("logs-relay-docs", "logs", "logs of relay-docs", null, null, 32505856L, 14, 0, "plan kept until 24 Oct"),
                     new CleanupItemEntry("reports-clients", "read_reports", "3 read reports", null, null, 0L, 0, 3, "read before 13 Sep")
             );
