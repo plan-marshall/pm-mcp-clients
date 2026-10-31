@@ -696,9 +696,20 @@ class PmOperatorTest {
 
         @Test
         @DisplayName("stop --no-input without an answer stops at the choice with exit 3")
-        void stopNoInputStopsAtTheChoice() {
+        void stopNoInputStopsAtTheChoice() throws Exception {
+            runtime((request, response) -> response.send(404, null, ""));
+
             assertEquals(StartDialogue.EXIT_MISSING_INPUT, run("runtime", "stop", "--no-input"));
-            assertTrue(out.toString().contains("runtime stop needs you; --no-input stops here."), out.toString());
+            assertTrue(out.toString().contains(
+                                "runtime stop needs the choice of when; answer it with --when-done or --now."),
+                                out.toString());
+        }
+
+        @Test
+        @DisplayName("stop --no-input without a runtime says that there is nothing to stop")
+        void stopNoInputWithoutRuntime() {
+            assertEquals(0, run("runtime", "stop", "--no-input"));
+            assertEquals("The runtime is not running; there is nothing to stop.", out.toString().strip());
         }
 
         @Test
@@ -803,7 +814,9 @@ class PmOperatorTest {
         @DisplayName("restart --no-input without an answer stops at the choice with exit 3")
         void restartNoInputStopsAtTheChoice() {
             assertEquals(StartDialogue.EXIT_MISSING_INPUT, run("runtime", "restart", "--no-input"));
-            assertTrue(out.toString().contains("runtime restart needs you; --no-input stops here."), out.toString());
+            assertTrue(out.toString().contains(
+                                "runtime restart needs the choice of when; answer it with --when-done or --now."),
+                                out.toString());
         }
 
         @Test
@@ -862,7 +875,9 @@ class PmOperatorTest {
         @DisplayName("upgrade --no-input without an answer stops at the choice with exit 3")
         void upgradeNoInputStopsAtTheChoice() {
             assertEquals(StartDialogue.EXIT_MISSING_INPUT, run("runtime", "upgrade", "--no-input"));
-            assertTrue(out.toString().contains("runtime upgrade needs you; --no-input stops here."), out.toString());
+            assertTrue(out.toString().contains(
+                                "runtime upgrade needs the choice of when; answer it with --when-done or --now."),
+                                out.toString());
         }
 
         @Test

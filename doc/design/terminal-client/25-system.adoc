@@ -183,18 +183,23 @@ pm ›
 
 [source,text]
 ----
-pm › runtime restart --now
+pm › runtime restart
 Restart the runtime?
-  Running now: 1 plan · 1 task · 1 job (1 build)
-  Now: running tasks are withdrawn and jobs stopped; everything goes on from its last committed
-  state at the next start. Every client connects again by itself.
-  y) restart now   k) keep it running                                         ›  y
+  Running now: 1 plan · 1 task · 1 job · 5 workers
+  Every client connects again by itself.
+  When
+  1) Restart when done ←      Nothing new starts. Each running task and job finishes,
+                              then the runtime stops.
+  2) Restart now              Running tasks are withdrawn and jobs stopped. Everything
+                              goes on from its last committed state at the next start.
+  k) keep it running
 ◐ Restarting … the clients connect again by themselves.
 ✓ Reconnected: pm-mcpd 0.9.1, restarted at 14:41. 1 question open, 1 plan running.
 pm [1 question] ›
 ----
 
-* `--now` answers the choice of when, so the confirmation asks only yes; with `--yes` too it asks nothing.
+* `--when-done` and `--now` answer the choice of when, so the verb asks nothing; without either it
+  asks, `Enter` takes the drain, and `k` keeps the runtime running.
 * *Not back in time*: `The runtime did not come back. On the machine: pm-operator status.`, and the prompt shows `(reconnecting)` (xref:04-console.adoc#connection[The Console, Connection]).
 
 [#t-upgrade]
@@ -211,14 +216,13 @@ Check for a newer version?
 ✓ 0.10.0 available (2026-10-11), installed 0.9.1. Release notes: runtime upgrade --notes
 pm › runtime upgrade
 Upgrade to 0.10.0?
-  installed 0.9.1 → 0.10.0 (2026-10-11)
-  Running now: 3 plans · 2 jobs
-  When  1) when what runs is done   2) now
-  0.10.0 is fetched, verified, and installed beside 0.9.1, and the links switched. Then the
-  runtime stops as you chose and starts on 0.10.0; running work goes on from its last
-  committed state. If any step fails, 0.9.1 stays or is restored, and you are told why.
-  Afterwards: pm-operator client update for 2 hosts.
-  1) Upgrade when done   2) Upgrade now   n) not now                            [1] ›
+  Running now: 3 plans · 1 epic · 4 tasks · 1 job · 5 workers
+  When
+  1) Upgrade when done ←      Nothing new starts. Each running task and job finishes,
+                              then the runtime stops.
+  2) Upgrade now              Running tasks are withdrawn and jobs stopped. Everything
+                              goes on from its last committed state at the next start.
+  k) keep it running
 Upgrading to 0.10.0
   ✓ fetched   ✓ verified   ✓ installed beside 0.9.1, links switched
   ◐ waiting for what runs · 1 left: build of fix-relay              runtime upgrade --now

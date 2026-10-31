@@ -80,9 +80,9 @@ pm-operator reports read <report_id>...|--all             [op]  mark reports rea
 pm-operator reports open <report_id>                      [op]  a report's detail; reads it
 pm-operator system [--project <project_id>|.] [--window hour|today|7d] [--by model|role] [--watch]
                                                                 the system view; full screen in the console (25-system)
-pm-operator runtime stop|restart [--drain|--now] [--yes]   [op]  stop or restart the runtime (UC-SYS-1, 25-system)
+pm-operator runtime stop|restart [--when-done|--now] [--yes]   [op]  stop or restart the runtime (UC-SYS-1, 25-system)
 pm-operator runtime stop --withdraw                       [op]  withdraw a drain asked from a client
-pm-operator runtime upgrade [<version>|--check|--withdraw|--notes] [--drain|--now] [--yes]
+pm-operator runtime upgrade [<version>|--check|--withdraw|--notes] [--when-done|--now] [--yes]
                                                           [op]  a newer version: check, upgrade, withdraw (25-system); --check and --notes
                                                                 read and run without the checks
 pm-operator drain                                               signal the runtime to stop by its drain

@@ -106,8 +106,8 @@ final class RuntimeActDialogue {
             return new Answer(ask(context, out, act, version, noInput), 0);
         } catch (StartPrompt.MissingInputException _) {
             var locale = context.clientEnvironment().locale();
-            out.println(MessageCatalogue.format(locale, "operator.actions.stopped",
-                                Map.of("state", "runtime " + act.value())));
+            out.println(MessageCatalogue.format(locale, "operator.system.stopped_no_input",
+                                Map.of("act", act.value())));
             out.flush();
             return new Answer(null, StartDialogue.EXIT_MISSING_INPUT);
         }
@@ -115,11 +115,7 @@ final class RuntimeActDialogue {
 
     private static @Nullable When ask(OperatorContext context, PrintWriter out, Act act,
                         @Nullable String version, boolean noInput) throws IOException {
-        if (noInput) {
-            throw new StartPrompt.MissingInputException("runtime " + act.value(), "when", null);
-        }
         var locale = context.clientEnvironment().locale();
-        var prompt = new StartPrompt(context, out, locale, false);
         SystemSnapshot snapshot;
         try {
             snapshot = snapshot(context);
@@ -131,6 +127,10 @@ final class RuntimeActDialogue {
             }
             snapshot = null;
         }
+        if (noInput) {
+            throw new StartPrompt.MissingInputException("runtime " + act.value(), "when", null);
+        }
+        var prompt = new StartPrompt(context, out, locale, false);
         var target = version != null ? version : newerVersion(snapshot);
         var choice = new ChoicePrompt(prompt, "runtime " + act.value())
                             .title(title(locale, act, target, snapshot))
@@ -149,6 +149,19 @@ final class RuntimeActDialogue {
     }
 
     /**
+     * @param locale the interface locale
+     * @param act    the act
+     * @param target the version an upgrade goes to, empty when none is known
+     * @return the act's question
+     */
+    private static String heading(String locale, Act act, String target) {
+        return act == Act.UPGRADE && target.isBlank()
+                            ? MessageCatalogue.format(locale, "system.confirm.title_upgrade", Map.of())
+                            : MessageCatalogue.format(locale, "system.confirm.title",
+                                                Map.of("act", act.value(), "version", target));
+    }
+
+    /**
      * @param locale   the interface locale
      * @param act      the act
      * @param version  the version an upgrade goes to, or {@code null}
@@ -159,8 +172,7 @@ final class RuntimeActDialogue {
                         @Nullable SystemSnapshot snapshot) {
         var target = version != null ? OutputSafety.stripControlSequences(version) : "";
         var lines = new ArrayList<String>(4);
-        lines.add(MessageCatalogue.format(locale, "system.confirm.title",
-                            Map.of("act", act.value(), "version", target)));
+        lines.add(heading(locale, act, target));
         lines.add("  " + running(locale, snapshot));
         var note = noteKey(act);
         if (note != null) {
