@@ -432,4 +432,31 @@ describe('the locale switch never mixes the two catalogues', () => {
     persistCatalogue('de', SUMMARIES.de);
     expect(loadCachedCatalogue('de')?.[SUMMARY_KEY]).toBe(SUMMARIES.de[SUMMARY_KEY]);
   });
+
+  it('renders the newest catalogue the browser holds when the version is unknown', () => {
+    // Arrange: two entries of the same locale, written by different runtimes.
+    localStorage.setItem(
+      'pm_i18n_messages_de@1.0.0',
+      JSON.stringify({
+        locale: 'de',
+        cachedAt: '2026-10-01T08:00:00.000Z',
+        messages: { [SUMMARY_KEY]: 'Ältere Fassung' },
+      }),
+    );
+    localStorage.setItem(
+      'pm_i18n_messages_de@1.0.1',
+      JSON.stringify({
+        locale: 'de',
+        cachedAt: '2026-10-20T08:00:00.000Z',
+        messages: SUMMARIES.de,
+      }),
+    );
+    setCatalogueVersion(null);
+
+    // Act
+    const cached = loadCachedCatalogue('de');
+
+    // Assert: the later entry wins, whatever order the storage lists the keys in.
+    expect(cached?.[SUMMARY_KEY]).toBe(SUMMARIES.de[SUMMARY_KEY]);
+  });
 });

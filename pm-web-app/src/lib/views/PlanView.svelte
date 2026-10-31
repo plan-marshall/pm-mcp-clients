@@ -30,6 +30,7 @@
     formatSplit,
     formatTokens,
     formatDuration,
+    formatDay,
     formatTime,
     type Locale,
   } from '../display/format';
@@ -500,14 +501,32 @@
   /**
    * The wall clock of an activity entry.
    *
-   * The wire sends either an instant or the clock it has already formatted; an instant is
-   * rendered by the one format, and a clock is shown as it arrives.
+   * The contract allows either an instant or the clock the runtime has already formatted
+   * (`pm-api` `ActivityEntry`): an instant is rendered by the one format, a clock is shown as it
+   * arrives.
    *
    * @param timestamp the entry's time as the runtime sends it
    * @returns the clock, `14:02:11`
    */
   function entryClock(timestamp: string): string {
     return formatTime(timestamp, 'clock', $currentLocale) || timestamp;
+  }
+
+  /**
+   * The day a row opens, where the wire sent an instant for it.
+   *
+   * A clock alone carries no date, so it opens no day: the header appears only for the first row
+   * of each day the runtime dates.
+   *
+   * @param entries the entries of the task's activity
+   * @param index the entry's position
+   * @returns the day to print above the row, or an empty string
+   */
+  function dayLabel(entries: ActivityEntry[], index: number): string {
+    const day = formatDay(entries[index]?.timestamp, $currentLocale);
+    if (!day) return '';
+    if (index === 0) return day;
+    return day === formatDay(entries[index - 1]?.timestamp, $currentLocale) ? '' : day;
   }
 
   /**
@@ -1000,7 +1019,11 @@
                 {#if taskActivity.entries.length === 0}
                   <div class="activity-empty text-muted">{$t('plan.activity.empty')}</div>
                 {:else}
-                  {#each taskActivity.entries as entry}
+                  {#each taskActivity.entries as entry, index}
+                    {@const label = dayLabel(taskActivity.entries, index)}
+                    {#if label}
+                      <div class="activity-day mono" data-testid="activity-day">{label}</div>
+                    {/if}
                     <div
                       class="activity-entry activity-entry--{entry.kind}"
                       data-testid="activity-entry"
@@ -1576,6 +1599,13 @@
     border: 1px solid var(--color-border-subtle);
     border-radius: var(--radius-sm);
     font-size: var(--text-xs);
+  }
+
+  .activity-day {
+    padding: var(--space-1) 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    font-weight: 600;
   }
 
   .entry-time {

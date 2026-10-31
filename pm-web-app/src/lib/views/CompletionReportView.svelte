@@ -5,7 +5,7 @@
   import Icon from '../components/Icon.svelte';
   import Spinner from '../components/Spinner.svelte';
   import { apiClient, type PlanCompletionReport } from '../api/client';
-  import { formatSplit, formatTokens, formatTime } from '../display/format';
+  import { formatSplit, formatTokens, formatDuration, formatTime } from '../display/format';
   import { displayState } from '../display';
 
   interface Props {
@@ -158,7 +158,8 @@
           <div class="summary-row">
             <span class="summary-label">{$t('report.completion.ran')}</span>
             <span class="summary-value"
-              >{data.ran || `${Math.round(data.duration_seconds / 60)} min`}</span
+              >{data.ran ||
+                formatDuration(data.duration_seconds * 1000, $currentLocale)}</span
             >
           </div>
         {/if}

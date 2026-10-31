@@ -680,12 +680,14 @@
               plan: dec.subject || $t('decision.waiver.plan_fallback'),
             })}
           </h2>
-          <span class="waiting-time">
-            {$t('decision.waiting', {
-              subject: dec.scope || 'plan',
-              time: formatTime(dec.delivered_at ?? new Date().toISOString(), 'short', $currentLocale),
-            })}
-          </span>
+          {#if dec.delivered_at}
+            <span class="waiting-time">
+              {$t('decision.waiting', {
+                subject: dec.scope || 'plan',
+                time: formatTime(dec.delivered_at, 'short', $currentLocale),
+              })}
+            </span>
+          {/if}
         </header>
 
         <div class="waiver-details">
@@ -1228,16 +1230,14 @@
                     {$t(`decision.reversibility.${dec.reversibility}`)}
                   </span>
                 </span>
-                <span class="waiting-time">
-                  {$t('decision.waiting', {
-                    subject: dec.scope || 'plan',
-                    time: formatTime(
-                      dec.delivered_at ?? new Date().toISOString(),
-                      'short',
-                      $currentLocale,
-                    ),
-                  })}
-                </span>
+                {#if dec.delivered_at}
+                  <span class="waiting-time">
+                    {$t('decision.waiting', {
+                      subject: dec.scope || 'plan',
+                      time: formatTime(dec.delivered_at, 'short', $currentLocale),
+                    })}
+                  </span>
+                {/if}
               </button>
             {/each}
           </div>

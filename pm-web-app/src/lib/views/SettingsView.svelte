@@ -6,7 +6,8 @@
   import CredentialEntry from '../components/CredentialEntry.svelte';
   import { apiClient, type PairedDevice } from '../api/client';
   import { currentLocale } from '../i18n';
-  import { formatDay, formatTime } from '../display/format';  import { runtimeStore, navigateTo, goBack } from '../stores/runtime';
+  import { formatDay, formatTime } from '../display/format';
+  import { runtimeStore, navigateTo, goBack } from '../stores/runtime';
 
   /**
    * The paired devices of the machine (UC-ENT-2): the list, renaming one inline, revoking one,

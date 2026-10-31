@@ -6,11 +6,13 @@
  * format of its own and no ISO string reaches the operator.
  */
 
+import type { Locale } from '../i18n';
+
+/** The interface languages the app ships; the one closed set, owned by the catalogue layer. */
+export type { Locale };
+
 /** The three renderings of a moment the design defines. */
 export type TimeStyle = 'relative' | 'short' | 'clock';
-
-/** The interface languages the app ships. */
-export type Locale = 'en' | 'de';
 
 /** The language tag `Intl` formats with; day-first for English, as the design's examples are. */
 function languageTag(locale: string): string {

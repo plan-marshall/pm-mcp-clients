@@ -614,6 +614,12 @@ export async function initI18n(): Promise<void> {
     englishMessages = null;
     englishLookupAttempted = false;
   }
+  // The English fallback is the gap-filler of every other locale; an English pack stored by an
+  // older runtime must not keep filling gaps after the runtime changed.
+  if (catalogueVersion !== null && loadCachedCatalogue('en') === null) {
+    englishMessages = null;
+    englishLookupAttempted = false;
+  }
 
   const initialLocale = storedLocale() ?? (await recordedLocale()) ?? browserLocale;
   if (initialLocale === browserLocale) {

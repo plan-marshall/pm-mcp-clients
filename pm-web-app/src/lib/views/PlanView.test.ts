@@ -222,11 +222,38 @@ describe('PlanView component', () => {
 
     const entries = screen.getAllByTestId('activity-entry');
     expect(entries.length).toBe(4);
+    // A clock the runtime already formatted carries no date, so it opens no day header.
+    expect(screen.queryAllByTestId('activity-day')).toHaveLength(0);
     expect(entries[0]).toHaveTextContent('14:02:11');
     expect(entries[0]).toHaveTextContent('Reading the relay transport');
     expect(entries[1]).toHaveTextContent('read');
     expect(entries[2]).toHaveTextContent('failed · 4 KiB');
     expect(entries[3]).toHaveTextContent('Transport.java');
+  });
+
+  it('opens a day above the first activity row of each day the wire dates', async () => {
+    const today = new Date();
+    const dayAt = (daysAgo: number, hour: number): string =>
+      new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate() - daysAgo,
+        hour,
+      ).toISOString();
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      ...mockActivity,
+      entries: [
+        { timestamp: dayAt(0, 10), kind: 'text', content: 'first today' },
+        { timestamp: dayAt(0, 11), kind: 'text', content: 'later today' },
+        { timestamp: dayAt(1, 9), kind: 'text', content: 'yesterday' },
+      ],
+    });
+
+    render(PlanView);
+
+    await screen.findByTestId('task-inspector');
+    const days = await screen.findAllByTestId('activity-day');
+    expect(days.map((node) => node.textContent)).toEqual(['today', 'yesterday']);
   });
 
   it('normalizes live activity events and ignores malformed ones', async () => {
