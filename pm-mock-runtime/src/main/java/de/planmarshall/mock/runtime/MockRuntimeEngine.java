@@ -1608,9 +1608,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final List<String> LIVE_DOMAIN_PREFIXES = List.of(
             "/api/v1/reports",
             "/api/v1/plans",
-            "/api/v1/epics",
+            PATH_EPICS,
             "/api/v1/entries",
-            "/api/v1/projects",
+            PATH_PROJECTS,
             "/api/v1/project-onboardings",
             "/api/v1/explorer",
             "/api/v1/overview",
@@ -5634,9 +5634,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
             if (!prj.contains("/")) {
                 response.json(200, Map.of(
                         KEY_PROJECT_ID, prj,
-                        "display_name", prj,
-                        "plans", List.of(),
-                        "epics", List.of(),
+                        KEY_DISPLAY_NAME, prj,
+                        KEY_PLANS, List.of(),
+                        KEY_EPICS, List.of(),
                         "alongside_landings", List.of()
                 ));
                 return true;
@@ -5700,7 +5700,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private static Instant sinceOf(NeedsOperatorItem item) {
-        return Objects.requireNonNullElse(item.since(), Instant.MAX);
+        var since = item.since();
+        return since != null ? since : Instant.MAX;
     }
 
     /**
