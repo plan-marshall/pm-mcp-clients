@@ -26,14 +26,12 @@ One list of every item of every `needs_operator` summary: a plan's decision or w
   ! decision   Drop the legacy endpoints
                pm-mcp-clients › relay-hardening › drop-legacy-api
                waits since 15:05 · blocks: plan · answer it
-  ! condition  The credential store is locked
+  ! condition  Session log and generations
                pm-mcp-core › session-log
                waits since 14:52 · blocks: plan · unlock the store
-  ! credential GitHub token
-               machine
-               waits since 09:00 · blocks no work · check it in the settings
-  ! cleanup due  Cleanup of ended work
-               machine
+  ! credential machine
+               waits since 09:00 · blocks no work · check the provider in the settings
+  ! cleanup due machine
                waits since yesterday · blocks no work · open the cleanup
 ----
 
