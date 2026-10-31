@@ -5153,11 +5153,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private boolean serveIntentFixture(MockHttpResponse response, String fixturePath, FixtureReader reader,
             String idField, String id) throws IOException {
-        var route = activeRoute("GET", fixturePath);
-        if (route == null) {
+        var representation = Optional.ofNullable(activeRoute("GET", fixturePath))
+                .map(RouteDefinition::representation)
+                .map(JsonTree::asObject)
+                .orElse(null);
+        if (representation == null) {
             return false;
         }
-        var representation = JsonTree.asObject(route.representation());
         reader.read(representation);
         var copy = new LinkedHashMap<String, Object>(representation);
         copy.put(idField, id);
@@ -9055,7 +9057,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static Map<String, Object> planProjectRef(String projectId) {
         var project = new LinkedHashMap<String, Object>();
         project.put(KEY_PROJECT_ID, projectId);
-        project.put("display_name", projectId);
+        project.put(KEY_DISPLAY_NAME, projectId);
         project.put("link", "/api/v1/projects/" + projectId);
         return project;
     }
