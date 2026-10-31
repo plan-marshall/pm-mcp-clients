@@ -54,7 +54,7 @@ class MockRuntimeConfigTest {
     @Test
     @DisplayName("builder applies custom values")
     void customValues() {
-        var base = Path.of("/", Generators.letterStrings(4, 10).next());
+        var base = Path.of("/tmp", Generators.letterStrings(4, 10).next());
         var registry = new ScenarioRegistry();
         var stateName = Generators.letterStrings(4, 10).next();
         var scenario = new Scenario(1, "in-mem", "desc", stateName, null, Map.of(),

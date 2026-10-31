@@ -52,8 +52,8 @@ class MockRuntimeEngineTest {
     private String runtimeToken;
     private String deviceSecret;
     private Map<String, String> auth;
-    private final String brokenName = Generators.letterStrings(4, 10).next().toLowerCase();
-    private final String brokenState = "s" + Generators.letterStrings(3, 6).next().toLowerCase();
+    private String brokenName;
+    private String brokenState;
 
     @BeforeEach
     void setUp() {
@@ -61,6 +61,8 @@ class MockRuntimeEngineTest {
         runtimeToken = Generators.letterStrings(8, 16).next();
         deviceSecret = Generators.letterStrings(8, 16).next();
         auth = Map.of("Authorization", "Bearer " + runtimeToken);
+        brokenName = Generators.letterStrings(4, 10).next().toLowerCase();
+        brokenState = "s" + Generators.letterStrings(3, 6).next().toLowerCase();
         var initialScenario = registry.resolve(StandardScenarios.STATUS_ONLY);
         engine = new MockRuntimeEngine(registry, initialScenario, runtimeToken, deviceSecret);
     }

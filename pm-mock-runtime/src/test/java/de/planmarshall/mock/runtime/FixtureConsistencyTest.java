@@ -27,6 +27,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.ReviewResource;
 import de.planmarshall.api.json.JsonTree;
@@ -42,9 +44,12 @@ import de.planmarshall.mock.scenario.ScenarioRegistry;
  * breaks the agreement fails here instead of on a conformance walk.
  */
 @DisplayName("FixtureConsistencyTest")
+@EnableGeneratorController
 class FixtureConsistencyTest {
 
-    private static final String AUTH = "Bearer test-token";
+    private final String runtimeToken = Generators.letterStrings(8, 16).next();
+    private final String deviceSecret = Generators.letterStrings(8, 16).next();
+    private final String auth = "Bearer " + runtimeToken;
 
     /** The suffix every onboarding summary follows when it names a role count. */
     private static final String ROLE_COUNT_SUFFIX = " roles";
@@ -279,7 +284,7 @@ class FixtureConsistencyTest {
         }
     }
 
-    private static void assertCleanupAgrees(MockRuntimeEngine engine, String path) throws IOException {
+    private void assertCleanupAgrees(MockRuntimeEngine engine, String path) throws IOException {
         var job = get(engine, path);
         var summary = JsonTree.object(job, "summary");
         assertNotNull(summary);
@@ -306,11 +311,11 @@ class FixtureConsistencyTest {
         assertEquals(JsonTree.number(summary, "freed_bytes").longValue(), bytes, "freed_bytes");
     }
 
-    private static EpicResource epic(MockRuntimeEngine engine) throws IOException {
+    private EpicResource epic(MockRuntimeEngine engine) throws IOException {
         return EpicResource.fromJson(body(engine, "/api/v1/epics/relay-hardening"));
     }
 
-    private static Map<String, Object> epicListItem(MockRuntimeEngine engine, String epicId)
+    private Map<String, Object> epicListItem(MockRuntimeEngine engine, String epicId)
             throws IOException {
         var list = JsonTree.asArray(get(engine, "/api/v1/epics").get("epics"));
         assertNotNull(list);
@@ -372,26 +377,26 @@ class FixtureConsistencyTest {
         return text.substring(0, end);
     }
 
-    private static MockRuntimeEngine engine(String scenarioName) {
+    private MockRuntimeEngine engine(String scenarioName) {
         var registry = new ScenarioRegistry();
-        return new MockRuntimeEngine(registry, registry.resolve(scenarioName), "test-token", "test-secret");
+        return new MockRuntimeEngine(registry, registry.resolve(scenarioName), runtimeToken, deviceSecret);
     }
 
-    private static Map<String, Object> get(MockRuntimeEngine engine, String path) throws IOException {
+    private Map<String, Object> get(MockRuntimeEngine engine, String path) throws IOException {
         return JsonTree.asObject(JsonTree.parse(body(engine, path)));
     }
 
-    private static String body(MockRuntimeEngine engine, String path) throws IOException {
+    private String body(MockRuntimeEngine engine, String path) throws IOException {
         return body(engine, "GET", path);
     }
 
-    private static String body(MockRuntimeEngine engine, String method, String path) throws IOException {
+    private String body(MockRuntimeEngine engine, String method, String path) throws IOException {
         return body(engine, method, path, new byte[0]);
     }
 
-    private static String body(MockRuntimeEngine engine, String method, String path, byte[] payload)
+    private String body(MockRuntimeEngine engine, String method, String path, byte[] payload)
             throws IOException {
-        var request = new MockHttpRequest(method, path, Map.of("Authorization", AUTH), payload,
+        var request = new MockHttpRequest(method, path, Map.of("Authorization", auth), payload,
                 System.nanoTime());
         var out = new ByteArrayOutputStream();
         engine.dispatch(request, new MockHttpResponse(out), false);

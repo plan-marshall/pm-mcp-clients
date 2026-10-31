@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -36,7 +37,12 @@ import de.planmarshall.api.json.JsonTree;
 @EnableGeneratorController
 class McpEndpointTest {
 
-    private final Integer requestId = Generators.integers(1, 9999).next();
+    private Integer requestId;
+
+    @BeforeEach
+    void drawRequestId() {
+        requestId = Generators.integers(1, 9999).next();
+    }
 
     private String initializeRequest() {
         return """

@@ -329,9 +329,10 @@ class OnboardingScenarioTest {
                         "{\"key\":\"plan_defaults\",\"value\":\"ask.every-phase\",\"revision\":6}"));
                 assertEquals(200, put(client, auth,
                         "{\"key\":\"cleanup_durations\",\"value\":\"7\",\"revision\":7}"));
+                var unknownMode = "unknown-" + Generators.letterStrings(4, 8).next();
                 // An unknown documents mode is accepted but changes nothing
                 assertEquals(200, put(client, auth,
-                        "{\"key\":\"documents_mode\",\"value\":\"" + Generators.letterStrings(4, 8).next() + "\",\"revision\":8}"));
+                        "{\"key\":\"documents_mode\",\"value\":\"" + unknownMode + "\",\"revision\":8}"));
                 // An unknown consent kind changes nothing
                 assertEquals(200, put(client, auth,
                         "{\"key\":\"consent:" + Generators.letterStrings(4, 8).next()

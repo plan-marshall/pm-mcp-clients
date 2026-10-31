@@ -26,6 +26,7 @@ import java.util.TreeSet;
 
 
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -54,9 +55,16 @@ import de.planmarshall.mock.scenario.ScenarioRegistry;
 @EnableGeneratorController
 class ScenarioStateContractTest {
 
-    private final String runtimeToken = Generators.letterStrings(8, 16).next();
-    private final String deviceSecret = Generators.letterStrings(8, 16).next();
-    private final String auth = "Bearer " + runtimeToken;
+    private String runtimeToken;
+    private String deviceSecret;
+    private String auth;
+
+    @BeforeEach
+    void drawCredentials() {
+        runtimeToken = Generators.letterStrings(8, 16).next();
+        deviceSecret = Generators.letterStrings(8, 16).next();
+        auth = "Bearer " + runtimeToken;
+    }
 
     /**
      * The resources of the {@code control.*} states, which the engine serves from its control

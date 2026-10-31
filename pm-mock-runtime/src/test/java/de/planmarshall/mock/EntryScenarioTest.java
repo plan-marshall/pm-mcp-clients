@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -52,8 +53,14 @@ import de.planmarshall.api.json.JsonTree;
 @EnableGeneratorController
 class EntryScenarioTest {
 
-    private final String deviceSecret = Generators.letterStrings(8, 16).next();
-    private final String runtimeToken = Generators.letterStrings(8, 16).next();
+    private String deviceSecret;
+    private String runtimeToken;
+
+    @BeforeEach
+    void generateCredentials() {
+        deviceSecret = Generators.letterStrings(8, 16).next();
+        runtimeToken = Generators.letterStrings(8, 16).next();
+    }
 
     @Test
     @DisplayName("loads the entry scenario and registers it among the standard scenarios")

@@ -67,7 +67,7 @@ class MockHttpServerTest {
             assertTrue(res2.body().contains("internal_error"));
 
             // 3. GET /unknown -> 404
-            var unknownUri = URI.create("http://127.0.0.1:" + server.port() + "/" + payload);
+            var unknownUri = URI.create("http://127.0.0.1:" + server.port() + "/unknown-" + payload);
             var req3 = HttpRequest.newBuilder(unknownUri).GET().build();
             var res3 = client.send(req3, HttpResponse.BodyHandlers.ofString());
             assertEquals(404, res3.statusCode());

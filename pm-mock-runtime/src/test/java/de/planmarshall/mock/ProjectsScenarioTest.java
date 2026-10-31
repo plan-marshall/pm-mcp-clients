@@ -132,7 +132,7 @@ class ProjectsScenarioTest {
             var abandonRes = client.send(HttpRequest.delete("/api/v1/entries/ent-cui/abandon").withHeader("Authorization", auth));
             assertEquals(200, abandonRes.status());
 
-            // 4. Verify only new-service remains
+            // 4. Verify only the added checkout remains
             var expRes2 = client.send(HttpRequest.get("/api/v1/projects").withHeader("Authorization", auth));
             var explorer2 = ProjectExplorer.fromJson(expRes2.bodyText());
             assertEquals(1, explorer2.beingAdded().size());

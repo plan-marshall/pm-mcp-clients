@@ -70,13 +70,12 @@ class MockHttpRequestTest {
         var headerName = Generators.letterStrings(4, 10).next();
         var headerValue = Generators.letterStrings(4, 10).next();
         var bytes = new byte[]{1, 2, 3};
-        var otherBytes = new byte[]{1, 2, 4};
         var headers = Map.of(headerName, headerValue);
         var receivedNanos = Generators.integers(1, 1_000_000).next().longValue();
         var req1 = new MockHttpRequest("GET", "/test", headers, bytes, receivedNanos);
-        var req2 = new MockHttpRequest("GET", "/test", headers, bytes, receivedNanos);
-        var req3 = new MockHttpRequest("GET", "/test", headers, otherBytes, receivedNanos);
-        var req4 = new MockHttpRequest("POST", "/test", headers, bytes, receivedNanos);
+        var req2 = new MockHttpRequest("GET", "/test", headers, bytes.clone(), receivedNanos);
+        var req3 = new MockHttpRequest("GET", "/test", headers, new byte[]{1, 2, 4}, receivedNanos);
+        var req4 = new MockHttpRequest("POST", "/test", headers, bytes.clone(), receivedNanos);
 
         assertEquals(req1, req1);
         assertEquals(req1, req2);
