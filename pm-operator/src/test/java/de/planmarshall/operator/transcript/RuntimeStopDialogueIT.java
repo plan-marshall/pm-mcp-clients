@@ -43,7 +43,7 @@ class RuntimeStopDialogueIT {
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             assertTrue(session.screenText().contains("Nothing was sent."), session.screenText());
-            assertEquals(0, session.exitCode(), session.rawOutput());
+            assertEquals(3, session.exitCode(), session.rawOutput());
             harness.assertNoAct();
         }
     }

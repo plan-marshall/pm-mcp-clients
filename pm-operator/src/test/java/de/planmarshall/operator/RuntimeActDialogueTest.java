@@ -37,6 +37,8 @@ import de.planmarshall.operator.RuntimeActDialogue.Answer;
 import de.planmarshall.operator.RuntimeActDialogue.When;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -48,6 +50,7 @@ import org.junit.jupiter.api.Test;
  * in-memory terminal, so the screen the operator reads is the assertion and no process starts.
  */
 @DisplayName("RuntimeActDialogue")
+@EnableGeneratorController
 class RuntimeActDialogueTest {
 
     private static final String ENGLISH = "en_US.UTF-8";
@@ -138,13 +141,16 @@ class RuntimeActDialogueTest {
     }
 
     @Test
-    @DisplayName("q leaves the dialogue and sends nothing")
+    @DisplayName("q leaves the dialogue with the not-finished exit code")
     void qLeavesTheDialogue() throws Exception {
         serve(200, snapshotJson(1, 0, 0, 0, 0, 1));
 
         var answer = ask("q\n", Act.STOP, null, false);
 
-        assertNull(answer.when());
+        assertAll(
+                            () -> assertNull(answer.when()),
+                            () -> assertEquals(3, answer.exitCode())
+        );
         assertTrue(out.toString().contains("Left the stop. Nothing was sent."), out.toString());
     }
 
@@ -195,13 +201,27 @@ class RuntimeActDialogueTest {
     }
 
     @Test
-    @DisplayName("a snapshot the runtime refuses still asks, without counts")
+    @DisplayName("a snapshot the runtime refuses still asks, and says the counts are unavailable")
     void refusedSnapshotStillAsks() throws Exception {
         serve(500, "");
 
         assertEquals(When.WHEN_DONE, ask("1\n", Act.RESTART, null, false).when());
 
-        assertTrue(out.toString().contains("Nothing runs."), out.toString());
+        assertTrue(out.toString().contains("Running now: not available"), out.toString());
+    }
+
+    @Test
+    @DisplayName("a live runtime that refuses its socket is not answering, not absent")
+    void refusedSocketOfALiveRuntime() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+
+        var answer = ask("", Act.STOP, null, false);
+
+        assertAll(
+                            () -> assertNull(answer.when()),
+                            () -> assertEquals(0, answer.exitCode()),
+                            () -> assertTrue(out.toString().contains("The runtime is not answering."), out.toString())
+        );
     }
 
     @Test
@@ -260,13 +280,13 @@ class RuntimeActDialogueTest {
     }
 
     @Test
-    @DisplayName("an unreadable snapshot body still asks")
+    @DisplayName("an unreadable snapshot body still asks, and says the counts are unavailable")
     void unreadableSnapshotStillAsks() throws Exception {
         serve(200, "not json");
 
         assertEquals(When.WHEN_DONE, ask("1\n", Act.STOP, null, false).when());
 
-        assertTrue(out.toString().contains("Nothing runs."), out.toString());
+        assertTrue(out.toString().contains("Running now: not available"), out.toString());
     }
 
     @Test

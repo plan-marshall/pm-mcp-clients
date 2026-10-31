@@ -70,6 +70,26 @@ public final class RuntimeCommand implements Callable<Integer> {
     }
 
     /**
+     * @param spec     the command specification of the verb
+     * @param context  the operator context
+     * @param drain    whether {@code --drain} was given
+     * @param whenDone whether {@code --when-done} was given
+     * @param now      whether {@code --now} was given
+     * @return {@code 0} when the options agree, {@code 2} when they contradict each other
+     */
+    static int rejectContradiction(CommandSpec spec, OperatorContext context, boolean drain,
+                        boolean whenDone, boolean now) {
+        if (!now || !(drain || whenDone)) {
+            return 0;
+        }
+        var err = spec.commandLine().getErr();
+        err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                            "operator.system.timing_conflict", Map.of()));
+        err.flush();
+        return 2;
+    }
+
+    /**
      * @param now whether the act runs now
      * @return the body that names the choice of when
      */
@@ -142,6 +162,10 @@ public final class RuntimeCommand implements Callable<Integer> {
                 if (withdraw) {
                     return withdraw(out);
                 }
+                var contradicted = rejectContradiction(spec, context, drain, whenDone, now);
+                if (contradicted != 0) {
+                    return contradicted;
+                }
 
                 var answer = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.STOP,
                                     whenOf(drain, whenDone, now), noInput, null);
@@ -161,7 +185,7 @@ public final class RuntimeCommand implements Callable<Integer> {
                 out.println(stopNow ? "runtime   stopping" : "runtime   draining");
             } catch (RuntimeUnavailableException e) {
                 out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                    "operator.system.nothing_to_stop", Map.of()));
+                                    RuntimeActDialogue.notStoppedKey(context), Map.of()));
             }
             out.flush();
             return 0;
@@ -212,6 +236,10 @@ public final class RuntimeCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
+            var contradicted = rejectContradiction(spec, context, drain, whenDone, now);
+            if (contradicted != 0) {
+                return contradicted;
+            }
             var answer = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.RESTART,
                                 whenOf(drain, whenDone, now), noInput, null);
             if (answer.when() == null) {
@@ -323,6 +351,10 @@ public final class RuntimeCommand implements Callable<Integer> {
         }
 
         private int executeUpgrade(PrintWriter out) throws IOException {
+            var contradicted = rejectContradiction(spec, context, drain, whenDone, now);
+            if (contradicted != 0) {
+                return contradicted;
+            }
             var answer = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.UPGRADE,
                                 whenOf(drain, whenDone, now), noInput, version);
             if (answer.when() == null) {

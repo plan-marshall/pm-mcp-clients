@@ -697,12 +697,26 @@ class PmOperatorTest {
         @Test
         @DisplayName("stop --no-input without an answer stops at the choice with exit 3")
         void stopNoInputStopsAtTheChoice() throws Exception {
-            runtime((request, response) -> response.send(404, null, ""));
+            var server = runtime((request, response) -> response.send(404, null, ""));
 
             assertEquals(StartDialogue.EXIT_MISSING_INPUT, run("runtime", "stop", "--no-input"));
             assertTrue(out.toString().contains(
                                                     "runtime stop needs the choice of when; answer it with --when-done or --now."),
                                 out.toString());
+            assertTrue(server.requests().stream()
+                                .noneMatch(recorded -> "/api/v1/runtime/stop".equals(recorded.target())),
+                                "no stop request before the missing-input guidance");
+        }
+
+        @Test
+        @DisplayName("stop refuses --now together with --when-done")
+        void stopRejectsAContradiction() throws Exception {
+            var server = runtime((request, response) -> response.send(202, null, ""));
+
+            assertEquals(2, run("runtime", "stop", "--now", "--when-done"));
+            assertTrue(err.toString().contains("--now cannot be combined with --drain or --when-done."),
+                                err.toString());
+            assertTrue(server.requests().isEmpty(), "no request before the usage error");
         }
 
         @Test

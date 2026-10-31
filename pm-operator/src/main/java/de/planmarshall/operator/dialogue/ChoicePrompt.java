@@ -46,6 +46,15 @@ import de.planmarshall.operator.StartPrompt;
  */
 public final class ChoicePrompt {
 
+    /** The operator kept the current state: the dialogue left without sending and without a line. */
+    public static final class KeepException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        public KeepException() {
+            super();
+        }
+    }
+
     private static final String PRESELECT_ARROW = " \u2190";
     private static final int MAX_ROW = 80;
     private static final int MIN_CONSEQUENCE_COLUMN = 20;
@@ -239,7 +248,7 @@ public final class ChoicePrompt {
             renderFrame();
             var line = nextLine();
             if (isKeep(line)) {
-                throw new StartPrompt.StartLeftException();
+                throw new KeepException();
             }
             if (isQuit(line)) {
                 throw left();

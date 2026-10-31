@@ -18,6 +18,7 @@ import org.jspecify.annotations.Nullable;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.runtime.RuntimeRecord;
 import de.planmarshall.api.runtime.RuntimeUnavailableException;
 import de.planmarshall.api.system.SystemSnapshot;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
@@ -81,6 +82,7 @@ final class RuntimeActDialogue {
     private static final String DRAIN = "drain";
     private static final String NOW = "now";
     private static final String RUNNING = "running";
+    private static final String DOT = " \u00b7 ";
 
     private RuntimeActDialogue() {
     }
@@ -104,6 +106,10 @@ final class RuntimeActDialogue {
         }
         try {
             return new Answer(ask(context, out, act, version, noInput), 0);
+        } catch (ChoicePrompt.KeepException _) {
+            return new Answer(null, 0);
+        } catch (StartPrompt.StartLeftException _) {
+            return new Answer(null, StartDialogue.EXIT_MISSING_INPUT);
         } catch (StartPrompt.MissingInputException _) {
             var locale = context.clientEnvironment().locale();
             out.println(MessageCatalogue.format(locale, "operator.system.stopped_no_input",
@@ -116,12 +122,16 @@ final class RuntimeActDialogue {
     private static @Nullable When ask(OperatorContext context, PrintWriter out, Act act,
                         @Nullable String version, boolean noInput) throws IOException {
         var locale = context.clientEnvironment().locale();
+        if (noInput && act != Act.STOP) {
+            // Restart and upgrade read nothing before the choice, so the script stops at once.
+            throw new StartPrompt.MissingInputException("runtime " + act.value(), "when", null);
+        }
         SystemSnapshot snapshot;
         try {
             snapshot = snapshot(context);
         } catch (RuntimeUnavailableException _) {
             if (act == Act.STOP) {
-                out.println(MessageCatalogue.format(locale, "operator.system.nothing_to_stop", Map.of()));
+                out.println(MessageCatalogue.format(locale, notStoppedKey(context), Map.of()));
                 out.flush();
                 return null;
             }
@@ -141,10 +151,25 @@ final class RuntimeActDialogue {
                             MessageCatalogue.format(locale, "system.confirm.drain_explain", Map.of()), null, true);
         choice.addChoice(NOW, when(locale, act, NOW),
                             MessageCatalogue.format(locale, "system.confirm.now_explain", Map.of()), null, false);
+        return NOW.equals(choice.ask().key()) ? When.NOW : When.WHEN_DONE;
+    }
+
+    /**
+     * A runtime process that is alive but refuses its socket is not answering, not absent: the two
+     * cases read differently to the operator and the design names the first
+     * ({@code operator.system.not_answering}).
+     *
+     * @param context the operator context
+     * @return the catalogue key of the line a refused stop prints
+     */
+    static String notStoppedKey(OperatorContext context) {
         try {
-            return NOW.equals(choice.ask().key()) ? When.NOW : When.WHEN_DONE;
-        } catch (StartPrompt.StartLeftException _) {
-            return null;
+            var alive = RuntimeRecord.read(context.paths().runtimeRecord())
+                                .filter(RuntimeRecord::processAlive).isPresent();
+            return alive ? "operator.system.not_answering" : "operator.system.nothing_to_stop";
+        } catch (IOException _) {
+            // A record this client cannot read says nothing about a live process.
+            return "operator.system.nothing_to_stop";
         }
     }
 
@@ -183,7 +208,15 @@ final class RuntimeActDialogue {
     }
 
     private static String running(String locale, @Nullable SystemSnapshot snapshot) {
-        var what = snapshot != null ? what(locale, snapshot) : "";
+        if (snapshot == null) {
+            return MessageCatalogue.format(locale, "system.confirm.running",
+                                Map.of("what", MessageCatalogue.format(locale, "system.figure.unavailable", Map.of())));
+        }
+        var what = what(locale, snapshot).strip();
+        // The counts are one ICU message, so a zero group leaves its separator behind.
+        while (what.startsWith(DOT)) {
+            what = what.substring(DOT.length()).strip();
+        }
         return what.isBlank()
                             ? MessageCatalogue.format(locale, "system.confirm.nothing_runs", Map.of())
                             : MessageCatalogue.format(locale, "system.confirm.running", Map.of("what", what));
@@ -208,13 +241,15 @@ final class RuntimeActDialogue {
     }
 
     private static int jobs(Map<String, Object> jobs) {
-        return slotsUsed(jobs, "build") + slotsUsed(jobs, "test");
-    }
-
-    private static int slotsUsed(Map<String, Object> jobs, String kind) {
-        var slots = JsonTree.asObject(jobs.get(kind));
-        var used = slots != null ? JsonTree.integer(slots, "slots_used") : null;
-        return used != null ? used : 0;
+        var used = 0;
+        for (var entry : jobs.entrySet()) {
+            var slots = JsonTree.asObject(entry.getValue());
+            var count = slots != null ? JsonTree.integer(slots, "slots_used") : null;
+            if (count != null) {
+                used += count;
+            }
+        }
+        return used;
     }
 
     private static @Nullable String noteKey(Act act) {

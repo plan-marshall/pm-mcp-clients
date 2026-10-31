@@ -454,7 +454,7 @@ class ChoicePromptTest {
         prompt.addChoice("drain", "Stop when done", null, null, true);
         prompt.addChoice("now", "Stop now", null, null, false);
 
-        assertThrows(StartPrompt.StartLeftException.class, prompt::ask);
+        assertThrows(ChoicePrompt.KeepException.class, prompt::ask);
         var output = out.toString();
         assertTrue(output.contains("k) keep it running"), output);
         assertFalse(output.contains("Nothing was sent."), output);
@@ -468,7 +468,7 @@ class ChoicePromptTest {
         prompt.addChoice("drain", "Wenn fertig", null, null, true);
         prompt.addChoice("now", "Jetzt", null, null, false);
 
-        assertThrows(StartPrompt.StartLeftException.class, prompt::ask);
+        assertThrows(ChoicePrompt.KeepException.class, prompt::ask);
         var output = out.toString();
         assertTrue(output.contains("l) lass sie laufen"), output);
         assertTrue(output.contains("1-2, v, l"), output);

@@ -155,7 +155,7 @@ pm [stopping] ›
 ----
 
 * `Enter` takes `1`, the drain, the preselection of link:../shared/system.adoc#stop[System, Stopping]; `k` (German `l`) sends nothing.
-* *In the console* the prompt returns at once with the badge `stopping`; the progress is a quiet line above the prompt each time what is left changes, and the line of the stop itself when it stops. *As a shell command* the verb waits, printing the same lines, bounded as `drain` waits (the bound defined with the drain timeout), and exits `0` when the runtime stopped, or `0` with `The runtime is still draining (PID 48211).` when the bound passed first.
+* *In the console* the prompt returns at once with the badge `stopping`; the progress is a quiet line above the prompt each time what is left changes, and the line of the stop itself when it stops. *As a shell command* the verb returns when the runtime accepted the stop, exits `0`, and leaves the drain running in the runtime.
 * *Nothing runs*: the line says `Nothing runs.` and both choices are offered, because neither ends anything; `k` keeps it running.
 
 [source,text]
@@ -337,4 +337,8 @@ The texts of the view and of the acts are those of link:../shared/system-texts.a
 |`operator.system.stopped_no_input`
 |runtime {act} needs the choice of when; answer it with --when-done or --now.
 |runtime {act} braucht die Wahl des Zeitpunkts; antworte mit --when-done oder --now.
+
+|`operator.system.timing_conflict`
+|--now cannot be combined with --drain or --when-done.
+|--now ist mit --drain oder --when-done nicht kombinierbar.
 |===
