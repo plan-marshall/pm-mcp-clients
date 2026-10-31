@@ -12,4 +12,7 @@
  * governing option selection, consequences, help explanations, and safe exit handling across
  * operator workflows (CLI-UC-P-02).
  */
+@NullMarked
 package de.planmarshall.operator.dialogue;
+
+import org.jspecify.annotations.NullMarked;

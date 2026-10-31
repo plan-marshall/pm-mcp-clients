@@ -10,4 +10,7 @@
 /**
  * Minimal HTTP/1.1 and Server-Sent Events server engine for mock runtime listeners.
  */
+@NullMarked
 package de.planmarshall.mock.http;
+
+import org.jspecify.annotations.NullMarked;

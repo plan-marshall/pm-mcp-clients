@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest';
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
 import { advisory, installAdvisoryTitles } from './advisoryTitle';
@@ -124,12 +124,10 @@ describe('the advisory title layer', () => {
     expect(button.getAttribute('title')).toBe('Save the plan');
 
     button.setAttribute('data-advisory', 'Save the draft');
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(button.getAttribute('title')).toBe('Save the draft');
+    await vi.waitFor(() => expect(button.getAttribute('title')).toBe('Save the draft'));
 
     button.removeAttribute('data-advisory');
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(button.hasAttribute('title')).toBe(false);
+    await vi.waitFor(() => expect(button.hasAttribute('title')).toBe(false));
   });
 
   it('applies the rule to buttons rendered after it was installed', async () => {
@@ -146,9 +144,10 @@ describe('the advisory title layer', () => {
     advised.setAttribute('data-advisory', 'Delete the plan and its worktree');
     root.appendChild(advised);
 
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await vi.waitFor(() =>
+      expect(advised.getAttribute('title')).toBe('Delete the plan and its worktree'),
+    );
     expect(labelled.hasAttribute('title')).toBe(false);
-    expect(advised.getAttribute('title')).toBe('Delete the plan and its worktree');
   });
 });
 

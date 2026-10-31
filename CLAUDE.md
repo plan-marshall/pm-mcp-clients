@@ -73,11 +73,37 @@ them with a fixture project below `src/guard-controls`:
 - No `System.out`/`System.err` except where a CLI writes its own output.
 - JUnit 5 only (`@DisplayName`, `@Nested`, AAA, `@ParameterizedTest` for 3+ variants). Forbidden: Mockito,
   PowerMock, Hamcrest.
+- Input test data comes from `Generators` (`de.cuioss.test:cui-test-generator`), and every test class that takes
+  input data carries `@EnableGeneratorController`; a hand-written literal is not input. The expected value of a
+  contract — catalogue text, wire name, golden capture — stays literal, because it is the expectation, not input.
+- Logging uses `CuiLogger`; INFO and above logs through `LogRecord` constants of one DSL-style `LogMessages` class per
+  module that logs, never one holder for the repository. `LogAsserts` covers every `LogRecord`.
+- `@NullMarked` (`org.jspecify.annotations`) sits on every package of a module that declares JSpecify.
 - Behaviour of the packaged binaries belongs in `*IT` tests (run with `-Pintegration-tests`, natively with
   `-Pnative`). The CLI modules run against the stub daemon of the test scope of `pm-api`; the binaries against the
   real `pm-mcpd` are covered by `pm-e2e` in `plan-marshall/plan-marshall-mcp`.
 - `pm-exec`'s Linux-only kernel class `LinuxCalls` is excluded from the JaCoCo report and check on macOS only
   (profile `macos-coverage` in its POM); on Linux it counts in full.
+
+## Web Standards
+
+The web modules (`pm-web-app`, `pm-web-e2e`) follow the `pm-dev-frontend` and `pm-dev-frontend-cui` standards. The
+hard rules:
+
+- ES modules only: `"type": "module"` and `import`/`export`, no CommonJS in new code.
+- A flat ESLint config (`eslint.config.js`) only — no `.eslintrc.*` files.
+- No `innerHTML`, `outerHTML`, `insertAdjacentHTML` or `{@html}` with untrusted or model-written text. Render text
+  through a text-treating sink (a text node, `{expression}` or `textContent`). A sanitizer is a dependency and needs
+  the operator's decision; there is none today.
+- No arbitrary timer wait in a test: no `waitForTimeout` and no `setTimeout` that only passes time. Wait on the
+  condition the code produces — an awaited event, a `waitFor` or fake timers.
+- The npm scripts `lint`, `format`, `test`, `test:ci-strict` and `quality` stay in every web `package.json`. `quality`
+  is the module's local full check (`lint` plus `format:check` in `pm-web-e2e`, `lint` plus `test:ci` in `pm-web-app`);
+  the Maven build runs `lint` and the tests that need no browser (`test:ci` in `pm-web-app`, `test:ports-guard` in
+  `pm-web-e2e`).
+- The Svelte and SvelteKit layout under `src/` is this project's own structure and stands in for the standard project
+  types of `pm-dev-frontend-cui:cui-javascript-project` (no `src/main/resources/static/js/`, `src/main/webapp/js/` or
+  `src/main/js/`).
 
 ## Publishing Only to the Organisation's Registry
 

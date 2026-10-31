@@ -33,7 +33,15 @@ export const TEXT_GUARD_RULES = Object.freeze([
  */
 const FOREIGN_INTERFACE_WORDS = Object.freeze({
   de: Object.freeze(['running', 'done', 'failed', 'paused', 'busy', 'idle', 'ago']),
-  en: Object.freeze(['läuft', 'fertig', 'fehlgeschlagen', 'pausiert', 'beschäftigt', 'untätig', 'vor']),
+  en: Object.freeze([
+    'läuft',
+    'fertig',
+    'fehlgeschlagen',
+    'pausiert',
+    'beschäftigt',
+    'untätig',
+    'vor',
+  ]),
 });
 
 /**
@@ -259,8 +267,10 @@ export async function collectTextGuardViolations(page, options) {
     page.evaluate(() => {
       window.__textGuardObserver?.disconnect();
       window.__textGuardChanges = 0;
+      window.__textGuardLastChange = performance.now();
       window.__textGuardObserver = new MutationObserver((records) => {
         window.__textGuardChanges += records.length;
+        window.__textGuardLastChange = performance.now();
       });
       window.__textGuardObserver.observe(document.body, {
         subtree: true,
@@ -269,11 +279,41 @@ export async function collectTextGuardViolations(page, options) {
       });
     });
 
+  /**
+   * Waits until the document has been mutation-free for one settle interval.
+   *
+   * A quiet window is the condition the read samples; waiting for it rather than for a fixed
+   * duration keeps the loop from reading a page that is mid-update. A page that keeps changing
+   * never reaches the window: the wait is bounded, so the loop still ends in its own error
+   * instead of hanging on the frame clock.
+   *
+   * @returns {Promise<boolean>} whether the document reached a quiet window
+   */
+  const awaitQuietWindow = () =>
+    page
+      .waitForFunction(
+        ({ interval }) => {
+          if (!window.__textGuardObserver) {
+            // A navigation replaced the document and with it the observer; the caller re-attaches it.
+            return true;
+          }
+          // performance.now() is monotonic: a system clock step cannot shorten or lengthen the window.
+          return (
+            performance.now() - (window.__textGuardLastChange ?? performance.now()) >= interval
+          );
+        },
+        { interval: SETTLE_INTERVAL_MS },
+        // A timer, not animation frames: a hidden window stops producing frames.
+        { polling: SETTLE_INTERVAL_MS / 10, timeout: SETTLE_INTERVAL_MS * 5 },
+      )
+      .then(() => true)
+      .catch(() => false);
+
   await startObserving();
   let previous = await read();
   let quietWindows = 0;
   for (let attempt = 0; attempt < SETTLE_ATTEMPTS; attempt += 1) {
-    await page.waitForTimeout(SETTLE_INTERVAL_MS);
+    const reachedQuietWindow = await awaitQuietWindow();
     const { seen, observing } = await countChanges();
     const current = await read();
     const unchanged = JSON.stringify(current) === JSON.stringify(previous);
@@ -284,7 +324,7 @@ export async function collectTextGuardViolations(page, options) {
       quietWindows = 0;
       continue;
     }
-    if (seen > 0 || !unchanged) {
+    if (seen > 0 || !unchanged || !reachedQuietWindow) {
       quietWindows = 0;
       continue;
     }

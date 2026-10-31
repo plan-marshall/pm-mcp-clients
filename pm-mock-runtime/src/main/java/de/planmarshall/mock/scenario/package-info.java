@@ -10,4 +10,7 @@
 /**
  * Data model, loader and validation for mock runtime scenarios.
  */
+@NullMarked
 package de.planmarshall.mock.scenario;
+
+import org.jspecify.annotations.NullMarked;

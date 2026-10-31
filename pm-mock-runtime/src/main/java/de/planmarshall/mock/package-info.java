@@ -10,4 +10,7 @@
 /**
  * Mock runtime root API: lifecycle, configuration, and testing facade.
  */
+@NullMarked
 package de.planmarshall.mock;
+
+import org.jspecify.annotations.NullMarked;

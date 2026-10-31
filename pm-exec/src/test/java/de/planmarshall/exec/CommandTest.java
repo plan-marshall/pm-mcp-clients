@@ -24,8 +24,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 @DisplayName("Command: the pm-exec argument vector")
+@EnableGeneratorController
 class CommandTest {
+
+    private static Path absolutePath(String parent, String namePrefix) {
+        return Path.of(parent, namePrefix + Generators.letterStrings(3, 8).next());
+    }
 
     @Nested
     @DisplayName("accepts")
@@ -40,15 +48,18 @@ class CommandTest {
         @Test
         @DisplayName("a launch with write, read and deny-read sets")
         void fullLaunch() throws Exception {
-            var command = Command.parse(List.of("--write", "/work/p1", "--read", "/base/run/jobs/l1",
-                    "--write", "/tmp/", "--deny-read", "/home/u/.plan-marshall-mcp", "--", "/usr/bin/git",
+            var workPath = absolutePath("/work", "p");
+            var readPath = absolutePath("/base/run/jobs", "l");
+            var deniedPath = absolutePath("/home/u", "base");
+            var command = Command.parse(List.of("--write", workPath.toString(), "--read", readPath.toString(),
+                    "--write", "/tmp/", "--deny-read", deniedPath.toString(), "--", "/usr/bin/git",
                     "status", "--", "-x"));
 
             var launch = assertInstanceOf(Command.Launch.class, command);
-            assertEquals(List.of(Path.of("/work/p1"), Path.of("/tmp")), launch.writePaths());
-            assertEquals(List.of(Path.of("/base/run/jobs/l1")), launch.readPaths());
-            assertEquals(List.of(Path.of("/home/u/.plan-marshall-mcp")), launch.deniedPaths());
-            assertEquals(Optional.of(Path.of("/home/u/.plan-marshall-mcp")), launch.deniedBase());
+            assertEquals(List.of(workPath, Path.of("/tmp")), launch.writePaths());
+            assertEquals(List.of(readPath), launch.readPaths());
+            assertEquals(List.of(deniedPath), launch.deniedPaths());
+            assertEquals(Optional.of(deniedPath), launch.deniedBase());
             assertEquals(List.of("/usr/bin/git", "status", "--", "-x"), launch.argv());
             assertEquals("/usr/bin/git", launch.program());
         }
@@ -56,15 +67,17 @@ class CommandTest {
         @Test
         @DisplayName("several --deny-read paths, in the order given")
         void severalDeniedPaths() throws Exception {
+            var base = absolutePath("/home/u", "base");
+            var bus = absolutePath("/run/user", "bus");
+            var docker = absolutePath("/var/run", "socket");
             var launch = assertInstanceOf(Command.Launch.class, Command.parse(List.of(
-                    "--deny-read", "/home/u/.plan-marshall-mcp",
-                    "--deny-read", "/run/user/1000/bus",
-                    "--deny-read", "/var/run/docker.sock",
+                    "--deny-read", base.toString(),
+                    "--deny-read", bus.toString(),
+                    "--deny-read", docker.toString(),
                     "--", "/bin/true")));
 
-            assertEquals(List.of(Path.of("/home/u/.plan-marshall-mcp"), Path.of("/run/user/1000/bus"),
-                    Path.of("/var/run/docker.sock")), launch.deniedPaths());
-            assertEquals(Optional.of(Path.of("/home/u/.plan-marshall-mcp")), launch.deniedBase());
+            assertEquals(List.of(base, bus, docker), launch.deniedPaths());
+            assertEquals(Optional.of(base), launch.deniedBase());
         }
 
         @Test
