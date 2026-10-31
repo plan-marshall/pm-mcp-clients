@@ -346,6 +346,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_ASKING = "asking";
     private static final String KEY_POSTURE = "posture";
     private static final String KEY_DOCUMENTS_MODE = "documents_mode";
+    private static final String KEY_LANGUAGE_INTERFACE = "language_interface";
+    private static final String KEY_LANGUAGE_MODEL = "language_model";
+    private static final String LANGUAGE_CODE_GERMAN = "de";
+    private static final String LANGUAGE_CODE_ENGLISH = "en";
     private static final String KEY_CLEANUP_DURATIONS = "cleanup_durations";
     private static final String KEY_PLAN_DEFAULTS = "plan_defaults";
     private static final String KEY_PLANS_AFTER_DAYS = "plans_after_days";
@@ -632,8 +636,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private int machineSettingsRevision = 1;
     private String machineDocumentsMode = "ask";
     /** The interface and model language the machine recorded (UC-ONB-3); English until recorded. */
-    private String machineLanguageInterface = "en";
-    private String machineLanguageModel = "en";
+    private String machineLanguageInterface = LANGUAGE_CODE_ENGLISH;
+    private String machineLanguageModel = LANGUAGE_CODE_ENGLISH;
     private Map<String, Object> machinePlanDefaults = new LinkedHashMap<>();
     private Map<String, Object> machineCleanupDurations = new LinkedHashMap<>();
     private final List<Map<String, Object>> machineRememberedConsents = new ArrayList<>();
@@ -6124,8 +6128,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (onboardingLock) {
             machineSettingsRevision = 4;
             machineDocumentsMode = DocumentsMode.ASK.wireValue();
-            machineLanguageInterface = "en";
-            machineLanguageModel = "en";
+            machineLanguageInterface = LANGUAGE_CODE_ENGLISH;
+            machineLanguageModel = LANGUAGE_CODE_ENGLISH;
             onboardingAuto = false;
             machinePlanDefaults = new LinkedHashMap<>();
             machinePlanDefaults.put(KEY_LANDING, PlanDefaults.LANDING_PULL_REQUEST);
@@ -6385,15 +6389,23 @@ public final class MockRuntimeEngine implements AutoCloseable {
      *
      * @param body the step's request body
      */
-    private void recordInterfaceLanguage(Map<String, Object> body) throws IOException {
-        var chosenInterface = JsonTree.string(body, "language_interface");
-        if ("de".equals(chosenInterface) || "en".equals(chosenInterface)) {
+    private void recordInterfaceLanguage(Map<String, Object> body) {
+        var chosenInterface = JsonTree.string(body, KEY_LANGUAGE_INTERFACE);
+        if (isSupportedLanguage(chosenInterface)) {
             machineLanguageInterface = chosenInterface;
         }
-        var chosenModel = JsonTree.string(body, "language_model");
-        if ("de".equals(chosenModel) || "en".equals(chosenModel)) {
+        var chosenModel = JsonTree.string(body, KEY_LANGUAGE_MODEL);
+        if (isSupportedLanguage(chosenModel)) {
             machineLanguageModel = chosenModel;
         }
+    }
+
+    /**
+     * @param code a language code
+     * @return {@code true} for a code the machine can record
+     */
+    private static boolean isSupportedLanguage(@Nullable String code) {
+        return LANGUAGE_CODE_GERMAN.equals(code) || LANGUAGE_CODE_ENGLISH.equals(code);
     }
 
     private static Map.Entry<String, LinkDefinition> chooseLink(StateDefinition state, @Nullable String linkName) {
@@ -6445,8 +6457,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     aspectSummary(OnboardingAspect.PROVIDERS, "GitHub (gh); SonarCloud not available", "github"),
                     aspectSummary(OnboardingAspect.PLANS, "Pull Request \u00b7 Test first \u00b7 key points",
                             String.valueOf(machinePlanDefaults.get(KEY_LANDING)))));
-            body.put("language_interface", machineLanguageInterface);
-            body.put("language_model", machineLanguageModel);
+            body.put(KEY_LANGUAGE_INTERFACE, machineLanguageInterface);
+            body.put(KEY_LANGUAGE_MODEL, machineLanguageModel);
             body.put(KEY_DOCUMENTS_MODE, machineDocumentsMode);
             body.put(KEY_CLEANUP_DURATIONS, machineCleanupDurations);
             body.put(KEY_PLAN_DEFAULTS, machinePlanDefaults);
@@ -6466,7 +6478,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @return the language's own name
      */
     private static String languageName(String code) {
-        return "de".equals(code) ? "Deutsch" : "English";
+        return LANGUAGE_CODE_GERMAN.equals(code) ? "Deutsch" : "English";
     }
 
     private static Map<String, Object> aspectSummary(OnboardingAspect aspect, String summary, String current) {
@@ -6497,9 +6509,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void applyMachineSetting(String key, @Nullable String value) {
         if (KEY_DOCUMENTS_MODE.equals(key) && value != null) {
             applyDocumentsMode(value);
-        } else if ("language_interface".equals(key) && ("de".equals(value) || "en".equals(value))) {
+        } else if (KEY_LANGUAGE_INTERFACE.equals(key) && isSupportedLanguage(value)) {
             machineLanguageInterface = value;
-        } else if ("language_model".equals(key) && ("de".equals(value) || "en".equals(value))) {
+        } else if (KEY_LANGUAGE_MODEL.equals(key) && isSupportedLanguage(value)) {
             machineLanguageModel = value;
         } else if (KEY_CLEANUP_DURATIONS.equals(key) && value != null) {
             applyCleanupDurations(value);

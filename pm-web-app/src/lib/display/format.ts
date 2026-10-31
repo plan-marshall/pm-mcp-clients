@@ -115,21 +115,30 @@ export function formatTime(
   if (style === 'clock') {
     return secondText(date, locale);
   }
-
-  const dayDistance = Math.round(
-    (startOfDay(now).getTime() - startOfDay(date).getTime()) / 86_400_000,
-  );
-
   if (style === 'short') {
-    const german = isGerman(locale);
-    const time = clockText(date, locale);
-    if (dayDistance === 0) return `${german ? 'heute' : 'today'} ${time}`;
-    if (dayDistance === 1) return `${german ? 'gestern' : 'yesterday'} ${time}`;
-    if (dayDistance > 1 && dayDistance < 7) return `${weekdayText(date, locale)} ${time}`;
-    return `${dayMonthText(date, locale)}, ${time}`;
+    return shortText(date, locale, dayDistance(now, date));
   }
-
   return ageText(Math.max(0, now.getTime() - date.getTime()), locale);
+}
+
+/**
+ * @param now the instant "now" means @param date the moment @returns the calendar days between
+ */
+function dayDistance(now: Date, date: Date): number {
+  return Math.round((startOfDay(now).getTime() - startOfDay(date).getTime()) / 86_400_000);
+}
+
+/**
+ * @param date the moment @param locale the interface locale @param distance the calendar days
+ *   between today and the moment @returns the moment to the minute, `today 14:02`
+ */
+function shortText(date: Date, locale: string, distance: number): string {
+  const german = isGerman(locale);
+  const time = clockText(date, locale);
+  if (distance === 0) return `${german ? 'heute' : 'today'} ${time}`;
+  if (distance === 1) return `${german ? 'gestern' : 'yesterday'} ${time}`;
+  if (distance > 1 && distance < 7) return `${weekdayText(date, locale)} ${time}`;
+  return `${dayMonthText(date, locale)}, ${time}`;
 }
 
 /**
@@ -151,11 +160,9 @@ export function formatDay(
 ): string {
   const date = parseInstant(iso);
   if (!date) return '';
-  const dayDistance = Math.round(
-    (startOfDay(now).getTime() - startOfDay(date).getTime()) / 86_400_000,
-  );
-  if (dayDistance === 0) return isGerman(locale) ? 'heute' : 'today';
-  if (dayDistance === 1) return isGerman(locale) ? 'gestern' : 'yesterday';
+  const distance = dayDistance(now, date);
+  if (distance === 0) return isGerman(locale) ? 'heute' : 'today';
+  if (distance === 1) return isGerman(locale) ? 'gestern' : 'yesterday';
   return dayMonthText(date, locale);
 }
 
