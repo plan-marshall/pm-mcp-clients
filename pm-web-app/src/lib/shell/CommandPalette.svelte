@@ -57,6 +57,9 @@
   /** The text of the field; the store holds the text the matches belong to. */
   let text = $state('');
 
+  /** The one field, so Tab can return the focus to it. */
+  let field = $state<HTMLInputElement | undefined>(undefined);
+
   /** The row the keyboard acts on, anchored to its kind and id, never to its position. */
   let selectedKey = $state<string | null>(null);
 
@@ -115,7 +118,12 @@
   );
 
   /** Every row the keyboard walks: the acts first, then the matches in the runtime's order. */
-  const rows = $derived<Row[]>([...acts, ...matches.map((match) => ({ key: matchKey(match), kind: match.kind, match }) as MatchRow)]);
+  const rows = $derived<Row[]>([
+    ...acts,
+    ...matches.map(
+      (match): MatchRow => ({ key: matchKey(match), kind: match.kind, match }),
+    ),
+  ]);
 
   /** The matches grouped by kind in the order served; a run of one kind may be ended. */
   const groups = $derived(groupFindMatches(matches));
@@ -211,12 +219,21 @@
       close();
       return;
     }
+    // The panel is the only stop of the page behind it: Tab keeps the focus in its field, as every
+    // dialogue of the app keeps it in its own box.
+    if (event.key === 'Tab') {
+      event.preventDefault();
+      field?.focus();
+      return;
+    }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
       event.preventDefault();
       move(event.key === 'ArrowDown' ? 1 : -1);
       return;
     }
-    if (event.key === 'Enter') {
+    // A button in the panel (a row, Retry) keeps its own Enter: only the field's Enter opens the
+    // selection.
+    if (event.key === 'Enter' && (event.target as HTMLElement | null)?.tagName !== 'BUTTON') {
       event.preventDefault();
       if ($searchIndexStore.text.length === 0) {
         // An empty field is a hint, not a search: the name stays where it is.
@@ -256,10 +273,7 @@
     if (!element) {
       return false;
     }
-    return (
-      element.isContentEditable ||
-      ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName)
-    );
+    return element.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName);
   }
 
   onMount(() => {
@@ -272,14 +286,17 @@
         openCommandPalette();
         return;
       }
-      // `/` is the second way in, and only where nothing in a field has the focus.
+      // `/` is the second way in, and only where nothing in a field has the focus. It is taken
+      // before the views' own `/` shortcuts (a filter's focus key), so one key has one meaning.
       if (event.key === '/' && !get(commandPaletteOpen) && !isTextTarget(event.target)) {
         event.preventDefault();
+        event.stopPropagation();
         openCommandPalette();
       }
     };
-    window.addEventListener('keydown', onWindowKeydown);
-    return () => window.removeEventListener('keydown', onWindowKeydown);
+    // The capture phase is what lets the panel claim `/` ahead of a view's bubble-phase shortcut.
+    window.addEventListener('keydown', onWindowKeydown, true);
+    return () => window.removeEventListener('keydown', onWindowKeydown, true);
   });
 </script>
 
@@ -298,7 +315,7 @@
 
       <input
         class="command-palette__field"
-        type="text"
+        type="search"
         autocomplete="off"
         spellcheck="false"
         aria-autocomplete="list"
@@ -306,6 +323,7 @@
         placeholder={$t('overview.find.hint')}
         aria-label={$t('overview.find.hint')}
         data-testid="command-palette-field"
+        bind:this={field}
         bind:value={text}
         oninput={() => {
           notice = '';

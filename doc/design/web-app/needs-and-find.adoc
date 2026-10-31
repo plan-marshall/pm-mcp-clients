@@ -41,7 +41,7 @@ A remembered place still wins, as it does today (link:../shared/plan-overview.ad
 [#search]
 == The Search Button of the Top Bar
 
-The button of the top bar that is disabled today with `web.frame.search.pending` becomes the way into going to work by name (link:../shared/needs-and-find.adoc#find[Going to Work by Name]):
+The button of the top bar is the way into going to work by name (link:../shared/needs-and-find.adoc#find[Going to Work by Name]). `PLAN-46` enabled it and retired the pending key that disabled it:
 
 * *The label* is `web.frame.search` with the advisory `web.frame.search.title`; the pending key is retired by the plan that enables the button (PLAN-46).
 * *It opens a panel over the view the operator is on*, never a route: the operator is looking for a place, so the view behind the panel stays where it was and `Esc` returns to it. `Ctrl+K` (and `/` while nothing in a field has the focus) opens the same panel; `Esc` closes it; the field has the focus when the panel opens.

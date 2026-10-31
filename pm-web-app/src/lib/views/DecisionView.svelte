@@ -105,6 +105,9 @@
   $effect(() => {
     const requested = requestedDecisionId;
     if (requested && decisions.some((decision) => decision.id === requested)) {
+      // The split layout is the one that shows a decision beside the list, so opening a decision
+      // from the palette shows it there instead of leaving the view on the list alone.
+      layout.set('split');
       selectedDecisionId = requested;
       requestedDecisionId = null;
     }

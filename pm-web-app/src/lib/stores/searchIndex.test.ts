@@ -187,17 +187,16 @@ describe('searchIndex', () => {
     // Arrange
     const pending: { resolve: ((value: Response) => void) | null } = { resolve: null };
     const signals: AbortSignal[] = [];
-    globalThis.fetch = vi
-      .fn()
-      .mockImplementation((url: string, init?: RequestInit) => {
-        if (init?.signal) signals.push(init.signal);
-        if (url.endsWith('q=re')) {
-          return new Promise<Response>((resolve) => {
-            pending.resolve = resolve;
-          });
-        }
-        return Promise.resolve(jsonResponse(pageOf(RELAY_MATCHES, 'relay')));
-      }) as unknown as typeof fetch;
+    const fetchMock = vi.fn((url: string, init?: RequestInit) => {
+      if (init?.signal) signals.push(init.signal);
+      if (url.endsWith('q=re')) {
+        return new Promise<Response>((resolve) => {
+          pending.resolve = resolve;
+        });
+      }
+      return Promise.resolve(jsonResponse(pageOf(RELAY_MATCHES, 'relay')));
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     // Act
     setSearchText('re');

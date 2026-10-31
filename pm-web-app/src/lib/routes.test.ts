@@ -68,6 +68,17 @@ describe('the routes of the app', () => {
     expect(matchPath('/onboarding')).toEqual({ route: 'onboarding' });
   });
 
+  it('carries the decision a match opened in the query', () => {
+    expect(pathForRoute('decisions')).toBe('/decisions');
+    expect(pathForRoute('decisions', { decisionId: 'Q-007' })).toBe(
+      '/decisions?decision=Q-007',
+    );
+    expect(pathForRoute('decisions', { decisionId: 'Q 7/8' })).toBe(
+      '/decisions?decision=Q%207%2F8',
+    );
+    expect(matchPath('/decisions')).toEqual({ route: 'decisions' });
+  });
+
   it('resolves a plan and an epic by their id', () => {
     expect(matchPath('/plans/plan-42')).toEqual({ route: 'plan', planId: 'plan-42' });
     expect(matchPath('/epics/epic-7')).toEqual({ route: 'epic', epicId: 'epic-7' });
