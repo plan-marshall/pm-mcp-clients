@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
 import java.util.List;
-
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -73,10 +73,10 @@ class NeedsAndFindContractTest {
                 assertTrue(MessageCatalogue.hasKey("en", key), "Missing English key " + key);
                 assertTrue(MessageCatalogue.hasKey("de", key), "Missing German key " + key);
             }
-            assertEquals("credential", MessageCatalogue.format("en", "overview.needs.credential", java.util.Map.of()));
-            assertEquals("Zugangsdaten", MessageCatalogue.format("de", "overview.needs.credential", java.util.Map.of()));
-            assertEquals("cleanup due", MessageCatalogue.format("en", "overview.needs.cleanup_due", java.util.Map.of()));
-            assertEquals("Aufräumen fällig", MessageCatalogue.format("de", "overview.needs.cleanup_due", java.util.Map.of()));
+            assertEquals("credential", MessageCatalogue.format("en", "overview.needs.credential", Map.of()));
+            assertEquals("Zugangsdaten", MessageCatalogue.format("de", "overview.needs.credential", Map.of()));
+            assertEquals("cleanup due", MessageCatalogue.format("en", "overview.needs.cleanup_due", Map.of()));
+            assertEquals("Aufräumen fällig", MessageCatalogue.format("de", "overview.needs.cleanup_due", Map.of()));
         }
     }
 

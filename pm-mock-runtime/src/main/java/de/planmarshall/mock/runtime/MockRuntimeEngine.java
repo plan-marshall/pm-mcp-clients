@@ -5927,7 +5927,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return rep == null ? List.of() : fixtureObjects(rep, key);
     }
 
-    private void handleEndedPageQuery(RouteDefinition route, String query, MockHttpResponse response) throws IOException {        if (route.status() < 200 || route.status() >= 300) {
+    private void handleEndedPageQuery(RouteDefinition route, String query, MockHttpResponse response) throws IOException {
+        if (route.status() < 200 || route.status() >= 300) {
             response.json(route.status(), route.representation());
             return;
         }

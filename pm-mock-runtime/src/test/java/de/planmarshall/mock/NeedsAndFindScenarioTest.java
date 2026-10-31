@@ -12,7 +12,6 @@ package de.planmarshall.mock;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -28,6 +27,7 @@ import org.junit.jupiter.api.condition.OS;
 
 import de.planmarshall.api.MachineApiPaths;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.SseReader;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
 
@@ -145,7 +145,7 @@ class NeedsAndFindScenarioTest {
             return JsonTree.asArray(JsonTree.asObject(JsonTree.parse(new String(res.body()))).get("items")).size();
         }
 
-        private static Map<String, Object> nextNeedsEvent(de.planmarshall.api.http.SseReader sse) throws Exception {
+        private static Map<String, Object> nextNeedsEvent(SseReader sse) throws Exception {
             for (int i = 0; i < 40; i++) {
                 var event = sse.next();
                 if (event == null) {

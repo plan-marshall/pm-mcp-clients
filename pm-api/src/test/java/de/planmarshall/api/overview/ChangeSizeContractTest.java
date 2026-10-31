@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.report.PlanCompletionReport;
 
 /**
  * The size of a plan's change on the wire: carried by the plan and by the completion report, and
@@ -73,7 +74,7 @@ class ChangeSizeContractTest {
         @Test
         @DisplayName("carries a measured size as change with all four figures")
         void carriesTheSize() throws Exception {
-            var report = de.planmarshall.api.report.PlanCompletionReport.fromJson(
+            var report = PlanCompletionReport.fromJson(
                     "{\"plan_id\":\"fix-relay\",\"title\":\"Fix Relay\",\"outcome\":\"merged\","
                             + "\"started_at\":\"2026-10-16T14:00:00Z\",\"ended_at\":\"2026-10-16T16:00:00Z\","
                             + MEASURED_SIZE + "}");
@@ -89,7 +90,7 @@ class ChangeSizeContractTest {
         @Test
         @DisplayName("leaves change absent before the first capture, never as a zero size")
         void absentBeforeTheFirstCapture() throws Exception {
-            var report = de.planmarshall.api.report.PlanCompletionReport.fromJson(
+            var report = PlanCompletionReport.fromJson(
                     "{\"plan_id\":\"fix-relay\",\"title\":\"Fix Relay\",\"outcome\":\"merged\","
                             + "\"started_at\":\"2026-10-16T14:00:00Z\",\"ended_at\":\"2026-10-16T16:00:00Z\"}");
 
