@@ -29,7 +29,7 @@
     goBack,
     navigateTo,
   } from '../stores/runtime';
-  import { formatSplit, formatTokens } from '../utils/tokenFormat';
+  import { formatSplit, formatTokens, formatTime } from '../display/format';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import { refreshesEpicView } from './epicEvents';
 
@@ -306,15 +306,9 @@
     return status;
   }
 
-  /** The wall time of an event, `12:40`, in the interface's own notation. */
+  /** The wall time of an event to the second, in the interface's own notation. */
   function formatEventTime(at: string): string {
-    const date = new Date(at);
-    if (Number.isNaN(date.getTime())) return at;
-    return date.toLocaleTimeString($currentLocale === 'de' ? 'de-DE' : 'en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
+    return formatTime(at, 'clock', $currentLocale);
   }
 
   /**

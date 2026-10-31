@@ -5,7 +5,7 @@
   import Icon from '../components/Icon.svelte';
   import Spinner from '../components/Spinner.svelte';
   import { apiClient, type PlanCompletionReport } from '../api/client';
-  import { formatTokens, formatSplit } from '../utils/tokenFormat';
+  import { formatSplit, formatTokens, formatTime } from '../display/format';
   import { displayState } from '../display';
 
   interface Props {
@@ -121,7 +121,7 @@
           </a>
         {/if}
         <span class="ended-time text-muted">
-          {data.ended || data.ended_at}
+          {formatTime(data.ended || data.ended_at, 'short', $currentLocale)}
         </span>
       </div>
     </header>

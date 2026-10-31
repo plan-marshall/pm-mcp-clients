@@ -18,7 +18,7 @@
     hasUnsentInputStore,
     startUnsentInputTracking,
   } from '../stores/unsentInput';
-  import { formatSplit, formatBytes } from '../utils/tokenFormat';
+  import { formatSplit, formatBytes, formatTime } from '../display/format';
 
   /** The browser's remembered filters: the window, the grouping, and the project. */
   const SYSTEM_FILTERS_KEY = 'pm_system_filters';
@@ -696,7 +696,13 @@
           >
           <span class="cleanup-banner__text">
             {$t('system.cleanup.line_due', {
-              what: `${snapshot.cleanup.plans_count} plans · ${snapshot.cleanup.epics_count} epics · ${snapshot.cleanup.logs_count} logs`,
+              what: $t('system.cleanup.summary.what', {
+                plans: snapshot.cleanup.plans_count,
+                epics: snapshot.cleanup.epics_count,
+                logs: snapshot.cleanup.logs_count,
+                reports: 0,
+                projects: 0,
+              }),
               size: formatBytes(snapshot.cleanup.freed_bytes),
             })}
           </span>
@@ -811,7 +817,9 @@
               {$t('system.runtime.store', {
                 size: formatBytes(snapshot.runtime.machine_store_bytes || 0),
                 free: formatBytes(snapshot.runtime.disk_free_bytes || 0),
-                time: snapshot.runtime.disk_measured_at || $t('system.figure.unavailable'),
+                time: snapshot.runtime.disk_measured_at
+                  ? formatTime(snapshot.runtime.disk_measured_at, 'short', $currentLocale)
+                  : $t('system.figure.unavailable'),
               })}
             </span>
           </div>
