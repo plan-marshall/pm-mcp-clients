@@ -4,6 +4,7 @@
   import NavRail from './NavRail.svelte';
   import TopBar from './TopBar.svelte';
   import BottomBar from './BottomBar.svelte';
+  import CommandPalette from './CommandPalette.svelte';
   import { readRailCollapsed, writeRailCollapsed } from './nav';
 
   interface Props {
@@ -41,6 +42,8 @@
   </div>
 
   <BottomBar {themeChoice} {onChooseTheme} />
+
+  <CommandPalette />
 </div>
 
 <style>

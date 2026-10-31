@@ -48,6 +48,7 @@ The button of the top bar that is disabled today with `web.frame.search.pending`
 * *The panel* holds the one field and the matches (link:../shared/needs-and-find.adoc#find[Going to Work by Name]): grouped by kind in the order served, running work first, ended work marked, each match one step. It reads `GET /api/v1/find?q=` when the text pauses, never on every keystroke, and the last answer wins.
 * *An empty field* shows the hint (`overview.find.hint`), never a request; *no match* says so and keeps the text (`overview.find.empty`); *a match* is opened with the keyboard (`↑`, `↓`, `Enter`) or the pointer, and the selection is anchored to the match's kind and id, not to its row.
 * *Plain text only*: a title may come from a project or from a report, so the panel renders every title as a text node, never as markup and never as a link the app follows (link:../shared/needs-and-find.adoc#find[Going to Work by Name]).
+* *An act beside the matches*: a project among the matches offers the act that starts a plan there, in the words of the place the act opens (`start.plan.title`), so a search can end in work and not only in a view.
 * *On the phone* the panel covers the view it was opened from, with the keyboard raised once the operator taps the field; the tab title is unchanged and the rail is not reachable while it is open, as with every dialogue of the app.
 
 [#texts]

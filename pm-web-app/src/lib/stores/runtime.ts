@@ -99,6 +99,8 @@ export interface RuntimeState {
   cleanupPreviewItemId?: string | null;
   /** The cleanup item a report's detail opened the job at, highlighted once. */
   cleanupHighlightItemId?: string | null;
+  /** The decision the decisions route focuses, as a match of the command palette named it. */
+  selectedDecisionId?: string | null;
   /** The work kind a figure asked the overview to show, consumed when it opens. */
   overviewFocus?: 'plans' | 'epics' | null;
 }
@@ -755,6 +757,7 @@ export function routeParamsOf(state: RuntimeState): RouteParams {
     epicId: state.selectedEpicId ?? undefined,
     taskId: state.selectedTaskId ?? undefined,
     reportPlanId: state.selectedReportDetailPlanId ?? undefined,
+    decisionId: state.selectedDecisionId ?? undefined,
     explorerProjectId: state.selectedProjectId ?? undefined,
     // The onboarding step is part of the address while the onboarding is the shown route. The view
     // consumes the store's copy once, but the address keeps it so a reload opens the same aspect.
@@ -793,6 +796,8 @@ function applyRoute(route: AppRoute, params: RouteParams): void {
     // The reports route carries the plan whose completion report it shows, if any; a plain
     // visit to the list clears it so the query does not outlive the detail.
     ...(route === 'reports' ? { selectedReportDetailPlanId: params.reportPlanId ?? null } : {}),
+    // The decisions route focuses the decision a match opened, if one was named.
+    ...(route === 'decisions' ? { selectedDecisionId: params.decisionId ?? null } : {}),
     // The explorer focuses the project a caller named; a plain visit starts from the list.
     ...(route === 'projects' ? { selectedProjectId: params.explorerProjectId ?? null } : {}),
     // The designer carries the project it was opened for; a plain visit preselects none.
@@ -911,6 +916,11 @@ export function adoptRouteFromLocation(): AppRoute | null {
       // between two reports opens the one the address names.
       selectedReportDetailPlanId:
         match.route === 'reports' ? new URLSearchParams(window.location.search).get('plan') : null,
+      // The decisions route focuses the decision its query names, the same way.
+      selectedDecisionId:
+        match.route === 'decisions'
+          ? new URLSearchParams(window.location.search).get('decision')
+          : null,
       // The designer keeps the project it was opened for the same way.
       designerProjectId:
         match.route === 'designer'

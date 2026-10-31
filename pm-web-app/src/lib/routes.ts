@@ -47,6 +47,8 @@ export interface RouteParams {
   taskId?: string;
   /** The plan whose completion report the reports route shows. */
   reportPlanId?: string;
+  /** The decision the decisions route focuses, so a match opens the one it names. */
+  decisionId?: string;
   /** The project the explorer focuses, so a plan's project is one step away. */
   explorerProjectId?: string;
   /** The onboarding step the screen opens at, carried in `/onboarding?step=…`. */
@@ -326,6 +328,10 @@ export function pathForRoute(route: AppRoute, params: RouteParams = {}): string 
   if (route === 'onboarding' && params.onboardingStep) {
     // The step travels in the query, so a reload and the browser's back keep it.
     return `/onboarding?step=${params.onboardingStep}`;
+  }
+  if (route === 'decisions' && params.decisionId) {
+    // The decision a match opened travels in the query, as a report's plan does.
+    return `/decisions?decision=${encodeURIComponent(params.decisionId)}`;
   }
   return FIXED_ROUTE_PATHS[route] ?? null;
 }

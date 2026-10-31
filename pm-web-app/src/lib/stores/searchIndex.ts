@@ -145,3 +145,21 @@ export function resetSearchIndex(): void {
   sequence += 1;
   searchIndexStore.set({ ...EMPTY });
 }
+
+/** Whether the command palette is open over the view. */
+export const commandPaletteOpen = writable(false);
+
+/**
+ * Opens the command palette over the view the operator is on; it is never a route.
+ */
+export function openCommandPalette(): void {
+  commandPaletteOpen.set(true);
+}
+
+/**
+ * Closes the command palette and forgets the search it held.
+ */
+export function closeCommandPalette(): void {
+  resetSearchIndex();
+  commandPaletteOpen.set(false);
+}
