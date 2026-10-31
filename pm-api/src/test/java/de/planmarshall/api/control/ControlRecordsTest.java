@@ -140,9 +140,9 @@ class ControlRecordsTest {
         var revision = Generators.integers(0, 100).next();
         var value = new PlanSettingsValue("landing", "landing.pull-request", "project",
                 List.of("landing.pull-request", "landing.main", "landing.files"));
-        var record = new PlanSettingsRecord(planId, revision, List.of(value,
+        var settingsRecord = new PlanSettingsRecord(planId, revision, List.of(value,
                 new PlanSettingsValue("role.implement", "Claude Code \u00b7 sonnet-5.5", "plan", List.of())));
-        var parsedRecord = PlanSettingsRecord.fromJson(record.toJson());
+        var parsedRecord = PlanSettingsRecord.fromJson(settingsRecord.toJson());
         assertEquals(planId, parsedRecord.planId());
         assertEquals(revision, parsedRecord.revision());
         assertEquals("project", parsedRecord.value("landing").origin());
