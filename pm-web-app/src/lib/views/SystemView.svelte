@@ -12,6 +12,7 @@
     type EnrolledProject,
   } from '../api/client';
   import { runtimeStore, navigateTo } from '../stores/runtime';
+  import { displayState } from '../display';
   import {
     hasUnsentInput,
     hasUnsentInputStore,
@@ -851,11 +852,14 @@
                     <button
                       type="button"
                       class="status-tag status-tag--{st} status-tag--link"
-                      aria-label={$t('system.work.link.plans', { state: st, count })}
+                      aria-label={$t('system.work.link.plans', {
+                        state: displayState('plan', st, $t),
+                        count,
+                      })}
                       onclick={() => openOverview('plans')}
                     >
                       {count}
-                      {st.replace('_', ' ')}
+                      {displayState('plan', st, $t)}
                     </button>
                   {/if}
                 {/each}
@@ -874,11 +878,14 @@
                     <button
                       type="button"
                       class="status-tag status-tag--{st} status-tag--link"
-                      aria-label={$t('system.work.link.epics', { state: st, count })}
+                      aria-label={$t('system.work.link.epics', {
+                        state: displayState('epic', st, $t),
+                        count,
+                      })}
                       onclick={() => openOverview('epics')}
                     >
                       {count}
-                      {st.replace('_', ' ')}
+                      {displayState('epic', st, $t)}
                     </button>
                   {/if}
                 {/each}
@@ -953,7 +960,7 @@
                     <td class="mono">{w.model}</td>
                     <td>
                       <span class="worker-state worker-state--{w.state.toLowerCase()}">
-                        {w.state.toLowerCase()}
+                        {displayState('worker', w.state, $t)}
                       </span>
                     </td>
                     <td class="text-truncate">{w.current_plan_title || '—'}</td>
@@ -979,7 +986,6 @@
             <span class="metric-label">{$t('system.jobs.field.build_slots')}</span>
             <span class="metric-value">
               {$t('system.jobs.slots', {
-                kind: $t('system.jobs.field.build_slots'),
                 used: snapshot.jobs.build?.slots_used || 0,
                 total: snapshot.jobs.build?.slots_total ?? 0,
                 queued: snapshot.jobs.build?.queued || 0,
@@ -991,7 +997,6 @@
             <span class="metric-label">{$t('system.jobs.field.test_slots')}</span>
             <span class="metric-value">
               {$t('system.jobs.slots', {
-                kind: $t('system.jobs.field.test_slots'),
                 used: snapshot.jobs.test?.slots_used || 0,
                 total: snapshot.jobs.test?.slots_total ?? 0,
                 queued: snapshot.jobs.test?.queued || 0,

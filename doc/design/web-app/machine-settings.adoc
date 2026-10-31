@@ -352,9 +352,21 @@ Keys of the area `web`; the cleanup's durations use the shared `system.cleanup.d
 |How long should ended work be kept?
 |Wie lange soll beendete Arbeit aufbewahrt werden?
 
+|`web.settings.cleanup.keep`
+|Keep finished work for
+|Beendete Arbeit
+
 |`web.settings.cleanup.days`
 |days
-|Tage
+|Tage aufbewahren
+
+|`web.settings.cleanup.remind`
+|Reminder after
+|Erinnerung nach
+
+|`web.settings.cleanup.days_after`
+|days
+|Tagen
 
 |`web.settings.cleanup.own`
 |{count, plural, one {# project has its own} other {# projects have their own}}: {projects}

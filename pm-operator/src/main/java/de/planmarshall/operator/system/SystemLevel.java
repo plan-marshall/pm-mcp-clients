@@ -410,7 +410,7 @@ public final class SystemLevel {
     private static String listenersLine(String locale, RuntimeMetrics runtime) {
         var loopback = clean(runtime.loopbackListener());
         var network = clean(runtime.networkListener());
-        return MessageCatalogue.format(locale, "system.runtime.listeners",
+        return MessageCatalogue.format(locale, "system.runtime.listeners_console",
                             Map.of("loopback", "off".equalsIgnoreCase(loopback) ? "off" : loopback,
                                                 "loopback_address", loopback,
                                                 "lan", "off".equalsIgnoreCase(network) ? "off" : network,
@@ -425,7 +425,7 @@ public final class SystemLevel {
         var details = new ArrayList<String>();
         details.add(MessageCatalogue.format(locale, "system.work.epics", Map.of()) + "  "
                             + stateCounts(locale, work.epicsByState(), EPIC_STATE_ORDER));
-        details.add(MessageCatalogue.format(locale, "system.work.tasks",
+        details.add(MessageCatalogue.format(locale, "system.work.tasks_console",
                             Map.of("running", work.tasksRunning(), "queued", work.tasksQueued())));
         details.add(projectsLine(locale, work));
         return new TuiRow(ROW_WORK, figure(locale, "system.work.title", plans), lines(details), false, true);
@@ -511,7 +511,7 @@ public final class SystemLevel {
         int used = integer(slots, "slots_used");
         int total = integer(slots, "slots_total");
         int queued = integer(slots, "queued");
-        return MessageCatalogue.format(locale, "system.jobs.slots",
+        return MessageCatalogue.format(locale, "system.jobs.slots_console",
                             Map.of("kind", kind, "used", used, "total", total, "queued", queued));
     }
 

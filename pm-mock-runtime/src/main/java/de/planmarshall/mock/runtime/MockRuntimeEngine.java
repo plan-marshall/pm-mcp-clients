@@ -6618,14 +6618,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
             cleanupResidues.add(new CleanupResidue("retired_lessons", 4, 0L, SWEEP_TODAY));
 
             var clientsEntries = List.of(
-                    new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged (#214)", "ended 12 Sep", 88080384L, 6, 0, null),
-                    new CleanupItemEntry("docs-typo", "plan", "docs-typo", "no change", "ended 11 Sep", 2097152L, 1, 0, null),
-                    new CleanupItemEntry("relay-hardening", "epic", "relay-hardening", "completed", "ended 10 Sep", 12582912L, 0, 0, null),
+                    new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged (#214)", "12 Sep", 88080384L, 6, 0, null),
+                    new CleanupItemEntry("docs-typo", "plan", "docs-typo", "no change", "11 Sep", 2097152L, 1, 0, null),
+                    new CleanupItemEntry("relay-hardening", "epic", "relay-hardening", "completed", "10 Sep", 12582912L, 0, 0, null),
                     new CleanupItemEntry("logs-relay-docs", "logs", "logs of relay-docs", null, null, 32505856L, 14, 0, "plan kept until 24 Oct"),
                     new CleanupItemEntry("reports-clients", "read_reports", "3 read reports", null, null, 0L, 0, 3, "read before 13 Sep")
             );
             var coreEntries = List.of(
-                    new CleanupItemEntry("token-usage", "plan", "token-usage", "merged (#88)", "ended 9 Sep", 125829120L, 11, 0, null),
+                    new CleanupItemEntry("token-usage", "plan", "token-usage", "merged (#88)", "9 Sep", 125829120L, 11, 0, null),
                     new CleanupItemEntry("reports-core", "read_reports", "2 read reports", null, null, 0L, 0, 2, "read before 10 Sep")
             );
             var unenrolledEntries = List.of(

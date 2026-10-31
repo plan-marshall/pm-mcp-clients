@@ -9,6 +9,7 @@
   import WorkflowIcon from '../components/WorkflowIcon.svelte';
   import { phaseIconId } from '../icons/workflowIcons';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
+  import { displayState, displayUnit, hasUnitName } from '../display';
   import {
     apiClient,
     type ProjectSummary,
@@ -482,8 +483,9 @@
   }
 
   function getPlanState(p: ActivePlanSummary): string {
-    const s = p.phase_state || 'running';
-    return s === 'waiting_for_you' ? 'waiting' : s;
+    // The wire value stays as the contract sends it: the display layer names it, and the badge
+    // class matches both spellings (`badge--state-waiting_for_you`).
+    return p.phase_state || 'running';
   }
 
   // The overview endpoints answer with the snake_case spelling of the API contract or with the
@@ -946,7 +948,7 @@
                           </span>
                         {/if}
                         <span class="badge badge--state badge--state-{getPlanState(plan)}">
-                          {$t('overview.state.' + getPlanState(plan))}
+                          {displayState('plan', getPlanState(plan), $t)}
                         </span>
                       </div>
                     </div>
@@ -976,7 +978,9 @@
                           class="badge badge--warning badge--off-track"
                           data-testid="off-track-badge"
                         >
-                          {$t('overview.plan.off_track', { signal: getPlanOffTrack(plan) })}
+                          {$t('overview.plan.off_track', {
+                            signal: displayState('signal', getPlanOffTrack(plan), $t),
+                          })}
                         </span>
                       {/if}
                       {#if getPlanPrNumber(plan)}
@@ -1067,7 +1071,7 @@
                               </span>
                             {/if}
                             <span class="badge badge--state badge--state-{getPlanState(childPlan)}">
-                              {$t('overview.state.' + getPlanState(childPlan))}
+                              {displayState('plan', getPlanState(childPlan), $t)}
                             </span>
                             <button
                               type="button"
@@ -1119,7 +1123,7 @@
                               </span>
                             {/if}
                             <span class="badge badge--state badge--state-{getPlanState(plan)}">
-                              {$t('overview.state.' + getPlanState(plan))}
+                              {displayState('plan', getPlanState(plan), $t)}
                             </span>
                           </div>
                         </div>
@@ -1144,18 +1148,24 @@
                     {/if}
                     <span class="alongside-desc">
                       {#if landing.unit}
-                        {$t('overview.landing.unit', { unit: landing.unit, state: landing.state })}
+                        {$t('overview.landing.unit', {
+                          unit: displayUnit(landing.unit, $t),
+                          state: displayState('landing', landing.state, $t),
+                        })}
+                        {#if !hasUnitName(landing.unit)}
+                          <span class="chip chip--unit">{landing.unit}</span>
+                        {/if}
                       {:else if landing.count}
                         {$t('overview.landing.removal', {
                           count: landing.count,
-                          state: landing.state,
+                          state: displayState('landing', landing.state, $t),
                         })}
                       {:else}
-                        {landing.kind} · {landing.state}
+                        {displayState('landing', landing.state, $t)}
                       {/if}
                     </span>
                     <span class="badge badge--state badge--state-{landing.state}"
-                      >{landing.state}</span
+                      >{displayState('landing', landing.state, $t)}</span
                     >
                   </div>
                 {/each}
@@ -1471,6 +1481,18 @@
 
   .alongside-desc {
     flex: 1;
+  }
+
+  /* The id of a unit the catalogue does not name: a chip beside the unknown word, so two
+     landings of unnamed units stay distinguishable (CC-P-01). */
+  .chip--unit {
+    display: inline-block;
+    margin-inline-start: 0.35rem;
+    padding: 0 0.35rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
   }
 
   /* Ended Work */
