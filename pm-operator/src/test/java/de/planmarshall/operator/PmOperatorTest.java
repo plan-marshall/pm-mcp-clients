@@ -642,7 +642,7 @@ class PmOperatorTest {
         void stop() throws Exception {
             var server = runtime((request, response) -> response.send(202, null, ""));
 
-            assertEquals(0, run("runtime", "stop"));
+            assertEquals(0, run("runtime", "stop", "--now"));
 
             var request = server.awaitRequest(Duration.ofSeconds(1));
             assertEquals("POST", request.method());
@@ -673,6 +673,46 @@ class PmOperatorTest {
         }
 
         @Test
+        @DisplayName("stop with --when-done answers the choice of when for scripts")
+        void stopWhenDone() throws Exception {
+            var server = runtime((request, response) -> response.send(202, null, ""));
+
+            assertEquals(0, run("runtime", "stop", "--when-done"));
+            var req = server.awaitRequest(Duration.ofSeconds(1));
+            assertTrue(req.bodyText().contains("\"drain\":true"), req.bodyText());
+            assertTrue(req.bodyText().contains("\"when\":\"drain\""), req.bodyText());
+            assertEquals("runtime   draining", out.toString().strip());
+        }
+
+        @Test
+        @DisplayName("stop --when-done --no-input sends the drain without asking")
+        void stopWhenDoneWithNoInput() throws Exception {
+            var server = runtime((request, response) -> response.send(202, null, ""));
+
+            assertEquals(0, run("runtime", "stop", "--when-done", "--no-input"));
+            var req = server.awaitRequest(Duration.ofSeconds(1));
+            assertTrue(req.bodyText().contains("\"when\":\"drain\""), req.bodyText());
+        }
+
+        @Test
+        @DisplayName("stop --no-input without an answer stops at the choice with exit 3")
+        void stopNoInputStopsAtTheChoice() throws Exception {
+            runtime((request, response) -> response.send(404, null, ""));
+
+            assertEquals(StartDialogue.EXIT_MISSING_INPUT, run("runtime", "stop", "--no-input"));
+            assertTrue(out.toString().contains(
+                                                    "runtime stop needs the choice of when; answer it with --when-done or --now."),
+                                out.toString());
+        }
+
+        @Test
+        @DisplayName("stop --no-input without a runtime says that there is nothing to stop")
+        void stopNoInputWithoutRuntime() {
+            assertEquals(0, run("runtime", "stop", "--no-input"));
+            assertEquals("The runtime is not running; there is nothing to stop.", out.toString().strip());
+        }
+
+        @Test
         @DisplayName("stop with --withdraw withdraws drain")
         void stopWithdraw() throws Exception {
             runtime((request, response) -> {
@@ -697,10 +737,17 @@ class PmOperatorTest {
         }
 
         @Test
-        @DisplayName("stop without a runtime reports not running")
+        @DisplayName("stop without a runtime says that there is nothing to stop")
         void stopWithoutRuntime() {
+            assertEquals(0, run("runtime", "stop", "--now"));
+            assertEquals("The runtime is not running; there is nothing to stop.", out.toString().strip());
+        }
+
+        @Test
+        @DisplayName("stop without a runtime asks nothing and says that there is nothing to stop")
+        void stopWithoutRuntimeAsksNothing() {
             assertEquals(0, run("runtime", "stop"));
-            assertEquals("runtime   not running", out.toString().strip());
+            assertEquals("The runtime is not running; there is nothing to stop.", out.toString().strip());
         }
 
         @Test
@@ -708,7 +755,7 @@ class PmOperatorTest {
         void stopRefused() throws Exception {
             runtime((request, response) -> response.send(500, null, ""));
 
-            assertEquals(PmOperator.EXIT_FAILURE, run("runtime", "stop"));
+            assertEquals(PmOperator.EXIT_FAILURE, run("runtime", "stop", "--now"));
         }
 
         @Test
@@ -730,6 +777,49 @@ class PmOperatorTest {
         }
 
         @Test
+        @DisplayName("restart with --now answers the choice of when")
+        void restartNow() throws Exception {
+            var server = runtime((request, response) -> {
+                if ("/api/v1/operator/runtime/stop".equals(request.target()) && "POST".equals(request.method())) {
+                    response.send(202, null, "");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            assertEquals(0, run("runtime", "restart", "--now"));
+            var req = server.awaitRequest(Duration.ofSeconds(1));
+            assertTrue(req.bodyText().contains("\"now\":true"), req.bodyText());
+            assertTrue(req.bodyText().contains("\"when\":\"now\""), req.bodyText());
+        }
+
+        @Test
+        @DisplayName("restart with --when-done answers the choice of when for scripts")
+        void restartWhenDone() throws Exception {
+            var server = runtime((request, response) -> {
+                if ("/api/v1/operator/runtime/stop".equals(request.target()) && "POST".equals(request.method())) {
+                    response.send(202, null, "");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            assertEquals(0, run("runtime", "restart", "--when-done"));
+            var req = server.awaitRequest(Duration.ofSeconds(1));
+            assertTrue(req.bodyText().contains("\"drain\":true"), req.bodyText());
+            assertTrue(req.bodyText().contains("\"when\":\"drain\""), req.bodyText());
+        }
+
+        @Test
+        @DisplayName("restart --no-input without an answer stops at the choice with exit 3")
+        void restartNoInputStopsAtTheChoice() {
+            assertEquals(StartDialogue.EXIT_MISSING_INPUT, run("runtime", "restart", "--no-input"));
+            assertTrue(out.toString().contains(
+                                                    "runtime restart needs the choice of when; answer it with --when-done or --now."),
+                                out.toString());
+        }
+
+        @Test
         @DisplayName("upgrade posts upgrade request")
         void upgrade() throws Exception {
             var server = runtime((request, response) -> {
@@ -745,6 +835,49 @@ class PmOperatorTest {
             var req = server.awaitRequest(Duration.ofSeconds(1));
             assertTrue(req.bodyText().contains("\"version\":\"1.5.0\""));
             assertTrue(req.bodyText().contains("\"drain\":true"));
+        }
+
+        @Test
+        @DisplayName("upgrade with --now answers the choice of when")
+        void upgradeNow() throws Exception {
+            var server = runtime((request, response) -> {
+                if ("/api/v1/operator/runtime/upgrade".equals(request.target()) && "POST".equals(request.method())) {
+                    response.send(200, null, "");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            assertEquals(0, run("runtime", "upgrade", "1.5.0", "--now"));
+            var req = server.awaitRequest(Duration.ofSeconds(1));
+            assertTrue(req.bodyText().contains("\"now\":true"), req.bodyText());
+            assertTrue(req.bodyText().contains("\"when\":\"now\""), req.bodyText());
+        }
+
+        @Test
+        @DisplayName("upgrade with --when-done answers the choice of when for scripts")
+        void upgradeWhenDone() throws Exception {
+            var server = runtime((request, response) -> {
+                if ("/api/v1/operator/runtime/upgrade".equals(request.target()) && "POST".equals(request.method())) {
+                    response.send(200, null, "");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            assertEquals(0, run("runtime", "upgrade", "--when-done"));
+            var req = server.awaitRequest(Duration.ofSeconds(1));
+            assertTrue(req.bodyText().contains("\"drain\":true"), req.bodyText());
+            assertTrue(req.bodyText().contains("\"when\":\"drain\""), req.bodyText());
+        }
+
+        @Test
+        @DisplayName("upgrade --no-input without an answer stops at the choice with exit 3")
+        void upgradeNoInputStopsAtTheChoice() {
+            assertEquals(StartDialogue.EXIT_MISSING_INPUT, run("runtime", "upgrade", "--no-input"));
+            assertTrue(out.toString().contains(
+                                                    "runtime upgrade needs the choice of when; answer it with --when-done or --now."),
+                                out.toString());
         }
 
         @Test

@@ -23,18 +23,18 @@ The verbs of the specification stay as they are: `status` (the running work, wit
   system [--project <project_id>|.] [--window hour|today|7d] [--by model|role] [--watch]
                                             the system view; full screen in the console
   runtime start                             start the runtime (the existing verb)
-  runtime stop [--drain|--now] [--yes]      [op]  stop it: when what runs is done, or now
+  runtime stop [--when-done|--now] [--yes]  [op]  stop it: when what runs is done, or now
   runtime stop --withdraw                   [op]  withdraw a drain asked from a client
-  runtime restart [--drain|--now] [--yes]   [op]  stop it and start it again
+  runtime restart [--when-done|--now] [--yes]  [op]  stop it and start it again
   runtime upgrade --check                              ask the registry for a newer version
-  runtime upgrade [<version>] [--drain|--now] [--yes]
+  runtime upgrade [<version>] [--when-done|--now] [--yes]
                                             [op]  upgrade to the newest version, or the one named
   runtime upgrade --withdraw                [op]  withdraw an upgrade before its links are switched
   runtime upgrade --notes                         the release notes of the newest version known
 ----
 
 * *`system`* is a read, like `status`, and no operator verb: in the console it opens the full-screen view (<<full-screen>>), as a shell command, or where the full-screen view is not available, it prints the view once (<<print>>); `--watch` prints it again as figures change, as `status --watch` does. `--window` and `--by` choose the models' window and grouping (default `hour` and `model`), `--project` one project.
-* *`runtime stop|restart|upgrade`* are operator verbs: privileged requests of the operator's channel, refused without the operator checks (exit code `4`; xref:04-console.adoc#console-security[The Operator Checks]). Each shows its confirmation (`runtime.confirm-stop`, `runtime.confirm-upgrade`) as a dialogue; `--drain` or `--now` answer its choice of when, `--yes` accepts it. With `--no-input` and no `--drain` or `--now`, the verb stops at the choice with exit code `3`, as every direct verb (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]); `--yes` never chooses when.
+* *`runtime stop|restart|upgrade`* are operator verbs: privileged requests of the operator's channel, refused without the operator checks (exit code `4`; xref:04-console.adoc#console-security[The Operator Checks]). Each shows its confirmation (`runtime.confirm-stop`, `runtime.confirm-upgrade`) as a dialogue; `--when-done` (with `--drain` kept as its alias) or `--now` answer its choice of when, `--yes` accepts it. With `--no-input` and no `--when-done` or `--now`, the verb stops at the choice with exit code `3`, as every direct verb (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]); `--yes` never chooses when.
 * *`runtime upgrade --check`* asks the consent `check_updates` where it is not remembered (`runtime.update-consent`; `--consent check_updates` answers it for this run) and prints the answer (`runtime.check-update`); `runtime upgrade` without a version upgrades to the newest version known and checks first where none is.
 * *`drain`* is the signal of the specification: it asks nothing, cannot be withdrawn, and works when the runtime does not answer. A refusal of `runtime stop` because the runtime does not answer names it (`operator.system.not_answering`).
 * *`status`* keeps its tree; its runtime line carries the lifecycle state while there is one (`Runtime pm-mcpd 0.9.1, stopping when what runs is done (2 left)`) and names `system` for the rest.
@@ -141,14 +141,14 @@ pm ›
 ----
 pm › runtime stop
 Stop the runtime?
-  Running now: 3 plans · 1 epic · 4 tasks · 2 jobs (1 build, 1 test) · 5 workers, 3 busy
-  When
-    1) When what runs is done   Nothing new starts. Each running task and job finishes,
-                                then the runtime stops.
-    2) Now                      Running tasks are withdrawn and jobs stopped. Everything
-                                goes on from its last committed state at the next start.
+  Running now: 3 plans · 1 epic · 4 tasks · 1 job · 5 workers
   Every client sees that it stops. Start it again on this machine: pm-operator runtime start.
-  1) Stop when done   2) Stop now   k) keep it running                          [1] ›
+  When
+  1) Stop when done ←         Nothing new starts. Each running task and job finishes,
+                              then the runtime stops.
+  2) Stop now                 Running tasks are withdrawn and jobs stopped. Everything
+                              goes on from its last committed state at the next start.
+  k) keep it running
 ◐ Stopping when what runs is done · 2 left: execute task of fix-relay, build of fix-relay
   runtime stop --now · runtime stop --withdraw
 pm [stopping] ›
@@ -156,7 +156,7 @@ pm [stopping] ›
 
 * `Enter` takes `1`, the drain, the preselection of link:../shared/system.adoc#stop[System, Stopping]; `k` (German `l`) sends nothing.
 * *In the console* the prompt returns at once with the badge `stopping`; the progress is a quiet line above the prompt each time what is left changes, and the line of the stop itself when it stops. *As a shell command* the verb waits, printing the same lines, bounded as `drain` waits (the bound defined with the drain timeout), and exits `0` when the runtime stopped, or `0` with `The runtime is still draining (PID 48211).` when the bound passed first.
-* *Nothing runs*: no choice, `Stop the runtime? Nothing runs.  y) stop  k) keep it running`.
+* *Nothing runs*: the line says `Nothing runs.` and both choices are offered, because neither ends anything; `k` keeps it running.
 
 [source,text]
 ----
@@ -183,18 +183,23 @@ pm ›
 
 [source,text]
 ----
-pm › runtime restart --now
+pm › runtime restart
 Restart the runtime?
-  Running now: 1 plan · 1 task · 1 job (1 build)
-  Now: running tasks are withdrawn and jobs stopped; everything goes on from its last committed
-  state at the next start. Every client connects again by itself.
-  y) restart now   k) keep it running                                         ›  y
+  Running now: 1 plan · 1 task · 1 job · 5 workers
+  Every client connects again by itself.
+  When
+  1) Restart when done ←      Nothing new starts. Each running task and job finishes,
+                              then the runtime stops.
+  2) Restart now              Running tasks are withdrawn and jobs stopped. Everything
+                              goes on from its last committed state at the next start.
+  k) keep it running
 ◐ Restarting … the clients connect again by themselves.
 ✓ Reconnected: pm-mcpd 0.9.1, restarted at 14:41. 1 question open, 1 plan running.
 pm [1 question] ›
 ----
 
-* `--now` answers the choice of when, so the confirmation asks only yes; with `--yes` too it asks nothing.
+* `--when-done` and `--now` answer the choice of when, so the verb asks nothing; without either it
+  asks, `Enter` takes the drain, and `k` keeps the runtime running.
 * *Not back in time*: `The runtime did not come back. On the machine: pm-operator status.`, and the prompt shows `(reconnecting)` (xref:04-console.adoc#connection[The Console, Connection]).
 
 [#t-upgrade]
@@ -211,14 +216,13 @@ Check for a newer version?
 ✓ 0.10.0 available (2026-10-11), installed 0.9.1. Release notes: runtime upgrade --notes
 pm › runtime upgrade
 Upgrade to 0.10.0?
-  installed 0.9.1 → 0.10.0 (2026-10-11)
-  Running now: 3 plans · 2 jobs
-  When  1) when what runs is done   2) now
-  0.10.0 is fetched, verified, and installed beside 0.9.1, and the links switched. Then the
-  runtime stops as you chose and starts on 0.10.0; running work goes on from its last
-  committed state. If any step fails, 0.9.1 stays or is restored, and you are told why.
-  Afterwards: pm-operator client update for 2 hosts.
-  1) Upgrade when done   2) Upgrade now   n) not now                            [1] ›
+  Running now: 3 plans · 1 epic · 4 tasks · 1 job · 5 workers
+  When
+  1) Upgrade when done ←      Nothing new starts. Each running task and job finishes,
+                              then the runtime stops.
+  2) Upgrade now              Running tasks are withdrawn and jobs stopped. Everything
+                              goes on from its last committed state at the next start.
+  k) keep it running
 Upgrading to 0.10.0
   ✓ fetched   ✓ verified   ✓ installed beside 0.9.1, links switched
   ◐ waiting for what runs · 1 left: build of fix-relay              runtime upgrade --now
@@ -329,4 +333,8 @@ The texts of the view and of the acts are those of link:../shared/system-texts.a
 |`operator.system.keep`
 |k) keep it running
 |l) lass sie laufen
+
+|`operator.system.stopped_no_input`
+|runtime {act} needs the choice of when; answer it with --when-done or --now.
+|runtime {act} braucht die Wahl des Zeitpunkts; antworte mit --when-done oder --now.
 |===
