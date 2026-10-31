@@ -202,10 +202,13 @@ function storageKeyFor(locale: Locale): string {
  */
 function cachedKeysFor(storage: Storage, locale: Locale): string[] {
   const prefix = `${CATALOGUE_STORAGE_PREFIX}${locale}@`;
+  // A browser that ran the release before the version key still holds the plain key; reading it
+  // once keeps its labels readable offline until the first write replaces it.
+  const legacyKey = `${CATALOGUE_STORAGE_PREFIX}${locale}`;
   const keys: string[] = [];
   for (let index = 0; index < storage.length; index += 1) {
     const key = storage.key(index);
-    if (key?.startsWith(prefix)) {
+    if (key === legacyKey || key?.startsWith(prefix)) {
       keys.push(key);
     }
   }
@@ -309,7 +312,9 @@ export function persistCatalogue(locale: Locale, messages: Record<string, string
     return;
   }
   for (const stale of cachedKeysFor(storage, locale)) {
-    if (stale !== key) {
+    // Only a known version's key may evict its siblings; with the version unknown the entry is a
+    // last resort and the versioned copies of earlier runtimes are kept.
+    if (catalogueVersion !== null && stale !== key) {
       dropCachedCatalogue(storage, stale);
     }
   }
@@ -426,17 +431,6 @@ async function readCatalogueVersion(): Promise<void> {
   try {
     const status = await apiClient.getStatus();
     setCatalogueVersion(status.version ?? null);
-    // A catalogue loaded before the version was known is written again under it, so the next
-    // visit reads it instead of asking the runtime for the same pack.
-    const active = get(currentLocale);
-    const messages = get(messagesStore);
-    if (
-      catalogueVersion !== null &&
-      messagesLocale === active &&
-      Object.keys(messages).length > 0
-    ) {
-      persistCatalogue(active, messages);
-    }
   } catch {
     setCatalogueVersion(null);
   }
@@ -580,15 +574,35 @@ function rememberEnglish(locale: Locale, messages: Record<string, string>): void
  * the recorded language without a reload (UC-ONB-3).
  */
 export async function adoptRecordedLocale(): Promise<void> {
+  const generation = switchGeneration;
   await readCatalogueVersion();
   if (storedLocale()) return;
   const recorded = await recordedLocale();
-  if (!recorded || recorded === get(currentLocale)) return;
-  const loaded = await loadCatalogueFor(recorded);
-  if (!loaded) return;
+  if (!recorded || recorded === get(currentLocale) || generation !== switchGeneration) return;
+  // A machine that accepts the request and never answers must not hold the pairing for ever; the
+  // load itself keeps running, but its result is dropped once the bound has passed.
+  const loaded = await withinBound(loadCatalogueFor(recorded), ADOPTION_BOUND_MS);
+  if (!loaded || generation !== switchGeneration || storedLocale()) return;
   currentLocale.set(recorded);
   messagesStore.set(loaded);
   messagesLocale = recorded;
+}
+
+/** How long a pairing waits for the recorded language before it paints in the browser's own. */
+const ADOPTION_BOUND_MS = 2000;
+
+/**
+ * @param work the promise to bound
+ * @param ms the bound in milliseconds
+ * @returns the promise's value, or `null` when the bound passed first
+ */
+function withinBound<T>(work: Promise<T>, ms: number): Promise<T | null> {
+  return Promise.race([
+    work,
+    new Promise<null>((resolve) => {
+      setTimeout(() => resolve(null), ms);
+    }),
+  ]);
 }
 
 /**
@@ -622,13 +636,14 @@ export async function initI18n(): Promise<void> {
   }
 
   const initialLocale = storedLocale() ?? (await recordedLocale()) ?? browserLocale;
+  const generation = switchGeneration;
   if (initialLocale === browserLocale) {
     await loadMessages(initialLocale, 'all');
     return;
   }
 
   const loaded = await loadCatalogueFor(initialLocale);
-  if (!loaded) {
+  if (!loaded || generation !== switchGeneration) {
     return;
   }
   currentLocale.set(initialLocale);

@@ -26,17 +26,27 @@
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
+  /** The moment the ages are measured at; a quiet timer moves it so an idle list stays true. */
+  let clock = Date.now();
+  let clockTimer: ReturnType<typeof setInterval> | null = null;
 
   onMount(() => {
     isMounted = true;
     unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
       handleEvent(event, data);
     });
+    clockTimer = setInterval(() => {
+      clock = Date.now();
+    }, 30_000);
     void loadData();
   });
 
   onDestroy(() => {
     isMounted = false;
+    if (clockTimer !== null) {
+      clearInterval(clockTimer);
+      clockTimer = null;
+    }
     if (unsubscribeEvents) {
       unsubscribeEvents();
       unsubscribeEvents = null;
@@ -181,10 +191,10 @@
 
   /**
    * @param rawDate an ISO timestamp
-   * @returns its age in the unit that age has
+   * @returns its age in the unit that age has, measured at the list's own clock
    */
   function formatRelative(rawDate?: string): string {
-    return formatTime(rawDate, 'relative', $currentLocale);
+    return formatTime(rawDate, 'relative', $currentLocale, new Date(clock));
   }
 
   /**

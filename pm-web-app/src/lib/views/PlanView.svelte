@@ -523,10 +523,19 @@
    * @returns the day to print above the row, or an empty string
    */
   function dayLabel(entries: ActivityEntry[], index: number): string {
-    const day = formatDay(entries[index]?.timestamp, $currentLocale);
+    const iso = entries[index]?.timestamp;
+    const day = formatDay(iso, $currentLocale);
     if (!day) return '';
     if (index === 0) return day;
-    return day === formatDay(entries[index - 1]?.timestamp, $currentLocale) ? '' : day;
+    const previous = entries[index - 1]?.timestamp;
+    return sameCalendarDay(iso, previous) ? '' : day;
+  }
+
+  /**
+   * @param left an instant @param right another instant @returns whether they fall on one day
+   */
+  function sameCalendarDay(left?: string | null, right?: string | null): boolean {
+    return new Date(left ?? '').toDateString() === new Date(right ?? '').toDateString();
   }
 
   /**

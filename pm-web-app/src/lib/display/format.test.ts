@@ -139,6 +139,14 @@ describe('formatSplit', () => {
       '412 Tsd. (380 Tsd. rein · 32 Tsd. raus)',
     );
   });
+
+  it('shows every part in the total’s unit, even a part far below it', () => {
+    expect(formatSplit(1002, 998, 4, false, 'en')).toBe('1.0 k (1.0 k in · 0.0 k out)');
+  });
+
+  it('shows plain numbers when the total is below a thousand', () => {
+    expect(formatSplit(412, 380, 32, false, 'en')).toBe('412 (380 in · 32 out)');
+  });
 });
 
 describe('formatBytes', () => {

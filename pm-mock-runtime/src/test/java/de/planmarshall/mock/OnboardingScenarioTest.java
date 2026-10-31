@@ -172,7 +172,7 @@ class OnboardingScenarioTest {
 
                 // Only the step the run has passed reports a summary; the current one does not.
                 assertEquals(1, summaries.size());
-                assertEquals("Deutsch, models English", JsonTree.string(summaries, "1"));
+                assertEquals("English, models English", JsonTree.string(summaries, "1"));
                 assertFalse(summaries.containsKey("2"));
             }
         }

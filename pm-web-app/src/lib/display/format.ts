@@ -211,29 +211,60 @@ function decimalText(value: number, digits: number, locale: string): string {
  */
 export function formatTokens(count: number, floor = false, locale: Locale = 'en'): string {
   if (count <= 0) return '0';
+  return renderTokens(count, tokenUnit(count, locale), floor, locale);
+}
 
+/** The unit a count of tokens is shown in, or `null` for a count below a thousand. */
+interface TokenUnit {
+  /** The divisor from a token count to the shown figure. */
+  factor: number;
+  /** The unit mark the packs fix. */
+  suffix: string;
+  /** The decimals the unit shows. */
+  digits: number;
+}
+
+/**
+ * @param count the exact count @param locale the interface locale @returns the unit it is shown in
+ */
+function tokenUnit(count: number, locale: string): TokenUnit | null {
+  if (count < 1000) return null;
   const german = isGerman(locale);
-  const thousands = german ? 'Tsd.' : 'k';
-  const millions = german ? 'Mio.' : 'M';
-  const round = (value: number, factor: number): number =>
-    floor ? Math.floor(value * factor) / factor : Math.round(value * factor) / factor;
-
-  let formatted: string;
-  if (count < 1000) {
-    formatted = String(count);
-  } else if (count < 10_000) {
-    formatted = `${decimalText(round(count / 1000, 10), 1, locale)} ${thousands}`;
-  } else if (count < 1_000_000) {
-    formatted = `${decimalText(round(count / 1000, 1), 0, locale)} ${thousands}`;
-  } else {
-    formatted = `${decimalText(round(count / 1_000_000, 100), 2, locale)} ${millions}`;
+  if (count < 10_000) {
+    return { factor: 1000, suffix: german ? 'Tsd.' : 'k', digits: 1 };
   }
+  if (count < 1_000_000) {
+    return { factor: 1000, suffix: german ? 'Tsd.' : 'k', digits: 0 };
+  }
+  return { factor: 1_000_000, suffix: german ? 'Mio.' : 'M', digits: 2 };
+}
 
-  return floor ? `≥ ${formatted}` : formatted;
+/**
+ * @param count the exact count @param unit the unit to show it in @param floor whether it is a
+ *   floor @param locale the interface locale @returns the figure with its unit
+ */
+function renderTokens(
+  count: number,
+  unit: TokenUnit | null,
+  floor: boolean,
+  locale: string,
+): string {
+  if (!unit) {
+    const plain = String(Math.max(0, count));
+    return floor ? `≥ ${plain}` : plain;
+  }
+  const step = 10 ** unit.digits;
+  const scaled = count / unit.factor;
+  const rounded = floor ? Math.floor(scaled * step) / step : Math.round(scaled * step) / step;
+  const text = `${decimalText(rounded, unit.digits, locale)} ${unit.suffix}`;
+  return floor ? `≥ ${text}` : text;
 }
 
 /**
  * Renders the total and its input/output split in the unit of the total.
+ *
+ * The parts are shown in the total's own unit, so that they read against it: a total of `1.0 k`
+ * shows its parts as `1.0 k in · 0.0 k out`, never as `998 in · 4 out`.
  *
  * @param total the total count
  * @param input the input, cache-read and cache-write tokens
@@ -250,9 +281,10 @@ export function formatSplit(
   locale: Locale = 'en',
 ): string {
   const german = isGerman(locale);
+  const unit = tokenUnit(total, locale);
   const inLabel = german ? 'rein' : 'in';
   const outLabel = german ? 'raus' : 'out';
-  return `${formatTokens(total, floor, locale)} (${formatTokens(input, floor, locale)} ${inLabel} · ${formatTokens(output, floor, locale)} ${outLabel})`;
+  return `${renderTokens(total, unit, floor, locale)} (${renderTokens(input, unit, floor, locale)} ${inLabel} · ${renderTokens(output, unit, floor, locale)} ${outLabel})`;
 }
 
 /**

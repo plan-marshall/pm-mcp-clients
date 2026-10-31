@@ -6310,7 +6310,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             upTo = 7;
         }
         if (upTo >= 1) {
-            summaries.put("1", "Deutsch, models English");
+            summaries.put("1", languageSummary());
         }
         if (upTo >= 2) {
             summaries.put("2", "Claude Code 2.4.1 (default), OpenCode 1.9.0");

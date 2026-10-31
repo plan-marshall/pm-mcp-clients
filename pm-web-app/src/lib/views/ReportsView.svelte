@@ -26,6 +26,9 @@
   let noticeFrom = $state('');
   let noticeSubject = $state('');
   let noticeTimer: ReturnType<typeof setTimeout> | null = null;
+  /** The moment the ages are measured at; a quiet timer moves it so an idle list stays true. */
+  let clock = $state(Date.now());
+  let clockTimer: ReturnType<typeof setInterval> | null = null;
 
   let activeDetailPlanId = $state<string | null>(null);
   let syncedRouteReportPlan: string | null | undefined;
@@ -228,11 +231,18 @@
     unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
       handleEvent(event, data);
     });
+    clockTimer = setInterval(() => {
+      clock = Date.now();
+    }, 30_000);
     await loadReports();
   });
 
   onDestroy(() => {
     isMounted = false;
+    if (clockTimer !== null) {
+      clearInterval(clockTimer);
+      clockTimer = null;
+    }
     if (noticeTimer) {
       clearTimeout(noticeTimer);
       noticeTimer = null;
@@ -595,12 +605,13 @@
   }
 
   function formatReportTime(item: ReportItem): string {
-    const created = formatInstant(item.created_at, 'relative', $currentLocale);
+    const now = new Date(clock);
+    const created = formatInstant(item.created_at, 'relative', $currentLocale, now);
     const isSentLater = Boolean(item.sent_at && item.created_at && item.sent_at !== item.created_at);
 
     if (isSentLater) {
       return `${created} · ${$t('report.list.sent_at', {
-        time: formatInstant(item.sent_at, 'short', $currentLocale),
+        time: formatInstant(item.sent_at, 'short', $currentLocale, now),
       })}`;
     }
     return created;
@@ -611,7 +622,7 @@
    * @returns the moment itself, for the row's hover advisory
    */
   function reportMoment(item: ReportItem): string {
-    return formatInstant(item.created_at, 'short', $currentLocale);
+    return formatInstant(item.created_at, 'short', $currentLocale, new Date(clock));
   }
 
   /**

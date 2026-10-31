@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import PlanView from './PlanView.svelte';
 import {
@@ -135,8 +135,7 @@ describe('PlanView component', () => {
 
   beforeEach(() => {
     vi.restoreAllMocks();
-    runtimeStore.set(
-      makeRuntimeState({
+    runtimeStore.set(      makeRuntimeState({
         isInitialized: true,
         isPaired: true,
         isOnboarded: true,
@@ -164,6 +163,10 @@ describe('PlanView component', () => {
     vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue(mockActivity);
     vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
     vi.spyOn(apiClient, 'subscribeTaskActivity').mockReturnValue(() => {});
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('renders plan header, breadcrumb path, tokens, and PR badge', async () => {
@@ -232,6 +235,8 @@ describe('PlanView component', () => {
   });
 
   it('opens a day above the first activity row of each day the wire dates', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 15, 12));
     const today = new Date();
     const dayAt = (daysAgo: number, hour: number): string =>
       new Date(

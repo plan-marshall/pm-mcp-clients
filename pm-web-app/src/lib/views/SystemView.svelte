@@ -817,9 +817,9 @@
               {$t('system.runtime.store', {
                 size: formatBytes(snapshot.runtime.machine_store_bytes || 0),
                 free: formatBytes(snapshot.runtime.disk_free_bytes || 0),
-                time: snapshot.runtime.disk_measured_at
-                  ? formatTime(snapshot.runtime.disk_measured_at, 'short', $currentLocale)
-                  : $t('system.figure.unavailable'),
+                time:
+                  formatTime(snapshot.runtime.disk_measured_at, 'short', $currentLocale) ||
+                  $t('system.figure.unavailable'),
               })}
             </span>
           </div>

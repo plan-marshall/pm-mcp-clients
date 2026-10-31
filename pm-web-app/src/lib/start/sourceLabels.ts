@@ -203,7 +203,12 @@ export function resetTime(resetsAt?: number | null, locale: Locale = 'en'): stri
   if (!resetsAt) {
     return '';
   }
-  return formatTime(new Date(resetsAt * 1000).toISOString(), 'short', locale);
+  const moment = new Date(resetsAt * 1000);
+  if (Number.isNaN(moment.getTime())) {
+    // An out-of-range epoch second is not an instant: nothing is shown rather than a thrown error.
+    return '';
+  }
+  return formatTime(moment.toISOString(), 'short', locale);
 }
 
 /**
