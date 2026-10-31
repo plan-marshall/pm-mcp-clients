@@ -158,7 +158,7 @@ final class RuntimeActDialogue {
         return act == Act.UPGRADE && target.isBlank()
                             ? MessageCatalogue.format(locale, "system.confirm.title_upgrade", Map.of())
                             : MessageCatalogue.format(locale, "system.confirm.title",
-                                                Map.of("act", act.value(), "version", target));
+                            Map.of("act", act.value(), "version", target));
     }
 
     /**

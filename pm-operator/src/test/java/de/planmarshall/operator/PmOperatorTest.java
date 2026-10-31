@@ -701,7 +701,7 @@ class PmOperatorTest {
 
             assertEquals(StartDialogue.EXIT_MISSING_INPUT, run("runtime", "stop", "--no-input"));
             assertTrue(out.toString().contains(
-                                "runtime stop needs the choice of when; answer it with --when-done or --now."),
+                                                    "runtime stop needs the choice of when; answer it with --when-done or --now."),
                                 out.toString());
         }
 
@@ -815,7 +815,7 @@ class PmOperatorTest {
         void restartNoInputStopsAtTheChoice() {
             assertEquals(StartDialogue.EXIT_MISSING_INPUT, run("runtime", "restart", "--no-input"));
             assertTrue(out.toString().contains(
-                                "runtime restart needs the choice of when; answer it with --when-done or --now."),
+                                                    "runtime restart needs the choice of when; answer it with --when-done or --now."),
                                 out.toString());
         }
 
@@ -876,7 +876,7 @@ class PmOperatorTest {
         void upgradeNoInputStopsAtTheChoice() {
             assertEquals(StartDialogue.EXIT_MISSING_INPUT, run("runtime", "upgrade", "--no-input"));
             assertTrue(out.toString().contains(
-                                "runtime upgrade needs the choice of when; answer it with --when-done or --now."),
+                                                    "runtime upgrade needs the choice of when; answer it with --when-done or --now."),
                                 out.toString());
         }
 
