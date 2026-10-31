@@ -312,6 +312,48 @@ class OnboardingScenarioTest {
         }
 
         @Test
+        @DisplayName("records the interface language chosen at the language step and its later change")
+        void shouldRecordTheInterfaceLanguage() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                // The operator walks from the mode choice into the language step, as a client does.
+                var begin = client.send(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                        "{\"link\":\"begin\"}").withHeader("Authorization", auth));
+                assertEquals(200, begin.status());
+                assertEquals("language.choose", JsonTree.string(
+                        JsonTree.asObject(JsonTree.parse(new String(begin.body(), StandardCharsets.UTF_8))),
+                        "state"));
+
+                var stepRes = client.send(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                        "{\"link\":\"set\",\"language_interface\":\"de\",\"language_model\":\"de\"}")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, stepRes.status());
+
+                var recorded = MachineSettingsRecord.fromJson(new String(
+                        client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth))
+                                .body(),
+                        StandardCharsets.UTF_8));
+                assertEquals("de", recorded.languageInterface());
+                assertEquals("de", recorded.languageModel());
+
+                assertEquals(200, put(client, auth,
+                        "{\"key\":\"language_interface\",\"value\":\"en\",\"revision\":4}"));
+                // A code the machine does not support changes nothing.
+                assertEquals(200, put(client, auth,
+                        "{\"key\":\"language_model\",\"value\":\"fr\",\"revision\":5}"));
+
+                var changed = MachineSettingsRecord.fromJson(new String(
+                        client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth))
+                                .body(),
+                        StandardCharsets.UTF_8));
+                assertEquals("en", changed.languageInterface());
+                assertEquals("de", changed.languageModel());
+            }
+        }
+
+        @Test
         @DisplayName("applies plan defaults, cleanup durations, rejects an unknown mode, and is idempotent on an unknown consent")
         void shouldApplyTheSettingsKeys() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
