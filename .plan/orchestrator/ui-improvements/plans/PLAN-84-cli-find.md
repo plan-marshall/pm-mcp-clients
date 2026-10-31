@@ -48,6 +48,12 @@ The web half is `PLAN-46` (the command palette behind the top bar's search butto
 - OBSERVED: the package states "one terminal command" for find and the web app's search behind the top bar's search button — read at `doc/plans/needs-and-find.adoc` at HEAD 07104678
 - OBSERVED: no `find` command exists in `pm-operator` — searched at HEAD 07104678 (`FindCommand` absent)
 - HYPOTHESIS: the console key and the verb mode of `find` are fixed by the design of `PLAN-82` (deliverable 1), and `PLAN-42` (verb modes and help) lists every verb in one table — confirm/refute at the accepted design and `01-commands.adoc` (verify-at-outline)
+- Re-grounded at HEAD 1651554b (2026-10-31), after `PLAN-82` landed: the texts the shared design names for find
+  (`doc/design/shared/needs-and-find.adoc` § Texts: every `overview.find.*` row) are NOT in the catalogues at this head
+  (grep of `pm-api/src/main/resources/messages/*.properties`), and no staged spec owned them. `PLAN-46` (web command palette)
+  adds them in `overview.{en,de}.properties`; this plan reads them at its head and adds only the ones still missing if it runs
+  first. Both plans declare `overview.{en,de}.properties` and do not run at the same time. The `FindCommand` texts of the
+  terminal stay in `operator.*` as declared here.
 - Verify-first clause: before each deliverable, re-read the named files at the current HEAD and confirm or refute every claim above; `PLAN-82` must have landed (the contract and the mock), `PLAN-36` and `PLAN-42` edit `PmOperator`, `PmConsole`, the command listing and the catalogue pair. A refuted claim re-scopes the deliverable and is reported.
 
 ## Expected Surface
@@ -59,6 +65,8 @@ The web half is `PLAN-46` (the command palette behind the top bar's search butto
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/LiteralTextGuardTest.java` — present at HEAD 07104678
 - OBSERVED: `pm-api/src/main/resources/messages/operator.en.properties` — present at HEAD 07104678
 - OBSERVED: `pm-api/src/main/resources/messages/operator.de.properties` — present at HEAD 07104678
+- OBSERVED: `pm-api/src/main/resources/messages/overview.en.properties` — present at HEAD 1651554b; the `overview.find.*` rows are added by PLAN-46, or here if this plan runs first
+- OBSERVED: `pm-api/src/main/resources/messages/overview.de.properties` — present at HEAD 1651554b; the `overview.find.*` rows are added by PLAN-46, or here if this plan runs first
 - OBSERVED: `doc/design/terminal-client/01-commands.adoc` — present at HEAD 07104678
 - OBSERVED: `doc/design/terminal-client/04-console.adoc` — present at HEAD 07104678
 - OBSERVED: `doc/plans/README.adoc` — present at HEAD 07104678
@@ -67,7 +75,7 @@ The web half is `PLAN-46` (the command palette behind the top bar's search butto
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-82` (`needs-and-find-contract`), `PLAN-14` (`cli-gate-scope`, shipped), `PLAN-76` (`shared-port-assignment`, shipped)
-- Overlaps with: `PLAN-36` (`PmOperator`, `PmConsole`, the catalogue pair), `PLAN-42` (`PmConsole`, `01-commands.adoc`), `PLAN-48` (`01-commands.adoc`), `PLAN-30` (`01-commands.adoc`, catalogue): run one after the other
+- Overlaps with: `PLAN-46` (`overview.{en,de}.properties`, the find texts), `PLAN-36` (`PmOperator`, `PmConsole`, the catalogue pair), `PLAN-42` (`PmConsole`, `01-commands.adoc`), `PLAN-48` (`01-commands.adoc`), `PLAN-30` (`01-commands.adoc`, catalogue): run one after the other
 - Adjacent to: `PLAN-46` (the web half)
 
 ## Hand-Off Command

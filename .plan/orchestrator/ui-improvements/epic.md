@@ -349,6 +349,19 @@ plan spec names the plan, proposal and finding documents it comes from.
   plans (design and contract first, consumers after) and its terminal "find" is its own plan (PLAN-84) rather than a
   deliverable of PLAN-36; PLAN-83 keeps the three parts of its package together. The packages' own rows in
   `doc/plans/README.adoc` stay `open` and are set to `done` by the plans that complete them.
+- 2026-10-31 — PLAN-78 landing analysed (PR #288, `1651554b`, `landings/PLAN-78.md`) and drained; row shipped. Running after
+  it: PLAN-16, 17 and 87, which is three of N=4, so one slot is free. Earlier the same day PLAN-82 landed (PR #284, `7d7b4d71`,
+  `landings/PLAN-82.md`) and PLAN-87 was emitted and recorded running on the operator's word (its spec re-counted at HEAD
+  `6372185a`: 45 classes, not 43). Emitted PLAN-46 (`web-command-palette`, WS-03, ports 20460/20461) at the operator's request
+  ("analyze landed and emit"): its dependencies PLAN-39, 08, 76 and 82 are shipped, the gate reads it determinate with no
+  overlap against the running PLAN-16, 17 and 87 (`blocking_count: 0`), and PLAN-82's landing unblocked it. Reading its spec
+  against the accepted design found a gap: the texts the designs call for (`web.frame.search.title` and every `overview.find.*`
+  row of the shared design) are in no catalogue at HEAD and in no staged spec. PLAN-46 now owns adding them (en and de, the
+  design's wording) and retiring `web.frame.search.pending`; PLAN-84 reads them at its head or adds the missing ones if it runs
+  first; both declare `overview.{en,de}.properties` and run one after the other. Notes were added to both specs; the
+  assignment is the orchestrator's and open to the operator. Not emitted though ready: PLAN-43 (one shared file with the
+  running PLAN-16) and PLAN-24 (clean); PLAN-79 is held while the terminal PLAN-17 runs. The Watch on the blocked PLAN-78 is
+  closed (see Watches).
 - 2026-10-31 — PLAN-78 revision message analysed (`rb-78-cui-testing-api-002.md`, written 16:03Z): the plan is NOT landed.
   PR #288 (the replacement of the closed #285, same head `0860ba13`) is open: CI green, full `verify` green, Sonar a
   confirmed `0`, every comment handled, but the required reviewer CodeRabbit has never reviewed any head of either PR (six
@@ -491,28 +504,45 @@ plan spec names the plan, proposal and finding documents it comes from.
   `rb-77-cui-standards-foundation-001.md` (PLAN-77, opencode), same two keys. Recurrence 2026-10-31:
   `rb-86-shared-error-texts-001.md` (PLAN-86, opencode), same two keys. Recurrence 2026-10-31:
   `rb-09-web-display-layer-001.md` (PLAN-09, opencode) and `rb-78-cui-testing-api-001.md` (PLAN-78, opencode), same two keys
-  each.
+  each. Recurrence 2026-10-31: `rb-82-needs-and-find-contract-001.md` (PLAN-82, opencode), same two keys. Recurrence 2026-10-31:
+  `rb-78-cui-testing-api-003.md` (PLAN-78, the landing message, opencode), same two keys.
 
 ## Watches
 
+- PLAN-82 landed (PR #284, `7d7b4d71`, analysed 2026-10-31); see `landings/PLAN-82.md`. Three things stay open. (1) The
+  consumers must re-read their specs at HEAD `7d7b4d71` before emit: PLAN-36, 49, 52, 55 name files PLAN-82 changed
+  (`overview.*`/`plan_view.*` catalogues, `ActivePlanSummary`, the mock engine and scenarios, the `pm-operator` status
+  transcript) and PLAN-34 overlaps the `overview/` records. (2) The run's residue, to settle where each is consumed: the
+  mock's needs list is fixture-driven (an act removes no item; `overview.needs-changed`/`needs-resolved` stand in);
+  `pm-api` has no typed body for the machine resource; the order key is `created_at` with a `running_since` fallback and
+  the fixtures exercise only the fallback (PLAN-34); the machine summary counts 2 where the list totals 12 (PLAN-36's
+  badge design reconciles). (3) The landing's Sonar claim (0 open at `038d4a1e`) could not be re-measured after the merge
+  (`undecidable`, `head_revision_unavailable`). — re-check each at the plan that consumes it.
+- Surface under-declaration, PLAN-82 (2026-10-31): the spec declared 15 entries and the diff touched 39 files; 17 were
+  never declared (all tests, the new design document, `MachineApiPaths.java` instead of the declared `MachinePaths.java`,
+  and three `pm-operator` test files in a module the spec did not name). The lane's message says the surface stayed
+  inside the named modules; the diff says otherwise. No staged spec collided in practice. — when a spec that changes a
+  shared contract is staged, declare the tests and the sibling module whose tests the change forces (PLAN-34, 36, 84).
 - Structure review of the staged plans, applied 2026-10-30 at the operator's word ("fix clear and weaker"); see the
   Decisions entry of that date. Left open: PLAN-84 (`find`) stays in WS-04 although it belongs with PLAN-36 in WS-05 (the
   queue verb cannot change a row's workstream; the workstream documents say so); the review finding "PLAN-59 bundles
   projects with project onboarding" was withdrawn after reading PLAN-64: the project onboarding view and the machine
   onboarding screens are different views and documents. — re-check the split at each emit of the plans it touched.
 > ↪ Relocated to `settled.md` § "Retired Watches (2026-10-28 to 2026-10-30)" — the watch is retired, its subject is closed (PR #276 merged as `44803a77`)
-- DECISION FOR THE OPERATOR, PLAN-78 is blocked on the required reviewer (2026-10-31): PR #288 is open and complete except
-  that CodeRabbit refuses every review ("Review rate limited", plan capacity). The lane waits. Options: clear or upgrade the
-  CodeRabbit capacity and let the lane re-trigger, or authorise the merge of #288 with the missing review named in the
-  landing. Until then PLAN-78 holds a slot and its worktree. The same limit hit the other lanes' re-triggers (PLAN-77, 80,
-  86 and 09 each saw "Review rate limited" on their last head and merged under the standing authorization because an
-  earlier head had a qualifying review; PLAN-78 is the first plan whose PR never got one).
+- Required-reviewer quota (PLAN-78 landed, 2026-10-31; see `landings/PLAN-78.md`): the decision that was open here is
+  closed. PR #288 got one CodeRabbit review (head `0860ba13`, after the wait window and the operator-directed retry; two low
+  findings, fixed); its re-trigger on the final head `7854b8f4` was refused ("rate limit"), and the PR merged
+  (`1651554b`) on the operator's merge word under the standing authorization (a qualifying review exists on a head of the
+  PR). The quota still refuses re-triggers, so a plan whose PR never gets its first review blocks, as PLAN-78 did for about
+  nine hours (10:55 to 20:21). — check at PLAN-87 and PLAN-79, the next conversions.
 - Pull requests over 100 files cannot be reviewed (PLAN-78 run, 2026-10-31): CodeRabbit, the required reviewer, refuses
   more than 100 files and, once its quota is spent, every retry; Sourcery refuses above 150,000 diff characters. PLAN-78's
-  first PR (197 files) was never reviewed and was closed; the second (#288) is open. The 197 came from the `pre-commit` gate
-  rewriting the import grouping of 171 `pm-api` main sources (pre-existing drift on `main`, no plan owns it). PLAN-79 (about
-  116 classes) and PLAN-87 (43) are exposed to the same. — decide whether a small chore plan or commit cleans the drift on
-  `main` first (then no plan's gate run rewrites it), and whether PLAN-79 is split in two plans. Check at PLAN-78's landing.
+  first PR (197 files) was never reviewed and was closed; the second (#288) merged. The 197 came from the `pre-commit` gate
+  rewriting the import grouping of 171 `pm-api` main sources (pre-existing drift on `main`, no plan owns it). PLAN-78 landed
+  with 25 files (the rewrite restored from `origin/main` twice, on the operator's decision), and its message says the drift
+  stays on `main` (170-odd rewrites). PLAN-79 (about 116 classes) and PLAN-87 (45, running) are exposed to the same. —
+  decide whether a small chore plan or commit cleans the drift on `main` first (then no plan's gate run rewrites it), and
+  whether PLAN-79 is split in two plans.
 - Cleanup reminder interval has no write path (PLAN-09 residue, 2026-10-31): `cleanup_durations` is a single integer, so
   the reminder cannot be set from the clients; the run answered it on the PR as a server-contract gap. — no plan owns it;
   decide with the daemon repository.
