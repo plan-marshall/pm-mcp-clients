@@ -2,10 +2,10 @@
   "id": "PLAN-82",
   "slug": "needs-and-find-contract",
   "workstream": "WS-01",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "82-needs-and-find-contract",
+  "pr": "284",
+  "landing": "landings/PLAN-82.md",
   "seq": 82
 }
