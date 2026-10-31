@@ -440,6 +440,8 @@ class MockRuntimeEngineTest {
                 "/api/v1/project-onboardings",
                 "/api/v1/explorer",
                 "/api/v1/overview",
+                "/api/v1/find",
+                "/api/v1/machine/needs-operator",
                 "/api/v1/workflows",
                 "/api/v1/decisions",
                 "/api/v1/questions",

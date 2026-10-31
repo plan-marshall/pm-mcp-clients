@@ -157,7 +157,8 @@ class OverviewRecordsTest {
                 "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
                 "repeating",
                 "decision",
-                1
+                1,
+                null
         );
 
         var json = plan.toJson();
@@ -194,6 +195,7 @@ class OverviewRecordsTest {
                 0,
                 "EPC-001",
                 "client work",
+                null,
                 null,
                 null,
                 null,
@@ -304,7 +306,7 @@ class OverviewRecordsTest {
         assertEquals("pausing", parsedActChanged.activity());
         assertEquals("task", parsedActChanged.point());
 
-        var needsChanged = new NeedsOperatorChangedEvent("pm-mcp-clients", "PLN-001", null, "decision", 1);
+        var needsChanged = new NeedsOperatorChangedEvent("pm-mcp-clients", "PLN-001", null, "decision", 1, null);
         assertEquals("needs_operator.changed", NeedsOperatorChangedEvent.EVENT_NAME);
         var parsedNeedsChanged = NeedsOperatorChangedEvent.fromJson(needsChanged.toJson());
         assertEquals("pm-mcp-clients", parsedNeedsChanged.projectId());
@@ -404,7 +406,7 @@ class OverviewRecordsTest {
     @DisplayName("validates error conditions on missing required fields or bad JSON")
     void recordValidationErrors() {
         assertThrows(NullPointerException.class, () -> new ProjectSummary(null, "Name", 0, 0, 0, null, false, null));
-        assertThrows(NullPointerException.class, () -> new ActivePlanSummary(null, "T", "p", "s", null, null, null, 0, 0, null, null, null, null, null, null, null));
+        assertThrows(NullPointerException.class, () -> new ActivePlanSummary(null, "T", "p", "s", null, null, null, 0, 0, null, null, null, null, null, null, null, null));
         assertThrows(NullPointerException.class, () -> new ActiveEpicSummary(null, "T", null, 0, 0, 0, 0, null, null, null));
         assertThrows(NullPointerException.class, () -> new ProjectDetailResponse(null, "D", null, null, null));
         assertThrows(NullPointerException.class, () -> new EndedWorkPage(null, null, 1, 1, false, false));

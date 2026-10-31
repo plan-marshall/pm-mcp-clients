@@ -47,6 +47,10 @@ Seeing what needs the operator and going to work by name are use cases link:../.
 |`AGREED`
 |What both clients show of the running work across projects: the projects with running work, a project by plan and by epic, what a row shows (the closed lists of states and of what needs the operator), how plans and epics are told apart, a project's ended work with each plan's outcome and each epic's end, opening read-only with a chat about it, live updates, and where the operator left it.
 
+|link:shared/needs-and-find.adoc[What Waits, and Going to Work by Name]
+|`AGREED`
+|What both clients show of the two views of UC-PLN-7 and UC-PLN-8: the list of everything that waits (the runtime's order, a row with kind, path, since, what it blocks and the act, the closed kinds with the machine's own `credential` and `cleanup_due`, nothing waits, an item resolved elsewhere leaving quietly, reports excluded, the count, live, paged), and going to work by name (a part of an id or a title or a pull request number, matches by kind with running work first and ended work marked, no match keeping the text, an empty text refused, plain text); the terminal's `needs`, badges, `!`, `find` and `/`, and the keys of both views. The web app's part (the route `/` as the start page, the rail entry with the count, the top-bar search panel) is link:web-app/needs-and-find.adoc[Web App, What Waits and Find].
+
 |link:shared/project-explorer.adoc[Project Explorer]
 |`AGREED`
 |What both clients show of the machine's projects: favourites, recent, the projects being added, all projects by name or most used, a project's row, its actions (add an epic, add a plan, running work, ended work, setup), and releasing and unenrolling a project (what stays: the checkout, `.marshall/`, the machine store with its archive).
