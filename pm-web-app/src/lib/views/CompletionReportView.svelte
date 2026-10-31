@@ -186,7 +186,7 @@
                 <span class="deliverable-mark" aria-hidden="true"
                   ><Icon name={getDeliverableIcon(d.state)} size={16} /></span
                 >
-                <span class="deliverable-state mono">{displayState('task', d.state)}</span>
+                <span class="deliverable-state mono">{displayState('task', d.state, $t)}</span>
                 <span class="deliverable-title">{d.name || d.title}</span>
               </li>
             {/each}
@@ -284,7 +284,7 @@
           <h2 class="section-title">
             {$t('report.completion.change_map')}
             <span class="section-badge">
-              {displayState('change_map', data.change_map.state)}
+              {displayState('change_map', data.change_map.state, $t)}
             </span>
           </h2>
           {#if data.change_map.cause}

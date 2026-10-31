@@ -657,7 +657,7 @@
             {plan.current_phase}
           </span>
           <span class="badge badge--state badge--state-{plan.phase_state}" data-testid="plan-state">
-            {displayState('plan', plan.phase_state)}
+            {displayState('plan', plan.phase_state, $t)}
           </span>
           {#if plan.duration_seconds > 0}
             <span class="duration-tag">{formatDurationSeconds(plan.duration_seconds)}</span>
@@ -854,8 +854,8 @@
                 {/if}
                 <span class="node-kind-badge"
                   >{level === 'sub'
-                    ? `↳ ${displayState('node_kind', node.kind)}`
-                    : displayState('node_kind', node.kind)}</span
+                    ? `↳ ${displayState('node_kind', node.kind, $t)}`
+                    : displayState('node_kind', node.kind, $t)}</span
                 >
                 <span class="node-title font-semibold">{stripControlSequences(node.title)}</span>
                 <span class="node-state-text">{getNodeStateText(node, $t)}</span>
@@ -893,12 +893,12 @@
                         <span class="task-model">{task.harness} {task.model}</span>
                         <span class="task-attempt">attempt {task.attempt}</span>
                         <span class="task-status badge badge--state badge--state-{task.status}"
-                          >{displayState('task', task.status)}</span
+                          >{displayState('task', task.status, $t)}</span
                         >
                         {#if task.off_track}
                           <span class="badge badge--warning" data-testid="task-off-track-badge">
                             {$t('plan.view.off_track', {
-                              signal: displayState('signal', task.off_track.signal),
+                              signal: displayState('signal', task.off_track.signal, $t),
                             })}
                           </span>
                         {/if}
@@ -968,10 +968,10 @@
                   <span class="warning-icon"><Icon name="state.alert" size={16} /></span>
                   <span class="off-track-msg">
                     {$t('plan.activity.off_track', {
-                      signal: displayState('signal', taskActivity.off_track.signal),
+                      signal: displayState('signal', taskActivity.off_track.signal, $t),
                       value: taskActivity.off_track.value ?? '?',
                       threshold: taskActivity.off_track.threshold ?? '?',
-                      action: displayState('action', taskActivity.off_track.action),
+                      action: displayState('action', taskActivity.off_track.action, $t),
                     })}
                   </span>
                 </div>
@@ -989,7 +989,7 @@
                     >
                       <span class="entry-time mono">{entry.timestamp}</span>
                       <span class="entry-kind-tag entry-kind-tag--{entry.kind}"
-                        >{displayState('activity', entry.kind)}</span
+                        >{displayState('activity', entry.kind, $t)}</span
                       >
                       <div class="entry-body">
                         {#if entry.kind === 'tool' || entry.kind === 'tool_call'}
@@ -1000,7 +1000,7 @@
                             >
                             {#if entry.tool_failed}
                               <span class="badge badge--danger"
-                                >{displayState('task', 'failed')} · {entry.size || ''}</span
+                                >{displayState('task', 'failed', $t)} · {entry.size || ''}</span
                               >
                             {/if}
                           </div>

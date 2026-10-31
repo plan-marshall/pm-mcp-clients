@@ -9,7 +9,7 @@
   import WorkflowIcon from '../components/WorkflowIcon.svelte';
   import { phaseIconId } from '../icons/workflowIcons';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
-  import { displayState, displayUnit } from '../display';
+  import { displayState, displayUnit, hasUnitName } from '../display';
   import {
     apiClient,
     type ProjectSummary,
@@ -948,7 +948,7 @@
                           </span>
                         {/if}
                         <span class="badge badge--state badge--state-{getPlanState(plan)}">
-                          {displayState('plan', getPlanState(plan))}
+                          {displayState('plan', getPlanState(plan), $t)}
                         </span>
                       </div>
                     </div>
@@ -979,7 +979,7 @@
                           data-testid="off-track-badge"
                         >
                           {$t('overview.plan.off_track', {
-                            signal: displayState('signal', getPlanOffTrack(plan)),
+                            signal: displayState('signal', getPlanOffTrack(plan), $t),
                           })}
                         </span>
                       {/if}
@@ -1071,7 +1071,7 @@
                               </span>
                             {/if}
                             <span class="badge badge--state badge--state-{getPlanState(childPlan)}">
-                              {displayState('plan', getPlanState(childPlan))}
+                              {displayState('plan', getPlanState(childPlan), $t)}
                             </span>
                             <button
                               type="button"
@@ -1123,7 +1123,7 @@
                               </span>
                             {/if}
                             <span class="badge badge--state badge--state-{getPlanState(plan)}">
-                              {displayState('plan', getPlanState(plan))}
+                              {displayState('plan', getPlanState(plan), $t)}
                             </span>
                           </div>
                         </div>
@@ -1149,20 +1149,23 @@
                     <span class="alongside-desc">
                       {#if landing.unit}
                         {$t('overview.landing.unit', {
-                          unit: displayUnit(landing.unit),
-                          state: displayState('landing', landing.state),
+                          unit: displayUnit(landing.unit, $t),
+                          state: displayState('landing', landing.state, $t),
                         })}
+                        {#if !hasUnitName(landing.unit)}
+                          <span class="chip chip--unit">{landing.unit}</span>
+                        {/if}
                       {:else if landing.count}
                         {$t('overview.landing.removal', {
                           count: landing.count,
-                          state: displayState('landing', landing.state),
+                          state: displayState('landing', landing.state, $t),
                         })}
                       {:else}
-                        {displayState('landing', landing.state)}
+                        {displayState('landing', landing.state, $t)}
                       {/if}
                     </span>
                     <span class="badge badge--state badge--state-{landing.state}"
-                      >{displayState('landing', landing.state)}</span
+                      >{displayState('landing', landing.state, $t)}</span
                     >
                   </div>
                 {/each}
@@ -1478,6 +1481,18 @@
 
   .alongside-desc {
     flex: 1;
+  }
+
+  /* The id of a unit the catalogue does not name: a chip beside the unknown word, so two
+     landings of unnamed units stay distinguishable (CC-P-01). */
+  .chip--unit {
+    display: inline-block;
+    margin-inline-start: 0.35rem;
+    padding: 0 0.35rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
   }
 
   /* Ended Work */

@@ -422,7 +422,7 @@ describe('DecisionView component', () => {
       id: 'dec-101',
       channel: 'cli',
       device: 'terminal-01',
-      answer: 'Rebase onto main',
+      answer: 'rebase',
     });
 
     await waitFor(() => {

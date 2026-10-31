@@ -100,15 +100,22 @@ function withoutLiterals(expression: string): string {
 /**
  * @param expression one interpolation's expression
  * @returns whether the expression decides something rather than printing a value: a comparison,
- *   a filter, a ternary or another block's condition. Optional chaining (`?.`) and nullish
- *   coalescing (`??`) are no decision: they still print the value the expression reads.
+ *   a filter, a ternary or another block's condition. Optional chaining (`?.`), nullish
+ *   coalescing (`??`) and `||` (`{node.state || 'running'}` prints the left operand) are no
+ *   decision: they still print the value the expression reads.
  */
 function decidesRatherThanPrints(expression: string): boolean {
-  if (/===|!==|==|!=|&&|\|\||<|>|!/.test(expression)) {
+  if (/===|!==|==|!=|&&|<|>|!/.test(expression)) {
     return true;
   }
   return /(?<!\?)\?(?![.?])/.test(expression);
 }
+
+/**
+ * The helpers that name a value themselves, so the guard reads their result rather than their
+ * argument. A generic wrapper (`String(node.state)`) is not one of them.
+ */
+const NAMING_HELPERS = Object.freeze(['stateLabel', 'getNodeStateText', 'consentChannel']);
 
 /**
  * @param expression one interpolation's expression
@@ -117,7 +124,33 @@ function decidesRatherThanPrints(expression: string): boolean {
  *   prints the value through the message and is exactly what the guard must catch.
  */
 function handsToHelper(expression: string): boolean {
-  return /^[A-Za-z_$][\w$]*\(/.test(expression) && !/^\$?t\(/.test(expression);
+  const call = expression.match(/^([A-Za-z_$][\w$]*)\(/);
+  return call !== null && NAMING_HELPERS.includes(call[1]);
+}
+
+/**
+ * @param expression one interpolation's expression, without its string literals
+ * @returns the expression with each balanced `displayState(...)` call removed, so a read beside the
+ *   call (`{displayState('plan', a.state) + b.state}`) is still inspected
+ */
+function withoutDisplayStateCalls(expression: string): string {
+  let rest = expression;
+  let start = rest.indexOf('displayState(');
+  while (start !== -1) {
+    let depth = 0;
+    let end = -1;
+    for (let cursor = start + 'displayState'.length; cursor < rest.length && end === -1; cursor += 1) {
+      if (rest[cursor] === '(') depth += 1;
+      else if (rest[cursor] === ')') {
+        depth -= 1;
+        if (depth === 0) end = cursor;
+      }
+    }
+    if (end === -1) break;
+    rest = rest.slice(0, start) + rest.slice(end + 1);
+    start = rest.indexOf('displayState(');
+  }
+  return rest;
 }
 
 /**
@@ -135,19 +168,26 @@ function readsField(expression: string, field: string): boolean {
  */
 function offendersIn(markup: string): string[] {
   const offenders: string[] = [];
-  for (const expression of interpolations(textOf(markupOf(markup)))) {
-    if (
-      isBlockDirective(expression) ||
-      expression.includes('displayState(') ||
-      handsToHelper(expression)
-    ) {
-      continue;
-    }
-    const printed = withoutLiterals(expression);
-    if (decidesRatherThanPrints(printed)) continue;
-    const field = ENUM_FIELDS.find((candidate) => readsField(printed, candidate));
+  const withoutTags = textOf(markupOf(markup));
+  for (const expression of interpolations(withoutTags)) {
+    if (isBlockDirective(expression)) continue;
+    const rest = withoutDisplayStateCalls(withoutLiterals(expression));
+    if (handsToHelper(rest)) continue;
+    if (decidesRatherThanPrints(rest)) continue;
+    const field = ENUM_FIELDS.find((candidate) => readsField(rest, candidate));
     if (field !== undefined) {
       offenders.push(expression);
+    }
+  }
+  for (const attribute of markupOf(markup).matchAll(
+    /\b(aria-label|title|placeholder|alt)=(?:"([^"]*)"|\{([^}]*)\})/g,
+  )) {
+    const value = attribute[2] ?? attribute[3] ?? '';
+    const rest = withoutDisplayStateCalls(withoutLiterals(value));
+    if (decidesRatherThanPrints(rest)) continue;
+    const field = ENUM_FIELDS.find((candidate) => readsField(rest, candidate));
+    if (field !== undefined) {
+      offenders.push(`${attribute[1]}=${value}`);
     }
   }
   return offenders;
@@ -158,12 +198,16 @@ describe('the enum guard', () => {
     expect(ENUM_FIELDS.length).toBeGreaterThan(0);
   });
 
-  it('flags a bare read, an optional chain and a catalogue pass-through', () => {
+  it('flags a bare read, an optional chain, a fallback and a catalogue pass-through', () => {
     const offenders = offendersIn(`
       <p>{node.state}</p>
       <p>{worker?.state}</p>
       <p>{$t('system.workers.count', { state: worker.state })}</p>
       <p>{plan.phase_state ?? 'staged'}</p>
+      <p>{node.state || 'running'}</p>
+      <p>{displayState('plan', a.state) + b.state}</p>
+      <p>{String(node.state)}</p>
+      <button aria-label={worker.state}>x</button>
       <p>{task.off_track.signal}</p>
     `);
 
@@ -172,15 +216,21 @@ describe('the enum guard', () => {
       'worker?.state',
       "$t('system.workers.count', { state: worker.state })",
       "plan.phase_state ?? 'staged'",
+      "node.state || 'running'",
+      "displayState('plan', a.state) + b.state",
+      'String(node.state)',
       'task.off_track.signal',
+      'aria-label=worker.state',
     ]);
   });
 
-  it('passes the display layer and a value a view only compares', () => {
+  it('passes the display layer, a naming helper and a value a view only compares', () => {
     const offenders = offendersIn(`
       <p>{displayState('worker', worker.state)}</p>
+      <p>{stateLabel(item.state)}</p>
       <p>{workers.filter((w) => w.state === 'busy').length}</p>
       <p>{node.state === 'done' ? 'a' : 'b'}</p>
+      <p aria-label={$t('system.work.link.plans', { state: displayState('plan', st) })}>x</p>
     `);
 
     expect(offenders).toEqual([]);

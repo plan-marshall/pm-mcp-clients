@@ -4,6 +4,7 @@
   import { formatDurationSeconds, formatTokens } from '../utils/tokenFormat';
   import { stripControlSequences } from '../utils/outputSafety';
   import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
+  import { displayState } from '../display';
   import Icon from './Icon.svelte';
 
   interface Props {
@@ -45,7 +46,7 @@
       <h3 class="node-narrative__title font-semibold" data-testid="node-narrative-title">
         {stripControlSequences(node.title)}
       </h3>
-      <span class="node-narrative__kind">{node.kind}</span>
+      <span class="node-narrative__kind">{displayState('node_kind', node.kind, $t)}</span>
       <span class="node-narrative__state" data-testid="node-narrative-state">
         {getNodeStateText(node, $t)}
       </span>
@@ -146,7 +147,7 @@
                 ><Icon name={getNodeStateIcon(subNode.state)} size={16} /></span
               >
               <span class="child-node__title">{stripControlSequences(subNode.title)}</span>
-              <span class="child-node__kind">{subNode.kind}</span>
+              <span class="child-node__kind">{displayState('node_kind', subNode.kind, $t)}</span>
               <span class="child-node__state">{getNodeStateText(subNode, $t)}</span>
             </button>
           </li>

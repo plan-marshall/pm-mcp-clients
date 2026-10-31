@@ -382,7 +382,7 @@
               ← {$t('system.cleanup.preview.back')}
             </button>
             <h2 id="heading-preview" class="section-title">{previewItem.title}</h2>
-            <span class="badge badge--kind">{displayState('cleanup', previewItem.kind)}</span>
+            <span class="badge badge--kind">{displayState('cleanup', previewItem.kind, $t)}</span>
           </div>
           <p class="text-muted text-sm">{$t('system.cleanup.preview.readonly')}</p>
           <dl class="preview-facts">
@@ -448,7 +448,7 @@
                       <div class="item-info">
                         <span class="item-title">{item.title}</span>
                         <div class="item-meta">
-                          <span class="badge badge--kind">{displayState('cleanup', item.kind)}</span>
+                          <span class="badge badge--kind">{displayState('cleanup', item.kind, $t)}</span>
                           {#if item.ended_at}
                             <span class="text-muted text-xs">
                               {$t('system.cleanup.details.ended', { time: item.ended_at })}
@@ -541,7 +541,7 @@
                   </span>
                 </div>
               </label>
-              <span class="badge">{displayState('cleanup', k.kind)}</span>
+              <span class="badge">{displayState('cleanup', k.kind, $t)}</span>
             </li>
           {/each}
         </ul>

@@ -853,13 +853,13 @@
                       type="button"
                       class="status-tag status-tag--{st} status-tag--link"
                       aria-label={$t('system.work.link.plans', {
-                        state: displayState('plan', st),
+                        state: displayState('plan', st, $t),
                         count,
                       })}
                       onclick={() => openOverview('plans')}
                     >
                       {count}
-                      {displayState('plan', st)}
+                      {displayState('plan', st, $t)}
                     </button>
                   {/if}
                 {/each}
@@ -879,13 +879,13 @@
                       type="button"
                       class="status-tag status-tag--{st} status-tag--link"
                       aria-label={$t('system.work.link.epics', {
-                        state: displayState('epic', st),
+                        state: displayState('epic', st, $t),
                         count,
                       })}
                       onclick={() => openOverview('epics')}
                     >
                       {count}
-                      {displayState('epic', st)}
+                      {displayState('epic', st, $t)}
                     </button>
                   {/if}
                 {/each}
@@ -960,7 +960,7 @@
                     <td class="mono">{w.model}</td>
                     <td>
                       <span class="worker-state worker-state--{w.state.toLowerCase()}">
-                        {displayState('worker', w.state)}
+                        {displayState('worker', w.state, $t)}
                       </span>
                     </td>
                     <td class="text-truncate">{w.current_plan_title || '—'}</td>

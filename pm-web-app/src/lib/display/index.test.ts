@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
-import { displayError, displayState, displayUnit } from './index';
+import { displayError, displayState, displayUnit, hasUnitName } from './index';
 
 /**
  * The display layer reads the shared vocabulary of the catalogue (`state.*`, `unit.*`) and the
@@ -46,6 +46,7 @@ describe('displayState', () => {
     useCatalogue('de');
     expect(displayState('activity', 'assistant_text')).toBe('schrieb');
     expect(displayState('activity', 'file_changed')).toBe('geändert');
+    expect(displayState('activity', 'gap')).toBe('entfallen');
   });
 
   it('names a node kind, which the API sends as a wire value', () => {
@@ -138,6 +139,8 @@ describe('displayUnit', () => {
     useCatalogue('en');
     expect(displayUnit('landing.pull-request')).toBe('Pull request');
     expect(displayUnit('remediation.ci-failure')).toBe('CI failure');
+    expect(hasUnitName('landing.pull-request')).toBe(true);
+    expect(hasUnitName('execute.envelope')).toBe(false);
 
     useCatalogue('de');
     expect(displayUnit('landing.pull-request')).toBe('Pull Request');
