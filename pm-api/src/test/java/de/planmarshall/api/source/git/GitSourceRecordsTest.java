@@ -115,9 +115,13 @@ class GitSourceRecordsTest {
     @DisplayName("RateLimitStatus round-trips with its reset instant and clamps negatives")
     void rateLimitRoundTrips() throws Exception {
         var limit = Generators.integers(1_000, 10_000).next();
-        var remaining = Generators.integers(0, 1_000).next();
+        var remaining = Generators.integers(1, 1_000).next();
         var limited = new RateLimitStatus(limit, remaining, Instant.parse("2026-10-12T14:05:00Z"), true);
         assertEquals(limited, RateLimitStatus.fromJson(limited.toJson()));
+
+        var exhausted = new RateLimitStatus(limit, 0, Instant.parse("2026-10-12T14:05:00Z"), true);
+        assertEquals(exhausted, RateLimitStatus.fromJson(exhausted.toJson()));
+        assertEquals(0, exhausted.remaining());
 
         var unlimited = RateLimitStatus.unlimited();
         assertFalse(unlimited.limited());

@@ -134,7 +134,7 @@ class DecompositionRecordsTest {
     @DisplayName("EpicDecomposition round-trips and answers the check and count questions")
     void epicDecompositionRoundTrips() throws Exception {
         var firstId = Generators.nonEmptyStrings().next();
-        var secondId = Generators.nonEmptyStrings().next();
+        var secondId = firstId + "-second";
         var secondObjective = Generators.nonEmptyStrings().next();
         var first = new StagedPlanRecord(firstId, firstId, null,
                 List.of("pm-api"), List.of(), StagedPlanRecord.STATUS_STAGED);
@@ -143,7 +143,7 @@ class DecompositionRecordsTest {
         var epicId = Generators.nonEmptyStrings().next();
         var revision = Generators.integers(0, 100).next();
         var firstWorkstreamId = Generators.nonEmptyStrings().next();
-        var secondWorkstreamId = Generators.nonEmptyStrings().next();
+        var secondWorkstreamId = firstWorkstreamId + "-second";
         var firstWorkstreamTitle = Generators.nonEmptyStrings().next();
         var secondWorkstreamTitle = Generators.nonEmptyStrings().next();
         var message = Generators.nonEmptyStrings().next();
