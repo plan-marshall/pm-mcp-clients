@@ -11,6 +11,7 @@
   import Icon from '../components/Icon.svelte';
   import { phaseIconId } from '../icons/workflowIcons';
   import type { UiIconId } from '../icons/uiIcons';
+  import { displayState } from '../display';
   import {
     apiClient,
     type ChatReadBack,
@@ -876,7 +877,7 @@
                       {plan.current_phase}
                     </span>
                     <span class="badge badge--state badge--state-{plan.phase_state}"
-                      >{plan.phase_state}</span
+                      >{displayState('plan', plan.phase_state)}</span
                     >
                   </div>
                   <div class="plan-card__progress">
@@ -913,7 +914,7 @@
                     <span class="plan-glyph"><Icon name="state.dot" size={16} /></span>
                     <span class="plan-title font-semibold">{plan.title}</span>
                     <span class="badge badge--state badge--state-staged"
-                      >{plan.phase_state || 'staged'}</span
+                      >{displayState('plan', plan.phase_state || 'staged')}</span
                     >
                   </div>
                   <div class="plan-card__progress">

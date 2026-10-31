@@ -6,6 +6,7 @@
   import Spinner from '../components/Spinner.svelte';
   import { apiClient, type PlanCompletionReport } from '../api/client';
   import { formatTokens, formatSplit } from '../utils/tokenFormat';
+  import { displayState } from '../display';
 
   interface Props {
     planId: string;
@@ -107,7 +108,7 @@
       <div class="report-header__headline">
         <h1 class="report-title">{data.plan_id}</h1>
         <span class="report-badge report-badge--{data.outcome.toLowerCase()}">
-          {data.outcome}
+          {$t('overview.ended.outcome', { outcome: data.outcome })}
         </span>
         {#if data.pull_request_number}
           <a
@@ -131,7 +132,10 @@
         <div class="summary-row">
           <span class="summary-label">{$t('report.completion.outcome')}</span>
           <div class="summary-value">
-            <span>{data.terminal_reason || data.outcome}</span>
+            <span
+              >{data.terminal_reason ||
+                $t('overview.ended.outcome', { outcome: data.outcome })}</span
+            >
             {#if data.pull_request_url}
               <a
                 class="pr-url-link"
@@ -139,7 +143,7 @@
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {data.pull_request_url}
+                <code>{data.pull_request_url}</code>
               </a>
             {/if}
           </div>
@@ -182,7 +186,7 @@
                 <span class="deliverable-mark" aria-hidden="true"
                   ><Icon name={getDeliverableIcon(d.state)} size={16} /></span
                 >
-                <span class="deliverable-state mono">{d.state}</span>
+                <span class="deliverable-state mono">{displayState('task', d.state)}</span>
                 <span class="deliverable-title">{d.name || d.title}</span>
               </li>
             {/each}

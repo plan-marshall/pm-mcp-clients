@@ -9,6 +9,7 @@
   import WorkflowIcon from '../components/WorkflowIcon.svelte';
   import { phaseIconId } from '../icons/workflowIcons';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
+  import { displayState, displayUnit } from '../display';
   import {
     apiClient,
     type ProjectSummary,
@@ -976,7 +977,9 @@
                           class="badge badge--warning badge--off-track"
                           data-testid="off-track-badge"
                         >
-                          {$t('overview.plan.off_track', { signal: getPlanOffTrack(plan) })}
+                          {$t('overview.plan.off_track', {
+                            signal: displayState('signal', getPlanOffTrack(plan)),
+                          })}
                         </span>
                       {/if}
                       {#if getPlanPrNumber(plan)}
@@ -1144,18 +1147,21 @@
                     {/if}
                     <span class="alongside-desc">
                       {#if landing.unit}
-                        {$t('overview.landing.unit', { unit: landing.unit, state: landing.state })}
+                        {$t('overview.landing.unit', {
+                          unit: displayUnit(landing.unit),
+                          state: displayState('landing', landing.state),
+                        })}
                       {:else if landing.count}
                         {$t('overview.landing.removal', {
                           count: landing.count,
-                          state: landing.state,
+                          state: displayState('landing', landing.state),
                         })}
                       {:else}
-                        {landing.kind} · {landing.state}
+                        {displayState('landing', landing.state)}
                       {/if}
                     </span>
                     <span class="badge badge--state badge--state-{landing.state}"
-                      >{landing.state}</span
+                      >{displayState('landing', landing.state)}</span
                     >
                   </div>
                 {/each}

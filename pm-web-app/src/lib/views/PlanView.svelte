@@ -29,6 +29,7 @@
   import { formatSplit, formatTokens, formatDurationSeconds } from '../utils/tokenFormat';
   import { stripControlSequences } from '../utils/outputSafety';
   import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
+  import { displayState } from '../display';
   import Icon from '../components/Icon.svelte';
 
   /** What the inspector shows: a leaf task's live feed, or a node's own narrative. */
@@ -656,7 +657,7 @@
             {plan.current_phase}
           </span>
           <span class="badge badge--state badge--state-{plan.phase_state}" data-testid="plan-state">
-            {plan.phase_state}
+            {displayState('plan', plan.phase_state)}
           </span>
           {#if plan.duration_seconds > 0}
             <span class="duration-tag">{formatDurationSeconds(plan.duration_seconds)}</span>
@@ -851,7 +852,10 @@
                 {#if level === 'root' && node.kind === 'phase'}
                   <WorkflowIcon id={phaseIconId(node.node_id)} size={16} />
                 {/if}
-                <span class="node-kind-badge">{level === 'sub' ? `↳ ${node.kind}` : node.kind}</span
+                <span class="node-kind-badge"
+                  >{level === 'sub'
+                    ? `↳ ${displayState('node_kind', node.kind)}`
+                    : displayState('node_kind', node.kind)}</span
                 >
                 <span class="node-title font-semibold">{stripControlSequences(node.title)}</span>
                 <span class="node-state-text">{getNodeStateText(node, $t)}</span>
@@ -889,11 +893,13 @@
                         <span class="task-model">{task.harness} {task.model}</span>
                         <span class="task-attempt">attempt {task.attempt}</span>
                         <span class="task-status badge badge--state badge--state-{task.status}"
-                          >{task.status}</span
+                          >{displayState('task', task.status)}</span
                         >
                         {#if task.off_track}
                           <span class="badge badge--warning" data-testid="task-off-track-badge">
-                            off track: {task.off_track.signal}
+                            {$t('plan.view.off_track', {
+                              signal: displayState('signal', task.off_track.signal),
+                            })}
                           </span>
                         {/if}
                       </button>
@@ -982,7 +988,9 @@
                       data-testid="activity-entry"
                     >
                       <span class="entry-time mono">{entry.timestamp}</span>
-                      <span class="entry-kind-tag entry-kind-tag--{entry.kind}">{entry.kind}</span>
+                      <span class="entry-kind-tag entry-kind-tag--{entry.kind}"
+                        >{displayState('activity', entry.kind)}</span
+                      >
                       <div class="entry-body">
                         {#if entry.kind === 'tool' || entry.kind === 'tool_call'}
                           <div class="tool-call mono">
@@ -991,7 +999,9 @@
                               >{stripControlSequences(entry.tool_target)}</span
                             >
                             {#if entry.tool_failed}
-                              <span class="badge badge--danger">failed · {entry.size || ''}</span>
+                              <span class="badge badge--danger"
+                                >{displayState('task', 'failed')} · {entry.size || ''}</span
+                              >
                             {/if}
                           </div>
                         {:else if entry.kind === 'changed' || entry.kind === 'file_changed'}
