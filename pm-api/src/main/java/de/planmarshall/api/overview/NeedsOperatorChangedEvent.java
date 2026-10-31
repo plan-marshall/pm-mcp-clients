@@ -20,8 +20,8 @@ import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
 /**
- * Event payload emitted when items waiting for the operator change on a project, plan, or epic
- * ({@code needs_operator.changed}).
+ * Event payload emitted when items waiting for the operator change on a project, plan, or epic, and,
+ * with the machine's summary, on the machine itself ({@code needs_operator.changed}).
  *
  * @param projectId project identifier, or {@code null}
  * @param planId    plan identifier, or {@code null}

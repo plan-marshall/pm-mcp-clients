@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -59,6 +60,7 @@ class NeedsAndFindScenarioTest {
                 var page = JsonTree.asObject(JsonTree.parse(new String(res.body())));
                 var items = JsonTree.asArray(page.get("items"));
                 assertEquals(12, items.size(), "one item of each kind of the closed list");
+                assertEquals(12, JsonTree.integer(page, "total"));
 
                 // The items that block running work first, the oldest first; the machine's own
                 // items, which block nothing, after them.
@@ -198,13 +200,33 @@ class NeedsAndFindScenarioTest {
         }
 
         @Test
+        @DisplayName("matches a title part that is in no id")
+        void matchesByTitleOnly() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                // "Transport" appears only in the title "Fix Relay Transport", never in an id.
+                var byTitle = matches(client, auth, "Transport");
+                assertEquals(1, byTitle.size());
+                assertEquals("fix-relay", JsonTree.string(byTitle.getFirst(), "id"));
+
+                // The epic's title carries a space that its id does not.
+                var epicByTitle = matches(client, auth, "Relay Hardening");
+                assertFalse(epicByTitle.isEmpty());
+                assertEquals("epic", JsonTree.string(epicByTitle.getFirst(), "kind"));
+                assertEquals("relay-hardening", JsonTree.string(epicByTitle.getFirst(), "id"));
+            }
+        }
+
+        @Test
         @DisplayName("matches an epic by its title and keeps running work ahead of ended work")
         void epicsAndOrder() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
-                var matches = matches(client, auth, "relay-hardening");
+                var matches = matches(client, auth, "Relay Hardening");
 
                 assertTrue(matches.size() >= 2);
                 var kinds = matches.stream().map(match -> JsonTree.string(match, "kind")).toList();

@@ -110,7 +110,8 @@ class PlanViewCatalogueTest {
                 "plan.activity.server_only",
                 "plan.activity.gap",
                 "plan.activity.off_track",
-                "plan.activity.select_item"
+                "plan.activity.select_item",
+                "plan.change.size"
         };
 
         for (String key : requiredKeys) {

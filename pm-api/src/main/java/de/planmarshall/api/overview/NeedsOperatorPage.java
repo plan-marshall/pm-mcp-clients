@@ -28,6 +28,7 @@ import de.planmarshall.api.json.JsonTree;
  * @param totalPages the number of pages
  * @param hasNewer   whether a newer page exists
  * @param hasOlder   whether an older page exists
+ * @param total      the number of items of every page
  * @param items      the items of this page, in the runtime's order
  */
 public record NeedsOperatorPage(
@@ -35,6 +36,7 @@ public record NeedsOperatorPage(
         int totalPages,
         boolean hasNewer,
         boolean hasOlder,
+        int total,
         List<NeedsOperatorItem> items
 ) {
 
@@ -42,6 +44,7 @@ public record NeedsOperatorPage(
         items = items != null ? List.copyOf(items) : List.of();
         page = Math.max(1, page);
         totalPages = Math.max(1, totalPages);
+        total = Math.max(0, total);
     }
 
     /**
@@ -53,6 +56,7 @@ public record NeedsOperatorPage(
         map.put("total_pages", totalPages);
         map.put("has_newer", hasNewer);
         map.put("has_older", hasOlder);
+        map.put("total", total);
         map.put("items", items.stream().map(NeedsOperatorItem::toMap).toList());
         return map;
     }
@@ -89,6 +93,7 @@ public record NeedsOperatorPage(
                 intOf(map, "total_pages", 1),
                 Boolean.TRUE.equals(map.get("has_newer")),
                 Boolean.TRUE.equals(map.get("has_older")),
+                intOf(map, "total", items.size()),
                 items);
     }
 

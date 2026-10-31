@@ -10,8 +10,9 @@
 package de.planmarshall.api;
 
 /**
- * The paths of the runtime's operator API that the machine's own resources are read at (UC-PLN-7,
- * UC-PLN-8).
+ * The paths of the runtime's operator API that the operator's two views are read at (UC-PLN-7,
+ * UC-PLN-8): the machine resource with its {@code needs_operator} summary, the one list of
+ * everything that waits, and the search over running and ended work.
  * <p>
  * These are the HTTP paths of the local API, never the filesystem layout: {@link MachinePaths} names
  * the machine root, its socket and its locks, and holds no request path.

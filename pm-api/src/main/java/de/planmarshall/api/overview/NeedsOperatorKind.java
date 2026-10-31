@@ -44,7 +44,9 @@ public enum NeedsOperatorKind {
     }
 
     /**
-     * Resolves an enum constant from its wire string value.
+     * Resolves an enum constant from its wire string value, accepting the specification's spellings
+     * of the two waits a decision can ask ({@code waiver_request}, {@code operator_wait}) beside the
+     * values this enum has always served.
      *
      * @param value wire string
      * @return enum constant, or {@code null} if unmatched
@@ -53,8 +55,15 @@ public enum NeedsOperatorKind {
         if (value == null || value.isBlank()) {
             return null;
         }
+        var name = value.trim();
+        if ("waiver_request".equalsIgnoreCase(name)) {
+            return WAIVER;
+        }
+        if ("operator_wait".equalsIgnoreCase(name)) {
+            return WAITS_FOR_YOU;
+        }
         for (NeedsOperatorKind kind : values()) {
-            if (kind.value.equalsIgnoreCase(value) || kind.name().equalsIgnoreCase(value)) {
+            if (kind.value.equalsIgnoreCase(name) || kind.name().equalsIgnoreCase(name)) {
                 return kind;
             }
         }

@@ -18,35 +18,43 @@ Both views read the runtime and derive nothing. The list is `GET /api/v1/machine
 [#waits]
 == The List of What Waits
 
-One list of every item of every `needs_operator` summary: a plan's decision or waiver request or hold, a project's setup question, an epic's new findings, the machine's own credential and due cleanup. Each item says what it is, where it belongs, since when it waits, what it blocks, and the act that resolves it.
+One list of every item of every `needs_operator` summary: a plan's decision or waiver request or hold, a project's setup question, an epic's new findings, the machine's own credential and due cleanup. Each item says what it is (its kind and the name of the place it belongs to), where it belongs, since when it waits, what it blocks, and the act that resolves it.
 
 ----
   What waits                                                   4 items
   ───────────────────────────────────────────────────────────────────────────
-  ! decision   Rebase onto main, or drop the local commit?
+  ! decision   Drop the legacy endpoints
                pm-mcp-clients › relay-hardening › drop-legacy-api
-               waits since 15:05 · blocks the plan's landing · answer it
+               waits since 15:05 · blocks the plan · answer it
   ! condition  The credential store is locked
                pm-mcp-core › session-log
                waits since 14:52 · blocks the plan · unlock the store
-  ! credential GitHub token expires in 3 days
+  ! credential GitHub token
                machine
                waits since 09:00 · blocks no work · check it in the settings
-  ! cleanup_due  Cleanup of ended work is due
+  ! cleanup due  Cleanup of ended work is due
                machine
                waits since yesterday · blocks no work · open the cleanup
 ----
 
 * *The order* is the runtime's: the items that block running work first, then the oldest. A client keeps it and sorts nothing, so a row never moves under the pointer while the list is open; an item that is resolved leaves, and an item that arrives stands where the runtime puts it.
-* *A row* shows the kind (its icon and the word of the closed list), the item's title, the path it belongs to (`project › epic › plan`, or `machine` for the machine's own items), since when it waits, what it blocks, and the act that resolves it. The act is the one the item's own place offers — answering the decision, unlocking the store, checking the credential, opening the cleanup (link:decisions.adoc[Decisions], link:work-actions.adoc#holds[What Holds a Plan], link:project-onboarding.adoc[Project Onboarding], link:cleanup.adoc[Cleanup], link:../web-app/machine-settings.adoc[Machine Settings]).
-* *The kinds* are the closed list of the runtime, in its order: `decision`, `waiver_request`, `operator_wait`, `integrity_pause`, `stalled`, `condition`, `held`, `landing_failed`, `findings`, `setup`, `credential`, `cleanup_due`. Their words are the catalogue keys `overview.needs.*` (<<texts>>). A credential an onboarding still owes and a provider check only a project's setup can fix are `setup`, not `credential`; the credentials the runtime holds are the machine's own items, as a due cleanup is.
+* *A row* shows the kind (its icon and the word of the closed list), the name of the place it belongs to (the plan's, the epic's, or the project's title), the path itself (`project › epic › plan`, or `machine` for the machine's own items), since when it waits, what it blocks, and the act that resolves it. The contract carries no title of an item apart from those names: a decision's question, a hold's reason, and a credential's provider are read at the place the act opens, never on the row. The act is the one the item's own place offers — answering the decision, unlocking the store, checking the credential, opening the cleanup (link:decisions.adoc[Decisions], link:work-actions.adoc#holds[What Holds a Plan], link:project-onboarding.adoc[Project Onboarding], link:cleanup.adoc[Cleanup], link:../web-app/machine-settings.adoc[Machine Settings]).
+* *The kinds* are the closed list of the runtime, in its order: `decision`, `waiver`, `waits_for_you`, the holds `stalled`, `condition`, `integrity_pause`, `held`, `landing_failed`, `findings`, `setup`, `credential`, `cleanup_due`. A decision's waiver request is the kind `waiver` and any other operator wait the kind `waits_for_you`; the specification's list names the two `waiver_request` and `operator_wait`, and the contract accepts both spellings. The holds stand in the order the runtime serves them. Their words are the catalogue keys `overview.needs.*` (<<texts>>). A credential an onboarding still owes and a provider check only a project's setup can fix are `setup`, not `credential`; the credentials the runtime holds are the machine's own items, as a due cleanup is.
 * *The machine's own items* (`credential`, `cleanup_due`) belong to no plan and no project. They show the word `machine` where the path of a row stands, and they change no count of a plan, an epic, or a project.
 * *Nothing waits*: the list says so and names the work that runs, so the answer to "what needs me now?" is never an empty screen: `Nothing waits for you.` and, below it, the projects with running work, each one step away (link:plan-overview.adoc[Plan Overview]).
 * *An item resolved elsewhere* leaves the list with a quiet notice once, in a polite live region, never a dialogue and never a sound: `A decision was answered in the web app; it left the list.` The view says it once and never again; the item that remains is the runtime's truth, not a local copy.
 * *Reports are no items.* A report tells what happened and asks nothing (link:reports.adoc[Reports]); a due cleanup is an item because it needs the operator, and the report `system.cleanup_due` merely points at it.
-* *The count* beside the view's own entry in each client is the list's total, from the runtime's summary, never a count of the rows loaded so far.
+* *The count* beside the view's own entry in each client is the list's total (`total` of the page), never a count of the rows loaded so far.
 * *Live*: the view follows `needs_operator.changed` on the runtime-wide stream. An item that arrives is added where the runtime puts it, an item resolved elsewhere leaves with the quiet notice, and the selection stays on the item's id, never on its row.
 * *Paged*: the list is read a page at a time, and the end of the loaded pages is one step (`Show more`), never a silent cut. The count beside the entry says the total, so a partial list never claims to be all of it.
+
+[#blocks]
+=== What It Blocks
+
+The contract carries the *kind* of the work an item blocks — `plan`, `epic`, or `project` — and nothing when it blocks no work; the question, the reason and the provider stay at the item's own place.
+
+* `blocks` absent: `blocks no work` (`overview.needs.blocks_nothing`), for the machine's own items and for a setup that holds nothing yet.
+* `blocks` present: `blocks the plan` (`overview.needs.blocks`, filled with the word of the kind in the operator's language), and the row's act opens that work.
 
 [#find]
 == Going to Work by Name
@@ -109,8 +117,8 @@ Keys of the area `overview`, shared by both clients. A kind's word is the row's 
 |wartet seit {time}
 
 |`overview.needs.blocks`
-|blocks {what}
-|blockiert {what}
+|blocks: {what}
+|blockiert: {what}
 
 |`overview.needs.blocks_nothing`
 |blocks no work

@@ -14,7 +14,7 @@ Status: `AGREED` (accepted by the operator on 2026-10-31, together with the shar
 [#start-page]
 == The Start Page Is What Waits
 
-*The decision of 2026-10-31*: the list of what waits is the web app's start page, at `/`, and the app opens there after pairing and whenever the operator opens it without a remembered place. PLAN-49 built no route beyond this one; its text that assumed `/` stands confirmed.
+*The decision of 2026-10-31*: the list of what waits is the web app's start page, at `/`, and the app opens there after pairing and whenever the operator opens it without a remembered place. The staged plan PLAN-49 assumes `/` for its inbox view, and that assumption stands confirmed here.
 
 The reason is the question the operator opens the app with: "what needs me now?". An app that opens on what runs answers a question the operator asked second. Nothing is lost on the way: the running work is one step away, because the list's empty state names it and the rail carries it beside the list.
 

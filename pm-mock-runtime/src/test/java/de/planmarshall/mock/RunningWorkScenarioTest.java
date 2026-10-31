@@ -330,6 +330,25 @@ class RunningWorkScenarioTest {
         }
 
         @Test
+        @DisplayName("a row moves when its item starts")
+        void startedRowMoves() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                assertEquals(List.of("session-log", "profile-loader"),
+                        planIdsOf(client, auth, "pm-mcp-core"));
+
+                var gotoRes = client.send(HttpRequest.json("POST", "/mock/goto/overview.plan-started", "{}"));
+                assertEquals(200, gotoRes.status());
+
+                // The plan that just started is the newest, so it stands first.
+                assertEquals(List.of("nightly-reports", "session-log", "profile-loader"),
+                        planIdsOf(client, auth, "pm-mcp-core"));
+            }
+        }
+
+        @Test
         @DisplayName("a row moves when its item ends")
         void endedRowMoves() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
@@ -370,7 +389,12 @@ class RunningWorkScenarioTest {
         }
 
         private static List<String> planIds(UnixSocketHttpClient client, String auth) throws Exception {
-            var res = client.send(HttpRequest.get("/api/v1/projects/pm-mcp-clients")
+            return planIdsOf(client, auth, "pm-mcp-clients");
+        }
+
+        private static List<String> planIdsOf(UnixSocketHttpClient client, String auth, String projectId)
+                throws Exception {
+            var res = client.send(HttpRequest.get("/api/v1/projects/" + projectId)
                     .withHeader("Authorization", auth));
             assertEquals(200, res.status());
             return ProjectDetailResponse.fromJson(new String(res.body())).plans().stream()

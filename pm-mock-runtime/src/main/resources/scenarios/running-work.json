@@ -218,7 +218,7 @@
             "blocks": "plan"
           },
           {
-            "kind": "operator_wait",
+            "kind": "waits_for_you",
             "link": "/api/v1/plans/session-log",
             "project": {
               "id": "pm-mcp-core",
@@ -232,7 +232,7 @@
             "blocks": "plan"
           },
           {
-            "kind": "waiver_request",
+            "kind": "waiver",
             "link": "/api/v1/plans/fix-relay",
             "project": {
               "id": "pm-mcp-clients",
@@ -3409,13 +3409,13 @@
                     "blocks": "plan"
                   },
                   {
-                    "kind": "operator_wait",
+                    "kind": "waits_for_you",
                     "link": "/api/v1/plans/session-log",
                     "since": "2026-10-16T14:55:00Z",
                     "blocks": "plan"
                   },
                   {
-                    "kind": "waiver_request",
+                    "kind": "waiver",
                     "link": "/api/v1/plans/fix-relay",
                     "since": "2026-10-16T14:58:00Z",
                     "blocks": "plan"
@@ -3443,6 +3443,82 @@
             "plan_id": "drop-legacy-api",
             "kind": "decision",
             "count": 11
+          }
+        }
+      ]
+    },
+    "overview.plan-started": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-core"
+        },
+        "state": {
+          "state_id": "overview.plan-started"
+        },
+        "facts": {
+          "summary": "A plan starts in a project, so its row enters the project first",
+          "runtime": {
+            "routes": {
+              "GET /api/v1/projects/pm-mcp-core": {
+                "project_id": "pm-mcp-core",
+                "display_name": "pm-mcp-core",
+                "plans": [
+                  {
+                    "plan_id": "nightly-reports",
+                    "title": "Nightly reports",
+                    "current_phase": "init",
+                    "phase_state": "running",
+                    "running_since": "2026-10-16T16:00:00Z",
+                    "phase_entered_at": "2026-10-16T16:00:00Z",
+                    "tasks_done": 0,
+                    "tasks_total": 4
+                  },
+                  {
+                    "plan_id": "session-log",
+                    "title": "Session log and generations",
+                    "current_phase": "execute",
+                    "phase_state": "running",
+                    "running_since": "2026-10-16T11:38:00Z",
+                    "phase_entered_at": "2026-10-16T11:38:00Z",
+                    "tasks_done": 3,
+                    "tasks_total": 5,
+                    "pull_request_number": 198,
+                    "pull_request_url": "https://github.com/plan-marshall/pm-mcp-core/pull/198"
+                  },
+                  {
+                    "plan_id": "profile-loader",
+                    "title": "Profile loader",
+                    "current_phase": "finalize",
+                    "phase_state": "paused",
+                    "running_since": "2026-10-16T09:38:00Z",
+                    "phase_entered_at": "2026-10-16T14:38:00Z",
+                    "tasks_done": 8,
+                    "tasks_total": 8
+                  }
+                ],
+                "epics": [],
+                "alongside_landings": []
+              }
+            }
+          }
+        },
+        "links": []
+      },
+      "links": {},
+      "events": [
+        {
+          "after_ms": 100,
+          "event": "project.work_started",
+          "data": {
+            "event": "project.work_started",
+            "at": "2026-10-16T16:00:00Z",
+            "scope": {
+              "kind": "workspace",
+              "project_id": "pm-mcp-core"
+            },
+            "project_id": "pm-mcp-core",
+            "plan_id": "nightly-reports"
           }
         }
       ]

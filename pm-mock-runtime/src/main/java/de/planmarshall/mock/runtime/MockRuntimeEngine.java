@@ -5672,6 +5672,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         page.put("total_pages", 1);
         page.put("has_newer", false);
         page.put("has_older", false);
+        page.put("total", items.size());
         page.put("items", items);
         response.json(200, page);
     }
@@ -5757,7 +5758,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void collectRunningPlans(String text, List<Map<String, Object>> matches) throws IOException {
-        for (var entry : currentScenario.get().routes().entrySet()) {
+        for (var entry : mergedRoutes().entrySet()) {
             var key = entry.getKey();
             if (!key.startsWith("GET /api/v1/projects/") || key.endsWith("/ended")) {
                 continue;
@@ -5809,8 +5810,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void collectEndedWork(String text, List<Map<String, Object>> matches) throws IOException {
-        var routes = currentScenario.get().routes();
-        for (var entry : routes.entrySet()) {
+        for (var entry : mergedRoutes().entrySet()) {
             var key = entry.getKey();
             if (!key.startsWith("GET" + " /api/v1/projects/") || !key.endsWith("/ended")) {
                 continue;
@@ -5865,17 +5865,26 @@ public final class MockRuntimeEngine implements AutoCloseable {
         match.put("id", id);
         match.put("title", title == null ? id : title);
         if (projectRow != null) {
-            match.put("project", locationOf(projectRow, "project_id", "display_name"));
+            var project = locationOf(projectRow, "project_id", "display_name");
+            if (project != null) {
+                match.put("project", project);
+            }
         }
         if (epicRow != null) {
-            match.put("epic", locationOf(epicRow, "id", "title"));
+            var epic = locationOf(epicRow, "id", "title");
+            if (epic != null) {
+                match.put("epic", epic);
+            }
             var projectId = JsonTree.string(epicRow, "project");
             if (projectId != null && !match.containsKey("project")) {
                 match.put("project", Map.of("id", projectId));
             }
         }
         if (planRow != null) {
-            match.put("plan", locationOf(planRow, "id", "title"));
+            var plan = locationOf(planRow, "id", "title");
+            if (plan != null) {
+                match.put("plan", plan);
+            }
             var projectId = JsonTree.string(planRow, "project");
             if (projectId != null && !match.containsKey("project")) {
                 match.put("project", Map.of("id", projectId));
@@ -5892,10 +5901,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return match;
     }
 
-    private static Map<String, Object> locationOf(Map<String, Object> row, String idKey, String titleKey) {
-        var location = new LinkedHashMap<String, Object>();
+    private static @Nullable Map<String, Object> locationOf(Map<String, Object> row, String idKey, String titleKey) {
         var id = JsonTree.string(row, idKey);
-        location.put("id", id == null ? "" : id);
+        if (id == null || id.isBlank()) {
+            return null;
+        }
+        var location = new LinkedHashMap<String, Object>();
+        location.put("id", id);
         var title = JsonTree.string(row, titleKey);
         if (title != null) {
             location.put("title", title);
@@ -5916,6 +5928,23 @@ public final class MockRuntimeEngine implements AutoCloseable {
             case "report" -> 4;
             default -> 9;
         };
+    }
+
+    /**
+     * @return the routes the current state serves: the state's own declarations over the scenario's,
+     *         by key
+     */
+    private Map<String, RouteDefinition> mergedRoutes() {
+        var merged = new LinkedHashMap<String, RouteDefinition>(currentScenario.get().routes());
+        var runtime = currentRuntimeFixture();
+        if (runtime != null && runtime.get(FIXTURE_ROUTES) instanceof Map<?, ?> overrides) {
+            for (var entry : overrides.entrySet()) {
+                if (entry.getValue() instanceof Map<?, ?> representation) {
+                    merged.put(String.valueOf(entry.getKey()), RouteDefinition.of(representation));
+                }
+            }
+        }
+        return merged;
     }
 
     private List<Map<String, Object>> rowsOfRoute(String method, String path, String key) throws IOException {

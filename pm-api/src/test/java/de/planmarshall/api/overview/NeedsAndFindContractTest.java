@@ -66,6 +66,13 @@ class NeedsAndFindContractTest {
         }
 
         @Test
+        @DisplayName("accepts the specification's spellings of the two waits after a decision")
+        void specificationSpellings() {
+            assertEquals(NeedsOperatorKind.WAIVER, NeedsOperatorKind.parse("waiver_request"));
+            assertEquals(NeedsOperatorKind.WAITS_FOR_YOU, NeedsOperatorKind.parse("operator_wait"));
+        }
+
+        @Test
         @DisplayName("has a word in both languages for every kind")
         void catalogueWords() {
             for (var kind : NeedsOperatorKind.values()) {
@@ -119,18 +126,19 @@ class NeedsAndFindContractTest {
         void pageRoundTrip() throws Exception {
             var item = new NeedsOperatorItem(NeedsOperatorKind.CONDITION, "/api/v1/plans/relay-metrics",
                     CLIENTS, HARDENING, new WorkLocation("relay-metrics", "Relay metrics"), null, "plan");
-            var page = new NeedsOperatorPage(1, 2, false, true, List.of(item));
+            var page = new NeedsOperatorPage(1, 2, false, true, 3, List.of(item));
 
             var again = NeedsOperatorPage.fromJson(page.toJson());
 
             assertEquals(page, again);
             assertEquals(1, JsonTree.integer(JsonTree.asObject(JsonTree.parse(page.toJson())), "page"));
+            assertEquals(3, again.total(), "the total counts every page, not the rows served");
         }
 
         @Test
         @DisplayName("serves an empty page when nothing waits")
         void emptyPage() throws Exception {
-            var page = new NeedsOperatorPage(1, 1, false, false, List.of());
+            var page = new NeedsOperatorPage(1, 1, false, false, 0, List.of());
 
             assertEquals(page, NeedsOperatorPage.fromJson(page.toJson()));
             assertTrue(page.items().isEmpty());
