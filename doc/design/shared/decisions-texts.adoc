@@ -186,9 +186,9 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |Decide
 |Entscheide
 
-|`decision.outcome.answered_elsewhere`
-|answered in {channel} ({device}): {answer}
-|beantwortet über {channel} ({device}): {answer}
+|`decision.outcome.answered`
+|Decided: {answer}
+|Entschieden: {answer}
 
 |`decision.outcome.revised`
 |The decision changed: {change}. Please answer again.

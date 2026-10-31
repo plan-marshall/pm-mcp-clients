@@ -468,6 +468,24 @@ function resolveTemplate(locale: Locale, key: string): string {
 }
 
 /**
+ * Tells whether a catalogue carries a message, through the same fallback tiers `translate` reads.
+ *
+ * The display layer needs the answer, not the text: a value whose key the catalogue does not
+ * carry reads as the unknown word instead of a humanized key, and a humanized key is
+ * indistinguishable from a message once it is rendered.
+ *
+ * @param key the message key
+ * @returns `true` when a catalogue this session can read carries the key
+ */
+export function hasMessage(key: string): boolean {
+  return (
+    ownMessage(get(messagesStore), key) !== undefined ||
+    ownMessage(englishCatalogue(), key) !== undefined ||
+    ownMessage(sessionMessages, key) !== undefined
+  );
+}
+
+/**
  * @param locale the active locale
  * @param key the message key
  * @param params the ICU parameters

@@ -65,7 +65,7 @@ describe('StartWorkModal component', () => {
       }),
     );
     expect(screen.getByTestId('start-done')).toHaveTextContent(
-      'codeberg-provider-issues has started',
+      '\u201ccodeberg-provider-issues\u201d has started.',
     );
   });
 

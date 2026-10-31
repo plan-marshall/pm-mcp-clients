@@ -157,7 +157,7 @@ class StartCatalogueTest {
         assertEquals("waits for 3 sources",
                 MessageCatalogue.format("en", "start.sources.waits", Map.of("count", 3)));
 
-        assertEquals("codeberg-provider-issues has started",
+        assertEquals("\u201ccodeberg-provider-issues\u201d has started.",
                 MessageCatalogue.format("en", "start.started.title",
                         Map.of("name", "codeberg-provider-issues")));
 

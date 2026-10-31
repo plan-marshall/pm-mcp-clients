@@ -303,19 +303,23 @@
       };
       const id = answer?.id || answer?.decision_id;
       if (id) {
-        const channel =
-          answer.channel === 'cli' ? $t('decision.channel.cli') : $t('decision.channel.web');
-        const text = $t('decision.outcome.answered_elsewhere', {
-          channel,
-          device: answer.device || '—',
-          answer: answer.answer || '—',
+        // The event carries the option key the answer names; the option's label is the word the
+        // operator chose. The decision is taken from the list here, before it is dropped below.
+        const answered = decisions.find((decision) => decision.id === id);
+        const optionKey = answer.answer || '';
+        const chosen = answered?.parts
+          ?.flatMap((part) => part.options)
+          .find((option) => option.key === optionKey);
+        const text = $t('decision.outcome.answered', {
+          answer: chosen?.label || optionKey || '—',
         });
         notices = [{ id: `${id}-answered`, text }, ...notices];
         if (chatDecisionId === id) {
           chatOpen = false;
           chatNotice = $t('decision.chat.closed_elsewhere', {
             id,
-            channel,
+            channel:
+              answer.channel === 'cli' ? $t('decision.channel.cli') : $t('decision.channel.web'),
             device: answer.device || '—',
           });
         }
@@ -769,7 +773,7 @@
           </div>
         </header>
 
-        {#if dec.description}
+        {#if dec.description && dec.description !== dec.title}
           <p class="decision-description" data-model-text>{dec.description}</p>
         {/if}
 

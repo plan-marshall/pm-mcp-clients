@@ -66,6 +66,10 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |Maschinenablage {size} · {free} frei auf ihrem Datenträger · gemessen {time}
 
 |`system.runtime.listeners`
+|socket · {loopback, select, off {loopback off} other {loopback {loopback_address}}} · {lan, select, off {network off} other {network {lan_address} ({devices, plural, one {# device} other {# devices}})}}
+|Socket · {loopback, select, off {Loopback aus} other {Loopback {loopback_address}}} · {lan, select, off {Netzwerk aus} other {Netzwerk {lan_address} ({devices, plural, one {# Gerät} other {# Geräte}})}}
+
+|`system.runtime.listeners_console`
 |listeners  socket · {loopback, select, off {loopback off} other {loopback {loopback_address}}} · {lan, select, off {network off} other {network {lan_address} ({devices, plural, one {# device} other {# devices}})}}
 |Listener  Socket · {loopback, select, off {Loopback aus} other {Loopback {loopback_address}}} · {lan, select, off {Netzwerk aus} other {Netzwerk {lan_address} ({devices, plural, one {# Gerät} other {# Geräte}})}}
 
@@ -94,6 +98,10 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |keiner läuft
 
 |`system.work.tasks`
+|{running} running · {queued} queued
+|{running} laufen · {queued} in der Warteschlange
+
+|`system.work.tasks_console`
 |tasks  {running} running · {queued} queued
 |Tasks  {running} laufen · {queued} in der Warteschlange
 
@@ -130,6 +138,10 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |Jobs
 
 |`system.jobs.slots`
+|{used} of {total, plural, one {# slot} other {# slots}}{queued, plural, =0 {} other { · # queued}}
+|{used} von {total, plural, one {# Slot} other {# Slots}}{queued, plural, =0 {} other { · # wartend}}
+
+|`system.jobs.slots_console`
 |{kind}  {used} of {total, plural, one {# slot} other {# slots}}{queued, plural, =0 {} other { · # queued}}
 |{kind}  {used} von {total, plural, one {# Slot} other {# Slots}}{queued, plural, =0 {} other { · # wartend}}
 

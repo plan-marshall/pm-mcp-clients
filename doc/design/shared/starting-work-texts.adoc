@@ -215,8 +215,8 @@ Keys of the area `start`, shared by both clients (link:texts-and-languages.adoc#
 |{name} konnte nicht angelegt werden: {cause}. Es wurde nichts angelegt.
 
 |`start.started.title`
-|{name} has started
-|{name} ist gestartet
+|“{name}” has started.
+|„{name}“ ist gestartet.
 
 |`start.started.follow`
 |Follow it
