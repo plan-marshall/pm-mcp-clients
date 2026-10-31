@@ -6392,11 +6392,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void recordInterfaceLanguage(Map<String, Object> body) {
         var chosenInterface = JsonTree.string(body, KEY_LANGUAGE_INTERFACE);
         if (isSupportedLanguage(chosenInterface)) {
-            machineLanguageInterface = chosenInterface;
+            machineLanguageInterface = Objects.requireNonNull(chosenInterface);
         }
         var chosenModel = JsonTree.string(body, KEY_LANGUAGE_MODEL);
         if (isSupportedLanguage(chosenModel)) {
-            machineLanguageModel = chosenModel;
+            machineLanguageModel = Objects.requireNonNull(chosenModel);
         }
     }
 
@@ -6510,9 +6510,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (KEY_DOCUMENTS_MODE.equals(key) && value != null) {
             applyDocumentsMode(value);
         } else if (KEY_LANGUAGE_INTERFACE.equals(key) && isSupportedLanguage(value)) {
-            machineLanguageInterface = value;
+            machineLanguageInterface = Objects.requireNonNull(value);
         } else if (KEY_LANGUAGE_MODEL.equals(key) && isSupportedLanguage(value)) {
-            machineLanguageModel = value;
+            machineLanguageModel = Objects.requireNonNull(value);
         } else if (KEY_CLEANUP_DURATIONS.equals(key) && value != null) {
             applyCleanupDurations(value);
         } else if (KEY_PLAN_DEFAULTS.equals(key) && value != null) {
