@@ -22,6 +22,7 @@
   } from '../stores/runtime';
   import { stripControlSequences } from '../utils/outputSafety';
   import { uniqueId } from '../utils/uniqueId';
+  import Button from '../components/Button.svelte';
 
   /**
    * The command palette (UX-P-02, UC-PLN-8): the search button of the top bar and `Ctrl+K`/`⌘K` or
@@ -57,8 +58,11 @@
   /** The text of the field; the store holds the text the matches belong to. */
   let text = $state('');
 
-  /** The one field, so Tab can return the focus to it. */
+  /** The one field, so a key that is not text can return the focus to it. */
   let field = $state<HTMLInputElement | undefined>(undefined);
+
+  /** The panel's own element: the box the focus stays in. */
+  let panel = $state<HTMLElement | undefined>(undefined);
 
   /** The row the keyboard acts on, anchored to its kind and id, never to its position. */
   let selectedKey = $state<string | null>(null);
@@ -120,9 +124,7 @@
   /** Every row the keyboard walks: the acts first, then the matches in the runtime's order. */
   const rows = $derived<Row[]>([
     ...acts,
-    ...matches.map(
-      (match): MatchRow => ({ key: matchKey(match), kind: match.kind, match }),
-    ),
+    ...matches.map((match): MatchRow => ({ key: matchKey(match), kind: match.kind, match })),
   ]);
 
   /** The matches grouped by kind in the order served; a run of one kind may be ended. */
@@ -219,11 +221,11 @@
       close();
       return;
     }
-    // The panel is the only stop of the page behind it: Tab keeps the focus in its field, as every
-    // dialogue of the app keeps it in its own box.
-    if (event.key === 'Tab') {
+    // The panel is the only stop of the page behind it: Tab walks its own controls, wrapping at
+    // both ends, as every dialogue of the app keeps the focus in its own box.
+    if (event.key === 'Tab' && panel) {
       event.preventDefault();
-      field?.focus();
+      cycleFocus(event.shiftKey ? -1 : 1);
       return;
     }
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
@@ -246,6 +248,24 @@
   }
 
   /**
+   * Moves the focus through the panel's own controls: the field, the rows, and Retry.
+   *
+   * @param direction how far the focus moves, wrapping at both ends
+   */
+  function cycleFocus(direction: 1 | -1): void {
+    const items = Array.from(
+      panel?.querySelectorAll<HTMLElement>('input, button:not([disabled])') ?? [],
+    ).filter((element) => !element.matches(':disabled'));
+    if (items.length === 0) {
+      return;
+    }
+    const current = document.activeElement as HTMLElement | null;
+    const index = current ? items.indexOf(current) : -1;
+    const next = index === -1 ? 0 : (index + direction + items.length) % items.length;
+    items[next]?.focus();
+  }
+
+  /**
    * Takes the focus into the field when the panel opens, locks the page behind it, and gives the
    * focus back to the control that opened it when the panel leaves the document.
    *
@@ -253,6 +273,7 @@
    * @returns the action's teardown, which restores the focus
    */
   function takeOver(node: HTMLElement): { destroy: () => void } {
+    panel = node;
     returnFocus = document.activeElement as HTMLElement | null;
     const root = document.documentElement;
     const previousOverflow = root.style.overflow;
@@ -260,6 +281,7 @@
     node.querySelector<HTMLInputElement>('input')?.focus();
     return {
       destroy(): void {
+        panel = undefined;
         root.style.overflow = previousOverflow;
         returnFocus?.focus();
         returnFocus = null;
@@ -287,11 +309,22 @@
         return;
       }
       // `/` is the second way in, and only where nothing in a field has the focus. It is taken
-      // before the views' own `/` shortcuts (a filter's focus key), so one key has one meaning.
-      if (event.key === '/' && !get(commandPaletteOpen) && !isTextTarget(event.target)) {
-        event.preventDefault();
-        event.stopPropagation();
-        openCommandPalette();
+      // before the views' own `/` shortcuts (a filter's focus key), so one key has one meaning —
+      // and while the panel is open it can never reach the view behind it.
+      if (event.key === '/') {
+        if (get(commandPaletteOpen)) {
+          if (!isTextTarget(event.target)) {
+            event.preventDefault();
+            event.stopPropagation();
+            field?.focus();
+          }
+          return;
+        }
+        if (!isTextTarget(event.target)) {
+          event.preventDefault();
+          event.stopPropagation();
+          openCommandPalette();
+        }
       }
     };
     // The capture phase is what lets the panel claim `/` ahead of a view's bubble-phase shortcut.
@@ -401,14 +434,14 @@
 
         {#if $searchIndexStore.status === 'failed'}
           <p class="command-palette__failed">
-            <button
-              type="button"
-              class="command-palette__retry"
+            <Button
+              variant="secondary"
+              size="sm"
               data-testid="command-palette-retry"
               onclick={retry}
             >
               {$t('web.common.retry')}
-            </button>
+            </Button>
           </p>
         {/if}
       </div>
@@ -479,10 +512,8 @@
 
   .command-palette__group-title {
     margin: 0;
-    font-size: var(--text-xs);
+    font-size: var(--text-sm);
     font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
     color: var(--color-text-muted);
   }
 
@@ -537,16 +568,6 @@
     margin: 0;
     font-size: var(--text-sm);
     color: var(--color-text-secondary);
-  }
-
-  .command-palette__retry {
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--text-sm);
-    color: var(--color-text-primary);
-    background-color: var(--color-bg-surface);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
   }
 
   .sr-only {

@@ -104,12 +104,18 @@
   });
   $effect(() => {
     const requested = requestedDecisionId;
-    if (requested && decisions.some((decision) => decision.id === requested)) {
-      // The split layout is the one that shows a decision beside the list, so opening a decision
-      // from the palette shows it there instead of leaving the view on the list alone.
-      layout.set('split');
-      selectedDecisionId = requested;
-      requestedDecisionId = null;
+    if (!requested || !decisions.some((decision) => decision.id === requested)) {
+      return;
+    }
+    selectedDecisionId = requested;
+    requestedDecisionId = null;
+    // Every layout renders the decision's card; the request brings it into view and leaves the
+    // layout the operator chose untouched.
+    const card = Array.from(document.querySelectorAll<HTMLElement>('[data-decision-id]')).find(
+      (element) => element.dataset.decisionId === requested,
+    );
+    if (typeof card?.scrollIntoView === 'function') {
+      card.scrollIntoView({ block: 'start' });
     }
   });
 

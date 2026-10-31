@@ -70,9 +70,7 @@ describe('the routes of the app', () => {
 
   it('carries the decision a match opened in the query', () => {
     expect(pathForRoute('decisions')).toBe('/decisions');
-    expect(pathForRoute('decisions', { decisionId: 'Q-007' })).toBe(
-      '/decisions?decision=Q-007',
-    );
+    expect(pathForRoute('decisions', { decisionId: 'Q-007' })).toBe('/decisions?decision=Q-007');
     expect(pathForRoute('decisions', { decisionId: 'Q 7/8' })).toBe(
       '/decisions?decision=Q%207%2F8',
     );

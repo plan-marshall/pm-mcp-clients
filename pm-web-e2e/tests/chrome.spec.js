@@ -263,6 +263,20 @@ test.describe('The command palette', () => {
     await expect(palette).toBeVisible();
     await expect(field).toBeFocused();
 
+    // The panel is modal: Tab walks its own controls and never reaches the page behind it.
+    await page.keyboard.press('Tab');
+    expect(
+      await page.evaluate(
+        () => document.activeElement?.closest('[data-testid="command-palette"]') !== null,
+      ),
+    ).toBe(true);
+    await page.keyboard.press('Shift+Tab');
+    expect(
+      await page.evaluate(
+        () => document.activeElement?.closest('[data-testid="command-palette"]') !== null,
+      ),
+    ).toBe(true);
+
     // Esc returns to the view the panel was opened from.
     await page.keyboard.press('Escape');
     await expect(palette).toHaveCount(0);
@@ -302,6 +316,23 @@ test.describe('The command palette', () => {
 
     await expect(page).toHaveURL(/\/plans\/fix-relay$/);
     await expect(page.getByTestId('plan-view')).toBeVisible();
+  });
+
+  test('opens a decision where it belongs', async ({ page }) => {
+    await page.goto('/overview');
+    await expect(page.getByTestId('top-bar')).toBeVisible();
+    await page.keyboard.press('Control+K');
+
+    const field = page.getByTestId('command-palette-field');
+    await field.fill('rebase');
+
+    const match = page.getByTestId('command-palette-match').first();
+    await expect(match).toContainText('Resolve rebase conflict');
+    await match.click();
+
+    // The decision opens in the decisions view, scrolled to its card, in any layout.
+    await expect(page).toHaveURL(/\/decisions\?decision=Q-007$/);
+    await expect(page.locator('[data-decision-id="Q-007"]')).toBeVisible();
   });
 
   test('keeps the name when nothing matches', async ({ page }) => {
