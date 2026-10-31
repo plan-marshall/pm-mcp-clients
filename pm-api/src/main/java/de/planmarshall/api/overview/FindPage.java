@@ -41,8 +41,10 @@ public record FindPage(
         List<FindMatch> matches
 ) {
 
+    private static final String FIELD_QUERY = "query";
+
     public FindPage {
-        Objects.requireNonNull(query, "query");
+        Objects.requireNonNull(query, FIELD_QUERY);
         matches = matches != null ? List.copyOf(matches) : List.of();
         page = Math.max(1, page);
         totalPages = Math.max(1, totalPages);
@@ -57,7 +59,7 @@ public record FindPage(
         map.put("total_pages", totalPages);
         map.put("has_newer", hasNewer);
         map.put("has_older", hasOlder);
-        map.put("query", query);
+        map.put(FIELD_QUERY, query);
         map.put("matches", matches.stream().map(FindMatch::toMap).toList());
         return map;
     }
@@ -94,7 +96,7 @@ public record FindPage(
                 intOf(map, "total_pages", 1),
                 Boolean.TRUE.equals(map.get("has_newer")),
                 Boolean.TRUE.equals(map.get("has_older")),
-                JsonTree.string(map, "query") == null ? "" : JsonTree.string(map, "query"),
+                JsonTree.string(map, FIELD_QUERY) == null ? "" : JsonTree.string(map, FIELD_QUERY),
                 matches);
     }
 

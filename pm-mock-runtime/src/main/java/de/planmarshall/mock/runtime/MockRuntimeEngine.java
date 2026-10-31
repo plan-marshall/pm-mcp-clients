@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -300,6 +301,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_ITEMS = "items";
     private static final String KEY_PLANS = "plans";
     private static final String KEY_EPICS = "epics";
+    private static final String KEY_ID = "id";
+    private static final String KEY_KIND = "kind";
+    private static final String KEY_OUTCOME = "outcome";
+    private static final String KEY_PROJECT = "project";
+    private static final String KEY_EPIC_TITLE = "epic_title";
+    private static final String KEY_DISPLAY_NAME = "display_name";
+    private static final String KEY_PULL_REQUEST = "pull_request_number";
     private static final String SEGMENT_ENDED_CHAT = "/ended/";
     private static final String SEGMENT_ENDED_CHAT_ACCEPT = "/ended/accept";
     private static final String ERR_PROJECT_NOT_FOUND = "project_not_found";
@@ -1606,8 +1614,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             "/api/v1/project-onboardings",
             "/api/v1/explorer",
             "/api/v1/overview",
-            "/api/v1/find",
-            "/api/v1/machine/needs-operator",
+            MachineApiPaths.FIND,
+            MachineApiPaths.NEEDS_OPERATOR,
             "/api/v1/workflows",
             "/api/v1/decisions",
             "/api/v1/questions",
@@ -5442,23 +5450,23 @@ public final class MockRuntimeEngine implements AutoCloseable {
             response.json(route.status(), copy);
             return;
         }
-        if (rep instanceof Map<?, ?> map && path.startsWith(PATH_PROJECTS_PREFIX) && !path.endsWith("/ended")) {
+        if (rep instanceof Map<?, ?> map && path.startsWith(PATH_PROJECTS_PREFIX) && !path.endsWith(SEGMENT_ENDED)) {
             var detail = JsonTree.asObject(rep);
-            if (detail != null && (detail.get("plans") instanceof List<?> || detail.get("epics") instanceof List<?>)) {
+            if (detail != null && (detail.get(KEY_PLANS) instanceof List<?> || detail.get(KEY_EPICS) instanceof List<?>)) {
                 var copy = orderedMap(map);
-                copy.put("plans", orderedActiveWork(rowsOf(detail, "plans")));
+                copy.put(KEY_PLANS, orderedActiveWork(rowsOf(detail, KEY_PLANS)));
                 var epics = new ArrayList<Object>();
-                for (var epicRow : rowsOf(detail, "epics")) {
+                for (var epicRow : rowsOf(detail, KEY_EPICS)) {
                     var epicMap = JsonTree.asObject(epicRow);
-                    if (epicMap != null && epicMap.get("plans") instanceof List<?> epicPlans) {
+                    if (epicMap != null && epicMap.get(KEY_PLANS) instanceof List<?> epicPlans) {
                         var epicCopy = orderedMap(epicMap);
-                        epicCopy.put("plans", orderedActiveWork(epicPlans));
+                        epicCopy.put(KEY_PLANS, orderedActiveWork(epicPlans));
                         epics.add(epicCopy);
                     } else {
                         epics.add(epicRow);
                     }
                 }
-                copy.put("epics", orderedActiveWork(epics));
+                copy.put(KEY_EPICS, orderedActiveWork(epics));
                 response.json(route.status(), copy);
                 return;
             }
@@ -5559,26 +5567,25 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (map == null) {
             return Instant.MAX;
         }
-        var projectId = JsonTree.string(map, "project_id");
+        var projectId = JsonTree.string(map, KEY_PROJECT_ID);
         if (projectId == null) {
             return Instant.MAX;
         }
-        var detailRoute = activeRoute("GET", PATH_PROJECTS_PREFIX + projectId);
-        if (detailRoute == null) {
-            return Instant.MAX;
-        }
-        var detail = JsonTree.asObject(detailRoute.representation());
+        var detail = Optional.ofNullable(activeRoute("GET", PATH_PROJECTS_PREFIX + projectId))
+                .map(RouteDefinition::representation)
+                .map(JsonTree::asObject)
+                .orElse(null);
         if (detail == null) {
             return Instant.MAX;
         }
         var oldest = Instant.MAX;
-        for (var row : rowsOf(detail, "plans")) {
+        for (var row : rowsOf(detail, KEY_PLANS)) {
             var start = createdAt(row);
             if (start.isBefore(oldest)) {
                 oldest = start;
             }
         }
-        for (var row : rowsOf(detail, "epics")) {
+        for (var row : rowsOf(detail, KEY_EPICS)) {
             var start = createdAt(row);
             if (start.isBefore(oldest)) {
                 oldest = start;
@@ -5654,7 +5661,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         var path = request.path();
         if (MachineApiPaths.NEEDS_OPERATOR.equals(path)) {
-            serveNeedsOperatorPage(request, response);
+            serveNeedsOperatorPage(response);
             return true;
         }
         if (MachineApiPaths.FIND.equals(path)) {
@@ -5669,10 +5676,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * contract's own record, in the runtime's order — the items that block running work first, then
      * the oldest.
      */
-    private void serveNeedsOperatorPage(MockHttpRequest request, MockHttpResponse response) throws IOException {
+    private void serveNeedsOperatorPage(MockHttpResponse response) throws IOException {
         var items = new ArrayList<NeedsOperatorItem>();
-        var route = activeRoute("GET", MachineApiPaths.NEEDS_OPERATOR);
-        var rep = route == null ? null : JsonTree.asObject(route.representation());
+        var rep = Optional.ofNullable(activeRoute("GET", MachineApiPaths.NEEDS_OPERATOR))
+                .map(RouteDefinition::representation)
+                .map(JsonTree::asObject)
+                .orElse(null);
         if (rep != null) {
             for (var raw : rowsOf(rep, KEY_ITEMS)) {
                 var item = JsonTree.asObject(raw);
@@ -5720,36 +5729,37 @@ public final class MockRuntimeEngine implements AutoCloseable {
         response.json(200, new FindPage(1, 1, false, false, text, matches).toMap());
     }
 
-    private void collectRunningProjects(String text, List<FindMatch> matches) throws IOException {
+    private void collectRunningProjects(String text, List<FindMatch> matches) {
         for (var row : rowsOfRoute("GET", PATH_PROJECTS, CONST_PROJECTS)) {
-            var id = JsonTree.string(row, "project_id");
-            var title = JsonTree.string(row, "display_name");
+            var id = JsonTree.string(row, KEY_PROJECT_ID);
+            var title = JsonTree.string(row, KEY_DISPLAY_NAME);
             if (id != null && matchesText(text, id, title, null)) {
-                matches.add(new FindMatch(FindKind.PROJECT, id, title, location(id, title), null, null,
-                        false, null));
+                matches.add(new FindMatch(FindKind.PROJECT, id, requireText(title, id), location(id, title),
+                        null, null, false, null));
             }
         }
     }
 
-    private void collectRunningEpics(String text, List<FindMatch> matches) throws IOException {
+    private void collectRunningEpics(String text, List<FindMatch> matches) {
         for (var row : rowsOfRoute("GET", PATH_EPICS, KEY_EPICS)) {
-            var id = JsonTree.string(row, "id");
-            var title = JsonTree.string(row, "title");
+            var id = JsonTree.string(row, KEY_ID);
+            var title = JsonTree.string(row, KEY_TITLE);
             if (id != null && matchesText(text, id, title, null)) {
-                matches.add(new FindMatch(FindKind.EPIC, id, title,
-                        location(JsonTree.string(row, "project"), null), location(id, title), null, false, null));
+                matches.add(new FindMatch(FindKind.EPIC, id, requireText(title, id),
+                        location(JsonTree.string(row, KEY_PROJECT), null), location(id, title), null, false, null));
             }
         }
     }
 
-    private void collectRunningPlans(String text, List<FindMatch> matches) throws IOException {
+    private void collectRunningPlans(String text, List<FindMatch> matches) {
         for (var entry : mergedRoutes().entrySet()) {
             if (!isProjectDetailRoute(entry.getKey())) {
                 continue;
             }
             var detail = JsonTree.asObject(entry.getValue().representation());
             if (detail != null) {
-                var project = location(JsonTree.string(detail, "project_id"), JsonTree.string(detail, "display_name"));
+                var project = location(JsonTree.string(detail, KEY_PROJECT_ID),
+                        JsonTree.string(detail, KEY_DISPLAY_NAME));
                 for (var raw : rowsOf(detail, KEY_PLANS)) {
                     var row = JsonTree.asObject(raw);
                     if (row != null) {
@@ -5762,23 +5772,24 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private static void addPlanMatch(String text, Map<String, Object> row, @Nullable WorkLocation project,
             List<FindMatch> matches) {
-        var id = JsonTree.string(row, "plan_id");
-        var title = JsonTree.string(row, "title");
-        if (id == null || !matchesText(text, id, title, JsonTree.integer(row, "pull_request_number"))) {
+        var id = JsonTree.string(row, KEY_PLAN_ID);
+        var title = JsonTree.string(row, KEY_TITLE);
+        if (id == null || !matchesText(text, id, title, JsonTree.integer(row, KEY_PULL_REQUEST))) {
             return;
         }
-        var epic = location(JsonTree.string(row, "epic_id"), JsonTree.string(row, "epic_title"));
-        matches.add(new FindMatch(FindKind.PLAN, id, title, project, epic, location(id, title), false, null));
+        var epic = location(JsonTree.string(row, KEY_EPIC_ID), JsonTree.string(row, KEY_EPIC_TITLE));
+        matches.add(new FindMatch(FindKind.PLAN, id, requireText(title, id), project, epic, location(id, title),
+                false, null));
     }
 
-    private void collectEndedWork(String text, List<FindMatch> matches) throws IOException {
+    private void collectEndedWork(String text, List<FindMatch> matches) {
         for (var entry : mergedRoutes().entrySet()) {
             if (!isEndedRoute(entry.getKey())) {
                 continue;
             }
             var rep = JsonTree.asObject(entry.getValue().representation());
             if (rep != null) {
-                var project = location(endedProjectOf(entry.getKey()), JsonTree.string(rep, "display_name"));
+                var project = location(endedProjectOf(entry.getKey()), JsonTree.string(rep, KEY_DISPLAY_NAME));
                 for (var raw : rowsOf(rep, KEY_ITEMS)) {
                     var row = JsonTree.asObject(raw);
                     if (row != null) {
@@ -5791,14 +5802,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private static void addEndedMatch(String text, Map<String, Object> row, @Nullable WorkLocation project,
             List<FindMatch> matches) {
-        var id = JsonTree.string(row, "id");
-        var title = JsonTree.string(row, "title");
-        if (id == null || !matchesText(text, id, title, JsonTree.integer(row, "pull_request_number"))) {
+        var id = JsonTree.string(row, KEY_ID);
+        var title = JsonTree.string(row, KEY_TITLE);
+        if (id == null || !matchesText(text, id, title, JsonTree.integer(row, KEY_PULL_REQUEST))) {
             return;
         }
-        var kind = Objects.requireNonNullElse(FindKind.fromValue(JsonTree.string(row, "kind")), FindKind.PLAN);
-        matches.add(new FindMatch(kind, id, title, project, null, null, true,
-                JsonTree.string(row, "outcome")));
+        var kind = Objects.requireNonNullElse(FindKind.fromValue(JsonTree.string(row, KEY_KIND)), FindKind.PLAN);
+        matches.add(new FindMatch(kind, id, requireText(title, id), project, null, null, true,
+                JsonTree.string(row, KEY_OUTCOME)));
+    }
+
+    private static String requireText(@Nullable String title, String id) {
+        return title != null ? title : id;
     }
 
     private static boolean isProjectDetailRoute(String routeKey) {
@@ -5845,7 +5860,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return merged;
     }
 
-    private List<Map<String, Object>> rowsOfRoute(String method, String path, String key) throws IOException {
+    private List<Map<String, Object>> rowsOfRoute(String method, String path, String key) {
         var route = activeRoute(method, path);
         if (route == null) {
             return List.of();

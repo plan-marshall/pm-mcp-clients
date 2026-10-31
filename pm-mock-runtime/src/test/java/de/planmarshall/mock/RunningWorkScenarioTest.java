@@ -36,6 +36,7 @@ import de.planmarshall.api.overview.EndedOutcome;
 import de.planmarshall.api.overview.EndedWorkPage;
 import de.planmarshall.api.overview.ProjectDetailResponse;
 import de.planmarshall.api.overview.ProjectOverviewResponse;
+import de.planmarshall.api.overview.ProjectSummary;
 
 @DisplayName("RunningWorkScenarioTest")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -407,7 +408,7 @@ class RunningWorkScenarioTest {
             var res = client.send(HttpRequest.get("/api/v1/projects").withHeader("Authorization", auth));
             assertEquals(200, res.status());
             return ProjectOverviewResponse.fromJson(new String(res.body())).projects().stream()
-                    .map(summary -> summary.projectId())
+                    .map(ProjectSummary::projectId)
                     .toList();
         }
     }
