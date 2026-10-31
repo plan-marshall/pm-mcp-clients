@@ -1,0 +1,36 @@
+# Screen captures for PLAN-17: Terminal: Confirm the Runtime Acts (CLI-UC-S-02, CLI-UC-P-05)
+# name | scenario | states | command | keys | columnsxrows | locale | environment | keys before the capture
+#
+# The target of the set is `reports-and-system` -> `system.running`:
+#   system-actions-*  the `a` menu of the system view, opened from the console (`system`, then `a`)
+#   stop-screen-*     `runtime stop` as it draws, the keys-less screen the dialogue settles on
+#   stop-keep-*       `runtime stop` with `k` (keep it running): nothing is sent
+#   stop-when-done-*  `runtime stop` with `1` (stop when done): the drain is sent
+#
+# The system view is opened from the console, not by the verb: `system` as a shell command prints
+# the view once, and only the console opens it full screen (25-system.adoc#commands). The keys after
+# the menu capture close it (`a`), leave the view (`q`) and end the console (`exit`).
+#
+# The keys-less captures come first so that a run of this set against the code before the change
+# records the old screen of every target before the keyed captures stop it: before the change
+# `runtime stop` sends at once and exits, so a keyed capture has no prompt to type into.
+
+system-actions-120x30-en | reports-and-system | system.running |  | aqexit\n | 120x30 | en_US.UTF-8 | - | system\na
+system-actions-80x24-en | reports-and-system | system.running |  | aqexit\n | 80x24 | en_US.UTF-8 | - | system\na
+system-actions-120x30-de | reports-and-system | system.running |  | aqexit\n | 120x30 | de_DE.UTF-8 | - | system\na
+system-actions-80x24-de | reports-and-system | system.running |  | aqexit\n | 80x24 | de_DE.UTF-8 | - | system\na
+
+stop-screen-120x30-en | reports-and-system | system.running | runtime stop | - | 120x30 | en_US.UTF-8 | -
+stop-screen-80x24-en | reports-and-system | system.running | runtime stop | - | 80x24 | en_US.UTF-8 | -
+stop-screen-120x30-de | reports-and-system | system.running | runtime stop | - | 120x30 | de_DE.UTF-8 | -
+stop-screen-80x24-de | reports-and-system | system.running | runtime stop | - | 80x24 | de_DE.UTF-8 | -
+
+stop-keep-120x30-en | reports-and-system | system.running | runtime stop | k\n | 120x30 | en_US.UTF-8 | -
+stop-keep-80x24-en | reports-and-system | system.running | runtime stop | k\n | 80x24 | en_US.UTF-8 | -
+stop-keep-120x30-de | reports-and-system | system.running | runtime stop | l\n | 120x30 | de_DE.UTF-8 | -
+stop-keep-80x24-de | reports-and-system | system.running | runtime stop | l\n | 80x24 | de_DE.UTF-8 | -
+
+stop-when-done-120x30-en | reports-and-system | system.running | runtime stop | 1\n | 120x30 | en_US.UTF-8 | -
+stop-when-done-80x24-en | reports-and-system | system.running | runtime stop | 1\n | 80x24 | en_US.UTF-8 | -
+stop-when-done-120x30-de | reports-and-system | system.running | runtime stop | 1\n | 120x30 | de_DE.UTF-8 | -
+stop-when-done-80x24-de | reports-and-system | system.running | runtime stop | 1\n | 80x24 | de_DE.UTF-8 | -

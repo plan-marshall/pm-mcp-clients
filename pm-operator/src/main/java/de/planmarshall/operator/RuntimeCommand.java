@@ -100,36 +100,53 @@ public final class RuntimeCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             try {
                 if (withdraw) {
-                    var response = context.runtime(false).send(
-                                        HttpRequest.delete("/api/v1/runtime/stop"));
-                    if (response.status() == 200 || response.status() == 204) {
-                        out.println("runtime   drain withdrawn");
-                        out.flush();
-                        return 0;
-                    }
-                    var err = spec.commandLine().getErr();
-                    err.printf("Failed to withdraw drain: HTTP %d%n", response.status());
-                    err.flush();
-                    return 1;
+                    return withdraw(out);
                 }
 
+                var when = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.STOP, when(), null);
+                if (when == null) {
+                    return 0;
+                }
+                var stopNow = when == RuntimeActDialogue.When.NOW;
+
                 var body = new LinkedHashMap<String, Object>();
-                body.put("when", drain ? "drain" : "now");
+                body.put("when", stopNow ? "now" : DRAIN);
                 body.put("then", "exit");
-                if (drain) body.put(DRAIN, true);
-                if (now) body.put("now", true);
+                if (!stopNow) body.put(DRAIN, true);
+                if (stopNow) body.put("now", true);
 
                 var response = context.runtime(false).send(
                                     HttpRequest.json("POST", "/api/v1/runtime/stop", JsonTree.write(body)));
                 if (response.status() != 202 && response.status() != 200) {
                     throw new OperatorRefusedException("runtime stop", response);
                 }
-                out.println(drain ? "runtime   draining" : "runtime   stopping");
+                out.println(stopNow ? "runtime   stopping" : "runtime   draining");
             } catch (RuntimeUnavailableException e) {
                 out.println("runtime   not running");
             }
             out.flush();
             return 0;
+        }
+
+        private int withdraw(PrintWriter out) throws IOException {
+            var response = context.runtime(false).send(
+                                HttpRequest.delete("/api/v1/runtime/stop"));
+            if (response.status() == 200 || response.status() == 204) {
+                out.println("runtime   drain withdrawn");
+                out.flush();
+                return 0;
+            }
+            var err = spec.commandLine().getErr();
+            err.printf("Failed to withdraw drain: HTTP %d%n", response.status());
+            err.flush();
+            return 1;
+        }
+
+        private RuntimeActDialogue.@Nullable When when() {
+            if (drain) {
+                return RuntimeActDialogue.When.WHEN_DONE;
+            }
+            return now ? RuntimeActDialogue.When.NOW : null;
         }
     }
 
@@ -157,11 +174,17 @@ public final class RuntimeCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
+            var when = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.RESTART, when(), null);
+            if (when == null) {
+                return 0;
+            }
+            var restartNow = when == RuntimeActDialogue.When.NOW;
+
             var body = new LinkedHashMap<String, Object>();
             body.put("then", "restart");
-            body.put("when", drain ? "drain" : "now");
-            if (drain) body.put(DRAIN, true);
-            if (now) body.put("now", true);
+            body.put("when", restartNow ? "now" : DRAIN);
+            if (!restartNow) body.put(DRAIN, true);
+            if (restartNow) body.put("now", true);
 
             var response = context.runtime(true).send(
                                 HttpRequest.json("POST", "/api/v1/operator/runtime/stop", JsonTree.write(body)));
@@ -171,6 +194,13 @@ public final class RuntimeCommand implements Callable<Integer> {
                 return 0;
             }
             throw new OperatorRefusedException("runtime restart", response);
+        }
+
+        private RuntimeActDialogue.@Nullable When when() {
+            if (drain) {
+                return RuntimeActDialogue.When.WHEN_DONE;
+            }
+            return now ? RuntimeActDialogue.When.NOW : null;
         }
     }
 
@@ -258,11 +288,17 @@ public final class RuntimeCommand implements Callable<Integer> {
         }
 
         private int executeUpgrade(PrintWriter out) throws IOException {
+            var when = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.UPGRADE, when(), version);
+            if (when == null) {
+                return 0;
+            }
+            var upgradeNow = when == RuntimeActDialogue.When.NOW;
+
             var body = new LinkedHashMap<String, Object>();
             if (version != null) body.put("version", version);
-            body.put("when", drain ? "drain" : "now");
-            if (drain) body.put(DRAIN, true);
-            if (now) body.put("now", true);
+            body.put("when", upgradeNow ? "now" : DRAIN);
+            if (!upgradeNow) body.put(DRAIN, true);
+            if (upgradeNow) body.put("now", true);
 
             var response = context.runtime(true).send(
                                 HttpRequest.json("POST", "/api/v1/operator/runtime/upgrade", JsonTree.write(body)));
@@ -272,6 +308,13 @@ public final class RuntimeCommand implements Callable<Integer> {
                 return 0;
             }
             throw new OperatorRefusedException("runtime upgrade", response);
+        }
+
+        private RuntimeActDialogue.@Nullable When when() {
+            if (drain) {
+                return RuntimeActDialogue.When.WHEN_DONE;
+            }
+            return now ? RuntimeActDialogue.When.NOW : null;
         }
     }
 }

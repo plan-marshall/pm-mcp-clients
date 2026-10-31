@@ -642,7 +642,7 @@ class PmOperatorTest {
         void stop() throws Exception {
             var server = runtime((request, response) -> response.send(202, null, ""));
 
-            assertEquals(0, run("runtime", "stop"));
+            assertEquals(0, run("runtime", "stop", "--now"));
 
             var request = server.awaitRequest(Duration.ofSeconds(1));
             assertEquals("POST", request.method());
@@ -699,7 +699,7 @@ class PmOperatorTest {
         @Test
         @DisplayName("stop without a runtime reports not running")
         void stopWithoutRuntime() {
-            assertEquals(0, run("runtime", "stop"));
+            assertEquals(0, run("runtime", "stop", "--now"));
             assertEquals("runtime   not running", out.toString().strip());
         }
 
@@ -708,7 +708,7 @@ class PmOperatorTest {
         void stopRefused() throws Exception {
             runtime((request, response) -> response.send(500, null, ""));
 
-            assertEquals(PmOperator.EXIT_FAILURE, run("runtime", "stop"));
+            assertEquals(PmOperator.EXIT_FAILURE, run("runtime", "stop", "--now"));
         }
 
         @Test

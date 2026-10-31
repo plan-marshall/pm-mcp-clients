@@ -14,23 +14,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.planmarshall.mock.StandardScenarios;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
 /**
- * The runtime stop dialogue on a real pseudo-terminal (CLI-CC-S-01): {@code q} sends nothing, an
- * unknown input re-asks, and {@code 1} sends the stop. The {@code k} case (keep it running) belongs
- * to the confirmation the fixing plan adds, together with the wording of its question.
+ * The runtime stop dialogue on a real pseudo-terminal (CLI-CC-S-01, CLI-UC-S-02): {@code q} sends
+ * nothing, an unknown input re-asks, {@code k} keeps the runtime running, and {@code 1} — or Enter,
+ * the preselection — stops it when what runs is done.
  */
 @DisplayName("pm-operator runtime stop dialogue on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
-@Disabled("PLAN-17-cli-runtime-act-confirm confirms the runtime acts")
 class RuntimeStopDialogueIT {
 
-    private static final String PROMPT = "1) stop it now";
+    private static final String PROMPT = "1) Stop when done";
+    private static final String STOP_NOW = "2) Stop now";
+    private static final String KEEP = "k) keep it running";
 
     @Test
     @DisplayName("q first: the dialogue leaves and sends nothing")
@@ -64,16 +64,47 @@ class RuntimeStopDialogueIT {
     }
 
     @Test
-    @DisplayName("the main path: 1 sends the stop")
-    void mainPathStops() throws Exception {
+    @DisplayName("k keeps it running and sends nothing")
+    void keepRunningSendsNothing() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("system.running");
              var session = harness.open("runtime", "stop")) {
-            assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitText(KEEP, DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, "k\n");
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            assertEquals(0, session.exitCode(), session.rawOutput());
+            harness.assertNoAct();
+        }
+    }
+
+    @Test
+    @DisplayName("1 stops when what runs is done")
+    void stopsWhenDone() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("system.running");
+             var session = harness.open("runtime", "stop")) {
+            assertTrue(session.awaitText(STOP_NOW, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "1\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
-            assertTrue(session.screenText().contains("runtime   stopping"), session.screenText());
+            assertTrue(session.screenText().contains("runtime   draining"), session.screenText());
+            assertEquals(0, session.exitCode(), session.rawOutput());
+            harness.assertAct("POST", "/api/v1/runtime/stop");
+        }
+    }
+
+    @Test
+    @DisplayName("Enter takes the preselection: the stop when done")
+    void enterTakesThePreselection() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("system.running");
+             var session = harness.open("runtime", "stop")) {
+            assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, "\n");
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            assertTrue(session.screenText().contains("runtime   draining"), session.screenText());
             harness.assertAct("POST", "/api/v1/runtime/stop");
         }
     }
