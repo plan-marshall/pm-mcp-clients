@@ -92,6 +92,9 @@ public final class RuntimeCommand implements Callable<Integer> {
         @Option(names = "--now", description = "Stop immediately")
         boolean now;
 
+        @Option(names = "--yes", description = "Accept confirmation")
+        boolean yes;
+
         @Option(names = "--no-input", description = "Non-interactive mode")
         boolean noInput;
 

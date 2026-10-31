@@ -141,14 +141,14 @@ pm ›
 ----
 pm › runtime stop
 Stop the runtime?
-  Running now: 3 plans · 1 epic · 4 tasks · 2 jobs (1 build, 1 test) · 5 workers, 3 busy
-  When
-    1) When what runs is done   Nothing new starts. Each running task and job finishes,
-                                then the runtime stops.
-    2) Now                      Running tasks are withdrawn and jobs stopped. Everything
-                                goes on from its last committed state at the next start.
+  Running now: 3 plans · 1 epic · 4 tasks · 1 job · 5 workers
   Every client sees that it stops. Start it again on this machine: pm-operator runtime start.
-  1) Stop when done   2) Stop now   k) keep it running                          [1] ›
+  When
+  1) Stop when done ←         Nothing new starts. Each running task and job finishes,
+                              then the runtime stops.
+  2) Stop now                 Running tasks are withdrawn and jobs stopped. Everything
+                              goes on from its last committed state at the next start.
+  k) keep it running
 ◐ Stopping when what runs is done · 2 left: execute task of fix-relay, build of fix-relay
   runtime stop --now · runtime stop --withdraw
 pm [stopping] ›
@@ -156,7 +156,7 @@ pm [stopping] ›
 
 * `Enter` takes `1`, the drain, the preselection of link:../shared/system.adoc#stop[System, Stopping]; `k` (German `l`) sends nothing.
 * *In the console* the prompt returns at once with the badge `stopping`; the progress is a quiet line above the prompt each time what is left changes, and the line of the stop itself when it stops. *As a shell command* the verb waits, printing the same lines, bounded as `drain` waits (the bound defined with the drain timeout), and exits `0` when the runtime stopped, or `0` with `The runtime is still draining (PID 48211).` when the bound passed first.
-* *Nothing runs*: no choice, `Stop the runtime? Nothing runs.  y) stop  k) keep it running`.
+* *Nothing runs*: the line says `Nothing runs.` and both choices are offered, because neither ends anything; `k` keeps it running.
 
 [source,text]
 ----
@@ -333,4 +333,8 @@ The texts of the view and of the acts are those of link:../shared/system-texts.a
 |`operator.system.keep`
 |k) keep it running
 |l) lass sie laufen
+
+|`operator.system.stopped_no_input`
+|runtime {act} needs the choice of when; answer it with --when-done or --now.
+|runtime {act} braucht die Wahl des Zeitpunkts; antworte mit --when-done oder --now.
 |===
