@@ -947,7 +947,7 @@
                           </span>
                         {/if}
                         <span class="badge badge--state badge--state-{getPlanState(plan)}">
-                          {$t('overview.state.' + getPlanState(plan))}
+                          {displayState('plan', getPlanState(plan))}
                         </span>
                       </div>
                     </div>
@@ -1070,7 +1070,7 @@
                               </span>
                             {/if}
                             <span class="badge badge--state badge--state-{getPlanState(childPlan)}">
-                              {$t('overview.state.' + getPlanState(childPlan))}
+                              {displayState('plan', getPlanState(childPlan))}
                             </span>
                             <button
                               type="button"
@@ -1122,7 +1122,7 @@
                               </span>
                             {/if}
                             <span class="badge badge--state badge--state-{getPlanState(plan)}">
-                              {$t('overview.state.' + getPlanState(plan))}
+                              {displayState('plan', getPlanState(plan))}
                             </span>
                           </div>
                         </div>

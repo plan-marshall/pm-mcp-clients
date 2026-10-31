@@ -108,11 +108,12 @@ function decidesRatherThanPrints(expression: string): boolean {
 
 /**
  * @param expression one interpolation's expression
- * @returns whether the expression hands the value to a helper (`stateLabel(node.state)`), which
- *   names it in its own module
+ * @returns whether the expression hands the value to a helper (`stateLabel(node.state)`) that names
+ *   it in its own module. A catalogue look-up is not such a helper: `$t('x', { state: node.state })`
+ *   prints the value through the message and is exactly what the guard must catch.
  */
 function handsToHelper(expression: string): boolean {
-  return /^[A-Za-z_$][\w$]*\(/.test(expression);
+  return /^[A-Za-z_$][\w$]*\(/.test(expression) && !/^\$?t\(/.test(expression);
 }
 
 /**

@@ -422,7 +422,8 @@ describe('the catalogue carries every text of the package', () => {
       for (const match of text.matchAll(/\$t\('([^']+)'/g)) {
         const key = match[1];
         // A key that ends in a dot is the prefix of a computed key (`overview.state.${state}`);
-        // its values are checked by the parity test above.
+        // the parity test checks that both locales carry the same keys, not that every value a
+        // computed key can select has an entry, which the enum guard and the vocabulary own.
         if (key.endsWith('.')) continue;
         if (!(key in en)) {
           offenders.push(`${source.relative}: ${key}`);

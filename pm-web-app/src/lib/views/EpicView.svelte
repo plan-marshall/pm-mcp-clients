@@ -572,7 +572,7 @@
             class="badge badge--state badge--state-{resource?.state ?? epic.state}"
             data-testid="epic-state"
           >
-            {$t('overview.epic.state', { state: resource?.state ?? epic.state })}
+            {displayState('epic', resource?.state ?? epic.state)}
           </span>
           {#if resource}
             <span class="badge badge--mode" data-testid="epic-mode">

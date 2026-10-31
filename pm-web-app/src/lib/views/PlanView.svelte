@@ -968,7 +968,7 @@
                   <span class="warning-icon"><Icon name="state.alert" size={16} /></span>
                   <span class="off-track-msg">
                     {$t('plan.activity.off_track', {
-                      signal: taskActivity.off_track.signal,
+                      signal: displayState('signal', taskActivity.off_track.signal),
                       value: taskActivity.off_track.value ?? '?',
                       threshold: taskActivity.off_track.threshold ?? '?',
                       action: taskActivity.off_track.action,

@@ -6,6 +6,10 @@
  * vocabulary entry yet cannot be listed without turning its value into the unknown word: its
  * words belong in the vocabulary first, and that is `PLAN-06`'s surface, not this list's.
  *
+ * `role` stays out on purpose and is not a gap: the API carries it as a plain string
+ * (`WorkerMetric.role`), the set of roles is configured per machine, and a configured name the
+ * vocabulary does not carry would read as the unknown word instead of the name the operator chose.
+ *
  * `lib/display/enumGuard.test.ts` reads this list and fails on any `.svelte` file that
  * interpolates one of these fields into a text node without `displayState`.
  */
