@@ -5787,6 +5787,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void collectRunningPlans(String text, List<FindMatch> matches) {
+        var seen = new HashSet<String>();
+        for (var entry : startedPlans.entrySet()) {
+            var id = entry.getKey();
+            var title = entry.getValue().title();
+            if (!matchesText(text, id, title, null)) {
+                continue;
+            }
+            seen.add(id);
+            matches.add(new FindMatch(FindKind.PLAN, id, requireText(title, id),
+                    location(entry.getValue().projectId(), null), null, location(id, title), false, null));
+        }
         for (var entry : mergedRoutes().entrySet()) {
             if (!isProjectDetailRoute(entry.getKey())) {
                 continue;
@@ -5798,7 +5809,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 for (var raw : rowsOf(detail, KEY_PLANS)) {
                     var row = JsonTree.asObject(raw);
                     if (row != null) {
-                        addPlanMatch(text, row, project, matches);
+                        addPlanMatch(text, row, project, seen, matches);
                     }
                 }
             }
@@ -5806,12 +5817,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private static void addPlanMatch(String text, Map<String, Object> row, @Nullable WorkLocation project,
-            List<FindMatch> matches) {
+            Set<String> seen, List<FindMatch> matches) {
         var id = JsonTree.string(row, KEY_PLAN_ID);
-        var title = JsonTree.string(row, KEY_TITLE);
-        if (id == null || !matchesText(text, id, title, JsonTree.integer(row, KEY_PULL_REQUEST))) {
+        if (id == null || seen.contains(id)
+                || !matchesText(text, id, JsonTree.string(row, KEY_TITLE), JsonTree.integer(row, KEY_PULL_REQUEST))) {
             return;
         }
+        var title = JsonTree.string(row, KEY_TITLE);
         var epic = location(JsonTree.string(row, KEY_EPIC_ID), JsonTree.string(row, KEY_EPIC_TITLE));
         matches.add(new FindMatch(FindKind.PLAN, id, requireText(title, id), project, epic, location(id, title),
                 false, null));
@@ -5825,7 +5837,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var rep = JsonTree.asObject(entry.getValue().representation());
             if (rep != null) {
                 var project = location(endedProjectOf(entry.getKey()), JsonTree.string(rep, KEY_DISPLAY_NAME));
-                for (var raw : rowsOf(rep, KEY_ITEMS)) {
+                for (var raw : endedRowsOf(rep)) {
                     var row = JsonTree.asObject(raw);
                     if (row != null) {
                         addEndedMatch(text, row, project, matches);
@@ -5845,6 +5857,29 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var kind = Objects.requireNonNullElse(FindKind.fromValue(JsonTree.string(row, KEY_KIND)), FindKind.PLAN);
         matches.add(new FindMatch(kind, id, requireText(title, id), project, null, null, true,
                 JsonTree.string(row, KEY_OUTCOME)));
+    }
+
+    /**
+     * @param page the ended-work representation of one project
+     * @return the rows of every page it declares: page 1 from {@code pages["1"]} where it exists,
+     *         the {@code items} member otherwise, then the later pages in their order
+     */
+    private static List<?> endedRowsOf(Map<String, Object> page) {
+        if (!(page.get("pages") instanceof Map<?, ?> pages)) {
+            return rowsOf(page, KEY_ITEMS);
+        }
+        var rows = new ArrayList<Object>();
+        if (pages.get("1") instanceof List<?> first) {
+            rows.addAll(first);
+        } else {
+            rows.addAll(rowsOf(page, KEY_ITEMS));
+        }
+        for (var entry : pages.entrySet()) {
+            if (!"1".equals(String.valueOf(entry.getKey())) && entry.getValue() instanceof List<?> later) {
+                rows.addAll(later);
+            }
+        }
+        return rows;
     }
 
     private static String requireText(@Nullable String title, String id) {
