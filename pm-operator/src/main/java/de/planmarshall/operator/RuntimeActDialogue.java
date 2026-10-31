@@ -64,6 +64,15 @@ final class RuntimeActDialogue {
         NOW
     }
 
+    /**
+     * The outcome of the confirmation.
+     *
+     * @param when     the choice of when, or {@code null} when nothing is sent
+     * @param exitCode the exit code of the verb that asked
+     */
+    record Answer(@Nullable When when, int exitCode) {
+    }
+
     private static final String DRAIN = "drain";
     private static final String NOW = "now";
     private static final String RUNNING = "running";
@@ -78,20 +87,32 @@ final class RuntimeActDialogue {
      * @param out      the verb's output
      * @param act      the act
      * @param explicit the when an option named, or {@code null} for none
+     * @param noInput  whether the verb may ask nothing
      * @param version  the version an upgrade goes to, or {@code null}
-     * @return the when to send, or {@code null} when nothing is sent
+     * @return the when to send, or the exit code of a verb that stopped at the choice
      * @throws IOException when the confirmation cannot be drawn
      */
-    static @Nullable When confirm(OperatorContext context, PrintWriter out, Act act, @Nullable When explicit,
-                        @Nullable String version) throws IOException {
+    static Answer confirm(OperatorContext context, PrintWriter out, Act act, @Nullable When explicit,
+                        boolean noInput, @Nullable String version) throws IOException {
         if (explicit != null) {
-            return explicit;
+            return new Answer(explicit, 0);
         }
-        return ask(context, out, act, version);
+        try {
+            return new Answer(ask(context, out, act, version, noInput), 0);
+        } catch (StartPrompt.MissingInputException _) {
+            var locale = context.clientEnvironment().locale();
+            out.println(MessageCatalogue.format(locale, "operator.actions.stopped",
+                                Map.of("state", "runtime " + act.value())));
+            out.flush();
+            return new Answer(null, StartDialogue.EXIT_MISSING_INPUT);
+        }
     }
 
     private static @Nullable When ask(OperatorContext context, PrintWriter out, Act act,
-                        @Nullable String version) throws IOException {
+                        @Nullable String version, boolean noInput) throws IOException {
+        if (noInput) {
+            throw new StartPrompt.MissingInputException("runtime " + act.value(), "when", null);
+        }
         var locale = context.clientEnvironment().locale();
         var prompt = new StartPrompt(context, out, locale, false);
         var snapshot = snapshot(context);

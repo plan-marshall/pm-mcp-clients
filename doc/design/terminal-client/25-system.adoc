@@ -23,18 +23,18 @@ The verbs of the specification stay as they are: `status` (the running work, wit
   system [--project <project_id>|.] [--window hour|today|7d] [--by model|role] [--watch]
                                             the system view; full screen in the console
   runtime start                             start the runtime (the existing verb)
-  runtime stop [--drain|--now] [--yes]      [op]  stop it: when what runs is done, or now
+  runtime stop [--when-done|--now] [--yes]  [op]  stop it: when what runs is done, or now
   runtime stop --withdraw                   [op]  withdraw a drain asked from a client
-  runtime restart [--drain|--now] [--yes]   [op]  stop it and start it again
+  runtime restart [--when-done|--now] [--yes]  [op]  stop it and start it again
   runtime upgrade --check                              ask the registry for a newer version
-  runtime upgrade [<version>] [--drain|--now] [--yes]
+  runtime upgrade [<version>] [--when-done|--now] [--yes]
                                             [op]  upgrade to the newest version, or the one named
   runtime upgrade --withdraw                [op]  withdraw an upgrade before its links are switched
   runtime upgrade --notes                         the release notes of the newest version known
 ----
 
 * *`system`* is a read, like `status`, and no operator verb: in the console it opens the full-screen view (<<full-screen>>), as a shell command, or where the full-screen view is not available, it prints the view once (<<print>>); `--watch` prints it again as figures change, as `status --watch` does. `--window` and `--by` choose the models' window and grouping (default `hour` and `model`), `--project` one project.
-* *`runtime stop|restart|upgrade`* are operator verbs: privileged requests of the operator's channel, refused without the operator checks (exit code `4`; xref:04-console.adoc#console-security[The Operator Checks]). Each shows its confirmation (`runtime.confirm-stop`, `runtime.confirm-upgrade`) as a dialogue; `--drain` or `--now` answer its choice of when, `--yes` accepts it. With `--no-input` and no `--drain` or `--now`, the verb stops at the choice with exit code `3`, as every direct verb (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]); `--yes` never chooses when.
+* *`runtime stop|restart|upgrade`* are operator verbs: privileged requests of the operator's channel, refused without the operator checks (exit code `4`; xref:04-console.adoc#console-security[The Operator Checks]). Each shows its confirmation (`runtime.confirm-stop`, `runtime.confirm-upgrade`) as a dialogue; `--when-done` (with `--drain` kept as its alias) or `--now` answer its choice of when, `--yes` accepts it. With `--no-input` and no `--when-done` or `--now`, the verb stops at the choice with exit code `3`, as every direct verb (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]); `--yes` never chooses when.
 * *`runtime upgrade --check`* asks the consent `check_updates` where it is not remembered (`runtime.update-consent`; `--consent check_updates` answers it for this run) and prints the answer (`runtime.check-update`); `runtime upgrade` without a version upgrades to the newest version known and checks first where none is.
 * *`drain`* is the signal of the specification: it asks nothing, cannot be withdrawn, and works when the runtime does not answer. A refusal of `runtime stop` because the runtime does not answer names it (`operator.system.not_answering`).
 * *`status`* keeps its tree; its runtime line carries the lifecycle state while there is one (`Runtime pm-mcpd 0.9.1, stopping when what runs is done (2 left)`) and names `system` for the rest.

@@ -84,8 +84,14 @@ public final class RuntimeCommand implements Callable<Integer> {
         @Option(names = "--drain", description = "Stop gracefully after active work completes")
         boolean drain;
 
+        @Option(names = "--when-done", description = "Stop when what runs is done; answers the confirmation")
+        boolean whenDone;
+
         @Option(names = "--now", description = "Stop immediately")
         boolean now;
+
+        @Option(names = "--no-input", description = "Non-interactive mode")
+        boolean noInput;
 
         @Option(names = "--withdraw", description = "Withdraw a requested drain")
         boolean withdraw;
@@ -103,11 +109,12 @@ public final class RuntimeCommand implements Callable<Integer> {
                     return withdraw(out);
                 }
 
-                var when = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.STOP, when(), null);
-                if (when == null) {
-                    return 0;
+                var answer = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.STOP,
+                                    when(), noInput, null);
+                if (answer.when() == null) {
+                    return answer.exitCode();
                 }
-                var stopNow = when == RuntimeActDialogue.When.NOW;
+                var stopNow = answer.when() == RuntimeActDialogue.When.NOW;
 
                 var body = new LinkedHashMap<String, Object>();
                 body.put("when", stopNow ? "now" : DRAIN);
@@ -143,7 +150,7 @@ public final class RuntimeCommand implements Callable<Integer> {
         }
 
         private RuntimeActDialogue.@Nullable When when() {
-            if (drain) {
+            if (drain || whenDone) {
                 return RuntimeActDialogue.When.WHEN_DONE;
             }
             return now ? RuntimeActDialogue.When.NOW : null;
@@ -160,11 +167,17 @@ public final class RuntimeCommand implements Callable<Integer> {
         @Option(names = "--drain", description = "Restart after active work completes")
         boolean drain;
 
+        @Option(names = "--when-done", description = "Restart when what runs is done; answers the confirmation")
+        boolean whenDone;
+
         @Option(names = "--now", description = "Restart immediately")
         boolean now;
 
         @Option(names = "--yes", description = "Accept confirmation")
         boolean yes;
+
+        @Option(names = "--no-input", description = "Non-interactive mode")
+        boolean noInput;
 
         RestartCommand(OperatorContext context) {
             this.context = context;
@@ -174,11 +187,12 @@ public final class RuntimeCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
-            var when = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.RESTART, when(), null);
-            if (when == null) {
-                return 0;
+            var answer = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.RESTART,
+                                when(), noInput, null);
+            if (answer.when() == null) {
+                return answer.exitCode();
             }
-            var restartNow = when == RuntimeActDialogue.When.NOW;
+            var restartNow = answer.when() == RuntimeActDialogue.When.NOW;
 
             var body = new LinkedHashMap<String, Object>();
             body.put("then", "restart");
@@ -197,7 +211,7 @@ public final class RuntimeCommand implements Callable<Integer> {
         }
 
         private RuntimeActDialogue.@Nullable When when() {
-            if (drain) {
+            if (drain || whenDone) {
                 return RuntimeActDialogue.When.WHEN_DONE;
             }
             return now ? RuntimeActDialogue.When.NOW : null;
@@ -227,11 +241,17 @@ public final class RuntimeCommand implements Callable<Integer> {
         @Option(names = "--drain", description = "Upgrade after active work completes")
         boolean drain;
 
+        @Option(names = "--when-done", description = "Upgrade when what runs is done; answers the confirmation")
+        boolean whenDone;
+
         @Option(names = "--now", description = "Upgrade immediately")
         boolean now;
 
         @Option(names = "--yes", description = "Accept confirmation")
         boolean yes;
+
+        @Option(names = "--no-input", description = "Non-interactive mode")
+        boolean noInput;
 
         UpgradeCommand(OperatorContext context) {
             this.context = context;
@@ -288,11 +308,12 @@ public final class RuntimeCommand implements Callable<Integer> {
         }
 
         private int executeUpgrade(PrintWriter out) throws IOException {
-            var when = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.UPGRADE, when(), version);
-            if (when == null) {
-                return 0;
+            var answer = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.UPGRADE,
+                                when(), noInput, version);
+            if (answer.when() == null) {
+                return answer.exitCode();
             }
-            var upgradeNow = when == RuntimeActDialogue.When.NOW;
+            var upgradeNow = answer.when() == RuntimeActDialogue.When.NOW;
 
             var body = new LinkedHashMap<String, Object>();
             if (version != null) body.put("version", version);
@@ -311,7 +332,7 @@ public final class RuntimeCommand implements Callable<Integer> {
         }
 
         private RuntimeActDialogue.@Nullable When when() {
-            if (drain) {
+            if (drain || whenDone) {
                 return RuntimeActDialogue.When.WHEN_DONE;
             }
             return now ? RuntimeActDialogue.When.NOW : null;
