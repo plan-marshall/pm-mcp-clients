@@ -56,6 +56,35 @@ public final class RuntimeCommand implements Callable<Integer> {
         return 0;
     }
 
+    /**
+     * @param drain    whether the drain was asked
+     * @param whenDone whether the drain was asked by its script name
+     * @param now      whether now was asked
+     * @return the choice of when the options answered, or {@code null} for the dialogue
+     */
+    static RuntimeActDialogue.@Nullable When whenOf(boolean drain, boolean whenDone, boolean now) {
+        if (drain || whenDone) {
+            return RuntimeActDialogue.When.WHEN_DONE;
+        }
+        return now ? RuntimeActDialogue.When.NOW : null;
+    }
+
+    /**
+     * @param now whether the act runs now
+     * @return the body that names the choice of when
+     */
+    private static Map<String, Object> whenBody(boolean now) {
+        var body = new LinkedHashMap<String, Object>();
+        body.put("when", now ? "now" : DRAIN);
+        if (!now) {
+            body.put(DRAIN, true);
+        }
+        if (now) {
+            body.put("now", true);
+        }
+        return body;
+    }
+
     @Command(name = "start", description = "Starts the runtime unless one runs. Runs without operator checks.")
     static final class StartCommand implements Callable<Integer> {
         @Spec
@@ -115,17 +144,14 @@ public final class RuntimeCommand implements Callable<Integer> {
                 }
 
                 var answer = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.STOP,
-                                    when(), noInput, null);
+                                    whenOf(drain, whenDone, now), noInput, null);
                 if (answer.when() == null) {
                     return answer.exitCode();
                 }
                 var stopNow = answer.when() == RuntimeActDialogue.When.NOW;
 
-                var body = new LinkedHashMap<String, Object>();
-                body.put("when", stopNow ? "now" : DRAIN);
+                var body = whenBody(stopNow);
                 body.put("then", "exit");
-                if (!stopNow) body.put(DRAIN, true);
-                if (stopNow) body.put("now", true);
 
                 var response = context.runtime(false).send(
                                     HttpRequest.json("POST", "/api/v1/runtime/stop", JsonTree.write(body)));
@@ -153,13 +179,6 @@ public final class RuntimeCommand implements Callable<Integer> {
             err.printf("Failed to withdraw drain: HTTP %d%n", response.status());
             err.flush();
             return 1;
-        }
-
-        private RuntimeActDialogue.@Nullable When when() {
-            if (drain || whenDone) {
-                return RuntimeActDialogue.When.WHEN_DONE;
-            }
-            return now ? RuntimeActDialogue.When.NOW : null;
         }
     }
 
@@ -194,17 +213,14 @@ public final class RuntimeCommand implements Callable<Integer> {
             context.gate().verify();
             var out = spec.commandLine().getOut();
             var answer = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.RESTART,
-                                when(), noInput, null);
+                                whenOf(drain, whenDone, now), noInput, null);
             if (answer.when() == null) {
                 return answer.exitCode();
             }
             var restartNow = answer.when() == RuntimeActDialogue.When.NOW;
 
-            var body = new LinkedHashMap<String, Object>();
+            var body = whenBody(restartNow);
             body.put("then", "restart");
-            body.put("when", restartNow ? "now" : DRAIN);
-            if (!restartNow) body.put(DRAIN, true);
-            if (restartNow) body.put("now", true);
 
             var response = context.runtime(true).send(
                                 HttpRequest.json("POST", "/api/v1/operator/runtime/stop", JsonTree.write(body)));
@@ -214,13 +230,6 @@ public final class RuntimeCommand implements Callable<Integer> {
                 return 0;
             }
             throw new OperatorRefusedException("runtime restart", response);
-        }
-
-        private RuntimeActDialogue.@Nullable When when() {
-            if (drain || whenDone) {
-                return RuntimeActDialogue.When.WHEN_DONE;
-            }
-            return now ? RuntimeActDialogue.When.NOW : null;
         }
     }
 
@@ -315,17 +324,16 @@ public final class RuntimeCommand implements Callable<Integer> {
 
         private int executeUpgrade(PrintWriter out) throws IOException {
             var answer = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.UPGRADE,
-                                when(), noInput, version);
+                                whenOf(drain, whenDone, now), noInput, version);
             if (answer.when() == null) {
                 return answer.exitCode();
             }
             var upgradeNow = answer.when() == RuntimeActDialogue.When.NOW;
 
-            var body = new LinkedHashMap<String, Object>();
-            if (version != null) body.put("version", version);
-            body.put("when", upgradeNow ? "now" : DRAIN);
-            if (!upgradeNow) body.put(DRAIN, true);
-            if (upgradeNow) body.put("now", true);
+            var body = whenBody(upgradeNow);
+            if (version != null) {
+                body.put("version", version);
+            }
 
             var response = context.runtime(true).send(
                                 HttpRequest.json("POST", "/api/v1/operator/runtime/upgrade", JsonTree.write(body)));
@@ -335,13 +343,6 @@ public final class RuntimeCommand implements Callable<Integer> {
                 return 0;
             }
             throw new OperatorRefusedException("runtime upgrade", response);
-        }
-
-        private RuntimeActDialogue.@Nullable When when() {
-            if (drain || whenDone) {
-                return RuntimeActDialogue.When.WHEN_DONE;
-            }
-            return now ? RuntimeActDialogue.When.NOW : null;
         }
     }
 }
