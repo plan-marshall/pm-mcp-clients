@@ -5998,7 +5998,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             copy.put("page", page);
             copy.put("has_newer", page > 1);
             copy.put("has_older", page < total);
-            if (map.get("pages") instanceof Map<?, ?> pagesMap) {
+            if (map.get(KEY_PAGES) instanceof Map<?, ?> pagesMap) {
                 var pageItems = pagesMap.get(String.valueOf(page));
                 if (pageItems instanceof List<?> list) {
                     copy.put("items", list);

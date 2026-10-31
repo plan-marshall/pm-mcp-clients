@@ -11,6 +11,8 @@ package de.planmarshall.mock.scenario;
 
 import java.util.Map;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * An immutable scenario definition driving the mock runtime state machine.
  *
@@ -65,7 +67,7 @@ Map<String, StateDefinition> states) {
      * @param path   the request path
      * @return the matching route definition, or {@code null}
      */
-    public RouteDefinition route(String method, String path) {
+    public @Nullable RouteDefinition route(String method, String path) {
         var key = method.toUpperCase() + " " + path;
         return routes.get(key);
     }
