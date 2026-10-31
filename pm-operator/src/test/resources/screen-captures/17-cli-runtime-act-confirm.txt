@@ -6,6 +6,7 @@
 #   stop-screen-*     `runtime stop` as it draws, the keys-less screen the dialogue settles on
 #   stop-keep-*       `runtime stop` with `k` (keep it running): nothing is sent
 #   stop-when-done-*  `runtime stop` with `1` (stop when done): the drain is sent
+#   system-stop-*     the dialogue the `a` menu opens, from `s` on the runtime's entry
 #
 # The system view is opened from the console, not by the verb: `system` as a shell command prints
 # the view once, and only the console opens it full screen (25-system.adoc#commands). The keys after
@@ -34,3 +35,9 @@ stop-when-done-120x30-en | reports-and-system | system.running | runtime stop | 
 stop-when-done-80x24-en | reports-and-system | system.running | runtime stop | 1\n | 80x24 | en_US.UTF-8 | -
 stop-when-done-120x30-de | reports-and-system | system.running | runtime stop | 1\n | 120x30 | de_DE.UTF-8 | -
 stop-when-done-80x24-de | reports-and-system | system.running | runtime stop | 1\n | 80x24 | de_DE.UTF-8 | -
+
+# The dialogue the `a` menu opens: `s` runs `runtime stop`, whose confirmation is drawn on the
+# console while the view is suspended; `k` keeps the runtime running, `q` leaves the view and
+# `exit` ends the console.
+system-stop-120x30-en | reports-and-system | system.running |  | k\nqexit\n | 120x30 | en_US.UTF-8 | - | system\nas
+system-stop-120x30-de | reports-and-system | system.running |  | l\nqexit\n | 120x30 | de_DE.UTF-8 | - | system\nas

@@ -12,12 +12,14 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.runtime.RuntimeUnavailableException;
 
 import picocli.CommandLine.Command;
@@ -129,7 +131,8 @@ public final class RuntimeCommand implements Callable<Integer> {
                 }
                 out.println(stopNow ? "runtime   stopping" : "runtime   draining");
             } catch (RuntimeUnavailableException e) {
-                out.println("runtime   not running");
+                out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                    "operator.system.nothing_to_stop", Map.of()));
             }
             out.flush();
             return 0;

@@ -685,6 +685,16 @@ class PmOperatorTest {
         }
 
         @Test
+        @DisplayName("stop --when-done --no-input sends the drain without asking")
+        void stopWhenDoneWithNoInput() throws Exception {
+            var server = runtime((request, response) -> response.send(202, null, ""));
+
+            assertEquals(0, run("runtime", "stop", "--when-done", "--no-input"));
+            var req = server.awaitRequest(Duration.ofSeconds(1));
+            assertTrue(req.bodyText().contains("\"when\":\"drain\""), req.bodyText());
+        }
+
+        @Test
         @DisplayName("stop --no-input without an answer stops at the choice with exit 3")
         void stopNoInputStopsAtTheChoice() {
             assertEquals(StartDialogue.EXIT_MISSING_INPUT, run("runtime", "stop", "--no-input"));
@@ -716,10 +726,17 @@ class PmOperatorTest {
         }
 
         @Test
-        @DisplayName("stop without a runtime reports not running")
+        @DisplayName("stop without a runtime says that there is nothing to stop")
         void stopWithoutRuntime() {
             assertEquals(0, run("runtime", "stop", "--now"));
-            assertEquals("runtime   not running", out.toString().strip());
+            assertEquals("The runtime is not running; there is nothing to stop.", out.toString().strip());
+        }
+
+        @Test
+        @DisplayName("stop without a runtime asks nothing and says that there is nothing to stop")
+        void stopWithoutRuntimeAsksNothing() {
+            assertEquals(0, run("runtime", "stop"));
+            assertEquals("The runtime is not running; there is nothing to stop.", out.toString().strip());
         }
 
         @Test

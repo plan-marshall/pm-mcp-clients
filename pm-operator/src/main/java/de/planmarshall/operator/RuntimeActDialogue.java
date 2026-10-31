@@ -18,6 +18,7 @@ import org.jspecify.annotations.Nullable;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.runtime.RuntimeUnavailableException;
 import de.planmarshall.api.system.SystemSnapshot;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 
@@ -29,7 +30,11 @@ import de.planmarshall.operator.dialogue.ChoicePrompt;
  * <p>Both entry points show it: the {@code runtime stop|restart|upgrade} verbs and the {@code a}
  * menu of the system view, which runs those verbs. The counts come from the system snapshot the
  * runtime serves, so the confirmation names what the act would end instead of what this process
- * guesses; a runtime that does not answer says that nothing runs and lets the act report itself.
+ * guesses.
+ *
+ * <p>A stopped runtime is not asked: {@code runtime stop} says that there is nothing to stop, and a
+ * restart or an upgrade starts it as every verb that needs the runtime does
+ * ({@code 25-system.adoc#t-not-running}).
  *
  * <p>The confirmation comes after the operator checks, so a refused gate asks nothing.
  */
@@ -115,7 +120,17 @@ final class RuntimeActDialogue {
         }
         var locale = context.clientEnvironment().locale();
         var prompt = new StartPrompt(context, out, locale, false);
-        var snapshot = snapshot(context);
+        SystemSnapshot snapshot;
+        try {
+            snapshot = snapshot(context);
+        } catch (RuntimeUnavailableException _) {
+            if (act == Act.STOP) {
+                out.println(MessageCatalogue.format(locale, "operator.system.nothing_to_stop", Map.of()));
+                out.flush();
+                return null;
+            }
+            snapshot = null;
+        }
         var target = version != null ? version : newerVersion(snapshot);
         var choice = new ChoicePrompt(prompt, "runtime " + act.value())
                             .title(title(locale, act, target, snapshot))
@@ -142,9 +157,10 @@ final class RuntimeActDialogue {
      */
     private static String title(String locale, Act act, @Nullable String version,
                         @Nullable SystemSnapshot snapshot) {
+        var target = version != null ? OutputSafety.stripControlSequences(version) : "";
         var lines = new ArrayList<String>(4);
         lines.add(MessageCatalogue.format(locale, "system.confirm.title",
-                            Map.of("act", act.value(), "version", version != null ? version : "")));
+                            Map.of("act", act.value(), "version", target)));
         lines.add("  " + running(locale, snapshot));
         var note = noteKey(act);
         if (note != null) {
@@ -165,6 +181,7 @@ final class RuntimeActDialogue {
         return MessageCatalogue.format(locale, "system.confirm.what",
                             Map.of("plans", count(snapshot.work().plansByState()),
                                                 "epics", count(snapshot.work().epicsByState()),
+                                                "tasks", snapshot.work().tasksRunning(),
                                                 "jobs", jobs(snapshot.jobs()),
                                                 "workers", snapshot.workers().size()));
     }
@@ -202,14 +219,18 @@ final class RuntimeActDialogue {
 
     /**
      * @param context the operator context
-     * @return the snapshot the runtime serves, or {@code null} when it does not answer with one
+     * @return the snapshot the runtime serves, or {@code null} when it serves none
+     * @throws RuntimeUnavailableException when the runtime does not answer at all
      */
-    private static @Nullable SystemSnapshot snapshot(OperatorContext context) {
+    private static @Nullable SystemSnapshot snapshot(OperatorContext context) throws IOException {
+        var response = context.runtime(false).send(HttpRequest.get("/api/v1/system"));
+        if (response.status() != 200) {
+            return null;
+        }
         try {
-            var response = context.runtime(false).send(HttpRequest.get("/api/v1/system"));
-            return response.status() == 200 ? SystemSnapshot.fromJson(response.bodyText()) : null;
+            return SystemSnapshot.fromJson(response.bodyText());
         } catch (IOException _) {
-            // A runtime that does not answer has nothing to count; the act reports itself.
+            // A body this client cannot read counts nothing; the confirmation still asks.
             return null;
         }
     }
