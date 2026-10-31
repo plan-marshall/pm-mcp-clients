@@ -64,8 +64,8 @@ describe('displayState', () => {
     expect(displayState('action', 'restart')).toBe('restarted');
 
     useCatalogue('de');
-    expect(displayState('action', 'show')).toBe('gemeldet');
-    expect(displayState('action', 'yield')).toBe('angehalten');
+    expect(displayState('action', 'show')).toBe('angezeigt');
+    expect(displayState('action', 'yield')).toBe('abgegeben');
   });
 
   it('names the change map state of a completion report', () => {
