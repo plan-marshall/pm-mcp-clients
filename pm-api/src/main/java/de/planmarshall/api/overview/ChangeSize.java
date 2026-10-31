@@ -72,14 +72,14 @@ public record ChangeSize(int files, int insertions, int deletions, int unplanned
             return null;
         }
         var files = JsonTree.integer(map, FIELD_FILES);
-        if (files == null) {
+        var insertions = JsonTree.integer(map, FIELD_INSERTIONS);
+        var deletions = JsonTree.integer(map, FIELD_DELETIONS);
+        var unplanned = JsonTree.integer(map, FIELD_UNPLANNED);
+        if (files == null || insertions == null || deletions == null || unplanned == null) {
+            // A partial capture is no capture: the size is shown whole or not at all.
             return null;
         }
-        return new ChangeSize(
-                files,
-                Objects.requireNonNullElse(JsonTree.integer(map, FIELD_INSERTIONS), 0),
-                Objects.requireNonNullElse(JsonTree.integer(map, FIELD_DELETIONS), 0),
-                Objects.requireNonNullElse(JsonTree.integer(map, FIELD_UNPLANNED), 0));
+        return new ChangeSize(files, insertions, deletions, unplanned);
     }
 
     /**

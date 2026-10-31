@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -5582,12 +5583,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         var oldest = Instant.MAX;
         for (var row : rowsOf(detail, KEY_PLANS)) {
+            if (ended(row)) {
+                continue;
+            }
             var start = createdAt(row);
             if (start.isBefore(oldest)) {
                 oldest = start;
             }
         }
         for (var row : rowsOf(detail, KEY_EPICS)) {
+            if (ended(row)) {
+                continue;
+            }
             var start = createdAt(row);
             if (start.isBefore(oldest)) {
                 oldest = start;
@@ -5679,8 +5686,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * the oldest.
      */
     private void serveNeedsOperatorPage(MockHttpResponse response) throws IOException {
+        var route = activeRoute("GET", MachineApiPaths.NEEDS_OPERATOR);
+        if (route != null && (route.status() < 200 || route.status() >= 300)) {
+            response.json(route.status(), route.representation());
+            return;
+        }
         var items = new ArrayList<NeedsOperatorItem>();
-        var rep = Optional.ofNullable(activeRoute("GET", MachineApiPaths.NEEDS_OPERATOR))
+        var rep = Optional.ofNullable(route)
                 .map(RouteDefinition::representation)
                 .map(JsonTree::asObject)
                 .orElse(null);
@@ -5712,7 +5724,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * project, epic, plan, decision, report. An empty text is refused.
      */
     private void serveFind(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        var query = queryParameter(request, MachineApiPaths.QUERY_PARAM);
+        String query;
+        try {
+            query = queryParameter(request, MachineApiPaths.QUERY_PARAM);
+        } catch (IllegalArgumentException _) {
+            response.json(400, Map.of(KEY_ERROR, "invalid_query",
+                    KEY_MESSAGE, "The search text has malformed percent-encoding"));
+            return;
+        }
         if (query == null || query.isBlank()) {
             response.json(400, Map.of(KEY_ERROR, "invalid_query", KEY_MESSAGE, "An empty search text is refused"));
             return;
@@ -5733,10 +5752,23 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void collectRunningProjects(String text, List<FindMatch> matches) {
+        var seen = new HashSet<String>();
+        for (var project : enrolledProjects) {
+            var title = project.displayName();
+            if (!matchesText(text, project.projectId(), title, null)) {
+                continue;
+            }
+            seen.add(project.projectId());
+            matches.add(new FindMatch(FindKind.PROJECT, project.projectId(), title,
+                    location(project.projectId(), title), null, null, false, null));
+        }
         for (var row : rowsOfRoute("GET", PATH_PROJECTS, CONST_PROJECTS)) {
             var id = JsonTree.string(row, KEY_PROJECT_ID);
+            if (id == null || seen.contains(id)) {
+                continue;
+            }
             var title = JsonTree.string(row, KEY_DISPLAY_NAME);
-            if (id != null && matchesText(text, id, title, null)) {
+            if (matchesText(text, id, title, null)) {
                 matches.add(new FindMatch(FindKind.PROJECT, id, requireText(title, id), location(id, title),
                         null, null, false, null));
             }
