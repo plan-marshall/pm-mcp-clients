@@ -14,6 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -36,8 +37,6 @@ import de.planmarshall.operator.RuntimeActDialogue.Act;
 import de.planmarshall.operator.RuntimeActDialogue.Answer;
 import de.planmarshall.operator.RuntimeActDialogue.When;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
-
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;

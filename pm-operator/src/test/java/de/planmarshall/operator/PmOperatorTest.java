@@ -704,7 +704,7 @@ class PmOperatorTest {
                                                     "runtime stop needs the choice of when; answer it with --when-done or --now."),
                                 out.toString());
             assertTrue(server.requests().stream()
-                                .noneMatch(recorded -> "/api/v1/runtime/stop".equals(recorded.target())),
+                                                    .noneMatch(recorded -> "/api/v1/runtime/stop".equals(recorded.target())),
                                 "no stop request before the missing-input guidance");
         }
 
