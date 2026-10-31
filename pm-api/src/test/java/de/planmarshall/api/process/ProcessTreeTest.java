@@ -19,20 +19,30 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 @DisplayName("ProcessTreeTest")
+@EnableGeneratorController
 class ProcessTreeTest {
 
     @Test
     @DisplayName("should serialize and deserialize complete ProcessTree round-trip")
     void shouldRoundTripProcessTree() throws Exception {
         // Arrange
-        var project = new ProcessProjectRef("pm-mcp-clients", "pm-mcp-clients", "/api/v1/projects/pm-mcp-clients");
-        var epic = new ProcessEpicRef("relay-hardening", "relay-hardening", "/api/v1/epics/relay-hardening/process");
-        var tokens = new ProcessTokens(412000L, 380000L, 32000L, true, 17, 15, false, false);
+        var planId = Generators.nonEmptyStrings().next();
+        var planTitle = Generators.nonEmptyStrings().next();
+        var projectId = Generators.nonEmptyStrings().next();
+        var epicId = Generators.nonEmptyStrings().next();
+        var taskId = Generators.nonEmptyStrings().next();
+        var totalTokens = (long) Generators.integers(0, 1_000_000).next();
+        var project = new ProcessProjectRef(projectId, projectId, "/api/v1/projects/" + projectId);
+        var epic = new ProcessEpicRef(epicId, epicId, "/api/v1/epics/" + epicId + "/process");
+        var tokens = new ProcessTokens(totalTokens, 380000L, 32000L, true, 17, 15, false, false);
 
         var offTrack = new OffTrackInfo("repeating", "show", 5, 5);
         var task1 = new LeafTask(
-                "TASK-003",
+                taskId,
                 "implement",
                 "claude",
                 "sonnet",
@@ -41,7 +51,7 @@ class ProcessTreeTest {
                 null,
                 360L,
                 48000L,
-                "/api/v1/plans/fix-relay/tasks/TASK-003/activity",
+                "/api/v1/plans/" + planId + "/tasks/" + taskId + "/activity",
                 offTrack
         );
 
@@ -58,7 +68,7 @@ class ProcessTreeTest {
                 List.of(task1),
                 null,
                 null,
-                Map.of("self", "/api/v1/plans/fix-relay/nodes/execute.envelope")
+                Map.of("self", "/api/v1/plans/" + planId + "/nodes/execute.envelope")
         );
 
         var phaseExecute = new ProcessNode(
@@ -94,18 +104,18 @@ class ProcessTreeTest {
         );
 
         var tree = new ProcessTree(
-                "fix-relay",
-                "Fix Relay Transport",
+                planId,
+                planTitle,
                 project,
                 epic,
                 "execute",
                 "running",
-                "execute.envelope · TASK-003",
+                "execute.envelope · " + taskId,
                 false,
                 2,
                 tokens,
                 List.of(phaseExecute, prunedRefine),
-                List.of("execute", "execute.envelope", "TASK-003"),
+                List.of("execute", "execute.envelope", taskId),
                 214,
                 "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
                 7800L
@@ -117,13 +127,13 @@ class ProcessTreeTest {
         var parsed = ProcessTree.fromJson(json);
 
         // Assert
-        assertEquals("fix-relay", parsed.planId());
-        assertEquals("Fix Relay Transport", parsed.title());
-        assertEquals("pm-mcp-clients", parsed.project().projectId());
-        assertEquals("relay-hardening", parsed.epic() != null ? parsed.epic().epicId() : "");
+        assertEquals(planId, parsed.planId());
+        assertEquals(planTitle, parsed.title());
+        assertEquals(projectId, parsed.project().projectId());
+        assertEquals(epicId, parsed.epic() != null ? parsed.epic().epicId() : "");
         assertEquals("execute", parsed.currentPhase());
         assertEquals("running", parsed.phaseState());
-        assertEquals(412000L, parsed.tokensSoFar().total());
+        assertEquals(totalTokens, parsed.tokensSoFar().total());
         assertTrue(parsed.tokensSoFar().floor());
         assertEquals(2, parsed.nodes().size());
 
@@ -137,7 +147,7 @@ class ProcessTreeTest {
         assertEquals(1, parsedLeaf.leafTasks().size());
 
         var parsedTask = parsedLeaf.leafTasks().get(0);
-        assertEquals("TASK-003", parsedTask.taskId());
+        assertEquals(taskId, parsedTask.taskId());
         assertEquals("implement", parsedTask.role());
         assertNotNull(parsedTask.offTrack());
         assertEquals("repeating", parsedTask.offTrack().signal());
@@ -153,13 +163,18 @@ class ProcessTreeTest {
     @DisplayName("should serialize and deserialize TaskActivity with full entry types")
     void shouldRoundTripTaskActivity() throws Exception {
         // Arrange
+        var taskId = Generators.nonEmptyStrings().next();
+        var harness = Generators.nonEmptyStrings().next();
+        var content = Generators.nonEmptyStrings().next();
+        var toolSize = Generators.nonEmptyStrings().next();
+        var gapCount = Generators.integers(0, 20).next();
         var entry1 = new ActivityEntry(
                 "14:02:11",
                 "text",
                 null,
                 null,
                 false,
-                "Reading the relay's transport before changing it.",
+                content,
                 null,
                 List.of(),
                 List.of()
@@ -184,7 +199,7 @@ class ProcessTreeTest {
                 "./mvnw -pl pm-relay test",
                 true,
                 null,
-                "4 KiB",
+                toolSize,
                 List.of(),
                 List.of()
         );
@@ -203,9 +218,9 @@ class ProcessTreeTest {
 
         var offTrack = new OffTrackInfo("repeating", "show", 5, 5);
         var activity = new TaskActivity(
-                "TASK-003",
+                taskId,
                 "implement",
-                "claude",
+                harness,
                 "sonnet",
                 1,
                 360L,
@@ -213,7 +228,7 @@ class ProcessTreeTest {
                 List.of(entry1, entry2, entry3, entry4),
                 offTrack,
                 false,
-                2
+                gapCount
         );
 
         // Act
@@ -221,22 +236,22 @@ class ProcessTreeTest {
         var parsed = TaskActivity.fromJson(json);
 
         // Assert
-        assertEquals("TASK-003", parsed.taskId());
+        assertEquals(taskId, parsed.taskId());
         assertEquals("implement", parsed.role());
-        assertEquals("claude", parsed.harness());
+        assertEquals(harness, parsed.harness());
         assertEquals(4, parsed.entries().size());
-        assertEquals(2, parsed.gapCount());
+        assertEquals(gapCount, parsed.gapCount());
         assertFalse(parsed.serverOnly());
 
         assertEquals("text", parsed.entries().get(0).kind());
-        assertEquals("Reading the relay's transport before changing it.", parsed.entries().get(0).content());
+        assertEquals(content, parsed.entries().get(0).content());
 
         assertEquals("tool_call", parsed.entries().get(1).kind());
         assertEquals("read", parsed.entries().get(1).toolName());
 
         assertEquals("tool_call", parsed.entries().get(2).kind());
         assertTrue(parsed.entries().get(2).toolFailed());
-        assertEquals("4 KiB", parsed.entries().get(2).size());
+        assertEquals(toolSize, parsed.entries().get(2).size());
 
         assertEquals("file_changed", parsed.entries().get(3).kind());
         assertEquals(1, parsed.entries().get(3).files().size());
@@ -246,13 +261,16 @@ class ProcessTreeTest {
     @DisplayName("should serialize and deserialize EpicProcess")
     void shouldRoundTripEpicProcess() throws Exception {
         // Arrange
+        var epicId = Generators.nonEmptyStrings().next();
+        var project = Generators.nonEmptyStrings().next();
+        var totalTokens = (long) Generators.integers(0, 1_000_000).next();
         var p1 = new EpicProcessPlan("fix-relay", "Fix Relay", "execute", "running", 2, 5, true);
         var p2 = new EpicProcessPlan("docs-typo", "Docs Typo", "init", "staged", 0, 1, false);
-        var tokens = new ProcessTokens(500000L, 450000L, 50000L, false, 20, 20, false, false);
+        var tokens = new ProcessTokens(totalTokens, 450000L, 50000L, false, 20, 20, false, false);
 
         var epic = new EpicProcess(
-                "relay-hardening",
-                "pm-mcp-clients",
+                epicId,
+                project,
                 "Relay Hardening",
                 "running",
                 List.of(p1),
@@ -267,76 +285,86 @@ class ProcessTreeTest {
         var parsed = EpicProcess.fromJson(json);
 
         // Assert
-        assertEquals("relay-hardening", parsed.epicId());
-        assertEquals("pm-mcp-clients", parsed.project());
+        assertEquals(epicId, parsed.epicId());
+        assertEquals(project, parsed.project());
         assertEquals(1, parsed.runningPlans().size());
         assertEquals(1, parsed.stagedPlans().size());
         assertTrue(parsed.reviewReady());
         assertNotNull(parsed.tokensSoFar());
-        assertEquals(500000L, parsed.tokensSoFar().total());
+        assertEquals(totalTokens, parsed.tokensSoFar().total());
     }
 
     @Test
     @DisplayName("should serialize and deserialize all process SSE events")
     void shouldRoundTripProcessEvents() throws Exception {
+        var planId = Generators.nonEmptyStrings().next();
+        var taskId = Generators.nonEmptyStrings().next();
+        var run = Generators.integers(0, 100).next();
+        var leftSeconds = (long) Generators.integers(0, 100_000).next();
+        var returnedSeconds = (long) Generators.integers(0, 100_000).next();
+        var instanceVersion = Generators.integers(0, 100).next();
+        var activityContent = Generators.nonEmptyStrings().next();
+        var changedTotal = (long) Generators.integers(0, 1_000_000).next();
+
         // StateEnteredEvent
-        var entered = new StateEnteredEvent("fix-relay", "execute", 1, "2026-10-17T10:00:00Z");
+        var entered = new StateEnteredEvent(planId, "execute", run, "2026-10-17T10:00:00Z");
         assertEquals(StateEnteredEvent.EVENT_NAME, "state.entered");
         var parsedEntered = StateEnteredEvent.fromJson(entered.toJson());
-        assertEquals("fix-relay", parsedEntered.planId());
+        assertEquals(planId, parsedEntered.planId());
         assertEquals("execute", parsedEntered.nodeId());
-        assertEquals(1, parsedEntered.run());
+        assertEquals(run, parsedEntered.run());
 
         // StateLeftEvent
-        var left = new StateLeftEvent("fix-relay", "execute", "done", 1, 1500L);
+        var left = new StateLeftEvent(planId, "execute", "done", 1, leftSeconds);
         assertEquals(StateLeftEvent.EVENT_NAME, "state.left");
         var parsedLeft = StateLeftEvent.fromJson(left.toJson());
         assertEquals("done", parsedLeft.state());
-        assertEquals(1500L, parsedLeft.durationSeconds());
+        assertEquals(leftSeconds, parsedLeft.durationSeconds());
 
         // SubworkflowCalledEvent
-        var called = new SubworkflowCalledEvent("fix-relay", "execute", "land", "2026-10-17T10:02:00Z");
+        var called = new SubworkflowCalledEvent(planId, "execute", "land", "2026-10-17T10:02:00Z");
         assertEquals(SubworkflowCalledEvent.EVENT_NAME, "subworkflow.called");
         var parsedCalled = SubworkflowCalledEvent.fromJson(called.toJson());
         assertEquals("land", parsedCalled.subworkflowId());
 
         // SubworkflowReturnedEvent
-        var returned = new SubworkflowReturnedEvent("fix-relay", "execute", "land", "done", 120L);
+        var returned = new SubworkflowReturnedEvent(planId, "execute", "land", "done", returnedSeconds);
         assertEquals(SubworkflowReturnedEvent.EVENT_NAME, "subworkflow.returned");
         var parsedReturned = SubworkflowReturnedEvent.fromJson(returned.toJson());
         assertEquals("done", parsedReturned.state());
-        assertEquals(120L, parsedReturned.durationSeconds());
+        assertEquals(returnedSeconds, parsedReturned.durationSeconds());
 
         // StepOpenedEvent & StepClosedEvent
-        var stepOpened = new StepOpenedEvent("fix-relay", "build", "2026-10-17T10:05:00Z");
+        var stepOpened = new StepOpenedEvent(planId, "build", "2026-10-17T10:05:00Z");
         assertEquals(StepOpenedEvent.EVENT_NAME, "step.opened");
         assertEquals("build", StepOpenedEvent.fromJson(stepOpened.toJson()).stepId());
 
-        var stepClosed = new StepClosedEvent("fix-relay", "build", "success", 45L);
+        var stepClosed = new StepClosedEvent(planId, "build", "success", 45L);
         assertEquals(StepClosedEvent.EVENT_NAME, "step.closed");
         assertEquals("success", StepClosedEvent.fromJson(stepClosed.toJson()).outcome());
 
         // InstanceChangedEvent
-        var instChanged = new InstanceChangedEvent("fix-relay", 3, "waiver granted");
+        var instChanged = new InstanceChangedEvent(planId, instanceVersion, "waiver granted");
         assertEquals(InstanceChangedEvent.EVENT_NAME, "instance.changed");
-        assertEquals(3, InstanceChangedEvent.fromJson(instChanged.toJson()).instanceVersion());
+        assertEquals(instanceVersion, InstanceChangedEvent.fromJson(instChanged.toJson()).instanceVersion());
 
         // ActivityEvent
-        var actEntry = new ActivityEntry("14:02:11", "text", null, null, false, "Hello", null, List.of(), List.of());
-        var actEvent = new ActivityEvent("fix-relay", "TASK-003", actEntry);
+        var actEntry = new ActivityEntry("14:02:11", "text", null, null, false, activityContent, null, List.of(),
+                List.of());
+        var actEvent = new ActivityEvent(planId, taskId, actEntry);
         assertEquals(ActivityEvent.EVENT_NAME, "activity");
         var parsedActEvent = ActivityEvent.fromJson(actEvent.toJson());
-        assertEquals("TASK-003", parsedActEvent.taskId());
-        assertEquals("Hello", parsedActEvent.entry().content());
+        assertEquals(taskId, parsedActEvent.taskId());
+        assertEquals(activityContent, parsedActEvent.entry().content());
 
         // TokensChangedEvent
-        var tokTokens = new ProcessTokens(100L, 80L, 20L, false, 1, 1, false, false);
-        var tokEvent = new TokensChangedEvent("fix-relay", tokTokens);
+        var tokTokens = new ProcessTokens(changedTotal, 80L, 20L, false, 1, 1, false, false);
+        var tokEvent = new TokensChangedEvent(planId, tokTokens);
         assertEquals(TokensChangedEvent.EVENT_NAME, "tokens.changed");
-        assertEquals(100L, TokensChangedEvent.fromJson(tokEvent.toJson()).tokens().total());
+        assertEquals(changedTotal, TokensChangedEvent.fromJson(tokEvent.toJson()).tokens().total());
 
         // TaskOffTrackEvent
-        var offEvent = new TaskOffTrackEvent("fix-relay", "TASK-003", "repeating", "show", true);
+        var offEvent = new TaskOffTrackEvent(planId, taskId, "repeating", "show", true);
         assertEquals(TaskOffTrackEvent.EVENT_NAME, "task.off_track");
         var parsedOffEvent = TaskOffTrackEvent.fromJson(offEvent.toJson());
         assertEquals("repeating", parsedOffEvent.signal());
@@ -394,18 +422,19 @@ class ProcessTreeTest {
     @Test
     @DisplayName("should serialize and deserialize LeafJob round-trip")
     void shouldRoundTripLeafJob() throws Exception {
-        var job1 = new LeafJob("build", "running", "success", 120L, true);
+        var durationSeconds = (long) Generators.integers(0, 10_000).next();
+        var job1 = new LeafJob("build", "running", "success", durationSeconds, true);
         assertEquals("build", job1.kind());
         assertEquals("running", job1.status());
         assertEquals("success", job1.outcome());
-        assertEquals(120L, job1.durationSeconds());
+        assertEquals(durationSeconds, job1.durationSeconds());
         assertTrue(job1.waitsSlot());
 
         var map = job1.toMap();
         assertEquals("build", map.get("kind"));
         assertEquals("running", map.get("status"));
         assertEquals("success", map.get("outcome"));
-        assertEquals(120L, map.get("duration_seconds"));
+        assertEquals(durationSeconds, map.get("duration_seconds"));
         assertEquals(true, map.get("waits_slot"));
 
         var json = job1.toJson();
@@ -426,15 +455,21 @@ class ProcessTreeTest {
     @Test
     @DisplayName("should serialize and deserialize ActivityEntry across all kinds")
     void shouldRoundTripActivityEntry() throws Exception {
-        var entry1 = new ActivityEntry("10:00:00", "tool", "read", "src/Main.java", false, null, "1 KiB", List.of(), List.of());
+        var toolTarget = Generators.nonEmptyStrings().next();
+        var entry1 = new ActivityEntry("10:00:00", "tool", "read", toolTarget, false, null, "1 KiB", List.of(),
+                List.of());
         var map1 = entry1.toMap();
         assertEquals("tool", map1.get("kind"));
         assertEquals("read", map1.get("tool_name"));
-        assertEquals("src/Main.java", map1.get("tool_target"));
+        assertEquals(toolTarget, map1.get("tool_target"));
         var restored1 = ActivityEntry.fromMap(map1);
         assertEquals(entry1, restored1);
 
-        var entry2 = new ActivityEntry("10:01:00", "file_changed", null, null, false, "Changed files", null, List.of("A.java", "B.java"), List.of("Q1"));
+        var content = Generators.nonEmptyStrings().next();
+        var files = List.of(Generators.nonEmptyStrings().next(), Generators.nonEmptyStrings().next());
+        var questions = List.of(Generators.nonEmptyStrings().next());
+        var entry2 = new ActivityEntry("10:01:00", "file_changed", null, null, false, content, null, files,
+                questions);
         var json2 = entry2.toJson();
         var restored2 = ActivityEntry.fromJson(json2);
         assertEquals(entry2, restored2);
@@ -464,12 +499,14 @@ class ProcessTreeTest {
     @Test
     @DisplayName("should serialize and deserialize ProcessNode with LeafJob")
     void shouldRoundTripProcessNodeWithLeafJob() throws Exception {
+        var waitsFor = Generators.nonEmptyStrings().next();
         var job = new LeafJob("compile", "waits_slot", null, 45L, true);
-        var node = new ProcessNode("build-step", "Build Step", "job", "running", 1, 1, 45L, null, List.of(), List.of(), job, "a build slot", Map.of("abort", "/api/v1/plans/p/abort"));
+        var node = new ProcessNode("build-step", "Build Step", "job", "running", 1, 1, 45L, null, List.of(),
+                List.of(), job, waitsFor, Map.of("abort", "/api/v1/plans/p/abort"));
 
         var map = node.toMap();
         assertNotNull(map.get("leaf_job"));
-        assertEquals("a build slot", map.get("waits_for"));
+        assertEquals(waitsFor, map.get("waits_for"));
 
         var json = node.toJson();
         var restored = ProcessNode.fromJson(json);
@@ -482,10 +519,14 @@ class ProcessTreeTest {
     @Test
     @DisplayName("should serialize and deserialize ProcessProjectRef and ProcessEpicRef")
     void shouldRoundTripProjectAndEpicRefs() throws Exception {
-        var proj = new ProcessProjectRef("my-proj", "My Project", "/api/v1/projects/my-proj");
+        var projectId = Generators.nonEmptyStrings().next();
+        var projectName = Generators.nonEmptyStrings().next();
+        var proj = new ProcessProjectRef(projectId, projectName, "/api/v1/projects/" + projectId);
         assertEquals(proj, ProcessProjectRef.fromJson(proj.toJson()));
 
-        var epic = new ProcessEpicRef("my-epic", "My Epic", "/api/v1/epics/my-epic/process");
+        var epicId = Generators.nonEmptyStrings().next();
+        var epicTitle = Generators.nonEmptyStrings().next();
+        var epic = new ProcessEpicRef(epicId, epicTitle, "/api/v1/epics/" + epicId + "/process");
         assertEquals(epic, ProcessEpicRef.fromJson(epic.toJson()));
 
         var offTrack = new OffTrackInfo("stalled", "restart", 3, 3);

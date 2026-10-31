@@ -11,7 +11,6 @@ package de.planmarshall.api.resource;
 
 import java.util.Arrays;
 import java.util.List;
-
 import org.jspecify.annotations.Nullable;
 
 /**

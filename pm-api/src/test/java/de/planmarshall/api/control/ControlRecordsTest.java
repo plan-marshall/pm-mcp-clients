@@ -23,10 +23,13 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("ControlRecordsTest")
+@EnableGeneratorController
 class ControlRecordsTest {
 
     @Test
@@ -63,24 +66,27 @@ class ControlRecordsTest {
     @Test
     @DisplayName("round-trip serializes ActionAvailability and WorkActions")
     void workActions() throws Exception {
-        var availability = new ActionAvailability("pause", false, "the runtime is reconnecting");
+        var reason = Generators.nonEmptyStrings().next();
+        var availability = new ActionAvailability("pause", false, reason);
         var parsedAvailability = ActionAvailability.fromJson(availability.toJson());
         assertEquals("pause", parsedAvailability.action());
         assertFalse(parsedAvailability.available());
-        assertEquals("the runtime is reconnecting", parsedAvailability.reason());
+        assertEquals(reason, parsedAvailability.reason());
 
         var enabled = ActionAvailability.enabled("settings");
         assertTrue(enabled.available());
         assertNull(enabled.reason());
 
-        var actions = new WorkActions("fix-relay", "plan", "paused", "task", null, "relay-hardening",
+        var subjectId = Generators.nonEmptyStrings().next();
+        var epicId = Generators.nonEmptyStrings().next();
+        var actions = new WorkActions(subjectId, "plan", "paused", "task", null, epicId,
                 List.of(ActionAvailability.enabled("start"), ActionAvailability.enabled("settings")));
         var parsedActions = WorkActions.fromJson(actions.toJson());
-        assertEquals("fix-relay", parsedActions.subjectId());
+        assertEquals(subjectId, parsedActions.subjectId());
         assertEquals("plan", parsedActions.subjectKind());
         assertEquals("paused", parsedActions.state());
         assertEquals("task", parsedActions.pausingPoint());
-        assertEquals("relay-hardening", parsedActions.epicId());
+        assertEquals(epicId, parsedActions.epicId());
         assertEquals(2, parsedActions.actions().size());
         assertNotNull(parsedActions.action("start"));
         assertNull(parsedActions.action("cancel"));
@@ -89,63 +95,75 @@ class ControlRecordsTest {
     @Test
     @DisplayName("round-trip serializes HoldRecord and its resolution request and result")
     void holds() throws Exception {
+        var holdId = Generators.nonEmptyStrings().next();
+        var cause = Generators.nonEmptyStrings().next();
+        var recordedSize = (long) Generators.integers(0, 1_000_000).next();
+        var previousDigest = Generators.nonEmptyStrings().next();
+        var currentDigest = Generators.nonEmptyStrings().next();
         var hold = new HoldRecord(
-                "H-0001", "relay-cursor-order", "plan", "integrity_pause",
-                "the store file changed outside the runtime", 0, null,
-                "references.json", 4812L, "3f9a", 5034L, "b70d",
+                holdId, "relay-cursor-order", "plan", "integrity_pause",
+                cause, 0, null,
+                "references.json", recordedSize, previousDigest, 5034L, currentDigest,
                 List.of("retry", "accept", "abort"), null
         );
         var parsedHold = HoldRecord.fromJson(hold.toJson());
-        assertEquals("H-0001", parsedHold.holdId());
+        assertEquals(holdId, parsedHold.holdId());
         assertEquals("integrity_pause", parsedHold.kind());
-        assertEquals(4812L, parsedHold.recordedSize());
-        assertEquals("b70d", parsedHold.currentDigest());
+        assertEquals(recordedSize, parsedHold.recordedSize());
+        assertEquals(currentDigest, parsedHold.currentDigest());
         assertTrue(parsedHold.offers("accept"));
         assertFalse(parsedHold.offers("cancel"));
 
-        var request = new HoldResolutionRequest("accept", "checked by hand", Map.of("force", true));
+        var requestReason = Generators.nonEmptyStrings().next();
+        var request = new HoldResolutionRequest("accept", requestReason, Map.of("force", true));
         var parsedRequest = HoldResolutionRequest.fromJson(request.toJson());
         assertEquals("accept", parsedRequest.act());
-        assertEquals("checked by hand", parsedRequest.reason());
+        assertEquals(requestReason, parsedRequest.reason());
         assertEquals(Boolean.TRUE, parsedRequest.params().get("force"));
 
-        var released = new HoldResolutionResult("H-0001", true, null, "relay-cursor-order");
+        var released = new HoldResolutionResult(holdId, true, null, "relay-cursor-order");
         var parsedReleased = HoldResolutionResult.fromJson(released.toJson());
         assertTrue(parsedReleased.released());
         assertNull(parsedReleased.cause());
 
-        var stillHeld = new HoldResolutionResult("H-0001", false, "the plan reads cui-http", "fix-relay");
+        var stillHeldCause = Generators.nonEmptyStrings().next();
+        var stillHeld = new HoldResolutionResult(holdId, false, stillHeldCause, "fix-relay");
         var parsedStillHeld = HoldResolutionResult.fromJson(stillHeld.toJson());
         assertFalse(parsedStillHeld.released());
-        assertEquals("the plan reads cui-http", parsedStillHeld.cause());
+        assertEquals(stillHeldCause, parsedStillHeld.cause());
     }
 
     @Test
     @DisplayName("round-trip serializes plan settings records")
     void planSettings() throws Exception {
+        var planId = Generators.nonEmptyStrings().next();
+        var revision = Generators.integers(0, 100).next();
         var value = new PlanSettingsValue("landing", "landing.pull-request", "project",
                 List.of("landing.pull-request", "landing.main", "landing.files"));
-        var record = new PlanSettingsRecord("fix-relay", 7, List.of(value,
+        var record = new PlanSettingsRecord(planId, revision, List.of(value,
                 new PlanSettingsValue("role.implement", "Claude Code \u00b7 sonnet-5.5", "plan", List.of())));
         var parsedRecord = PlanSettingsRecord.fromJson(record.toJson());
-        assertEquals("fix-relay", parsedRecord.planId());
-        assertEquals(7, parsedRecord.revision());
+        assertEquals(planId, parsedRecord.planId());
+        assertEquals(revision, parsedRecord.revision());
         assertEquals("project", parsedRecord.value("landing").origin());
         assertEquals(2, parsedRecord.values().size());
 
-        var update = new PlanSettingsUpdateRequest("landing", "landing.main", 6);
+        var updateRevision = Generators.integers(0, 100).next();
+        var update = new PlanSettingsUpdateRequest("landing", "landing.main", updateRevision);
         var parsedUpdate = PlanSettingsUpdateRequest.fromJson(update.toJson());
         assertEquals("landing", parsedUpdate.aspect());
         assertEquals("landing.main", parsedUpdate.value());
-        assertEquals(6, parsedUpdate.revision());
+        assertEquals(updateRevision, parsedUpdate.revision());
 
-        var applied = PlanSettingsUpdateResult.applied(8);
+        var appliedRevision = Generators.integers(0, 100).next();
+        var applied = PlanSettingsUpdateResult.applied(appliedRevision);
         var parsedApplied = PlanSettingsUpdateResult.fromJson(applied.toJson());
         assertTrue(parsedApplied.applied());
         assertFalse(parsedApplied.conflict());
-        assertEquals(8, parsedApplied.revision());
+        assertEquals(appliedRevision, parsedApplied.revision());
 
-        var conflict = PlanSettingsUpdateResult.conflict(8, "landing.main");
+        var conflictRevision = Generators.integers(0, 100).next();
+        var conflict = PlanSettingsUpdateResult.conflict(conflictRevision, "landing.main");
         var parsedConflict = PlanSettingsUpdateResult.fromJson(conflict.toJson());
         assertTrue(parsedConflict.conflict());
         assertEquals("landing.main", parsedConflict.currentValue());
@@ -157,29 +175,33 @@ class ControlRecordsTest {
     @Test
     @DisplayName("round-trip serializes the hold and plan control events")
     void controlEvents() throws Exception {
-        var opened = new HoldChangedEvent(HoldChangedEvent.EVENT_OPENED, "H-0001", "fix-relay", "plan",
-                "condition", "the plan reads cui-http, which this project may not read");
+        var holdId = Generators.nonEmptyStrings().next();
+        var planId = Generators.nonEmptyStrings().next();
+        var description = Generators.nonEmptyStrings().next();
+        var opened = new HoldChangedEvent(HoldChangedEvent.EVENT_OPENED, holdId, planId, "plan",
+                "condition", description);
         assertEquals("hold.opened", opened.event());
         var parsedOpened = HoldChangedEvent.fromJson(HoldChangedEvent.EVENT_OPENED, opened.toJson());
-        assertEquals("H-0001", parsedOpened.holdId());
+        assertEquals(holdId, parsedOpened.holdId());
         assertEquals("condition", parsedOpened.kind());
 
-        var cleared = new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED, "H-0001", "fix-relay", "plan",
+        var cleared = new HoldChangedEvent(HoldChangedEvent.EVENT_CLEARED, holdId, planId, "plan",
                 null, null);
         var parsedCleared = HoldChangedEvent.fromJson(HoldChangedEvent.EVENT_CLEARED, cleared.toJson());
         assertNull(parsedCleared.kind());
         assertEquals("plan", parsedCleared.subjectKind());
 
-        var paused = new PlanControlEvent(PlanControlEvent.EVENT_PAUSED, "fix-relay", "paused", "task", null);
+        var paused = new PlanControlEvent(PlanControlEvent.EVENT_PAUSED, planId, "paused", "task", null);
         assertEquals("plan.paused", paused.event());
         var parsedPaused = PlanControlEvent.fromJson(PlanControlEvent.EVENT_PAUSED, paused.toJson());
-        assertEquals("fix-relay", parsedPaused.planId());
+        assertEquals(planId, parsedPaused.planId());
         assertEquals("task", parsedPaused.point());
 
-        var cancelled = new PlanControlEvent(PlanControlEvent.EVENT_CANCELLED, "fix-relay", "ended", null,
-                "replaced by relay-v2");
+        var reason = Generators.nonEmptyStrings().next();
+        var cancelled = new PlanControlEvent(PlanControlEvent.EVENT_CANCELLED, planId, "ended", null,
+                reason);
         var parsedCancelled = PlanControlEvent.fromJson(PlanControlEvent.EVENT_CANCELLED, cancelled.toJson());
-        assertEquals("replaced by relay-v2", parsedCancelled.reason());
+        assertEquals(reason, parsedCancelled.reason());
     }
 
     @Test
@@ -189,9 +211,10 @@ class ControlRecordsTest {
         assertEquals("phase", pause.point());
         assertNull(pause.reason());
 
-        var ending = PlanActionRequest.ending("replaced by relay-v2", true);
+        var reason = Generators.nonEmptyStrings().next();
+        var ending = PlanActionRequest.ending(reason, true);
         var parsedEnding = PlanActionRequest.fromJson(ending.toJson());
-        assertEquals("replaced by relay-v2", parsedEnding.reason());
+        assertEquals(reason, parsedEnding.reason());
         assertEquals(Boolean.TRUE, parsedEnding.closePr());
 
         var empty = PlanActionRequest.empty();
@@ -206,28 +229,33 @@ class ControlRecordsTest {
     @Test
     @DisplayName("parses aliased field names and rejects malformed input")
     void aliasesAndErrors() throws Exception {
+        var subjectId = Generators.nonEmptyStrings().next();
         var actions = WorkActions.fromMap(Map.of(
-                "plan_id", "prj-alias",
+                "plan_id", subjectId,
                 "state", "running",
                 "actions", List.of(Map.of("name", "pause", "available", true))));
-        assertEquals("prj-alias", actions.subjectId());
+        assertEquals(subjectId, actions.subjectId());
         assertEquals("pause", actions.actions().getFirst().action());
 
+        var holdId = Generators.nonEmptyStrings().next();
+        var holdSubjectId = Generators.nonEmptyStrings().next();
+        var holdCause = Generators.nonEmptyStrings().next();
         var hold = HoldRecord.fromMap(Map.of(
-                "id", "H-X",
-                "plan_id", "prj-hold",
+                "id", holdId,
+                "plan_id", holdSubjectId,
                 "kind", "stalled",
-                "cause", "the worker stopped",
+                "cause", holdCause,
                 "acts", List.of("retry")));
-        assertEquals("H-X", hold.holdId());
-        assertEquals("prj-hold", hold.subjectId());
+        assertEquals(holdId, hold.holdId());
+        assertEquals(holdSubjectId, hold.subjectId());
         assertEquals(List.of("retry"), hold.acts());
 
+        var settingsPlanId = Generators.nonEmptyStrings().next();
         var settings = PlanSettingsRecord.fromMap(Map.of(
-                "id", "prj-set",
+                "id", settingsPlanId,
                 "revision", 2,
                 "values", List.of(Map.of("key", "method", "value", "method.test-first", "origin", "machine"))));
-        assertEquals("prj-set", settings.planId());
+        assertEquals(settingsPlanId, settings.planId());
         assertEquals("machine", settings.value("method").origin());
 
         assertThrows(NullPointerException.class,
@@ -246,11 +274,12 @@ class ControlRecordsTest {
     @Test
     @DisplayName("uses the recorded instant of a hold's last attempt")
     void holdLastTried() throws Exception {
-        var at = Instant.parse("2026-10-16T14:10:00Z");
-        var hold = new HoldRecord("H-1", "fix-relay", "plan", "condition", "reads cui-http", 3, at,
+        var at = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
+        var attempts = Generators.integers(1, 10).next();
+        var hold = new HoldRecord("H-1", "fix-relay", "plan", "condition", "reads cui-http", attempts, at,
                 null, null, null, null, null, List.of("retry", "grant", "end_plan"), null);
         var parsed = HoldRecord.fromJson(hold.toJson());
         assertEquals(at, parsed.lastTriedAt());
-        assertEquals(3, parsed.attempts());
+        assertEquals(attempts, parsed.attempts());
     }
 }

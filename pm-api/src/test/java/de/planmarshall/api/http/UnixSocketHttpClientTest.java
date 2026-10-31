@@ -33,9 +33,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 
 @DisplayName("UnixSocketHttpClient")
+@EnableGeneratorController
 class UnixSocketHttpClientTest {
 
     private Path directory;
@@ -69,18 +72,20 @@ class UnixSocketHttpClientTest {
         @Test
         @DisplayName("sends method, target, headers and body; reads a Content-Length body")
         void contentLength() throws Exception {
+            var payload = Generators.nonEmptyStrings().next();
             var client = serve((request, response) -> response.json(200, "{\"echo\":\"" + request.bodyText() + "\"}"));
 
-            var response = client.send(HttpRequest.json("PUT", "/api/v1/x", "abc").withHeader("X-A", "1"));
+            var response = client.send(HttpRequest.json("PUT", "/api/v1/x", payload).withHeader("X-A", "1"));
 
             assertEquals(200, response.status());
             assertEquals("application/json", response.contentType());
-            assertEquals("{\"echo\":\"abc\"}", response.bodyText());
+            assertEquals("{\"echo\":\"" + payload + "\"}", response.bodyText());
             var received = server.awaitRequest(Duration.ofSeconds(5));
             assertEquals("PUT", received.method());
             assertEquals("/api/v1/x", received.target());
             assertEquals("1", received.header("X-A"));
-            assertEquals("3", received.header("Content-Length"));
+            assertEquals(String.valueOf(payload.getBytes(StandardCharsets.UTF_8).length),
+                    received.header("Content-Length"));
             assertEquals("close", received.header("Connection"));
             assertEquals(socket, client.socket());
         }

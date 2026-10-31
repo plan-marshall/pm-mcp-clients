@@ -24,11 +24,14 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.core.JsonFactory;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("Configuration levels and origins")
+@EnableGeneratorController
 class ConfigOriginTest {
 
     private static final JsonFactory FACTORY = new JsonFactory();
@@ -72,7 +75,10 @@ class ConfigOriginTest {
     @Test
     @DisplayName("an effective value round-trips through JSON, the map, and the streaming codec")
     void configValueRoundTrip() throws Exception {
-        var resource = new ConfigValueResource("workflow.landing", "pr", ConfigOrigin.PROJECT, ConfigOrigin.MACHINE, 7L);
+        var value = Generators.nonEmptyStrings().next();
+        var revision = (long) Generators.integers(0, 1_000_000).next();
+        var resource = new ConfigValueResource("workflow.landing", value, ConfigOrigin.PROJECT, ConfigOrigin.MACHINE,
+                revision);
 
         assertEquals(resource, ConfigValueResource.fromJson(resource.toJson()));
         assertEquals(resource, ConfigValueResource.fromMap(resource.toMap()));
@@ -91,8 +97,9 @@ class ConfigOriginTest {
         assertNull(absent.value());
         assertNull(absent.overrides());
 
+        var numericRevision = (long) Generators.integers(0, 1_000_000).next();
         var numeric = new ConfigValueResource("cleanup.plans_after_days", new JsonNumber("30"), ConfigOrigin.MACHINE,
-                ConfigOrigin.DEFAULT, 2L);
+                ConfigOrigin.DEFAULT, numericRevision);
         assertEquals(numeric, ConfigValueResource.fromJson(numeric.toJson()));
     }
 

@@ -16,7 +16,11 @@ import java.nio.file.attribute.PosixFilePermissions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 @DisplayName("RuntimeFixture")
+@EnableGeneratorController
 class RuntimeFixtureTest {
 
     @Test
@@ -24,14 +28,15 @@ class RuntimeFixtureTest {
     void shouldWriteTokenWithPrivateModes() throws Exception {
         var fixture = RuntimeFixture.create();
         try {
-            fixture.writeToken("t0ken");
+            var token = Generators.nonEmptyStrings().next();
+            fixture.writeToken(token);
 
             var paths = fixture.paths();
             assertEquals("rwx------", PosixFilePermissions.toString(Files.getPosixFilePermissions(fixture.base())));
             assertEquals("rwx------", PosixFilePermissions.toString(Files.getPosixFilePermissions(paths.runDir())));
             assertEquals("rw-------",
                     PosixFilePermissions.toString(Files.getPosixFilePermissions(paths.runtimeToken())));
-            assertEquals("t0ken", Files.readString(paths.runtimeToken()));
+            assertEquals(token, Files.readString(paths.runtimeToken()));
         } finally {
             fixture.close();
         }
