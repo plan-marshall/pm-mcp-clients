@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 
 
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +24,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
@@ -35,6 +38,7 @@ import de.planmarshall.api.project.ProjectReleaseResult;
 
 @DisplayName("ProjectsScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class ProjectsScenarioTest {
 
     private static final String SCENARIO = StandardScenarios.PROJECTS_AND_START;
@@ -111,8 +115,10 @@ class ProjectsScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
+            var checkout = "~/git/" + Generators.letterStrings(4, 10).next().toLowerCase();
             // 1. Start onboarding
-            var startRes = client.send(HttpRequest.json("POST", "/api/v1/project-onboardings", "{\"path\":\"~/git/new-service\"}")
+            var startRes = client.send(HttpRequest.json("POST", "/api/v1/project-onboardings",
+                    JsonTree.write(Map.of("path", checkout)))
                     .withHeader("Authorization", auth));
             assertEquals(201, startRes.status());
 
@@ -120,17 +126,17 @@ class ProjectsScenarioTest {
             var expRes = client.send(HttpRequest.get("/api/v1/projects").withHeader("Authorization", auth));
             var explorer = ProjectExplorer.fromJson(expRes.bodyText());
             assertEquals(2, explorer.beingAdded().size());
-            assertTrue(explorer.beingAdded().stream().anyMatch(b -> "~/git/new-service".equals(b.checkoutPath())));
+            assertTrue(explorer.beingAdded().stream().anyMatch(b -> checkout.equals(b.checkoutPath())));
 
             // 3. Abandon onboarding
             var abandonRes = client.send(HttpRequest.delete("/api/v1/entries/ent-cui/abandon").withHeader("Authorization", auth));
             assertEquals(200, abandonRes.status());
 
-            // 4. Verify only new-service remains
+            // 4. Verify only the added checkout remains
             var expRes2 = client.send(HttpRequest.get("/api/v1/projects").withHeader("Authorization", auth));
             var explorer2 = ProjectExplorer.fromJson(expRes2.bodyText());
             assertEquals(1, explorer2.beingAdded().size());
-            assertEquals("~/git/new-service", explorer2.beingAdded().get(0).checkoutPath());
+            assertEquals(checkout, explorer2.beingAdded().get(0).checkoutPath());
         }
     }
 
@@ -141,7 +147,8 @@ class ProjectsScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            var relReq = new ProjectReleaseRequest("pm-mcp-clients", true, false, "Lifecycle completed");
+            var relReq = new ProjectReleaseRequest("pm-mcp-clients", true, false,
+                    Generators.letterStrings(4, 12).next());
             var relRes = client.send(HttpRequest.json("POST", "/api/v1/projects/pm-mcp-clients/release", relReq.toJson())
                     .withHeader("Authorization", auth));
             assertEquals(200, relRes.status());

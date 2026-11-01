@@ -23,6 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
@@ -33,6 +35,7 @@ import de.planmarshall.api.system.SystemSnapshot;
 
 @DisplayName("SystemScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class SystemScenarioTest {
 
     @Test
@@ -114,7 +117,9 @@ class SystemScenarioTest {
             assertEquals(200, res.status());
             assertTrue(res.bodyText().contains("pm-mcpd 0.10.0 Release Notes"));
 
-            var res404 = client.send(HttpRequest.get("/api/v1/system/release-notes?version=99.0.0").withHeader("Authorization", auth));
+            var unknownVersion = Generators.integers(100, 999).next() + ".0.0";
+            var res404 = client.send(HttpRequest.get("/api/v1/system/release-notes?version=" + unknownVersion)
+                    .withHeader("Authorization", auth));
             assertEquals(404, res404.status());
         }
     }

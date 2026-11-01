@@ -27,6 +27,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
@@ -40,6 +42,7 @@ import de.planmarshall.api.overview.ProjectSummary;
 
 @DisplayName("RunningWorkScenarioTest")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class RunningWorkScenarioTest {
 
     private static final String AUTH_HEADER = "Authorization";
@@ -416,25 +419,28 @@ class RunningWorkScenarioTest {
     @Test
     @DisplayName("handles dynamic fallback routes for unknown projects and ended work pages")
     void shouldHandleFallbackRoutes() throws Exception {
+        var unknownProject = Generators.letterStrings(4, 12).next().toLowerCase();
+        var invalidPage = Generators.letterStrings(4, 8).next().toLowerCase();
         try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            var resUnknown = client.send(HttpRequest.get("/api/v1/projects/non-existent-proj")
+            var resUnknown = client.send(HttpRequest.get("/api/v1/projects/" + unknownProject)
                     .withHeader(AUTH_HEADER, auth));
             assertEquals(200, resUnknown.status());
             var detailUnknown = ProjectDetailResponse.fromJson(new String(resUnknown.body()));
-            assertEquals("non-existent-proj", detailUnknown.projectId());
+            assertEquals(unknownProject, detailUnknown.projectId());
             assertTrue(detailUnknown.plans().isEmpty());
 
-            var resEndedUnknown = client.send(HttpRequest.get("/api/v1/projects/non-existent-proj/ended")
+            var resEndedUnknown = client.send(HttpRequest.get("/api/v1/projects/" + unknownProject + "/ended")
                     .withHeader(AUTH_HEADER, auth));
             assertEquals(200, resEndedUnknown.status());
             var endedUnknown = EndedWorkPage.fromJson(new String(resEndedUnknown.body()));
-            assertEquals("non-existent-proj", endedUnknown.projectId());
+            assertEquals(unknownProject, endedUnknown.projectId());
             assertTrue(endedUnknown.items().isEmpty());
 
-            var resInvalidPage = client.send(HttpRequest.get("/api/v1/projects/pm-mcp-clients/ended?page=not_a_num")
+            var resInvalidPage = client.send(HttpRequest.get(
+                    "/api/v1/projects/pm-mcp-clients/ended?page=" + invalidPage)
                     .withHeader(AUTH_HEADER, auth));
             assertEquals(1, EndedWorkPage.fromJson(new String(resInvalidPage.body())).page());
         }

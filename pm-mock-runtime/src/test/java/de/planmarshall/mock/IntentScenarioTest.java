@@ -25,6 +25,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
@@ -43,6 +45,7 @@ import de.planmarshall.mock.scenario.ScenarioLoader;
 
 @DisplayName("Intent scenarios")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class IntentScenarioTest {
 
     private static final String AUTH_HEADER = "Authorization";
@@ -96,10 +99,11 @@ class IntentScenarioTest {
         @Test
         @DisplayName("answers another plan id from the same fixture")
         void servesAnotherPlanId() throws Exception {
+            var otherPlan = Generators.letterStrings(4, 10).next().toLowerCase();
             try (var runtime = MockRuntime.start(STATE)) {
-                var response = get(runtime, "/api/v1/plans/other-plan/intent");
+                var response = get(runtime, "/api/v1/plans/" + otherPlan + "/intent");
                 assertEquals(200, response.status(), response.bodyText());
-                assertEquals("other-plan", PlanIntentResource.fromJson(response.bodyText()).planId());
+                assertEquals(otherPlan, PlanIntentResource.fromJson(response.bodyText()).planId());
             }
         }
 
@@ -177,7 +181,7 @@ class IntentScenarioTest {
                 var plan = intent.plan("fix-relay");
                 assertNotNull(plan);
                 assertEquals(2, plan.doneWhen().size());
-                assertNull(intent.plan("no-such-plan"));
+                assertNull(intent.plan(Generators.letterStrings(4, 10).next().toLowerCase()));
             }
         }
     }
@@ -205,9 +209,10 @@ class IntentScenarioTest {
                 assertEquals(2, distribution.flaggedBuckets().size());
                 assertTrue(distribution.flagsMore());
 
-                var another = get(runtime, "/api/v1/projects/another-project/metrics/oversize");
+                var anotherProject = Generators.letterStrings(4, 10).next().toLowerCase();
+                var another = get(runtime, "/api/v1/projects/" + anotherProject + "/metrics/oversize");
                 assertEquals(200, another.status());
-                assertEquals("another-project",
+                assertEquals(anotherProject,
                         OverSizeDistributionResource.fromJson(another.bodyText()).projectId());
             }
         }

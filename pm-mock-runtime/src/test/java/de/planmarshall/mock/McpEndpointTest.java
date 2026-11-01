@@ -14,12 +14,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
@@ -31,25 +34,36 @@ import de.planmarshall.api.json.JsonTree;
 @DisplayName("MCP endpoint")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 @Timeout(value = 30, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+@EnableGeneratorController
 class McpEndpointTest {
 
-    private static final String INITIALIZE = """
-            {"jsonrpc":"2.0","id":1,"method":"initialize","params":
-             {"protocolVersion":"2025-11-25","clientInfo":{"name":"it","version":"1"},"capabilities":{}}}
-            """;
+    private Integer requestId;
+
+    @BeforeEach
+    void drawRequestId() {
+        requestId = Generators.integers(1, 9999).next();
+    }
+
+    private String initializeRequest() {
+        return """
+                {"jsonrpc":"2.0","id":%1$d,"method":"initialize","params":
+                 {"protocolVersion":"2025-11-25","clientInfo":{"name":"%2$s","version":"%3$d"},"capabilities":{}}}
+                """.formatted(requestId, Generators.letterStrings(2, 6).next().toLowerCase(),
+                Generators.integers(1, 99).next());
+    }
 
     @Test
     @DisplayName("answers initialize with the negotiated protocol version")
     void initialize() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.STATUS_ONLY)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
-            var res = client.send(HttpRequest.json("POST", "/mcp", INITIALIZE)
+            var res = client.send(HttpRequest.json("POST", "/mcp", initializeRequest())
                     .withHeader("Authorization", "Bearer " + runtime.token())
                     .withHeader("Mcp-Method", "initialize"));
 
             assertEquals(200, res.status());
             var message = JsonTree.asObject(JsonTree.parse(res.bodyText()));
-            assertEquals(1, JsonTree.integer(message, "id"));
+            assertEquals(requestId, JsonTree.integer(message, "id"));
             var result = JsonTree.object(message, "result");
             assertEquals("2025-11-25", JsonTree.string(result, "protocolVersion"));
         }
@@ -60,7 +74,7 @@ class McpEndpointTest {
     void toolsList() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.STATUS_ONLY)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
-            var body = "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}";
+            var body = "{\"jsonrpc\":\"2.0\",\"id\":" + requestId + ",\"method\":\"tools/list\"}";
 
             try (var exchange = client.open(HttpRequest.json("POST", "/mcp", body)
                          .withHeader("Authorization", "Bearer " + runtime.token())
@@ -76,7 +90,7 @@ class McpEndpointTest {
                 assertNotNull(message);
                 assertEquals("message", message.event());
                 var frame = JsonTree.asObject(JsonTree.parse(message.data()));
-                assertEquals(2, JsonTree.integer(frame, "id"));
+                assertEquals(requestId, JsonTree.integer(frame, "id"));
                 assertTrue(message.data().contains("pm_wait"));
             }
         }
@@ -89,12 +103,13 @@ class McpEndpointTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
 
             var call = client.send(HttpRequest.json("POST", "/mcp",
-                    "{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"pm_state\"}}")
-                    .withHeader("PM-MCP-Job-Token", "job-token")
+                    "{\"jsonrpc\":\"2.0\",\"id\":" + requestId
+                            + ",\"method\":\"tools/call\",\"params\":{\"name\":\"pm_state\"}}")
+                    .withHeader("PM-MCP-Job-Token", Generators.letterStrings(8, 16).next())
                     .withHeader("Mcp-Method", "tools/call"));
             assertEquals(200, call.status());
             var message = JsonTree.asObject(JsonTree.parse(call.bodyText()));
-            assertEquals(3, JsonTree.integer(message, "id"));
+            assertEquals(requestId, JsonTree.integer(message, "id"));
             assertNotNull(JsonTree.object(message, "result"));
 
             var notification = client.send(HttpRequest.json("POST", "/mcp",
@@ -111,7 +126,7 @@ class McpEndpointTest {
     void requiresAuthentication() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.STATUS_ONLY)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
-            var res = client.send(HttpRequest.json("POST", "/mcp", INITIALIZE)
+            var res = client.send(HttpRequest.json("POST", "/mcp", initializeRequest())
                     .withHeader("Mcp-Method", "initialize"));
             assertEquals(401, res.status());
         }

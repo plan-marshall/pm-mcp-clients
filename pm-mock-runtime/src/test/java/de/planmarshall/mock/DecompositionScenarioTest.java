@@ -22,6 +22,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.control.DecompositionResource;
 import de.planmarshall.api.decomposition.CheckSeverity;
 import de.planmarshall.api.decomposition.DecompositionCheckFinding;
@@ -37,6 +39,7 @@ import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("DecompositionScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class DecompositionScenarioTest {
 
     private static final String BASE = "/api/v1/projects/pm-mcp-clients/epics/";
@@ -199,10 +202,11 @@ class DecompositionScenarioTest {
     @Test
     @DisplayName("answers 404 for an epic without a decomposition and for an unknown project")
     void refusesUnknownEpicAndProject() throws Exception {
+        var unknown = Generators.letterStrings(4, 10).next().toLowerCase();
         try (var runtime = MockRuntime.start(STATE)) {
-            assertEquals(404, get(runtime, BASE + "no-such-epic/decomposition").status());
+            assertEquals(404, get(runtime, BASE + unknown + "/decomposition").status());
             assertEquals(404, get(runtime,
-                    "/api/v1/projects/no-such-project/epics/relay-hardening/decomposition").status());
+                    "/api/v1/projects/" + unknown + "/epics/relay-hardening/decomposition").status());
         }
     }
 

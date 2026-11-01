@@ -22,24 +22,33 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 @DisplayName("MockEventStream")
+@EnableGeneratorController
 class MockEventStreamTest {
 
     @Test
     @DisplayName("formats single-line and multi-line SSE messages with chunked encoding")
     void sendTextEvents() throws Exception {
         var out = new ByteArrayOutputStream();
+        var eventName = Generators.letterStrings(4, 10).next();
+        var payload = Generators.letterStrings(4, 12).next();
+        var unnamedPayload = Generators.letterStrings(4, 12).next();
+        var firstLine = Generators.letterStrings(4, 10).next();
+        var secondLine = Generators.letterStrings(4, 10).next();
         try (var stream = new MockEventStream(out)) {
             assertFalse(stream.isClosed());
-            stream.send("tick", "payload-1");
-            stream.send(null, "unnamed-event");
-            stream.send("multi", "line1\nline2");
+            stream.send(eventName, payload);
+            stream.send(null, unnamedPayload);
+            stream.send(eventName, firstLine + "\n" + secondLine);
         }
 
         var raw = out.toString(StandardCharsets.UTF_8);
-        assertTrue(raw.contains("event: tick\ndata: payload-1\n\n"));
-        assertTrue(raw.contains("data: unnamed-event\n\n"));
-        assertTrue(raw.contains("event: multi\ndata: line1\ndata: line2\n\n"));
+        assertTrue(raw.contains("event: " + eventName + "\ndata: " + payload + "\n\n"));
+        assertTrue(raw.contains("data: " + unnamedPayload + "\n\n"));
+        assertTrue(raw.contains("event: " + eventName + "\ndata: " + firstLine + "\ndata: " + secondLine + "\n\n"));
         assertTrue(raw.endsWith("0\r\n\r\n"));
     }
 
@@ -47,26 +56,32 @@ class MockEventStreamTest {
     @DisplayName("sends JSON serializable payloads and raw strings")
     void sendJsonEvents() throws Exception {
         var out = new ByteArrayOutputStream();
+        var statusEvent = Generators.letterStrings(4, 10).next();
+        var member = Generators.letterStrings(4, 10).next();
+        var rawEvent = Generators.letterStrings(4, 10).next();
+        var rawMember = Generators.letterStrings(4, 10).next();
+        var number = Generators.integers(1, 999).next();
         try (var stream = new MockEventStream(out)) {
-            stream.sendJson("status", Map.of("running", true));
-            stream.sendJson("raw", "{\"custom\":123}");
+            stream.sendJson(statusEvent, Map.of(member, true));
+            stream.sendJson(rawEvent, "{\"" + rawMember + "\":" + number + "}");
         }
 
         var raw = out.toString(StandardCharsets.UTF_8);
-        assertTrue(raw.contains("event: status\ndata: {\"running\":true}\n\n"));
-        assertTrue(raw.contains("event: raw\ndata: {\"custom\":123}\n\n"));
+        assertTrue(raw.contains("event: " + statusEvent + "\ndata: {\"" + member + "\":true}\n\n"));
+        assertTrue(raw.contains("event: " + rawEvent + "\ndata: {\"" + rawMember + "\":" + number + "}\n\n"));
     }
 
     @Test
     @DisplayName("sends SSE comments and ping heartbeats")
     void sendComments() throws Exception {
         var out = new ByteArrayOutputStream();
+        var comment = Generators.letterStrings(4, 12).next();
         try (var stream = new MockEventStream(out)) {
-            stream.sendComment("ping heartbeat");
+            stream.sendComment(comment);
         }
 
         var raw = out.toString(StandardCharsets.UTF_8);
-        assertTrue(raw.contains(": ping heartbeat\n\n"));
+        assertTrue(raw.contains(": " + comment + "\n\n"));
     }
 
     @Test
@@ -74,11 +89,13 @@ class MockEventStreamTest {
     void rejectAfterClose() throws Exception {
         var out = new ByteArrayOutputStream();
         var stream = new MockEventStream(out);
+        var eventName = Generators.letterStrings(4, 10).next();
+        var payload = Generators.letterStrings(4, 12).next();
         stream.close();
         assertTrue(stream.isClosed());
 
-        assertThrows(IOException.class, () -> stream.send("tick", "data"));
-        assertThrows(IOException.class, () -> stream.sendComment("ping"));
+        assertThrows(IOException.class, () -> stream.send(eventName, payload));
+        assertThrows(IOException.class, () -> stream.sendComment(payload));
 
         // Idempotent close
         stream.close();
