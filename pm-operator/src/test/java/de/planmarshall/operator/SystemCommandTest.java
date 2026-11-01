@@ -127,7 +127,9 @@ class SystemCommandTest {
         int code = execute("system");
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("runtime   not running"))
+                            () -> assertTrue(out.toString().contains(
+                                                                    "The runtime is not running. pm-operator runtime start starts it."),
+                                                out.toString())
         );
     }
 
@@ -151,22 +153,22 @@ class SystemCommandTest {
         assertAll(
                             () -> assertEquals(0, code, "code"),
                             () -> assertTrue(output.contains("System"), "System header"),
-                            () -> assertTrue(output.contains("Runtime   pm-mcpd 0.9.1 · build 2026-10-02 (a1b2c3d) · 0.10.0 available: runtime upgrade"), "runtime header"),
-                            () -> assertTrue(output.contains("running since today 08:14 · 6 h 12 min"), "running since"),
+                            () -> assertTrue(output.contains("Runtime   running since today 08:14 · 6 h 12 min · 0.10.0 available"), "runtime header"),
                             () -> assertTrue(output.contains("memory 412 MB in use of 1 GB · 680 MB resident · CPU 4 %"), "memory"),
                             () -> assertTrue(output.contains("machine store 2.3 GB · 38 GB free on its disk · measured 13:40"), "machine store"),
                             () -> assertTrue(output.contains("listeners  socket · loopback 127.0.0.1:7420 · network 192.168.1.20:7421 (2 devices)"), "listeners"),
-                            () -> assertTrue(output.contains("Work      plans    3 running · 1 waiting for you · 1 held · 2 paused"), "work plans"),
-                            () -> assertTrue(output.contains("tasks    4 running · 6 queued"), "work tasks"),
-                            () -> assertTrue(output.contains("projects 3 with running work"), "work projects"),
+                            () -> assertTrue(output.contains("Work      plans  3 running · 1 waiting for you · 1 held · 2 paused"), "work plans"),
+                            () -> assertTrue(output.contains("tasks  4 running · 6 queued"), "work tasks"),
+                            () -> assertTrue(output.contains("3 projects with running work"), "work projects"),
                             () -> assertTrue(output.contains("Workers   3 · 2 busy · 1 idle"), "workers header"),
-                            () -> assertTrue(output.contains("planner       claude  opus-4.5    busy  fix-relay"), "worker planner"),
-                            () -> assertTrue(output.contains("Jobs      build  1 of 2 slots · 1 queued"), "jobs build"),
-                            () -> assertTrue(output.contains("locks  3 held"), "jobs locks"),
-                            () -> assertTrue(output.contains("Models    last hour, per model"), "models header"),
-                            () -> assertTrue(output.contains("claude:opus-4.5       42 calls   2.02 M tokens (1.90 M in · 0.12 M out)   1 retry"), "model claude"),
-                            () -> assertTrue(output.contains("codex:gpt-5           12 calls   tokens not measured: not reported by codex   1 error"), "model codex"),
-                            () -> assertTrue(output.contains("Cleanup   due: 12 plans · 2 epics · 40 logs · frees 1.8 GB"), "cleanup header"),
+                            () -> assertTrue(output.contains("planner       claude    opus-4.5    busy     fix-relay"), "worker planner"),
+                            () -> assertTrue(output.contains("Jobs      locks  3 held"), "jobs locks"),
+                            () -> assertTrue(output.contains("build  1 of 2 slots · 1 queued"), "jobs build"),
+                            () -> assertTrue(output.contains("test  0 of 1 slot"), "jobs test"),
+                            () -> assertTrue(output.contains("Models    Last hour · 172 calls · ≥ 5.63 M tokens (≥ 5.10 M in · ≥ 530 k out)"), "models header"),
+                            () -> assertTrue(output.contains("42 calls   2.02 M tokens (1.90 M in · 120 k out)   1 retry"), "model claude"),
+                            () -> assertTrue(output.contains("12 calls   tokens not measured: not reported by codex   1 error"), "model codex"),
+                            () -> assertTrue(output.contains("Cleanup   due: 12 plans · 2 epics · 40 logs · 5 read reports · 1 unenrolled project · frees 1.8 GB"), "cleanup header"),
                             () -> assertTrue(output.contains("4 kept for good · last sweep today 03:00"), "cleanup kept"),
                             () -> assertTrue(output.contains("plans · cleanup · system --window today · system --by role"), "footer")
         );
@@ -222,16 +224,6 @@ class SystemCommandTest {
         assertEquals("2.3 GB", SystemCommand.formatBytes(2469606195L));
         assertEquals("38 GB", SystemCommand.formatBytes(40802189312L));
         assertEquals("1.8 GB", SystemCommand.formatBytes(1932735283L));
-    }
-
-    @Test
-    @DisplayName("formatTokens correctly formats token counts")
-    void formatTokensTest() {
-        assertEquals("500", SystemCommand.formatTokens(500L));
-        assertEquals("1.5 k", SystemCommand.formatTokens(1500L));
-        assertEquals("2.02 M", SystemCommand.formatTokens(2020000L));
-        assertEquals("1.90 M", SystemCommand.formatTokens(1900000L));
-        assertEquals("0.12 M", SystemCommand.formatTokens(120000L));
     }
 
     @Test
@@ -292,11 +284,12 @@ class SystemCommandTest {
         var output = out.toString();
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(output.contains("network off")),
-                            () -> assertTrue(output.contains("3 host sessions run pm-mcp 0.8.0")),
-                            () -> assertTrue(output.contains("recovering: recovering-repo")),
-                            () -> assertTrue(output.contains("Models    7 days, per role")),
-                            () -> assertTrue(output.contains("CPU not available (not measured on this platform)"))
+                            () -> assertTrue(output.contains("network off"), output),
+                            () -> assertTrue(output.contains("3 host sessions run pm-mcp 0.8.0"), output),
+                            () -> assertTrue(output.contains("1 project with running work"), output),
+                            () -> assertTrue(output.contains("recovering-repo recovering"), output),
+                            () -> assertTrue(output.contains("Models    7 days · 10 calls"), output),
+                            () -> assertTrue(output.contains("CPU not available (not measured on this platform)"), output)
         );
     }
 }

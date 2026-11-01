@@ -54,6 +54,7 @@ import de.planmarshall.api.report.ReportKind;
 import de.planmarshall.api.report.ReportsPage;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.system.RuntimeDrainingEvent;
+import de.planmarshall.api.system.RuntimeStatus;
 import de.planmarshall.api.system.SystemSnapshot;
 import de.planmarshall.api.system.SystemWindow;
 import de.planmarshall.operator.ConsoleNotice;
@@ -79,6 +80,7 @@ import de.planmarshall.operator.projects.ProjectsExplorerActions;
 import de.planmarshall.operator.projects.ProjectsExplorerLevel;
 import de.planmarshall.operator.reports.ReportsLevel;
 import de.planmarshall.operator.system.SystemLevel;
+import de.planmarshall.operator.system.SystemView;
 import de.planmarshall.operator.tui.TuiKeyAction;
 import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiLevel;
@@ -1622,9 +1624,29 @@ public final class OverviewFullScreenApp {
                             ? SystemLevel.root(snapshot, window, groupBy, projectId)
                             : SystemLevel.unavailable(window, groupBy, projectId);
         currentSystem.set(level);
-        systemBanner = null;
+        systemBanner = fetchLifecycleLine();
         stack.push(TuiLevel.of(TuiLevel.Kind.SYSTEM, SystemLevel.LEVEL_ID, level.breadcrumb(locale)),
                             level.rows(locale), SystemLevel.ROW_RUNTIME);
+    }
+
+    /**
+     * Reads the lifecycle state the system view states first, the way the printed view does
+     * ({@code doc/design/shared/system.adoc#lifecycle}). A status the client cannot read leaves the
+     * line out; it never empties the view.
+     *
+     * @return the line, or {@code null} while the runtime runs or its state is not known
+     */
+    @Nullable
+    String fetchLifecycleLine() {
+        try {
+            var response = context.runtime(false).send(HttpRequest.get("/api/v1/status"));
+            if (response.status() == 200) {
+                return SystemView.lifecycleLine(locale, RuntimeStatus.fromJson(response.bodyText()));
+            }
+        } catch (IOException | IllegalArgumentException _) {
+            // The view states no lifecycle it did not receive.
+        }
+        return null;
     }
 
     /**
@@ -1679,6 +1701,7 @@ public final class OverviewFullScreenApp {
             // and its own read win.
             return;
         }
+        systemBanner = fetchLifecycleLine();
         synchronized (this) {
             var lvl = stack.level();
             if (lvl == null || lvl.kind() != TuiLevel.Kind.SYSTEM) {
