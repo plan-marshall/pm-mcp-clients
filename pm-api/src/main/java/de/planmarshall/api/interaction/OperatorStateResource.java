@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-
 import org.jspecify.annotations.Nullable;
 
 import com.fasterxml.jackson.core.JsonGenerator;

@@ -452,6 +452,42 @@ export interface EndedWorkPage {
   items: EndedWorkItem[];
 }
 
+/** The closed kind of a match of finding work by name (UC-PLN-8). */
+export type FindKind = 'project' | 'epic' | 'plan' | 'decision' | 'report';
+
+/** Where a match belongs: a project, an epic, or a plan, by its id and its title. */
+export interface FindLocation {
+  id: string;
+  title?: string | null;
+}
+
+/**
+ * One match of finding work by name, as the runtime serves it.
+ *
+ * `ended` marks work that has ended, and `outcome` says how it ended; a running match carries
+ * neither. The title is plain text and is shown as a text node.
+ */
+export interface FindMatch {
+  kind: FindKind;
+  id: string;
+  title: string;
+  project?: FindLocation | null;
+  epic?: FindLocation | null;
+  plan?: FindLocation | null;
+  ended: boolean;
+  outcome?: string | null;
+}
+
+/** One page of the matches of `GET /api/v1/find?q=`, in the runtime's order. */
+export interface FindPage {
+  page: number;
+  total_pages: number;
+  has_newer: boolean;
+  has_older: boolean;
+  query: string;
+  matches: FindMatch[];
+}
+
 export interface StateRepresentation {
   scope?: string;
   state?: string;
@@ -2691,6 +2727,26 @@ export class ApiClient {
     );
   }
 
+  /**
+   * Reads the matches of finding work by name (UC-PLN-8).
+   *
+   * The runtime answers over running and ended work, in its own order; the client sends the text
+   * and shows what comes back. An empty text is refused by the runtime, so the caller never sends
+   * one.
+   *
+   * @param query the text to look for
+   * @param signal aborts the read when a newer text supersedes it
+   * @returns the page of matches
+   */
+  public async findWork(query: string, signal?: AbortSignal): Promise<FindPage> {
+    return this.request<FindPage>(
+      'GET',
+      `/api/v1/find?q=${encodeURIComponent(query)}`,
+      undefined,
+      signal,
+    );
+  }
+
   private workflowBase(projectId?: string | null): string {
     return projectId
       ? `/api/v1/projects/${encodeURIComponent(projectId)}/workflows`
@@ -2977,7 +3033,12 @@ export class ApiClient {
     return this.request<CleanupDurations>('GET', '/api/v1/system/cleanup/durations');
   }
 
-  public async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  public async request<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+    signal?: AbortSignal,
+  ): Promise<T> {
     if (
       !path.startsWith('/') ||
       path.startsWith('//') ||
@@ -3004,8 +3065,13 @@ export class ApiClient {
         method,
         headers,
         body: body !== undefined ? JSON.stringify(body) : undefined,
+        signal,
       });
-    } catch {
+    } catch (error) {
+      // A read a newer one superseded is aborted on purpose: it is not the machine going away.
+      if (signal?.aborted || (error as Error)?.name === 'AbortError') {
+        throw error;
+      }
       this.onOfflineCallback?.();
       throw new Error('network_offline');
     }

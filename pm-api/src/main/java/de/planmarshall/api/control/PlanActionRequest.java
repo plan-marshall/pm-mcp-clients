@@ -12,7 +12,6 @@ package de.planmarshall.api.control;
 import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
