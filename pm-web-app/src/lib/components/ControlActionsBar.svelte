@@ -33,6 +33,9 @@
   /** The control that opened the dialog, so the focus goes back to it when the dialog closes. */
   let opener: HTMLElement | null = null;
 
+  /** The open dialog's box, which takes the focus when it opens. */
+  let dialogElement: HTMLElement | null = null;
+
   /** The id of the open dialog's title, for `aria-labelledby`. */
   const titleId = uniqueId('control-dialog-title');
 
@@ -90,19 +93,29 @@
     const active = document.activeElement;
     opener = active instanceof HTMLElement ? active : null;
     dialog = next;
+    void tick().then(() => dialogElement?.focus());
   }
 
   /**
    * Closes the dialog and gives the focus back to the control that opened it.
+   *
+   * A confirm disables the opener while the action runs, and a disabled control cannot take the
+   * focus; the keyboard then stays in the panel, on the first act that can still run.
    */
   async function closeDialog(): Promise<void> {
     const previous = opener;
     dialog = null;
     opener = null;
+    dialogElement = null;
     await tick();
-    if (previous?.isConnected) {
+    if (previous?.isConnected && !(previous as HTMLButtonElement).disabled) {
       previous.focus();
+      return;
     }
+    const fallback = document.querySelector<HTMLButtonElement>(
+      '[data-testid="control-actions"] button:not([disabled])',
+    );
+    fallback?.focus();
   }
 
   /** @param event the key press anywhere while a dialog is open */
@@ -234,6 +247,8 @@
       data-testid={`control-dialog-${dialog}`}
       role="dialog"
       aria-labelledby={titleId}
+      tabindex="-1"
+      bind:this={dialogElement}
     >
       {#if dialog === 'pause'}
         <h4 class="control-actions__dialog-title" id={titleId} data-testid="pause-title">

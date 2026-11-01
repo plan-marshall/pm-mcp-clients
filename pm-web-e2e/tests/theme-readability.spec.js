@@ -1058,7 +1058,12 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
         await journey.open(page, request, 'de');
         const audited = {};
         await journey.walk(page, async (view) => {
-          const { failing } = await auditViewA11y(page);
+          const { violations, failing } = await auditViewA11y(page);
+          for (const violation of violations) {
+            if (!failing.includes(violation)) {
+              console.log(`[a11y] ${formatA11yViolation(view, violation)}`);
+            }
+          }
           audited[view] = failing;
         });
 

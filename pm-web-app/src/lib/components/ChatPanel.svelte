@@ -70,6 +70,10 @@
     if (event.key !== 'Escape' || !open) {
       return;
     }
+    // A dialog opened on top owns Escape; the chat closes only while it is the topmost layer.
+    if (document.querySelector('[role="dialog"]') !== null) {
+      return;
+    }
     event.stopPropagation();
     void close();
   }

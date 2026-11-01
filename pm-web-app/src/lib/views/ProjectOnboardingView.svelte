@@ -82,7 +82,24 @@
 
   onMount(() => {
     void load();
+    measureStepLine();
+    window.addEventListener('resize', measureStepLine);
+    return () => window.removeEventListener('resize', measureStepLine);
   });
+
+  /** The step line's own element, measured to decide whether it can be scrolled at all. */
+  let stepLine = $state<HTMLElement | null>(null);
+
+  /** Whether the step line is wider than its box, and therefore needs the keyboard to scroll. */
+  let stepLineOverflows = $state(false);
+
+  /**
+   * Takes the Tab stop only while the step line actually overflows: a focusable box with nothing to
+   * scroll is one stop the keyboard cannot use (accessibility audit: scrollable-region-focusable).
+   */
+  function measureStepLine(): void {
+    stepLineOverflows = stepLine ? stepLine.scrollWidth > stepLine.clientWidth : false;
+  }
 
   /**
    * @param value the run, or `null` while none is loaded
@@ -394,11 +411,16 @@
     </Button>
   </header>
 
-  <!-- The step line scrolls sideways on a phone, so it takes the focus to be scrolled by keyboard
-       (accessibility audit: scrollable-region-focusable); `nav` is not an interactive element, which
-       is what the compiler's rule below objects to. -->
+  <!-- The step line scrolls sideways only while it is wider than its box; while it is, it takes
+       the Tab stop so the keyboard can scroll it (accessibility audit: scrollable-region-focusable).
+       `nav` is not an interactive element, which is what the compiler's rule below objects to. -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <nav class="step-line" tabindex="0" aria-label={$t('project.onboarding.steps')}>
+  <nav
+    class="step-line"
+    tabindex={stepLineOverflows ? 0 : -1}
+    bind:this={stepLine}
+    aria-label={$t('project.onboarding.steps')}
+  >
     <ol class="step-line__list">
       {#each stepRows as step}
         <li
