@@ -27,11 +27,14 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("Harness enrolment and role resource records")
+@EnableGeneratorController
 class HarnessRolesResourcesTest {
 
     private static final JsonFactory FACTORY = new JsonFactory();
@@ -110,7 +113,9 @@ class HarnessRolesResourcesTest {
     @Test
     @DisplayName("RoleSummaryResource round-trips and defaults an absent member")
     void roleSummaryRoundTrip() throws Exception {
-        var resource = new RoleSummaryResource("implementer", "Implementer", "Implements a task",
+        var displayName = Generators.nonEmptyStrings().next();
+        var description = Generators.nonEmptyStrings().next();
+        var resource = new RoleSummaryResource("implementer", displayName, description,
                 List.of("pm_wait", "pm_do", "write"), "shipped", "writer", "fresh", "claude",
                 "opus-4.5", "high", "project", "machine", "shipped",
                 RoleQualificationState.QUALIFIED, false);
@@ -196,12 +201,15 @@ class HarnessRolesResourcesTest {
     @Test
     @DisplayName("RoleDetailResource round-trips its advisory tools, effort, and parameters")
     void roleDetailRoundTrip() throws Exception {
+        var displayName = Generators.nonEmptyStrings().next();
+        var description = Generators.nonEmptyStrings().next();
+        var count = Generators.integers(0, 100).next();
         var parameters = Map.<String, Object>of(
                 "source_set", "shipped",
                 "form", "fresh",
-                "count", 2,
+                "count", count,
                 "corpus_topics", List.of("java", "testing"));
-        var resource = new RoleDetailResource("implementer", "Implementer", "Implements a task",
+        var resource = new RoleDetailResource("implementer", displayName, description,
                 List.of("pm_wait", "pm_do", "write"),
                 new RoleDetailResource.NarrowedEffort("high", "The harness narrows high to medium"),
                 new RoleDetailResource.Qualification(RoleQualificationState.QUALIFIED_FRESH_ONLY,
@@ -212,7 +220,7 @@ class HarnessRolesResourcesTest {
         assertEquals(resource, RoleDetailResource.fromMap(resource.toMap()));
         assertEquals(resource, readStreaming(resource.toJson(), RoleDetailResource::readFrom));
         assertEquals(resource, writeStreaming(resource, RoleDetailResource::fromJson));
-        assertEquals(JsonNumber.of(2), resource.configurationParameters().get("count"));
+        assertEquals(JsonNumber.of(count), resource.configurationParameters().get("count"));
         var configuration = resource.configurationParameters();
         assertThrows(UnsupportedOperationException.class,
                 () -> configuration.put("x", "y"));

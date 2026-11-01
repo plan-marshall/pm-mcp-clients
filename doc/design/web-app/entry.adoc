@@ -123,7 +123,7 @@ When the operator turns the network listener off (`devices.listener-off`, link:.
 After pairing, and on every later visit, the app asks the runtime whether the machine is onboarded:
 
 * *Not fully onboarded*: the app opens the onboarding (link:onboarding.adoc#frame[Onboarding]) at the state the server is in: `onboard.mode` for a first run (link:onboarding.adoc#start[Start]), else the state where it stopped, with the step bar showing the steps done. This is where the operator lands who chose _in the web app_ in the terminal's question (`entry.where-to-onboard`; link:../terminal-client/05-transcripts-entry.adoc#t-entry-first[Terminal Client, Not Fully Onboarded]); the terminal returns to its prompt with the setup badge, and either client continues the run. Every other route of the app leads to the onboarding until it is complete.
-* *Onboarded*: the app opens where the operator left it, first in the explorer of the projects (link:README.adoc#structure[Structure and Navigation]).
+* *Onboarded*: the app opens where the operator left it, and without a remembered place on the list of what waits (link:needs-and-find.adoc#start-page[What Waits and Find, The Start Page Is What Waits]) (link:README.adoc#structure[Structure and Navigation]).
 * *The runtime is not reachable* (stopped, restarting): the app says so on a page of its own, `plan-marshall is not reachable on this machine. Start it in a terminal: pm-operator`, and reconnects on its own when it is back; nothing the operator had open is lost.
 
 [#texts]

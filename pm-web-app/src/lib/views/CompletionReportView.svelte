@@ -5,7 +5,8 @@
   import Icon from '../components/Icon.svelte';
   import Spinner from '../components/Spinner.svelte';
   import { apiClient, type PlanCompletionReport } from '../api/client';
-  import { formatTokens, formatSplit } from '../utils/tokenFormat';
+  import { formatSplit, formatTokens, formatDuration, formatTime } from '../display/format';
+  import { displayState } from '../display';
 
   interface Props {
     planId: string;
@@ -107,7 +108,7 @@
       <div class="report-header__headline">
         <h1 class="report-title">{data.plan_id}</h1>
         <span class="report-badge report-badge--{data.outcome.toLowerCase()}">
-          {data.outcome}
+          {$t('overview.ended.outcome', { outcome: data.outcome })}
         </span>
         {#if data.pull_request_number}
           <a
@@ -120,7 +121,7 @@
           </a>
         {/if}
         <span class="ended-time text-muted">
-          {data.ended || data.ended_at}
+          {data.ended || formatTime(data.ended_at, 'short', $currentLocale)}
         </span>
       </div>
     </header>
@@ -131,7 +132,10 @@
         <div class="summary-row">
           <span class="summary-label">{$t('report.completion.outcome')}</span>
           <div class="summary-value">
-            <span>{data.terminal_reason || data.outcome}</span>
+            <span
+              >{data.terminal_reason ||
+                $t('overview.ended.outcome', { outcome: data.outcome })}</span
+            >
             {#if data.pull_request_url}
               <a
                 class="pr-url-link"
@@ -139,7 +143,7 @@
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {data.pull_request_url}
+                <code>{data.pull_request_url}</code>
               </a>
             {/if}
           </div>
@@ -154,7 +158,8 @@
           <div class="summary-row">
             <span class="summary-label">{$t('report.completion.ran')}</span>
             <span class="summary-value"
-              >{data.ran || `${Math.round(data.duration_seconds / 60)} min`}</span
+              >{data.ran ||
+                formatDuration(data.duration_seconds * 1000, $currentLocale)}</span
             >
           </div>
         {/if}
@@ -182,7 +187,7 @@
                 <span class="deliverable-mark" aria-hidden="true"
                   ><Icon name={getDeliverableIcon(d.state)} size={16} /></span
                 >
-                <span class="deliverable-state mono">{d.state}</span>
+                <span class="deliverable-state mono">{displayState('task', d.state, $t)}</span>
                 <span class="deliverable-title">{d.name || d.title}</span>
               </li>
             {/each}
@@ -280,9 +285,7 @@
           <h2 class="section-title">
             {$t('report.completion.change_map')}
             <span class="section-badge">
-              {$t('report.completion.change_map_state', {
-                state: data.change_map.state?.toLowerCase() ?? '',
-              })}
+              {displayState('change_map', data.change_map.state, $t)}
             </span>
           </h2>
           {#if data.change_map.cause}

@@ -102,15 +102,11 @@
     return undefined;
   }
 
-  async function handleLinkClick(id: string, link: HypermediaLink, body?: unknown) {
+  async function handleLinkClick(id: string, link: HypermediaLink, body: Record<string, unknown> = {}) {
     if (isSubmitting) return;
     isSubmitting = true;
     try {
-      if (onboardingState) {
-        await stepOnboarding(id);
-      } else {
-        await stepOnboarding(id);
-      }
+      await stepOnboarding(id, body);
       void link;
     } catch {
       // A refused step leaves the state as it is.
@@ -176,6 +172,22 @@
   function stringField(name: string): string | undefined {
     const value = currentState?.[name];
     return typeof value === 'string' && value.length > 0 ? value : undefined;
+  }
+
+  /**
+   * The body of the completed card.
+   *
+   * A runtime that sends the card's own title as the summary would print the title twice, so that
+   * summary is replaced by the catalogue's own sentence, which names what is ready.
+   *
+   * @returns the summary to show under the title
+   */
+  function completedSummary(): string {
+    const summary = stringField('summary');
+    if (summary !== undefined && summary.trim() !== $t('onboard.completed.title')) {
+      return summary;
+    }
+    return $t('onboard.completed.summary');
   }
 
   function arrayField<T>(name: string): T[] {
@@ -269,7 +281,7 @@
               <span class="badge-success" aria-hidden="true"><Icon name="state.check" size={16} /></span>
               <h1 class="state-card__title">{$t('onboard.completed.title')}</h1>
               <p class="state-card__summary">
-                {stringField('summary') || $t('onboard.completed.summary')}
+                {completedSummary()}
               </p>
             </div>
 
@@ -368,8 +380,6 @@
               {/each}
             </ol>
 
-            <p class="state-card__next">{$t('onboard.entry.stop')}</p>
-
             <div class="state-card__actions">
               {#if offeredLinks.length > 0}
                 {#each offeredLinks as { id, link, isPrimary }}
@@ -416,9 +426,14 @@
                 model: stringField('model') ?? 'same',
               }}
               busy={isSubmitting}
-              onRecord={() => {
+              onRecord={(choice) => {
                 const target = linkBy('set', 'record') ?? offeredLinks[offeredLinks.length - 1];
-                if (target) void handleLinkClick(target.id, target.link);
+                if (target) {
+                  void handleLinkClick(target.id, target.link, {
+                    language_interface: choice.interface,
+                    language_model: choice.model === 'same' ? choice.interface : choice.model,
+                  });
+                }
               }}
             />
           </div>
@@ -576,7 +591,7 @@
             <dl class="detail-list">
               {#if stringField('provider')}
                 <div class="detail-row">
-                  <dt>{$t('onboard.providers.select.title')}</dt>
+                  <dt>{$t('onboard.providers.field')}</dt>
                   <dd>{stringField('provider')}</dd>
                 </div>
               {/if}

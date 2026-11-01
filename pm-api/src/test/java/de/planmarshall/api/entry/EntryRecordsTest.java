@@ -32,10 +32,13 @@ import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("Entry record contracts")
+@EnableGeneratorController
 class EntryRecordsTest {
 
     private static final JsonFactory FACTORY = new JsonFactory();
@@ -104,7 +107,9 @@ class EntryRecordsTest {
     @Test
     @DisplayName("PairingToken round-trips and keeps its expiry")
     void pairingTokenRoundTrips() throws Exception {
-        var token = new PairingToken("KXQB-MRTN", "http://127.0.0.1:7420/pair#code=KXQB-MRTN", 600);
+        var expiresInSeconds = Generators.integers(1, 86_400).next();
+        var token = new PairingToken("KXQB-MRTN", "http://127.0.0.1:7420/pair#code=KXQB-MRTN",
+                expiresInSeconds);
 
         var roundTrip = PairingToken.fromJson(token.toJson());
 
@@ -134,7 +139,8 @@ class EntryRecordsTest {
     @Test
     @DisplayName("PairingRedemptionRequest round-trips and omits an absent label")
     void pairingRedemptionRequestRoundTrips() throws Exception {
-        var full = new PairingRedemptionRequest("KXQB-MRTN", "Firefox on mbp-oliver", "web");
+        var label = Generators.nonEmptyStrings().next();
+        var full = new PairingRedemptionRequest("KXQB-MRTN", label, "web");
 
         assertEquals(full, PairingRedemptionRequest.fromJson(full.toJson()));
         assertEquals(full, streamingRoundTrip(full,
@@ -150,7 +156,8 @@ class EntryRecordsTest {
     @Test
     @DisplayName("PairingRedemptionResponse round-trips with its paired_from origin")
     void pairingRedemptionResponseRoundTrips() throws Exception {
-        var response = new PairingRedemptionResponse("pmw_secret", "dev-1", "Firefox on mbp-oliver", "lan");
+        var label = Generators.nonEmptyStrings().next();
+        var response = new PairingRedemptionResponse("pmw_secret", "dev-1", label, "lan");
 
         assertEquals(response, PairingRedemptionResponse.fromJson(response.toJson()));
     }
@@ -168,8 +175,9 @@ class EntryRecordsTest {
     @Test
     @DisplayName("ConnectionStatus round-trips with both listeners and the device count")
     void connectionStatusRoundTrips() throws Exception {
+        var pairedDevicesCount = Generators.integers(0, 10).next();
         var status = new ConnectionStatus("http://127.0.0.1:7420", true, true,
-                "https://mbp-oliver.local:7421", "4F:1A:9C", 2, true);
+                "https://mbp-oliver.local:7421", "4F:1A:9C", pairedDevicesCount, true);
 
         assertEquals(status, ConnectionStatus.fromJson(status.toJson()));
         assertEquals(status, streamingRoundTrip(status,
@@ -179,7 +187,8 @@ class EntryRecordsTest {
     @Test
     @DisplayName("DevicePairedEvent round-trips with its paired_from origin")
     void devicePairedEventRoundTrips() throws Exception {
-        var event = new DevicePairedEvent("dev-1", "Firefox on mbp-oliver", "loopback");
+        var label = Generators.nonEmptyStrings().next();
+        var event = new DevicePairedEvent("dev-1", label, "loopback");
 
         assertEquals("device.paired", DevicePairedEvent.EVENT_NAME);
         assertEquals(event, DevicePairedEvent.fromJson(event.toJson()));
@@ -190,8 +199,9 @@ class EntryRecordsTest {
     @Test
     @DisplayName("DeviceRenamedEvent and DeviceRevokedEvent round-trip with their paired_from origin")
     void deviceLifecycleEventsRoundTrip() throws Exception {
-        var renamed = new DeviceRenamedEvent("dev-2", "iPad Oliver", "lan");
-        var revoked = new DeviceRevokedEvent("dev-2", "iPad Oliver", "lan");
+        var label = Generators.nonEmptyStrings().next();
+        var renamed = new DeviceRenamedEvent("dev-2", label, "lan");
+        var revoked = new DeviceRevokedEvent("dev-2", label, "lan");
 
         assertEquals("device.renamed", DeviceRenamedEvent.EVENT_NAME);
         assertEquals("device.revoked", DeviceRevokedEvent.EVENT_NAME);
@@ -236,7 +246,8 @@ class EntryRecordsTest {
     @Test
     @DisplayName("OnboardingProgress round-trips its state, step and completion")
     void onboardingProgressRoundTrips() throws Exception {
-        var progress = new OnboardingProgress("harness.choose", 2, 7, false);
+        var step = Generators.integers(0, 6).next();
+        var progress = new OnboardingProgress("harness.choose", step, 7, false);
 
         assertEquals(progress, OnboardingProgress.fromJson(progress.toJson()));
         assertEquals(OnboardingProgress.complete(), OnboardingProgress.fromJson(
@@ -300,9 +311,11 @@ class EntryRecordsTest {
     @Test
     @DisplayName("DeviceListResource reads the wire array and the object shape")
     void deviceListResourceRoundTrips() throws Exception {
+        var firstLabel = Generators.nonEmptyStrings().next();
+        var secondLabel = Generators.nonEmptyStrings().next();
         var devices = new DeviceListResource(List.of(
-                new PairedDeviceResource("dev-1", "Firefox", PAIRED_AT, USED_AT, "pair", "loopback"),
-                new PairedDeviceResource("dev-2", "iPad", PAIRED_AT, USED_AT, "entry", "lan")));
+                new PairedDeviceResource("dev-1", firstLabel, PAIRED_AT, USED_AT, "pair", "loopback"),
+                new PairedDeviceResource("dev-2", secondLabel, PAIRED_AT, USED_AT, "entry", "lan")));
 
         assertTrue(devices.toJson().startsWith("["));
         assertEquals(devices, DeviceListResource.fromJson(devices.toJson()));

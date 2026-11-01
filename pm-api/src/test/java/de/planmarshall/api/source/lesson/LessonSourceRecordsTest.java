@@ -25,9 +25,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 
 @DisplayName("Lesson source record contracts")
+@EnableGeneratorController
 class LessonSourceRecordsTest {
 
     @Nested
@@ -57,7 +60,8 @@ class LessonSourceRecordsTest {
     @Test
     @DisplayName("LessonPremiseEvidence round-trips and omits absent optional fields")
     void premiseEvidenceRoundTrips() throws Exception {
-        var full = new LessonPremiseEvidence(PremiseEvidenceKind.SYMBOL, "de.planmarshall.api.Start", null,
+        var name = Generators.nonEmptyStrings().next();
+        var full = new LessonPremiseEvidence(PremiseEvidenceKind.SYMBOL, name, null,
                 "a1b2c3d");
         assertEquals(full, LessonPremiseEvidence.fromJson(full.toJson()));
 
@@ -81,17 +85,19 @@ class LessonSourceRecordsTest {
         assertTrue(holds.holds());
         assertTrue(holds.evidence().isEmpty());
 
+        var cause = Generators.nonEmptyStrings().next();
         var unavailable = new LessonPremiseCheckResult("les-0007", LessonPremiseCheckResult.STATUS_UNAVAILABLE,
-                List.of(), "the repository tree is not readable");
-        assertEquals("the repository tree is not readable",
-                LessonPremiseCheckResult.fromJson(unavailable.toJson()).cause());
+                List.of(), cause);
+        assertEquals(cause, LessonPremiseCheckResult.fromJson(unavailable.toJson()).cause());
     }
 
     @Test
     @DisplayName("UnclaimedLessonSummary round-trips with its citing plan and cited symbols")
     void unclaimedLessonSummaryRoundTrips() throws Exception {
-        var full = new UnclaimedLessonSummary("les-0007", "Retire lessons on landing",
-                "A landed plan retires the lessons it claimed.", Instant.parse("2026-10-12T14:05:00Z"),
+        var title = Generators.nonEmptyStrings().next();
+        var summary = Generators.nonEmptyStrings().next();
+        var noticedAt = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
+        var full = new UnclaimedLessonSummary("les-0007", title, summary, noticedAt,
                 "fix-relay", List.of("src/A.java", "de.Old#m()"));
         assertEquals(full, UnclaimedLessonSummary.fromJson(full.toJson()));
 
@@ -131,7 +137,8 @@ class LessonSourceRecordsTest {
     @Test
     @DisplayName("LessonRetirementNotice round-trips and omits an absent reason")
     void lessonRetirementNoticeRoundTrips() throws Exception {
-        var notice = new LessonRetirementNotice("les-0007", true, "premise broken");
+        var reason = Generators.nonEmptyStrings().next();
+        var notice = new LessonRetirementNotice("les-0007", true, reason);
         assertEquals(notice, LessonRetirementNotice.fromJson(notice.toJson()));
 
         var silent = new LessonRetirementNotice("les-0007", true, null);

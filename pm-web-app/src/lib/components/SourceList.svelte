@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte';
-  import { t } from '../i18n';
+  import { t, currentLocale } from '../i18n';
   import type { SourceKindOffer, StartSource } from '../api/client';
   import { failureMessage, offerReason, resetTime } from '../start/sourceLabels';
   import Icon from './Icon.svelte';
@@ -46,7 +46,7 @@
 
   function stateText(source: StartSource): string {
     if ((source.state === 'failed' || source.state === 'unscreened') && source.failure) {
-      const message = failureMessage(source.failure);
+      const message = failureMessage(source.failure, $currentLocale);
       return $t(message.key, message.args);
     }
     return $t(`start.state.${source.state}`);
@@ -111,7 +111,7 @@
             data-testid={`rate-limit-${source.source_id}`}
             data-remaining={countdown(source.failure.resets_at)}
           >
-            {resetTime(source.failure.resets_at)}
+            {resetTime(source.failure.resets_at, $currentLocale)}
           </span>
         {/if}
         {#if isUntrusted(source)}

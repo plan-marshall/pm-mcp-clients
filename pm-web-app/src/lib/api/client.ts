@@ -2169,8 +2169,16 @@ export class ApiClient {
     return this.request<OnboardingState>('GET', '/api/v1/onboarding/state');
   }
 
-  public async stepOnboarding(link: string): Promise<OnboardingState> {
-    return this.request<OnboardingState>('POST', '/api/v1/onboarding/step', { link });
+  /**
+   * @param link the step's link id
+   * @param body the choice the step records beside the link, e.g. the chosen languages
+   * @returns the state the step moved to
+   */
+  public async stepOnboarding(
+    link: string,
+    body: Record<string, unknown> = {},
+  ): Promise<OnboardingState> {
+    return this.request<OnboardingState>('POST', '/api/v1/onboarding/step', { link, ...body });
   }
 
   public async startOnboardingAuto(): Promise<OnboardingState> {

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
-  import { t } from '../i18n';
+  import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
   import Spinner from '../components/Spinner.svelte';
   import FilterInput from '../components/FilterInput.svelte';
@@ -9,6 +9,8 @@
   import WorkflowIcon from '../components/WorkflowIcon.svelte';
   import { phaseIconId } from '../icons/workflowIcons';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
+  import { displayState, displayUnit, hasUnitName } from '../display';
+  import { formatDuration, formatTime } from '../display/format';
   import {
     apiClient,
     type ProjectSummary,
@@ -443,38 +445,31 @@
     }
   }
 
+  /**
+   * @param isoStr the instant the runtime sends
+   * @returns its age in the unit that age has, `9 d ago`
+   */
   function formatRelative(isoStr?: string | null): string {
-    if (!isoStr) return '';
-    try {
-      const date = new Date(isoStr);
-      const diffMs = Date.now() - date.getTime();
-      const mins = Math.floor(diffMs / 60000);
-      if (mins < 1) return 'just now';
-      if (mins < 60) return `${mins} min ago`;
-      const hours = Math.floor(mins / 60);
-      if (hours < 24) return `${hours} h ago`;
-      const days = Math.floor(hours / 24);
-      return `${days} d ago`;
-    } catch {
-      return '';
-    }
+    return formatTime(isoStr, 'relative', $currentLocale);
   }
 
-  function formatDuration(isoStr?: string | null): string {
+  /**
+   * @param isoStr the instant the runtime sends
+   * @returns the moment itself, for a list row's hover advisory
+   */
+  function formatMoment(isoStr?: string | null): string {
+    return formatTime(isoStr, 'short', $currentLocale);
+  }
+
+  /**
+   * @param isoStr the instant a phase started
+   * @returns how long the phase has run, `2 h 10 min`
+   */
+  function phaseDuration(isoStr?: string | null): string {
     if (!isoStr) return '';
-    try {
-      const date = new Date(isoStr);
-      const diffMs = Math.max(0, Date.now() - date.getTime());
-      const mins = Math.floor(diffMs / 60000);
-      const hours = Math.floor(mins / 60);
-      if (hours > 0) {
-        const remMins = mins % 60;
-        return remMins > 0 ? `${hours} h ${remMins} min` : `${hours} h`;
-      }
-      return `${mins} min`;
-    } catch {
-      return '';
-    }
+    const started = new Date(isoStr);
+    if (Number.isNaN(started.getTime())) return '';
+    return formatDuration(Math.max(0, Date.now() - started.getTime()), $currentLocale);
   }
 
   function getPlanPhase(p: ActivePlanSummary): string {
@@ -482,8 +477,9 @@
   }
 
   function getPlanState(p: ActivePlanSummary): string {
-    const s = p.phase_state || 'running';
-    return s === 'waiting_for_you' ? 'waiting' : s;
+    // The wire value stays as the contract sends it: the display layer names it, and the badge
+    // class matches both spellings (`badge--state-waiting_for_you`).
+    return p.phase_state || 'running';
   }
 
   // The overview endpoints answer with the snake_case spelling of the API contract or with the
@@ -633,7 +629,11 @@
             <div class="project-item__meta">
               <span class="project-item__counts">{formatProjectCounts(proj)}</span>
               {#if proj.last_activity_at}
-                <span class="project-item__time">{formatRelative(proj.last_activity_at)}</span>
+                <span
+                  class="project-item__time"
+                  title={formatMoment(proj.last_activity_at)}
+                  >{formatRelative(proj.last_activity_at)}</span
+                >
               {/if}
             </div>
           </button>
@@ -751,7 +751,7 @@
                         —
                       {/if}
                     </td>
-                    <td class="text-muted">{formatRelative(item.ended_at)}</td>
+                    <td class="text-muted" title={formatMoment(item.ended_at)}>{formatRelative(item.ended_at)}</td>
                     <td>
                       {#if item.kind === 'plan'}
                         <button
@@ -946,7 +946,7 @@
                           </span>
                         {/if}
                         <span class="badge badge--state badge--state-{getPlanState(plan)}">
-                          {$t('overview.state.' + getPlanState(plan))}
+                          {displayState('plan', getPlanState(plan), $t)}
                         </span>
                       </div>
                     </div>
@@ -954,8 +954,10 @@
                     <div class="work-card__details">
                       {#if getPlanPhaseEnteredAt(plan)}
                         <span class="detail-item">
-                          in {getPlanPhase(plan)}
-                          {formatDuration(getPlanPhaseEnteredAt(plan))}
+                          {$t('overview.time.in_phase', {
+                            phase: getPlanPhase(plan),
+                            duration: phaseDuration(getPlanPhaseEnteredAt(plan)),
+                          })}
                         </span>
                       {/if}
                       {#if getPlanTasksTotal(plan) > 0}
@@ -976,7 +978,9 @@
                           class="badge badge--warning badge--off-track"
                           data-testid="off-track-badge"
                         >
-                          {$t('overview.plan.off_track', { signal: getPlanOffTrack(plan) })}
+                          {$t('overview.plan.off_track', {
+                            signal: displayState('signal', getPlanOffTrack(plan), $t),
+                          })}
                         </span>
                       {/if}
                       {#if getPlanPrNumber(plan)}
@@ -1067,7 +1071,7 @@
                               </span>
                             {/if}
                             <span class="badge badge--state badge--state-{getPlanState(childPlan)}">
-                              {$t('overview.state.' + getPlanState(childPlan))}
+                              {displayState('plan', getPlanState(childPlan), $t)}
                             </span>
                             <button
                               type="button"
@@ -1119,7 +1123,7 @@
                               </span>
                             {/if}
                             <span class="badge badge--state badge--state-{getPlanState(plan)}">
-                              {$t('overview.state.' + getPlanState(plan))}
+                              {displayState('plan', getPlanState(plan), $t)}
                             </span>
                           </div>
                         </div>
@@ -1144,18 +1148,24 @@
                     {/if}
                     <span class="alongside-desc">
                       {#if landing.unit}
-                        {$t('overview.landing.unit', { unit: landing.unit, state: landing.state })}
+                        {$t('overview.landing.unit', {
+                          unit: displayUnit(landing.unit, $t),
+                          state: displayState('landing', landing.state, $t),
+                        })}
+                        {#if !hasUnitName(landing.unit)}
+                          <span class="chip chip--unit">{landing.unit}</span>
+                        {/if}
                       {:else if landing.count}
                         {$t('overview.landing.removal', {
                           count: landing.count,
-                          state: landing.state,
+                          state: displayState('landing', landing.state, $t),
                         })}
                       {:else}
-                        {landing.kind} · {landing.state}
+                        {displayState('landing', landing.state, $t)}
                       {/if}
                     </span>
                     <span class="badge badge--state badge--state-{landing.state}"
-                      >{landing.state}</span
+                      >{displayState('landing', landing.state, $t)}</span
                     >
                   </div>
                 {/each}
@@ -1471,6 +1481,18 @@
 
   .alongside-desc {
     flex: 1;
+  }
+
+  /* The id of a unit the catalogue does not name: a chip beside the unknown word, so two
+     landings of unnamed units stay distinguishable (CC-P-01). */
+  .chip--unit {
+    display: inline-block;
+    margin-inline-start: 0.35rem;
+    padding: 0 0.35rem;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
   }
 
   /* Ended Work */

@@ -118,7 +118,9 @@ describe('OnboardingView against the mock runtime states', () => {
     await fireEvent.click(screen.getByTestId('consent-remember'));
     await fireEvent.click(screen.getByRole('button', { name: /^look for harnesses$/i }));
 
-    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('remember'));
+    await waitFor(() =>
+      expect(stepSpy).toHaveBeenCalledWith('remember', { remember: true }),
+    );
   });
 
   it('says a consent is for this run only when it is never remembered', () => {
@@ -182,7 +184,12 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(screen.getByTestId('language-record')).toHaveTextContent('Use English for both');
 
     await fireEvent.click(screen.getByTestId('language-record'));
-    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('set'));
+    await waitFor(() =>
+      expect(stepSpy).toHaveBeenCalledWith('set', {
+        language_interface: 'en',
+        language_model: 'en',
+      }),
+    );
   });
 
   it('lists every found harness with its tokens and cannot choose one that cannot run workers', () => {
@@ -283,7 +290,7 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(screen.getByTestId('models-record')).toHaveTextContent('Allow 3 models');
 
     await fireEvent.click(screen.getByTestId('models-record'));
-    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('set'));
+    await waitFor(() => expect(stepSpy).toHaveBeenCalledWith('set', {}));
 
     // Tokens, never money: no currency sign and no price appears anywhere on the screen.
     expect(screen.queryByText(/[$€£]/)).not.toBeInTheDocument();

@@ -25,10 +25,13 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.core.JsonFactory;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("Event envelope and closed event catalogue")
+@EnableGeneratorController
 class EventEnvelopeTest {
 
     private static final JsonFactory FACTORY = new JsonFactory();
@@ -114,9 +117,11 @@ class EventEnvelopeTest {
     @Test
     @DisplayName("an event envelope round-trips through JSON, the map, and the streaming codec")
     void eventEnvelopeRoundTrip() throws Exception {
-        var envelope = new EventEnvelope(EventName.CHECK_RESULT, 7L, AT,
+        var id = (long) Generators.integers(0, 1_000_000).next();
+        var at = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
+        var envelope = new EventEnvelope(EventName.CHECK_RESULT, id, at,
                 new EventScope(EventScopeKind.MACHINE, null, null),
-                Map.of("check_id", "login", "result", "fail"));
+                Map.of("check_id", Generators.nonEmptyStrings().next(), "result", Generators.nonEmptyStrings().next()));
 
         assertEquals(envelope, EventEnvelope.fromJson(envelope.toJson()));
         assertEquals(envelope, EventEnvelope.fromMap(envelope.toMap()));
@@ -128,19 +133,24 @@ class EventEnvelopeTest {
         assertEquals("check.result", JsonTree.string(tree, EventEnvelope.FIELD_EVENT));
         var data = JsonTree.object(tree, EventEnvelope.FIELD_DATA);
         assertEquals("check.result", JsonTree.string(data, EventEnvelope.FIELD_EVENT));
-        assertEquals(AT.toString(), JsonTree.string(data, EventEnvelope.FIELD_AT));
+        assertEquals(at.toString(), JsonTree.string(data, EventEnvelope.FIELD_AT));
         assertEquals("machine", JsonTree.string(JsonTree.object(data, EventEnvelope.FIELD_SCOPE), "kind"));
     }
 
     @Test
     @DisplayName("a scoped envelope carries the scope id and project")
     void scopedEnvelope() throws Exception {
-        var envelope = new EventEnvelope(EventName.HOLD_OPENED, 12L, AT,
-                new EventScope(EventScopeKind.PLAN, "plan-2026-042", "p-1"), Map.of("hold_id", "H-1", "kind", "landing_failed"));
+        var id = (long) Generators.integers(0, 1_000_000).next();
+        var at = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
+        var scopeId = Generators.nonEmptyStrings().next();
+        var projectId = Generators.nonEmptyStrings().next();
+        var envelope = new EventEnvelope(EventName.HOLD_OPENED, id, at,
+                new EventScope(EventScopeKind.PLAN, scopeId, projectId),
+                Map.of("hold_id", "H-1", "kind", "landing_failed"));
         var parsed = EventEnvelope.fromJson(envelope.toJson());
         assertEquals(envelope, parsed);
-        assertEquals("plan-2026-042", parsed.scope().id());
-        assertEquals("p-1", parsed.scope().projectId());
+        assertEquals(scopeId, parsed.scope().id());
+        assertEquals(projectId, parsed.scope().projectId());
     }
 
     @Test

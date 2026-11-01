@@ -129,6 +129,35 @@ describe('OnboardingView component', () => {
     expect(screen.getByRole('button', { name: /add a project/i })).toBeInTheDocument();
   });
 
+  it('does not repeat the completion title as the body', () => {
+    runtimeStore.set(
+      makeRuntimeState({
+        isInitialized: true,
+        isPaired: true,
+        isOnboarded: true,
+        deviceLabel: 'Test Browser',
+        machineName: 'mbp-oliver',
+        currentRoute: 'onboarding',
+        currentState: {
+          state: 'onboard.completed',
+          summary: 'This machine is ready',
+        },
+        isRevoked: false,
+        revokedReason: '',
+        isOffline: false,
+        isListenerClosed: false,
+        completedSteps: 0,
+        activeStep: 8,
+      }),
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('This machine is ready');
+    expect(screen.getByText('Machine setup is complete.')).toBeInTheDocument();
+    expect(screen.queryAllByText('This machine is ready')).toHaveLength(1);
+  });
+
   it('opens at the step another screen asked for', async () => {
     runtimeStore.set(
       makeRuntimeState({

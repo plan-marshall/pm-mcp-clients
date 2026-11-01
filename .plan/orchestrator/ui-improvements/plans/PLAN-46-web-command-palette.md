@@ -53,6 +53,21 @@ Source of this plan (read before scoping):
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-03)`, `doc/claude_review/ux/proposals.adoc#UX-P-02` — read at `doc/claude_review/ux/plan.adoc`
   - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/ux/plan.adoc:30-32 UX-S-03 maps to UX-P-02; ux/proposals.adoc:73-74 UX-P-02 (shell, command palette) exists
 - Re-grounded at HEAD 07104678 (2026-10-30) after PR #278, PLAN-39 (PR #274) and `plan-marshall-documentation` PR #135: UC-PLN-8 is `AGREED` ("Go to Work by Name": a part of an id, a title or a pull request number; matches by kind, running work first; ended work marked; no match says so and keeps the name) and the specification serves the search (`runtime-model/01-processes-and-transport.adoc#find-work`), so the client index of this spec is replaced by a client of `GET /api/v1/find`. `TopBar.svelte` exists with the search button disabled; the shell directory `lib/shell/` exists. The package `needs-and-find` designs the view; `PLAN-84` is the terminal half.
+- Re-grounded at HEAD 1651554b (2026-10-31), after `PLAN-82` landed (PR #284): `PLAN-82` shipped `GET /api/v1/find`, the matches
+  (`FindKind`, `FindMatch`, `FindPage`) and the mock, and the operator accepted the design this plan implements:
+  `doc/design/web-app/needs-and-find.adoc` § "The Search Button of the Top Bar" (`#search`) and
+  `doc/design/shared/needs-and-find.adoc` § "Going to Work by Name" (`#find`). Read both before scoping; they fix what the
+  deliverables above leave open: the panel opens over the view and is never a route; `Ctrl+K` and `/` (while nothing in a field
+  has the focus) open it, `Esc` closes it, the field has the focus on open; the request goes out when the text pauses, never per
+  keystroke, and the last answer wins; matches open with `↑`, `↓`, `Enter` or the pointer and the selection is anchored to the
+  match's kind and id, not to its row; every title is a text node; on the phone the panel covers the view. OBSERVED (grep of
+  `pm-api/src/main/resources/messages/*.properties` at HEAD 1651554b): the catalogues hold `web.frame.search` and
+  `web.frame.search.pending` and NONE of the texts the designs name for this panel: `web.frame.search.title` (web design) and every
+  `overview.find.*` row of the shared design's Texts table (`title`, `hint`, `empty`, `ended`, `no_text`, the `kind.*` words and
+  the rest of that table). OBSERVED: no staged spec named them before this note, so they had no owner. DECISION OF THE ORCHESTRATOR
+  (open to the operator): this plan adds them, in `en` and `de`, with the wording of the design's tables, and retires
+  `web.frame.search.pending`; `PLAN-84` (terminal `find`) reads them at its head, or adds the ones still missing if it runs first.
+  Both plans therefore declare `overview.{en,de}.properties`; they do not run at the same time.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
@@ -64,11 +79,13 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-web-e2e/tests/chrome.spec.js` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-api/src/main/resources/messages/overview.en.properties` — present at HEAD 1651554b; this plan adds the `overview.find.*` rows
+- OBSERVED: `pm-api/src/main/resources/messages/overview.de.properties` — present at HEAD 1651554b; this plan adds the `overview.find.*` rows
 
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-39` (`web-app-shell`, shipped), `PLAN-08` (`use-case-documents`, shipped), `PLAN-76` (`shared-port-assignment`, shipped), `PLAN-82` (`needs-and-find-contract`)
-- Overlaps with: none known at staging
+- Overlaps with: `PLAN-84` (the `overview.{en,de}.properties` pair, where the find texts are added): run one after the other
 - Adjacent to: none
 
 ## Hand-Off Command

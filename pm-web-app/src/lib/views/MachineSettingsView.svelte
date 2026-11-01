@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { t } from '../i18n';
+  import { t, currentLocale } from '../i18n';
+  import { formatTime } from '../display/format';
   import Button from '../components/Button.svelte';
   import {
     runtimeStore,
@@ -193,6 +194,22 @@
     }
     return $t('web.settings.providers.no_expiry');
   }
+
+  /**
+   * The place a consent was given in.
+   *
+   * The runtime names the console `terminal`; a device carries the label the operator gave it, so
+   * only that value is a name of its own and the console token reads as the catalogue's word.
+   *
+   * @param consent the remembered consent
+   * @returns the word or the device label
+   */
+  function consentChannel(consent: { channel?: string | null }): string {
+    if (!consent.channel || consent.channel === 'terminal') {
+      return $t('web.settings.consents.where_terminal');
+    }
+    return consent.channel;
+  }
 </script>
 
 <div class="machine-settings" data-testid="machine-settings-view">
@@ -277,8 +294,7 @@
             <li class="consent-row" data-consent={consent.kind}>
               <span>{$t(`common.consent.kind.${consent.kind}`)}</span>
               <span class="consent-row__where">
-                {consent.granted_at ?? ''} · {consent.channel ??
-                  $t('web.settings.consents.where_terminal')}
+                {formatTime(consent.granted_at, 'short', $currentLocale)} · {consentChannel(consent)}
               </span>
               {#if consent.project}
                 <span class="consent-row__where">
@@ -321,6 +337,7 @@
       <h2 class="settings-section__title">{$t('web.settings.cleanup.title')}</h2>
       <div class="choice-row">
         <label class="choice">
+          {$t('web.settings.cleanup.keep')}
           <input
             type="number"
             min="0"
@@ -331,9 +348,9 @@
           {$t('web.settings.cleanup.days')}
         </label>
         <label class="choice">
-          <input type="number" min="0" bind:value={cleanupRemindDays} />
           {$t('web.settings.cleanup.remind')}
-          {$t('web.settings.cleanup.days')}
+          <input type="number" min="0" bind:value={cleanupRemindDays} />
+          {$t('web.settings.cleanup.days_after')}
         </label>
         <Button variant="secondary" on:click={saveCleanup} data-testid="save-cleanup">
           {$t('web.settings.cleanup.save')}

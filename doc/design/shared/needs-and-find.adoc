@@ -1,0 +1,186 @@
+= Design: What Waits, and Going to Work by Name
+:toc: left
+:toclevels: 3
+:nofooter:
+
+link:../README.adoc[Design] » What Waits, and Going to Work by Name
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-8[UC-PLN-8]_
+
+_Relies on: link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#needs-operator[What Needs the Operator, at a Glance], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#needs-operator-list[Everything That Waits, as One List], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#find-work[Finding Work by Name], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#event-streams[Events per Scope], link:plan-overview.adoc#item-rows[Plan Overview, A Plan, an Epic]_
+
+Status: `AGREED` (accepted by the operator on 2026-10-31, both views). Shared by both clients: link:../terminal-client/04-console.adoc#pushed[Terminal Client, What the Runtime Pushes], link:../web-app/needs-and-find.adoc[Web App, What Waits and Find]. Work package link:../../plans/needs-and-find.adoc[`needs-and-find`].
+
+The operator asks two questions of the machine, and each is one view with one job. _What needs me now?_ is answered by the list of everything that waits (<<waits>>). _Where is the work I know the name of?_ is answered by going to work by name (<<find>>). They are two views, never one combined entry: the first is about acting, the second about finding, and a list that did both would answer neither well.
+
+Both views read the runtime and derive nothing. The list is `GET /api/v1/machine/needs-operator` in the order it serves; the matches are `GET /api/v1/find?q=` in the order it serves (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#needs-operator-list[Everything That Waits, as One List], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#find-work[Finding Work by Name]). No client sorts, counts up, or joins a store of its own.
+
+[#waits]
+== The List of What Waits
+
+One list of every item of every `needs_operator` summary: a plan's decision or waiver request or hold, a project's setup question, an epic's new findings, the machine's own credential and due cleanup. Each item says what it is (its kind and the name of the place it belongs to), where it belongs, since when it waits, what it blocks, and the act that resolves it.
+
+----
+  What waits                                                   4 items
+  ───────────────────────────────────────────────────────────────────────────
+  ! decision   Drop the legacy endpoints
+               pm-mcp-clients › relay-hardening › drop-legacy-api
+               waits since 15:05 · blocks: plan · answer it
+  ! condition  Session log and generations
+               pm-mcp-core › session-log
+               waits since 14:52 · blocks: plan · unlock the store
+  ! credential machine
+               waits since 09:00 · blocks no work · check the provider in the settings
+  ! cleanup due machine
+               waits since yesterday · blocks no work · open the cleanup
+----
+
+* *The order* is the runtime's: the items that block running work first, then the oldest. A client keeps it and sorts nothing, so a row never moves under the pointer while the list is open; an item that is resolved leaves, and an item that arrives stands where the runtime puts it.
+* *A row* shows the kind (its icon and the word of the closed list), the name of the place it belongs to (the plan's, the epic's, or the project's title), the path itself (`project › epic › plan`, or `machine` for the machine's own items), since when it waits, what it blocks, and the act that resolves it. The contract carries no title of an item apart from those names: a decision's question, a hold's reason, and a credential's provider are read at the place the act opens, never on the row. The act is the one the item's own place offers — answering the decision, unlocking the store, checking the credential, opening the cleanup (link:decisions.adoc[Decisions], link:work-actions.adoc#holds[What Holds a Plan], link:project-onboarding.adoc[Project Onboarding], link:cleanup.adoc[Cleanup], link:../web-app/machine-settings.adoc[Machine Settings]).
+* *The kinds* are the closed list of the runtime, in its order: `decision`, `waiver`, `waits_for_you`, the holds `stalled`, `condition`, `integrity_pause`, `held`, `landing_failed`, `findings`, `setup`, `credential`, `cleanup_due`. A decision's waiver request is the kind `waiver` and any other operator wait the kind `waits_for_you`; the specification's list names the two `waiver_request` and `operator_wait`, and the contract accepts both spellings. The holds stand in the order the runtime serves them. Their words are the catalogue keys `overview.needs.*` (<<texts>>). A credential an onboarding still owes and a provider check only a project's setup can fix are `setup`, not `credential`; the credentials the runtime holds are the machine's own items, as a due cleanup is.
+* *The machine's own items* (`credential`, `cleanup_due`) belong to no plan and no project. They show the word `machine` where the path of a row stands, and they change no count of a plan, an epic, or a project.
+* *Nothing waits*: the list says so and names the work that runs, so the answer to "what needs me now?" is never an empty screen: `Nothing waits for you.` and, below it, the projects with running work, each one step away (link:plan-overview.adoc[Plan Overview]).
+* *An item resolved elsewhere* leaves the list with a quiet notice once, in a polite live region, never a dialogue and never a sound: `A decision was answered in the web app; it left the list.` The view says it once and never again; the item that remains is the runtime's truth, not a local copy.
+* *Reports are no items.* A report tells what happened and asks nothing (link:reports.adoc[Reports]); a due cleanup is an item because it needs the operator, and the report `system.cleanup_due` merely points at it.
+* *The count* beside the view's own entry in each client is the list's total (`total` of the page), never a count of the rows loaded so far.
+* *Live*: the view follows `needs_operator.changed` on the runtime-wide stream. An item that arrives is added where the runtime puts it, an item resolved elsewhere leaves with the quiet notice, and the selection stays on the item's id, never on its row.
+* *Paged*: the list is read a page at a time, and the end of the loaded pages is one step (`Show more`), never a silent cut. The count beside the entry says the total, so a partial list never claims to be all of it.
+
+[#blocks]
+=== What It Blocks
+
+The contract carries the *kind* of the work an item blocks — `plan`, `epic`, or `project` — and nothing when it blocks no work; the question, the reason and the provider stay at the item's own place.
+
+* `blocks` absent: `blocks no work` (`overview.needs.blocks_nothing`), for the machine's own items and for a setup that holds nothing yet.
+* `blocks` present: `blocks: {what}`, `{what}` filled with the kind's word in the operator's language (`overview.kind.plan`, `overview.kind.epic`, and `overview.kind.project`, the last one added with this design), and the row's act opens that work.
+
+[#find]
+== Going to Work by Name
+
+One field, one answer: the operator types a part of an id, a part of a title, or a pull request number, and gets the work that matches, grouped by kind.
+
+----
+  Go to work by name
+  ───────────────────────────────────────────────────────────────────────────
+  find  relay
+  ▸ plan    Fix Relay Transport            pm-mcp-clients › relay-hardening      #214
+  ▸ plan    Relay metrics                  pm-mcp-clients › relay-hardening
+  ◇ epic    Relay Hardening                pm-mcp-clients
+  ▸ plan    relay-cursor-order    ended     pm-mcp-clients › relay-hardening
+----
+
+* *What matches*: a part of an id or a part of a title, ignoring case, and the plans whose pull request has the number typed. The runtime answers; the client sends the text and shows what comes back.
+* *The order* is the runtime's: running work first, ended work after it and marked `ended`; within each by kind, in the order project, epic, plan, decision, report. A client keeps it.
+* *A match* shows its kind, its title, where it belongs (`project › epic › plan`), and, for ended work, the word `ended` with its outcome. Selecting a match opens it where it belongs: the plan view, the epic view, the decision, the project, or the report.
+* *No match* says so and keeps the text the operator typed, so one character can be corrected instead of retyping: `Nothing matches “relayy”.` with the field still holding `relayy`.
+* *An empty text is refused* by the runtime, and the client never sends one: an empty field is a hint, not a search (`overview.find.hint`), and the field's own clear action returns to the hint.
+* *Plain text*: the typed text and every title are shown as plain text, after removing control sequences, never as markup and never as a link the client follows on its own — a title may come from a project (`overview.find.plain`).
+* *Live* is not needed: a match is read when the text changes, at most one request per keystroke pause, and the last answer wins; a match whose work ended while the list is open stays until the next read.
+
+[#terminal]
+== The Terminal Client
+
+Two commands, one key, one count. The terminal client has no rail and no search field of its own; it has the console's prompt (link:../terminal-client/04-console.adoc[The Console]).
+
+* *`needs`* prints the list (<<waits>>): one line per item, its kind, the name of the place it belongs to, what it blocks, since when, and the command that resolves it, in the order the runtime serves.
+* *The badges* of the console's prompt count the machine's summary as one of their sources: each kind that is not zero is a badge, `credential` and `cleanup_due` included, with their notices when they arrive (link:../terminal-client/04-console.adoc#pushed[What the Runtime Pushes]).
+* *`find <text>`* prints the matches (<<find>>), grouped by kind in the order served, each with its title, where it belongs, and the command that opens it; `--print` prints and exits; in the console the matches are a choice, and selecting one opens it where it belongs.
+* *`/`* at the empty prompt opens the find field in the console: the operator types the text and `Enter` lists the matches, `Esc` returns to the prompt with nothing sent. `/` is free at the prompt and is not a verb of its own; the shell takes the verb `find` only.
+* *The overview* gains the group `Needs you` above the projects, in the order the runtime serves; `!` on a waiting row opens its decision, hold, or setup, and `!` elsewhere jumps to the next waiting row (link:../terminal-client/15-overview.adoc[The Overview], link:../terminal-client/16-plan-view.adoc[The Plan View]).
+* An empty text at `/` or after `find` is refused with the catalogue text, not with a usage line: the operator typed a name, not a syntax.
+
+[#texts]
+== Texts
+
+Keys of the area `overview`, shared by both clients. A kind's word is the row's own label; the badge of the console and the rail of the web app use the same keys, so the same kind never carries two words.
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`overview.needs.title`
+|What waits
+|Was wartet
+
+|`overview.needs.empty`
+|Nothing waits for you.
+|Nichts wartet auf dich.
+
+|`overview.needs.empty.running`
+|What runs:
+|Was läuft:
+
+|`overview.needs.since`
+|waits since {time}
+|wartet seit {time}
+
+|`overview.needs.blocks`
+|blocks: {what}
+|blockiert: {what}
+
+|`overview.needs.blocks_nothing`
+|blocks no work
+|blockiert nichts
+
+|`overview.needs.machine`
+|machine
+|Maschine
+
+|`overview.needs.more`
+|Show more
+|Mehr zeigen
+
+|`overview.needs.left`
+|{kind} was resolved in another client; it left the list.
+|{kind} wurde in einem anderen Client erledigt; der Eintrag ist aus der Liste verschwunden.
+
+|`overview.needs.credential`
+|credential
+|Zugangsdaten
+
+|`overview.needs.cleanup_due`
+|cleanup due
+|Aufräumen fällig
+
+|`overview.find.title`
+|Go to work by name
+|Springe zu Arbeit nach Namen
+
+|`overview.find.hint`
+|A part of an id or a title, or a pull request number
+|Ein Teil einer Kennung oder eines Titels, oder eine Pull-Request-Nummer
+
+|`overview.find.empty`
+|Nothing matches “{text}”.
+|Nichts passt zu „{text}“.
+
+|`overview.find.ended`
+|ended
+|beendet
+
+|`overview.find.no_text`
+|Type a name to look for.
+|Gib einen Namen zum Suchen ein.
+
+|`overview.find.kind.project`
+|project
+|Projekt
+
+|`overview.find.kind.epic`
+|epic
+|Epic
+
+|`overview.find.kind.plan`
+|plan
+|Plan
+
+|`overview.find.kind.decision`
+|decision
+|Entscheidung
+
+|`overview.find.kind.report`
+|report
+|Bericht
+|===
+
+The kinds of a match reuse the words of the closed list where one exists (`overview.needs.*` for a plan's item, `overview.kind.plan` and `overview.kind.epic` for the work, link:plan-overview.adoc#texts[Plan Overview, Texts]); the machine's path is `overview.needs.machine`. The words of an act are those of the place the act opens, never a word of this list.

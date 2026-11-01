@@ -11,6 +11,7 @@
   import Icon from '../components/Icon.svelte';
   import { phaseIconId } from '../icons/workflowIcons';
   import type { UiIconId } from '../icons/uiIcons';
+  import { displayState } from '../display';
   import {
     apiClient,
     type ChatReadBack,
@@ -28,7 +29,7 @@
     goBack,
     navigateTo,
   } from '../stores/runtime';
-  import { formatSplit, formatTokens } from '../utils/tokenFormat';
+  import { formatSplit, formatTokens, formatTime } from '../display/format';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import { refreshesEpicView } from './epicEvents';
 
@@ -305,15 +306,13 @@
     return status;
   }
 
-  /** The wall time of an event, `12:40`, in the interface's own notation. */
+  /**
+   * The wall time of an event to the second, in the interface's own notation.
+   *
+   * The wire sends an instant; a value that is already a clock is shown as it arrives.
+   */
   function formatEventTime(at: string): string {
-    const date = new Date(at);
-    if (Number.isNaN(date.getTime())) return at;
-    return date.toLocaleTimeString($currentLocale === 'de' ? 'de-DE' : 'en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    });
+    return formatTime(at, 'clock', $currentLocale) || at;
   }
 
   /**
@@ -571,7 +570,7 @@
             class="badge badge--state badge--state-{resource?.state ?? epic.state}"
             data-testid="epic-state"
           >
-            {$t('overview.epic.state', { state: resource?.state ?? epic.state })}
+            {displayState('epic', resource?.state ?? epic.state, $t)}
           </span>
           {#if resource}
             <span class="badge badge--mode" data-testid="epic-mode">
@@ -876,7 +875,7 @@
                       {plan.current_phase}
                     </span>
                     <span class="badge badge--state badge--state-{plan.phase_state}"
-                      >{plan.phase_state}</span
+                      >{displayState('plan', plan.phase_state, $t)}</span
                     >
                   </div>
                   <div class="plan-card__progress">
@@ -913,7 +912,7 @@
                     <span class="plan-glyph"><Icon name="state.dot" size={16} /></span>
                     <span class="plan-title font-semibold">{plan.title}</span>
                     <span class="badge badge--state badge--state-staged"
-                      >{plan.phase_state || 'staged'}</span
+                      >{displayState('plan', plan.phase_state || 'staged', $t)}</span
                     >
                   </div>
                   <div class="plan-card__progress">

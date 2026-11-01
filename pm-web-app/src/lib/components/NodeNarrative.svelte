@@ -1,9 +1,10 @@
 <script lang="ts">
   import { currentLocale, t } from '../i18n';
   import type { LeafTask, ProcessNode, ProcessTree } from '../api/client';
-  import { formatDurationSeconds, formatTokens } from '../utils/tokenFormat';
+  import { formatDuration, formatTokens } from '../display/format';
   import { stripControlSequences } from '../utils/outputSafety';
   import { getNodeStateIcon, getNodeStateText } from '../utils/processNode';
+  import { displayState } from '../display';
   import Icon from './Icon.svelte';
 
   interface Props {
@@ -45,7 +46,7 @@
       <h3 class="node-narrative__title font-semibold" data-testid="node-narrative-title">
         {stripControlSequences(node.title)}
       </h3>
-      <span class="node-narrative__kind">{node.kind}</span>
+      <span class="node-narrative__kind">{displayState('node_kind', node.kind, $t)}</span>
       <span class="node-narrative__state" data-testid="node-narrative-state">
         {getNodeStateText(node, $t)}
       </span>
@@ -56,7 +57,7 @@
       {/if}
       {#if node.duration_seconds > 0}
         <span class="node-narrative__duration mono" data-testid="node-narrative-duration">
-          {formatDurationSeconds(node.duration_seconds)}
+          {formatDuration(node.duration_seconds * 1000, $currentLocale)}
         </span>
       {/if}
     </div>
@@ -109,7 +110,7 @@
             >
             {#if task.duration_seconds > 0}
               <span class="child-task__duration mono">
-                {formatDurationSeconds(task.duration_seconds)}
+                {formatDuration(task.duration_seconds * 1000, $currentLocale)}
               </span>
             {/if}
             {#if task.tokens_so_far > 0}
@@ -146,7 +147,7 @@
                 ><Icon name={getNodeStateIcon(subNode.state)} size={16} /></span
               >
               <span class="child-node__title">{stripControlSequences(subNode.title)}</span>
-              <span class="child-node__kind">{subNode.kind}</span>
+              <span class="child-node__kind">{displayState('node_kind', subNode.kind, $t)}</span>
               <span class="child-node__state">{getNodeStateText(subNode, $t)}</span>
             </button>
           </li>

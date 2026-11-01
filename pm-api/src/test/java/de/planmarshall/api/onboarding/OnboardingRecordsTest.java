@@ -29,9 +29,12 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.system.CleanupDurations;
 
 @DisplayName("Onboarding records")
+@EnableGeneratorController
 class OnboardingRecordsTest {
 
     @Nested
@@ -86,8 +89,12 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("round-trips through JSON with its channel and script count")
         void shouldRoundTrip() throws Exception {
+            var recordedAt = Generators.nonEmptyStrings().next();
+            var channel = Generators.nonEmptyStrings().next();
+            var projectId = Generators.nonEmptyStrings().next();
+            var scriptCount = Generators.integers(0, 100).next();
             var consent = new ConsentRecord(ConsentKind.RUN_CHECKOUT_SCRIPTS, ConsentStatus.REMEMBERED,
-                    true, "2026-10-12T09:00:00Z", "Firefox", "pm-mcp-clients", 3);
+                    true, recordedAt, channel, projectId, scriptCount);
 
             var parsed = ConsentRecord.fromJson(consent.toJson());
 
@@ -111,15 +118,20 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("round-trips a partial report with its missing figures and default mark")
         void shouldRoundTripPartial() throws Exception {
-            var harness = new HarnessScanResult("opencode", "OpenCode", "/opt/homebrew/bin/opencode",
-                    "1.9.0", true, true, true, TokenUsageCoverage.PARTIAL,
-                    List.of("cache write"), true, null);
+            var harnessId = Generators.nonEmptyStrings().next();
+            var name = Generators.nonEmptyStrings().next();
+            var executable = Generators.nonEmptyStrings().next();
+            var version = Generators.nonEmptyStrings().next();
+            var missingFigure = Generators.nonEmptyStrings().next();
+            var harness = new HarnessScanResult(harnessId, name, executable,
+                    version, true, true, true, TokenUsageCoverage.PARTIAL,
+                    List.of(missingFigure), true, null);
 
             var parsed = HarnessScanResult.fromJson(harness.toJson());
 
             assertEquals(harness, parsed);
             assertTrue(parsed.isDefault());
-            assertEquals(List.of("cache write"), parsed.missingFigures());
+            assertEquals(List.of(missingFigure), parsed.missingFigures());
         }
 
         @Test
@@ -139,12 +151,16 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("round-trips and compares by harness and model")
         void shouldRoundTrip() throws Exception {
-            var entry = new ModelCatalogueEntry("claude", "opus-5.5", "probe");
+            var harnessId = Generators.nonEmptyStrings().next();
+            var modelId = Generators.nonEmptyStrings().next();
+            var source = Generators.nonEmptyStrings().next();
+            var otherSource = Generators.nonEmptyStrings().next();
+            var entry = new ModelCatalogueEntry(harnessId, modelId, source);
 
             var parsed = ModelCatalogueEntry.fromJson(entry.toJson());
 
             assertEquals(entry, parsed);
-            assertTrue(parsed.sameModel(new ModelCatalogueEntry("claude", "opus-5.5", "operator")));
+            assertTrue(parsed.sameModel(new ModelCatalogueEntry(harnessId, modelId, otherSource)));
             var list = ModelCatalogueEntry.listFromJson("[" + entry.toJson() + "]");
             assertEquals(1, list.size());
         }
@@ -157,12 +173,19 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("reports an unassigned role")
         void shouldReportUnassigned() throws Exception {
-            var assigned = new RoleAssignment("outline", "claude", "opus-5.5", "high", "steward");
+            var roleId = Generators.nonEmptyStrings().next();
+            var harnessId = Generators.nonEmptyStrings().next();
+            var modelId = Generators.nonEmptyStrings().next();
+            var effort = Generators.nonEmptyStrings().next();
+            var origin = Generators.nonEmptyStrings().next();
+            var assigned = new RoleAssignment(roleId, harnessId, modelId, effort, origin);
             var parsed = RoleAssignment.fromJson(assigned.toJson());
             assertEquals(assigned, parsed);
             assertTrue(parsed.assigned());
 
-            var open = new RoleAssignment("screener", null, null, null, "default");
+            var openRoleId = Generators.nonEmptyStrings().next();
+            var openOrigin = Generators.nonEmptyStrings().next();
+            var open = new RoleAssignment(openRoleId, null, null, null, openOrigin);
             assertFalse(open.assigned());
             assertEquals(open, RoleAssignment.fromJson(open.toJson()));
         }
@@ -200,13 +223,20 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("round-trips the whole machine settings record")
         void shouldRoundTrip() throws Exception {
+            var revision = Generators.integers(0, 100).next();
+            var aspectLabel = Generators.nonEmptyStrings().next();
+            var aspectLanguage = Generators.nonEmptyStrings().next();
+            var uiLanguage = Generators.nonEmptyStrings().next();
+            var documentsLanguage = Generators.nonEmptyStrings().next();
+            var consentAt = Generators.nonEmptyStrings().next();
+            var consentOrigin = Generators.nonEmptyStrings().next();
             var settings = new MachineSettingsRecord(
-                    7,
-                    List.of(new MachineSettingsAspectSummary(OnboardingAspect.LANGUAGE, "Deutsch, models English", "de")),
-                    "de", "en", DocumentsMode.ASK,
+                    revision,
+                    List.of(new MachineSettingsAspectSummary(OnboardingAspect.LANGUAGE, aspectLabel, aspectLanguage)),
+                    uiLanguage, documentsLanguage, DocumentsMode.ASK,
                     CleanupDurations.defaults(), PlanDefaults.shipped(),
                     List.of(new ConsentRecord(ConsentKind.SCAN_HARNESSES, ConsentStatus.REMEMBERED, true,
-                            "2026-10-12T09:00:00Z", "terminal", null, null)),
+                            consentAt, consentOrigin, null, null)),
                     List.of(new MachineCredentialStatus("github", "GitHub", "fine-grained", 9, false, null)));
 
             var parsed = MachineSettingsRecord.fromJson(settings.toJson());
@@ -240,16 +270,19 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("round-trips a request and a conflict result")
         void shouldRoundTripUpdate() throws Exception {
-            var request = MachineSettingsUpdateRequest.withdrawConsent(ConsentKind.SCAN_HARNESSES, 4);
+            var withdrawRevision = Generators.integers(0, 100).next();
+            var request = MachineSettingsUpdateRequest.withdrawConsent(ConsentKind.SCAN_HARNESSES, withdrawRevision);
             assertEquals("consent:scan_harnesses", request.key());
             assertNull(request.value());
             assertEquals(request, MachineSettingsUpdateRequest.fromJson(request.toJson()));
 
-            var applied = MachineSettingsUpdateResult.applied(5);
+            var appliedRevision = Generators.integers(0, 100).next();
+            var applied = MachineSettingsUpdateResult.applied(appliedRevision);
             assertTrue(applied.applied());
             assertEquals(applied, MachineSettingsUpdateResult.fromJson(applied.toJson()));
 
-            var conflict = MachineSettingsUpdateResult.conflict(9, "copy");
+            var conflictRevision = Generators.integers(0, 100).next();
+            var conflict = MachineSettingsUpdateResult.conflict(conflictRevision, "copy");
             assertTrue(conflict.conflict());
             assertEquals("copy", conflict.currentValue());
             assertEquals(conflict, MachineSettingsUpdateResult.fromJson(conflict.toJson()));
@@ -290,11 +323,14 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("round-trip the step-completed and settings-changed events with their names")
         void shouldRoundTripEvents() throws Exception {
-            var step = new OnboardingStepCompletedEvent(OnboardingAspect.MODELS, "roles.review", 3);
+            var stepIndex = Generators.integers(1, 7).next();
+            var step = new OnboardingStepCompletedEvent(OnboardingAspect.MODELS, "roles.review", stepIndex);
             assertEquals("onboarding.step_completed", OnboardingStepCompletedEvent.EVENT_NAME);
             assertEquals(step, OnboardingStepCompletedEvent.fromJson(step.toJson()));
 
-            var settings = new MachineSettingsChangedEvent("documents_mode", "copy", 8, "terminal");
+            var revision = Generators.integers(0, 100).next();
+            var origin = Generators.nonEmptyStrings().next();
+            var settings = new MachineSettingsChangedEvent("documents_mode", "copy", revision, origin);
             assertEquals("machine.settings_changed", MachineSettingsChangedEvent.EVENT_NAME);
             assertEquals(settings, MachineSettingsChangedEvent.fromJson(settings.toJson()));
         }
@@ -307,8 +343,8 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("round-trips an item and its closed list of reasons")
         void shouldRoundTripItem() throws Exception {
-            var item = new AutoResultItem(OnboardingAspect.HARNESSES,
-                    "Claude Code 2.4.1 (default), OpenCode 1.9.0", AutoResultReason.ALL_SUPPORTED);
+            var summary = Generators.nonEmptyStrings().next();
+            var item = new AutoResultItem(OnboardingAspect.HARNESSES, summary, AutoResultReason.ALL_SUPPORTED);
 
             var parsed = AutoResultItem.fromJson(item.toJson());
 
@@ -465,8 +501,12 @@ class OnboardingRecordsTest {
         void shouldRoundTripUsage() throws Exception {
             var usage = new HarnessUsageReport(TokenUsageCoverage.PARTIAL,
                     Map.of(UsageFigure.CACHE_WRITE, UsageFigureStatus.NOT_REPORTED));
-            var harness = new HarnessScanResult("opencode", "OpenCode", "/opt/homebrew/bin/opencode",
-                    "1.9.0", true, true, true, TokenUsageCoverage.PARTIAL, List.of("cache_write"), true, usage);
+            var harnessId = Generators.nonEmptyStrings().next();
+            var name = Generators.nonEmptyStrings().next();
+            var executable = Generators.nonEmptyStrings().next();
+            var version = Generators.nonEmptyStrings().next();
+            var harness = new HarnessScanResult(harnessId, name, executable,
+                    version, true, true, true, TokenUsageCoverage.PARTIAL, List.of("cache_write"), true, usage);
 
             var parsed = HarnessScanResult.fromJson(harness.toJson());
 

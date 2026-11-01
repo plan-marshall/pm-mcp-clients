@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { t } from '../i18n';
+  import { t, currentLocale } from '../i18n';
+  import { formatTime } from '../display/format';
   import Button from '../components/Button.svelte';
   import BlockPalette from '../components/BlockPalette.svelte';
   import WorkflowIcon from '../components/WorkflowIcon.svelte';
@@ -358,12 +359,9 @@
     }
   }
 
-  /** @param iso the saved time @returns it as the catalogue's time form */
+  /** @param iso the saved time @returns the moment to the minute, in the interface language */
   function formatDraftTime(iso: string): string {
-    if (!iso) return '';
-    const date = new Date(iso);
-    if (Number.isNaN(date.getTime())) return iso;
-    return date.toLocaleString();
+    return formatTime(iso, 'short', $currentLocale);
   }
 
   /**

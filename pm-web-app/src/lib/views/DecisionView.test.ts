@@ -406,7 +406,7 @@ describe('DecisionView component', () => {
     });
   });
 
-  it('says where a decision was answered elsewhere', async () => {
+  it('says what a decision was answered with', async () => {
     const captured: { handler?: (event: string, data: unknown) => void } = {};
     vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {
       captured.handler = callback as (event: string, data: unknown) => void;
@@ -422,13 +422,11 @@ describe('DecisionView component', () => {
       id: 'dec-101',
       channel: 'cli',
       device: 'terminal-01',
-      answer: 'Rebase onto main',
+      answer: 'rebase',
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('decision-notices')).toHaveTextContent(
-        'answered in the console (terminal-01): Rebase onto main',
-      );
+      expect(screen.getByTestId('decision-notices')).toHaveTextContent('Decided: Rebase onto main');
     });
     expect(screen.queryByText('Select merge strategy')).not.toBeInTheDocument();
   });

@@ -44,13 +44,13 @@ class OverviewFormattingTest {
     @Test
     @DisplayName("needsOperator evaluates plans correctly, ignoring paused alone")
     void planNeedsOperator() {
-        var normalPlan = new ActivePlanSummary("p1", "Normal", "execute", "running", null, null, null, 0, 0, null, null, null, null, null, null, null);
+        var normalPlan = new ActivePlanSummary("p1", "Normal", "execute", "running", null, null, null, 0, 0, null, null, null, null, null, null, null, null);
         assertFalse(OverviewFormatting.needsOperator(normalPlan));
 
-        var pausedPlan = new ActivePlanSummary("p2", "Paused", "execute", "paused", null, null, null, 0, 0, null, null, null, null, null, "paused", 1);
+        var pausedPlan = new ActivePlanSummary("p2", "Paused", "execute", "paused", null, null, null, 0, 0, null, null, null, null, null, "paused", 1, null);
         assertFalse(OverviewFormatting.needsOperator(pausedPlan));
 
-        var decisionPlan = new ActivePlanSummary("p3", "Waiting", "refine", "waiting_for_you", null, null, null, 0, 0, null, null, null, null, null, "decision", 1);
+        var decisionPlan = new ActivePlanSummary("p3", "Waiting", "refine", "waiting_for_you", null, null, null, 0, 0, null, null, null, null, null, "decision", 1, null);
         assertTrue(OverviewFormatting.needsOperator(decisionPlan));
     }
 
@@ -84,8 +84,8 @@ class OverviewFormattingTest {
     @Test
     @DisplayName("sortPlans prioritizes attention plans")
     void sortPlans() {
-        var plan1 = new ActivePlanSummary("p1", "Normal", "execute", "running", null, null, null, 0, 0, null, null, null, null, null, null, null);
-        var plan2 = new ActivePlanSummary("p2", "Needs Attention", "refine", "waiting", null, null, null, 0, 0, null, null, null, null, null, "decision", 1);
+        var plan1 = new ActivePlanSummary("p1", "Normal", "execute", "running", null, null, null, 0, 0, null, null, null, null, null, null, null, null);
+        var plan2 = new ActivePlanSummary("p2", "Needs Attention", "refine", "waiting", null, null, null, 0, 0, null, null, null, null, null, "decision", 1, null);
 
         var sorted = OverviewFormatting.sortPlans(List.of(plan1, plan2));
         assertEquals(List.of("p2", "p1"), sorted.stream().map(ActivePlanSummary::planId).toList());
@@ -94,8 +94,8 @@ class OverviewFormattingTest {
     @Test
     @DisplayName("sortEpics prioritizes attention epics and epics with attention plans")
     void sortEpics() {
-        var childPlan1 = new ActivePlanSummary("cp1", "Normal Child", "execute", "running", null, null, null, 0, 0, null, null, null, null, null, null, null);
-        var childPlan2 = new ActivePlanSummary("cp2", "Needs Child", "refine", "waiting", null, null, null, 0, 0, null, null, null, null, null, "decision", 1);
+        var childPlan1 = new ActivePlanSummary("cp1", "Normal Child", "execute", "running", null, null, null, 0, 0, null, null, null, null, null, null, null, null);
+        var childPlan2 = new ActivePlanSummary("cp2", "Needs Child", "refine", "waiting", null, null, null, 0, 0, null, null, null, null, null, "decision", 1, null);
 
         var epic1 = new ActiveEpicSummary("e1", "Normal Epic", null, 1, 0, 0, 1, null, null, List.of(childPlan1));
         var epic2 = new ActiveEpicSummary("e2", "Has Attention Child", null, 1, 0, 0, 1, null, null, List.of(childPlan2));
@@ -275,11 +275,11 @@ class OverviewFormattingTest {
         var epicNoPlans = new ActiveEpicSummary("e0", "Empty", null, 0, 0, 0, 0, null, null, null);
         assertFalse(OverviewFormatting.needsOperator(epicNoPlans));
 
-        var normalPlan = new ActivePlanSummary("p1", "Normal", "execute", "running", null, null, null, 0, 0, null, null, null, null, null, null, null);
+        var normalPlan = new ActivePlanSummary("p1", "Normal", "execute", "running", null, null, null, 0, 0, null, null, null, null, null, null, null, null);
         var epicWithNormal = new ActiveEpicSummary("e1", "Normal", null, 1, 0, 0, 1, null, null, List.of(normalPlan));
         assertFalse(OverviewFormatting.needsOperator(epicWithNormal));
 
-        var attentionPlan = new ActivePlanSummary("p2", "Attention", "refine", "waiting", null, null, null, 0, 0, null, null, null, null, null, "decision", 1);
+        var attentionPlan = new ActivePlanSummary("p2", "Attention", "refine", "waiting", null, null, null, 0, 0, null, null, null, null, null, "decision", 1, null);
         var epicWithAttention = new ActiveEpicSummary("e2", "Attention", null, 1, 1, 0, 0, "decision", 1, List.of(attentionPlan));
         assertTrue(OverviewFormatting.needsOperator(epicWithAttention));
     }

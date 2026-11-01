@@ -24,9 +24,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonFormatException;
 
 @DisplayName("Decomposition record contracts")
+@EnableGeneratorController
 class DecompositionRecordsTest {
 
     @Nested
@@ -76,11 +79,15 @@ class DecompositionRecordsTest {
     @Test
     @DisplayName("StagedPlanRecord round-trips and defaults its collections and status")
     void stagedPlanRoundTrips() throws Exception {
-        var full = new StagedPlanRecord("relay-auth-v2", "relay-auth-v2", "a token exchange",
-                List.of("pm-api"), List.of("relay-cursor-order"), StagedPlanRecord.STATUS_CHANGED);
+        var planId = Generators.nonEmptyStrings().next();
+        var objective = Generators.nonEmptyStrings().next();
+        var dependency = Generators.nonEmptyStrings().next();
+        var full = new StagedPlanRecord(planId, planId, objective,
+                List.of("pm-api"), List.of(dependency), StagedPlanRecord.STATUS_CHANGED);
         assertEquals(full, StagedPlanRecord.fromJson(full.toJson()));
 
-        var minimal = new StagedPlanRecord("relay-docs", "relay-docs", null, null, null, null);
+        var minimalId = Generators.nonEmptyStrings().next();
+        var minimal = new StagedPlanRecord(minimalId, minimalId, null, null, null, null);
         assertTrue(minimal.expectedSurface().isEmpty());
         assertTrue(minimal.dependencies().isEmpty());
         assertEquals(StagedPlanRecord.STATUS_STAGED, minimal.status());
@@ -101,8 +108,13 @@ class DecompositionRecordsTest {
     @Test
     @DisplayName("WorkstreamRecord round-trips with its ordered plans")
     void workstreamRoundTrips() throws Exception {
-        var workstream = new WorkstreamRecord("WS-1", "Reconnect", "the reconnect work", 1,
-                List.of(new StagedPlanRecord("relay-cursor-order", "relay-cursor-order", null,
+        var workstreamId = Generators.nonEmptyStrings().next();
+        var title = Generators.nonEmptyStrings().next();
+        var objective = Generators.nonEmptyStrings().next();
+        var order = Generators.integers(1, 10).next();
+        var planId = Generators.nonEmptyStrings().next();
+        var workstream = new WorkstreamRecord(workstreamId, title, objective, order,
+                List.of(new StagedPlanRecord(planId, planId, null,
                         List.of("pm-relay", "pm-api"), List.of(), StagedPlanRecord.STATUS_STAGED)));
         assertEquals(workstream, WorkstreamRecord.fromJson(workstream.toJson()));
     }
@@ -110,34 +122,46 @@ class DecompositionRecordsTest {
     @Test
     @DisplayName("DecompositionCheckFinding round-trips with its severity")
     void findingRoundTrips() throws Exception {
+        var affectedPlans = List.of(Generators.nonEmptyStrings().next(), Generators.nonEmptyStrings().next());
+        var message = Generators.nonEmptyStrings().next();
         var finding = new DecompositionCheckFinding(CheckSeverity.ERROR,
-                DecompositionCheckFinding.RULE_SURFACE_OVERLAP, List.of("relay-auth-v2", "relay-cursor-order"),
-                "surface overlaps relay-cursor-order (pm-api)");
+                DecompositionCheckFinding.RULE_SURFACE_OVERLAP, affectedPlans,
+                message);
         assertEquals(finding, DecompositionCheckFinding.fromJson(finding.toJson()));
     }
 
     @Test
     @DisplayName("EpicDecomposition round-trips and answers the check and count questions")
     void epicDecompositionRoundTrips() throws Exception {
-        var first = new StagedPlanRecord("relay-cursor-order", "relay-cursor-order", null,
+        var firstId = Generators.nonEmptyStrings().next();
+        var secondId = firstId + "-second";
+        var secondObjective = Generators.nonEmptyStrings().next();
+        var first = new StagedPlanRecord(firstId, firstId, null,
                 List.of("pm-api"), List.of(), StagedPlanRecord.STATUS_STAGED);
-        var second = new StagedPlanRecord("relay-auth-v2", "relay-auth-v2", "token exchange",
+        var second = new StagedPlanRecord(secondId, secondId, secondObjective,
                 List.of("pm-api"), List.of(), StagedPlanRecord.STATUS_STAGED);
-        var decomposition = new EpicDecomposition("relay-hardening", DecompositionState.REVIEW, 7,
-                List.of(new WorkstreamRecord("WS-1", "Reconnect", null, 1, List.of(first)),
-                        new WorkstreamRecord("WS-2", "Authentication", null, 2, List.of(second))),
+        var epicId = Generators.nonEmptyStrings().next();
+        var revision = Generators.integers(0, 100).next();
+        var firstWorkstreamId = Generators.nonEmptyStrings().next();
+        var secondWorkstreamId = firstWorkstreamId + "-second";
+        var firstWorkstreamTitle = Generators.nonEmptyStrings().next();
+        var secondWorkstreamTitle = Generators.nonEmptyStrings().next();
+        var message = Generators.nonEmptyStrings().next();
+        var decomposition = new EpicDecomposition(epicId, DecompositionState.REVIEW, revision,
+                List.of(new WorkstreamRecord(firstWorkstreamId, firstWorkstreamTitle, null, 1, List.of(first)),
+                        new WorkstreamRecord(secondWorkstreamId, secondWorkstreamTitle, null, 2, List.of(second))),
                 List.of(new DecompositionCheckFinding(CheckSeverity.ERROR,
-                        DecompositionCheckFinding.RULE_SURFACE_OVERLAP, List.of("relay-auth-v2"),
-                        "surface overlaps relay-cursor-order (pm-api)")));
+                        DecompositionCheckFinding.RULE_SURFACE_OVERLAP, List.of(secondId),
+                        message)));
 
         var roundTrip = EpicDecomposition.fromJson(decomposition.toJson());
         assertEquals(decomposition, roundTrip);
         assertFalse(roundTrip.everyCheckPasses());
         assertEquals(2, roundTrip.stagedPlanCount());
-        assertEquals("relay-auth-v2", roundTrip.plan("relay-auth-v2").planId());
+        assertEquals(secondId, roundTrip.plan(secondId).planId());
         assertNull(roundTrip.plan("no-such-plan"));
 
-        var passing = new EpicDecomposition("relay-hardening", DecompositionState.CHECK, 7,
+        var passing = new EpicDecomposition(epicId, DecompositionState.CHECK, revision,
                 decomposition.workstreams(), List.of());
         assertTrue(passing.everyCheckPasses());
     }
@@ -145,11 +169,13 @@ class DecompositionRecordsTest {
     @Test
     @DisplayName("DecompositionInstructRequest round-trips and defaults the action to edit")
     void instructRequestRoundTrips() throws Exception {
-        var request = new DecompositionInstructRequest("relay-auth-v2",
-                "Keep it out of pm-api: the exchange belongs into pm-relay.", InstructAction.EDIT);
+        var planId = Generators.nonEmptyStrings().next();
+        var instruction = Generators.nonEmptyStrings().next();
+        var request = new DecompositionInstructRequest(planId, instruction, InstructAction.EDIT);
         assertEquals(request, DecompositionInstructRequest.fromJson(request.toJson()));
 
-        var added = new DecompositionInstructRequest(null, "add a docs plan", null);
+        var addedInstruction = Generators.nonEmptyStrings().next();
+        var added = new DecompositionInstructRequest(null, addedInstruction, null);
         assertEquals(InstructAction.EDIT, added.action());
         assertFalse(added.toMap().containsKey("plan_id"));
         assertEquals(added, DecompositionInstructRequest.fromJson(added.toJson()));
@@ -158,12 +184,14 @@ class DecompositionRecordsTest {
     @Test
     @DisplayName("DecompositionCommitResult round-trips and defaults the status to committed")
     void commitResultRoundTrips() throws Exception {
-        var result = new DecompositionCommitResult(null, 12, 2);
+        var ledgerRevision = (long) Generators.integers(0, 1_000_000).next();
+        var launchablePlanCount = Generators.integers(0, 100).next();
+        var result = new DecompositionCommitResult(null, ledgerRevision, launchablePlanCount);
         assertEquals(DecompositionCommitResult.STATUS_COMMITTED, result.status());
         var roundTrip = DecompositionCommitResult.fromJson(result.toJson());
         assertEquals(result, roundTrip);
-        assertEquals(12L, roundTrip.ledgerRevision());
-        assertEquals(2, roundTrip.launchablePlanCount());
+        assertEquals(ledgerRevision, roundTrip.ledgerRevision());
+        assertEquals(launchablePlanCount, roundTrip.launchablePlanCount());
     }
 
     @Nested

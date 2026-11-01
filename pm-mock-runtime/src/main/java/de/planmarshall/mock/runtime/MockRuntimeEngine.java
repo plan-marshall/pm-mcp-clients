@@ -16,17 +16,20 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -40,6 +43,7 @@ import java.util.regex.Pattern;
 
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.MachineApiPaths;
 import de.planmarshall.api.control.ActionAvailability;
 import de.planmarshall.api.control.ArchiveCheck;
 import de.planmarshall.api.control.ChatReadBackResource;
@@ -114,6 +118,12 @@ import de.planmarshall.api.onboarding.MachineSettingsUpdateResult;
 import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.onboarding.OnboardingStepCompletedEvent;
 import de.planmarshall.api.onboarding.PlanDefaults;
+import de.planmarshall.api.overview.FindKind;
+import de.planmarshall.api.overview.FindMatch;
+import de.planmarshall.api.overview.FindPage;
+import de.planmarshall.api.overview.NeedsOperatorItem;
+import de.planmarshall.api.overview.NeedsOperatorPage;
+import de.planmarshall.api.overview.WorkLocation;
 import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.FavouritesUpdateRequest;
@@ -286,6 +296,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String SEGMENT_PROJECT_ENTRIES = "/entries";
     private static final String SEGMENT_PROJECT_FILES = "/files";
     private static final String PATH_ENDED = "/api/v1/projects/";
+    private static final String PATH_EPICS = "/api/v1/epics";
+    private static final String PROJECT_ROUTE_PREFIX = "GET /api/v1/projects/";
+    private static final String SEGMENT_ENDED = "/ended";
+    private static final String KEY_ITEMS = "items";
+    private static final String KEY_PLANS = "plans";
+    private static final String KEY_EPICS = "epics";
+    private static final String KEY_ID = "id";
+    private static final String KEY_KIND = "kind";
+    private static final String KEY_OUTCOME = "outcome";
+    private static final String KEY_PROJECT = "project";
+    private static final String KEY_EPIC_TITLE = "epic_title";
+    private static final String KEY_DISPLAY_NAME = "display_name";
+    private static final String KEY_PULL_REQUEST = "pull_request_number";
     private static final String SEGMENT_ENDED_CHAT = "/ended/";
     private static final String SEGMENT_ENDED_CHAT_ACCEPT = "/ended/accept";
     private static final String ERR_PROJECT_NOT_FOUND = "project_not_found";
@@ -346,6 +369,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_ASKING = "asking";
     private static final String KEY_POSTURE = "posture";
     private static final String KEY_DOCUMENTS_MODE = "documents_mode";
+    private static final String KEY_LANGUAGE_INTERFACE = "language_interface";
+    private static final String KEY_LANGUAGE_MODEL = "language_model";
+    private static final String LANGUAGE_CODE_GERMAN = "de";
+    private static final String LANGUAGE_CODE_ENGLISH = "en";
     private static final String KEY_CLEANUP_DURATIONS = "cleanup_durations";
     private static final String KEY_PLAN_DEFAULTS = "plan_defaults";
     private static final String KEY_PLANS_AFTER_DAYS = "plans_after_days";
@@ -631,6 +658,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Object onboardingLock = new Object();
     private int machineSettingsRevision = 1;
     private String machineDocumentsMode = "ask";
+    /** The interface and model language the machine recorded (UC-ONB-3); English until recorded. */
+    private String machineLanguageInterface = LANGUAGE_CODE_ENGLISH;
+    private String machineLanguageModel = LANGUAGE_CODE_ENGLISH;
     private Map<String, Object> machinePlanDefaults = new LinkedHashMap<>();
     private Map<String, Object> machineCleanupDurations = new LinkedHashMap<>();
     private final List<Map<String, Object>> machineRememberedConsents = new ArrayList<>();
@@ -1586,12 +1616,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final List<String> LIVE_DOMAIN_PREFIXES = List.of(
             "/api/v1/reports",
             "/api/v1/plans",
-            "/api/v1/epics",
+            PATH_EPICS,
             "/api/v1/entries",
-            "/api/v1/projects",
+            PATH_PROJECTS,
             "/api/v1/project-onboardings",
             "/api/v1/explorer",
             "/api/v1/overview",
+            MachineApiPaths.FIND,
+            MachineApiPaths.NEEDS_OPERATOR,
             "/api/v1/workflows",
             "/api/v1/decisions",
             "/api/v1/questions",
@@ -1617,6 +1649,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 || handleEnrolmentRoutes(request, response)
                 || handleProjectExplorerRoutes(request, response)
                 || handleProjectOverviewRoutes(request, response)
+                || handleNeedsAndFindRoutes(request, response)
                 || handleReportRoutes(request, response, isWeb)
                 || handleIntentRoutes(request, response)
                 || (declaresDecisions() && handleDecisionRoutes(request, response, isWeb))
@@ -5128,11 +5161,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private boolean serveIntentFixture(MockHttpResponse response, String fixturePath, FixtureReader reader,
             String idField, String id) throws IOException {
-        var route = activeRoute("GET", fixturePath);
-        if (route == null) {
+        var representation = Optional.ofNullable(activeRoute("GET", fixturePath))
+                .map(RouteDefinition::representation)
+                .map(JsonTree::asObject)
+                .orElse(null);
+        if (representation == null) {
             return false;
         }
-        var representation = JsonTree.asObject(route.representation());
         reader.read(representation);
         var copy = new LinkedHashMap<String, Object>(representation);
         copy.put(idField, id);
@@ -5404,35 +5439,194 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return new LinkedHashMap<>(kinds);
     }
 
+    /**
+     * Serves one scenario route, applying the one stable order of running work to the overview
+     * families: what needs the operator first, then the newest started; projects by the start of
+     * their oldest active work, the oldest first. The mock derives the order on every read from the
+     * records it serves rather than trusting the fixture's spelling of it, so an activity event
+     * moves no row while a row moves as soon as its item starts or ends, or starts or stops needing
+     * the operator.
+     */
     private void handleRouteWithDynamicStatus(RouteDefinition route, String path, MockHttpResponse response) throws IOException {
         var rep = route.representation();
         if ("/api/v1/status".equals(path) && rep instanceof Map<?, ?> map) {
             handleStatusRoute(route, map, response);
             return;
         }
-        if (PATH_PROJECTS.equals(path) && rep instanceof Map<?, ?> map && map.get(CONST_PROJECTS) instanceof List<?> list) {
-            var sorted = new ArrayList<>(list);
-            sorted.sort((a, b) -> {
-                if (a instanceof Map<?, ?> ma && b instanceof Map<?, ?> mb) {
-                    var countA = JsonTree.integer(JsonTree.asObject(ma), "needs_operator_count");
-                    boolean needA = (countA != null && countA > 0) || Boolean.TRUE.equals(ma.get("setup_needs_operator"));
-                    var countB = JsonTree.integer(JsonTree.asObject(mb), "needs_operator_count");
-                    boolean needB = (countB != null && countB > 0) || Boolean.TRUE.equals(mb.get("setup_needs_operator"));
-                    if (needA != needB) {
-                        return needA ? -1 : 1;
-                    }
-                }
-                return 0;
-            });
-            var copy = new LinkedHashMap<String, Object>();
-            for (var entry : map.entrySet()) {
-                copy.put(String.valueOf(entry.getKey()), entry.getValue());
-            }
-            copy.put(CONST_PROJECTS, sorted);
+        if (rep instanceof Map<?, ?> map && (PATH_PROJECTS.equals(path) || "/api/v1/overview".equals(path))
+                && map.get(CONST_PROJECTS) instanceof List<?> list) {
+            var copy = orderedMap(map);
+            copy.put(CONST_PROJECTS, orderedProjects(list));
             response.json(route.status(), copy);
             return;
         }
+        if (rep instanceof Map<?, ?> map && path.startsWith(PATH_PROJECTS_PREFIX) && !path.endsWith(SEGMENT_ENDED)) {
+            var detail = JsonTree.asObject(rep);
+            if (detail != null && (detail.get(KEY_PLANS) instanceof List<?> || detail.get(KEY_EPICS) instanceof List<?>)) {
+                var copy = orderedMap(map);
+                copy.put(KEY_PLANS, orderedActiveWork(rowsOf(detail, KEY_PLANS)));
+                var epics = new ArrayList<Object>();
+                for (var epicRow : rowsOf(detail, KEY_EPICS)) {
+                    var epicMap = JsonTree.asObject(epicRow);
+                    if (epicMap != null && epicMap.get(KEY_PLANS) instanceof List<?> epicPlans) {
+                        var epicCopy = orderedMap(epicMap);
+                        epicCopy.put(KEY_PLANS, orderedActiveWork(epicPlans));
+                        epics.add(epicCopy);
+                    } else {
+                        epics.add(epicRow);
+                    }
+                }
+                copy.put(KEY_EPICS, orderedActiveWork(epics));
+                response.json(route.status(), copy);
+                return;
+            }
+        }
         response.json(route.status(), rep);
+    }
+
+    /**
+     * @param projects the projects of the overview as the scenario serves them
+     * @return the projects in the one stable order: what needs the operator first, then the project
+     *         whose oldest active work started first
+     */
+    private List<Object> orderedProjects(List<?> projects) {
+        var ordered = new ArrayList<Object>(projects);
+        ordered.sort((a, b) -> {
+            var needsA = needsTheOperator(a);
+            var needsB = needsTheOperator(b);
+            if (needsA != needsB) {
+                return needsA ? -1 : 1;
+            }
+            return oldestActiveWorkStart(a).compareTo(oldestActiveWorkStart(b));
+        });
+        return ordered;
+    }
+
+    /**
+     * @param rows the plans or epics of one project or epic as the scenario serves them
+     * @return the rows in the one stable order: an ended row last, then what needs the operator
+     *         first, then the newest started
+     */
+    private List<Object> orderedActiveWork(List<?> rows) {
+        var ordered = new ArrayList<Object>(rows);
+        ordered.sort((a, b) -> {
+            var endedA = ended(a);
+            var endedB = ended(b);
+            if (endedA != endedB) {
+                return endedA ? 1 : -1;
+            }
+            var needsA = needsTheOperator(a);
+            var needsB = needsTheOperator(b);
+            if (needsA != needsB) {
+                return needsA ? -1 : 1;
+            }
+            var startA = createdAt(a);
+            var startB = createdAt(b);
+            var undatedA = Instant.MAX.equals(startA);
+            var undatedB = Instant.MAX.equals(startB);
+            if (undatedA != undatedB) {
+                return undatedA ? 1 : -1;
+            }
+            return startB.compareTo(startA);
+        });
+        return ordered;
+    }
+
+    private static boolean needsTheOperator(@Nullable Object row) {
+        var map = JsonTree.asObject(row);
+        if (map == null) {
+            return false;
+        }
+        var count = JsonTree.integer(map, "needs_operator_count");
+        return (count != null && count > 0)
+                || JsonTree.string(map, "needs_operator_kind") != null
+                || Boolean.TRUE.equals(map.get("setup_needs_operator"));
+    }
+
+    private static boolean ended(@Nullable Object row) {
+        var map = JsonTree.asObject(row);
+        return map != null && "ended".equals(JsonTree.string(map, "phase_state"));
+    }
+
+    /**
+     * @param row a plan, an epic, or a project row
+     * @return the row's {@code created_at}, the start it fell back to, or the far future when the
+     *         fixture measures neither, so an unmeasurable row never jumps ahead. The mock's fixtures
+     *         carry {@code running_since} only, so the fallback is the key they exercise; a fixture
+     *         that carries {@code created_at} keeps its row in place when the plan starts.
+     */
+    private static Instant createdAt(@Nullable Object row) {
+        var map = JsonTree.asObject(row);
+        if (map == null) {
+            return Instant.MAX;
+        }
+        var created = JsonTree.string(map, "created_at");
+        if (created == null) {
+            created = JsonTree.string(map, "running_since");
+        }
+        if (created == null) {
+            return Instant.MAX;
+        }
+        try {
+            return Instant.parse(created);
+        } catch (DateTimeParseException _) {
+            return Instant.MAX;
+        }
+    }
+
+    /**
+     * @param projectRow a project row of the overview
+     * @return the start of the project's oldest active work, read from the project's own record;
+     *         the far future when the scenario serves no work for it
+     */
+    private Instant oldestActiveWorkStart(@Nullable Object projectRow) {
+        var map = JsonTree.asObject(projectRow);
+        if (map == null) {
+            return Instant.MAX;
+        }
+        var projectId = JsonTree.string(map, KEY_PROJECT_ID);
+        if (projectId == null) {
+            return Instant.MAX;
+        }
+        var detail = Optional.ofNullable(activeRoute("GET", PATH_PROJECTS_PREFIX + projectId))
+                .map(RouteDefinition::representation)
+                .map(JsonTree::asObject)
+                .orElse(null);
+        if (detail == null) {
+            return Instant.MAX;
+        }
+        var oldest = Instant.MAX;
+        for (var row : rowsOf(detail, KEY_PLANS)) {
+            if (ended(row)) {
+                continue;
+            }
+            var start = createdAt(row);
+            if (start.isBefore(oldest)) {
+                oldest = start;
+            }
+        }
+        for (var row : rowsOf(detail, KEY_EPICS)) {
+            if (ended(row)) {
+                continue;
+            }
+            var start = createdAt(row);
+            if (start.isBefore(oldest)) {
+                oldest = start;
+            }
+        }
+        return oldest;
+    }
+
+    private static List<?> rowsOf(@Nullable Map<String, Object> map, String key) {
+        return map != null && map.get(key) instanceof List<?> list ? list : List.of();
+    }
+
+    private static Map<String, Object> orderedMap(Map<?, ?> map) {
+        var copy = new LinkedHashMap<String, Object>();
+        for (var entry : map.entrySet()) {
+            copy.put(String.valueOf(entry.getKey()), entry.getValue());
+        }
+        return copy;
     }
 
     private boolean handleProjectOverviewRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
@@ -5463,15 +5657,326 @@ public final class MockRuntimeEngine implements AutoCloseable {
             if (!prj.contains("/")) {
                 response.json(200, Map.of(
                         KEY_PROJECT_ID, prj,
-                        "display_name", prj,
-                        "plans", List.of(),
-                        "epics", List.of(),
+                        KEY_DISPLAY_NAME, prj,
+                        KEY_PLANS, List.of(),
+                        KEY_EPICS, List.of(),
                         "alongside_landings", List.of()
                 ));
                 return true;
             }
         }
         return false;
+    }
+
+    /**
+     * Serves the two machine resources of UC-PLN-7 and UC-PLN-8 from the active state's fixtures:
+     * the one list of everything that waits, in the runtime's order (the items that block running
+     * work first, then the oldest), and the search by name over running and ended work.
+     *
+     * @param request  the request
+     * @param response the response
+     * @return {@code true} when the path is one of the two
+     * @throws IOException on write failure
+     */
+    private boolean handleNeedsAndFindRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        if (!"GET".equals(request.method())) {
+            return false;
+        }
+        var path = request.path();
+        if (MachineApiPaths.NEEDS_OPERATOR.equals(path)) {
+            serveNeedsOperatorPage(response);
+            return true;
+        }
+        if (MachineApiPaths.FIND.equals(path)) {
+            serveFind(request, response);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Serves the page of the one list of what waits: the fixture's items, parsed through the
+     * contract's own record, in the runtime's order — the items that block running work first, then
+     * the oldest.
+     */
+    private void serveNeedsOperatorPage(MockHttpResponse response) throws IOException {
+        var route = activeRoute("GET", MachineApiPaths.NEEDS_OPERATOR);
+        if (route == null) {
+            response.json(200, new NeedsOperatorPage(1, 1, false, false, 0, List.of()).toMap());
+            return;
+        }
+        if (route.status() < 200 || route.status() >= 300) {
+            response.json(route.status(), route.representation());
+            return;
+        }
+        var items = new ArrayList<NeedsOperatorItem>();
+        var rep = JsonTree.asObject(route.representation());
+        for (var raw : rowsOf(rep, KEY_ITEMS)) {
+            var item = JsonTree.asObject(raw);
+            if (item != null) {
+                items.add(NeedsOperatorItem.fromMap(item));
+            }
+        }
+        items.sort((a, b) -> {
+            if ((a.blocks() != null) != (b.blocks() != null)) {
+                return a.blocks() != null ? -1 : 1;
+            }
+            return sinceOf(a).compareTo(sinceOf(b));
+        });
+        response.json(200, new NeedsOperatorPage(1, 1, false, false, items.size(), items).toMap());
+    }
+
+    private static Instant sinceOf(NeedsOperatorItem item) {
+        var since = item.since();
+        return since != null ? since : Instant.MAX;
+    }
+
+    /**
+     * Answers {@code GET /api/v1/find?q=} over the running and the ended work the state serves.
+     * Running work comes first, ended work after it, marked; within each by kind, in the order
+     * project, epic, plan, decision, report. An empty text is refused.
+     */
+    private void serveFind(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        String query;
+        try {
+            query = queryParameter(request, MachineApiPaths.QUERY_PARAM);
+        } catch (IllegalArgumentException _) {
+            response.json(400, Map.of(KEY_ERROR, "invalid_query",
+                    KEY_MESSAGE, "The search text has malformed percent-encoding"));
+            return;
+        }
+        if (query == null || query.isBlank()) {
+            response.json(400, Map.of(KEY_ERROR, "invalid_query", KEY_MESSAGE, "An empty search text is refused"));
+            return;
+        }
+        var text = query.trim();
+        var matches = new ArrayList<FindMatch>();
+        collectRunningProjects(text, matches);
+        collectRunningEpics(text, matches);
+        collectRunningPlans(text, matches);
+        collectOpenDecisions(text, matches);
+        collectReports(text, matches);
+        collectEndedWork(text, matches);
+        matches.sort((a, b) -> {
+            if (a.ended() != b.ended()) {
+                return a.ended() ? 1 : -1;
+            }
+            return Integer.compare(a.kind().ordinal(), b.kind().ordinal());
+        });
+        response.json(200, new FindPage(1, 1, false, false, text, matches).toMap());
+    }
+
+    private void collectRunningProjects(String text, List<FindMatch> matches) {
+        var seen = new HashSet<String>();
+        for (var project : enrolledProjects) {
+            var title = project.displayName();
+            if (!matchesText(text, project.projectId(), title, null)) {
+                continue;
+            }
+            seen.add(project.projectId());
+            matches.add(new FindMatch(FindKind.PROJECT, project.projectId(), title,
+                    location(project.projectId(), title), null, null, false, null));
+        }
+        for (var row : rowsOfRoute("GET", PATH_PROJECTS, CONST_PROJECTS)) {
+            var id = JsonTree.string(row, KEY_PROJECT_ID);
+            if (id == null || seen.contains(id)) {
+                continue;
+            }
+            var title = JsonTree.string(row, KEY_DISPLAY_NAME);
+            if (matchesText(text, id, title, null)) {
+                matches.add(new FindMatch(FindKind.PROJECT, id, requireText(title, id), location(id, title),
+                        null, null, false, null));
+            }
+        }
+    }
+
+    private void collectRunningEpics(String text, List<FindMatch> matches) {
+        for (var row : rowsOfRoute("GET", PATH_EPICS, KEY_EPICS)) {
+            var id = JsonTree.string(row, KEY_ID);
+            var title = JsonTree.string(row, KEY_TITLE);
+            if (id != null && matchesText(text, id, title, null)) {
+                matches.add(new FindMatch(FindKind.EPIC, id, requireText(title, id),
+                        location(JsonTree.string(row, KEY_PROJECT), null), location(id, title), null, false, null));
+            }
+        }
+    }
+
+    private void collectRunningPlans(String text, List<FindMatch> matches) {
+        var seen = new HashSet<String>();
+        for (var entry : startedPlans.entrySet()) {
+            var id = entry.getKey();
+            var title = entry.getValue().title();
+            if (!matchesText(text, id, title, null)) {
+                continue;
+            }
+            seen.add(id);
+            matches.add(new FindMatch(FindKind.PLAN, id, requireText(title, id),
+                    location(entry.getValue().projectId(), null), null, location(id, title), false, null));
+        }
+        for (var entry : mergedRoutes().entrySet()) {
+            if (!isProjectDetailRoute(entry.getKey())) {
+                continue;
+            }
+            var detail = JsonTree.asObject(entry.getValue().representation());
+            if (detail != null) {
+                var project = location(JsonTree.string(detail, KEY_PROJECT_ID),
+                        JsonTree.string(detail, KEY_DISPLAY_NAME));
+                for (var raw : rowsOf(detail, KEY_PLANS)) {
+                    var row = JsonTree.asObject(raw);
+                    if (row != null) {
+                        addPlanMatch(text, row, project, seen, matches);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void addPlanMatch(String text, Map<String, Object> row, @Nullable WorkLocation project,
+            Set<String> seen, List<FindMatch> matches) {
+        var id = JsonTree.string(row, KEY_PLAN_ID);
+        if (id == null || seen.contains(id)
+                || !matchesText(text, id, JsonTree.string(row, KEY_TITLE), JsonTree.integer(row, KEY_PULL_REQUEST))) {
+            return;
+        }
+        var title = JsonTree.string(row, KEY_TITLE);
+        var epic = location(JsonTree.string(row, KEY_EPIC_ID), JsonTree.string(row, KEY_EPIC_TITLE));
+        matches.add(new FindMatch(FindKind.PLAN, id, requireText(title, id), project, epic, location(id, title),
+                false, null));
+    }
+
+    private void collectOpenDecisions(String text, List<FindMatch> matches) {
+        for (var decision : openDecisions.values()) {
+            if (!matchesText(text, decision.id(), decision.title(), null)) {
+                continue;
+            }
+            matches.add(new FindMatch(FindKind.DECISION, decision.id(), decision.title(), null, null,
+                    location(decision.subject(), null), false, null));
+        }
+    }
+
+    private void collectReports(String text, List<FindMatch> matches) {
+        for (var report : mockReports) {
+            if (!matchesText(text, report.id(), report.subject(), null)) {
+                continue;
+            }
+            var from = report.from();
+            matches.add(new FindMatch(FindKind.REPORT, report.id(), report.subject(),
+                    location(from.projectId(), from.projectTitle()),
+                    location(from.epicId(), from.epicTitle()),
+                    location(from.planId(), from.planTitle()), false, null));
+        }
+    }
+
+    private void collectEndedWork(String text, List<FindMatch> matches) {
+        for (var entry : mergedRoutes().entrySet()) {
+            if (!isEndedRoute(entry.getKey())) {
+                continue;
+            }
+            var rep = JsonTree.asObject(entry.getValue().representation());
+            if (rep != null) {
+                var project = location(endedProjectOf(entry.getKey()), JsonTree.string(rep, KEY_DISPLAY_NAME));
+                for (var raw : endedRowsOf(rep)) {
+                    var row = JsonTree.asObject(raw);
+                    if (row != null) {
+                        addEndedMatch(text, row, project, matches);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void addEndedMatch(String text, Map<String, Object> row, @Nullable WorkLocation project,
+            List<FindMatch> matches) {
+        var id = JsonTree.string(row, KEY_ID);
+        var title = JsonTree.string(row, KEY_TITLE);
+        if (id == null || !matchesText(text, id, title, JsonTree.integer(row, KEY_PULL_REQUEST))) {
+            return;
+        }
+        var kind = Objects.requireNonNullElse(FindKind.fromValue(JsonTree.string(row, KEY_KIND)), FindKind.PLAN);
+        matches.add(new FindMatch(kind, id, requireText(title, id), project, null, null, true,
+                JsonTree.string(row, KEY_OUTCOME)));
+    }
+
+    private static final String KEY_PAGES = "pages";
+
+    /**
+     * @param page the ended-work representation of one project
+     * @return the rows of every page it declares: page 1 from {@code pages["1"]} where it exists,
+     *         the {@code items} member otherwise, then the later pages in their order
+     */
+    private static List<?> endedRowsOf(Map<String, Object> page) {
+        if (!(page.get(KEY_PAGES) instanceof Map<?, ?> pages)) {
+            return rowsOf(page, KEY_ITEMS);
+        }
+        var rows = new ArrayList<Object>();
+        if (pages.get("1") instanceof List<?> first) {
+            rows.addAll(first);
+        } else {
+            rows.addAll(rowsOf(page, KEY_ITEMS));
+        }
+        for (var entry : pages.entrySet()) {
+            if (!"1".equals(String.valueOf(entry.getKey())) && entry.getValue() instanceof List<?> later) {
+                rows.addAll(later);
+            }
+        }
+        return rows;
+    }
+
+    private static String requireText(@Nullable String title, String id) {
+        return title != null ? title : id;
+    }
+
+    private static boolean isProjectDetailRoute(String routeKey) {
+        return routeKey.startsWith(PROJECT_ROUTE_PREFIX) && !routeKey.endsWith(SEGMENT_ENDED);
+    }
+
+    private static boolean isEndedRoute(String routeKey) {
+        return routeKey.startsWith(PROJECT_ROUTE_PREFIX) && routeKey.endsWith(SEGMENT_ENDED);
+    }
+
+    private static String endedProjectOf(String routeKey) {
+        return routeKey.substring(PROJECT_ROUTE_PREFIX.length(), routeKey.length() - SEGMENT_ENDED.length());
+    }
+
+    private static @Nullable WorkLocation location(@Nullable String id, @Nullable String title) {
+        return id == null || id.isBlank() ? null : new WorkLocation(id, title);
+    }
+
+    private static boolean matchesText(String text, String id, @Nullable String title, @Nullable Integer prNumber) {
+        var lower = text.toLowerCase(Locale.ROOT);
+        if (id.toLowerCase(Locale.ROOT).contains(lower)) {
+            return true;
+        }
+        if (title != null && title.toLowerCase(Locale.ROOT).contains(lower)) {
+            return true;
+        }
+        return prNumber != null && String.valueOf(prNumber).equals(text);
+    }
+
+    /**
+     * @return the routes the current state serves: the state's own declarations over the scenario's,
+     *         by key
+     */
+    private Map<String, RouteDefinition> mergedRoutes() {
+        var merged = new LinkedHashMap<String, RouteDefinition>(currentScenario.get().routes());
+        var runtime = currentRuntimeFixture();
+        if (runtime != null && runtime.get(FIXTURE_ROUTES) instanceof Map<?, ?> overrides) {
+            for (var entry : overrides.entrySet()) {
+                if (entry.getValue() instanceof Map<?, ?> representation) {
+                    merged.put(String.valueOf(entry.getKey()), RouteDefinition.of(representation));
+                }
+            }
+        }
+        return merged;
+    }
+
+    private List<Map<String, Object>> rowsOfRoute(String method, String path, String key) {
+        var route = activeRoute(method, path);
+        if (route == null) {
+            return List.of();
+        }
+        var rep = JsonTree.asObject(route.representation());
+        return rep == null ? List.of() : fixtureObjects(rep, key);
     }
 
     private void handleEndedPageQuery(RouteDefinition route, String query, MockHttpResponse response) throws IOException {
@@ -5500,7 +6005,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             copy.put("page", page);
             copy.put("has_newer", page > 1);
             copy.put("has_older", page < total);
-            if (map.get("pages") instanceof Map<?, ?> pagesMap) {
+            if (map.get(KEY_PAGES) instanceof Map<?, ?> pagesMap) {
                 var pageItems = pagesMap.get(String.valueOf(page));
                 if (pageItems instanceof List<?> list) {
                     copy.put("items", list);
@@ -5510,7 +6015,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     copy.put("items", List.of());
                 }
             }
-            copy.remove("pages");
+            copy.remove(KEY_PAGES);
             response.json(route.status(), copy);
             return;
         }
@@ -6121,6 +6626,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (onboardingLock) {
             machineSettingsRevision = 4;
             machineDocumentsMode = DocumentsMode.ASK.wireValue();
+            machineLanguageInterface = LANGUAGE_CODE_ENGLISH;
+            machineLanguageModel = LANGUAGE_CODE_ENGLISH;
             onboardingAuto = false;
             machinePlanDefaults = new LinkedHashMap<>();
             machinePlanDefaults.put(KEY_LANDING, PlanDefaults.LANDING_PULL_REQUEST);
@@ -6301,7 +6808,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             upTo = 7;
         }
         if (upTo >= 1) {
-            summaries.put("1", "Deutsch, models English");
+            summaries.put("1", languageSummary());
         }
         if (upTo >= 2) {
             summaries.put("2", "Claude Code 2.4.1 (default), OpenCode 1.9.0");
@@ -6357,6 +6864,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     link.error() != null ? link.error() : "rejected", KEY_STATE, previousState));
             return;
         }
+        if (previousState != null && previousState.startsWith("language.")) {
+            recordInterfaceLanguage(body);
+        }
         String newState;
         synchronized (this) {
             transitionTo(link.next());
@@ -6370,6 +6880,30 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     previousAspect, newState, completedStepsFor(newState)).toMap());
         }
         response.json(link.status(), mergeRepresentation(state, newState));
+    }
+
+    /**
+     * Records the interface and model language the operator chose at the language step (UC-ONB-3).
+     *
+     * @param body the step's request body
+     */
+    private void recordInterfaceLanguage(Map<String, Object> body) {
+        var chosenInterface = JsonTree.string(body, KEY_LANGUAGE_INTERFACE);
+        if (isSupportedLanguage(chosenInterface)) {
+            machineLanguageInterface = Objects.requireNonNull(chosenInterface);
+        }
+        var chosenModel = JsonTree.string(body, KEY_LANGUAGE_MODEL);
+        if (isSupportedLanguage(chosenModel)) {
+            machineLanguageModel = Objects.requireNonNull(chosenModel);
+        }
+    }
+
+    /**
+     * @param code a language code
+     * @return {@code true} for a code the machine can record
+     */
+    private static boolean isSupportedLanguage(@Nullable String code) {
+        return LANGUAGE_CODE_GERMAN.equals(code) || LANGUAGE_CODE_ENGLISH.equals(code);
     }
 
     private static Map.Entry<String, LinkDefinition> chooseLink(StateDefinition state, @Nullable String linkName) {
@@ -6413,7 +6947,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var body = new LinkedHashMap<String, Object>();
             body.put("revision", machineSettingsRevision);
             body.put("aspects", List.of(
-                    aspectSummary(OnboardingAspect.LANGUAGE, "Deutsch, models English", "de"),
+                    aspectSummary(OnboardingAspect.LANGUAGE, languageSummary(), machineLanguageInterface),
                     aspectSummary(OnboardingAspect.HARNESSES, "Claude Code 2.4.1 (default), OpenCode 1.9.0", CONST_CLAUDE),
                     aspectSummary(OnboardingAspect.MODELS, "4 models on 2 harnesses", "4"),
                     aspectSummary(OnboardingAspect.ROLES, "31 roles", "31"),
@@ -6421,8 +6955,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     aspectSummary(OnboardingAspect.PROVIDERS, "GitHub (gh); SonarCloud not available", "github"),
                     aspectSummary(OnboardingAspect.PLANS, "Pull Request \u00b7 Test first \u00b7 key points",
                             String.valueOf(machinePlanDefaults.get(KEY_LANDING)))));
-            body.put("language_interface", "de");
-            body.put("language_model", "en");
+            body.put(KEY_LANGUAGE_INTERFACE, machineLanguageInterface);
+            body.put(KEY_LANGUAGE_MODEL, machineLanguageModel);
             body.put(KEY_DOCUMENTS_MODE, machineDocumentsMode);
             body.put(KEY_CLEANUP_DURATIONS, machineCleanupDurations);
             body.put(KEY_PLAN_DEFAULTS, machinePlanDefaults);
@@ -6430,6 +6964,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
             body.put("credentials", machineCredentials);
             return body;
         }
+    }
+
+    /** @return the language aspect's summary, as the recorded choice reads */
+    private String languageSummary() {
+        return languageName(machineLanguageInterface) + ", models " + languageName(machineLanguageModel);
+    }
+
+    /**
+     * @param code an interface language code
+     * @return the language's own name
+     */
+    private static String languageName(String code) {
+        return LANGUAGE_CODE_GERMAN.equals(code) ? "Deutsch" : "English";
     }
 
     private static Map<String, Object> aspectSummary(OnboardingAspect aspect, String summary, String current) {
@@ -6460,6 +7007,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void applyMachineSetting(String key, @Nullable String value) {
         if (KEY_DOCUMENTS_MODE.equals(key) && value != null) {
             applyDocumentsMode(value);
+        } else if (KEY_LANGUAGE_INTERFACE.equals(key) && isSupportedLanguage(value)) {
+            machineLanguageInterface = Objects.requireNonNull(value);
+        } else if (KEY_LANGUAGE_MODEL.equals(key) && isSupportedLanguage(value)) {
+            machineLanguageModel = Objects.requireNonNull(value);
         } else if (KEY_CLEANUP_DURATIONS.equals(key) && value != null) {
             applyCleanupDurations(value);
         } else if (KEY_PLAN_DEFAULTS.equals(key) && value != null) {
@@ -6618,14 +7169,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
             cleanupResidues.add(new CleanupResidue("retired_lessons", 4, 0L, SWEEP_TODAY));
 
             var clientsEntries = List.of(
-                    new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged (#214)", "ended 12 Sep", 88080384L, 6, 0, null),
-                    new CleanupItemEntry("docs-typo", "plan", "docs-typo", "no change", "ended 11 Sep", 2097152L, 1, 0, null),
-                    new CleanupItemEntry("relay-hardening", "epic", "relay-hardening", "completed", "ended 10 Sep", 12582912L, 0, 0, null),
+                    new CleanupItemEntry(CONST_FIX_RELAY, CLEANUP_KIND_PLAN, CONST_FIX_RELAY, "merged (#214)", "12 Sep", 88080384L, 6, 0, null),
+                    new CleanupItemEntry(CONST_DOCS_TYPO, CLEANUP_KIND_PLAN, CONST_DOCS_TYPO, "no change", "11 Sep", 2097152L, 1, 0, null),
+                    new CleanupItemEntry(CONST_RELAY_HARDENING, CLEANUP_KIND_EPIC, CONST_RELAY_HARDENING, FIELD_COMPLETED, "10 Sep", 12582912L, 0, 0, null),
                     new CleanupItemEntry("logs-relay-docs", "logs", "logs of relay-docs", null, null, 32505856L, 14, 0, "plan kept until 24 Oct"),
                     new CleanupItemEntry("reports-clients", "read_reports", "3 read reports", null, null, 0L, 0, 3, "read before 13 Sep")
             );
             var coreEntries = List.of(
-                    new CleanupItemEntry("token-usage", "plan", "token-usage", "merged (#88)", "ended 9 Sep", 125829120L, 11, 0, null),
+                    new CleanupItemEntry("token-usage", "plan", "token-usage", "merged (#88)", "9 Sep", 125829120L, 11, 0, null),
                     new CleanupItemEntry("reports-core", "read_reports", "2 read reports", null, null, 0L, 0, 2, "read before 10 Sep")
             );
             var unenrolledEntries = List.of(
@@ -7608,7 +8159,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var workMetrics = new WorkMetrics(plansByState, epicsByState, tasksRunning, tasksQueued, activeProjects, List.of());
 
         var workers = List.of(
-                new WorkerMetric("planner", CONST_CLAUDE, "opus-4.5", WorkerState.BUSY, "fix-relay"),
+                new WorkerMetric("planner", CONST_CLAUDE, "opus-4.5", WorkerState.BUSY, CONST_FIX_RELAY),
                 new WorkerMetric("implementer", CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, "relay-docs"),
                 new WorkerMetric("implementer", "codex", "gpt-5", WorkerState.IDLE, null),
                 new WorkerMetric("implementer", CONST_CLAUDE, CONST_SONNET, WorkerState.BUSY, "token-usage"),
@@ -8659,7 +9210,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static Map<String, Object> planProjectRef(String projectId) {
         var project = new LinkedHashMap<String, Object>();
         project.put(KEY_PROJECT_ID, projectId);
-        project.put("display_name", projectId);
+        project.put(KEY_DISPLAY_NAME, projectId);
         project.put("link", "/api/v1/projects/" + projectId);
         return project;
     }

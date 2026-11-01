@@ -494,7 +494,7 @@
             "sub_nodes": [
               {
                 "node_id": "execute.envelope",
-                "title": "execute.envelope",
+                "title": "Execute the envelope",
                 "kind": "tasks",
                 "state": "running",
                 "run_count": 1,
@@ -546,7 +546,7 @@
               },
               {
                 "node_id": "remediation.ci-failure",
-                "title": "sub-workflow remediation.ci-failure",
+                "title": "CI failure",
                 "kind": "sub_workflow",
                 "state": "planned",
                 "run_count": 0,

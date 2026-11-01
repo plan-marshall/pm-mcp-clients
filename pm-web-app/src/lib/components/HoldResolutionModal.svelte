@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { t } from '../i18n';
+  import { t, currentLocale } from '../i18n';
+  import { formatTime } from '../display/format';
   import type { HoldRecord, HoldResolutionResult } from '../api/client';
 
   export let hold: HoldRecord | null = null;
@@ -122,7 +123,10 @@
         {#if hold.last_tried_at}
           <dt></dt>
           <dd data-testid="hold-tried">
-            {$t('control.hold.tried', { count: hold.attempts, time: hold.last_tried_at })}
+            {$t('control.hold.tried', {
+              count: hold.attempts,
+              time: formatTime(hold.last_tried_at, 'short', $currentLocale),
+            })}
           </dd>
         {/if}
 

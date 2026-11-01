@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { t, currentLocale } from '../i18n';
+  import { formatTime } from '../display/format';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
   import Spinner from '../components/Spinner.svelte';
@@ -361,18 +362,10 @@
 
   /**
    * @param rawDate an ISO timestamp
-   * @returns the day, month and time, in the interface language
+   * @returns the moment to the minute, in the interface language
    */
   function formatCapturedAt(rawDate?: string | null): string {
-    if (!rawDate) return '';
-    const date = new Date(rawDate);
-    if (Number.isNaN(date.getTime())) return rawDate;
-    return date.toLocaleString($currentLocale, {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatTime(rawDate, 'short', $currentLocale);
   }
 </script>
 
@@ -490,10 +483,9 @@
     {:else if run}
       <div class="state-card" data-testid="project-onboarding-step">
         <div class="state-card__header">
+          <!-- The run's summary names the current step ("Identity"), which the heading already
+               names in the operator's language; printing both repeats the step (CC-F-05). -->
           <h2 class="state-card__title">{$t(stepKey(currentStep))}</h2>
-          {#if run.summary}
-            <p class="state-card__summary">{run.summary}</p>
-          {/if}
           {#if run.checkout_path}
             <p class="state-card__scope mono">{run.checkout_path}</p>
           {/if}

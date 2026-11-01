@@ -86,6 +86,8 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ExitCodesTest.java` — absent at HEAD c4dc9bb4; created by this plan
 - OBSERVED: `doc/design/terminal-client/01-commands.adoc` — present at HEAD c4dc9bb4
 - OBSERVED: `doc/design/terminal-client/13-texts-operator.adoc` — present at HEAD c4dc9bb4
+- OBSERVED: `doc/design/terminal-client/09-texts-common.adoc` — present at HEAD 1b6c6ae3; lines 169 to 208 still describe a `common.error.<code>` family and say the codes' texts belong to the flows that raise them: this plan rewrites that passage to point at the `error` area of `PLAN-86` (added after its landing)
+- OBSERVED: `doc/design/terminal-client/03-dialogues.adoc` — present at HEAD 1b6c6ae3; line 266 says the same: this plan corrects it (added after the landing of `PLAN-86`)
 - OBSERVED: `pm-api/src/main/resources/messages/operator.en.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/operator.de.properties` — present at HEAD c4dc9bb4
 

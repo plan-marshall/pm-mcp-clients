@@ -5,8 +5,26 @@ export type Locale = 'en' | 'de';
 
 /** The storage key of the locale the person last chose. */
 const LOCALE_STORAGE_KEY = 'pm_locale';
-/** The storage key prefix of a cached catalogue, one entry per locale. */
+/** The storage key prefix of a cached catalogue, one entry per locale and runtime version. */
 const CATALOGUE_STORAGE_PREFIX = 'pm_i18n_messages_';
+
+/**
+ * The runtime version the catalogue belongs to, read from `GET /api/v1/status`.
+ *
+ * The pack a runtime serves changes only when the runtime changes, so the version is what makes a
+ * cached catalogue current or stale: the cache key carries it, and a new runtime never serves the
+ * catalogue of the old one (CC-P-05).
+ */
+let catalogueVersion: string | null = null;
+
+/**
+ * Settles the runtime version a cached catalogue belongs to.
+ *
+ * @param version the runtime's version, or `null` when the status could not be read
+ */
+export function setCatalogueVersion(version: string | null | undefined): void {
+  catalogueVersion = version && version.trim().length > 0 ? version.trim() : null;
+}
 
 /** A catalogue as the browser keeps it between visits. */
 interface CachedCatalogue {
@@ -172,9 +190,29 @@ function catalogueStorage(): Storage | null {
   }
 }
 
-/** @param locale the locale @returns the storage key of its cached catalogue */
+/** @param locale the locale @returns the storage key of its catalogue for the current runtime */
 function storageKeyFor(locale: Locale): string {
-  return `${CATALOGUE_STORAGE_PREFIX}${locale}`;
+  return `${CATALOGUE_STORAGE_PREFIX}${locale}@${catalogueVersion ?? 'unversioned'}`;
+}
+
+/**
+ * @param storage the browser storage
+ * @param locale the locale
+ * @returns every catalogue key this browser holds for the locale, whatever runtime wrote it
+ */
+function cachedKeysFor(storage: Storage, locale: Locale): string[] {
+  const prefix = `${CATALOGUE_STORAGE_PREFIX}${locale}@`;
+  // A browser that ran the release before the version key still holds the plain key; reading it
+  // once keeps its labels readable offline until the first write replaces it.
+  const legacyKey = `${CATALOGUE_STORAGE_PREFIX}${locale}`;
+  const keys: string[] = [];
+  for (let index = 0; index < storage.length; index += 1) {
+    const key = storage.key(index);
+    if (key === legacyKey || key?.startsWith(prefix)) {
+      keys.push(key);
+    }
+  }
+  return keys;
 }
 
 /** @param value a parsed storage entry @returns whether it maps keys to message text */
@@ -195,6 +233,11 @@ function isCachedCatalogue(value: unknown, locale: Locale): value is CachedCatal
 /**
  * Reads the catalogue the browser stored for a locale.
  *
+ * With a known runtime version only that version's entry is read, so a catalogue of an older
+ * runtime is never served. Before the version is known — the first render, before the status
+ * answered — the newest entry the browser holds for the locale is rendered, so an offline start
+ * still shows labels.
+ *
  * A missing, unreadable, or corrupt entry is treated as no cache: the runtime's own catalogue
  * is then the only source, and an unreadable entry is dropped so the next save starts clean.
  *
@@ -204,20 +247,27 @@ function isCachedCatalogue(value: unknown, locale: Locale): value is CachedCatal
 export function loadCachedCatalogue(locale: Locale): Record<string, string> | null {
   const storage = catalogueStorage();
   if (!storage) return null;
-  const key = storageKeyFor(locale);
-  try {
-    const raw = storage.getItem(key);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (isCachedCatalogue(parsed, locale)) {
-      return parsed.messages;
+  const keys = catalogueVersion === null ? cachedKeysFor(storage, locale) : [storageKeyFor(locale)];
+  const entries: CachedCatalogue[] = [];
+  for (const key of keys) {
+    try {
+      const raw = storage.getItem(key);
+      if (!raw) continue;
+      const parsed: unknown = JSON.parse(raw);
+      if (isCachedCatalogue(parsed, locale)) {
+        entries.push(parsed);
+      } else {
+        dropCachedCatalogue(storage, key);
+      }
+    } catch {
+      dropCachedCatalogue(storage, key);
     }
-    dropCachedCatalogue(storage, key);
-    return null;
-  } catch {
-    dropCachedCatalogue(storage, key);
-    return null;
   }
+  if (entries.length === 0) return null;
+  // The newest entry the browser holds is the one rendered, so a stale pack of an older runtime
+  // is never preferred over a newer one.
+  entries.sort((left, right) => right.cachedAt.localeCompare(left.cachedAt));
+  return entries[0].messages;
 }
 
 /**
@@ -237,6 +287,9 @@ function dropCachedCatalogue(storage: Storage, key: string): void {
 /**
  * Stores a catalogue for the next visit, with the moment the runtime served it.
  *
+ * The entry's key carries the runtime version, and the entries of earlier versions are dropped, so
+ * a browser keeps one catalogue per locale and never grows a library of stale packs.
+ *
  * Web storage can be full, disabled, or refuse writes in private mode; none of that may break
  * the screen, so a failed write keeps the catalogue in memory only.
  *
@@ -251,33 +304,50 @@ export function persistCatalogue(locale: Locale, messages: Record<string, string
     cachedAt: new Date().toISOString(),
     messages,
   };
+  const key = storageKeyFor(locale);
   try {
-    storage.setItem(storageKeyFor(locale), JSON.stringify(entry));
+    storage.setItem(key, JSON.stringify(entry));
   } catch {
     // Full, disabled, or private-mode storage: the catalogue still lives in memory.
+    return;
+  }
+  for (const stale of cachedKeysFor(storage, locale)) {
+    // Only a known version's key may evict its siblings; with the version unknown the entry is a
+    // last resort and the versioned copies of earlier runtimes are kept.
+    if (catalogueVersion !== null && stale !== key) {
+      dropCachedCatalogue(storage, stale);
+    }
   }
 }
 
 /**
- * Every message this session has resolved, across locales.
+ * Every message this session has resolved, per locale.
  *
  * A locale switch replaces the store but not this history, so a label seen before the switch
- * stays readable even where the new catalogue has a gap.
+ * stays readable where the new catalogue has a gap — and the history of another language is read
+ * only as the English fallback, so no word of a foreign language reaches an active screen.
  */
-const sessionMessages: Record<string, string> = Object.create(null);
+const sessionMessages: Record<Locale, Record<string, string>> = {
+  en: Object.create(null),
+  de: Object.create(null),
+};
 
 /** The English catalogue, the fallback of every other locale. */
 let englishMessages: Record<string, string> | null = null;
 let englishLookupAttempted = false;
-/** The locale whose catalogue `messagesStore` currently holds. */
+/**
+ * The locale whose catalogue `messagesStore` currently holds.
+ */
 let messagesLocale: Locale = 'en';
+/** The number of the last switch asked for, so an older load cannot apply over a newer one. */
+let switchGeneration = 0;
 /** Keys already reported as missing, so a render loop cannot flood the console. */
 const warnedKeys = new Set<string>();
 
-/** @param messages the messages to remember for the rest of the session */
-function rememberMessages(messages: Record<string, string>): void {
+/** @param locale the locale @param messages the messages to remember for the rest of the session */
+function rememberMessages(locale: Locale, messages: Record<string, string>): void {
   for (const [key, text] of Object.entries(messages)) {
-    sessionMessages[key] = text;
+    sessionMessages[locale][key] = text;
   }
 }
 
@@ -305,7 +375,7 @@ function hydrateFromCache(locale: Locale): boolean {
     messagesStore.set(cached);
     messagesLocale = locale;
   }
-  rememberMessages(cached);
+  rememberMessages(locale, cached);
   if (locale === 'en') {
     englishMessages = cached;
     englishLookupAttempted = true;
@@ -333,6 +403,41 @@ function detectInitialLocale(): Locale {
 }
 
 /**
+ * Reads the interface language the machine recorded at onboarding (UC-ONB-3).
+ *
+ * The header switch overrides it for this browser, so this is read only where the browser holds no
+ * choice of its own. A machine that cannot be asked — an unpaired browser, a runtime that is down —
+ * answers nothing, and the browser's own language decides.
+ *
+ * @returns the recorded locale, or null when none can be read
+ */
+async function recordedLocale(): Promise<Locale | null> {
+  try {
+    const settings = await apiClient.getMachineSettings();
+    const recorded = settings.language_interface?.trim().toLowerCase();
+    return recorded === 'en' || recorded === 'de' ? recorded : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Reads the runtime version the catalogue belongs to, so the cache key carries it.
+ *
+ * A status that cannot be read leaves the version unknown: the cache is then read by whatever
+ * version wrote it, and the catalogue is fetched before it is trusted.
+ */
+async function readCatalogueVersion(): Promise<void> {
+  try {
+    const status = await apiClient.getStatus();
+    setCatalogueVersion(status.version ?? null);
+  } catch {
+    // A status read that fails leaves the version this session already learned in place; an
+    // unknown version must not evict the catalogue of the runtime that is still serving.
+  }
+}
+
+/**
  * Loads a locale's catalogue from the runtime and keeps it for the next visit.
  *
  * The cached catalogue is rendered first, so the screen never waits on the network; the fetch
@@ -356,7 +461,7 @@ export async function loadMessages(locale: Locale, area = 'all'): Promise<void> 
       messagesStore.set(merged);
       messagesLocale = locale;
     }
-    rememberMessages(msgs);
+    rememberMessages(locale, msgs);
     persistCatalogue(locale, area === 'all' ? msgs : merged);
     if (locale === 'en') {
       englishMessages =
@@ -379,33 +484,189 @@ function baseFor(locale: Locale): Record<string, string> {
 /**
  * Switches the interface language and loads its catalogue.
  *
- * A cached catalogue of the new locale is rendered before the request, so an offline switch
- * still changes the labels instead of waiting for a runtime that cannot answer.
+ * The new catalogue is loaded FIRST and the switch happens only once it is in hand: the screen
+ * never shows the words of the old language under the new one, and a catalogue that cannot be
+ * loaded at all leaves the language as it was instead of mixing the two (CC-F-10, CC-P-05).
  *
  * @param locale the locale to switch to
  */
 export async function setLocale(locale: Locale): Promise<void> {
+  const generation = ++switchGeneration;
+  if (locale === get(currentLocale) && messagesLocale === locale) {
+    rememberLocaleChoice(locale);
+    return;
+  }
+
+  const loaded = await loadCatalogueFor(locale);
+  if (!loaded || generation !== switchGeneration) {
+    // Nothing was loaded, or a later switch has been asked for since: the language and its
+    // catalogue stay as they are, whole.
+    return;
+  }
+
+  rememberLocaleChoice(locale);
   currentLocale.set(locale);
+  messagesStore.set(loaded);
+  messagesLocale = locale;
+}
+
+/**
+ * Keeps the person's choice for this browser; the header switch overrides the machine's recorded
+ * language, and says so in its advisory.
+ *
+ * @param locale the chosen locale
+ */
+function rememberLocaleChoice(locale: Locale): void {
   const storage = catalogueStorage();
   try {
     storage?.setItem(LOCALE_STORAGE_KEY, locale);
   } catch {
     // The choice applies to this visit even when the browser cannot remember it.
   }
-  await loadMessages(locale, 'all');
+}
+
+/**
+ * Loads one locale's complete catalogue, from the cache of the current runtime or from the runtime.
+ *
+ * A cached catalogue of the runtime version this browser already knows is current by construction
+ * (the pack changes only with the runtime), so it is used at once and the switch is instantaneous.
+ * Before the version is known the runtime is asked first, and the cache is the offline fallback.
+ *
+ * @param locale the locale to load
+ * @returns its catalogue, or null when neither the cache nor the runtime answered
+ */
+async function loadCatalogueFor(locale: Locale): Promise<Record<string, string> | null> {
+  const cached = loadCachedCatalogue(locale);
+  if (cached && catalogueVersion !== null) {
+    rememberMessages(locale, cached);
+    rememberEnglish(locale, cached);
+    return cached;
+  }
+  try {
+    const messages = await apiClient.getMessages(locale, 'all');
+    rememberMessages(locale, messages);
+    rememberEnglish(locale, messages);
+    persistCatalogue(locale, messages);
+    return messages;
+  } catch {
+    if (cached) {
+      rememberMessages(locale, cached);
+      rememberEnglish(locale, cached);
+      return cached;
+    }
+    return null;
+  }
+}
+
+/**
+ * @param locale the locale a catalogue belongs to @param messages its messages
+ */
+function rememberEnglish(locale: Locale, messages: Record<string, string>): void {
+  if (locale === 'en') {
+    englishMessages = messages;
+    englishLookupAttempted = true;
+  }
+}
+
+/**
+ * Applies the interface language the machine recorded, where this browser chose none itself.
+ *
+ * Called after pairing, when the machine can be asked: a browser that paired just now must show
+ * the recorded language without a reload (UC-ONB-3).
+ */
+export async function adoptRecordedLocale(): Promise<void> {
+  const generation = switchGeneration;
+  let expired = false;
+  const work = adoptRecordedLocaleUntimed(generation, () => expired);
+  await withinBound(work, ADOPTION_BOUND_MS, () => {
+    expired = true;
+  });
+}
+
+/**
+ * @param generation the switch generation the adoption was asked under
+ * @param hasExpired tells whether the pairing's bound has passed
+ */
+async function adoptRecordedLocaleUntimed(
+  generation: number,
+  hasExpired: () => boolean,
+): Promise<void> {
+  await readCatalogueVersion();
+  if (storedLocale() || hasExpired()) return;
+  const recorded = await recordedLocale();
+  if (!recorded || recorded === get(currentLocale) || generation !== switchGeneration) return;
+  const loaded = await loadCatalogueFor(recorded);
+  if (!loaded || generation !== switchGeneration || hasExpired() || storedLocale()) return;
+  currentLocale.set(recorded);
+  messagesStore.set(loaded);
+  messagesLocale = recorded;
+}
+
+/** How long a pairing waits for the recorded language before it paints in the browser's own. */
+const ADOPTION_BOUND_MS = 2000;
+
+/**
+ * @param work the promise to bound
+ * @param ms the bound in milliseconds
+ * @param onExpire called when the bound passes first
+ * @returns the promise's value, or `null` when the bound passed first
+ */
+function withinBound<T>(work: Promise<T>, ms: number, onExpire: () => void): Promise<T | null> {
+  return Promise.race([
+    work,
+    new Promise<null>((resolve) => {
+      setTimeout(() => {
+        onExpire();
+        resolve(null);
+      }, ms);
+    }),
+  ]);
 }
 
 /**
  * Settles the locale and shows its catalogue, from the browser's cache first.
+ *
+ * The precedence is the design's: the choice this browser made, then the interface language the
+ * machine recorded at onboarding, then the browser's own language.
  */
 export async function initI18n(): Promise<void> {
-  const initialLocale = detectInitialLocale();
-  currentLocale.set(initialLocale);
-  hydrateFromCache(initialLocale);
-  if (initialLocale !== 'en') {
+  // First paint: the locale this browser can settle without asking the runtime, from its cache.
+  const browserLocale = detectInitialLocale();
+  currentLocale.set(browserLocale);
+  const hydratedBefore = hydrateFromCache(browserLocale);
+  if (browserLocale !== 'en') {
     englishCatalogue();
   }
-  await loadMessages(initialLocale, 'all');
+
+  await readCatalogueVersion();
+  // With the version known, only its own cache may be shown: a pack of an older runtime is dropped
+  // rather than rendered, so a new runtime never serves a stale catalogue (CC-P-05).
+  if (hydratedBefore && !hydrateFromCache(browserLocale)) {
+    messagesStore.set({});
+    englishMessages = null;
+    englishLookupAttempted = false;
+  }
+  // The English fallback is the gap-filler of every other locale; an English pack stored by an
+  // older runtime must not keep filling gaps after the runtime changed.
+  if (catalogueVersion !== null && loadCachedCatalogue('en') === null) {
+    englishMessages = null;
+    englishLookupAttempted = false;
+  }
+
+  const initialLocale = storedLocale() ?? (await recordedLocale()) ?? browserLocale;
+  const generation = switchGeneration;
+  if (initialLocale === browserLocale) {
+    await loadMessages(initialLocale, 'all');
+    return;
+  }
+
+  const loaded = await loadCatalogueFor(initialLocale);
+  if (!loaded || generation !== switchGeneration) {
+    return;
+  }
+  currentLocale.set(initialLocale);
+  messagesStore.set(loaded);
+  messagesLocale = initialLocale;
 }
 
 /** @param messages a catalogue @param key a message key @returns its text, if the catalogue has it */
@@ -460,11 +721,33 @@ function resolveTemplate(locale: Locale, key: string): string {
     if (fallback !== undefined) return fallback;
   }
 
-  const seen = ownMessage(sessionMessages, key);
+  const seen =
+    ownMessage(sessionMessages[locale], key) ??
+    (locale === 'en' ? undefined : ownMessage(sessionMessages.en, key));
   if (seen !== undefined) return seen;
 
   warnMissingKey(key);
   return humanizeKey(key);
+}
+
+/**
+ * Tells whether a catalogue carries a message, through the same fallback tiers `translate` reads.
+ *
+ * The display layer needs the answer, not the text: a value whose key the catalogue does not
+ * carry reads as the unknown word instead of a humanized key, and a humanized key is
+ * indistinguishable from a message once it is rendered.
+ *
+ * @param key the message key
+ * @returns `true` when a catalogue this session can read carries the key
+ */
+export function hasMessage(key: string): boolean {
+  const locale = get(currentLocale);
+  return (
+    ownMessage(get(messagesStore), key) !== undefined ||
+    ownMessage(englishCatalogue(), key) !== undefined ||
+    ownMessage(sessionMessages[locale], key) !== undefined ||
+    (locale !== 'en' && ownMessage(sessionMessages.en, key) !== undefined)
+  );
 }
 
 /**

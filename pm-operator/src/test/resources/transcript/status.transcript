@@ -1,11 +1,11 @@
 Runtime pm-mcpd 0.9.1, running since <time> · 2 workers · 1 of 2 build slots in use
 
 ! 2  pm-mcp-clients · 3 plans · 1 epic
+     ! decision plan  Drop the legacy endpoints        finalize · waiting for you · <duration>
+                            4 of 4 tasks
                 plan  Fix Relay Transport              execute · running · <duration>
                             in epic Relay Hardening · 2 of 3 tasks · off track: repeating
                             pull request #214 https://github.com/plan-marshall/pm-mcp-clients/pull/214
-     ! decision plan  Drop the legacy endpoints        finalize · waiting for you · <duration>
-                            4 of 4 tasks
                 plan  Relay metrics                    execute · paused · <duration>
                             in epic Relay Hardening · 8 of 8 tasks
      alongside

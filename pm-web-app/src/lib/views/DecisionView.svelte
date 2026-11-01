@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { t } from '../i18n';
+  import { t, currentLocale } from '../i18n';
+  import { formatTime } from '../display/format';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
   import Spinner from '../components/Spinner.svelte';
@@ -303,19 +304,23 @@
       };
       const id = answer?.id || answer?.decision_id;
       if (id) {
-        const channel =
-          answer.channel === 'cli' ? $t('decision.channel.cli') : $t('decision.channel.web');
-        const text = $t('decision.outcome.answered_elsewhere', {
-          channel,
-          device: answer.device || '—',
-          answer: answer.answer || '—',
+        // The event carries the option key the answer names; the option's label is the word the
+        // operator chose. The decision is taken from the list here, before it is dropped below.
+        const answered = decisions.find((decision) => decision.id === id);
+        const optionKey = answer.answer || '';
+        const chosen = answered?.parts
+          ?.flatMap((part) => part.options)
+          .find((option) => option.key === optionKey);
+        const text = $t('decision.outcome.answered', {
+          answer: chosen?.label || optionKey || '—',
         });
         notices = [{ id: `${id}-answered`, text }, ...notices];
         if (chatDecisionId === id) {
           chatOpen = false;
           chatNotice = $t('decision.chat.closed_elsewhere', {
             id,
-            channel,
+            channel:
+              answer.channel === 'cli' ? $t('decision.channel.cli') : $t('decision.channel.web'),
             device: answer.device || '—',
           });
         }
@@ -675,12 +680,14 @@
               plan: dec.subject || $t('decision.waiver.plan_fallback'),
             })}
           </h2>
-          <span class="waiting-time">
-            {$t('decision.waiting', {
-              subject: dec.scope || 'plan',
-              time: dec.delivered_at || 'now',
-            })}
-          </span>
+          {#if dec.delivered_at}
+            <span class="waiting-time">
+              {$t('decision.waiting', {
+                subject: dec.scope || 'plan',
+                time: formatTime(dec.delivered_at, 'short', $currentLocale),
+              })}
+            </span>
+          {/if}
         </header>
 
         <div class="waiver-details">
@@ -769,7 +776,7 @@
           </div>
         </header>
 
-        {#if dec.description}
+        {#if dec.description && dec.description !== dec.title}
           <p class="decision-description" data-model-text>{dec.description}</p>
         {/if}
 
@@ -1223,12 +1230,14 @@
                     {$t(`decision.reversibility.${dec.reversibility}`)}
                   </span>
                 </span>
-                <span class="waiting-time">
-                  {$t('decision.waiting', {
-                    subject: dec.scope || 'plan',
-                    time: dec.delivered_at || 'now',
-                  })}
-                </span>
+                {#if dec.delivered_at}
+                  <span class="waiting-time">
+                    {$t('decision.waiting', {
+                      subject: dec.scope || 'plan',
+                      time: formatTime(dec.delivered_at, 'short', $currentLocale),
+                    })}
+                  </span>
+                {/if}
               </button>
             {/each}
           </div>
