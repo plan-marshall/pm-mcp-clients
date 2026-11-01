@@ -122,6 +122,7 @@ class SystemLevelTest {
         assertTrue(rows.get(3).line().contains("locks  3 held"), rows.get(3).line());
         assertTrue(rows.get(3).details().contains("build  1 of 2 slots \u00b7 1 queued"), rows.get(3).details());
         assertTrue(rows.get(3).details().contains("test  0 of 1 slot"), rows.get(3).details());
+        assertEquals(2, rows.get(3).details().split("\n").length, rows.get(3).details());
 
         assertTrue(rows.get(4).line().contains("172 calls"), rows.get(4).line());
         assertTrue(rows.get(4).line().contains("\u2265 5.63 M tokens"), rows.get(4).line());

@@ -1627,8 +1627,12 @@ public final class OverviewFullScreenApp {
                             : SystemLevel.unavailable(window, groupBy, projectId);
         currentSystem.set(level);
         // The status states the lifecycle on entry; a progress event refines it while it lasts.
-        systemBanner = SystemView.lifecycleLine(locale, fetchStatus());
-        systemBannerFromEvent = false;
+        // A status that cannot be read leaves the line as it is.
+        var status = fetchStatus();
+        if (status != null) {
+            systemBanner = SystemView.lifecycleLine(locale, status);
+            systemBannerFromEvent = false;
+        }
         stack.push(TuiLevel.of(TuiLevel.Kind.SYSTEM, SystemLevel.LEVEL_ID, level.breadcrumb(locale)),
                             level.rows(locale), SystemLevel.ROW_RUNTIME);
     }
@@ -1694,20 +1698,12 @@ public final class OverviewFullScreenApp {
         try {
             snapshot = fetchSystemSnapshot(context.runtime(false), level.window(), level.projectId());
         } catch (IOException _) {
-            return;
-        }
-        if (snapshot == null) {
-            return;
-        }
-        var fresh = level.withSnapshot(snapshot);
-        if (!currentSystem.compareAndSet(level, fresh)) {
-            // The operator changed the window, grouping, or project during the read; their choice
-            // and its own read win.
-            return;
+            snapshot = null;
         }
         // The lifecycle line has two sources of the same fact: the status states it first, and a
         // progress event refines it with what is left by name. A status read replaces a line the
-        // status wrote and leaves an event's line alone; a read that says the runtime runs clears it.
+        // status wrote, leaves an event's line alone, and clears it once the runtime runs again.
+        // It is read beside the snapshot, so a failed snapshot still corrects the line.
         var status = fetchStatus();
         if (status != null) {
             var lifecycle = SystemView.lifecycleLine(locale, status);
@@ -1718,6 +1714,15 @@ public final class OverviewFullScreenApp {
                 systemBanner = lifecycle;
                 systemBannerFromEvent = false;
             }
+        }
+        if (snapshot == null) {
+            return;
+        }
+        var fresh = level.withSnapshot(snapshot);
+        if (!currentSystem.compareAndSet(level, fresh)) {
+            // The operator changed the window, grouping, or project during the read; their choice
+            // and its own read win.
+            return;
         }
         synchronized (this) {
             var lvl = stack.level();

@@ -309,11 +309,11 @@ public final class WebCommand implements Callable<Integer> {
 
             int code = 0;
             if (isRename()) {
-                handleRename(runtime, out);
+                code = handleRename(runtime, out);
             } else if (isRevoke()) {
-                handleRevoke(runtime, out);
+                code = handleRevoke(runtime, out);
             } else if (isListenerOff()) {
-                handleListenerOff(runtime, out);
+                code = handleListenerOff(runtime, out);
             } else {
                 code = handleList(runtime, out);
             }
@@ -341,7 +341,7 @@ public final class WebCommand implements Callable<Integer> {
             return LISTENER_OFF.equalsIgnoreCase(action) || LISTENER_OFF_ALT.equalsIgnoreCase(action);
         }
 
-        private void handleRename(RuntimeClient runtime, PrintWriter out) throws IOException {
+        private int handleRename(RuntimeClient runtime, PrintWriter out) throws IOException {
             var locale = context.clientEnvironment().locale();
             if (deviceId == null || newLabel == null) {
                 throw new CommandLine.ParameterException(
@@ -353,13 +353,14 @@ public final class WebCommand implements Callable<Integer> {
                                 "/api/v1/web/devices/" + OperatorUrlUtil.encodePathSegment(deviceId), body));
             if (response.status() == 200 || response.status() == 204) {
                 out.println(MessageCatalogue.format(locale, "operator.devices.renamed", Map.of(LABEL, cleanLabel)));
-            } else {
-                out.println(MessageCatalogue.format(locale, "operator.devices.rename_failed",
-                                    Map.of(STATUS, response.status())));
+                return 0;
             }
+            out.println(MessageCatalogue.format(locale, "operator.devices.rename_failed",
+                                Map.of(STATUS, response.status())));
+            return PmOperator.EXIT_FAILURE;
         }
 
-        private void handleRevoke(RuntimeClient runtime, PrintWriter out) throws IOException {
+        private int handleRevoke(RuntimeClient runtime, PrintWriter out) throws IOException {
             var locale = context.clientEnvironment().locale();
             if (!others && !all && deviceId == null) {
                 throw new CommandLine.ParameterException(
@@ -367,7 +368,7 @@ public final class WebCommand implements Callable<Integer> {
             }
 
             if (interactive && !yes && context.isInteractiveTerminal() && !confirm()) {
-                return;
+                return 0;
             }
 
             var scope = others ? "others" : "all";
@@ -377,10 +378,11 @@ public final class WebCommand implements Callable<Integer> {
             var response = runtime.send(new HttpRequest("DELETE", path, Map.of(), null));
             if (response.status() == 200 || response.status() == 204) {
                 printRevocation(out, locale, response.body());
-            } else {
-                out.println(MessageCatalogue.format(locale, "operator.devices.revoke_failed",
-                                    Map.of(STATUS, response.status())));
+                return 0;
             }
+            out.println(MessageCatalogue.format(locale, "operator.devices.revoke_failed",
+                                Map.of(STATUS, response.status())));
+            return PmOperator.EXIT_FAILURE;
         }
 
         private void printRevocation(PrintWriter out, String locale, byte[] body) {
@@ -407,16 +409,17 @@ public final class WebCommand implements Callable<Integer> {
             }
         }
 
-        private void handleListenerOff(RuntimeClient runtime, PrintWriter out) throws IOException {
+        private int handleListenerOff(RuntimeClient runtime, PrintWriter out) throws IOException {
             var locale = context.clientEnvironment().locale();
             var body = JsonTree.write(Map.of("lan", false));
             var response = runtime.send(HttpRequest.json("PUT", "/api/v1/web", body));
             if (response.status() == 200 || response.status() == 204) {
                 out.println(MessageCatalogue.format(locale, "operator.devices.listener_off_done", Map.of()));
-            } else {
-                out.println(MessageCatalogue.format(locale, "operator.devices.listener_off_failed",
-                                    Map.of(STATUS, response.status())));
+                return 0;
             }
+            out.println(MessageCatalogue.format(locale, "operator.devices.listener_off_failed",
+                                Map.of(STATUS, response.status())));
+            return PmOperator.EXIT_FAILURE;
         }
 
         private int handleList(RuntimeClient runtime, PrintWriter out) throws IOException {
