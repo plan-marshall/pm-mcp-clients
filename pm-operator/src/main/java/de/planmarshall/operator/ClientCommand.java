@@ -70,6 +70,7 @@ public final class ClientCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             var out = spec.commandLine().getOut();
+            int code = 0;
             try {
                 var response = context.runtime(false).send(HttpRequest.get("/api/v1/client/bundles"));
                 if (response.status() == 200) {
@@ -81,12 +82,13 @@ public final class ClientCommand implements Callable<Integer> {
                     }
                 } else {
                     out.printf("Failed to query client bundles: HTTP %d%n", response.status());
+                    code = PmOperator.EXIT_FAILURE;
                 }
             } catch (RuntimeUnavailableException _) {
                 out.println("runtime   not running");
             }
             out.flush();
-            return 0;
+            return code;
         }
 
         private void printBundles(PrintWriter out, List<?> list) {

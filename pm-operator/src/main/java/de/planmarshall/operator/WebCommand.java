@@ -307,6 +307,7 @@ public final class WebCommand implements Callable<Integer> {
             var runtime = context.runtime(true);
             var out = spec.commandLine().getOut();
 
+            int code = 0;
             if (isRename()) {
                 handleRename(runtime, out);
             } else if (isRevoke()) {
@@ -314,10 +315,10 @@ public final class WebCommand implements Callable<Integer> {
             } else if (isListenerOff()) {
                 handleListenerOff(runtime, out);
             } else {
-                handleList(runtime, out);
+                code = handleList(runtime, out);
             }
             out.flush();
-            return 0;
+            return code;
         }
 
         /**
@@ -418,13 +419,13 @@ public final class WebCommand implements Callable<Integer> {
             }
         }
 
-        private void handleList(RuntimeClient runtime, PrintWriter out) throws IOException {
+        private int handleList(RuntimeClient runtime, PrintWriter out) throws IOException {
             var locale = context.clientEnvironment().locale();
             var response = runtime.send(HttpRequest.get("/api/v1/web/devices"));
             if (response.status() != 200) {
                 out.println(MessageCatalogue.format(locale, "operator.devices.list_failed",
                                     Map.of(STATUS, response.status())));
-                return;
+                return PmOperator.EXIT_FAILURE;
             }
 
             var statusRes = runtime.send(HttpRequest.get("/api/v1/status"));
@@ -444,6 +445,7 @@ public final class WebCommand implements Callable<Integer> {
                     handleInteractive(runtime, out, list);
                 }
             }
+            return 0;
         }
 
         private void handleInteractive(RuntimeClient runtime, PrintWriter out, List<?> list) {
