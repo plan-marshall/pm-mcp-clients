@@ -314,7 +314,7 @@ public final class SystemView {
      * @return the worker's line
      */
     public static String workerLine(String locale, WorkerMetric worker) {
-        var line = String.format(Locale.ROOT, "%-14s%-10s%-12s%-9s", clean(worker.role()),
+        var line = String.format(Locale.ROOT, "%-14s%-10s%-12s%-12s", clean(worker.role()),
                             clean(worker.harness()), clean(worker.model()),
                             MessageCatalogue.format(locale, "system.workers.state",
                                                 Map.of("state", worker.state().value())));
@@ -353,7 +353,7 @@ public final class SystemView {
 
     /**
      * @param jobs the job kinds and the locks
-     * @return the kinds that carry slots, in the order the runtime reported them
+     * @return the kinds that carry slots, in a stable order
      */
     public static List<String> jobKinds(Map<String, Object> jobs) {
         var kinds = new ArrayList<String>(jobs.size());
@@ -362,6 +362,9 @@ public final class SystemView {
                 kinds.add(clean(entry.getKey()));
             }
         }
+        // The runtime may serve the kinds in any order; the view states them in the same one every
+        // time, so a redrawn figure does not move its lines.
+        kinds.sort(String::compareTo);
         return kinds;
     }
 

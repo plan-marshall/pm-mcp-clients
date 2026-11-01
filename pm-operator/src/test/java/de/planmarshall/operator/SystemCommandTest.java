@@ -161,7 +161,7 @@ class SystemCommandTest {
                             () -> assertTrue(output.contains("tasks  4 running · 6 queued"), "work tasks"),
                             () -> assertTrue(output.contains("3 projects with running work"), "work projects"),
                             () -> assertTrue(output.contains("Workers   3 · 2 busy · 1 idle"), "workers header"),
-                            () -> assertTrue(output.contains("planner       claude    opus-4.5    busy     fix-relay"), "worker planner"),
+                            () -> assertTrue(output.contains("planner       claude    opus-4.5    busy        fix-relay"), "worker planner"),
                             () -> assertTrue(output.contains("Jobs      locks  3 held"), "jobs locks"),
                             () -> assertTrue(output.contains("build  1 of 2 slots · 1 queued"), "jobs build"),
                             () -> assertTrue(output.contains("test  0 of 1 slot"), "jobs test"),
