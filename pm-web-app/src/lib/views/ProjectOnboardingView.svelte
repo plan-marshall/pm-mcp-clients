@@ -394,7 +394,8 @@
     </Button>
   </header>
 
-  <nav class="step-line" aria-label={$t('project.onboarding.steps')}>
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+  <nav class="step-line" tabindex="0" aria-label={$t('project.onboarding.steps')}>
     <ol class="step-line__list">
       {#each stepRows as step}
         <li

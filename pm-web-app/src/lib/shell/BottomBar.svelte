@@ -170,7 +170,7 @@
             type="button"
             class="bottom-sheet__control"
             data-testid="sheet-language-toggle"
-            aria-label={$t('web.frame.toggle_language')}
+            aria-label={`${$t('web.frame.toggle_language')}: ${$currentLocale === 'en' ? 'DE' : 'EN'}`}
             onclick={() => setLocale($currentLocale === 'en' ? 'de' : 'en')}
           >
             {$currentLocale === 'en' ? 'DE' : 'EN'}
@@ -213,7 +213,7 @@
       type="button"
       class="bottom-bar__item"
       data-testid="frame-language-toggle"
-      aria-label={$t('web.frame.toggle_language')}
+      aria-label={`${$t('web.frame.toggle_language')}: ${$currentLocale === 'en' ? 'DE' : 'EN'}`}
       onclick={() => setLocale($currentLocale === 'en' ? 'de' : 'en')}
     >
       <span class="bottom-bar__label">{$currentLocale === 'en' ? 'DE' : 'EN'}</span>

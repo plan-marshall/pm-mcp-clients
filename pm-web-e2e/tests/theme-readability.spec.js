@@ -17,6 +17,7 @@ import {
   diffViolations,
   formatViolation,
 } from './helpers/textGuard.js';
+import { auditViewA11y, formatViolation as formatA11yViolation } from './helpers/a11y.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1042,6 +1043,30 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
             verifyGuardViews(collected, locale);
           });
         }
+      });
+    }
+  });
+
+  test.describe('Accessibility audit (axe-core)', () => {
+    /**
+     * Every declared view is opened by the journey that already reaches it and audited where it
+     * stands, so the audit runs on the same rendered page the text guard reads.
+     */
+    for (const journey of GUARD_JOURNEYS) {
+      test(`${journey.title}`, async ({ page, request }) => {
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await journey.open(page, request, 'de');
+        const audited = {};
+        await journey.walk(page, async (view) => {
+          const { failing } = await auditViewA11y(page);
+          audited[view] = failing;
+        });
+
+        expect(Object.keys(audited).sort()).toEqual(journey.views.slice().sort());
+        const failures = Object.entries(audited).flatMap(([view, violations]) =>
+          violations.map((violation) => formatA11yViolation(view, violation)),
+        );
+        expect(failures, `serious accessibility issues found:\n${failures.join('\n')}`).toEqual([]);
       });
     }
   });

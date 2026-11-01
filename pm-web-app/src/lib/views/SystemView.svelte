@@ -860,7 +860,7 @@
                     <button
                       type="button"
                       class="status-tag status-tag--{st} status-tag--link"
-                      aria-label={$t('system.work.link.plans', {
+                      title={$t('system.work.link.plans', {
                         state: displayState('plan', st, $t),
                         count,
                       })}
@@ -886,7 +886,7 @@
                     <button
                       type="button"
                       class="status-tag status-tag--{st} status-tag--link"
-                      aria-label={$t('system.work.link.epics', {
+                      title={$t('system.work.link.epics', {
                         state: displayState('epic', st, $t),
                         count,
                       })}
@@ -919,7 +919,7 @@
               <button
                 type="button"
                 class="metric-link"
-                aria-label={$t('system.work.link.projects', {
+                title={$t('system.work.link.projects', {
                   count: snapshot.work.active_projects_count || 0,
                 })}
                 onclick={() => navigateTo('projects')}

@@ -1252,6 +1252,7 @@
               <input
                 class="frontmatter__input"
                 value={frontmatter.icon}
+                aria-label={$t('designer.frontmatter.icon')}
                 readonly={isPhone || isCompiledOnly}
                 oninput={(event) => setField('icon', event.currentTarget.value)}
                 data-testid="frontmatter-icon"
