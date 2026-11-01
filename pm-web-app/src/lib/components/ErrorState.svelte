@@ -12,9 +12,12 @@
   export let title: string;
   /** The one sentence under the title, from the view's catalogue key. */
   export let message: string;
-  /** The technical code, shown folded under `Details`; a view with none draws no `Details`. */
+  /** The technical code, shown folded under `Details`. It is drawn only together with
+   * `detailsLabel`: a view that has a code always carries both, and a view with neither draws no
+   * `Details` at all. */
   export let code: string | null | undefined = undefined;
-  /** The word that opens the folded code, from the view's catalogue key. */
+  /** The word that opens the folded code, from the view's catalogue key; it is required for a code
+   * to be drawn. */
   export let detailsLabel: string | undefined = undefined;
   /** The one act, from the view's catalogue key; omitted when there is none. */
   export let actionLabel: string | undefined = undefined;

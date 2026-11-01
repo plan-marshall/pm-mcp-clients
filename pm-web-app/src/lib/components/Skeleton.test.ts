@@ -10,9 +10,12 @@ import Skeleton from './Skeleton.svelte';
 
 /**
  * @param matches whether the person asked for reduced motion
- * @returns the listener the component registered, so the test can drive it
+ * @returns the listener the component registered, so the test can drive it, and how many are left
  */
-function stubReducedMotion(matches: boolean): { fire: (next: boolean) => void } {
+function stubReducedMotion(matches: boolean): {
+  fire: (next: boolean) => void;
+  listenerCount: () => number;
+} {
   const listeners = new Set<(event: MediaQueryListEvent) => void>();
   window.matchMedia = vi.fn().mockImplementation((query: string) => ({
     matches,
@@ -27,6 +30,9 @@ function stubReducedMotion(matches: boolean): { fire: (next: boolean) => void } 
       for (const listener of listeners) {
         listener({ matches: next } as MediaQueryListEvent);
       }
+    },
+    listenerCount(): number {
+      return listeners.size;
     },
   };
 }
@@ -92,6 +98,17 @@ describe('Skeleton', () => {
     await Promise.resolve();
 
     expect(screen.getByTestId('skeleton')).toHaveAttribute('data-motion', 'none');
+  });
+
+  it('lets the media listener go when the view removes it', () => {
+    const media = stubReducedMotion(false);
+    const { unmount } = render(Skeleton, { props: { shape: 'row' } });
+
+    expect(media.listenerCount()).toBe(1);
+
+    unmount();
+
+    expect(media.listenerCount()).toBe(0);
   });
 
   it('keeps itself out of the accessibility tree when the view names it not', () => {

@@ -8,10 +8,11 @@
    * The blocks a view draws while what it shows is still loading (VD-P-05, VD-S-04): a row, a card,
    * a table or a figure, in `--color-bg-subtle` with a slow shimmer.
    *
-   * The shimmer stops where the person asked for reduced motion, and the blocks then stand still:
-   * the shape still says what is coming, without a movement the design system may not use there.
-   * A skeleton with no `label` is decoration and stays out of the accessibility tree; the view that
-   * announces its load names it.
+   * The shimmer stops where the person asked for reduced motion — through the media query in the
+   * style below, so it is off before the component mounts too, and through `data-motion` for the
+   * state the component knows. The blocks then stand still: the shape still says what is coming,
+   * without a movement the design system may not use there. A skeleton with no `label` is decoration
+   * and stays out of the accessibility tree; the view that announces its load names it.
    */
   export let shape: SkeletonShape = 'row';
   /** How many pieces the shape repeats: the lines of a row, the rows of a table. */
@@ -93,6 +94,15 @@
   .skeleton[data-motion='none'] .skeleton__block {
     animation: none;
     background-image: none;
+  }
+
+  /* The attribute above is the state the component knows; this rule is the same answer for the
+     moment before it is mounted, and for a page whose script never ran. */
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton[data-motion] .skeleton__block {
+      animation: none;
+      background-image: none;
+    }
   }
 
   .skeleton__block[data-part='title'] {

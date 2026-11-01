@@ -55,7 +55,7 @@ describe('DataTable', () => {
     ]);
   });
 
-  it('keeps the head in the table, above the body it scrolls with', () => {
+  it('draws the head as the table’s own head, before the body it scrolls above', () => {
     const { container } = render(DataTable, {
       props: { columns: COLUMNS, rows: ROWS, label: LABEL },
     });
@@ -98,14 +98,18 @@ describe('DataTable', () => {
     expect(screen.getByTestId('data-table')).toHaveAttribute('data-density', 'compact');
   });
 
-  it('draws the row menu in the last column and reports the row it belongs to', async () => {
+  it('draws the row menu in the last column, names each menu with its row, and reports the row', async () => {
     const onMenu = vi.fn();
     render(DataTable, {
       props: { columns: COLUMNS, rows: ROWS, label: LABEL, menuLabel: 'Row menu', onMenu },
     });
-    const menus = screen.getAllByRole('button', { name: 'Row menu' });
+    const menus = screen.getAllByRole('button', { name: /^Row menu/ });
 
     expect(menus).toHaveLength(ROWS.length);
+    expect(menus.map((menu) => menu.getAttribute('aria-label'))).toEqual([
+      'Row menu: web-core-components',
+      'Row menu: web-data-components',
+    ]);
     expect(screen.getAllByRole('columnheader')).toHaveLength(COLUMNS.length + 1);
 
     menus[1].click();
@@ -132,6 +136,19 @@ describe('DataTable', () => {
       'colspan',
       String(COLUMNS.length),
     );
+  });
+
+  it('spans the empty slot across the menu column too, when the view draws one', () => {
+    const EMPTY = 'No plan is running';
+    const { container } = render(DataTableEmptyFixture, {
+      props: { columns: COLUMNS, label: LABEL, emptyLabel: EMPTY, menuLabel: 'Row menu' },
+    });
+
+    expect(screen.getByText(EMPTY).closest('td')).toHaveAttribute(
+      'colspan',
+      String(COLUMNS.length + 1),
+    );
+    expect(container.querySelectorAll('thead th')).toHaveLength(COLUMNS.length + 1);
   });
 
   it('names the table, so a page with two of them tells them apart', () => {

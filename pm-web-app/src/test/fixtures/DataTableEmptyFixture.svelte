@@ -5,9 +5,10 @@
   export let columns: DataTableColumn[] = [];
   export let label = '';
   export let emptyLabel = '';
+  export let menuLabel: string | undefined = undefined;
 </script>
 
-<DataTable {columns} rows={[]} {label}>
+<DataTable {columns} rows={[]} {label} {menuLabel}>
   <svelte:fragment slot="empty">
     <p>{emptyLabel}</p>
   </svelte:fragment>
