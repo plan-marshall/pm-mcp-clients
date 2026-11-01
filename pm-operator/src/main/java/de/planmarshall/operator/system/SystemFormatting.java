@@ -51,20 +51,6 @@ public final class SystemFormatting {
     }
 
     /**
-     * @param tokens a token count
-     * @return the count with the {@code k} or {@code M} suffix of the printed view
-     */
-    public static String tokens(long tokens) {
-        if (tokens >= 100_000L) {
-            return String.format(Locale.ROOT, "%.2f M", tokens / 1_000_000.0);
-        }
-        if (tokens >= 1_000L) {
-            return String.format(Locale.ROOT, "%.1f k", tokens / 1000.0);
-        }
-        return String.valueOf(tokens);
-    }
-
-    /**
      * @param seconds an uptime in seconds
      * @return the uptime as {@code 3 d 4 h}, {@code 6 h 12 min}, or {@code 12 min}
      */

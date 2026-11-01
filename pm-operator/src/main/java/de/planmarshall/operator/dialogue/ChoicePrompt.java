@@ -37,12 +37,32 @@ import de.planmarshall.operator.StartPrompt;
  *   <li>{@code ?} prints the dialogue explanation and {@code ?n} the explanation of item n, both only
  *       where an explanation was declared; without one the prompt says so and offers no {@code ?}</li>
  *   <li>{@code q} (or German {@code v}) leaves with {@code "Left <state>. Nothing was sent."}</li>
+ *   <li>A declared keep key ({@code k}, German {@code l}) keeps the current state: it leaves like
+ *       {@code q} and prints nothing, because the act was offered as a button and not abandoned</li>
  *   <li>Unknown input re-asks with offered keys; never falls through to a default</li>
  *   <li>Consent and irreversible acts have no Enter default (re-prompts with {@code "Type y or n."})</li>
  *   <li>Options with consequences render in an aligned two-column layout with {@code ←} on preselection</li>
  * </ul>
  */
 public final class ChoicePrompt {
+
+    /** The operator kept the current state: the dialogue left without sending and without a line. */
+    public static final class KeepException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        public KeepException() {
+            super();
+        }
+    }
+
+    /** The operator interrupted the dialogue with {@code Ctrl+C}. */
+    public static final class InterruptException extends StartPrompt.StartLeftException {
+        private static final long serialVersionUID = 1L;
+
+        public InterruptException() {
+            super();
+        }
+    }
 
     private static final String PRESELECT_ARROW = " \u2190";
     private static final int MAX_ROW = 80;
@@ -92,6 +112,7 @@ public final class ChoicePrompt {
     private @Nullable String epicTold;
     private boolean noInput;
     private @Nullable String leaveLabel;
+    private @Nullable String keepLabel;
 
     /**
      * Creates a choice prompt over a JLine {@link LineReader}.
@@ -190,6 +211,22 @@ public final class ChoicePrompt {
         return this;
     }
 
+    /**
+     * Declares the key that keeps the current state, beside the numbered choices and {@code q}.
+     *
+     * <p>It renders as its own line below the choices and leaves the dialogue without sending
+     * anything, like {@code q}; it prints nothing, because the act was offered as a button the
+     * operator declined and not as a dialogue they abandoned. The key is {@code k} (German
+     * {@code l}).
+     *
+     * @param label the rendered label, its key included
+     * @return this prompt
+     */
+    public ChoicePrompt keepKey(String label) {
+        this.keepLabel = Objects.requireNonNull(label, "label");
+        return this;
+    }
+
     public ChoicePrompt addChoice(Choice choice) {
         choices.add(Objects.requireNonNull(choice, "choice"));
         return this;
@@ -219,6 +256,9 @@ public final class ChoicePrompt {
         while (true) {
             renderFrame();
             var line = nextLine();
+            if (isKeep(line)) {
+                throw new KeepException();
+            }
             if (isQuit(line)) {
                 throw left();
             }
@@ -295,6 +335,9 @@ public final class ChoicePrompt {
         while (true) {
             renderMultiFrame(selected);
             var line = nextLine();
+            if (isKeep(line)) {
+                throw new KeepException();
+            }
             if (isQuit(line)) {
                 throw left();
             }
@@ -441,8 +484,15 @@ public final class ChoicePrompt {
         for (var i = 0; i < choices.size(); i++) {
             printChoice(i, labelWidth);
         }
+        printKeep();
         printEpicTold();
         out.flush();
+    }
+
+    private void printKeep() {
+        if (keepLabel != null) {
+            out.println("  " + keepLabel);
+        }
     }
 
     private int labelWidth() {
@@ -513,6 +563,7 @@ public final class ChoicePrompt {
             var mark = selected.contains(i) ? "[\u2713] " : "[ ] ";
             out.println("  " + (i + 1) + ") " + mark + choices.get(i).label());
         }
+        printKeep();
         out.flush();
     }
 
@@ -552,7 +603,10 @@ public final class ChoicePrompt {
     private @Nullable String readLine(String prompt) {
         try {
             return input.readLine(prompt);
-        } catch (EndOfFileException | UserInterruptException _) {
+        } catch (UserInterruptException _) {
+            // Ctrl+C is not q: the exit-code table gives it 130, and the caller decides.
+            throw new InterruptException();
+        } catch (EndOfFileException _) {
             throw left();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to read input: " + e.getMessage(), e);
@@ -561,6 +615,14 @@ public final class ChoicePrompt {
 
     private boolean isQuit(String line) {
         return isLeave(locale, line);
+    }
+
+    private boolean isKeep(String line) {
+        return keepLabel != null && keepKey().equalsIgnoreCase(line);
+    }
+
+    private String keepKey() {
+        return isGerman() ? "l" : "k";
     }
 
     /**
@@ -671,6 +733,9 @@ public final class ChoicePrompt {
             sb.append(", ");
         }
         sb.append(leaveKey);
+        if (keepLabel != null) {
+            sb.append(", ").append(keepKey());
+        }
         if (hasExplanation()) {
             sb.append(", ?");
         }

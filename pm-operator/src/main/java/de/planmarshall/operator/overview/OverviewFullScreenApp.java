@@ -54,6 +54,7 @@ import de.planmarshall.api.report.ReportKind;
 import de.planmarshall.api.report.ReportsPage;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.system.RuntimeDrainingEvent;
+import de.planmarshall.api.system.RuntimeStatus;
 import de.planmarshall.api.system.SystemSnapshot;
 import de.planmarshall.api.system.SystemWindow;
 import de.planmarshall.operator.ConsoleNotice;
@@ -79,6 +80,7 @@ import de.planmarshall.operator.projects.ProjectsExplorerActions;
 import de.planmarshall.operator.projects.ProjectsExplorerLevel;
 import de.planmarshall.operator.reports.ReportsLevel;
 import de.planmarshall.operator.system.SystemLevel;
+import de.planmarshall.operator.system.SystemView;
 import de.planmarshall.operator.tui.TuiKeyAction;
 import de.planmarshall.operator.tui.TuiLayout;
 import de.planmarshall.operator.tui.TuiLevel;
@@ -195,6 +197,7 @@ public final class OverviewFullScreenApp {
     private @Nullable String menuDecision;
     private @Nullable String statusMessage;
     private @Nullable String systemBanner;
+    private boolean systemBannerFromEvent;
     private @Nullable PrintWriter consoleOut;
     private @Nullable TuiScreenDriver activeDriver;
     private @Nullable OverviewKeyHandler activeKeyHandler;
@@ -1300,6 +1303,7 @@ public final class OverviewFullScreenApp {
                                 .map(OutputSafety::stripControlSequences).toList());
             systemBanner = MessageCatalogue.format(locale, "system.stopping.line",
                                 Map.of("count", event.remainingCount(), "what", what));
+            systemBannerFromEvent = true;
             terminal.raise(Terminal.Signal.WINCH);
         } catch (IOException _) {
             // A malformed event leaves the last line in place.
@@ -1622,9 +1626,35 @@ public final class OverviewFullScreenApp {
                             ? SystemLevel.root(snapshot, window, groupBy, projectId)
                             : SystemLevel.unavailable(window, groupBy, projectId);
         currentSystem.set(level);
-        systemBanner = null;
+        // The status states the lifecycle on entry; a progress event refines it while it lasts.
+        // A status that cannot be read leaves the line as it is.
+        var status = fetchStatus();
+        if (status != null) {
+            systemBanner = SystemView.lifecycleLine(locale, status);
+            systemBannerFromEvent = false;
+        }
         stack.push(TuiLevel.of(TuiLevel.Kind.SYSTEM, SystemLevel.LEVEL_ID, level.breadcrumb(locale)),
                             level.rows(locale), SystemLevel.ROW_RUNTIME);
+    }
+
+    /**
+     * Reads the runtime's status for the lifecycle line the system view states first, the way the
+     * printed view does ({@code doc/design/shared/system.adoc#state-line}). A status the client
+     * cannot read leaves the line as it was; it never empties the view.
+     *
+     * @return the status, or {@code null} when it could not be read
+     */
+    @Nullable
+    RuntimeStatus fetchStatus() {
+        try {
+            var response = context.runtime(false).send(HttpRequest.get("/api/v1/status"));
+            if (response.status() == 200) {
+                return RuntimeStatus.fromJson(response.bodyText());
+            }
+        } catch (IOException | IllegalArgumentException _) {
+            // The view states no lifecycle it did not receive.
+        }
+        return null;
     }
 
     /**
@@ -1668,7 +1698,22 @@ public final class OverviewFullScreenApp {
         try {
             snapshot = fetchSystemSnapshot(context.runtime(false), level.window(), level.projectId());
         } catch (IOException _) {
-            return;
+            snapshot = null;
+        }
+        // The lifecycle line has two sources of the same fact: the status states it first, and a
+        // progress event refines it with what is left by name. A status read replaces a line the
+        // status wrote, leaves an event's line alone, and clears it once the runtime runs again.
+        // It is read beside the snapshot, so a failed snapshot still corrects the line.
+        var status = fetchStatus();
+        if (status != null) {
+            var lifecycle = SystemView.lifecycleLine(locale, status);
+            if (lifecycle == null) {
+                systemBanner = null;
+                systemBannerFromEvent = false;
+            } else if (systemBanner == null || !systemBannerFromEvent) {
+                systemBanner = lifecycle;
+                systemBannerFromEvent = false;
+            }
         }
         if (snapshot == null) {
             return;

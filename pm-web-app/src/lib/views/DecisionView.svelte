@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { t, currentLocale } from '../i18n';
   import { formatTime } from '../display/format';
   import Button from '../components/Button.svelte';
@@ -92,6 +92,44 @@
     if (selectedDecisionId !== null && selectedDecision === null) {
       selectedDecisionId = null;
     }
+  });
+
+  // A match of the command palette opens the decision it names: the route carries the id, and the
+  // request is applied once the list holds that decision, so a late read still lands on it.
+  let requestedDecisionId = $state<string | null>(null);
+  $effect(() => {
+    const requested = $runtimeStore.selectedDecisionId;
+    if (requested) {
+      requestedDecisionId = requested;
+    } else {
+      // The route names no decision any more: a request that has not landed yet is dropped, so a
+      // later read or `decision.opened` event cannot select a decision the URL no longer names.
+      requestedDecisionId = null;
+    }
+  });
+  $effect(() => {
+    const requested = requestedDecisionId;
+    if (!requested || !decisions.some((decision) => decision.id === requested)) {
+      return;
+    }
+    // A filter that hides the requested decision would consume the request and leave the detail
+    // pane empty, so the filter is cleared first.
+    if (!matchingDecisions.some((decision) => decision.id === requested)) {
+      query = '';
+    }
+    selectedDecisionId = requested;
+    requestedDecisionId = null;
+    // Every layout renders the decision's card; the request brings it into view and leaves the
+    // layout the operator chose untouched. In the split layout the card mounts only after the
+    // selection changes, so the query waits for that update.
+    void tick().then(() => {
+      const card = Array.from(document.querySelectorAll<HTMLElement>('[data-decision-id]')).find(
+        (element) => element.dataset.decisionId === requested,
+      );
+      if (typeof card?.scrollIntoView === 'function') {
+        card.scrollIntoView({ block: 'start' });
+      }
+    });
   });
 
   /**

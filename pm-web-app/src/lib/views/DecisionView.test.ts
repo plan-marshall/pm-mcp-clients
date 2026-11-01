@@ -726,4 +726,74 @@ describe('DecisionView component', () => {
     await screen.findByText('Select merge strategy');
     expect(document.querySelector('.decisions-view')).toHaveAttribute('data-layout', 'split');
   });
+
+  describe('a decision the command palette named', () => {
+    /** @returns the event handler the view registered with the shared stream */
+    function captureEventHandler(): (event: string, data?: unknown) => void {
+      let handler: ((event: string, data?: unknown) => void) | null = null;
+      vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((registered) => {
+        handler = registered as (event: string, data?: unknown) => void;
+        return () => {};
+      });
+      return (event, data) => handler?.(event, data);
+    }
+
+    it('drops a pending decision when the route stops naming one', async () => {
+      // Arrange: the first read does not hold dec-101, so its request stays pending.
+      localStorage.setItem('pm_view_layout_decisions', 'split');
+      vi.mocked(apiClient.getDecisions).mockResolvedValueOnce([mockWaiver]);
+      const emit = captureEventHandler();
+      runtimeStore.update((state) => ({ ...state, selectedDecisionId: 'dec-101' }));
+      render(DecisionView);
+      await screen.findByText('fix-relay asks for a waiver');
+
+      // The route stops naming a decision, then the decision arrives in a later event.
+      runtimeStore.update((state) => ({ ...state, selectedDecisionId: null }));
+      emit('decision.opened', mockDecision);
+
+      // Assert: the stale request cannot select it any more.
+      await screen.findByTestId('decision-summary-dec-101');
+      expect(screen.getByTestId('decision-summary-dec-101')).not.toHaveAttribute('aria-current');
+    });
+
+    it('clears the local filter when it hides the requested decision', async () => {
+      // Arrange: both decisions load, and the filter keeps dec-101 out of the list.
+      render(DecisionView);
+      await screen.findByText('Select merge strategy');
+      const filter = (await screen.findByLabelText('Filter decisions')) as HTMLInputElement;
+      await fireEvent.input(filter, { target: { value: 'waiver' } });
+      await waitFor(() =>
+        expect(screen.queryByText('Select merge strategy')).not.toBeInTheDocument(),
+      );
+
+      // Act: the palette names dec-101, which the filter hides.
+      runtimeStore.update((state) => ({ ...state, selectedDecisionId: 'dec-101' }));
+
+      // Assert: the filter is cleared and the decision is shown.
+      await waitFor(() => expect(screen.getByText('Select merge strategy')).toBeInTheDocument());
+      expect(filter.value).toBe('');
+    });
+
+    it('scrolls to a decision whose card mounts after the request', async () => {
+      // Arrange: split layout with nothing selected; the card of a decision mounts only once the
+      // request has been applied, so the scroll must wait for that update.
+      localStorage.setItem('pm_view_layout_decisions', 'split');
+      const scrolled: Element[] = [];
+      Element.prototype.scrollIntoView = vi.fn(function (this: Element) {
+        scrolled.push(this);
+      });
+      render(DecisionView);
+      await screen.findByText('Select merge strategy');
+
+      // Act
+      runtimeStore.update((state) => ({ ...state, selectedDecisionId: 'dec-101' }));
+
+      // Assert
+      await waitFor(() =>
+        expect(scrolled.some((element) => (element as HTMLElement).dataset.decisionId === 'dec-101')).toBe(
+          true,
+        ),
+      );
+    });
+  });
 });

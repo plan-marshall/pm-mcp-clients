@@ -11,7 +11,6 @@ package de.planmarshall.api.report;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonNumber;
