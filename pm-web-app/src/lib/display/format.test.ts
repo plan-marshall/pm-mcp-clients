@@ -1,4 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { currentLocale, messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
 import {
   formatBytes,
   formatDay,
@@ -31,26 +33,77 @@ function at(month: number, day: number, hour: number, minute: number, second = 0
   return new Date(2026, month - 1, day, hour, minute, second).toISOString();
 }
 
-/** @param ms the distance before {@link NOW} @returns that instant as an ISO string */
-function ago(ms: number): string {
-  return new Date(NOW.getTime() - ms).toISOString();
+/**
+ * Puts one catalogue in place for a test.
+ *
+ * The words and the unit marks of a time are catalogue texts (`common.time.*`), so a test that
+ * pins them proves the pack is read: an override changes what the formatter says, which a word
+ * written in code could never follow.
+ *
+ * @param locale the interface locale
+ * @param overrides the entries this test changes
+ */
+function useCatalogue(locale: 'de' | 'en', overrides: Record<string, string> = {}): void {
+  currentLocale.set(locale);
+  messagesStore.set({ ...loadMessages(locale), ...overrides });
+}
+
+/**
+ * Renders one value in both interface languages, each against its own catalogue.
+ *
+ * The formatter reads the catalogue of the locale it is asked for, so the German rendering needs
+ * the German pack in place before it is read.
+ *
+ * @param render the formatter call, given the locale
+ * @param english the text the English pack yields
+ * @param german the text the German pack yields
+ */
+function expectBothLocales(
+  render: (locale: 'de' | 'en') => string,
+  english: string,
+  german: string,
+): void {
+  useCatalogue('en');
+  expect(render('en')).toBe(english);
+  useCatalogue('de');
+  expect(render('de')).toBe(german);
 }
 
 describe('formatTime', () => {
+  beforeEach(() => {
+    useCatalogue('en');
+  });
+
   describe('relative', () => {
     it.each([
-      ['just now', ago(20_000), 'just now', 'gerade eben'],
-      ['minutes', ago(5 * 60_000), '5 min ago', 'vor 5 min'],
-      ['hours', ago(2 * 3_600_000), '2 h ago', 'vor 2 h'],
       ['days', at(10, 7, 12, 0), '9 d ago', 'vor 9 T'],
+      ['months', at(7, 16, 12, 0), '3 months ago', 'vor 3 Monaten'],
     ])('renders %s', (_label, iso, english, german) => {
-      expect(formatTime(iso, 'relative', 'en', NOW)).toBe(english);
-      expect(formatTime(iso, 'relative', 'de', NOW)).toBe(german);
+      expectBothLocales((locale) => formatTime(iso, 'relative', locale, NOW), english, german);
     });
 
-    it('renders a moment earlier today in the unit that distance has', () => {
-      expect(formatTime(at(10, 16, 11, 25), 'relative', 'en', NOW)).toBe('35 min ago');
-      expect(formatTime(at(10, 16, 11, 25), 'relative', 'de', NOW)).toBe('vor 35 min');
+    it('renders a moment of today with the since form the design names', () => {
+      expectBothLocales(
+        (locale) => formatTime(at(10, 16, 11, 25), 'relative', locale, NOW),
+        'since 11:25',
+        'seit 11:25',
+      );
+    });
+
+    it('renders the age in the unit that distance has when the moment is not today', () => {
+      // The same distances, read across midnight: not today, so the age applies.
+      const justAfterMidnight = new Date(2026, 9, 17, 0, 0, 30);
+      expectBothLocales(
+        (locale) => formatTime(at(10, 16, 23, 59, 50), 'relative', locale, justAfterMidnight),
+        'just now',
+        'gerade eben',
+      );
+      const halfAnHourLater = new Date(2026, 9, 17, 0, 30, 0);
+      useCatalogue('en');
+      expect(formatTime(at(10, 16, 23, 55), 'relative', 'en', halfAnHourLater)).toBe(
+        '35 min ago',
+      );
+      expect(formatTime(at(10, 16, 22, 30), 'relative', 'en', halfAnHourLater)).toBe('2 h ago');
     });
   });
 
@@ -61,15 +114,17 @@ describe('formatTime', () => {
       ['within seven days', at(10, 13, 18, 40), 'Tue 18:40', 'Di 18:40'],
       ['before that', at(8, 12, 11, 25), '12 Aug, 11:25', '12. Aug., 11:25'],
     ])('renders %s', (_label, iso, english, german) => {
-      expect(formatTime(iso, 'short', 'en', NOW)).toBe(english);
-      expect(formatTime(iso, 'short', 'de', NOW)).toBe(german);
+      expectBothLocales((locale) => formatTime(iso, 'short', locale, NOW), english, german);
     });
   });
 
   describe('clock', () => {
     it('renders the moment to the second in both languages', () => {
-      expect(formatTime(at(10, 16, 11, 25, 3), 'clock', 'en', NOW)).toBe('11:25:03');
-      expect(formatTime(at(10, 16, 11, 25, 3), 'clock', 'de', NOW)).toBe('11:25:03');
+      expectBothLocales(
+        (locale) => formatTime(at(10, 16, 11, 25, 3), 'clock', locale, NOW),
+        '11:25:03',
+        '11:25:03',
+      );
     });
   });
 
@@ -79,14 +134,34 @@ describe('formatTime', () => {
     expect(formatTime('not a date', 'clock')).toBe('');
   });
 
+  describe('the words come from the catalogue', () => {
+    it('takes the framing word of an age from the pack', () => {
+      useCatalogue('en', { 'common.time.days': '{count} days back' });
+      expect(formatTime(at(10, 7, 12, 0), 'relative', 'en', NOW)).toBe('9 days back');
+    });
+
+    it('takes the since word from the pack', () => {
+      useCatalogue('de', { 'common.time.since': 'seit {time} Uhr' });
+      expect(formatTime(at(10, 16, 11, 25), 'relative', 'de', NOW)).toBe('seit 11:25 Uhr');
+    });
+
+    it('takes the day words from the pack', () => {
+      useCatalogue('en', { 'common.time.today': 'this very day' });
+      expect(formatDay(at(10, 16, 11, 25), 'en', NOW)).toBe('this very day');
+    });
+  });
+
   describe('formatDay', () => {
     it.each([
       ['today', at(10, 16, 11, 25), 'today', 'heute'],
       ['yesterday', at(10, 15, 18, 40), 'yesterday', 'gestern'],
       ['before that', at(8, 12, 11, 25), '12 Aug', '12. Aug.'],
     ])('renders %s', (_label, iso, english, german) => {
-      expect(formatDay(iso, 'en', NOW)).toBe(english);
-      expect(formatDay(iso, 'de', NOW)).toBe(german);
+      expectBothLocales((locale) => formatDay(iso, locale, NOW), english, german);
+    });
+
+    it('opens the day of a row that carries only a clock', () => {
+      expectBothLocales((locale) => formatDay('14:02:11', locale, NOW), 'today', 'heute');
     });
   });
 });
@@ -98,8 +173,12 @@ describe('formatDuration', () => {
     ['under two days', 130 * 60_000, '2 h 10 min', '2 h 10 min'],
     ['two days or more', (9 * 24 + 1) * 3_600_000, '9 d 1 h', '9 T 1 h'],
   ])('renders %s', (_label, ms, english, german) => {
-    expect(formatDuration(ms, 'en')).toBe(english);
-    expect(formatDuration(ms, 'de')).toBe(german);
+    expectBothLocales((locale) => formatDuration(ms, locale), english, german);
+  });
+
+  it('takes the unit marks from the catalogue', () => {
+    useCatalogue('de', { 'common.time.unit.minute': '{count} Min.' });
+    expect(formatDuration(25 * 60_000, 'de')).toBe('25 Min.');
   });
 
   it('renders zero below the first second of a span', () => {

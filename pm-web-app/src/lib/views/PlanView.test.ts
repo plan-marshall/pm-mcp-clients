@@ -225,8 +225,11 @@ describe('PlanView component', () => {
 
     const entries = screen.getAllByTestId('activity-entry');
     expect(entries.length).toBe(4);
-    // A clock the runtime already formatted carries no date, so it opens no day header.
-    expect(screen.queryAllByTestId('activity-day')).toHaveLength(0);
+    // A clock the runtime already formatted carries no date of its own, so its group opens the
+    // day it was read.
+    const days = screen.getAllByTestId('activity-day');
+    expect(days).toHaveLength(1);
+    expect(days[0]).toHaveTextContent('today');
     expect(entries[0]).toHaveTextContent('14:02:11');
     expect(entries[0]).toHaveTextContent('Reading the relay transport');
     expect(entries[1]).toHaveTextContent('read');

@@ -7,12 +7,34 @@
  */
 
 import type { Locale } from '../i18n';
+import { translate } from '../i18n';
 
 /** The interface languages the app ships; the one closed set, owned by the catalogue layer. */
 export type { Locale };
 
 /** The three renderings of a moment the design defines. */
 export type TimeStyle = 'relative' | 'short' | 'clock';
+
+/**
+ * A bare clock as the runtime sends it: `14:02` or `14:02:11`, without a date.
+ *
+ * The activity stream may carry a clock alone, and a clock is the day it was read.
+ */
+const CLOCK_ONLY = /^\d{1,2}:\d{2}(:\d{2})?$/;
+
+/**
+ * @param locale the interface locale
+ * @param key the catalogue key of the word or the unit mark
+ * @param params the ICU parameters of the text
+ * @returns the text of the pack of that locale
+ */
+function word(
+  locale: Locale,
+  key: string,
+  params?: Record<string, string | number>,
+): string {
+  return translate(locale, key, params);
+}
 
 /** The language tag `Intl` formats with; day-first for English, as the design's examples are. */
 function languageTag(locale: string): string {
@@ -75,15 +97,14 @@ function dayMonthText(date: Date, locale: string): string {
  * @param locale the interface locale
  * @returns the age in the unit that distance has
  */
-function ageText(ms: number, locale: string): string {
-  const german = isGerman(locale);
-  if (ms < 60_000) return german ? 'gerade eben' : 'just now';
+function ageText(ms: number, locale: Locale): string {
+  if (ms < 60_000) return word(locale, 'common.time.just_now');
   const minutes = Math.floor(ms / 60_000);
-  if (minutes < 60) return german ? `vor ${minutes} min` : `${minutes} min ago`;
+  if (minutes < 60) return word(locale, 'common.time.minutes', { count: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return german ? `vor ${hours} h` : `${hours} h ago`;
+  if (hours < 24) return word(locale, 'common.time.hours', { count: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return german ? `vor ${days} T` : `${days} d ago`;
+  if (days < 30) return word(locale, 'common.time.days', { count: days });
   // Months and years take the language's own words: the design fixes only the unit marks of
   // minutes, hours and days in the packs.
   const relative = new Intl.RelativeTimeFormat(languageTag(locale), { numeric: 'auto' });
@@ -94,8 +115,10 @@ function ageText(ms: number, locale: string): string {
 /**
  * Renders a moment in one of the three styles the design defines.
  *
- * `relative` is the distance to now in the unit that distance has (the age a list shows); `short`
- * is the moment itself to the minute; `clock` is the moment to the second, for an activity stream.
+ * `relative` is a moment of today as `since 14:02` and any older moment as the distance to now in
+ * the unit that distance has (the age a list shows); `short` is the moment itself to the minute;
+ * `clock` is the moment to the second, for an activity stream. The words that frame the figure
+ * (`today`, `since`, `ago`) and the unit marks are catalogue texts of `common.time.*`.
  *
  * @param iso the instant the runtime sends
  * @param style the rendering the view needs
@@ -115,8 +138,12 @@ export function formatTime(
   if (style === 'clock') {
     return secondText(date, locale);
   }
+  const distance = dayDistance(now, date);
   if (style === 'short') {
-    return shortText(date, locale, dayDistance(now, date));
+    return shortText(date, locale, distance);
+  }
+  if (distance === 0) {
+    return word(locale, 'common.time.since', { time: clockText(date, locale) });
   }
   return ageText(Math.max(0, now.getTime() - date.getTime()), locale);
 }
@@ -132,11 +159,10 @@ function dayDistance(now: Date, date: Date): number {
  * @param date the moment @param locale the interface locale @param distance the calendar days
  *   between today and the moment @returns the moment to the minute, `today 14:02`
  */
-function shortText(date: Date, locale: string, distance: number): string {
-  const german = isGerman(locale);
+function shortText(date: Date, locale: Locale, distance: number): string {
   const time = clockText(date, locale);
-  if (distance === 0) return `${german ? 'heute' : 'today'} ${time}`;
-  if (distance === 1) return `${german ? 'gestern' : 'yesterday'} ${time}`;
+  if (distance === 0) return `${word(locale, 'common.time.today')} ${time}`;
+  if (distance === 1) return `${word(locale, 'common.time.yesterday')} ${time}`;
   if (distance > 1 && distance < 7) return `${weekdayText(date, locale)} ${time}`;
   return `${dayMonthText(date, locale)}, ${time}`;
 }
@@ -148,26 +174,32 @@ function shortText(date: Date, locale: string, distance: number): string {
  * day and month (`16 Oct` / `16. Okt.`) for anything older. The rows below it carry the `clock`
  * rendering of their own moments.
  *
- * @param iso the instant the runtime sends
+ * A row may carry a bare clock instead of an instant (`14:02:11`): a clock is read from the live
+ * stream, so it opens the day it was read, and its group still gets its header.
+ *
+ * @param iso the instant or the bare clock the runtime sends
  * @param locale the interface locale
  * @param now the instant "now" means, so a test can pin it
- * @returns the day label, or an empty string when the value is not an instant
+ * @returns the day label, or an empty string when the value carries neither a date nor a clock
  */
 export function formatDay(
   iso: string | null | undefined,
   locale: Locale = 'en',
   now: Date = new Date(),
 ): string {
-  const date = parseInstant(iso);
-  if (!date) return '';
-  const distance = dayDistance(now, date);
-  if (distance === 0) return isGerman(locale) ? 'heute' : 'today';
-  if (distance === 1) return isGerman(locale) ? 'gestern' : 'yesterday';
-  return dayMonthText(date, locale);
+  const moment = parseInstant(iso) ?? (CLOCK_ONLY.test((iso ?? '').trim()) ? now : null);
+  if (!moment) return '';
+  const distance = dayDistance(now, moment);
+  if (distance === 0) return word(locale, 'common.time.today');
+  if (distance === 1) return word(locale, 'common.time.yesterday');
+  return dayMonthText(moment, locale);
 }
 
 /**
  * Renders a span as the design's three duration rows.
+ *
+ * The unit marks (`s`, `min`, `h`, and `d` / `T`) are catalogue texts (`common.time.unit.*`), as
+ * the token marks are, so both clients say them the same way.
  *
  * @param ms the span in milliseconds
  * @param locale the interface locale
@@ -175,18 +207,21 @@ export function formatDay(
  */
 export function formatDuration(ms: number, locale: Locale = 'en'): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-  if (totalSeconds < 60) return `${totalSeconds} s`;
+  if (totalSeconds < 60) return word(locale, 'common.time.unit.second', { count: totalSeconds });
   const minutes = Math.floor(totalSeconds / 60);
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return word(locale, 'common.time.unit.minute', { count: minutes });
   const hours = Math.floor(minutes / 60);
   if (hours < 48) {
     const rest = minutes % 60;
-    return rest > 0 ? `${hours} h ${rest} min` : `${hours} h`;
+    return rest > 0
+      ? word(locale, 'common.time.unit.hour_minute', { hours, minutes: rest })
+      : word(locale, 'common.time.unit.hour', { count: hours });
   }
   const days = Math.floor(hours / 24);
   const restHours = hours % 24;
-  const dayUnit = isGerman(locale) ? 'T' : 'd';
-  return restHours > 0 ? `${days} ${dayUnit} ${restHours} h` : `${days} ${dayUnit}`;
+  return restHours > 0
+    ? word(locale, 'common.time.unit.day_hour', { days, hours: restHours })
+    : word(locale, 'common.time.unit.day', { count: days });
 }
 
 /**
