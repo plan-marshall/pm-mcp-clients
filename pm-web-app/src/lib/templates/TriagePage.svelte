@@ -5,8 +5,9 @@
    *
    * The page takes the full width and splits it 40 / 60 between list and detail. Below 1100 px the
    * detail replaces the list — the view marks `selected` when it shows one, so the narrow layout
-   * never draws both panes at once. The template owns the panes, never the items: the view that
-   * fills the list slot keeps its rows, its selection and its `j`/`k`/`Enter` handling.
+   * never draws both panes at once; the filter chips stay, because the filter belongs to the view.
+   * The template owns the panes, never the items: the view that fills the list slot keeps its rows,
+   * its selection and its `j`/`k`/`Enter` handling.
    */
   export let selected = false;
 </script>
@@ -61,9 +62,15 @@
       display: none;
     }
 
-    .triage-page--detail .triage-page__list,
-    .triage-page--detail .triage-page__filters {
+    .triage-page--detail .triage-page__list {
       display: none;
+    }
+  }
+
+  /* The phone takes the app's narrow inset, as every view did before the template owned it. */
+  @media (max-width: 480px) {
+    .triage-page {
+      padding: var(--space-3);
     }
   }
 </style>

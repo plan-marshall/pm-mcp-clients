@@ -204,9 +204,17 @@ rail      ▣ plan-marshall        │ top bar   path › path › title   [sear
 |A card at rest takes `--shadow-1`; a popover takes `--shadow-2`; a dialogue takes `--shadow-overlay`. In dark, elevation is the surface step and the shadows stay faint.
 |===
 
-The content column is centred and bounded: a reading view (a form, a dialogue, a list of one column) at `480px`, a table or a card grid at `1000px`, the explorer and the reports list at `1200px`, and the process views (plan, epic, designer) at the full width of the window minus `--space-6` on each side. A view picks one of these bounds; it never sets an arbitrary width.
+The content column is centred and bounded by the page template a view sits on
+(link:view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates Replace the Layout Modes]): the
+triage template at the full width of the window minus `--space-6` on each side, the object and dashboard templates at
+`1440px`, and the wizard template at `720px`. A view that has not moved yet picks its earlier bound — a reading view at
+`480px`, a table or a card grid at `1000px`, the explorer and the reports list at `1200px` — and never sets an arbitrary
+width.
 
-Two-column views (a list beside a detail, the process tree beside the inspector, the sources beside the chat) split at `2fr 1fr` on the desktop and stack on the tablet and the phone. A column that carries a live stream (chat, activity) keeps its own scroll and never pushes the page.
+Two-column views (a list beside a detail, the process tree beside the inspector, the sources beside the chat) split at
+`2fr 1fr` on the desktop. The triage template splits its list and detail `2fr 3fr` (40 / 60) and replaces the list with
+the detail below `1100px`. A column that carries a live stream (chat, activity) keeps its own scroll and never pushes
+the page.
 
 [#breakpoints]
 === Responsive Breakpoints

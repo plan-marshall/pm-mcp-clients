@@ -5,7 +5,7 @@
    *
    * The page is capped at 1440 px and centred. The template owns the head, the switch region, the
    * card grid and the updated line; the view fills them, so no dashboard view sets its own page
-   * width and every figure sits in the same grid.
+   * width.
    */
 </script>
 
@@ -28,6 +28,7 @@
   </div>
 
   {#if $$slots.updated}
+    <!-- The slot carries the rendered sentence only: the line is a paragraph, so a view passes text. -->
     <p class="dashboard-page__updated" data-testid="dashboard-page-updated">
       <slot name="updated" />
     </p>
@@ -78,5 +79,12 @@
     margin: 0;
     color: var(--color-text-muted);
     font-size: var(--text-sm);
+  }
+
+  /* The phone takes the app's narrow inset, as every view did before the template owned it. */
+  @media (max-width: 480px) {
+    .dashboard-page {
+      padding: var(--space-3);
+    }
   }
 </style>

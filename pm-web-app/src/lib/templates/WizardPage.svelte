@@ -10,24 +10,26 @@
 
 <div class="wizard-page" data-testid="wizard-page">
   {#if $$slots.steps}
-    <nav class="wizard-page__steps" data-testid="wizard-page-steps">
+    <div class="wizard-page__steps" data-testid="wizard-page-steps">
       <slot name="steps" />
-    </nav>
+    </div>
   {/if}
 
   <div class="wizard-page__card" data-testid="wizard-page-card">
     <slot />
   </div>
 
-  <footer class="wizard-page__footer" data-testid="wizard-page-footer">
-    <div class="wizard-page__back">
-      <slot name="back" />
-    </div>
-    <div class="wizard-page__acts">
-      <slot name="secondary" />
-      <slot name="primary" />
-    </div>
-  </footer>
+  {#if $$slots.back || $$slots.secondary || $$slots.primary}
+    <footer class="wizard-page__footer" data-testid="wizard-page-footer">
+      <div class="wizard-page__back">
+        <slot name="back" />
+      </div>
+      <div class="wizard-page__acts">
+        <slot name="secondary" />
+        <slot name="primary" />
+      </div>
+    </footer>
+  {/if}
 </div>
 
 <style>
@@ -72,5 +74,12 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
+  }
+
+  /* The phone takes the app's narrow inset, as every view did before the template owned it. */
+  @media (max-width: 480px) {
+    .wizard-page {
+      padding: var(--space-3);
+    }
   }
 </style>

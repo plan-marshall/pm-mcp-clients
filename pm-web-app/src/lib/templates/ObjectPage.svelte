@@ -39,9 +39,9 @@
   {/if}
 
   {#if $$slots.tabs}
-    <nav class="object-page__tabs" data-testid="object-page-tabs">
+    <div class="object-page__tabs" data-testid="object-page-tabs">
       <slot name="tabs" />
-    </nav>
+    </div>
   {/if}
 
   <div class="object-page__body" data-testid="object-page-body">
@@ -138,5 +138,12 @@
 
   .object-page__body {
     min-inline-size: 0;
+  }
+
+  /* The phone takes the app's narrow inset, as every view did before the template owned it. */
+  @media (max-width: 480px) {
+    .object-page {
+      padding: var(--space-3);
+    }
   }
 </style>
