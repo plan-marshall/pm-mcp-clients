@@ -102,7 +102,6 @@ final class RuntimeActDialogue {
 
     private static final String DRAIN = "drain";
     private static final String NOW = "now";
-    private static final String DOT = " \u00b7 ";
 
     private RuntimeActDialogue() {
     }

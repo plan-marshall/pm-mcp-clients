@@ -65,10 +65,21 @@ public final class SystemView {
     /** The grouping of the models per role. */
     public static final String GROUP_ROLE = "role";
 
+    private static final String STATE_RUNNING = "running";
+    private static final String PARAM_STATE = "state";
+    private static final String PARAM_TIME = "time";
+    private static final String PARAM_RUNNING = "running";
+    private static final String PARAM_QUEUED = "queued";
+    private static final String PARAM_WINDOW = "window";
+    private static final String PARAM_BY = "by";
+    private static final String PARAM_CALLS = "calls";
+    private static final String PARAM_TOKENS = "tokens";
+    private static final String PARAM_COUNT = "count";
+
     private static final List<String> PLAN_STATE_ORDER =
-                        List.of("running", "waiting_for_you", "held", "paused", "pausing");
+                        List.of(STATE_RUNNING, "waiting_for_you", "held", "paused", "pausing");
     private static final List<String> EPIC_STATE_ORDER =
-                        List.of("running", "waiting_for_you", "held", "paused");
+                        List.of(STATE_RUNNING, "waiting_for_you", "held", "paused");
 
     private static final String KINDS_LOCK = "locks_held";
 
@@ -188,7 +199,7 @@ public final class SystemView {
         // The count is what the runtime still holds while it drains; the later states stand alone.
         var finish = status.state() == RuntimeLifecycleState.DRAINING
                             ? Math.max(0, status.drainRemainingCount()) : 0;
-        return MessageCatalogue.format(locale, "system.lifecycle.line", Map.of("state", state, "finish", finish));
+        return MessageCatalogue.format(locale, "system.lifecycle.line", Map.of(PARAM_STATE, state, "finish", finish));
     }
 
     /**
@@ -209,11 +220,11 @@ public final class SystemView {
         details.add(MessageCatalogue.format(locale, "system.runtime.store",
                             Map.of("size", SystemFormatting.bytes(runtime.machineStoreBytes()),
                                                 "free", SystemFormatting.bytes(runtime.diskFreeBytes()),
-                                                "time", clean(runtime.measuredAt()))));
+                                                PARAM_TIME, clean(runtime.measuredAt()))));
         details.add(listenersLine(locale, runtime));
         if (runtime.relaysBehindCount() > 0 && runtime.relaysBehindVersion() != null) {
             details.add(MessageCatalogue.format(locale, "system.runtime.relays_behind",
-                                Map.of("count", runtime.relaysBehindCount(),
+                                Map.of(PARAM_COUNT, runtime.relaysBehindCount(),
                                                     "version", clean(runtime.relaysBehindVersion()))));
         }
         var headline = MessageCatalogue.format(locale, "system.runtime.version_build",
@@ -255,14 +266,14 @@ public final class SystemView {
         details.add(MessageCatalogue.format(locale, "system.work.epics", Map.of()) + "  "
                             + stateCounts(locale, work.epicsByState(), EPIC_STATE_ORDER));
         details.add(MessageCatalogue.format(locale, "system.work.tasks_console",
-                            Map.of("running", work.tasksRunning(), "queued", work.tasksQueued())));
+                            Map.of(PARAM_RUNNING, work.tasksRunning(), PARAM_QUEUED, work.tasksQueued())));
         details.add(projectsLine(locale, work));
         return new Figure(MessageCatalogue.format(locale, "system.work.title", Map.of()), plans, details);
     }
 
     private static String projectsLine(String locale, WorkMetrics work) {
         var projects = MessageCatalogue.format(locale, "system.work.projects",
-                            Map.of("count", work.activeProjectsCount()));
+                            Map.of(PARAM_COUNT, work.activeProjectsCount()));
         if (!work.recoveringProjects().isEmpty()) {
             projects += " (" + String.join(", ", work.recoveringProjects().stream()
                                 .map(SystemView::clean).toList())
@@ -290,7 +301,7 @@ public final class SystemView {
         var count = states.get(state);
         if (count != null && count > 0) {
             parts.add(MessageCatalogue.format(locale, "system.work.state_count",
-                                Map.of("count", count, "state", stateLabel(locale, state))));
+                                Map.of(PARAM_COUNT, count, PARAM_STATE, stateLabel(locale, state))));
         }
     }
 
@@ -310,7 +321,7 @@ public final class SystemView {
         long busy = workers.stream().filter(worker -> worker.state() == WorkerState.BUSY).count();
         long idle = workers.stream().filter(worker -> worker.state() == WorkerState.IDLE).count();
         var summary = MessageCatalogue.format(locale, "system.workers.count",
-                            Map.of("count", workers.size(), "busy", busy, "idle", idle));
+                            Map.of(PARAM_COUNT, workers.size(), "busy", busy, "idle", idle));
         return new Figure(MessageCatalogue.format(locale, "system.workers.title", Map.of()), summary,
                             workerLines(locale, workers));
     }
@@ -395,7 +406,7 @@ public final class SystemView {
      */
     public static String locksLine(String locale, Map<String, Object> jobs) {
         var locks = JsonTree.integer(jobs, KINDS_LOCK);
-        return MessageCatalogue.format(locale, "system.jobs.locks", Map.of("count", locks != null ? locks : 0));
+        return MessageCatalogue.format(locale, "system.jobs.locks", Map.of(PARAM_COUNT, locks != null ? locks : 0));
     }
 
     private static int integer(Map<String, Object> jobs, String kind, String field) {
@@ -449,11 +460,11 @@ public final class SystemView {
         if (totals.total() == 0 && totals.unmeasured() > 0) {
             // The reason is a fact of the line it belongs to; the figure states no second "not measured".
             return MessageCatalogue.format(locale, "operator.system.models.summary_no_tokens",
-                                Map.of("window", windowLabel, "by", grouping, "calls", totals.calls()));
+                                Map.of(PARAM_WINDOW, windowLabel, PARAM_BY, grouping, PARAM_CALLS, totals.calls()));
         }
         return MessageCatalogue.format(locale, "operator.system.models.summary",
-                            Map.of("window", windowLabel, "by", grouping, "calls", totals.calls(),
-                                                "tokens", tokensText(locale, totals)));
+                            Map.of(PARAM_WINDOW, windowLabel, PARAM_BY, grouping, PARAM_CALLS, totals.calls(),
+                                                PARAM_TOKENS, tokensText(locale, totals)));
     }
 
     /**
@@ -469,15 +480,15 @@ public final class SystemView {
         var line = String.format(Locale.ROOT, "%-22s %s", label, calls);
         var extras = new ArrayList<String>(2);
         if (totals.errors() > 0) {
-            extras.add(MessageCatalogue.format(locale, "system.models.error", Map.of("count", totals.errors())));
+            extras.add(MessageCatalogue.format(locale, "system.models.error", Map.of(PARAM_COUNT, totals.errors())));
         }
         if (totals.retries() > 0) {
-            extras.add(MessageCatalogue.format(locale, "system.models.retry", Map.of("count", totals.retries())));
+            extras.add(MessageCatalogue.format(locale, "system.models.retry", Map.of(PARAM_COUNT, totals.retries())));
         }
         if (totals.unmeasured() > 0 && totals.total() > 0) {
             // The line's total is a floor: the calls left out are counted once, beside the floor.
             extras.add(MessageCatalogue.format(locale, "system.models.unmeasured",
-                                Map.of("count", totals.unmeasured())));
+                                Map.of(PARAM_COUNT, totals.unmeasured())));
         }
         if (!extras.isEmpty()) {
             line += "   " + String.join(DOT, extras);
@@ -502,7 +513,10 @@ public final class SystemView {
         return String.join(", ", models.stream()
                             .filter(model -> model.unmeasuredCalls() > 0)
                             .map(model -> clean(model.harnessAndModel()))
-                            .map(name -> name.indexOf(':') > 0 ? name.substring(0, name.indexOf(':')) : name)
+                            .map(name -> {
+                                var colon = name.indexOf(':');
+                                return colon < 1 ? name : name.substring(0, colon);
+                            })
                             .distinct()
                             .toList());
     }
@@ -596,7 +610,7 @@ public final class SystemView {
      */
     public static String keptLine(String locale, CleanupSummary cleanup) {
         return MessageCatalogue.format(locale, "operator.system.cleanup.kept",
-                            Map.of("count", cleanup.keptForGoodCount(), "time", clean(cleanup.lastSweepAt())));
+                            Map.of(PARAM_COUNT, cleanup.keptForGoodCount(), PARAM_TIME, clean(cleanup.lastSweepAt())));
     }
 
     /**

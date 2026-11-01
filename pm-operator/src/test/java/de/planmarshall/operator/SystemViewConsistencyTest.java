@@ -139,7 +139,7 @@ class SystemViewConsistencyTest {
                                 }
                                 return lines.stream();
                             })
-                            .map(line -> line.strip())
+                            .map(String::strip)
                             .toList();
     }
 
