@@ -326,6 +326,9 @@ public final class ChoicePrompt {
         while (true) {
             renderMultiFrame(selected);
             var line = nextLine();
+            if (isKeep(line)) {
+                throw new KeepException();
+            }
             if (isQuit(line)) {
                 throw left();
             }
@@ -551,6 +554,7 @@ public final class ChoicePrompt {
             var mark = selected.contains(i) ? "[\u2713] " : "[ ] ";
             out.println("  " + (i + 1) + ") " + mark + choices.get(i).label());
         }
+        printKeep();
         out.flush();
     }
 

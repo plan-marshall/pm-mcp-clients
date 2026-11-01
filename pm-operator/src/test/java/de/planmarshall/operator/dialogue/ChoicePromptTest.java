@@ -21,6 +21,8 @@ import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
 
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import de.planmarshall.operator.StartPrompt;
 
 import org.junit.jupiter.api.DisplayName;
@@ -42,6 +44,7 @@ import org.junit.jupiter.api.Test;
  * </ul>
  */
 @DisplayName("ChoicePrompt strict choice dialogue rules")
+@EnableGeneratorController
 class ChoicePromptTest {
 
     private static final String STATE = "control.pause";
@@ -458,6 +461,7 @@ class ChoicePromptTest {
         var output = out.toString();
         assertTrue(output.contains("k) keep it running"), output);
         assertFalse(output.contains("Nothing was sent."), output);
+        assertFalse(output.contains("Chosen:"), output);
     }
 
     @Test

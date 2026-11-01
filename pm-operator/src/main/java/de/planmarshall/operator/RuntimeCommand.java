@@ -141,9 +141,6 @@ public final class RuntimeCommand implements Callable<Integer> {
         @Option(names = "--now", description = "Stop immediately")
         boolean now;
 
-        @Option(names = "--yes", description = "Accept confirmation")
-        boolean yes;
-
         @Option(names = "--no-input", description = "Non-interactive mode")
         boolean noInput;
 
@@ -225,9 +222,6 @@ public final class RuntimeCommand implements Callable<Integer> {
         @Option(names = "--now", description = "Restart immediately")
         boolean now;
 
-        @Option(names = "--yes", description = "Accept confirmation")
-        boolean yes;
-
         @Option(names = "--no-input", description = "Non-interactive mode")
         boolean noInput;
 
@@ -292,9 +286,6 @@ public final class RuntimeCommand implements Callable<Integer> {
 
         @Option(names = "--now", description = "Upgrade immediately")
         boolean now;
-
-        @Option(names = "--yes", description = "Accept confirmation")
-        boolean yes;
 
         @Option(names = "--no-input", description = "Non-interactive mode")
         boolean noInput;
@@ -366,8 +357,9 @@ public final class RuntimeCommand implements Callable<Integer> {
             var upgradeNow = answer.when() == RuntimeActDialogue.When.NOW;
 
             var body = whenBody(upgradeNow);
-            if (version != null) {
-                body.put("version", version);
+            var target = answer.target() != null ? answer.target() : version;
+            if (target != null) {
+                body.put("version", target);
             }
 
             var response = context.runtime(true).send(

@@ -108,7 +108,7 @@ class RuntimeActDialogueTest {
                             () -> assertEquals(0, answer.exitCode()),
                             () -> assertTrue(screen.contains("Stop the runtime?"), screen),
                             () -> assertTrue(screen.contains(
-                                                                    "Running now: 3 plans \u00b7 1 epic \u00b7 4 tasks \u00b7 1 job \u00b7 5 workers"),
+                                                                    "Running now: 3 plans \u00b7 1 epic \u00b7 4 tasks \u00b7 2 jobs \u00b7 5 workers"),
                                                 screen),
                             () -> assertTrue(screen.contains("Every client sees that it stops."), screen),
                             () -> assertTrue(screen.contains("When"), screen),
@@ -311,7 +311,9 @@ class RuntimeActDialogueTest {
         var work = JsonTree.asObject(map.get("work"));
         work.remove("plans_by_state");
         work.remove("epics_by_state");
-        JsonTree.asObject(map.get("jobs")).remove("test");
+        var jobs = JsonTree.asObject(map.get("jobs"));
+        jobs.remove("test");
+        jobs.remove("deploy");
         return JsonTree.write(map);
     }
 
@@ -348,6 +350,7 @@ class RuntimeActDialogueTest {
         var jobs = Map.<String, Object>of(
                             "build", Map.of("slots_used", build, "slots_total", 2, "queued", 0),
                             "test", Map.of("slots_used", test, "slots_total", 1, "queued", 0),
+                            "deploy", Map.of("slots_used", 1, "slots_total", 1, "queued", 0),
                             "locks_held", 0);
         var cleanup = new CleanupSummary(0, 0, 0, 0, 0, 0L, 0, "today 03:00", "tomorrow 03:00");
         var snapshot = new SystemSnapshot(runtime, work, roster, jobs, List.of(), cleanup,

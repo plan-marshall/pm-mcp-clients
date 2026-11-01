@@ -75,8 +75,9 @@ final class RuntimeActDialogue {
      *
      * @param when     the choice of when, or {@code null} when nothing is sent
      * @param exitCode the exit code of the verb that asked
+     * @param target   the version an upgrade goes to as the dialogue showed it, or {@code null}
      */
-    record Answer(@Nullable When when, int exitCode) {
+    record Answer(@Nullable When when, int exitCode, @Nullable String target) {
     }
 
     /**
@@ -122,29 +123,29 @@ final class RuntimeActDialogue {
     static Answer confirm(OperatorContext context, PrintWriter out, Act act, @Nullable When explicit,
                         boolean noInput, @Nullable String version) throws IOException {
         if (explicit != null) {
-            return new Answer(explicit, 0);
+            return new Answer(explicit, 0, version);
         }
         try {
-            return new Answer(ask(context, out, act, version, noInput), 0);
+            return ask(context, out, act, version, noInput);
         } catch (StopRefusedException refused) {
             out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
                                 refused.refusal.key(), Map.of()));
             out.flush();
-            return new Answer(null, refused.refusal.exitCode());
+            return new Answer(null, refused.refusal.exitCode(), null);
         } catch (ChoicePrompt.KeepException _) {
-            return new Answer(null, 0);
+            return new Answer(null, 0, null);
         } catch (StartPrompt.StartLeftException _) {
-            return new Answer(null, StartDialogue.EXIT_MISSING_INPUT);
+            return new Answer(null, StartDialogue.EXIT_MISSING_INPUT, null);
         } catch (StartPrompt.MissingInputException _) {
             var locale = context.clientEnvironment().locale();
             out.println(MessageCatalogue.format(locale, "operator.system.stopped_no_input",
                                 Map.of("act", act.value())));
             out.flush();
-            return new Answer(null, StartDialogue.EXIT_MISSING_INPUT);
+            return new Answer(null, StartDialogue.EXIT_MISSING_INPUT, null);
         }
     }
 
-    private static @Nullable When ask(OperatorContext context, PrintWriter out, Act act,
+    private static Answer ask(OperatorContext context, PrintWriter out, Act act,
                         @Nullable String version, boolean noInput) throws IOException {
         var locale = context.clientEnvironment().locale();
         if (noInput) {
@@ -174,7 +175,8 @@ final class RuntimeActDialogue {
                             MessageCatalogue.format(locale, "system.confirm.drain_explain", Map.of()), null, true);
         choice.addChoice(NOW, when(locale, act, NOW),
                             MessageCatalogue.format(locale, "system.confirm.now_explain", Map.of()), null, false);
-        return NOW.equals(choice.ask().key()) ? When.NOW : When.WHEN_DONE;
+        var when = NOW.equals(choice.ask().key()) ? When.NOW : When.WHEN_DONE;
+        return new Answer(when, 0, target);
     }
 
     /**

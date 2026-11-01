@@ -783,7 +783,7 @@ class PmOperatorTest {
                 }
             });
 
-            assertEquals(0, run("runtime", "restart", "--drain", "--yes"));
+            assertEquals(0, run("runtime", "restart", "--drain"));
             assertTrue(out.toString().contains("runtime   restarting"));
             var req = server.awaitRequest(Duration.ofSeconds(1));
             assertTrue(req.bodyText().contains("\"then\":\"restart\""));
@@ -826,11 +826,14 @@ class PmOperatorTest {
 
         @Test
         @DisplayName("restart --no-input without an answer stops at the choice with exit 3")
-        void restartNoInputStopsAtTheChoice() {
+        void restartNoInputStopsAtTheChoice() throws Exception {
+            var server = runtime((request, response) -> response.send(404, null, ""));
+
             assertEquals(StartDialogue.EXIT_MISSING_INPUT, run("runtime", "restart", "--no-input"));
             assertTrue(out.toString().contains(
                                                     "runtime restart needs the choice of when; answer it with --when-done or --now."),
                                 out.toString());
+            assertTrue(server.requests().isEmpty(), "no request before the missing-input guidance");
         }
 
         @Test
@@ -844,7 +847,7 @@ class PmOperatorTest {
                 }
             });
 
-            assertEquals(0, run("runtime", "upgrade", "1.5.0", "--drain", "--yes"));
+            assertEquals(0, run("runtime", "upgrade", "1.5.0", "--drain"));
             assertTrue(out.toString().contains("runtime   upgrading"));
             var req = server.awaitRequest(Duration.ofSeconds(1));
             assertTrue(req.bodyText().contains("\"version\":\"1.5.0\""));
