@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -42,6 +43,7 @@ import org.junit.jupiter.api.Test;
  * </ul>
  */
 @DisplayName("ChoicePrompt strict choice dialogue rules")
+@EnableGeneratorController
 class ChoicePromptTest {
 
     private static final String STATE = "control.pause";
@@ -444,5 +446,34 @@ class ChoicePromptTest {
         assertTrue(output.contains("2 tasks withdrawn, 1 job stopped;"), output);
         assertTrue(output.contains("on start"), output);
         assertTrue(output.contains("implement \u00b7 4 min, build \u00b7 2 min finish"), output);
+    }
+
+    @Test
+    @DisplayName("rule 14: a declared keep key renders below the choices and leaves without printing")
+    void keepKeyRendersAndLeavesSilently() {
+        var out = new StringWriter();
+        var prompt = createPrompt("k\n", out, "en").keepKey("k) keep it running");
+        prompt.addChoice("drain", "Stop when done", null, null, true);
+        prompt.addChoice("now", "Stop now", null, null, false);
+
+        assertThrows(ChoicePrompt.KeepException.class, prompt::ask);
+        var output = out.toString();
+        assertTrue(output.contains("k) keep it running"), output);
+        assertFalse(output.contains("Nothing was sent."), output);
+        assertFalse(output.contains("Chosen:"), output);
+    }
+
+    @Test
+    @DisplayName("rule 14: the keep key is l in German and is offered with the other keys")
+    void keepKeyIsGermanAndOffered() {
+        var out = new StringWriter();
+        var prompt = createPrompt("9\nl\n", out, "de").keepKey("l) lass sie laufen");
+        prompt.addChoice("drain", "Wenn fertig", null, null, true);
+        prompt.addChoice("now", "Jetzt", null, null, false);
+
+        assertThrows(ChoicePrompt.KeepException.class, prompt::ask);
+        var output = out.toString();
+        assertTrue(output.contains("l) lass sie laufen"), output);
+        assertTrue(output.contains("1-2, v, l"), output);
     }
 }
