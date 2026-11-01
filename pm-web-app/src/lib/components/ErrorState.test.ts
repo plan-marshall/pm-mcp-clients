@@ -54,6 +54,15 @@ describe('ErrorState', () => {
     expect(container.querySelector('details')).toBeNull();
   });
 
+  it('draws no Details block for a code the view gives no label to open it with', () => {
+    const { container } = render(ErrorState, {
+      props: { title: TITLE, message: MESSAGE, code: CODE },
+    });
+
+    expect(container.querySelector('details')).toBeNull();
+    expect(container.textContent).not.toContain(CODE);
+  });
+
   it('draws no act when the view names none', () => {
     render(ErrorState, { props: { title: TITLE, message: MESSAGE } });
 

@@ -82,7 +82,7 @@ describe('DataTable', () => {
     expect(screen.getAllByRole('columnheader')[0]).toHaveAttribute('data-align', 'start');
   });
 
-  it('draws a row of 40 px at the default density', () => {
+  it('names the default density, whose single-line rows are 40 px in the browser', () => {
     render(DataTable, {
       props: { columns: COLUMNS, rows: ROWS, label: LABEL },
     });
@@ -90,7 +90,7 @@ describe('DataTable', () => {
     expect(screen.getByTestId('data-table')).toHaveAttribute('data-density', 'default');
   });
 
-  it('draws a row of 32 px when the view asks for the compact density', () => {
+  it('names the compact density, whose single-line rows are 32 px in the browser', () => {
     render(DataTable, {
       props: { columns: COLUMNS, rows: ROWS, label: LABEL, compact: true },
     });

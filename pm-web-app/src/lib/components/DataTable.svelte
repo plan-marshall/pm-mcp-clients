@@ -207,10 +207,14 @@
   }
 
   /* An empty table says so in one cell that spans every column, and keeps no row height. */
-  .data-table__empty-row td {
+  .data-table tbody tr.data-table__empty-row td {
     block-size: auto;
     padding: var(--space-6);
     border-block-end: 0;
     text-align: center;
+  }
+
+  .data-table tbody tr.data-table__empty-row:hover {
+    background-color: transparent;
   }
 </style>
