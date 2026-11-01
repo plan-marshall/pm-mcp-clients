@@ -15,7 +15,6 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.Locale;
 import java.util.Map;
-
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.message.MessageCatalogue;
