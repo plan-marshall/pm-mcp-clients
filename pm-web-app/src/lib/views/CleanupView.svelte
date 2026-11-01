@@ -11,7 +11,7 @@
     type CleanupKeptItem,
   } from '../api/client';
   import { navigateTo, runtimeStore } from '../stores/runtime';
-  import { formatBytes } from '../utils/tokenFormat';
+  import { formatBytes } from '../display/format';
   import { displayState } from '../display';
 
   let job = $state<CleanupJob | null>(null);
@@ -537,7 +537,11 @@
                 <div class="item-info">
                   <span class="item-title">{k.title}</span>
                   <span class="text-muted text-xs">
-                    {$t('system.cleanup.kept.why', { how: k.why, time: k.kept_at, who: k.who })}
+                    {$t('system.cleanup.kept.why', {
+                      how: k.why,
+                      time: k.kept_at,
+                      who: k.who,
+                    })}
                   </span>
                 </div>
               </label>

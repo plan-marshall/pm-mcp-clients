@@ -22,7 +22,11 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 @DisplayName("MockHttpResponse")
+@EnableGeneratorController
 class MockHttpResponseTest {
 
     @Test
@@ -30,18 +34,21 @@ class MockHttpResponseTest {
     void sendTextResponse() throws Exception {
         var out = new ByteArrayOutputStream();
         var response = new MockHttpResponse(out);
+        var headerName = Generators.letterStrings(4, 10).next();
+        var headerValue = Generators.letterStrings(4, 10).next();
+        var body = Generators.letterStrings(4, 12).next();
 
         assertFalse(response.isCommitted());
-        response.header("X-Custom", "test-val");
-        response.send(200, "text/plain", "hello world");
+        response.header(headerName, headerValue);
+        response.send(200, "text/plain", body);
         assertTrue(response.isCommitted());
 
         var raw = out.toString(StandardCharsets.UTF_8);
         assertTrue(raw.startsWith("HTTP/1.1 200 OK\r\n"));
         assertTrue(raw.contains("Content-Type: text/plain\r\n"));
-        assertTrue(raw.contains("Content-Length: 11\r\n"));
-        assertTrue(raw.contains("X-Custom: test-val\r\n"));
-        assertTrue(raw.endsWith("\r\n\r\nhello world"));
+        assertTrue(raw.contains("Content-Length: " + body.length() + "\r\n"));
+        assertTrue(raw.contains(headerName + ": " + headerValue + "\r\n"));
+        assertTrue(raw.endsWith("\r\n\r\n" + body));
     }
 
     @Test
@@ -62,12 +69,13 @@ class MockHttpResponseTest {
     void sendJsonTree() throws Exception {
         var out = new ByteArrayOutputStream();
         var response = new MockHttpResponse(out);
+        var member = Generators.letterStrings(4, 10).next();
 
-        response.json(201, Map.of("created", true));
+        response.json(201, Map.of(member, true));
         var raw = out.toString(StandardCharsets.UTF_8);
         assertTrue(raw.startsWith("HTTP/1.1 201 Created\r\n"));
         assertTrue(raw.contains("Content-Type: application/json\r\n"));
-        assertTrue(raw.contains("{\"created\":true}"));
+        assertTrue(raw.contains("{\"" + member + "\":true}"));
     }
 
     @Test
@@ -75,9 +83,10 @@ class MockHttpResponseTest {
     void doubleCommitRejected() throws Exception {
         var out = new ByteArrayOutputStream();
         var response = new MockHttpResponse(out);
+        var body = Generators.letterStrings(4, 12).next();
 
-        response.send(200, "text/plain", "first");
-        assertThrows(IllegalStateException.class, () -> response.send(200, "text/plain", "second"));
+        response.send(200, "text/plain", body);
+        assertThrows(IllegalStateException.class, () -> response.send(200, "text/plain", body + " again"));
         assertThrows(IllegalStateException.class, () -> response.events(200));
     }
 

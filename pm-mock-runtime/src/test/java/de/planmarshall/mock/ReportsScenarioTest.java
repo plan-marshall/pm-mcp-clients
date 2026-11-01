@@ -23,6 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
@@ -34,6 +36,7 @@ import de.planmarshall.api.report.ReportsPage;
 
 @DisplayName("ReportsScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class ReportsScenarioTest {
 
     @Test
@@ -299,14 +302,17 @@ class ReportsScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            var res1 = client.send(HttpRequest.get("/api/v1/reports/rep-unknown").withHeader("Authorization", auth));
+            var unknownReport = "rep-" + Generators.integers(1000, 9999).next();
+            var unknownPlan = Generators.letterStrings(4, 10).next().toLowerCase();
+            var res1 = client.send(HttpRequest.get("/api/v1/reports/" + unknownReport)
+                    .withHeader("Authorization", auth));
             assertEquals(404, res1.status());
 
-            var res2 = client.send(HttpRequest.json("POST", "/api/v1/reports/rep-unknown/read", "{}")
+            var res2 = client.send(HttpRequest.json("POST", "/api/v1/reports/" + unknownReport + "/read", "{}")
                     .withHeader("Authorization", auth));
             assertEquals(404, res2.status());
 
-            var res3 = client.send(HttpRequest.get("/api/v1/plans/plan-unknown/completion")
+            var res3 = client.send(HttpRequest.get("/api/v1/plans/" + unknownPlan + "/completion")
                     .withHeader("Authorization", auth));
             assertEquals(404, res3.status());
         }

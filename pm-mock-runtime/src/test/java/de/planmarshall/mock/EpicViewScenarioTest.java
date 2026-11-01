@@ -25,6 +25,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.EpicWaitReason;
 import de.planmarshall.api.control.EpicWorkstream;
@@ -42,6 +44,7 @@ import de.planmarshall.api.json.JsonTree;
  */
 @DisplayName("EpicViewScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class EpicViewScenarioTest {
 
     private static final String AUTH_HEADER = "Authorization";
@@ -144,8 +147,9 @@ class EpicViewScenarioTest {
     @Test
     @DisplayName("an unknown epic answers scope_not_found and invents no resource")
     void unknownEpicIsNotFound() throws Exception {
+        var unknownEpic = Generators.letterStrings(4, 12).next().toLowerCase();
         try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
-            var response = get(runtime, "/api/v1/epics/no-such-epic");
+            var response = get(runtime, "/api/v1/epics/" + unknownEpic);
 
             assertEquals(404, response.status());
             var body = JsonTree.asObject(JsonTree.parse(response.bodyText()));

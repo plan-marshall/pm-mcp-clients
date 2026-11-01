@@ -30,6 +30,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.config.ConfigOrigin;
 import de.planmarshall.api.control.ChatRole;
 import de.planmarshall.api.control.ChatScope;
@@ -65,6 +67,7 @@ import de.planmarshall.mock.scenario.ScenarioRegistry;
 
 @DisplayName("StartScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class StartScenarioTest {
 
     private static final String SCENARIO = StandardScenarios.PROJECTS_AND_START;
@@ -189,7 +192,8 @@ class StartScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            var request = new StartPlanRequest("plan-marshall", "something", null, Map.of(), List.of(), null, null);
+            var request = new StartPlanRequest("plan-marshall", Generators.letterStrings(4, 10).next(), null,
+                    Map.of(), List.of(), null, null);
             var res = client.send(HttpRequest.json("POST", "/api/v1/projects/plan-marshall/plans/start",
                     request.toJson()).withHeader("Authorization", auth));
             assertEquals(409, res.status());
@@ -206,8 +210,9 @@ class StartScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            var request = new StartPlanRequest("no-such-project", null, null, Map.of(), List.of(), null, null);
-            var res = client.send(HttpRequest.json("POST", "/api/v1/projects/no-such-project/plans/start",
+            var unknownProject = Generators.letterStrings(4, 10).next().toLowerCase();
+            var request = new StartPlanRequest(unknownProject, null, null, Map.of(), List.of(), null, null);
+            var res = client.send(HttpRequest.json("POST", "/api/v1/projects/" + unknownProject + "/plans/start",
                     request.toJson()).withHeader("Authorization", auth));
             assertEquals(404, res.status());
         }
@@ -349,9 +354,10 @@ class StartScenarioTest {
                              .withHeader("Authorization", auth))) {
                     assertTrue(exchange.isEventStream());
                     var sse = exchange.events();
+                    var title = Generators.letterStrings(4, 10).next();
                     var opened = client.send(HttpRequest.json("POST",
                             "/api/v1/projects/pm-mcp-clients/entries",
-                            new EntryOpenRequest(EntryKind.PLAN, "x", null, null, null).toJson())
+                            new EntryOpenRequest(EntryKind.PLAN, title, null, null, null).toJson())
                             .withHeader("Authorization", auth));
                     assertEquals(201, opened.status());
 
@@ -360,7 +366,8 @@ class StartScenarioTest {
                     assertEquals("entry.opened", event.event());
                 }
 
-                var unknown = client.send(HttpRequest.get("/api/v1/entries/ent-does-not-exist")
+                var unknownEntry = "ent-" + Generators.letterStrings(4, 10).next().toLowerCase();
+                var unknown = client.send(HttpRequest.get("/api/v1/entries/" + unknownEntry)
                         .withHeader("Authorization", auth));
                 assertEquals(404, unknown.status());
                 assertEquals("scope_not_found",
@@ -375,15 +382,17 @@ class StartScenarioTest {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
+                var title = Generators.letterStrings(4, 10).next();
                 var notReady = client.send(HttpRequest.json("POST",
                         "/api/v1/projects/plan-marshall/entries",
-                        new EntryOpenRequest(EntryKind.PLAN, "x", null, null, null).toJson())
+                        new EntryOpenRequest(EntryKind.PLAN, title, null, null, null).toJson())
                         .withHeader("Authorization", auth));
                 assertEquals(409, notReady.status());
 
+                var unknownProject = Generators.letterStrings(4, 10).next().toLowerCase();
                 var unknown = client.send(HttpRequest.json("POST",
-                        "/api/v1/projects/no-such-project/entries",
-                        new EntryOpenRequest(EntryKind.PLAN, "x", null, null, null).toJson())
+                        "/api/v1/projects/" + unknownProject + "/entries",
+                        new EntryOpenRequest(EntryKind.PLAN, title, null, null, null).toJson())
                         .withHeader("Authorization", auth));
                 assertEquals(404, unknown.status());
             }
@@ -432,7 +441,7 @@ class StartScenarioTest {
                 // a clean source is not accepted: only a flagged or unscreened one is
                 var refused = client(runtime).send(HttpRequest.json("POST",
                         "/api/v1/entries/ent-3f9a2c41/links/accept:src-issue-1",
-                        JsonTree.write(Map.of("reason", "read as data only")))
+                        JsonTree.write(Map.of("reason", Generators.letterStrings(4, 12).next())))
                         .withHeader("Authorization", "Bearer " + runtime.token()));
                 assertEquals(409, refused.status());
             }
@@ -482,7 +491,7 @@ class StartScenarioTest {
                 // a flagged source accepted with its reason is stored untrusted
                 var accepted = client(runtime).send(HttpRequest.json("POST",
                         "/api/v1/entries/ent-3f9a2c41/links/accept:src-issue-2",
-                        JsonTree.write(Map.of("reason", "read as data only")))
+                        JsonTree.write(Map.of("reason", Generators.letterStrings(4, 12).next())))
                         .withHeader("Authorization", "Bearer " + runtime.token()));
                 assertEquals(200, accepted.status());
                 assertEquals(SourceTrust.UNTRUSTED,
@@ -772,9 +781,10 @@ class StartScenarioTest {
         @DisplayName("a chat turn is answered by the routed role and a create ends the chat before it moves")
         void chatTurnAndCreate() throws Exception {
             try (var runtime = MockRuntime.start(state("start.chat"))) {
+                var turnText = Generators.letterStrings(4, 12).next();
                 var turn = client(runtime).send(HttpRequest.json("POST",
                         "/api/v1/entries/ent-3f9a2c41/chat/turns",
-                        JsonTree.write(Map.of("text", "What did you understand?")))
+                        JsonTree.write(Map.of("text", turnText)))
                         .withHeader("Authorization", "Bearer " + runtime.token()));
                 assertEquals(200, turn.status());
                 var state = StartStateResource.fromJson(turn.bodyText());

@@ -1,7 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import HoldResolutionModal from './HoldResolutionModal.svelte';
+import { formatTime } from '../display/format';
 import type { HoldRecord } from '../api/client';
+
+/** The instant the runtime sends for a hold's last attempt. */
+const LAST_TRIED_AT = '2026-10-16T10:14:00Z';
 
 describe('HoldResolutionModal component', () => {
   const conditionHold: HoldRecord = {
@@ -11,7 +15,7 @@ describe('HoldResolutionModal component', () => {
     kind: 'condition',
     cause: 'the plan reads cui-http, which this project may not read',
     attempts: 3,
-    last_tried_at: '14:10',
+    last_tried_at: LAST_TRIED_AT,
     acts: ['retry', 'grant', 'end_plan'],
   };
 
@@ -37,7 +41,9 @@ describe('HoldResolutionModal component', () => {
     expect(screen.getByTestId('hold-cause')).toHaveTextContent(
       'the plan reads cui-http, which this project may not read',
     );
-    expect(screen.getByTestId('hold-tried')).toHaveTextContent('Tried 3 times, last 14:10');
+    expect(screen.getByTestId('hold-tried')).toHaveTextContent(
+      `Tried 3 times, last ${formatTime(LAST_TRIED_AT, 'short', 'en')}`,
+    );
     expect(screen.getByTestId('hold-act-retry')).toHaveTextContent('Retry now');
     expect(screen.getByTestId('hold-act-grant')).toHaveTextContent('Grant read access to');
   });

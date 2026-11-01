@@ -23,6 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
@@ -35,6 +37,7 @@ import de.planmarshall.api.source.git.SourceLane;
 
 @DisplayName("GitSourceScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class GitSourceScenarioTest {
 
     private static final String AUTH = "Authorization";
@@ -109,7 +112,7 @@ class GitSourceScenarioTest {
                 var accepted = client.send(HttpRequest.json("POST",
                         "/api/v1/projects/pm-mcp-clients/sources/pr/adopt",
                         "{\"project_id\":\"pm-mcp-clients\",\"pr_url\":\"6677\","
-                                + "\"screening_bypass_reason\":\"I read the flagged text\"}")
+                                + "\"screening_bypass_reason\":\"" + Generators.letterStrings(4, 12).next() + "\"}")
                         .withHeader(AUTH, auth));
                 assertEquals(201, accepted.status());
                 assertEquals(SourceLane.ADOPT, PrAdoptResult.fromJson(accepted.bodyText()).lane());
@@ -154,7 +157,8 @@ class GitSourceScenarioTest {
 
                 var res = client.send(HttpRequest.json("POST",
                         "/api/v1/projects/pm-mcp-clients/sources/pr/observe",
-                        JsonTree.write(Map.of("pr_url", "codeberg-provider"))).withHeader(AUTH, auth));
+                        JsonTree.write(Map.of("pr_url", Generators.letterStrings(4, 12).next())))
+                        .withHeader(AUTH, auth));
                 assertEquals(400, res.status());
             }
         }
@@ -224,9 +228,10 @@ class GitSourceScenarioTest {
                 var auth = "Bearer " + runtime.token();
 
                 preview(client, auth, "pm-mcp-clients");
+                var stalePreview = "preview-" + Generators.letterStrings(4, 10).next().toLowerCase();
                 var res = client.send(HttpRequest.json("POST",
                         "/api/v1/projects/pm-mcp-clients/sources/local-changes/capture",
-                        JsonTree.write(Map.of("project_id", "pm-mcp-clients", "preview_id", "preview-stale",
+                        JsonTree.write(Map.of("project_id", "pm-mcp-clients", "preview_id", stalePreview,
                                 "confirmed", true))).withHeader(AUTH, auth));
                 assertEquals(409, res.status());
                 assertEquals("preview_stale", reason(res.bodyText()));

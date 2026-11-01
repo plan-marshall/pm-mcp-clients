@@ -6,6 +6,7 @@
   import CredentialEntry from '../components/CredentialEntry.svelte';
   import { apiClient, type PairedDevice } from '../api/client';
   import { currentLocale } from '../i18n';
+  import { formatDay, formatTime } from '../display/format';
   import { runtimeStore, navigateTo, goBack } from '../stores/runtime';
 
   /**
@@ -25,17 +26,27 @@
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
+  /** The moment the ages are measured at; a quiet timer moves it so an idle list stays true. */
+  let clock = Date.now();
+  let clockTimer: ReturnType<typeof setInterval> | null = null;
 
   onMount(() => {
     isMounted = true;
     unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
       handleEvent(event, data);
     });
+    clockTimer = setInterval(() => {
+      clock = Date.now();
+    }, 30_000);
     void loadData();
   });
 
   onDestroy(() => {
     isMounted = false;
+    if (clockTimer !== null) {
+      clearInterval(clockTimer);
+      clockTimer = null;
+    }
     if (unsubscribeEvents) {
       unsubscribeEvents();
       unsubscribeEvents = null;
@@ -172,29 +183,26 @@
 
   /**
    * @param rawDate an ISO timestamp
-   * @returns the day and month, in the interface language
+   * @returns the day, in the interface language
    */
   function formatDate(rawDate?: string): string {
-    if (!rawDate) return '';
-    const date = new Date(rawDate);
-    if (Number.isNaN(date.getTime())) return rawDate;
-    return date.toLocaleDateString($currentLocale, { day: 'numeric', month: 'short' });
+    return formatDay(rawDate, $currentLocale);
   }
 
   /**
    * @param rawDate an ISO timestamp
-   * @returns the day, month and time, in the interface language
+   * @returns its age in the unit that age has, measured at the list's own clock
+   */
+  function formatRelative(rawDate?: string): string {
+    return formatTime(rawDate, 'relative', $currentLocale, new Date(clock));
+  }
+
+  /**
+   * @param rawDate an ISO timestamp
+   * @returns the moment to the minute, in the interface language
    */
   function formatDateTime(rawDate?: string): string {
-    if (!rawDate) return '';
-    const date = new Date(rawDate);
-    if (Number.isNaN(date.getTime())) return rawDate;
-    return date.toLocaleString($currentLocale, {
-      day: 'numeric',
-      month: 'short',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    return formatTime(rawDate, 'short', $currentLocale);
   }
 
   $: otherDevicesCount = devices.filter((d) => !isThisBrowser(d)).length;
@@ -302,8 +310,9 @@
                     · {$t('devices.list.from', { from: device.paired_from })}
                   {/if}
                 </td>
-                <td class="text-secondary">
-                  {$t('devices.list.last_used', { time: formatDateTime(device.last_used_at) })}
+                <td class="text-secondary" title={formatDateTime(device.last_used_at)}>
+                  <span class="visually-hidden">{formatDateTime(device.last_used_at)}</span>
+                  {$t('devices.list.last_used', { time: formatRelative(device.last_used_at) })}
                 </td>
                 <td>
                   <div class="device-actions">
@@ -417,6 +426,18 @@
 </div>
 
 <style>
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   .settings-view {
     max-width: 64rem;
     margin: 0 auto;

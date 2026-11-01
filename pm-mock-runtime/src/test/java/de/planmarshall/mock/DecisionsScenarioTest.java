@@ -27,6 +27,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.decision.DecisionAnswerRequest;
 import de.planmarshall.api.decision.DecisionEnvelope;
 import de.planmarshall.api.decision.DecisionInterpretation;
@@ -42,6 +44,7 @@ import de.planmarshall.mock.scenario.ScenarioLoader;
 
 @DisplayName("DecisionsScenario (UC-PLN-2)")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class DecisionsScenarioTest {
 
     private static final String AUTH_HEADER = "Authorization";
@@ -73,8 +76,9 @@ class DecisionsScenarioTest {
                 assertEquals(1, byProject.size());
                 assertEquals("WR-3", ((Map<?, ?>) byProject.getFirst()).get("id"));
 
+                var noDecisions = Generators.letterStrings(4, 12).next().toLowerCase();
                 var none = (List<?>) JsonTree.parse(
-                        get(runtime, "/api/v1/decisions?project=no-such-project").body());
+                        get(runtime, "/api/v1/decisions?project=" + noDecisions).body());
                 assertTrue(none.isEmpty());
             }
         }
@@ -157,7 +161,7 @@ class DecisionsScenarioTest {
                 assertEquals(400, post(runtime, "/api/v1/decisions/WR-2/answer", noReason.toJson()).status());
 
                 var withReason = new DecisionAnswerRequest(Map.of(), null, null, null, "waive",
-                        "Covered by build box run", "cli", null);
+                        Generators.letterStrings(4, 12).next(), "cli", null);
                 var response = post(runtime, "/api/v1/decisions/WR-2/answer", withReason.toJson());
                 assertEquals(200, response.status());
                 assertEquals("waived", JsonTree.string(JsonTree.asObject(JsonTree.parse(response.body())),
@@ -221,7 +225,8 @@ class DecisionsScenarioTest {
         void answers() throws Exception {
             try (var runtime = MockRuntime.start(STATE)) {
                 var request = new DecisionAnswerRequest(Map.of("1", "2"), "2", null,
-                        "tested locally", "answer", null, "cli", "terminal-1");
+                        Generators.letterStrings(4, 12).next(), "answer", null, "cli",
+                        "terminal-" + Generators.integers(1, 99).next());
                 assertEquals(200, post(runtime, "/api/v1/decisions/Q-007/answer", request.toJson()).status());
                 assertEquals(404, get(runtime, "/api/v1/decisions/Q-007").status());
             }
@@ -251,12 +256,13 @@ class DecisionsScenarioTest {
         @DisplayName("answers parts, own words, and refuses an unknown decision")
         void partsAndUnknown() throws Exception {
             try (var runtime = MockRuntime.start(STATE)) {
+                var unknownDecision = "Q-" + Generators.integers(500, 999).next();
                 assertEquals(200, post(runtime, "/api/v1/decisions/Q-012/answer",
-                        "{\"words\":\"custom answer text\"}").status());
+                        "{\"words\":\"" + Generators.letterStrings(4, 12).next() + "\"}").status());
                 assertEquals(200, post(runtime, "/api/v1/decisions/Q-031/answer",
                         "{\"part_answers\":{\"1\":\"2\"}}").status());
-                assertEquals(404, post(runtime, "/api/v1/decisions/NONEXISTENT/answer", "{}").status());
-                assertEquals(404, post(runtime, "/api/v1/decisions/NONEXISTENT/withdraw", "{}").status());
+                assertEquals(404, post(runtime, "/api/v1/decisions/" + unknownDecision + "/answer", "{}").status());
+                assertEquals(404, post(runtime, "/api/v1/decisions/" + unknownDecision + "/withdraw", "{}").status());
                 assertEquals(400, post(runtime, "/api/v1/decisions/WR-3/answer", "{invalid").status());
             }
         }
@@ -315,11 +321,13 @@ class DecisionsScenarioTest {
     @DisplayName("keeps a decision added at runtime")
     void addedDecision() throws Exception {
         try (var runtime = MockRuntime.start(STATE)) {
-            var custom = new DecisionEnvelope("Q-999", 1, "Custom", null, "plan custom",
+            var decisionId = "Q-" + Generators.integers(500, 999).next();
+            var custom = new DecisionEnvelope(decisionId, 1, Generators.letterStrings(4, 10).next(), null,
+                    "plan " + Generators.letterStrings(4, 10).next(),
                     DecisionScope.PLAN, "refine", "planner", "plan", Reversibility.REVERSIBLE,
                     null, null, List.of(), Instant.now(), false, null, null, null);
             runtime.engine().addDecisionAndBroadcast(custom);
-            assertEquals(200, get(runtime, "/api/v1/decisions/Q-999").status());
+            assertEquals(200, get(runtime, "/api/v1/decisions/" + decisionId).status());
         }
     }
 

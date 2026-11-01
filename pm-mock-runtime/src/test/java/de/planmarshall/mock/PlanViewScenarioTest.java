@@ -29,6 +29,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
@@ -44,6 +46,7 @@ import de.planmarshall.api.process.TaskActivity;
 
 @DisplayName("PlanViewScenarioTest")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class PlanViewScenarioTest {
 
     private static final String AUTH_HEADER = "Authorization";
@@ -326,7 +329,8 @@ class PlanViewScenarioTest {
             assertEquals("finalize", tree.currentPhase());
             assertEquals("waiting_for_you", tree.phaseState());
 
-            var unknown = get(runtime, "/api/v1/plans/dynamic-custom-plan/process");
+            var unknownPlan = Generators.letterStrings(4, 10).next().toLowerCase();
+            var unknown = get(runtime, "/api/v1/plans/" + unknownPlan + "/process");
             assertEquals(404, unknown.status());
             assertTrue(unknown.bodyText().contains("plan_not_found"),
                     "an unknown plan id answers plan_not_found");
@@ -346,14 +350,15 @@ class PlanViewScenarioTest {
             assertEquals("waiting_for_you", held.phaseState());
 
             var unknownActivity = get(runtime,
-                    "/api/v1/plans/dynamic-custom-plan/tasks/TASK-042/activity");
+                    "/api/v1/plans/" + unknownPlan + "/tasks/TASK-042/activity");
             assertEquals(404, unknownActivity.status());
             assertTrue(unknownActivity.bodyText().contains("plan_not_found"),
                     "an unknown plan id has no task activity");
 
+            var unknownEpic = Generators.letterStrings(4, 10).next().toLowerCase();
             var epic = EpicProcess.fromJson(
-                    get(runtime, "/api/v1/epics/dynamic-custom-epic/process").bodyText());
-            assertEquals("dynamic-custom-epic", epic.epicId());
+                    get(runtime, "/api/v1/epics/" + unknownEpic + "/process").bodyText());
+            assertEquals(unknownEpic, epic.epicId());
         }
     }
 

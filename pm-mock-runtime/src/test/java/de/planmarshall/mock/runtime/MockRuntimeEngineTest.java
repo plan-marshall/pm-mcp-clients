@@ -30,6 +30,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.mock.http.MockHttpRequest;
@@ -42,16 +44,27 @@ import de.planmarshall.mock.scenario.ScenarioRegistry;
 import de.planmarshall.mock.scenario.StateDefinition;
 
 @DisplayName("MockRuntimeEngine")
+@EnableGeneratorController
 class MockRuntimeEngineTest {
 
     private ScenarioRegistry registry;
     private MockRuntimeEngine engine;
+    private String runtimeToken;
+    private String deviceSecret;
+    private Map<String, String> auth;
+    private String brokenName;
+    private String brokenState;
 
     @BeforeEach
     void setUp() {
         registry = new ScenarioRegistry();
+        runtimeToken = "rt-" + Generators.letterStrings(8, 16).next();
+        deviceSecret = "ds-" + Generators.letterStrings(8, 16).next();
+        auth = Map.of("Authorization", "Bearer " + runtimeToken);
+        brokenName = Generators.letterStrings(4, 10).next().toLowerCase();
+        brokenState = "s" + Generators.letterStrings(3, 6).next().toLowerCase();
         var initialScenario = registry.resolve(StandardScenarios.STATUS_ONLY);
-        engine = new MockRuntimeEngine(registry, initialScenario, "test-token", "test-secret");
+        engine = new MockRuntimeEngine(registry, initialScenario, runtimeToken, deviceSecret);
     }
 
     @AfterEach
@@ -108,8 +121,8 @@ class MockRuntimeEngineTest {
     void initialization() {
         assertEquals(StandardScenarios.ONBOARDING, engine.currentScenario().name());
         assertEquals("status.only", engine.currentStateId());
-        assertEquals("test-token", engine.runtimeToken());
-        assertEquals("test-secret", engine.deviceSecret());
+        assertEquals(runtimeToken, engine.runtimeToken());
+        assertEquals(deviceSecret, engine.deviceSecret());
     }
 
     @Test
@@ -120,11 +133,12 @@ class MockRuntimeEngineTest {
                 "state", Map.of("state_id", "start.state"),
                 "facts", Map.of("runtime", Map.of("devices", "not-a-list")));
         var state = new StateDefinition(representation, Map.of(), List.of(), null);
-        var scenario = new Scenario(1, "bad-devices", "Bad device fixture", "start.state", null,
+        var deviceFixtureName = Generators.letterStrings(4, 10).next().toLowerCase();
+        var scenario = new Scenario(1, "bad-" + deviceFixtureName, "Bad device fixture", "start.state", null,
                 Map.of(), Map.of("start.state", state));
 
         assertThrows(IllegalStateException.class,
-                () -> new MockRuntimeEngine(registry, scenario, "test-token", "test-secret"));
+                () -> new MockRuntimeEngine(registry, scenario, runtimeToken, deviceSecret));
     }
 
     @Test
@@ -135,17 +149,18 @@ class MockRuntimeEngineTest {
                 "state", Map.of("state_id", "start.state"),
                 "facts", Map.of("runtime", Map.of("devices", List.of(Map.of("label", "no id")))));
         var state = new StateDefinition(representation, Map.of(), List.of(), null);
-        var scenario = new Scenario(1, "bad-device-entry", "Bad device entry", "start.state", null,
+        var deviceEntryName = Generators.letterStrings(4, 10).next().toLowerCase();
+        var scenario = new Scenario(1, "bad-" + deviceEntryName, "Bad device entry", "start.state", null,
                 Map.of(), Map.of("start.state", state));
 
         assertThrows(IllegalStateException.class,
-                () -> new MockRuntimeEngine(registry, scenario, "test-token", "test-secret"));
+                () -> new MockRuntimeEngine(registry, scenario, runtimeToken, deviceSecret));
     }
 
     @Test
     @DisplayName("the status-only case keeps its recorded status and drops the web object")
     void statusOnlyKeepsItsRecordedStatus() throws Exception {
-        var res = send("GET", "/api/v1/status", Map.of("Authorization", "Bearer test-token"),
+        var res = send("GET", "/api/v1/status", Map.of("Authorization", "Bearer " + runtimeToken),
                 new byte[0], false);
         assertEquals(200, res.status());
         assertEquals("ready", res.json().get("status"));
@@ -220,7 +235,8 @@ class MockRuntimeEngineTest {
         assertEquals("missing_scenario_name", res4.json().get("error"));
 
         // 5. Unknown scenario name -> 404
-        var res5 = send("POST", "/mock/scenario?name=unknown-scenario", Map.of(), new byte[0], false);
+        var res5 = send("POST", "/mock/scenario?name=unknown-"
+                + Generators.letterStrings(6, 12).next(), Map.of(), new byte[0], false);
         assertEquals(404, res5.status());
         assertEquals("scenario_not_found", res5.json().get("error"));
     }
@@ -234,7 +250,8 @@ class MockRuntimeEngineTest {
         assertEquals("transitioned", res1.json().get("status"));
         assertEquals("harness.choose", engine.currentStateId());
 
-        var res2 = send("POST", "/mock/goto/non-existent-state", Map.of(), new byte[0], false);
+        var res2 = send("POST", "/mock/goto/" + Generators.letterStrings(6, 12).next(),
+                Map.of(), new byte[0], false);
         assertEquals(404, res2.status());
         assertEquals("state_not_found", res2.json().get("error"));
     }
@@ -242,19 +259,21 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("control endpoint: POST /mock/broadcast broadcasts event")
     void controlBroadcast() throws Exception {
-        var body = "{\"event\":\"test-evt\",\"data\":{\"foo\":\"bar\"}}".getBytes(StandardCharsets.UTF_8);
+        var eventName = Generators.letterStrings(4, 10).next().toLowerCase();
+        var body = ("{\"event\":\"" + eventName + "\",\"data\":{\""
+                + Generators.letterStrings(4, 8).next() + "\":\""
+                + Generators.letterStrings(4, 8).next() + "\"}}").getBytes(StandardCharsets.UTF_8);
         var res = send("POST", "/mock/broadcast", Map.of(), body, false);
         assertEquals(200, res.status());
         assertEquals("broadcasted", res.json().get("status"));
-        assertEquals("test-evt", res.json().get("event"));
+        assertEquals(eventName, res.json().get("event"));
     }
 
     @Test
     @DisplayName("the status reports what waits, by kind, and follows a broadcast answer")
     void statusWaitingCountsFollowBroadcasts() throws Exception {
         try (var showroom = new MockRuntimeEngine(registry, registry.resolve(StandardScenarios.FULLY_ONBOARDED),
-                     "test-token", "test-secret")) {
-            var auth = Map.of("Authorization", "Bearer test-token");
+                     runtimeToken, deviceSecret)) {
             var before = send(showroom, "GET", "/api/v1/status", auth, new byte[0], false);
             var waitingBefore = JsonTree.asObject(before.json().get("needs_operator"));
             assertEquals(3, JsonTree.integer(waitingBefore, "decision"));
@@ -272,12 +291,14 @@ class MockRuntimeEngineTest {
     @DisplayName("a broadcast decision.opened joins the open decisions")
     void broadcastOpenedDecisionCounts() throws Exception {
         try (var showroom = new MockRuntimeEngine(registry, registry.resolve(StandardScenarios.FULLY_ONBOARDED),
-                     "test-token", "test-secret")) {
-            var opened = "{\"event\":\"decision.opened\",\"data\":{\"decision\":{\"id\":\"Q-042\","
-                    + "\"title\":\"Ship it\",\"subject\":\"plan fix-relay\"}}}";
+                     runtimeToken, deviceSecret)) {
+            var newDecision = "Q-" + Generators.integers(500, 999).next();
+            var opened = "{\"event\":\"decision.opened\",\"data\":{\"decision\":{\"id\":\"" + newDecision + "\","
+                    + "\"title\":\"" + Generators.letterStrings(4, 10).next()
+                    + "\",\"subject\":\"plan fix-relay\"}}}";
             send(showroom, "POST", "/mock/broadcast", Map.of(), opened.getBytes(StandardCharsets.UTF_8), false);
 
-            var after = send(showroom, "GET", "/api/v1/status", Map.of("Authorization", "Bearer test-token"),
+            var after = send(showroom, "GET", "/api/v1/status", Map.of("Authorization", "Bearer " + runtimeToken),
                     new byte[0], false);
             assertEquals(4, JsonTree.integer(JsonTree.asObject(after.json().get("needs_operator")), "decision"));
         }
@@ -287,13 +308,13 @@ class MockRuntimeEngineTest {
     @DisplayName("a broadcast waiver request counts under its own kind")
     void broadcastWaiverCountsSeparately() throws Exception {
         try (var showroom = new MockRuntimeEngine(registry, registry.resolve(StandardScenarios.FULLY_ONBOARDED),
-                     "test-token", "test-secret")) {
+                     runtimeToken, deviceSecret)) {
             var waiver = "{\"event\":\"decision.opened\",\"data\":{\"decision\":{\"id\":\"WR-2\","
                     + "\"title\":\"Waiver\",\"subject\":\"plan fix-relay\",\"is_waiver\":true,"
                     + "\"waiver_gate\":\"sonar\"}}}";
             send(showroom, "POST", "/mock/broadcast", Map.of(), waiver.getBytes(StandardCharsets.UTF_8), false);
 
-            var after = send(showroom, "GET", "/api/v1/status", Map.of("Authorization", "Bearer test-token"),
+            var after = send(showroom, "GET", "/api/v1/status", Map.of("Authorization", "Bearer " + runtimeToken),
                     new byte[0], false);
             var waiting = JsonTree.asObject(after.json().get("needs_operator"));
             assertEquals(1, JsonTree.integer(waiting, "waiver_request"));
@@ -317,18 +338,18 @@ class MockRuntimeEngineTest {
         var body = "{\"code\":\"KXQB-MRTN\"}".getBytes(StandardCharsets.UTF_8);
         var res1 = send("POST", "/api/v1/pair", Map.of(), body, true);
         assertEquals(200, res1.status());
-        assertEquals("test-secret", res1.json().get("device_secret"));
+        assertEquals(deviceSecret, res1.json().get("device_secret"));
         assertEquals("mock-device-1", res1.json().get("device_id"));
 
         // 2. A fresh code in the query parameter (case and dash insensitive); the redeemed code is single use
         var pairings = send("POST", "/api/v1/web/pairings",
-                Map.of("Authorization", "Bearer test-token"), new byte[0], false);
+                Map.of("Authorization", "Bearer " + runtimeToken), new byte[0], false);
         assertEquals(201, pairings.status());
         var freshCode = String.valueOf(pairings.json().get("code"));
         var res2 = send("POST", "/pair?code=" + freshCode.toLowerCase().replace("-", ""),
                 Map.of(), new byte[0], true);
         assertEquals(200, res2.status());
-        assertEquals("test-secret", res2.json().get("device_secret"));
+        assertEquals(deviceSecret, res2.json().get("device_secret"));
 
         // 3. Pairing with mismatched code -> 400
         var res3 = send("POST", "/pair?code=wrong", Map.of(), new byte[0], true);
@@ -371,12 +392,17 @@ class MockRuntimeEngineTest {
         assertEquals("unauthorized", res1.json().get("error"));
 
         // Wrong Authorization -> 401
-        var res2 = send("GET", "/api/v1/status", Map.of("Authorization", "Bearer wrong"), new byte[0], true);
+        var res2 = send("GET", "/api/v1/status", Map.of("Authorization",
+                "Bearer " + deviceSecret + "x"), new byte[0], true);
         assertEquals(401, res2.status());
 
         // Correct Authorization -> accepted
-        var res3 = send("GET", "/api/v1/status", Map.of("Authorization", "Bearer test-secret"), new byte[0], true);
+        var res3 = send("GET", "/api/v1/status", Map.of("Authorization", "Bearer " + deviceSecret), new byte[0], true);
         assertEquals(200, res3.status());
+
+        // The runtime token is a local credential, never a web one -> 401
+        var res4 = send("GET", "/api/v1/status", Map.of("Authorization", "Bearer " + runtimeToken), new byte[0], true);
+        assertEquals(401, res4.status());
     }
 
     @Test
@@ -388,11 +414,12 @@ class MockRuntimeEngineTest {
         assertEquals("unauthorized", res1.json().get("error"));
 
         // Valid runtime token -> 200
-        var res2 = send("GET", "/api/v1/status", Map.of("Authorization", "Bearer test-token"), new byte[0], false);
+        var res2 = send("GET", "/api/v1/status", Map.of("Authorization", "Bearer " + runtimeToken), new byte[0], false);
         assertEquals(200, res2.status());
 
         // Job token on /mcp path -> accepted
-        var res3 = send("GET", "/mcp/job-status", Map.of("PM-MCP-Job-Token", "some-job-token"), new byte[0], false);
+        var res3 = send("GET", "/mcp/job-status", Map.of("PM-MCP-Job-Token",
+                Generators.letterStrings(8, 16).next()), new byte[0], false);
         // Returns 404 mock_no_route because path has no route, but authentication passed (not 401)
         assertEquals(404, res3.status());
         assertEquals("mock_no_route", res3.json().get("error"));
@@ -401,7 +428,7 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("handles mock_no_route for unmatched requests with offered_links")
     void mockNoRoute() throws Exception {
-        var res = send("GET", "/api/v1/unmatched-path", Map.of("Authorization", "Bearer test-token"), new byte[0], false);
+        var res = send("GET", "/api/v1/unmatched-path", auth, new byte[0], false);
         assertEquals(404, res.status());
         assertNotNull(res.json());
         assertEquals("mock_no_route", res.json().get("error"));
@@ -412,8 +439,6 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("an unoffered domain endpoint answers mock_no_route naming the state")
     void unofferedDomainIsNoRoute() throws Exception {
-        var auth = Map.of("Authorization", "Bearer test-token");
-
         var system = send("GET", "/api/v1/system", auth, new byte[0], false);
         assertEquals(404, system.status());
         assertEquals("mock_no_route", system.json().get("error"));
@@ -469,18 +494,20 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("a scenario static route outside the live domains wins over the domain defaults")
     void scenarioRouteWinsOutsideLiveDomains() throws Exception {
+        var scenarioName = Generators.letterStrings(4, 10).next().toLowerCase();
+        var value = Generators.letterStrings(4, 10).next();
         var state = new StateDefinition(Map.of("message", "start"), Map.of(), List.of(), null);
-        var testScenario = new Scenario(1, "route-precedence", "Route precedence", "start", null,
+        var testScenario = new Scenario(1, scenarioName, "Route precedence", "start", null,
                 Map.of("GET /api/v1/custom/thing", new RouteDefinition(
-                        Map.of("value", "from-scenario"), 200)),
+                        Map.of("value", value), 200)),
                 Map.of("start", state));
         registry.register(testScenario);
-        engine.switchScenario("route-precedence");
+        engine.switchScenario(scenarioName);
 
-        var res = send("GET", "/api/v1/custom/thing", Map.of("Authorization", "Bearer test-token"),
+        var res = send("GET", "/api/v1/custom/thing", Map.of("Authorization", "Bearer " + runtimeToken),
                 new byte[0], false);
         assertEquals(200, res.status());
-        assertEquals("from-scenario", res.json().get("value"));
+        assertEquals(value, res.json().get("value"));
     }
 
     @Test
@@ -490,7 +517,7 @@ class MockRuntimeEngineTest {
         assertEquals("onboard.mode", engine.currentStateId());
 
         // Send POST to /api/v1/onboarding/language with the begin link
-        var res = send("POST", "/api/v1/onboarding/language", Map.of("Authorization", "Bearer test-token"), new byte[0], false);
+        var res = send("POST", "/api/v1/onboarding/language", Map.of("Authorization", "Bearer " + runtimeToken), new byte[0], false);
         assertEquals(200, res.status());
         assertEquals("language.choose", engine.currentStateId());
     }
@@ -499,7 +526,6 @@ class MockRuntimeEngineTest {
     @DisplayName("handles the flat plan control routes the operator verbs post to")
     void flatPlanControlRoutes() throws Exception {
         engine.switchScenario(StandardScenarios.FULLY_ONBOARDED);
-        var auth = Map.of("Authorization", "Bearer test-token");
 
         var paused = send("POST", "/api/v1/plans/fix-relay/pause", auth,
                 "{\"point\":\"now\"}".getBytes(StandardCharsets.UTF_8), false);
@@ -521,7 +547,6 @@ class MockRuntimeEngineTest {
     @DisplayName("the flat plan control routes refuse an unknown plan and a bare verb")
     void flatPlanControlRoutesRefuse() throws Exception {
         engine.switchScenario(StandardScenarios.FULLY_ONBOARDED);
-        var auth = Map.of("Authorization", "Bearer test-token");
 
         var unknown = send("POST", "/api/v1/plans/no-such-plan/pause", auth, new byte[0], false);
         assertEquals(404, unknown.status());
@@ -534,22 +559,24 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("handles link with refusal status >= 400")
     void errorLinkRefusal() throws Exception {
-        var errorLink = new LinkDefinition("start", "POST", "/api/v1/fail", 0, 409, "locked_keychain");
+        var refusalScenario = Generators.letterStrings(4, 10).next().toLowerCase();
+        var errorCode = Generators.letterStrings(4, 10).next().toLowerCase();
+        var errorLink = new LinkDefinition("start", "POST", "/api/v1/fail", 0, 409, errorCode);
         var stateWithRefusal = new StateDefinition(
                 Map.of("message", "blocked"),
                 Map.of("fail", errorLink),
                 List.of(),
                 null
         );
-        var testScenario = new Scenario(1, "test-refusal", "Refusal test", "start", null,
+        var testScenario = new Scenario(1, refusalScenario, "Refusal test", "start", null,
                 Map.of(), Map.of("start", stateWithRefusal));
 
         registry.register(testScenario);
-        engine.switchScenario("test-refusal");
+        engine.switchScenario(refusalScenario);
 
-        var res = send("POST", "/api/v1/fail", Map.of("Authorization", "Bearer test-token"), new byte[0], false);
+        var res = send("POST", "/api/v1/fail", Map.of("Authorization", "Bearer " + runtimeToken), new byte[0], false);
         assertEquals(409, res.status());
-        assertEquals("locked_keychain", res.json().get("error"));
+        assertEquals(errorCode, res.json().get("error"));
         assertEquals("start", res.json().get("state"));
         assertEquals("fail", res.json().get("link"));
     }
@@ -557,7 +584,10 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("handles link with execution delay")
     void delayedLink() throws Exception {
-        var delayedLink = new LinkDefinition("next", "POST", "/api/v1/delayed", 20, 200, null);
+        var delayScenario = Generators.letterStrings(4, 10).next().toLowerCase();
+        var nextStateId = "s" + Generators.letterStrings(3, 6).next().toLowerCase();
+        var delayMs = Generators.integers(20, 40).next().intValue();
+        var delayedLink = new LinkDefinition(nextStateId, "POST", "/api/v1/delayed", delayMs, 200, null);
         var startState = new StateDefinition(
                 Map.of("message", "start"),
                 Map.of("delayed", delayedLink),
@@ -565,19 +595,19 @@ class MockRuntimeEngineTest {
                 null
         );
         var nextState = new StateDefinition(Map.of("message", "done"), Map.of(), List.of(), null);
-        var testScenario = new Scenario(1, "test-delay", "Delay test", "start", null,
-                Map.of(), Map.of("start", startState, "next", nextState));
+        var testScenario = new Scenario(1, delayScenario, "Delay test", "start", null,
+                Map.of(), Map.of("start", startState, nextStateId, nextState));
 
         registry.register(testScenario);
-        engine.switchScenario("test-delay");
+        engine.switchScenario(delayScenario);
 
         var startNanos = System.nanoTime();
-        var res = send("POST", "/api/v1/delayed", Map.of("Authorization", "Bearer test-token"), new byte[0], false);
+        var res = send("POST", "/api/v1/delayed", Map.of("Authorization", "Bearer " + runtimeToken), new byte[0], false);
         var elapsedMs = (System.nanoTime() - startNanos) / 1_000_000;
 
         assertEquals(200, res.status());
-        assertTrue(elapsedMs >= 15, "Expected elapsed time to reflect delay: " + elapsedMs + "ms");
-        assertEquals("next", engine.currentStateId());
+        assertTrue(elapsedMs >= delayMs - 5, "Expected elapsed time to reflect delay: " + elapsedMs + "ms");
+        assertEquals(nextStateId, engine.currentStateId());
     }
 
     @Test
@@ -587,7 +617,7 @@ class MockRuntimeEngineTest {
         assertEquals("harness.not-logged-in", engine.currentStateId());
 
         // GET /api/v1/status is a static route in this scenario
-        var res = send("GET", "/api/v1/status", Map.of("Authorization", "Bearer test-token"), new byte[0], false);
+        var res = send("GET", "/api/v1/status", Map.of("Authorization", "Bearer " + runtimeToken), new byte[0], false);
         assertEquals(200, res.status());
         assertNotNull(res.json());
         // State remains harness.not-logged-in
@@ -644,7 +674,6 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("manages paired devices and web listener routes")
     void webDevicesRoutes() throws Exception {
-        var auth = Map.of("Authorization", "Bearer test-token");
 
         // 1. POST /api/v1/web/pairings
         var pairRes = send("POST", "/api/v1/web/pairings", auth, new byte[0], false);
@@ -658,13 +687,15 @@ class MockRuntimeEngineTest {
         assertTrue(listRes.body().contains("Firefox on mbp-oliver"));
 
         // 3. PATCH /api/v1/web/devices/dev-1 (valid label)
-        var renameBody = "{\"label\":\"Primary Laptop\"}".getBytes(StandardCharsets.UTF_8);
+        var renameLabel = Generators.letterStrings(4, 12).next();
+        var renameBody = ("{\"label\":\"" + renameLabel + "\"}").getBytes(StandardCharsets.UTF_8);
         var renameRes = send("PATCH", "/api/v1/web/devices/dev-1", auth, renameBody, false);
         assertEquals(200, renameRes.status());
-        assertEquals("Primary Laptop", renameRes.json().get("label"));
+        assertEquals(renameLabel, renameRes.json().get("label"));
 
         // 4. PATCH /api/v1/web/devices/1 (by index)
-        var indexRename = "{\"label\":\"Index Laptop\"}".getBytes(StandardCharsets.UTF_8);
+        var indexLabel = Generators.letterStrings(4, 12).next();
+        var indexRename = ("{\"label\":\"" + indexLabel + "\"}").getBytes(StandardCharsets.UTF_8);
         var indexRes = send("PATCH", "/api/v1/web/devices/1", auth, indexRename, false);
         assertEquals(200, indexRes.status());
 
@@ -689,7 +720,7 @@ class MockRuntimeEngineTest {
         assertEquals(404, delNotFound.status());
 
         // 9. DELETE /api/v1/web/devices?others (on web)
-        var webAuth = Map.of("Authorization", "Bearer test-secret");
+        var webAuth = Map.of("Authorization", "Bearer " + deviceSecret);
         var othersRes = send("DELETE", "/api/v1/web/devices?scope=others", webAuth, new byte[0], true);
         assertEquals(200, othersRes.status());
         assertEquals("revoked", othersRes.json().get("status"));
@@ -714,9 +745,9 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("refuses a runtime fixture whose member has the wrong type instead of reading it as absent")
     void refusesWrongTypedFixture() {
-        var scenario = ScenarioLoader.load(brokenFixtureJson(), "broken-fixture");
+        var scenario = ScenarioLoader.load(brokenFixtureJson(), brokenName);
         var failure = assertThrows(IllegalStateException.class,
-                () -> new MockRuntimeEngine(registry, scenario, "test-token", "test-secret"));
+                () -> new MockRuntimeEngine(registry, scenario, runtimeToken, deviceSecret));
         assertTrue(failure.getMessage().contains("facts.runtime.control.holds"), failure.getMessage());
     }
 
@@ -724,20 +755,20 @@ class MockRuntimeEngineTest {
     @DisplayName("a failed switch leaves the active scenario, its state, and its fixtures untouched")
     void failedSwitchKeepsTheActiveScenario() throws Exception {
         var running = registry.resolve(StandardScenarios.RUNNING_WORK);
-        try (var live = new MockRuntimeEngine(registry, running, "test-token", "test-secret")) {
+        try (var live = new MockRuntimeEngine(registry, running, runtimeToken, deviceSecret)) {
             var beforeState = live.currentStateId();
             registry.register(ScenarioLoader.load(brokenFixtureJson(),
-                    "broken-fixture"));
+                    brokenName));
 
             var failure = assertThrows(IllegalStateException.class,
-                    () -> live.switchScenario("broken-fixture"));
+                    () -> live.switchScenario(brokenName));
             assertTrue(failure.getMessage().contains("facts.runtime.control.holds"), failure.getMessage());
 
             assertEquals(StandardScenarios.RUNNING_WORK, live.currentScenario().name());
             assertEquals(beforeState, live.currentStateId());
 
             var actions = send(live, "GET", "/api/v1/plans/fix-relay/actions",
-                    Map.of("Authorization", "Bearer test-token"), new byte[0], false);
+                    Map.of("Authorization", "Bearer " + runtimeToken), new byte[0], false);
             assertEquals(200, actions.status());
             assertEquals("relay-hardening", actions.json().get("epic_id"));
         }
@@ -746,7 +777,6 @@ class MockRuntimeEngineTest {
     @Test
     @DisplayName("records the operator acts since the last reset and serves them at /mock/acts")
     void actLogRecordsActsAndResetEmptiesIt() throws Exception {
-        var auth = Map.of("Authorization", "Bearer test-token");
         engine.switchScenario(StandardScenarios.FULLY_ONBOARDED);
 
         send("POST", "/api/v1/plans/fix-relay/pause", auth,
@@ -782,17 +812,17 @@ class MockRuntimeEngineTest {
                 "an MCP call is no operator act");
     }
 
-    private static String brokenFixtureJson() {
+    private String brokenFixtureJson() {
         return """
                 {
                   "format_version": 1,
-                  "name": "broken-fixture",
-                  "start": "broken.start",
+                  "name": "%1$s",
+                  "start": "%2$s",
                   "states": {
-                    "broken.start": {
+                    "%2$s": {
                       "representation": {
                         "scope": { "kind": "machine" },
-                        "state": { "state_id": "broken.start" },
+                        "state": { "state_id": "%2$s" },
                         "facts": {
                           "runtime": {
                             "control": { "holds": { "hold_id": "H-1" } }
@@ -803,14 +833,13 @@ class MockRuntimeEngineTest {
                     }
                   }
                 }
-                """;
+                """.formatted(brokenName, brokenState);
     }
 
     @Test
     @DisplayName("a project's setup serves its identity and advances to completed")
     void projectSetupServesItsState() throws Exception {
         engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
-        var auth = Map.of("Authorization", "Bearer test-token");
 
         var identity = send("GET", "/api/v1/projects/cui-parent/setup", auth, new byte[0], false);
         var advanced = send("POST", "/api/v1/projects/cui-parent/setup", auth,
@@ -831,7 +860,6 @@ class MockRuntimeEngineTest {
     @DisplayName("a project setup id that arrives percent-encoded is decoded")
     void projectSetupDecodesTheId() throws Exception {
         engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
-        var auth = Map.of("Authorization", "Bearer test-token");
 
         var res = send("GET", "/api/v1/projects/new%20service/setup", auth, new byte[0], false);
 
@@ -844,20 +872,21 @@ class MockRuntimeEngineTest {
     @DisplayName("setWebPort updates webPort reflected in system and connection endpoints")
     void webPortReflectedInSystemAndConnection() throws Exception {
         engine.switchScenario(StandardScenarios.FULLY_ONBOARDED);
-        engine.setWebPort(20760);
+        var webPort = Generators.integers(1024, 65535).next().intValue();
+        engine.setWebPort(webPort);
 
-        var connRes = send("GET", "/api/v1/status/connection", Map.of("Authorization", "Bearer test-secret"), new byte[0], true);
+        var connRes = send("GET", "/api/v1/status/connection", Map.of("Authorization", "Bearer " + deviceSecret), new byte[0], true);
         assertEquals(200, connRes.status());
-        assertEquals("http://127.0.0.1:20760", JsonTree.string(connRes.json(), "loopback_url"));
+        assertEquals("http://127.0.0.1:" + webPort, JsonTree.string(connRes.json(), "loopback_url"));
 
-        var webRes = send("GET", "/api/v1/web", Map.of("Authorization", "Bearer test-secret"), new byte[0], true);
+        var webRes = send("GET", "/api/v1/web", Map.of("Authorization", "Bearer " + deviceSecret), new byte[0], true);
         assertEquals(200, webRes.status());
-        assertEquals(Integer.valueOf(20760), JsonTree.integer(webRes.json(), "port"));
+        assertEquals(Integer.valueOf(webPort), JsonTree.integer(webRes.json(), "port"));
 
-        var sysRes = send("GET", "/api/v1/system", Map.of("Authorization", "Bearer test-token"), new byte[0], false);
+        var sysRes = send("GET", "/api/v1/system", Map.of("Authorization", "Bearer " + runtimeToken), new byte[0], false);
         assertEquals(200, sysRes.status());
         var runtime = JsonTree.asObject(sysRes.json().get("runtime"));
         assertNotNull(runtime);
-        assertEquals("127.0.0.1:20760", JsonTree.string(runtime, "loopback_listener"));
+        assertEquals("127.0.0.1:" + webPort, JsonTree.string(runtime, "loopback_listener"));
     }
 }

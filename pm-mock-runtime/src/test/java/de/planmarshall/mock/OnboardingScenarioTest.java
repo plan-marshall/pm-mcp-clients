@@ -28,6 +28,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.interaction.OperatorScopeKind;
@@ -50,6 +52,7 @@ import de.planmarshall.mock.scenario.ScenarioLoader;
 
 @DisplayName("OnboardingScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class OnboardingScenarioTest {
 
     @Test
@@ -172,7 +175,7 @@ class OnboardingScenarioTest {
 
                 // Only the step the run has passed reports a summary; the current one does not.
                 assertEquals(1, summaries.size());
-                assertEquals("Deutsch, models English", JsonTree.string(summaries, "1"));
+                assertEquals("English, models English", JsonTree.string(summaries, "1"));
                 assertFalse(summaries.containsKey("2"));
             }
         }
@@ -312,6 +315,56 @@ class OnboardingScenarioTest {
         }
 
         @Test
+        @DisplayName("records the interface language chosen at the language step and its later change")
+        void shouldRecordTheInterfaceLanguage() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                // The operator walks from the mode choice into the language step, as a client does.
+                var begin = client.send(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                        "{\"link\":\"begin\"}").withHeader("Authorization", auth));
+                assertEquals(200, begin.status());
+                assertEquals("language.choose", JsonTree.string(
+                        JsonTree.asObject(JsonTree.parse(new String(begin.body(), StandardCharsets.UTF_8))),
+                        "state"));
+
+                var stepRes = client.send(HttpRequest.json("POST", "/api/v1/onboarding/step",
+                        "{\"link\":\"set\",\"language_interface\":\"de\",\"language_model\":\"de\"}")
+                        .withHeader("Authorization", auth));
+                assertEquals(200, stepRes.status());
+
+                var recorded = MachineSettingsRecord.fromJson(new String(
+                        client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth))
+                                .body(),
+                        StandardCharsets.UTF_8));
+                assertEquals("de", recorded.languageInterface());
+                assertEquals("de", recorded.languageModel());
+
+                // The completed card reads the same recorded choice as the settings view.
+                var stateMap = JsonTree.asObject(JsonTree.parse(new String(
+                        client.send(HttpRequest.get("/api/v1/onboarding/state").withHeader("Authorization", auth))
+                                .body(),
+                        StandardCharsets.UTF_8)));
+                var summaries = JsonTree.asObject(stateMap.get("step_summaries"));
+                assertEquals("Deutsch, models Deutsch", JsonTree.string(summaries, "1"));
+
+                assertEquals(200, put(client, auth,
+                        "{\"key\":\"language_interface\",\"value\":\"en\",\"revision\":4}"));
+                // A code the machine does not support changes nothing.
+                assertEquals(200, put(client, auth,
+                        "{\"key\":\"language_model\",\"value\":\"fr\",\"revision\":5}"));
+
+                var changed = MachineSettingsRecord.fromJson(new String(
+                        client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth))
+                                .body(),
+                        StandardCharsets.UTF_8));
+                assertEquals("en", changed.languageInterface());
+                assertEquals("de", changed.languageModel());
+            }
+        }
+
+        @Test
         @DisplayName("applies plan defaults, cleanup durations, rejects an unknown mode, and is idempotent on an unknown consent")
         void shouldApplyTheSettingsKeys() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
@@ -326,12 +379,14 @@ class OnboardingScenarioTest {
                         "{\"key\":\"plan_defaults\",\"value\":\"ask.every-phase\",\"revision\":6}"));
                 assertEquals(200, put(client, auth,
                         "{\"key\":\"cleanup_durations\",\"value\":\"7\",\"revision\":7}"));
+                var unknownMode = "unknown-" + Generators.letterStrings(4, 8).next();
                 // An unknown documents mode is accepted but changes nothing
                 assertEquals(200, put(client, auth,
-                        "{\"key\":\"documents_mode\",\"value\":\"nope\",\"revision\":8}"));
+                        "{\"key\":\"documents_mode\",\"value\":\"" + unknownMode + "\",\"revision\":8}"));
                 // An unknown consent kind changes nothing
                 assertEquals(200, put(client, auth,
-                        "{\"key\":\"consent:not_a_kind\",\"value\":\"x\",\"revision\":9}"));
+                        "{\"key\":\"consent:" + Generators.letterStrings(4, 8).next()
+                                + "\",\"value\":\"" + Generators.letterStrings(4, 8).next() + "\",\"revision\":9}"));
 
                 var settings = MachineSettingsRecord.fromJson(new String(
                         client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth)).body(),
@@ -368,15 +423,16 @@ class OnboardingScenarioTest {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
+                var credentialKind = Generators.letterStrings(4, 12).next();
                 assertEquals(200, put(client, auth,
-                        "{\"key\":\"credential:github\",\"value\":\"user token\",\"revision\":4}"));
+                        "{\"key\":\"credential:github\",\"value\":\"" + credentialKind + "\",\"revision\":4}"));
 
                 var settings = MachineSettingsRecord.fromJson(new String(
                         client.send(HttpRequest.get("/api/v1/machine/settings")
                                 .withHeader("Authorization", auth)).body(), StandardCharsets.UTF_8));
                 var github = settings.credentials().stream()
                         .filter(credential -> "github".equals(credential.key())).findFirst().orElseThrow();
-                assertEquals("user token", github.kind());
+                assertEquals(credentialKind, github.kind());
                 assertNull(github.expiresInDays());
                 assertFalse(github.expired());
             }

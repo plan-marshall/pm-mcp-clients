@@ -18,6 +18,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.StandardScenarios;
 
@@ -27,6 +29,7 @@ import de.planmarshall.mock.StandardScenarios;
  */
 @DisplayName("MockRuntimeEngine activity seeding")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class MockRuntimeEngineActivitySeedTest {
 
     @Test
@@ -34,11 +37,12 @@ class MockRuntimeEngineActivitySeedTest {
     void explicitEmptyRoute() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
             var engine = runtime.engine();
+            var unknownTask = "TASK-" + Generators.letterStrings(4, 8).next().toUpperCase();
 
             assertTrue(engine.hasEmptyActivityRoute("session-log", "TASK-002"));
             assertTrue(engine.hasEmptyActivityRoute("fix-relay", "TASK-002"));
             assertFalse(engine.hasEmptyActivityRoute("session-log", "TASK-003"));
-            assertFalse(engine.hasEmptyActivityRoute("session-log", "TASK-UNKNOWN"));
+            assertFalse(engine.hasEmptyActivityRoute("session-log", unknownTask));
         }
     }
 }

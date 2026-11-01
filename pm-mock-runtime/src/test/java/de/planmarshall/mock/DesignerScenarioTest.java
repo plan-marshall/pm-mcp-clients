@@ -25,6 +25,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.designer.BlockKind;
 import de.planmarshall.api.designer.UnitPlacingResult;
 import de.planmarshall.api.designer.WorkflowCatalogue;
@@ -36,6 +38,7 @@ import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("DesignerScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class DesignerScenarioTest {
 
     private static final String VALID_UNIT = """
@@ -160,7 +163,7 @@ class DesignerScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            var body = JsonTree.write(Map.of("text", "this is not a workflow"));
+            var body = JsonTree.write(Map.of("text", Generators.letterStrings(4, 10).next()));
             var res = client.send(HttpRequest.json("POST", "/api/v1/workflows/validate", body)
                     .withHeader("Authorization", auth));
             var result = WorkflowValidationResult.fromJson(new String(res.body()));
@@ -283,7 +286,7 @@ class DesignerScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            var body = JsonTree.write(Map.of("text", "no header here"));
+            var body = JsonTree.write(Map.of("text", Generators.letterStrings(4, 10).next()));
             var res = client.send(HttpRequest.json("PUT",
                     "/api/v1/projects/pm-mcp-clients/workflows/landing.custom", body)
                     .withHeader("Authorization", auth));
@@ -410,11 +413,12 @@ class DesignerScenarioTest {
             assertNotNull(result.composed());
             assertEquals("machine", result.composed().project().projectId());
 
-            var unknown = client.send(HttpRequest.get("/api/v1/projects/unknown/workflows/catalogue")
+            var unknownProject = Generators.letterStrings(4, 10).next().toLowerCase();
+            var unknown = client.send(HttpRequest.get("/api/v1/projects/" + unknownProject + "/workflows/catalogue")
                     .withHeader("Authorization", auth));
             assertEquals(200, unknown.status());
             var catalogue = WorkflowCatalogue.fromJson(new String(unknown.body()));
-            assertEquals("unknown", catalogue.scope());
+            assertEquals(unknownProject, catalogue.scope());
             assertTrue(catalogue.blocks().isEmpty());
         }
     }

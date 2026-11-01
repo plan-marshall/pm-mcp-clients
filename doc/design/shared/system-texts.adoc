@@ -217,13 +217,17 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |{act, select, stop {Stop the runtime?} restart {Restart the runtime?} other {Upgrade to {version}?}}
 |{act, select, stop {Runtime stoppen?} restart {Runtime neu starten?} other {Auf {version} aktualisieren?}}
 
+|`system.confirm.title_upgrade`
+|Upgrade the runtime?
+|Die Runtime aktualisieren?
+
 |`system.confirm.running`
 |Running now: {what}
 |Läuft gerade: {what}
 
 |`system.confirm.what`
-|{plans, plural, =0 {} one {# plan} other {# plans}}{epics, plural, =0 {} one { · # epic} other { · # epics}}{jobs, plural, =0 {} one { · # job} other { · # jobs}}{workers, plural, =0 {} one { · # worker} other { · # workers}}
-|{plans, plural, =0 {} one {# Plan} other {# Pläne}}{epics, plural, =0 {} one { · # Epic} other { · # Epics}}{jobs, plural, =0 {} one { · # Job} other { · # Jobs}}{workers, plural, =0 {} one { · # Worker} other { · # Worker}}
+|{plans, plural, =0 {} one {# plan} other {# plans}}{epics, plural, =0 {} one { · # epic} other { · # epics}}{tasks, plural, =0 {} one { · # task} other { · # tasks}}{jobs, plural, =0 {} one { · # job} other { · # jobs}}{workers, plural, =0 {} one { · # worker} other { · # workers}}
+|{plans, plural, =0 {} one {# Plan} other {# Pläne}}{epics, plural, =0 {} one { · # Epic} other { · # Epics}}{tasks, plural, =0 {} one { · # Task} other { · # Tasks}}{jobs, plural, =0 {} one { · # Job} other { · # Jobs}}{workers, plural, =0 {} one { · # Worker} other { · # Worker}}
 
 |`system.confirm.nothing_runs`
 |Nothing runs.

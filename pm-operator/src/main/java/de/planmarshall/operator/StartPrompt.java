@@ -32,6 +32,9 @@ public final class StartPrompt {
 
     /** The suffix after every question, as the terminal client draws it. */
     public static final String SUFFIX = "  \u203a ";
+
+    /** The exit code of a run the operator interrupted with {@code Ctrl+C}. */
+    public static final int EXIT_INTERRUPTED = 130;
     private static final String EMPTY = "";
 
     private final OperatorContext context;
@@ -211,8 +214,11 @@ public final class StartPrompt {
         return reader;
     }
 
-    /** The run stopped because the operator left the dialogue. */
-    public static final class StartLeftException extends RuntimeException {
+    /**
+     * The run stopped because the operator left the dialogue. A caller that must tell {@code Ctrl+C}
+     * from {@code q} catches {@code ChoicePrompt.InterruptException} first.
+     */
+    public static class StartLeftException extends RuntimeException {
         private static final long serialVersionUID = 1L;
 
         public StartLeftException() {

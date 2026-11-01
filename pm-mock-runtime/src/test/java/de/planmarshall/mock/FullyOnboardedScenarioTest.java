@@ -28,6 +28,8 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.control.ArchiveCheck;
 import de.planmarshall.api.control.ChatReadBackResource;
 import de.planmarshall.api.control.DecompositionResource;
@@ -79,6 +81,7 @@ import de.planmarshall.mock.scenario.ScenarioRegistry;
 @DisplayName("FullyOnboardedScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 @Timeout(value = 60, threadMode = Timeout.ThreadMode.SEPARATE_THREAD)
+@EnableGeneratorController
 class FullyOnboardedScenarioTest {
 
     private static final String AUTH_HEADER = "Authorization";
@@ -342,7 +345,8 @@ class FullyOnboardedScenarioTest {
                     var planEvents = plan.events();
 
                     runtime.engine().broadcast("tokens.changed", Map.of(
-                            "plan_id", "fix-relay", "project_id", "pm-mcp-clients", "total", 42));
+                            "plan_id", "fix-relay", "project_id", "pm-mcp-clients",
+                            "total", Generators.integers(1, 1000).next()));
 
                     var runtimeWide = assertTimeoutPreemptively(Duration.ofSeconds(5), machineEvents::next);
                     assertNotNull(runtimeWide);

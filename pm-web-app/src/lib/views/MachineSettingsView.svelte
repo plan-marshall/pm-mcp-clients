@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { t } from '../i18n';
+  import { t, currentLocale } from '../i18n';
+  import { formatTime } from '../display/format';
   import Button from '../components/Button.svelte';
   import {
     runtimeStore,
@@ -293,7 +294,7 @@
             <li class="consent-row" data-consent={consent.kind}>
               <span>{$t(`common.consent.kind.${consent.kind}`)}</span>
               <span class="consent-row__where">
-                {consent.granted_at ?? ''} · {consentChannel(consent)}
+                {formatTime(consent.granted_at, 'short', $currentLocale)} · {consentChannel(consent)}
               </span>
               {#if consent.project}
                 <span class="consent-row__where">
