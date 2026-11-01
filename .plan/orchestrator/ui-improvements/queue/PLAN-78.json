@@ -2,10 +2,10 @@
   "id": "PLAN-78",
   "slug": "cui-testing-api",
   "workstream": "WS-01",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "78-cui-testing-api",
+  "pr": "288",
+  "landing": "landings/PLAN-78.md",
   "seq": 78
 }

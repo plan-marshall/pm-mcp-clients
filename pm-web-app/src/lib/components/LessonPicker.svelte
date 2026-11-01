@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { t } from '../i18n';
+  import { t, currentLocale } from '../i18n';
+  import { formatDay } from '../display/format';
   import type { UnclaimedLessonSummary } from '../api/client';
 
   export let lessons: UnclaimedLessonSummary[] = [];
@@ -7,7 +8,7 @@
   export let onSelect: (lesson: UnclaimedLessonSummary) => void = () => {};
 
   function recordedLine(lesson: UnclaimedLessonSummary): string {
-    const date = lesson.recorded_at ? lesson.recorded_at.slice(0, 10) : '';
+    const date = formatDay(lesson.recorded_at, $currentLocale);
     if (lesson.citing_plan_id) {
       return $t('lesson_source.list.recorded_by', { date, plan: lesson.citing_plan_id });
     }

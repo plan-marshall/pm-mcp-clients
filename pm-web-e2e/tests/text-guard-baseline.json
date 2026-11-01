@@ -2,27 +2,12 @@
   "schema": "text-guard-baseline/1",
   "views": {
     "OverviewView": {
-      "de": [
-        {
-          "rule": "foreign-word",
-          "word": "ago"
-        }
-      ],
+      "de": [],
       "en": []
     },
     "PlanView": {
-      "de": [
-        {
-          "rule": "iso-time",
-          "word": "<iso-time>"
-        }
-      ],
-      "en": [
-        {
-          "rule": "iso-time",
-          "word": "<iso-time>"
-        }
-      ]
+      "de": [],
+      "en": []
     },
     "EpicView": {
       "de": [
@@ -34,49 +19,21 @@
       "en": []
     },
     "ReportsView": {
-      "de": [
-        {
-          "rule": "iso-time",
-          "word": "<iso-time>"
-        }
-      ],
-      "en": [
-        {
-          "rule": "iso-time",
-          "word": "<iso-time>"
-        }
-      ]
+      "de": [],
+      "en": []
     },
     "CompletionReportView": {
-      "de": [
-        {
-          "rule": "iso-time",
-          "word": "<iso-time>"
-        }
-      ],
-      "en": [
-        {
-          "rule": "iso-time",
-          "word": "<iso-time>"
-        }
-      ]
+      "de": [],
+      "en": []
     },
     "DecisionView": {
       "de": [
-        {
-          "rule": "iso-time",
-          "word": "<iso-time>"
-        },
         {
           "rule": "raw-enum",
           "word": "ci_check"
         }
       ],
       "en": [
-        {
-          "rule": "iso-time",
-          "word": "<iso-time>"
-        },
         {
           "rule": "raw-enum",
           "word": "ci_check"
@@ -96,18 +53,8 @@
       "en": []
     },
     "MachineSettingsView": {
-      "de": [
-        {
-          "rule": "iso-time",
-          "word": "<iso-time>"
-        }
-      ],
-      "en": [
-        {
-          "rule": "iso-time",
-          "word": "<iso-time>"
-        }
-      ]
+      "de": [],
+      "en": []
     },
     "ProcessDesigner": {
       "de": [
