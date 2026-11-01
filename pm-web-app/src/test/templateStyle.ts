@@ -50,6 +50,21 @@ export function ruleOf(style: string, selector: string): string {
 }
 
 /**
+ * @param tag an element's opening tag
+ * @param name an attribute name
+ * @returns the attribute's value, or an empty string when the tag carries none
+ */
+function attributeOf(tag: string, name: string): string {
+  const at = tag.indexOf(`${name}="`);
+  if (at < 0) {
+    return '';
+  }
+  const start = at + name.length + 2;
+  const end = tag.indexOf('"', start);
+  return end < 0 ? '' : tag.slice(start, end);
+}
+
+/**
  * Reads the inline `style` of the element that carries a view's page-root class.
  *
  * @param componentPath the component's file
@@ -58,15 +73,23 @@ export function ruleOf(style: string, selector: string): string {
  */
 export function rootInlineStyle(componentPath: string, selector: string): string {
   const token = selector.startsWith('.') ? selector.slice(1) : selector;
-  if (!/^[A-Za-z][\w-]*$/.test(token)) {
-    return '';
-  }
   const markup = fs
     .readFileSync(componentPath, 'utf-8')
     .replace(/<style>[\s\S]*?<\/style>/g, '');
-  const tag = new RegExp(`<[^>]*class="[^"]*\\b${token}\\b[^"]*"[^>]*>`).exec(markup);
-  const style = tag ? /style="([^"]*)"/.exec(tag[0]) : null;
-  return style ? style[1] : '';
+  let from = 0;
+  while (from < markup.length) {
+    const open = markup.indexOf('<', from);
+    const close = open < 0 ? -1 : markup.indexOf('>', open);
+    if (open < 0 || close < 0) {
+      return '';
+    }
+    const tag = markup.slice(open, close + 1);
+    from = close + 1;
+    if (attributeOf(tag, 'class').split(/\s+/).includes(token)) {
+      return attributeOf(tag, 'style');
+    }
+  }
+  return '';
 }
 
 /**
