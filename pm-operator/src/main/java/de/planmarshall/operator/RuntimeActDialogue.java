@@ -105,6 +105,9 @@ final class RuntimeActDialogue {
     private static final String RUNNING = "running";
     private static final String DOT = " \u00b7 ";
 
+    /** The exit code of a run the operator interrupted with {@code Ctrl+C}. */
+    private static final int EXIT_INTERRUPTED = 130;
+
     private RuntimeActDialogue() {
     }
 
@@ -134,6 +137,8 @@ final class RuntimeActDialogue {
             return new Answer(null, refused.refusal.exitCode(), null);
         } catch (ChoicePrompt.KeepException _) {
             return new Answer(null, 0, null);
+        } catch (ChoicePrompt.InterruptException _) {
+            return new Answer(null, EXIT_INTERRUPTED, null);
         } catch (StartPrompt.StartLeftException _) {
             return new Answer(null, StartDialogue.EXIT_MISSING_INPUT, null);
         } catch (StartPrompt.MissingInputException _) {

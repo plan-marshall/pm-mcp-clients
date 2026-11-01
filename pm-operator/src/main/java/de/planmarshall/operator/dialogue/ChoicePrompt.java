@@ -55,6 +55,15 @@ public final class ChoicePrompt {
         }
     }
 
+    /** The operator interrupted the dialogue with {@code Ctrl+C}. */
+    public static final class InterruptException extends StartPrompt.StartLeftException {
+        private static final long serialVersionUID = 1L;
+
+        public InterruptException() {
+            super();
+        }
+    }
+
     private static final String PRESELECT_ARROW = " \u2190";
     private static final int MAX_ROW = 80;
     private static final int MIN_CONSEQUENCE_COLUMN = 20;
@@ -594,7 +603,10 @@ public final class ChoicePrompt {
     private @Nullable String readLine(String prompt) {
         try {
             return input.readLine(prompt);
-        } catch (EndOfFileException | UserInterruptException _) {
+        } catch (UserInterruptException _) {
+            // Ctrl+C is not q: the exit-code table gives it 130, and the caller decides.
+            throw new InterruptException();
+        } catch (EndOfFileException _) {
             throw left();
         } catch (IOException e) {
             throw new IllegalStateException("Failed to read input: " + e.getMessage(), e);
