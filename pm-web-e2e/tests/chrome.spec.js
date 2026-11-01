@@ -335,6 +335,77 @@ test.describe('The command palette', () => {
     await expect(page.locator('[data-decision-id="Q-007"]')).toBeVisible();
   });
 
+  test('keeps the matched project ahead of its start act', async ({ page }) => {
+    await page.goto('/overview');
+    await expect(page.getByTestId('top-bar')).toBeVisible();
+    await page.keyboard.press('Control+K');
+
+    const field = page.getByTestId('command-palette-field');
+    await field.fill('pm-mcp-core');
+
+    // The project is the first match, and every act follows the matches it belongs to.
+    const match = page.getByTestId('command-palette-match').first();
+    await expect(match).toContainText('pm-mcp-core');
+    const order = await page.evaluate(() =>
+      [
+        ...document.querySelectorAll(
+          '[data-testid="command-palette-match"],[data-testid="command-palette-act"]',
+        ),
+      ].map((row) => row.getAttribute('data-testid')),
+    );
+    const firstAct = order.indexOf('command-palette-act');
+    expect(firstAct).toBeGreaterThan(0);
+    expect(order.slice(0, firstAct).every((kind) => kind === 'command-palette-match')).toBe(true);
+
+    // Enter opens the matched project, not its start route.
+    await page.keyboard.press('Enter');
+    await expect(page).toHaveURL(/\/projects\?project=pm-mcp-core$/);
+    await expect(page.getByTestId('project-explorer-view')).toBeVisible();
+  });
+
+  test('closes the panel from a labelled control on a phone', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/overview');
+    await expect(page.getByTestId('top-bar')).toBeVisible();
+    await page.keyboard.press('Control+K');
+
+    const palette = page.getByTestId('command-palette');
+    await expect(palette).toBeVisible();
+    const close = page.getByTestId('command-palette-close');
+    await expect(close).toBeVisible();
+    await expect(close).toHaveAccessibleName('Close');
+    await close.click();
+
+    await expect(palette).toHaveCount(0);
+    await expect(page).toHaveURL(/\/overview$/);
+  });
+
+  test('exposes the arrow-key selection as a combobox', async ({ page }) => {
+    await page.goto('/overview');
+    await expect(page.getByTestId('top-bar')).toBeVisible();
+    await page.keyboard.press('Control+K');
+
+    const field = page.getByTestId('command-palette-field');
+    await expect(field).toHaveAttribute('role', 'combobox');
+    await expect(field).toHaveAttribute('aria-expanded', 'true');
+    await field.fill('relay');
+    await expect(page.getByTestId('command-palette-match').first()).toBeVisible();
+
+    // The selected row is announced through the field's active descendant.
+    const selected = await field.getAttribute('aria-activedescendant');
+    expect(selected).toBeTruthy();
+    const option = page.locator(`#${selected}`);
+    await expect(option).toHaveAttribute('role', 'option');
+    await expect(option).toHaveAttribute('aria-selected', 'true');
+    await expect(page.getByRole('listbox')).toBeVisible();
+
+    // ArrowDown moves the selection and the announcement together.
+    await page.keyboard.press('ArrowDown');
+    const moved = await field.getAttribute('aria-activedescendant');
+    expect(moved).not.toBe(selected);
+    await expect(page.locator(`#${moved}`)).toHaveAttribute('aria-selected', 'true');
+  });
+
   test('keeps the name when nothing matches', async ({ page }) => {
     await page.goto('/overview');
     await expect(page.getByTestId('top-bar')).toBeVisible();

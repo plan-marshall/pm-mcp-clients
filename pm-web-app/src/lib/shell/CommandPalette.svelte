@@ -121,14 +121,29 @@
       }),
   );
 
-  /** Every row the keyboard walks: the acts first, then the matches in the runtime's order. */
+  /** Every row the keyboard walks: the matches in the runtime's order first, then the acts. */
   const rows = $derived<Row[]>([
-    ...acts,
     ...matches.map((match): MatchRow => ({ key: matchKey(match), kind: match.kind, match })),
+    ...acts,
   ]);
 
   /** The matches grouped by kind in the order served; a run of one kind may be ended. */
   const groups = $derived(groupFindMatches(matches));
+
+  /** @param index a row's position @returns the DOM id the active descendant names */
+  function optionId(index: number): string {
+    return `command-palette-option-${index}`;
+  }
+
+  /** @param key a row's key @returns the id of the option that row renders as */
+  function rowOptionId(key: string): string {
+    return optionId(rows.findIndex((row) => row.key === key));
+  }
+
+  /** The id of the row the field's active descendant names, or `undefined` for no row. */
+  const selectedOptionId = $derived(
+    selectedKey === null ? undefined : rowOptionId(selectedKey),
+  );
 
   // A selection whose row the new answer no longer carries falls back to the first row, so Enter
   // always has somewhere to go.
@@ -344,15 +359,29 @@
       use:takeOver
       onkeydown={onKeydown}
     >
-      <h2 class="command-palette__title" id={titleId}>{$t('overview.find.title')}</h2>
+      <div class="command-palette__header">
+        <h2 class="command-palette__title" id={titleId}>{$t('overview.find.title')}</h2>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          data-testid="command-palette-close"
+          onclick={close}
+        >
+          {$t('web.common.close')}
+        </Button>
+      </div>
 
       <input
         class="command-palette__field"
         type="search"
-        autocomplete="off"
-        spellcheck="false"
+        role="combobox"
+        aria-expanded="true"
         aria-autocomplete="list"
         aria-controls="command-palette-rows"
+        aria-activedescendant={selectedOptionId}
+        autocomplete="off"
+        spellcheck="false"
         placeholder={$t('overview.find.hint')}
         aria-label={$t('overview.find.hint')}
         data-testid="command-palette-field"
@@ -366,42 +395,29 @@
 
       <p class="sr-only" role="status" data-testid="command-palette-notice">{notice}</p>
 
-      <div class="command-palette__results" id="command-palette-rows">
-        {#if acts.length > 0}
-          <ul class="command-palette__list" aria-label={$t('overview.find.title')}>
-            {#each acts as act (act.key)}
-              <li>
-                <button
-                  type="button"
-                  class="command-palette__row"
-                  class:command-palette__row--selected={isSelected(act.key)}
-                  aria-current={isSelected(act.key) ? 'true' : undefined}
-                  data-testid="command-palette-act"
-                  onclick={() => openRow(act)}
-                  onmouseenter={() => (selectedKey = act.key)}
-                >
-                  <span class="command-palette__act-label">{act.label}</span>
-                </button>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-
+      <div
+        class="command-palette__results"
+        id="command-palette-rows"
+        role="listbox"
+        aria-label={$t('overview.find.title')}
+      >
         {#each groups as group, index (index)}
-          <div class="command-palette__group">
+          <div class="command-palette__group" role="group" aria-label={$t(`overview.find.kind.${group.kind}`)}>
             {#if index === 0 || groups[index - 1]?.kind !== group.kind}
               <h3 class="command-palette__group-title">
                 {$t(`overview.find.kind.${group.kind}`)}
               </h3>
             {/if}
-            <ul class="command-palette__list" aria-label={$t(`overview.find.kind.${group.kind}`)}>
+            <ul class="command-palette__list" role="presentation">
               {#each group.matches as match (matchKey(match))}
-                <li>
-                  <button
-                    type="button"
+                <li role="presentation">
+                  <div
+                    role="option"
+                    id={rowOptionId(matchKey(match))}
+                    tabindex="-1"
                     class="command-palette__row"
                     class:command-palette__row--selected={isSelected(matchKey(match))}
-                    aria-current={isSelected(matchKey(match)) ? 'true' : undefined}
+                    aria-selected={isSelected(matchKey(match))}
                     data-testid="command-palette-match"
                     data-kind={match.kind}
                     onclick={() => openRow({ key: matchKey(match), kind: match.kind, match })}
@@ -419,12 +435,34 @@
                         {/if}
                       </span>
                     {/if}
-                  </button>
+                  </div>
                 </li>
               {/each}
             </ul>
           </div>
         {/each}
+
+        {#if acts.length > 0}
+          <ul class="command-palette__list" role="presentation">
+            {#each acts as act (act.key)}
+              <li role="presentation">
+                <div
+                  role="option"
+                  id={rowOptionId(act.key)}
+                  tabindex="-1"
+                  class="command-palette__row"
+                  class:command-palette__row--selected={isSelected(act.key)}
+                  aria-selected={isSelected(act.key)}
+                  data-testid="command-palette-act"
+                  onclick={() => openRow(act)}
+                  onmouseenter={() => (selectedKey = act.key)}
+                >
+                  <span class="command-palette__act-label">{act.label}</span>
+                </div>
+              </li>
+            {/each}
+          </ul>
+        {/if}
 
         {#if $searchIndexStore.text.length > 0 && $searchIndexStore.status === 'done' && matches.length === 0}
           <p class="command-palette__empty" data-testid="command-palette-empty">
@@ -483,6 +521,13 @@
     margin: 0;
     font-size: var(--text-lg);
     line-height: var(--line-height-lg);
+  }
+
+  .command-palette__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
   }
 
   .command-palette__field {
