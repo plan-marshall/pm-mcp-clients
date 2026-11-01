@@ -208,9 +208,17 @@ rail      ▣ plan-marshall        │ top bar   path › path › title   [sear
 |A card at rest takes `--shadow-1`; a popover takes `--shadow-2`; a dialogue takes `--shadow-overlay`. In dark, elevation is the surface step and the shadows stay faint.
 |===
 
-The content column is centred and bounded: a reading view (a form, a dialogue, a list of one column) at `480px`, a table or a card grid at `1000px`, the explorer and the reports list at `1200px`, and the process views (plan, epic, designer) at the full width of the window minus `--space-6` on each side. A view picks one of these bounds; it never sets an arbitrary width.
+The content column is centred and bounded by the page template a view sits on
+(link:view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates Replace the Layout Modes]): the
+triage template at the full width of the window, the object and dashboard templates at `1440px`, and the wizard template
+at `720px`. Every template pads the page by `--space-6` and by `--space-3` on the phone (below `480px`). A view that has
+not moved yet picks its earlier bound — a reading view at `480px`, a table or a card grid at `1000px`, the explorer and
+the reports list at `1200px` — and never sets an arbitrary width.
 
-Two-column views (a list beside a detail, the process tree beside the inspector, the sources beside the chat) split at `2fr 1fr` on the desktop and stack on the tablet and the phone. A column that carries a live stream (chat, activity) keeps its own scroll and never pushes the page.
+Two-column views (a list beside a detail, the process tree beside the inspector, the sources beside the chat) split at
+`2fr 1fr` on the desktop. The triage template splits its list and detail `2fr 3fr` (40 / 60) and replaces the list with
+the detail below `1100px`. A column that carries a live stream (chat, activity) keeps its own scroll and never pushes
+the page.
 
 [#breakpoints]
 === Responsive Breakpoints
@@ -225,7 +233,7 @@ Two-column views (a list beside a detail, the process tree beside the inspector,
 
 |Tablet
 |`768px` to `1279px`
-|The header wraps to a second row; two-column views keep both columns but at `1fr 1fr`; a wide table may drop its least important column, never its identifying one; the process tree and the inspector stack when the tree is narrower than `360px`.
+|The header wraps to a second row; two-column views keep both columns but at `1fr 1fr`, except the triage template, which already replaces the list with the detail below `1100px`; a wide table may drop its least important column, never its identifying one; the process tree and the inspector stack when the tree is narrower than `360px`.
 
 |Phone
 |< `768px`
@@ -438,7 +446,7 @@ body      Runtime   pm-mcpd 0.9.1 · build 2026-10-02 (a1b2c3d)   0.10.0 availab
 * The three acts are buttons in the context tier, not in the body; each opens its confirmation as a dialogue over the view. A figure that leads to what it counts is a link; a figure that is not measured says so and never shows a zero.
 * Grouping and window switches are segmented controls of the part they belong to (`--color-primary-subtle` for the chosen one), not a global filter.
 * The stopped state replaces the body with the page that says the runtime is stopped and how to start it; the header and the frame stay, and the page connects again by itself.
-* Width: `1000px` on the desktop; the parts stack in the same order on the tablet and the phone, and a figure's unit stays with its number.
+* Width: the dashboard template (at most `1440px`, link:view-density-and-filtering.adoc#templates[Page Templates Replace the Layout Modes]); the parts stack in the same order on the tablet and the phone, and a figure's unit stays with its number.
 
 [#cleanup-layout]
 === Cleanup View (`/system/cleanup`)
