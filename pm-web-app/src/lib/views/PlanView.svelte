@@ -901,7 +901,6 @@
                 onclick={() => selectNode(node.node_id)}
                 aria-pressed={isNodeSelected(node.node_id)}
                 aria-current={isNodeSelected(node.node_id) ? 'true' : undefined}
-                aria-label={`${stripControlSequences(node.title)} — ${$t('plan.node.select')}`}
                 data-advisory={$t('plan.node.select.title')}
                 data-testid="select-node-{node.node_id}"
               >
