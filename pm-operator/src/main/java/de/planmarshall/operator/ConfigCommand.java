@@ -308,6 +308,8 @@ public final class ConfigCommand implements Callable<Integer> {
                 out.println(response.bodyText());
             } else {
                 out.println(MessageCatalogue.format(locale, "operator.config.setelines_failed", Map.of(STATUS, response.status())));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
             }
             out.flush();
             return 0;
