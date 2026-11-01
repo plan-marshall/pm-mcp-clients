@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 140" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">Breadcrumb</title>
+  <desc id="d">A trail of three segments: two links in the secondary text colour, and the page a person stands on in the primary text colour.</desc>
+  <rect width="360" height="140" fill="#F7F7F5"/>
+  <g font-size="13">
+    <text x="24" y="66" fill="#3E4450">Projects</text>
+    <text x="90" y="66" fill="#5F6672">/</text>
+    <text x="104" y="66" fill="#3E4450" font-family="ui-monospace, Menlo, monospace">plan-marshall/relay@36e3fc5c</text>
+    <text x="288" y="66" fill="#5F6672">/</text>
+    <text x="300" y="66" fill="#16181D">Plan 31</text>
+  </g>
+  <text x="24" y="98" font-size="11" fill="#5F6672">links in the secondary colour, the current page in the primary one</text>
+  <text x="24" y="114" font-size="11" fill="#5F6672">an identifier is shortened in its middle on a phone</text>
+</svg>

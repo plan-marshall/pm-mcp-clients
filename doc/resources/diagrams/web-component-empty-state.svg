@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 160" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">EmptyState</title>
+  <desc id="d">The brand mark in the muted colour above a title, one sentence and one primary act.</desc>
+  <rect width="360" height="160" fill="#F7F7F5"/>
+  <g fill="#5F6672" transform="translate(168 26) scale(1)">
+    <path d="M0 24V15.4L5.3 12.4V24Z"/>
+    <path d="M7.8 24V9.6L13.1 6.6V24Z"/>
+    <path d="M15.6 24V4.2L20.9 1.2V24Z"/>
+    <path d="M0.2 12.2 12.8 4.5" fill="none" stroke="#5F6672" stroke-width="2.1" stroke-linecap="round"/>
+    <circle cx="15.4" cy="2.9" r="1.6"/>
+  </g>
+  <text x="180" y="80" font-size="15" font-weight="600" fill="#16181D" text-anchor="middle">Nothing waits for you</text>
+  <text x="180" y="100" font-size="12" fill="#3E4450" text-anchor="middle">New decisions and reports arrive here.</text>
+  <text x="180" y="116" font-size="12" fill="#3E4450" text-anchor="middle">Leave the page open; it updates by itself.</text>
+  <rect x="132" y="128" width="96" height="26" rx="8" fill="#5B4BDB"/>
+  <text x="180" y="145" font-size="12" fill="#FFFFFF" text-anchor="middle">Open the projects</text>
+</svg>
