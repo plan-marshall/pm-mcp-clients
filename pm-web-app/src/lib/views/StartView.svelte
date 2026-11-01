@@ -1130,6 +1130,7 @@
             onAccept={() => void answerProposal(true)}
             onReject={() => void answerProposal(false)}
             onToggle={openChat}
+            onClose={() => (chatOpen = false)}
           />
         </div>
       </div>

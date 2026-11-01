@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { t } from '../i18n';
   import type { ArchiveCheck, WorkActions } from '../api/client';
   import Icon from './Icon.svelte';
+  import { uniqueId } from '../utils/uniqueId';
 
   export let subjectId: string;
   export let subjectKind: 'plan' | 'epic' = 'plan';
@@ -27,6 +29,15 @@
   let endReason = '';
   let closePullRequest = false;
   let overlapCount = 0;
+
+  /** The control that opened the dialog, so the focus goes back to it when the dialog closes. */
+  let opener: HTMLElement | null = null;
+
+  /** The open dialog's box, which takes the focus when it opens. */
+  let dialogElement: HTMLElement | null = null;
+
+  /** The id of the open dialog's title, for `aria-labelledby`. */
+  const titleId = uniqueId('control-dialog-title');
 
   $: automatic = autoEnabled ?? actions?.auto_enabled !== false;
   $: commonFiles = actions?.overlap_max_files ?? 0;
@@ -73,6 +84,48 @@
     return endAction;
   }
 
+  /**
+   * Opens a dialog, remembering the control the focus goes back to when it closes.
+   *
+   * @param next the dialog to show
+   */
+  function openDialog(next: Exclude<Dialog, null>): void {
+    const active = document.activeElement;
+    opener = active instanceof HTMLElement ? active : null;
+    dialog = next;
+    void tick().then(() => dialogElement?.focus());
+  }
+
+  /**
+   * Closes the dialog and gives the focus back to the control that opened it.
+   *
+   * A confirm disables the opener while the action runs, and a disabled control cannot take the
+   * focus; the keyboard then stays in the panel, on the first act that can still run.
+   */
+  async function closeDialog(): Promise<void> {
+    const previous = opener;
+    dialog = null;
+    opener = null;
+    dialogElement = null;
+    await tick();
+    if (previous?.isConnected && !(previous as HTMLButtonElement).disabled) {
+      previous.focus();
+      return;
+    }
+    const fallback = document.querySelector<HTMLButtonElement>(
+      '[data-testid="control-actions"] button:not([disabled])',
+    );
+    fallback?.focus();
+  }
+
+  /** @param event the key press anywhere while a dialog is open */
+  function closeOnEscape(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && dialog) {
+      event.stopPropagation();
+      void closeDialog();
+    }
+  }
+
   function choose(action: string): void {
     if (subjectKind === 'epic') {
       chooseEpic(action);
@@ -80,14 +133,14 @@
     }
     if (action === 'pause') {
       pausePoint = actions?.pausing_point ?? 'task';
-      dialog = 'pause';
+      openDialog('pause');
       return;
     }
     if (action === 'cancel' || action === 'abandon') {
       endAction = action;
       endReason = '';
       closePullRequest = false;
-      dialog = 'end';
+      openDialog('end');
       return;
     }
     onAction(action);
@@ -96,7 +149,7 @@
   function chooseEpic(action: string): void {
     if (action === 'next') {
       if (scope > 0 && running >= scope) {
-        dialog = 'raise';
+        openDialog('raise');
         return;
       }
       onAction('next', { raise_scope: false });
@@ -108,42 +161,40 @@
     }
     if (action === 'common_files') {
       overlapCount = commonFiles;
-      dialog = 'overlap';
+      openDialog('overlap');
       return;
     }
     if (action === 'archive') {
-      dialog = 'archive';
+      openDialog('archive');
       return;
     }
     onAction(action);
   }
 
   function confirmPause(): void {
-    dialog = null;
+    void closeDialog();
     onAction('pause', { point: pausePoint });
   }
 
   function confirmEnd(): void {
     if (!endReason.trim()) return;
     const act = endAct();
-    dialog = null;
+    void closeDialog();
     onAction(act, { reason: endReason.trim(), close_pr: closePullRequest });
   }
 
   function confirmRaise(): void {
-    dialog = null;
+    void closeDialog();
     onAction('next', { raise_scope: true });
   }
 
   function confirmOverlap(): void {
-    dialog = null;
+    void closeDialog();
     onAction('common_files', { count: overlapCount });
   }
-
-  function closeDialog(): void {
-    dialog = null;
-  }
 </script>
+
+<svelte:window on:keydown={closeOnEscape} />
 
 <section
   class="control-actions"
@@ -161,6 +212,9 @@
             data-testid={`action-${availability.action}`}
             disabled={!availability.available || busy}
             title={!availability.available ? (availability.reason ?? '') : ''}
+            aria-describedby={!availability.available && availability.reason
+              ? `reason-${availability.action}-${subjectId}`
+              : undefined}
             data-advisory={availability.action === 'chat'
               ? $t('control.plan.chat.title')
               : undefined}
@@ -169,7 +223,11 @@
             {label(availability.action)}
           </button>
           {#if !availability.available && availability.reason}
-            <span class="control-actions__reason" data-testid={`reason-${availability.action}`}>
+            <span
+              class="control-actions__reason"
+              data-testid={`reason-${availability.action}`}
+              id={`reason-${availability.action}-${subjectId}`}
+            >
               {$t('control.action.disabled', {
                 action: label(availability.action),
                 reason: availability.reason,
@@ -184,9 +242,16 @@
   {/if}
 
   {#if dialog}
-    <div class="control-actions__dialog" data-testid={`control-dialog-${dialog}`} role="dialog">
+    <div
+      class="control-actions__dialog"
+      data-testid={`control-dialog-${dialog}`}
+      role="dialog"
+      aria-labelledby={titleId}
+      tabindex="-1"
+      bind:this={dialogElement}
+    >
       {#if dialog === 'pause'}
-        <h4 class="control-actions__dialog-title" data-testid="pause-title">
+        <h4 class="control-actions__dialog-title" id={titleId} data-testid="pause-title">
           {$t('control.pause.title', { plan: subjectId })}
         </h4>
         <fieldset class="control-actions__choices">
@@ -217,7 +282,7 @@
           </button>
         </div>
       {:else if dialog === 'end'}
-        <h4 class="control-actions__dialog-title" data-testid="end-title">
+        <h4 class="control-actions__dialog-title" id={titleId} data-testid="end-title">
           {$t('control.end.title', { action: endAct(), plan: subjectId })}
         </h4>
         {#if pullRequestNumber !== null}
@@ -258,7 +323,7 @@
           </button>
         </div>
       {:else if dialog === 'raise'}
-        <h4 class="control-actions__dialog-title">{$t('control.epic.next_any')}</h4>
+        <h4 class="control-actions__dialog-title" id={titleId}>{$t('control.epic.next_any')}</h4>
         <p class="control-actions__line">
           {$t('control.epic.scope_full', {
             epic: subjectId,
@@ -276,7 +341,9 @@
           </button>
         </div>
       {:else if dialog === 'overlap'}
-        <h4 class="control-actions__dialog-title">{$t('control.epic.overlap_change')}</h4>
+        <h4 class="control-actions__dialog-title" id={titleId}>
+          {$t('control.epic.overlap_change')}
+        </h4>
         <p class="control-actions__line">
           {$t('control.epic.overlap_means', { count: overlapCount })}
         </p>
@@ -298,7 +365,7 @@
           </button>
         </div>
       {:else if dialog === 'archive'}
-        <h4 class="control-actions__dialog-title" data-testid="archive-title">
+        <h4 class="control-actions__dialog-title" id={titleId} data-testid="archive-title">
           {$t('control.archive.title', { epic: subjectId })}
         </h4>
         {#if archiveCheck}
@@ -355,7 +422,7 @@
             data-testid="archive-confirm"
             disabled={busy || !archiveCheck?.passed}
             on:click={() => {
-              dialog = null;
+              void closeDialog();
               onAction('archive');
             }}
           >
@@ -540,6 +607,13 @@
     .control-actions__button,
     .control-actions__dialog-actions button {
       width: 100%;
+    }
+
+    /* A phone gets the 44 px target on the inline link of the archive check too. */
+    .control-actions__link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
     }
   }
 </style>

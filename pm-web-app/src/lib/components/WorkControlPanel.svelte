@@ -314,6 +314,13 @@
     }
   }
 
+  /** Closes the chat panel without ending the chat the runtime holds. */
+  function closeChat(): void {
+    chatOpen = false;
+    chat = null;
+    endedProposal = null;
+  }
+
   async function endTheChat(): Promise<void> {
     chatBusy = true;
     try {
@@ -464,6 +471,7 @@
       onAccept={startFollowUp}
       onReject={endTheChat}
       onToggle={() => {}}
+      onClose={closeChat}
       acceptLabel={$t('start.chat.start_follow_up')}
       rejectLabel={$t('start.decomposition.discard')}
     />
@@ -481,6 +489,7 @@
       onAccept={() => answerProposal(true)}
       onReject={() => answerProposal(false)}
       onToggle={openChat}
+      onClose={closeChat}
     />
   {/if}
   {#if chatNotice}

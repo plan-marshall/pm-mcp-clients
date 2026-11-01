@@ -83,7 +83,7 @@
       <button
         type="button"
         class="nav-rail__brand"
-        aria-label={$t('web.frame.home')}
+        aria-label={`${$t('web.frame.brand')} — ${$t('web.frame.home')}`}
         data-advisory={$t('web.frame.home.title')}
         data-testid="brand-home"
         onclick={() => void openStartPage()}
@@ -143,7 +143,7 @@
       class="nav-rail__foot-control"
       data-testid="language-toggle"
       onclick={() => setLocale($currentLocale === 'en' ? 'de' : 'en')}
-      aria-label={$t('web.frame.toggle_language')}
+      aria-label={`${$t('web.frame.toggle_language')}: ${$currentLocale === 'en' ? 'DE' : 'EN'}`}
       data-advisory={$t('web.frame.toggle_language.title')}
     >
       {$currentLocale === 'en' ? 'DE' : 'EN'}
@@ -325,7 +325,7 @@
     border-radius: var(--radius-full);
     background-color: var(--color-brand);
     color: var(--color-on-brand);
-    font-size: 0.7rem;
+    font-size: var(--text-xs);
     font-weight: 700;
   }
 
@@ -335,7 +335,7 @@
     min-inline-size: 1rem;
     block-size: 1rem;
     padding-inline: 0.2rem;
-    font-size: 0.6rem;
+    font-size: var(--text-xs);
   }
 
   .nav-rail__foot {

@@ -860,10 +860,13 @@
                     <button
                       type="button"
                       class="status-tag status-tag--{st} status-tag--link"
-                      aria-label={$t('system.work.link.plans', {
-                        state: displayState('plan', st, $t),
-                        count,
-                      })}
+                      aria-label={`${count} ${displayState('plan', st, $t)} — ${$t(
+                        'system.work.link.plans',
+                        {
+                          state: displayState('plan', st, $t),
+                          count,
+                        },
+                      )}`}
                       onclick={() => openOverview('plans')}
                     >
                       {count}
@@ -886,10 +889,13 @@
                     <button
                       type="button"
                       class="status-tag status-tag--{st} status-tag--link"
-                      aria-label={$t('system.work.link.epics', {
-                        state: displayState('epic', st, $t),
-                        count,
-                      })}
+                      aria-label={`${count} ${displayState('epic', st, $t)} — ${$t(
+                        'system.work.link.epics',
+                        {
+                          state: displayState('epic', st, $t),
+                          count,
+                        },
+                      )}`}
                       onclick={() => openOverview('epics')}
                     >
                       {count}
@@ -919,9 +925,11 @@
               <button
                 type="button"
                 class="metric-link"
-                aria-label={$t('system.work.link.projects', {
+                aria-label={`${$t('system.work.projects', {
                   count: snapshot.work.active_projects_count || 0,
-                })}
+                })} — ${$t('system.work.link.projects', {
+                  count: snapshot.work.active_projects_count || 0,
+                })}`}
                 onclick={() => navigateTo('projects')}
               >
                 {$t('system.work.projects', { count: snapshot.work.active_projects_count || 0 })}

@@ -907,19 +907,25 @@
               {:else}
                 <div class="plan-cards">
                 {#each filteredPlans as plan}
+                  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
                   <div
                     class="work-card work-card--plan plan-card"
                     data-testid="plan-card"
-                    role="button"
-                    tabindex="0"
                     on:click={() => openPlanView(planIdOf(plan))}
-                    on:keydown={(e) => e.key === 'Enter' && openPlanView(planIdOf(plan))}
                   >
                     <div class="work-card__header">
                       <div class="work-card__title-group">
                         <span class="work-card__glyph">▸</span>
                         <span class="badge badge--kind">{$t('overview.kind.plan')}</span>
-                        <h3 class="work-card__title">{plan.title}</h3>
+                        <h3 class="work-card__title">
+                          <button
+                            type="button"
+                            class="work-card__open"
+                            on:click|stopPropagation={() => openPlanView(planIdOf(plan))}
+                          >
+                            {plan.title}
+                          </button>
+                        </h3>
                       </div>
                       <button
                         type="button"
@@ -1008,20 +1014,26 @@
               {:else}
                 <div class="epic-cards">
                 {#each filteredEpics as epic}
+                  <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
                   <div
                     class="work-card work-card--epic epic-card"
                     data-testid="epic-card"
-                    role="button"
-                    tabindex="0"
                     on:click={() => openEpicView(epicIdOf(epic))}
-                    on:keydown={(e) => e.key === 'Enter' && openEpicView(epicIdOf(epic))}
                   >
                     <div class="work-card__header">
                       <div class="work-card__title-group">
                         <span class="work-card__glyph">◇</span>
                         <span class="badge badge--kind badge--epic">{$t('overview.kind.epic')}</span
                         >
-                        <h3 class="work-card__title">{epic.title}</h3>
+                        <h3 class="work-card__title">
+                          <button
+                            type="button"
+                            class="work-card__open"
+                            on:click|stopPropagation={() => openEpicView(epicIdOf(epic))}
+                          >
+                            {epic.title}
+                          </button>
+                        </h3>
                       </div>
                       <button
                         type="button"
@@ -1052,18 +1064,21 @@
                     {#if epic.plans && epic.plans.length > 0}
                       <div class="nested-plans">
                         {#each epic.plans as childPlan, idx}
+                          <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
                           <div
                             class="nested-plan-row"
-                            role="button"
-                            tabindex="0"
                             on:click|stopPropagation={() => openPlanView(planIdOf(childPlan))}
-                            on:keydown|stopPropagation={(e) =>
-                              e.key === 'Enter' && openPlanView(planIdOf(childPlan))}
                           >
                             <span class="nested-tree-char"
                               >{idx === epic.plans.length - 1 ? '└─' : '├─'}</span
                             >
-                            <span class="nested-plan-title">{childPlan.title}</span>
+                            <button
+                              type="button"
+                              class="work-card__open nested-plan-title"
+                              on:click|stopPropagation={() => openPlanView(planIdOf(childPlan))}
+                            >
+                              {childPlan.title}
+                            </button>
                             {#if getPlanPhase(childPlan)}
                               <span class="badge badge--phase">
                                 <WorkflowIcon id={phaseIconId(getPlanPhase(childPlan))} size={16} />
@@ -1095,18 +1110,24 @@
                   <div class="without-epic-section">
                     <h4 class="section-subtitle">{$t('overview.group.without_epic')}</h4>
                     {#each filteredPlans.filter((p) => !p.epic_id && !withAliases(p).epicId) as plan}
+                      <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
                       <div
                         class="work-card work-card--plan"
-                        role="button"
-                        tabindex="0"
                         on:click={() => openPlanView(planIdOf(plan))}
-                        on:keydown={(e) => e.key === 'Enter' && openPlanView(planIdOf(plan))}
                       >
                         <div class="work-card__header">
                           <div class="work-card__title-group">
                             <span class="work-card__glyph">▸</span>
                             <span class="badge badge--kind">{$t('overview.kind.plan')}</span>
-                            <h3 class="work-card__title">{plan.title}</h3>
+                            <h3 class="work-card__title">
+                              <button
+                                type="button"
+                                class="work-card__open"
+                                on:click|stopPropagation={() => openPlanView(planIdOf(plan))}
+                              >
+                                {plan.title}
+                              </button>
+                            </h3>
                           </div>
                           <div class="work-card__badges">
                             {#if getNeedsOperatorCount(plan) > 0}
@@ -1406,6 +1427,17 @@
     color: var(--color-text-primary);
   }
 
+  /* The title is the keyboard route into the card, so the whole heading is one control. */
+  .work-card__open {
+    padding: 0;
+    border: none;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+  }
+
   .work-card__badges {
     display: flex;
     align-items: center;
@@ -1462,7 +1494,6 @@
   /* Alongside Section */
   .section-subtitle {
     font-size: var(--text-sm);
-    text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--color-text-muted);
     margin: var(--space-4) 0 var(--space-2) 0;

@@ -650,12 +650,15 @@
 
   async function answerChatProposal(accept: boolean): Promise<void> {
     if (!chatDecisionId) return;
+    // The panel can be closed while the answer is in flight, so the decision it belongs to is
+    // carried past the await instead of read back from a field the close has cleared.
+    const decisionId = chatDecisionId;
     const proposal = chat?.proposal;
     chatBusy = true;
     try {
-      chat = await apiClient.answerDecisionChatProposal(chatDecisionId, accept);
+      chat = await apiClient.answerDecisionChatProposal(decisionId, accept);
       if (accept && proposal?.after) {
-        takeProposedAnswer(proposal.after, proposal.applies ?? '');
+        takeProposedAnswer(decisionId, proposal.after, proposal.applies ?? '');
       }
     } catch (err: unknown) {
       chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
@@ -665,8 +668,8 @@
   }
 
   /** Takes a proposed answer as the operator's own words and reads it back. */
-  function takeProposedAnswer(words: string, applies: string): void {
-    const dec = decisions.find((entry) => entry.id === chatDecisionId);
+  function takeProposedAnswer(decisionId: string, words: string, applies: string): void {
+    const dec = decisions.find((entry) => entry.id === decisionId);
     if (!dec || dec.parts.length === 0) return;
     const match = /part\s+(\d+)/i.exec(applies);
     const index = match
@@ -1131,6 +1134,7 @@
               onAccept={() => answerChatProposal(true)}
               onReject={() => answerChatProposal(false)}
               onToggle={() => openChat(dec)}
+              onClose={() => (chatDecisionId = null)}
               acceptLabel={$t('decision.chat.answer_proposed')}
             />
             <p class="decision-chat__open" role="status">

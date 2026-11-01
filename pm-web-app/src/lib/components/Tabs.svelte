@@ -78,13 +78,16 @@
     const current = target
       ? elements.indexOf(target as HTMLButtonElement)
       : elements.indexOf(document.activeElement as HTMLButtonElement);
+    // A press on the list's own box — the gap between tabs, the bottom border — puts the focus on
+    // the list, not on a tab, so the walk starts from the tab that is selected.
+    const from = current >= 0 ? current : Math.max(0, tabs.findIndex((tab) => tab.id === selected));
     let next: number;
     switch (event.key) {
       case 'ArrowRight':
-        next = (current + 1 + elements.length) % elements.length;
+        next = (from + 1 + elements.length) % elements.length;
         break;
       case 'ArrowLeft':
-        next = (current - 1 + elements.length) % elements.length;
+        next = (from - 1 + elements.length) % elements.length;
         break;
       case 'Home':
         next = 0;
@@ -104,7 +107,14 @@
   }
 </script>
 
-<div class="tabs" role="tablist" aria-label={label} bind:this={host} on:keydown={onKeydown}>
+<div
+  class="tabs"
+  role="tablist"
+  aria-label={label}
+  tabindex="-1"
+  bind:this={host}
+  on:keydown={onKeydown}
+>
   {#each tabs as tab (tab.id)}
     <button
       type="button"

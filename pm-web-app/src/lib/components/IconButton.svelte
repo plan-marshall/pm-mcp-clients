@@ -4,14 +4,16 @@
   import { uniqueId } from '../utils/uniqueId';
 
   /**
-   * The square, ghost control of the design system (VD-P-05): one icon, no visible label.
+   * The square, ghost control of the design system (VD-P-05): one icon and, from the tablet width
+   * up, the word that names it (CC-P-07). Below that width the icon stands alone and the control
+   * is square.
    *
    * It stands for row menus (`act.more`), "jump to now", and copy. Because the glyph alone does not
    * name the act, the control is always named by `label` and carries the advisory its view passes
    * from the catalogue's `X.title` key (Interactions Affordances).
    */
   export let icon: string;
-  /** The accessible name; an icon-only control has no visible text to name it. */
+  /** The accessible name and the visible label: the glyph alone does not name the act. */
   export let label: string;
   /** The hover advisory, from the view's `X.title` catalogue key. */
   export let advisory: string | undefined = undefined;
@@ -47,6 +49,7 @@
   on:click
 >
   <Icon name={icon} size={iconSize} />
+  <span class="icon-btn__label">{label}</span>
 </button>
 
 {#if reason}
@@ -58,6 +61,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: var(--space-1);
     padding: 0;
     border: 1px solid transparent;
     border-radius: var(--radius-md);
@@ -65,6 +69,13 @@
     color: var(--color-text-secondary);
     transition: background-color var(--duration-fast) var(--ease-standard);
     cursor: pointer;
+  }
+
+  /* The glyph is the whole control only where there is no room for the word beside it. */
+  .icon-btn__label {
+    display: none;
+    font-size: var(--text-sm);
+    white-space: nowrap;
   }
 
   .icon-btn--sm {
@@ -97,6 +108,19 @@
     .icon-btn {
       inline-size: 44px;
       block-size: 44px;
+    }
+  }
+
+  /* From the tablet width up the label stands beside the glyph, so the control is not icon-only. */
+  @media (min-width: 768px) {
+    .icon-btn {
+      inline-size: auto;
+      min-inline-size: 34px;
+      padding-inline: var(--space-2);
+    }
+
+    .icon-btn__label {
+      display: inline;
     }
   }
 
