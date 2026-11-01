@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 170" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">ErrorState</title>
+  <desc id="d">A danger-coloured sign above a title, one sentence, one secondary act and a folded Details line that carries the technical code.</desc>
+  <rect width="360" height="170" fill="#F7F7F5"/>
+  <circle cx="180" cy="34" r="13" fill="none" stroke="#C0362F" stroke-width="1.8"/>
+  <path d="M180 27v8" stroke="#C0362F" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="180" cy="41" r="1.5" fill="#C0362F"/>
+  <text x="180" y="70" font-size="15" font-weight="600" fill="#16181D" text-anchor="middle">The plan could not be read</text>
+  <text x="180" y="90" font-size="12" fill="#3E4450" text-anchor="middle">Try again, or open the runtime log to see</text>
+  <text x="180" y="106" font-size="12" fill="#3E4450" text-anchor="middle">what the daemon answered.</text>
+  <rect x="140" y="116" width="80" height="26" rx="8" fill="#FFFFFF" stroke="#CFCFC8"/>
+  <text x="180" y="133" font-size="12" fill="#16181D" text-anchor="middle">Try again</text>
+  <text x="180" y="158" font-size="11" fill="#5F6672" text-anchor="middle">Details ▸</text>
+</svg>

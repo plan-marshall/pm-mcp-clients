@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 140" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">AttentionStrip</title>
+  <desc id="d">A block in the attention surface colour with a dot, one sentence and one act.</desc>
+  <rect width="360" height="140" fill="#F7F7F5"/>
+  <rect x="24" y="44" width="312" height="52" rx="8" fill="#FFF4E0"/>
+  <circle cx="48" cy="70" r="4" fill="#B86E00"/>
+  <text x="64" y="75" font-size="13" fill="#8A5200">The machine is not reachable over the network now.</text>
+  <text x="268" y="75" font-size="12" font-weight="600" fill="#5B4BDB">Check</text>
+  <text x="24" y="120" font-size="11" fill="#5F6672">one thing that waits, one sentence, one act</text>
+</svg>
