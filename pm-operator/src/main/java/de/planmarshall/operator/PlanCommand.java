@@ -238,7 +238,9 @@ public final class PlanCommand implements Callable<Integer> {
                                 Clock.systemUTC(),
                                 new OverviewStateStore(context.stateDirectory()),
                                 context.noticeBuffer());
-            return app.run(out) == TuiScreenDriver.Result.LEFT ? 0 : null;
+            return app.run(out) == TuiScreenDriver.Result.LEFT
+                                ? (app.interrupted() ? StartPrompt.EXIT_INTERRUPTED : 0)
+                                : null;
         } finally {
             if (context.ownsTerminal(terminal)) {
                 terminal.close();

@@ -67,6 +67,7 @@ import de.planmarshall.operator.OutputSafety;
 import de.planmarshall.operator.OverviewSavedState;
 import de.planmarshall.operator.OverviewStateStore;
 import de.planmarshall.operator.PmOperator;
+import de.planmarshall.operator.StartPrompt;
 import de.planmarshall.operator.actions.ActionMenus;
 import de.planmarshall.operator.actions.ActionsMenu;
 import de.planmarshall.operator.actions.WorkActionsClient;
@@ -166,6 +167,7 @@ public final class OverviewFullScreenApp {
     private final ConsoleNoticeBuffer noticeBuffer;
     private final TuiViewStack stack = new TuiViewStack();
     private final AtomicBoolean running = new AtomicBoolean(true);
+    private final AtomicBoolean interrupted = new AtomicBoolean(false);
     private final AtomicBoolean connected = new AtomicBoolean(false);
     private final AtomicInteger unreadReports = new AtomicInteger(0);
 
@@ -810,7 +812,7 @@ public final class OverviewFullScreenApp {
     /** The dialogue surface a suspended view hands its action to. */
     @FunctionalInterface
     private interface DialogueTask {
-        void run() throws IOException;
+        int run() throws IOException;
     }
 
     private WorkActionsClient actionsClient() {
@@ -824,7 +826,13 @@ public final class OverviewFullScreenApp {
     private void runDialogue(DialogueTask task) {
         Runnable guarded = () -> {
             try {
-                task.run();
+                if (task.run() == StartPrompt.EXIT_INTERRUPTED) {
+                    interrupted.set(true);
+                    var runningDriver = activeDriver;
+                    if (runningDriver != null) {
+                        runningDriver.stop();
+                    }
+                }
             } catch (IOException refused) {
                 statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
             }
@@ -835,6 +843,14 @@ public final class OverviewFullScreenApp {
         } else {
             guarded.run();
         }
+    }
+
+    /**
+     * @return whether a dialogue of the view was interrupted with {@code Ctrl+C}, which ends the
+     *         program with the interrupt status instead of returning to the view
+     */
+    public boolean interrupted() {
+        return interrupted.get();
     }
 
     private void openActions() {
@@ -1100,7 +1116,10 @@ public final class OverviewFullScreenApp {
             }
             var project = currentProjectId();
             if (project != null && menuLandingUnit != null) {
-                runDialogue(() -> actionsClient().performLanding(project, menuLandingUnit, entry.action()));
+                runDialogue(() -> {
+                    actionsClient().performLanding(project, menuLandingUnit, entry.action());
+                    return 0;
+                });
             }
             return;
         }
@@ -3129,7 +3148,10 @@ public final class OverviewFullScreenApp {
                                                     "keys", MessageCatalogue.format(locale, "operator.actions.yes_no",
                                                                         Map.of())));
             var confirmed = new boolean[1];
-            runDialogue(() -> confirmed[0] = askYes(prompt));
+            runDialogue(() -> {
+                confirmed[0] = askYes(prompt);
+                return 0;
+            });
             if (!confirmed[0]) {
                 return;
             }

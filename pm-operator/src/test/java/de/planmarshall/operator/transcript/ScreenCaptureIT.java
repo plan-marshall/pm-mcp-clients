@@ -403,6 +403,7 @@ class ScreenCaptureIT {
         if (raw.isEmpty() || "-".equals(raw)) {
             return "";
         }
-        return raw.replace("\\n", "\n").replace("\\t", "\t").replace("\\e", "\u001b");
+        return raw.replace("\\n", "\n").replace("\\t", "\t").replace("\\e", "\u001b")
+                            .replace("\\c", "\u0003");
     }
 }

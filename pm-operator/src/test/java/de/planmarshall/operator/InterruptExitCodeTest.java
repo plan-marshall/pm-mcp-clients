@@ -22,8 +22,8 @@ import java.nio.file.Files;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.Locale;
-import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import org.jline.terminal.Terminal;
@@ -140,14 +140,14 @@ class InterruptExitCodeTest {
      * @return the exit code the dialogue returned
      * @throws Exception if the dialogue fails or never reaches its prompt
      */
-    private int interruptedAt(String marker, Callable<Integer> dialogue) throws Exception {
-        var code = new AtomicReference<Integer>();
-        var failure = new AtomicReference<Throwable>();
+    private int interruptedAt(String marker, Dialogue dialogue) throws Exception {
+        var code = new AtomicInteger(-1);
+        var failure = new AtomicReference<IOException>();
         var reader = Thread.ofPlatform().name("dialogue-under-test").start(() -> {
             try {
-                code.set(dialogue.call());
-            } catch (Exception thrown) {
-                failure.set(thrown);
+                code.set(dialogue.run());
+            } catch (IOException failed) {
+                failure.set(failed);
             }
         });
         var deadline = System.nanoTime() + TIMEOUT.toNanos();
@@ -165,7 +165,18 @@ class InterruptExitCodeTest {
         if (!prompted) {
             fail(marker + " was never drawn, the interrupt was not sent: " + out);
         }
+        assertTrue(code.get() >= 0, "the dialogue returned no exit code: " + out);
         return code.get();
+    }
+
+    /** A dialogue of the view, which reads the runtime and leaves with its exit code. */
+    @FunctionalInterface
+    private interface Dialogue {
+        /**
+         * @return the exit code the dialogue leaves with
+         * @throws IOException on transport failure
+         */
+        int run() throws IOException;
     }
 
     /**

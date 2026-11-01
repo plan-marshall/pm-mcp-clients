@@ -69,8 +69,9 @@ public final class ProjectsCommand implements Callable<Integer> {
             var terminal = openTerminal();
             if (terminal != null) {
                 try {
-                    if (openExplorer(terminal)) {
-                        return 0;
+                    var code = openExplorer(terminal);
+                    if (code >= 0) {
+                        return code;
                     }
                 } finally {
                     if (context.ownsTerminal(terminal)) {
@@ -95,19 +96,22 @@ public final class ProjectsCommand implements Callable<Integer> {
      * Opens the explorer when the terminal can draw it, or names why it cannot.
      *
      * @param terminal the terminal the console owns, or one this command created
-     * @return {@code true} when the view ran to a normal end
+     * @return the exit code the view ended with, or {@code -1} when it could not be drawn
      * @throws IOException when the view cannot be drawn
      */
-    private boolean openExplorer(Terminal terminal) throws IOException {
+    private int openExplorer(Terminal terminal) throws IOException {
         var availability = TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS);
         if (!availability.available()) {
             TuiScreenDriver.printUnavailable(context, spec.commandLine().getErr(), availability);
-            return false;
+            return -1;
         }
         var app = new OverviewFullScreenApp(context, terminal, InitialSelection.explorerRoot(),
                             Clock.systemUTC(), new OverviewStateStore(context.stateDirectory()),
                             context.noticeBuffer());
-        return app.run(spec.commandLine().getOut()) != TuiScreenDriver.Result.TOO_NARROW;
+        if (app.run(spec.commandLine().getOut()) == TuiScreenDriver.Result.TOO_NARROW) {
+            return -1;
+        }
+        return app.interrupted() ? StartPrompt.EXIT_INTERRUPTED : 0;
     }
 
     private int printList() throws IOException {

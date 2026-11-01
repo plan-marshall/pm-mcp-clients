@@ -84,6 +84,9 @@ public final class PlansCommand implements Callable<Integer> {
                 }
                 var app = new OverviewFullScreenApp(context, terminal, project, effectiveBy, ended);
                 var result = app.run(out);
+                if (app.interrupted()) {
+                    return StartPrompt.EXIT_INTERRUPTED;
+                }
                 if (result != TuiScreenDriver.Result.TOO_NARROW) {
                     return 0;
                 }

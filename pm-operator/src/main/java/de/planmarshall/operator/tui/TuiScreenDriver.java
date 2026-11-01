@@ -525,6 +525,15 @@ public final class TuiScreenDriver {
         }
     }
 
+    /**
+     * Leaves the view after the turn that is running: a dialogue the operator interrupted ends the
+     * program instead of returning to the view it was opened from, so the interrupt status of the
+     * exit-code table reaches the shell.
+     */
+    public void stop() {
+        stopping.set(true);
+    }
+
     private KeyMap<String> menuKeyMap(TuiMenu menu) {
         var map = new KeyMap<String>();
         map.setAmbiguousTimeout(AMBIGUOUS_TIMEOUT_MILLIS);
