@@ -32,6 +32,7 @@
     formatDuration,
     formatDay,
     formatTime,
+    dayOf,
     type Locale,
   } from '../display/format';
   import { stripControlSequences } from '../utils/outputSafety';
@@ -523,29 +524,31 @@
   }
 
   /**
-   * The day a row opens, where the wire sent an instant for it.
+   * The day a row opens, where the row carries a date or a clock.
    *
-   * A clock alone carries no date, so it opens no day: the header appears only for the first row
-   * of each day the runtime dates.
+   * A clock alone carries no date, so it belongs to the day it was read; the header then appears
+   * only when the row opens a day of its own, never a second time for the same day.
    *
    * @param entries the entries of the task's activity
    * @param index the entry's position
    * @returns the day to print above the row, or an empty string
    */
   function dayLabel(entries: ActivityEntry[], index: number): string {
-    const iso = entries[index]?.timestamp;
-    const day = formatDay(iso, $currentLocale, new Date(clock));
+    const day = formatDay(entries[index]?.timestamp, $currentLocale, new Date(clock));
     if (!day) return '';
     if (index === 0) return day;
     const previous = entries[index - 1]?.timestamp;
-    return sameCalendarDay(iso, previous) ? '' : day;
+    return sameCalendarDay(entries[index]?.timestamp, previous) ? '' : day;
   }
 
   /**
-   * @param left an instant @param right another instant @returns whether they fall on one day
+   * @param left a timestamp @param right another timestamp @returns whether they fall on one day
    */
   function sameCalendarDay(left?: string | null, right?: string | null): boolean {
-    return new Date(left ?? '').toDateString() === new Date(right ?? '').toDateString();
+    const now = new Date(clock);
+    const leftDay = dayOf(left, now);
+    const rightDay = dayOf(right, now);
+    return leftDay !== null && rightDay !== null && leftDay.getTime() === rightDay.getTime();
   }
 
   /**

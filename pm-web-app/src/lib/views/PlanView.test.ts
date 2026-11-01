@@ -273,6 +273,29 @@ describe('PlanView component', () => {
     expect(days[2]?.textContent).toMatch(/Sep/);
   });
 
+  it('opens one day above clock-only rows and a dated row of the same day', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 15, 12));
+    const today = new Date();
+    const datedAt = (hour: number, minute: number): string =>
+      new Date(today.getFullYear(), today.getMonth(), today.getDate(), hour, minute).toISOString();
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      ...mockActivity,
+      entries: [
+        { timestamp: '14:02:11', kind: 'text', content: 'a bare clock' },
+        { timestamp: datedAt(14, 5), kind: 'text', content: 'the same day, dated' },
+        { timestamp: datedAt(14, 6), kind: 'text', content: 'still the same day' },
+      ],
+    });
+
+    render(PlanView);
+
+    await screen.findByTestId('task-inspector');
+    const days = await screen.findAllByTestId('activity-day');
+    expect(days).toHaveLength(1);
+    expect(days[0]).toHaveTextContent('today');
+  });
+
   it('normalizes live activity events and ignores malformed ones', async () => {
     let onEvent: ((event: string, data: unknown) => void) | undefined;
     vi.spyOn(apiClient, 'subscribeTaskActivity').mockImplementation(

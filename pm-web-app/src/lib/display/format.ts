@@ -26,7 +26,8 @@ const CLOCK_ONLY = /^\d{1,2}:\d{2}(:\d{2})?$/;
  * @param locale the interface locale
  * @param key the catalogue key of the word or the unit mark
  * @param params the ICU parameters of the text
- * @returns the text of the pack of that locale
+ * @returns the text the active catalogue yields for that key; every caller passes the active
+ *   locale, so the active catalogue is that locale's pack
  */
 function word(
   locale: Locale,
@@ -168,14 +169,29 @@ function shortText(date: Date, locale: Locale, distance: number): string {
 }
 
 /**
+ * The calendar day a runtime timestamp belongs to, for the header of a group of rows.
+ *
+ * A row may carry a bare clock instead of an instant (`14:02:11`): a clock is read from the live
+ * stream, so it belongs to the day it was read.
+ *
+ * @param timestamp the instant or the bare clock the runtime sends
+ * @param now the instant "now" means, so a test can pin it
+ * @returns midnight of that day, in local time, or `null` when the value carries neither
+ */
+export function dayOf(
+  timestamp: string | null | undefined,
+  now: Date = new Date(),
+): Date | null {
+  const moment = parseInstant(timestamp) ?? (CLOCK_ONLY.test((timestamp ?? '').trim()) ? now : null);
+  return moment === null ? null : startOfDay(moment);
+}
+
+/**
  * Renders the day a group of activity rows belongs to, for the header of that group.
  *
  * It is the date part of the `short` style: `today` / `heute`, `yesterday` / `gestern`, and the
  * day and month (`16 Oct` / `16. Okt.`) for anything older. The rows below it carry the `clock`
  * rendering of their own moments.
- *
- * A row may carry a bare clock instead of an instant (`14:02:11`): a clock is read from the live
- * stream, so it opens the day it was read, and its group still gets its header.
  *
  * @param iso the instant or the bare clock the runtime sends
  * @param locale the interface locale
@@ -187,19 +203,19 @@ export function formatDay(
   locale: Locale = 'en',
   now: Date = new Date(),
 ): string {
-  const moment = parseInstant(iso) ?? (CLOCK_ONLY.test((iso ?? '').trim()) ? now : null);
-  if (!moment) return '';
-  const distance = dayDistance(now, moment);
+  const day = dayOf(iso, now);
+  if (!day) return '';
+  const distance = dayDistance(now, day);
   if (distance === 0) return word(locale, 'common.time.today');
   if (distance === 1) return word(locale, 'common.time.yesterday');
-  return dayMonthText(moment, locale);
+  return dayMonthText(day, locale);
 }
 
 /**
  * Renders a span as the design's three duration rows.
  *
  * The unit marks (`s`, `min`, `h`, and `d` / `T`) are catalogue texts (`common.time.unit.*`), as
- * the token marks are, so both clients say them the same way.
+ * the design fixes the token marks in the packs, so both clients say them the same way.
  *
  * @param ms the span in milliseconds
  * @param locale the interface locale

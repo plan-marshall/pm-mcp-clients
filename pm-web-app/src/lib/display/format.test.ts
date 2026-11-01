@@ -51,8 +51,8 @@ function useCatalogue(locale: 'de' | 'en', overrides: Record<string, string> = {
 /**
  * Renders one value in both interface languages, each against its own catalogue.
  *
- * The formatter reads the catalogue of the locale it is asked for, so the German rendering needs
- * the German pack in place before it is read.
+ * The formatter reads the active catalogue, so a test asks for a locale only after putting that
+ * locale's pack in place.
  *
  * @param render the formatter call, given the locale
  * @param english the text the English pack yields
@@ -99,11 +99,16 @@ describe('formatTime', () => {
         'gerade eben',
       );
       const halfAnHourLater = new Date(2026, 9, 17, 0, 30, 0);
-      useCatalogue('en');
-      expect(formatTime(at(10, 16, 23, 55), 'relative', 'en', halfAnHourLater)).toBe(
+      expectBothLocales(
+        (locale) => formatTime(at(10, 16, 23, 55), 'relative', locale, halfAnHourLater),
         '35 min ago',
+        'vor 35 min',
       );
-      expect(formatTime(at(10, 16, 22, 30), 'relative', 'en', halfAnHourLater)).toBe('2 h ago');
+      expectBothLocales(
+        (locale) => formatTime(at(10, 16, 22, 30), 'relative', locale, halfAnHourLater),
+        '2 h ago',
+        'vor 2 h',
+      );
     });
   });
 
@@ -182,8 +187,8 @@ describe('formatDuration', () => {
   });
 
   it('renders zero below the first second of a span', () => {
-    expect(formatDuration(0, 'en')).toBe('0 s');
-    expect(formatDuration(-500, 'en')).toBe('0 s');
+    expectBothLocales((locale) => formatDuration(0, locale), '0 s', '0 s');
+    expectBothLocales((locale) => formatDuration(-500, locale), '0 s', '0 s');
   });
 });
 

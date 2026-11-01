@@ -208,7 +208,11 @@ describe('SystemView component', () => {
     expect(screen.getByText(/1 error/)).toBeInTheDocument();
   });
 
-  it('names the model status words in the interface language', async () => {
+  it.each([
+    ['retry', '1 Wiederholung'],
+    ['error', '1 Fehler'],
+    ['ok', 'ok'],
+  ])('names the model status word %s in the interface language', async (_word, text) => {
     vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
     useCatalogue('de');
 
@@ -218,9 +222,7 @@ describe('SystemView component', () => {
       expect(screen.getByText('System')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('1 Wiederholung')).toBeInTheDocument();
-    expect(screen.getByText('1 Fehler')).toBeInTheDocument();
-    expect(screen.getByText('ok')).toBeInTheDocument();
+    expect(screen.getByText(text)).toBeInTheDocument();
   });
 
   it('follows a language switch with the text of a failed load', async () => {
