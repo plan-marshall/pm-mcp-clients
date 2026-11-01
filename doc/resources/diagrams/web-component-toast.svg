@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 140" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">Toast</title>
+  <desc id="d">A toast at the bottom right of the page: the sentence, one act, and nothing else.</desc>
+  <rect width="360" height="140" fill="#F7F7F5"/>
+  <rect x="132" y="38" width="204" height="48" rx="8" fill="#FFFFFF" stroke="#E3E3DE"/>
+  <text x="150" y="60" font-size="12" fill="#16181D">The plan was deleted.</text>
+  <text x="150" y="76" font-size="12" font-weight="600" fill="#5B4BDB">Undo</text>
+  <text x="24" y="60" font-size="11" fill="#5F6672">bottom right,</text>
+  <text x="24" y="76" font-size="11" fill="#5F6672">bottom on a phone,</text>
+  <text x="24" y="92" font-size="11" fill="#5F6672">four seconds</text>
+</svg>

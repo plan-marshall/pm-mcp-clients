@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 140" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">Card</title>
+  <desc id="d">A white surface with a radius of twelve pixels and twenty pixels of padding, a head that carries the title and one act, and a body of two lines.</desc>
+  <rect width="360" height="140" fill="#F7F7F5"/>
+  <rect x="24" y="18" width="312" height="104" rx="12" fill="#FFFFFF" stroke="#E3E3DE"/>
+  <text x="44" y="48" font-size="16" font-weight="600" fill="#16181D">Runtime</text>
+  <rect x="296" y="32" width="24" height="20" rx="6" fill="none"/>
+  <path d="M302 42h12M308 36v12" stroke="#3E4450" stroke-width="1.4" fill="none"/>
+  <line x1="44" y1="64" x2="316" y2="64" stroke="#E3E3DE"/>
+  <rect x="44" y="76" width="200" height="8" rx="4" fill="#F0F0EC"/>
+  <rect x="44" y="92" width="140" height="8" rx="4" fill="#F0F0EC"/>
+  <text x="24" y="136" font-size="11" fill="#5F6672">a card never holds a card: a nested part is separated by a divider</text>
+</svg>
