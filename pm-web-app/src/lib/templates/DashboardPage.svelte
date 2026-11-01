@@ -28,10 +28,9 @@
   </div>
 
   {#if $$slots.updated}
-    <!-- The slot carries the rendered sentence only: the line is a paragraph, so a view passes text. -->
-    <p class="dashboard-page__updated" data-testid="dashboard-page-updated">
+    <div class="dashboard-page__updated" data-testid="dashboard-page-updated">
       <slot name="updated" />
-    </p>
+    </div>
   {/if}
 </div>
 
