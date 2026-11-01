@@ -447,7 +447,7 @@
 
   /**
    * @param isoStr the instant the runtime sends
-   * @returns its age in the unit that age has, `9 d ago`
+   * @returns its age in the unit that age has (`9 d ago`), or `since 14:02` for a moment of today
    */
   function formatRelative(isoStr?: string | null): string {
     return formatTime(isoStr, 'relative', $currentLocale);

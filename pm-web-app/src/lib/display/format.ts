@@ -214,8 +214,8 @@ export function formatDay(
 /**
  * Renders a span as the design's three duration rows.
  *
- * The unit marks (`s`, `min`, `h`, and `d` / `T`) are catalogue texts (`common.time.unit.*`), as
- * the design fixes the token marks in the packs, so both clients say them the same way.
+ * The unit marks (`s`, `min`, `h`, and `d` / `T`) are catalogue texts (`common.time.unit.*`), so
+ * no view writes a second format of its own.
  *
  * @param ms the span in milliseconds
  * @param locale the interface locale

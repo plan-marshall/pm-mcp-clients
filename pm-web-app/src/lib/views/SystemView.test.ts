@@ -12,10 +12,11 @@ import { get } from 'svelte/store';
  * Puts one catalogue and its language in place, as a language switch does.
  *
  * @param locale the interface locale
+ * @param overrides the entries this test changes
  */
-function useCatalogue(locale: 'de' | 'en'): void {
+function useCatalogue(locale: 'de' | 'en', overrides: Record<string, string> = {}): void {
   currentLocale.set(locale);
-  messagesStore.set(loadMessages(locale));
+  messagesStore.set({ ...loadMessages(locale), ...overrides });
 }
 
 describe('SystemView component', () => {
@@ -211,7 +212,6 @@ describe('SystemView component', () => {
   it.each([
     ['retry', '1 Wiederholung'],
     ['error', '1 Fehler'],
-    ['ok', 'ok'],
   ])('names the model status word %s in the interface language', async (_word, text) => {
     vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
     useCatalogue('de');
@@ -223,6 +223,21 @@ describe('SystemView component', () => {
     });
 
     expect(screen.getByText(text)).toBeInTheDocument();
+  });
+
+  it('names the model status word ok from the catalogue', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    // The word of a healthy model reads the same in both packs, so only a changed pack shows
+    // that the view reads it there instead of writing it in the markup.
+    useCatalogue('de', { 'system.models.ok': 'einverstanden' });
+
+    render(SystemView);
+
+    await waitFor(() => {
+      expect(screen.getByText('System')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('einverstanden')).toBeInTheDocument();
   });
 
   it('follows a language switch with the text of a failed load', async () => {
