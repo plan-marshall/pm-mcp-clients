@@ -70,7 +70,7 @@ class ScenarioRegistryTest {
     @DisplayName("resolves scenario from external filesystem path")
     void resolvesFromFilePath(@TempDir Path tempDir) throws Exception {
         var scenarioName = Generators.letterStrings(4, 12).next().toLowerCase();
-        var stateName = Generators.letterStrings(4, 12).next().toLowerCase();
+        var stateName = "state-" + Generators.letterStrings(4, 12).next().toLowerCase();
         var scenarioFile = tempDir.resolve(scenarioName + ".json");
         var json = """
                 {
@@ -127,8 +127,8 @@ class ScenarioRegistryTest {
     @Test
     @DisplayName("splits a composite reference into scenario and state")
     void splitsCompositeReference() {
-        var scenarioName = Generators.letterStrings(4, 10).next();
-        var stateName = Generators.letterStrings(4, 10).next();
+        var scenarioName = "scenario-" + Generators.letterStrings(4, 10).next().toLowerCase();
+        var stateName = "state-" + Generators.letterStrings(4, 10).next().toLowerCase();
         assertEquals(scenarioName, ScenarioRegistry.scenarioNameOf(scenarioName + "#" + stateName));
         assertEquals(stateName, ScenarioRegistry.stateNameOf(scenarioName + "#" + stateName));
         assertEquals(scenarioName, ScenarioRegistry.scenarioNameOf(scenarioName));

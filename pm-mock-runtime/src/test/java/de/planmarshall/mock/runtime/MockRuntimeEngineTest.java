@@ -58,8 +58,8 @@ class MockRuntimeEngineTest {
     @BeforeEach
     void setUp() {
         registry = new ScenarioRegistry();
-        runtimeToken = Generators.letterStrings(8, 16).next();
-        deviceSecret = Generators.letterStrings(8, 16).next();
+        runtimeToken = "rt-" + Generators.letterStrings(8, 16).next();
+        deviceSecret = "ds-" + Generators.letterStrings(8, 16).next();
         auth = Map.of("Authorization", "Bearer " + runtimeToken);
         brokenName = Generators.letterStrings(4, 10).next().toLowerCase();
         brokenState = "s" + Generators.letterStrings(3, 6).next().toLowerCase();
@@ -399,6 +399,10 @@ class MockRuntimeEngineTest {
         // Correct Authorization -> accepted
         var res3 = send("GET", "/api/v1/status", Map.of("Authorization", "Bearer " + deviceSecret), new byte[0], true);
         assertEquals(200, res3.status());
+
+        // The runtime token is a local credential, never a web one -> 401
+        var res4 = send("GET", "/api/v1/status", Map.of("Authorization", "Bearer " + runtimeToken), new byte[0], true);
+        assertEquals(401, res4.status());
     }
 
     @Test
