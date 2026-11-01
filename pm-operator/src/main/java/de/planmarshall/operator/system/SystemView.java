@@ -80,6 +80,9 @@ public final class SystemView {
     private static final String PARAM_USED = "used";
     private static final String PARAM_TOTAL = "total";
     private static final String PARAM_MODEL = "model";
+    private static final String PARAM_SIZE = "size";
+    private static final String FIELD_SLOTS_USED = "slots_used";
+    private static final String FIELD_SLOTS_TOTAL = "slots_total";
 
     private static final List<String> PLAN_STATE_ORDER =
                         List.of(STATE_RUNNING, "waiting_for_you", "held", "paused", "pausing");
@@ -223,14 +226,14 @@ public final class SystemView {
         var details = new ArrayList<String>(4);
         details.add(memoryLine(locale, runtime));
         details.add(MessageCatalogue.format(locale, "system.runtime.store",
-                            Map.of("size", SystemFormatting.bytes(runtime.machineStoreBytes()),
+                            Map.of(PARAM_SIZE, SystemFormatting.bytes(runtime.machineStoreBytes()),
                                                 "free", SystemFormatting.bytes(runtime.diskFreeBytes()),
                                                 PARAM_TIME, clean(runtime.measuredAt()))));
         details.add(listenersLine(locale, runtime));
         if (runtime.relaysBehindCount() > 0 && runtime.relaysBehindVersion() != null) {
             details.add(MessageCatalogue.format(locale, "system.runtime.relays_behind",
                                 Map.of(PARAM_COUNT, runtime.relaysBehindCount(),
-                                                    "version", clean(runtime.relaysBehindVersion()))));
+                                                    PARAM_VERSION, clean(runtime.relaysBehindVersion()))));
         }
         var headline = MessageCatalogue.format(locale, "system.runtime.version_build",
                             Map.of(PARAM_VERSION, clean(runtime.version()), "build", clean(runtime.build())));
@@ -380,9 +383,9 @@ public final class SystemView {
         var lines = new ArrayList<String>(jobs.size());
         for (var kind : jobKinds(jobs)) {
             lines.add(MessageCatalogue.format(locale, "system.jobs.slots_console",
-                                Map.of(PARAM_KIND, clean(kind), PARAM_USED, integer(jobs, kind, "slots_used"),
-                                                    PARAM_TOTAL, integer(jobs, kind, "slots_total"),
-                                                    PARAM_QUEUED, integer(jobs, kind, "queued"))));
+                                Map.of(PARAM_KIND, clean(kind), PARAM_USED, integer(jobs, kind, FIELD_SLOTS_USED),
+                                                    PARAM_TOTAL, integer(jobs, kind, FIELD_SLOTS_TOTAL),
+                                                    PARAM_QUEUED, integer(jobs, kind, PARAM_QUEUED))));
         }
         return lines;
     }
@@ -605,7 +608,7 @@ public final class SystemView {
                                                                                         "logs", cleanup.logsCount(),
                                                                                         "reports", cleanup.reportsCount(),
                                                                                         "projects", cleanup.projectsCount())),
-                                                "size", SystemFormatting.bytes(cleanup.freedBytes())));
+                                                PARAM_SIZE, SystemFormatting.bytes(cleanup.freedBytes())));
     }
 
     /**
@@ -654,14 +657,14 @@ public final class SystemView {
     }
 
     private static int runningPlans(Map<String, Integer> byState) {
-        var count = byState.get("running");
+        var count = byState.get(STATE_RUNNING);
         return count != null ? count : 0;
     }
 
     private static int usedSlots(Map<String, Object> jobs) {
         var used = 0;
         for (var kind : jobKinds(jobs)) {
-            used += integer(jobs, kind, "slots_used");
+            used += integer(jobs, kind, FIELD_SLOTS_USED);
         }
         return used;
     }
