@@ -23,14 +23,30 @@ export function styleOf(componentPath: string): string {
 /**
  * Reads one top-level rule of a stylesheet by its selector.
  *
+ * The selector is matched literally and must be followed by `{`, so `.triage-page` never picks up
+ * the `.triage-page__filters` rule that only shares a prefix; no regular expression is built, so
+ * the selector needs no escaping.
+ *
  * @param style the stylesheet text
  * @param selector the rule's selector, exactly as the component writes it
  * @returns the declarations of the first matching rule, or an empty string
  */
 export function ruleOf(style: string, selector: string): string {
-  const escaped = selector.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = new RegExp(`(?:^|\\n)\\s*${escaped}\\s*\\{([^}]*)\\}`).exec(style);
-  return match ? match[1] : '';
+  let from = 0;
+  while (from <= style.length) {
+    const at = style.indexOf(selector, from);
+    if (at < 0) {
+      return '';
+    }
+    const rest = at + selector.length;
+    if (style.slice(rest).trimStart().startsWith('{')) {
+      const open = style.indexOf('{', rest);
+      const close = style.indexOf('}', open + 1);
+      return open < 0 || close < 0 ? '' : style.slice(open + 1, close);
+    }
+    from = rest;
+  }
+  return '';
 }
 
 /**
