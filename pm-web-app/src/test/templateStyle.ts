@@ -50,18 +50,91 @@ export function ruleOf(style: string, selector: string): string {
 }
 
 /**
- * @param tag an element's opening tag
+ * @param markup a component's markup
+ * @returns every opening or closing tag, with the `>` inside a quoted value or a `{…}` block kept
+ */
+function tagsOf(markup: string): string[] {
+  const tags: string[] = [];
+  let from = 0;
+  while (from < markup.length) {
+    const open = markup.indexOf('<', from);
+    if (open < 0) {
+      break;
+    }
+    let index = open + 1;
+    let quote = '';
+    let braces = 0;
+    for (; index < markup.length; index++) {
+      const char = markup[index];
+      if (quote) {
+        if (char === quote) {
+          quote = '';
+        }
+      } else if (char === '"' || char === "'") {
+        quote = char;
+      } else if (char === '{') {
+        braces++;
+      } else if (char === '}') {
+        braces = Math.max(0, braces - 1);
+      } else if (char === '>' && braces === 0) {
+        break;
+      }
+    }
+    tags.push(markup.slice(open, index + 1));
+    from = index + 1;
+  }
+  return tags;
+}
+
+/**
+ * Reads an attribute's value from a tag, distinguishing it from a longer name such as `data-class`.
+ *
+ * @param tag an element's tag text
  * @param name an attribute name
  * @returns the attribute's value, or an empty string when the tag carries none
  */
 function attributeOf(tag: string, name: string): string {
-  const at = tag.indexOf(`${name}="`);
-  if (at < 0) {
-    return '';
+  let from = 0;
+  while (from < tag.length) {
+    const at = tag.indexOf(name, from);
+    if (at < 0) {
+      return '';
+    }
+    const before = tag[at - 1];
+    const afterName = tag.slice(at + name.length).trimStart();
+    if ((at === 0 || /\s/.test(before)) && afterName.startsWith('=')) {
+      const value = afterName.slice(1).trimStart();
+      const quote = value[0];
+      if (quote === '"' || quote === "'") {
+        const end = value.indexOf(quote, 1);
+        return end < 0 ? '' : value.slice(1, end);
+      }
+    }
+    from = at + name.length;
   }
-  const start = at + name.length + 2;
-  const end = tag.indexOf('"', start);
-  return end < 0 ? '' : tag.slice(start, end);
+  return '';
+}
+
+/**
+ * @param markup a component's markup
+ * @param selector the page-root selector, e.g. `.system-container`
+ * @returns the tag carrying that class, or an empty string when no element carries it
+ */
+function pageRootTag(markup: string, selector: string): string {
+  const token = selector.startsWith('.') ? selector.slice(1) : selector;
+  return (
+    tagsOf(markup).find((tag) => attributeOf(tag, 'class').split(/\s+/).includes(token)) ?? ''
+  );
+}
+
+/**
+ * @param componentPath the component's file
+ * @returns the component's markup, without its `<style>` block
+ */
+function markupOf(componentPath: string): string {
+  return fs
+    .readFileSync(componentPath, 'utf-8')
+    .replace(/<style>[\s\S]*?<\/style>/g, '');
 }
 
 /**
@@ -72,34 +145,29 @@ function attributeOf(tag: string, name: string): string {
  * @returns the `style` attribute's value, or an empty string when the root carries none
  */
 export function rootInlineStyle(componentPath: string, selector: string): string {
-  const token = selector.startsWith('.') ? selector.slice(1) : selector;
-  const markup = fs
-    .readFileSync(componentPath, 'utf-8')
-    .replace(/<style>[\s\S]*?<\/style>/g, '');
-  let from = 0;
-  while (from < markup.length) {
-    const open = markup.indexOf('<', from);
-    const close = open < 0 ? -1 : markup.indexOf('>', open);
-    if (open < 0 || close < 0) {
-      return '';
-    }
-    const tag = markup.slice(open, close + 1);
-    from = close + 1;
-    if (attributeOf(tag, 'class').split(/\s+/).includes(token)) {
-      return attributeOf(tag, 'style');
-    }
-  }
-  return '';
+  return attributeOf(pageRootTag(markupOf(componentPath), selector), 'style');
+}
+
+/**
+ * Whether a view's markup carries its page-root class on an element.
+ *
+ * @param componentPath the component's file
+ * @param selector the page-root selector, e.g. `.system-container`
+ * @returns `true` when an element carries the class
+ */
+export function pageRootCarriedByMarkup(componentPath: string, selector: string): boolean {
+  return pageRootTag(markupOf(componentPath), selector) !== '';
 }
 
 /**
  * Reports every listed view whose page root carries a page-width cap.
  *
  * Both spellings are read, in the stylesheet and in the root's inline `style`: `max-width` and
- * `max-inline-size`, except the fluid `max-inline-size: 100%`. A listed view whose page root
- * matches no rule is reported too: an empty rule would otherwise pass the check whenever the
- * selector is renamed or the rule is deleted, which is the vacuous pass this guard exists to
- * prevent.
+ * `max-inline-size`, except the fluid `max-inline-size: 100%`. CSS comments are dropped and a
+ * custom property such as `--max-width` is not a cap. A listed view whose page root matches no
+ * rule, or whose class no element carries, is reported too: an empty rule would otherwise pass
+ * the check whenever the selector is renamed or the rule is deleted, which is the vacuous pass
+ * this guard exists to prevent.
  *
  * @param viewsDir the directory the listed view files live in
  * @param views the views that sit on a template, with their page-root selector
@@ -115,8 +183,12 @@ export function pageWidthOffenders(
     if (!root.trim()) {
       return [`${view.file} (${view.root}): no rule found for the page root`];
     }
+    if (!pageRootCarriedByMarkup(file, view.root)) {
+      return [`${view.file} (${view.root}): no element carries the page-root class`];
+    }
     const declarations = `${root}\n${rootInlineStyle(file, view.root)}`;
-    return /max-width\s*:|max-inline-size\s*:(?!\s*100%)/.test(declarations)
+    const effective = declarations.replace(/\/\*[\s\S]*?\*\//g, '');
+    return /(?<![\w-])max-width\s*:|(?<![\w-])max-inline-size\s*:(?!\s*100%)/.test(effective)
       ? [`${view.file} (${view.root}): ${declarations.trim()}`]
       : [];
   });

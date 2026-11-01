@@ -35,6 +35,17 @@ function sourceOf(file: string): string {
   return fs.readFileSync(file, 'utf-8');
 }
 
+/**
+ * @param source a view's source text
+ * @returns whether it imports a page template, directly or through a barrel under `templates/`
+ */
+function importsTemplate(source: string): boolean {
+  return (
+    TEMPLATES.some((template) => source.includes(`templates/${template}.svelte`)) ||
+    /from\s+'[^']*\/templates'/.test(source)
+  );
+}
+
 describe('the page width belongs to the template', () => {
   it('names at least one view that sits on a template', () => {
     expect(VIEWS_ON_TEMPLATES.length).toBeGreaterThan(0);
@@ -54,11 +65,7 @@ describe('the page width belongs to the template', () => {
     const unlisted = fs
       .readdirSync(VIEWS_DIR)
       .filter((file) => file.endsWith('.svelte'))
-      .filter((file) =>
-        TEMPLATES.some((template) =>
-          sourceOf(path.join(VIEWS_DIR, file)).includes(`templates/${template}.svelte`),
-        ),
-      )
+      .filter((file) => importsTemplate(sourceOf(path.join(VIEWS_DIR, file))))
       .filter((file) => !listed.has(file));
 
     expect(unlisted).toEqual([]);
@@ -93,6 +100,32 @@ describe('the page width belongs to the template', () => {
 
     expect(offenders).toHaveLength(1);
     expect(offenders[0]).toContain('max-width: 1200px');
+  });
+
+  it('ignores an inline cap on a child element (control)', () => {
+    const offenders = pageWidthOffenders(CONTROL_DIR, [
+      { file: 'InlineChildView.svelte', root: '.control-child-root' },
+    ]);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('ignores a comment and a custom property that name a width (control)', () => {
+    const offenders = pageWidthOffenders(CONTROL_DIR, [
+      { file: 'CommentOnlyView.svelte', root: '.control-comment-root' },
+    ]);
+
+    expect(offenders).toEqual([]);
+  });
+
+  it('reports a page root whose class no element carries (control)', () => {
+    const offenders = pageWidthOffenders(CONTROL_DIR, [
+      { file: 'GhostRootView.svelte', root: '.control-ghost-root' },
+    ]);
+
+    expect(offenders).toEqual([
+      'GhostRootView.svelte (.control-ghost-root): no element carries the page-root class',
+    ]);
   });
 
   it('reports a page root whose selector matches no rule instead of passing vacuously', () => {
