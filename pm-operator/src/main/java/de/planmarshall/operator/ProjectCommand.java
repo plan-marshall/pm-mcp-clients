@@ -191,6 +191,8 @@ public final class ProjectCommand implements Callable<Integer> {
                 }
                 dialogue.run();
                 return 0;
+            } catch (StartPrompt.InterruptException _) {
+                return StartPrompt.EXIT_INTERRUPTED;
             } catch (StartPrompt.StartLeftException _) {
                 return 0;
             } catch (IOException _) {

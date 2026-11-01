@@ -611,6 +611,8 @@ public final class PlanCommand implements Callable<Integer> {
             String point;
             try {
                 point = point(out);
+            } catch (StartPrompt.InterruptException _) {
+                return StartPrompt.EXIT_INTERRUPTED;
             } catch (StartPrompt.StartLeftException _) {
                 return 0;
             }

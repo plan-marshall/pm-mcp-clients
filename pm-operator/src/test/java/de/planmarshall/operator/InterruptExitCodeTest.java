@@ -26,12 +26,11 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
+import org.jline.terminal.Terminal;
 
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
-
-import org.jline.terminal.Terminal;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -147,7 +146,7 @@ class InterruptExitCodeTest {
         var reader = Thread.ofPlatform().name("dialogue-under-test").start(() -> {
             try {
                 code.set(dialogue.call());
-            } catch (Throwable thrown) {
+            } catch (Exception thrown) {
                 failure.set(thrown);
             }
         });
@@ -162,7 +161,8 @@ class InterruptExitCodeTest {
         }
         reader.join(TimeUnit.SECONDS.toMillis(1));
         assertFalse(reader.isAlive(), "the dialogue did not leave after the interrupt: " + out);
-        assertNull(failure.get(), "the dialogue failed: " + failure.get());        if (!prompted) {
+        assertNull(failure.get(), "the dialogue failed: " + failure.get());
+        if (!prompted) {
             fail(marker + " was never drawn, the interrupt was not sent: " + out);
         }
         return code.get();

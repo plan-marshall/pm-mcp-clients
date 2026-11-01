@@ -111,6 +111,8 @@ public final class OnboardCommand implements Callable<Integer> {
         try {
             dialogue.run();
             return 0;
+        } catch (StartPrompt.InterruptException _) {
+            return StartPrompt.EXIT_INTERRUPTED;
         } catch (StartPrompt.StartLeftException _) {
             return 0;
         } catch (StartPrompt.MissingInputException _) {

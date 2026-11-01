@@ -198,7 +198,9 @@ public final class StartPrompt {
     private static String read(LineReader reader) {
         try {
             return Objects.requireNonNullElse(reader.readLine(), EMPTY).trim();
-        } catch (EndOfFileException | UserInterruptException _) {
+        } catch (UserInterruptException _) {
+            throw new InterruptException();
+        } catch (EndOfFileException _) {
             throw new StartLeftException();
         }
     }
@@ -216,12 +218,25 @@ public final class StartPrompt {
 
     /**
      * The run stopped because the operator left the dialogue. A caller that must tell {@code Ctrl+C}
-     * from {@code q} catches {@code ChoicePrompt.InterruptException} first.
+     * from {@code q} catches {@link InterruptException} first.
      */
     public static class StartLeftException extends RuntimeException {
         private static final long serialVersionUID = 1L;
 
         public StartLeftException() {
+            super();
+        }
+    }
+
+    /**
+     * The operator interrupted the run with {@code Ctrl+C}, which the exit-code table of the terminal
+     * client gives {@link #EXIT_INTERRUPTED}: a caller that leaves on {@code q} catches this class
+     * first and leaves with that status instead.
+     */
+    public static final class InterruptException extends StartLeftException {
+        private static final long serialVersionUID = 1L;
+
+        public InterruptException() {
             super();
         }
     }

@@ -76,6 +76,8 @@ final class ReviewDialogue {
             out.println(MessageCatalogue.format(dialogue.prompt.locale(), "operator.actions.review.stopped", Map.of()));
             out.flush();
             return StartDialogue.EXIT_MISSING_INPUT;
+        } catch (StartPrompt.InterruptException _) {
+            return StartPrompt.EXIT_INTERRUPTED;
         } catch (StartPrompt.StartLeftException _) {
             return 0;
         }
