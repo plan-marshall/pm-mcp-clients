@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { styleOf, ruleOf } from '../../test/templateStyle';
+import { pageWidthOffenders } from '../../test/templateStyle';
 
 /**
  * A view that sits on a page template sets no page width of its own (UX-P-03): the template owns
@@ -9,10 +9,12 @@ import { styleOf, ruleOf } from '../../test/templateStyle';
  *
  * The list grows as the plans that move a view add it — PLAN-51, PLAN-53, PLAN-55 and PLAN-58 move
  * the decision, start, plan and epic views onto their templates, and each one appends its view and
- * the selector of its page root here.
+ * the selector of its page root here. The control fixture proves the guard still reports a view
+ * that carries a width, and a renamed selector is reported instead of passing vacuously.
  */
 
 const VIEWS_DIR = path.resolve(__dirname, '../views');
+const CONTROL_DIR = path.resolve(__dirname, '../../test/fixtures/templateViews');
 
 /** The views that sit on a page template, with the selector of their page root. */
 const VIEWS_ON_TEMPLATES: ReadonlyArray<{ file: string; root: string }> = [
@@ -45,12 +47,25 @@ describe('the page width belongs to the template', () => {
   });
 
   it('sets no max-width on the page root of a view that sits on a template', () => {
-    const offenders = VIEWS_ON_TEMPLATES.flatMap((view) => {
-      const file = path.join(VIEWS_DIR, view.file);
-      const root = ruleOf(styleOf(file), view.root);
-      return /max-width\s*:/.test(root) ? [`${view.file} (${view.root}): ${root.trim()}`] : [];
-    });
+    expect(pageWidthOffenders(VIEWS_DIR, VIEWS_ON_TEMPLATES)).toEqual([]);
+  });
 
-    expect(offenders).toEqual([]);
+  it('reports a view that carries its own page width (control)', () => {
+    const offenders = pageWidthOffenders(CONTROL_DIR, [
+      { file: 'WidthView.svelte', root: '.control-page' },
+    ]);
+
+    expect(offenders).toHaveLength(1);
+    expect(offenders[0]).toContain('max-width: 1200px');
+  });
+
+  it('reports a page root whose selector matches no rule instead of passing vacuously', () => {
+    const offenders = pageWidthOffenders(VIEWS_DIR, [
+      { file: 'SystemView.svelte', root: '.a-selector-no-view-carries' },
+    ]);
+
+    expect(offenders).toEqual([
+      'SystemView.svelte (.a-selector-no-view-carries): no rule found for the page root',
+    ]);
   });
 });

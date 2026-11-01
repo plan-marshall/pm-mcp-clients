@@ -54,4 +54,19 @@ describe('TriagePage', () => {
 
     expect(container.querySelector('.triage-page--detail')).not.toBeNull();
   });
+
+  it('keeps the filter chips when the detail replaces the list', () => {
+    const style = styleOf(SOURCE);
+    const collapsed = style.slice(style.indexOf('@media (max-width: 1099px)'));
+
+    expect(collapsed).not.toMatch(/triage-page__filters[\s\S]*?display: none/);
+  });
+
+  it('takes the 12 px inset on the phone', () => {
+    const style = styleOf(SOURCE);
+    const index = style.indexOf('@media (max-width: 480px)');
+
+    expect(index).toBeGreaterThanOrEqual(0);
+    expect(style.slice(index)).toMatch(/padding: var\(--space-3\)/);
+  });
 });

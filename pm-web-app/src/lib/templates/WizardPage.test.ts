@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import path from 'node:path';
 import WizardPageFixture from '../../test/fixtures/WizardPageFixture.svelte';
+import WizardPageStepsOnlyFixture from '../../test/fixtures/WizardPageStepsOnlyFixture.svelte';
 import { styleOf, ruleOf } from '../../test/templateStyle';
 
 /**
@@ -36,5 +37,21 @@ describe('WizardPage', () => {
     expect(root).toContain('max-width: 720px');
     expect(root).toContain('margin-inline: auto');
     expect(root).toContain('width: 100%');
+  });
+
+  it('draws no footer row when the view fills no footer slot', () => {
+    render(WizardPageStepsOnlyFixture, {
+      props: { steps: 'Step 1 of 5 · Language', body: 'One card of the wizard' },
+    });
+
+    expect(screen.queryByTestId('wizard-page-footer')).not.toBeInTheDocument();
+  });
+
+  it('takes the 12 px inset on the phone', () => {
+    const style = styleOf(SOURCE);
+    const index = style.indexOf('@media (max-width: 480px)');
+
+    expect(index).toBeGreaterThanOrEqual(0);
+    expect(style.slice(index)).toMatch(/padding: var\(--space-3\)/);
   });
 });

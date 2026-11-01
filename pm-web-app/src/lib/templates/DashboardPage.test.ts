@@ -37,4 +37,12 @@ describe('DashboardPage', () => {
     expect(root).toContain('margin-inline: auto');
     expect(root).toContain('width: 100%');
   });
+
+  it('takes the 12 px inset on the phone', () => {
+    const style = styleOf(SOURCE);
+    const index = style.indexOf('@media (max-width: 480px)');
+
+    expect(index).toBeGreaterThanOrEqual(0);
+    expect(style.slice(index)).toMatch(/padding: var\(--space-3\)/);
+  });
 });
