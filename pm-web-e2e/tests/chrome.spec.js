@@ -237,6 +237,119 @@ test.describe('The app shell on fully-onboarded', () => {
   });
 });
 
+test.describe('The command palette', () => {
+  test.beforeEach(async ({ page, request }) => {
+    await switchScenario(request, 'fully-onboarded');
+    await pair(page, request);
+  });
+
+  test.afterAll(async ({ request }) => {
+    try {
+      await switchScenario(request, 'web-pairing');
+    } catch {
+      // Best-effort cleanup.
+    }
+  });
+
+  test('opens the first match for a name with Ctrl+K, the name, and Enter', async ({ page }) => {
+    await page.goto('/overview');
+    const palette = page.getByTestId('command-palette');
+    const field = page.getByTestId('command-palette-field');
+
+    // The search button of the top bar is no longer disabled and opens the panel.
+    const trigger = page.getByTestId('search-trigger');
+    await expect(trigger).toBeEnabled();
+    await trigger.click();
+    await expect(palette).toBeVisible();
+    await expect(field).toBeFocused();
+
+    // The panel is modal: Tab walks its own controls and never reaches the page behind it.
+    await page.keyboard.press('Tab');
+    expect(
+      await page.evaluate(
+        () => document.activeElement?.closest('[data-testid="command-palette"]') !== null,
+      ),
+    ).toBe(true);
+    await page.keyboard.press('Shift+Tab');
+    expect(
+      await page.evaluate(
+        () => document.activeElement?.closest('[data-testid="command-palette"]') !== null,
+      ),
+    ).toBe(true);
+
+    // Esc returns to the view the panel was opened from.
+    await page.keyboard.press('Escape');
+    await expect(palette).toHaveCount(0);
+    await expect(page).toHaveURL(/\/overview$/);
+
+    // Ctrl+K opens the same panel from anywhere, and `/` does where no field has the focus.
+    await page.keyboard.press('Control+K');
+    await expect(palette).toBeVisible();
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('/');
+    await expect(palette).toBeVisible();
+
+    // The runtime answers the name; the first match is the running epic, and Enter opens it.
+    await expect(field).toBeFocused();
+    await field.fill('relay');
+    const first = page.getByTestId('command-palette-match').first();
+    await expect(first).toContainText('Relay Hardening');
+    await page.keyboard.press('Enter');
+
+    await expect(page).toHaveURL(/\/epics\/relay-hardening$/);
+    await expect(page.getByTestId('epic-view')).toBeVisible();
+    await expect(palette).toHaveCount(0);
+  });
+
+  test('finds the plan of pull request 214 by its number', async ({ page }) => {
+    await page.goto('/overview');
+    // The panel is part of the shell: it answers once the frame is up.
+    await expect(page.getByTestId('top-bar')).toBeVisible();
+    await page.keyboard.press('Control+K');
+
+    const field = page.getByTestId('command-palette-field');
+    await field.fill('214');
+
+    const match = page.getByTestId('command-palette-match').first();
+    await expect(match).toContainText('Fix Relay Transport');
+    await match.click();
+
+    await expect(page).toHaveURL(/\/plans\/fix-relay$/);
+    await expect(page.getByTestId('plan-view')).toBeVisible();
+  });
+
+  test('opens a decision where it belongs', async ({ page }) => {
+    await page.goto('/overview');
+    await expect(page.getByTestId('top-bar')).toBeVisible();
+    await page.keyboard.press('Control+K');
+
+    const field = page.getByTestId('command-palette-field');
+    await field.fill('rebase');
+
+    const match = page.getByTestId('command-palette-match').first();
+    await expect(match).toContainText('Resolve rebase conflict');
+    await match.click();
+
+    // The decision opens in the decisions view, scrolled to its card, in any layout.
+    await expect(page).toHaveURL(/\/decisions\?decision=Q-007$/);
+    await expect(page.locator('[data-decision-id="Q-007"]')).toBeVisible();
+  });
+
+  test('keeps the name when nothing matches', async ({ page }) => {
+    await page.goto('/overview');
+    await expect(page.getByTestId('top-bar')).toBeVisible();
+    await page.keyboard.press('Control+K');
+
+    const field = page.getByTestId('command-palette-field');
+    await field.fill('relayy');
+
+    await expect(page.getByTestId('command-palette-empty')).toContainText(
+      'Nothing matches \u201crelayy\u201d.',
+    );
+    await expect(field).toHaveValue('relayy');
+  });
+});
+
 test.describe('The live indicator', () => {
   test.beforeEach(async ({ page, request }) => {
     await switchScenario(request, 'fully-onboarded');

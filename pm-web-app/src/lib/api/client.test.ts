@@ -689,4 +689,42 @@ describe('ApiClient', () => {
     expect(fetchMock).not.toHaveBeenCalled();
     expect(listener).not.toHaveBeenCalled();
   });
+
+  it('reads the matches of finding work by name from the runtime', async () => {
+    // Arrange
+    let requested = '';
+    globalThis.fetch = vi.fn().mockImplementation((url: string) => {
+      requested = url;
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ page: 1, total_pages: 1, query: 'a b/c', matches: [] }),
+      });
+    }) as unknown as typeof fetch;
+
+    // Act
+    const page = await client.findWork('a b/c');
+
+    // Assert
+    expect(requested).toBe('http://localhost:7420/api/v1/find?q=a%20b%2Fc');
+    expect(page.query).toBe('a b/c');
+    expect(page.matches).toEqual([]);
+  });
+
+  it('does not report the machine offline when a read is aborted', async () => {
+    // Arrange
+    const onOffline = vi.fn();
+    client.setOnOffline(onOffline);
+    globalThis.fetch = vi.fn().mockImplementation(() => {
+      const aborted = new Error('The operation was aborted');
+      aborted.name = 'AbortError';
+      return Promise.reject(aborted);
+    }) as unknown as typeof fetch;
+    const controller = new AbortController();
+    controller.abort();
+
+    // Act & Assert
+    await expect(client.findWork('relay', controller.signal)).rejects.toThrow('aborted');
+    expect(onOffline).not.toHaveBeenCalled();
+  });
 });

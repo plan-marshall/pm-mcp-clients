@@ -1,5 +1,6 @@
 <script lang="ts">
   import { runtimeStore } from '../stores/runtime';
+  import { openCommandPalette } from '../stores/searchIndex';
   import { apiClient, type ConnectionStatus } from '../api/client';
   import { t } from '../i18n';
   import { pathOf } from './nav';
@@ -92,8 +93,8 @@
       variant="ghost"
       size="sm"
       icon="act.search"
-      disabled
-      disabledReason={$t('web.frame.search.pending')}
+      title={$t('web.frame.search.title')}
+      onclick={openCommandPalette}
       data-testid="search-trigger"
     >
       {$t('web.frame.search')}

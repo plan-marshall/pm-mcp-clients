@@ -94,6 +94,32 @@
     }
   });
 
+  // A match of the command palette opens the decision it names: the route carries the id, and the
+  // request is applied once the list holds that decision, so a late read still lands on it.
+  let requestedDecisionId = $state<string | null>(null);
+  $effect(() => {
+    const requested = $runtimeStore.selectedDecisionId;
+    if (requested) {
+      requestedDecisionId = requested;
+    }
+  });
+  $effect(() => {
+    const requested = requestedDecisionId;
+    if (!requested || !decisions.some((decision) => decision.id === requested)) {
+      return;
+    }
+    selectedDecisionId = requested;
+    requestedDecisionId = null;
+    // Every layout renders the decision's card; the request brings it into view and leaves the
+    // layout the operator chose untouched.
+    const card = Array.from(document.querySelectorAll<HTMLElement>('[data-decision-id]')).find(
+      (element) => element.dataset.decisionId === requested,
+    );
+    if (typeof card?.scrollIntoView === 'function') {
+      card.scrollIntoView({ block: 'start' });
+    }
+  });
+
   /**
    * The fields the decision views can show.
    *
