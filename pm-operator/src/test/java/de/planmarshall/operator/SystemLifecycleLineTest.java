@@ -114,7 +114,7 @@ class SystemLifecycleLineTest {
 
     @Test
     @DisplayName("a draining runtime says so on the first line, with what is left")
-    void saysDrainingFirst() throws IOException {
+    void saysDrainingFirst() throws Exception {
         statusJson = DRAINING_STATUS;
         startRuntime();
 
@@ -127,7 +127,7 @@ class SystemLifecycleLineTest {
 
     @Test
     @DisplayName("a stopped runtime is the first line, as the design words it")
-    void saysStoppedFirst() throws IOException {
+    void saysStoppedFirst() throws Exception {
         statusJson = STOPPED_STATUS;
         startRuntime();
 
@@ -139,7 +139,7 @@ class SystemLifecycleLineTest {
 
     @Test
     @DisplayName("while the runtime runs, the view starts with its title")
-    void saysNothingExtraWhileRunning() throws IOException {
+    void saysNothingExtraWhileRunning() throws Exception {
         startRuntime();
 
         int code = execute("en_US.UTF-8", "system");
@@ -150,7 +150,7 @@ class SystemLifecycleLineTest {
 
     @Test
     @DisplayName("the line and the state words are the catalogue's, in both languages")
-    void statesTheLineInBothLanguages() throws IOException {
+    void statesTheLineInBothLanguages() throws Exception {
         statusJson = DRAINING_STATUS;
         startRuntime();
 

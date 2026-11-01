@@ -172,6 +172,21 @@ Gauges (memory, CPU, disk, uptime) lead nowhere; their detail is the figure's li
 
 The view remembers the window of the models, _per model_ or _per role_, and _all_ or _per project_: the web app per browser, the terminal per user in its state directory, as the overview does (link:plan-overview.adoc#persistence[Plan Overview, Where the Operator Left It]).
 
+[#state-line]
+=== The State of the Runtime
+
+While the runtime is not simply running, the view states it on its first line, in both clients and above every figure:
+
+[source,text]
+----
+  draining · 2 plans finish · stop in 4 min
+  restarting
+  stopped
+----
+
+* *`draining`* names what is left: the plans that still finish, and the bound when a client received it; the live form of the same line names them one by one while it drains (<<draining>>). *`restarting`* and *`stopped`* stand alone. While the runtime runs, no line stands there.
+* The line is the view's own reading of the runtime's status; it states no figure the client did not receive.
+
 [#lifecycle]
 == Acting on the Runtime
 

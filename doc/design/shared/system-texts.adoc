@@ -163,19 +163,31 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 
 |`system.models.per_role`
 |Per role
-|Pro Role
+|Pro Rolle
+
+|`system.models.grouping.model`
+|per model
+|pro Modell
+
+|`system.models.grouping.role`
+|per role
+|pro Rolle
 
 |`system.models.line`
 |{calls, plural, one {# call} other {# calls}}   {tokens}
 |{calls, plural, one {# Aufruf} other {# Aufrufe}}   {tokens}
 
-|`system.models.errors`
-|{errors, plural, =0 {} one {# error} other {# errors}}{retries, plural, =0 {} one { # retry} other { # retries}}
-|{errors, plural, =0 {} one {# Fehler} other {# Fehler}}{retries, plural, =0 {} one { # Wiederholung} other { # Wiederholungen}}
+|`system.models.error`
+|{count, plural, one {# error} other {# errors}}
+|{count, plural, one {# Fehler} other {# Fehler}}
 
-|`system.models.unmeasured`
-|{count, plural, one {# call not measured} other {# calls not measured}}
-|{count, plural, one {# Aufruf nicht gemessen} other {# Aufrufe nicht gemessen}}
+|`system.models.retry`
+|{count, plural, one {# retry} other {# retries}}
+|{count, plural, one {# Wiederholung} other {# Wiederholungen}}
+
+|`system.models.not_measured`
+|tokens not measured: not reported by {model}
+|Tokens nicht gemessen: nicht von {model} gemeldet
 
 |`system.models.none`
 |No model calls in this window.

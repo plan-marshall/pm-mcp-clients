@@ -75,11 +75,13 @@ public final class SystemView {
     /**
      * One figure of the view: its label, its line, and the detail lines printed below it.
      *
-     * @param label   the localized label of the figure
-     * @param line    the figure's line, without the label
-     * @param details the detail lines, in the order the design lists them
+     * @param label           the localized label of the figure
+     * @param line            the figure's line, without the label
+     * @param details         the detail lines, in the order the design lists them
+     * @param printedHeadline what only the printed view states before the line, or {@code null}
      */
-    public record Figure(String label, String line, List<String> details) {
+    public record Figure(String label, String line, List<String> details,
+    @Nullable String printedHeadline) {
 
         /**
          * @param label   the localized label of the figure
@@ -90,6 +92,15 @@ public final class SystemView {
             Objects.requireNonNull(label, "label");
             Objects.requireNonNull(line, "line");
             details = details == null ? List.of() : List.copyOf(details);
+        }
+
+        /**
+         * @param label   the localized label of the figure
+         * @param line    the figure's line
+         * @param details the detail lines
+         */
+        public Figure(String label, String line, List<String> details) {
+            this(label, line, details, null);
         }
     }
 
@@ -125,7 +136,11 @@ public final class SystemView {
     public static List<String> printedLines(SystemSnapshot snapshot, String locale, @Nullable String groupBy) {
         var lines = new ArrayList<String>();
         for (var figure : root(snapshot, locale, snapshot.window(), groupBy)) {
-            lines.add(String.format(Locale.ROOT, LABEL_FORMAT, figure.label()) + figure.line());
+            var line = String.format(Locale.ROOT, LABEL_FORMAT, figure.label());
+            if (figure.printedHeadline() != null) {
+                line += figure.printedHeadline() + DOT;
+            }
+            lines.add(line + figure.line());
             for (var detail : figure.details()) {
                 lines.add(PRINTED_INDENT + detail);
             }
@@ -199,7 +214,10 @@ public final class SystemView {
                                 Map.of("count", runtime.relaysBehindCount(),
                                                     "version", clean(runtime.relaysBehindVersion()))));
         }
-        return new Figure(MessageCatalogue.format(locale, "system.runtime.title", Map.of()), content, details);
+        var headline = MessageCatalogue.format(locale, "system.runtime.version_build",
+                            Map.of("version", clean(runtime.version()), "build", clean(runtime.build())));
+        return new Figure(MessageCatalogue.format(locale, "system.runtime.title", Map.of()), content, details,
+                            headline);
     }
 
     private static String memoryLine(String locale, RuntimeMetrics runtime) {
@@ -424,13 +442,17 @@ public final class SystemView {
         }
         var totals = totals(models.stream().map(ModelTotals::of).toList());
         var windowLabel = windowLabel(locale, window);
+        var grouping = MessageCatalogue.format(locale,
+                            GROUP_ROLE.equals(groupBy)
+                                                ? "system.models.grouping.role" : "system.models.grouping.model",
+                            Map.of());
         if (totals.total() == 0 && totals.unmeasured() > 0) {
             // The reason is a fact of the line it belongs to; the figure states no second "not measured".
             return MessageCatalogue.format(locale, "operator.system.models.summary_no_tokens",
-                                Map.of("window", windowLabel, "calls", totals.calls()));
+                                Map.of("window", windowLabel, "by", grouping, "calls", totals.calls()));
         }
         return MessageCatalogue.format(locale, "operator.system.models.summary",
-                            Map.of("window", windowLabel, "calls", totals.calls(),
+                            Map.of("window", windowLabel, "by", grouping, "calls", totals.calls(),
                                                 "tokens", tokensText(locale, totals)));
     }
 
@@ -443,7 +465,7 @@ public final class SystemView {
     public static String modelLine(String locale, String label, List<ModelMetric> models) {
         var totals = totals(models.stream().map(ModelTotals::of).toList());
         var calls = MessageCatalogue.format(locale, "system.models.line",
-                            Map.of("calls", totals.calls(), "tokens", modelTokensText(locale, totals, label)));
+                            Map.of("calls", totals.calls(), "tokens", modelTokensText(locale, totals, models)));
         var line = String.format(Locale.ROOT, "%-22s %s", label, calls);
         var extras = new ArrayList<String>(2);
         if (totals.errors() > 0) {
@@ -458,13 +480,23 @@ public final class SystemView {
         return line;
     }
 
-    private static String modelTokensText(String locale, ModelTotals totals, String label) {
+    private static String modelTokensText(String locale, ModelTotals totals, List<ModelMetric> models) {
         if (totals.total() == 0 && totals.unmeasured() > 0) {
-            var colon = label.indexOf(':');
-            var harness = colon > 0 ? label.substring(0, colon) : label;
-            return MessageCatalogue.format(locale, "system.models.not_measured", Map.of("model", harness));
+            return MessageCatalogue.format(locale, "system.models.not_measured",
+                                Map.of("model", harnessOf(models)));
         }
         return tokensText(locale, totals);
+    }
+
+    /**
+     * @param models the models of one line
+     * @return the harness that reported no tokens, taken from the model itself so that a line
+     *         grouped by role still names the harness and not the role
+     */
+    private static String harnessOf(List<ModelMetric> models) {
+        var first = models.isEmpty() ? "" : clean(models.getFirst().harnessAndModel());
+        var colon = first.indexOf(':');
+        return colon > 0 ? first.substring(0, colon) : first;
     }
 
     private static String tokensText(String locale, ModelTotals totals) {
@@ -568,6 +600,43 @@ public final class SystemView {
         var details = new ArrayList<String>(1);
         details.add(keptLine(locale, cleanup));
         return details;
+    }
+
+    /**
+     * What the runtime runs, as the confirmation of an act states it
+     * ({@code doc/design/shared/system.adoc#stop}). One derivation for the dialogue and for the
+     * view's figures.
+     *
+     * @param locale   the interface locale
+     * @param snapshot the snapshot the runtime served
+     * @return the counts, each group left out where it is zero
+     */
+    public static String runningNow(String locale, SystemSnapshot snapshot) {
+        var what = MessageCatalogue.format(locale, "system.confirm.what",
+                            Map.of("plans", runningPlans(snapshot.work().plansByState()),
+                                                "epics", runningPlans(snapshot.work().epicsByState()),
+                                                "tasks", snapshot.work().tasksRunning(),
+                                                "jobs", usedSlots(snapshot.jobs()),
+                                                "workers", snapshot.workers().size()));
+        // The counts are one ICU message, so a zero group leaves its separator behind.
+        var separator = DOT.strip();
+        while (what.startsWith(separator)) {
+            what = what.substring(separator.length()).strip();
+        }
+        return what;
+    }
+
+    private static int runningPlans(Map<String, Integer> byState) {
+        var count = byState.get("running");
+        return count != null ? count : 0;
+    }
+
+    private static int usedSlots(Map<String, Object> jobs) {
+        var used = 0;
+        for (var kind : jobKinds(jobs)) {
+            used += integer(jobs, kind, "slots_used");
+        }
+        return used;
     }
 
     /**

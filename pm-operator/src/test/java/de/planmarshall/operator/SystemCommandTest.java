@@ -153,7 +153,7 @@ class SystemCommandTest {
         assertAll(
                             () -> assertEquals(0, code, "code"),
                             () -> assertTrue(output.contains("System"), "System header"),
-                            () -> assertTrue(output.contains("Runtime   running since today 08:14 · 6 h 12 min · 0.10.0 available"), "runtime header"),
+                            () -> assertTrue(output.contains("Runtime   pm-mcpd 0.9.1 · build 2026-10-02 (a1b2c3d) · running since today 08:14 · 6 h 12 min · 0.10.0 available"), "runtime header"),
                             () -> assertTrue(output.contains("memory 412 MB in use of 1 GB · 680 MB resident · CPU 4 %"), "memory"),
                             () -> assertTrue(output.contains("machine store 2.3 GB · 38 GB free on its disk · measured 13:40"), "machine store"),
                             () -> assertTrue(output.contains("listeners  socket · loopback 127.0.0.1:7420 · network 192.168.1.20:7421 (2 devices)"), "listeners"),
@@ -165,7 +165,7 @@ class SystemCommandTest {
                             () -> assertTrue(output.contains("Jobs      locks  3 held"), "jobs locks"),
                             () -> assertTrue(output.contains("build  1 of 2 slots · 1 queued"), "jobs build"),
                             () -> assertTrue(output.contains("test  0 of 1 slot"), "jobs test"),
-                            () -> assertTrue(output.contains("Models    Last hour · 172 calls · ≥ 5.63 M tokens (≥ 5.10 M in · ≥ 530 k out)"), "models header"),
+                            () -> assertTrue(output.contains("Models    Last hour · per model · 172 calls · ≥ 5.63 M tokens (≥ 5.10 M in · ≥ 530 k out)"), "models header"),
                             () -> assertTrue(output.contains("42 calls   2.02 M tokens (1.90 M in · 120 k out)   1 retry"), "model claude"),
                             () -> assertTrue(output.contains("12 calls   tokens not measured: not reported by codex   1 error"), "model codex"),
                             () -> assertTrue(output.contains("Cleanup   due: 12 plans · 2 epics · 40 logs · 5 read reports · 1 unenrolled project · frees 1.8 GB"), "cleanup header"),
@@ -288,7 +288,7 @@ class SystemCommandTest {
                             () -> assertTrue(output.contains("3 host sessions run pm-mcp 0.8.0"), output),
                             () -> assertTrue(output.contains("1 project with running work"), output),
                             () -> assertTrue(output.contains("recovering-repo recovering"), output),
-                            () -> assertTrue(output.contains("Models    7 days · 10 calls"), output),
+                            () -> assertTrue(output.contains("Models    7 days · per role · 10 calls"), output),
                             () -> assertTrue(output.contains("CPU not available (not measured on this platform)"), output)
         );
     }

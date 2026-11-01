@@ -1624,6 +1624,7 @@ public final class OverviewFullScreenApp {
                             ? SystemLevel.root(snapshot, window, groupBy, projectId)
                             : SystemLevel.unavailable(window, groupBy, projectId);
         currentSystem.set(level);
+        // The status states the lifecycle on entry; a progress event refines it while it lasts.
         systemBanner = fetchLifecycleLine();
         stack.push(TuiLevel.of(TuiLevel.Kind.SYSTEM, SystemLevel.LEVEL_ID, level.breadcrumb(locale)),
                             level.rows(locale), SystemLevel.ROW_RUNTIME);
@@ -1701,7 +1702,15 @@ public final class OverviewFullScreenApp {
             // and its own read win.
             return;
         }
-        systemBanner = fetchLifecycleLine();
+        // The lifecycle line has two sources of the same fact: the status states it first, and a
+        // progress event refines it with what is left by name. The status never overwrites a line
+        // an event wrote, and clears it once the runtime runs again.
+        var lifecycle = fetchLifecycleLine();
+        if (lifecycle == null) {
+            systemBanner = null;
+        } else if (systemBanner == null) {
+            systemBanner = lifecycle;
+        }
         synchronized (this) {
             var lvl = stack.level();
             if (lvl == null || lvl.kind() != TuiLevel.Kind.SYSTEM) {
