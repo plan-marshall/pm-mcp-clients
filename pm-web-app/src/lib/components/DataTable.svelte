@@ -199,8 +199,10 @@
     inline-size: calc(44px + var(--space-2) * 2);
   }
 
-  .data-table__menu {
+  .data-table tbody td.data-table__menu {
     padding-inline: var(--space-2);
+    /* The control, not the cell's padding, decides the row: 28 px of control inside 40 px of row. */
+    padding-block: 0;
     text-align: end;
   }
 
