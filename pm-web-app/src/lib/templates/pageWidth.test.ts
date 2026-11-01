@@ -59,6 +59,15 @@ describe('the page width belongs to the template', () => {
     expect(offenders[0]).toContain('max-width: 1200px');
   });
 
+  it('reports a view that caps its root with max-inline-size (control)', () => {
+    const offenders = pageWidthOffenders(CONTROL_DIR, [
+      { file: 'InlineWidthView.svelte', root: '.control-inline-page' },
+    ]);
+
+    expect(offenders).toHaveLength(1);
+    expect(offenders[0]).toContain('max-inline-size: 1200px');
+  });
+
   it('reports a page root whose selector matches no rule instead of passing vacuously', () => {
     const offenders = pageWidthOffenders(VIEWS_DIR, [
       { file: 'SystemView.svelte', root: '.a-selector-no-view-carries' },

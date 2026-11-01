@@ -50,11 +50,12 @@ export function ruleOf(style: string, selector: string): string {
 }
 
 /**
- * Reports every listed view whose page root carries a `max-width`.
+ * Reports every listed view whose page root carries a page-width cap.
  *
- * A listed view whose page root matches no rule is reported too: an empty rule would otherwise
- * pass the check whenever the selector is renamed or the rule is deleted, which is the vacuous
- * pass this guard exists to prevent.
+ * Both spellings are read: `max-width` and `max-inline-size`, except the fluid `max-inline-size:
+ * 100%`. A listed view whose page root matches no rule is reported too: an empty rule would
+ * otherwise pass the check whenever the selector is renamed or the rule is deleted, which is the
+ * vacuous pass this guard exists to prevent.
  *
  * @param viewsDir the directory the listed view files live in
  * @param views the views that sit on a template, with their page-root selector
@@ -69,6 +70,8 @@ export function pageWidthOffenders(
     if (!root.trim()) {
       return [`${view.file} (${view.root}): no rule found for the page root`];
     }
-    return /max-width\s*:/.test(root) ? [`${view.file} (${view.root}): ${root.trim()}`] : [];
+    return /max-width\s*:|max-inline-size\s*:(?!\s*100%)/.test(root)
+      ? [`${view.file} (${view.root}): ${root.trim()}`]
+      : [];
   });
 }

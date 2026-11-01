@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import path from 'node:path';
 import TriagePageFixture from '../../test/fixtures/TriagePageFixture.svelte';
+import TriagePageNoFiltersFixture from '../../test/fixtures/TriagePageNoFiltersFixture.svelte';
 import { styleOf, ruleOf } from '../../test/templateStyle';
 
 /**
@@ -55,10 +56,31 @@ describe('TriagePage', () => {
     expect(container.querySelector('.triage-page--detail')).not.toBeNull();
   });
 
-  it('keeps the filter chips when the detail replaces the list', () => {
+  it('adds and removes the detail mode when selected changes', async () => {
+    const { container, rerender } = render(TriagePageFixture, { props: PROPS });
+
+    expect(container.querySelector('.triage-page--detail')).toBeNull();
+    await rerender({ ...PROPS, selected: true });
+    expect(container.querySelector('.triage-page--detail')).not.toBeNull();
+    await rerender({ ...PROPS, selected: false });
+    expect(container.querySelector('.triage-page--detail')).toBeNull();
+  });
+
+  it('draws no filters row when the view gives no filter chips', () => {
+    render(TriagePageNoFiltersFixture, {
+      props: { list: 'Decision list', detail: 'Decision detail' },
+    });
+
+    expect(screen.getByText('Decision list')).toBeInTheDocument();
+    expect(screen.queryByTestId('triage-filters')).not.toBeInTheDocument();
+  });
+
+  it('keeps the filter chips visible and leaves them out of the collapse', () => {
     const style = styleOf(SOURCE);
     const collapsed = style.slice(style.indexOf('@media (max-width: 1099px)'));
 
+    expect(ruleOf(style, '.triage-page__filters')).toContain('display: flex');
+    expect(style).not.toMatch(/\.triage-page__filters\s*\{[^}]*display:\s*none/);
     expect(collapsed).not.toMatch(/triage-page__filters[\s\S]*?display: none/);
   });
 
