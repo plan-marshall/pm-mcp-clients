@@ -13,7 +13,7 @@ import path from 'node:path';
  */
 export function styleOf(componentPath: string): string {
   const source = fs.readFileSync(componentPath, 'utf-8');
-  const match = source.match(/<style>([\s\S]*?)<\/style>/);
+  const match = /<style>([\s\S]*?)<\/style>/.exec(source);
   if (!match) {
     throw new Error(`${componentPath} carries no <style> block`);
   }
@@ -28,8 +28,8 @@ export function styleOf(componentPath: string): string {
  * @returns the declarations of the first matching rule, or an empty string
  */
 export function ruleOf(style: string, selector: string): string {
-  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = style.match(new RegExp(`(?:^|\\n)\\s*${escaped}\\s*\\{([^}]*)\\}`));
+  const escaped = selector.replaceAll(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const match = new RegExp(`(?:^|\\n)\\s*${escaped}\\s*\\{([^}]*)\\}`).exec(style);
   return match ? match[1] : '';
 }
 
