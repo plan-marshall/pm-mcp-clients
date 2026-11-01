@@ -76,8 +76,8 @@ export function groupFindMatches(
 ): Array<{ kind: FindKind; ended: boolean; matches: FindMatch[] }> {
   const groups: Array<{ kind: FindKind; ended: boolean; matches: FindMatch[] }> = [];
   for (const match of matches) {
-    const last = groups[groups.length - 1];
-    if (last && last.kind === match.kind && last.ended === match.ended) {
+    const last = groups.at(-1);
+    if (last?.kind === match.kind && last.ended === match.ended) {
       last.matches.push(match);
     } else {
       groups.push({ kind: match.kind, ended: match.ended, matches: [match] });
