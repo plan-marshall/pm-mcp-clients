@@ -1093,6 +1093,7 @@
               onAccept={() => answerChatProposal(true)}
               onReject={() => answerChatProposal(false)}
               onToggle={() => openChat(dec)}
+              onClose={() => (chatDecisionId = null)}
               acceptLabel={$t('decision.chat.answer_proposed')}
             />
             <p class="decision-chat__open" role="status">

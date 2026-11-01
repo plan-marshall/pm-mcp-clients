@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { t } from '../i18n';
   import type { ChatProposal, ChatTurn } from '../api/client';
+  import { uniqueId } from '../utils/uniqueId';
 
   export let open = false;
   export let role = '';
@@ -15,6 +17,8 @@
   export let onAccept: () => void = () => {};
   export let onReject: () => void = () => {};
   export let onToggle: () => void = () => {};
+  /** Closes the panel without ending the chat; the host decides when it is gone. */
+  export let onClose: () => void = () => {};
   /** The label of the accept button; a follow-up plan names its own act. */
   export let acceptLabel = '';
   /** The label of the reject button. */
@@ -22,16 +26,58 @@
 
   let message = '';
 
+  /** The id of the element that carries the reason a control cannot act. */
+  const reasonId = uniqueId('chat-reason');
+
+  /** The control the focus goes back to when the panel closes. */
+  let opener: HTMLElement | null = null;
+  let wasOpen = false;
+
+  /** Whether a control that can act is held back, and why. */
+  $: reason = busy ? $t('project.chat.waiting') : '';
+  $: describedBy = reason ? reasonId : undefined;
+
+  // The panel is removed from the document by some hosts and only hidden by others, so the opener
+  // is remembered on the transition the `open` flag makes, not on mount alone.
+  $: if (open && !wasOpen) {
+    wasOpen = true;
+    const active = typeof document === 'undefined' ? null : document.activeElement;
+    opener = active instanceof HTMLElement ? active : null;
+  } else if (!open && wasOpen) {
+    wasOpen = false;
+  }
+
   function send(): void {
     const text = message.trim();
     if (!text || busy) return;
     onSend(text);
     message = '';
   }
+
+  /** Closes the panel and gives the focus back to the control that opened it. */
+  async function close(): Promise<void> {
+    const previous = opener;
+    opener = null;
+    onClose();
+    await tick();
+    if (previous?.isConnected) {
+      previous.focus();
+    }
+  }
+
+  /** @param event the key press on the panel */
+  function closeOnEscape(event: KeyboardEvent): void {
+    if (event.key !== 'Escape' || !open) {
+      return;
+    }
+    event.stopPropagation();
+    void close();
+  }
 </script>
 
 {#if open}
-  <aside class="chat-panel" data-testid="chat-panel" aria-label={subject}>
+  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+  <aside class="chat-panel" data-testid="chat-panel" aria-label={subject} on:keydown={closeOnEscape}>
     <header class="chat-panel__head">
       <div class="chat-panel__subject">
         <span class="chat-panel__subject-text">{subject}</span>
@@ -42,11 +88,17 @@
         class="chat-panel__toggle"
         data-testid="chat-end"
         disabled={busy}
+        title={reason}
+        aria-describedby={describedBy}
         on:click={onEnd}
       >
         {$t('web.common.close')}
       </button>
     </header>
+
+    {#if reason}
+      <span class="sr-only" id={reasonId}>{reason}</span>
+    {/if}
 
     {#if !available}
       <p class="chat-panel__disabled" data-testid="chat-disabled">
@@ -74,10 +126,24 @@
             {proposal.after}
           </p>
           <div class="chat-panel__proposal-actions">
-            <button type="button" data-testid="chat-reject" disabled={busy} on:click={onReject}>
+            <button
+              type="button"
+              data-testid="chat-reject"
+              disabled={busy}
+              title={reason}
+              aria-describedby={describedBy}
+              on:click={onReject}
+            >
               {rejectLabel || $t('start.decomposition.discard')}
             </button>
-            <button type="button" data-testid="chat-accept" disabled={busy} on:click={onAccept}>
+            <button
+              type="button"
+              data-testid="chat-accept"
+              disabled={busy}
+              title={reason}
+              aria-describedby={describedBy}
+              on:click={onAccept}
+            >
               {acceptLabel || $t('start.decomposition.accept')}
             </button>
           </div>
@@ -88,6 +154,7 @@
         <input
           type="text"
           data-testid="chat-input"
+          aria-label={$t('start.chat.field')}
           bind:value={message}
           disabled={busy}
           on:keydown={(event) => {
@@ -97,7 +164,9 @@
         <button
           type="button"
           data-testid="chat-send"
-          disabled={busy || !message.trim()}
+          disabled={busy}
+          title={reason}
+          aria-describedby={describedBy}
           on:click={send}
         >
           {$t('start.sources.continue')}
