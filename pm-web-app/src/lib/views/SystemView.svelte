@@ -26,7 +26,7 @@
   let snapshot = $state<SystemSnapshot | null>(null);
   let projects = $state<EnrolledProject[]>([]);
   let isLoading = $state(true);
-  let loadError = $state('');
+  let loadError = $state(false);
   let actionError = $state('');
   let actionSuccess = $state('');
 
@@ -134,7 +134,7 @@
 
   async function loadSnapshot(showSpinner = false) {
     if (showSpinner) isLoading = true;
-    loadError = '';
+    loadError = false;
     try {
       const snap = await apiClient.getSystemSnapshot(selectedWindow, selectedProject || undefined);
       if (!isMounted) return;
@@ -145,7 +145,9 @@
       if (msg === 'network_offline') {
         runtimeStore.update((s) => ({ ...s, isOffline: true }));
       } else {
-        loadError = $t('system.view.load_failed');
+        // The failure is a state, not a text: the words are read where they render, so they
+        // follow a language switch and never show a key.
+        loadError = true;
       }
     } finally {
       if (isMounted) isLoading = false;
@@ -663,7 +665,7 @@
     </div>
   {:else if loadError && !snapshot}
     <div class="notice-alert notice-alert--danger" role="alert">
-      <p>{loadError}</p>
+      <p>{$t('system.view.load_failed')}</p>
       <Button variant="secondary" onclick={() => loadSnapshot(true)}
         >{$t('web.common.retry')}</Button
       >
@@ -1103,19 +1105,17 @@
                         <div class="tags-row">
                           {#if m.retries_count > 0}
                             <span class="badge badge--warning">
-                              {m.retries_count}
-                              {m.retries_count === 1 ? 'retry' : 'retries'}
+                              {$t('system.models.retry', { count: m.retries_count })}
                             </span>
                           {/if}
                           {#if m.errors_count > 0}
                             <span class="badge badge--danger">
-                              {m.errors_count}
-                              {m.errors_count === 1 ? 'error' : 'errors'}
+                              {$t('system.models.error', { count: m.errors_count })}
                             </span>
                           {/if}
                         </div>
                       {:else}
-                        <span class="text-muted">ok</span>
+                        <span class="text-muted">{$t('system.models.ok')}</span>
                       {/if}
                     </td>
                   </tr>

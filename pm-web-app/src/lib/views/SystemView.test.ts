@@ -1,10 +1,22 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import SystemView from './SystemView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type SystemSnapshot } from '../api/client';
+import { currentLocale, messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
 import { get } from 'svelte/store';
+
+/**
+ * Puts one catalogue and its language in place, as a language switch does.
+ *
+ * @param locale the interface locale
+ */
+function useCatalogue(locale: 'de' | 'en'): void {
+  currentLocale.set(locale);
+  messagesStore.set(loadMessages(locale));
+}
 
 describe('SystemView component', () => {
   let eventHandler: ((event: string, data: unknown) => void) | null = null;
@@ -174,6 +186,10 @@ describe('SystemView component', () => {
     });
   });
 
+  afterEach(() => {
+    useCatalogue('en');
+  });
+
   it('renders the 6-part dashboard with metrics and models', async () => {
     vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
 
@@ -190,6 +206,40 @@ describe('SystemView component', () => {
     expect(screen.getByText('claude:opus-4.5')).toBeInTheDocument();
     expect(screen.getByText(/1 retry/)).toBeInTheDocument();
     expect(screen.getByText(/1 error/)).toBeInTheDocument();
+  });
+
+  it('names the model status words in the interface language', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    useCatalogue('de');
+
+    render(SystemView);
+
+    await waitFor(() => {
+      expect(screen.getByText('System')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('1 Wiederholung')).toBeInTheDocument();
+    expect(screen.getByText('1 Fehler')).toBeInTheDocument();
+    expect(screen.getByText('ok')).toBeInTheDocument();
+  });
+
+  it('follows a language switch with the text of a failed load', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockRejectedValue(new Error('boom'));
+    useCatalogue('de');
+
+    render(SystemView);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Die Systemübersicht konnte nicht geladen werden'),
+      ).toBeInTheDocument();
+    });
+
+    useCatalogue('en');
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to load system snapshot')).toBeInTheDocument();
+    });
   });
 
   it('toggles time windows and triggers data reload with window query param', async () => {
