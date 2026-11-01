@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -31,6 +32,8 @@ import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.entry.ConnectionStatus;
 import de.planmarshall.api.entry.DeviceListResource;
 import de.planmarshall.api.entry.DeviceRenamedEvent;
@@ -47,9 +50,17 @@ import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("EntryScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class EntryScenarioTest {
 
-    private static final String DEVICE_SECRET = "test-secret";
+    private String deviceSecret;
+    private String runtimeToken;
+
+    @BeforeEach
+    void generateCredentials() {
+        deviceSecret = Generators.letterStrings(8, 16).next();
+        runtimeToken = Generators.letterStrings(8, 16).next();
+    }
 
     @Test
     @DisplayName("loads the entry scenario and registers it among the standard scenarios")
@@ -143,7 +154,7 @@ class EntryScenarioTest {
     @Test
     @DisplayName("refuses issuing a pairing code and opening the network listener on a web listener as cli_only")
     void shouldRefuseCliOnlyActsOnWeb() throws Exception {
-        try (var runtime = webRuntime(StandardScenarios.ENTRY)) {
+        try (var runtime = webRuntime(StandardScenarios.ENTRY, runtimeToken, deviceSecret)) {
             var baseUrl = "http://127.0.0.1:" + runtime.webPort();
 
             var pairingResp = post(baseUrl + "/api/v1/web/pairings", "{}");
@@ -199,7 +210,7 @@ class EntryScenarioTest {
     @Test
     @DisplayName("broadcasts device.paired with its paired_from when a code is redeemed")
     void shouldBroadcastDevicePairedOnRedemption() throws Exception {
-        try (var runtime = webRuntime(StandardScenarios.ENTRY)) {
+        try (var runtime = webRuntime(StandardScenarios.ENTRY, runtimeToken, deviceSecret)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
             var baseUrl = "http://127.0.0.1:" + runtime.webPort();
@@ -224,7 +235,7 @@ class EntryScenarioTest {
     @Test
     @DisplayName("issues a fresh code after a redemption and refuses the consumed one")
     void shouldIssueFreshCodeAfterRedemption() throws Exception {
-        try (var runtime = webRuntime(StandardScenarios.ENTRY_FRESH_CODE)) {
+        try (var runtime = webRuntime(StandardScenarios.ENTRY_FRESH_CODE, runtimeToken, deviceSecret)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
             var baseUrl = "http://127.0.0.1:" + runtime.webPort();
@@ -280,10 +291,11 @@ class EntryScenarioTest {
     @Test
     @DisplayName("refuses a credential on the network listener with loopback_only")
     void shouldRefuseCredentialOnNetworkListener() throws Exception {
-        try (var runtime = webRuntime(StandardScenarios.ENTRY_LAN_CREDENTIALS)) {
+        try (var runtime = webRuntime(StandardScenarios.ENTRY_LAN_CREDENTIALS, runtimeToken, deviceSecret)) {
             var baseUrl = "http://127.0.0.1:" + runtime.webPort();
 
-            var resp = put(baseUrl + "/api/v1/credentials/github", "{\"secret\":\"s3cr3t\"}");
+            var secret = Generators.letterStrings(8, 16).next();
+            var resp = put(baseUrl + "/api/v1/credentials/github", "{\"secret\":\"" + secret + "\"}");
             assertEquals(403, resp.statusCode());
             assertEquals("loopback_only", JsonTree.string(JsonTree.asObject(JsonTree.parse(resp.body())), "error"));
         }
@@ -292,10 +304,11 @@ class EntryScenarioTest {
     @Test
     @DisplayName("accepts a credential on the loopback listener")
     void shouldAcceptCredentialOnLoopbackListener() throws Exception {
-        try (var runtime = webRuntime(StandardScenarios.ENTRY)) {
+        try (var runtime = webRuntime(StandardScenarios.ENTRY, runtimeToken, deviceSecret)) {
             var baseUrl = "http://127.0.0.1:" + runtime.webPort();
 
-            var resp = put(baseUrl + "/api/v1/credentials/github", "{\"secret\":\"s3cr3t\"}");
+            var secret = Generators.letterStrings(8, 16).next();
+            var resp = put(baseUrl + "/api/v1/credentials/github", "{\"secret\":\"" + secret + "\"}");
             assertEquals(200, resp.statusCode());
             assertEquals("github", JsonTree.string(JsonTree.asObject(JsonTree.parse(resp.body())), "credential_key"));
         }
@@ -361,8 +374,9 @@ class EntryScenarioTest {
                 assertTrue(exchange.isEventStream());
                 var sse = exchange.events();
 
+                var newLabel = Generators.letterStrings(4, 12).next();
                 var renameResp = client.send(HttpRequest.json("PATCH", "/api/v1/web/devices/dev-2",
-                        JsonTree.write(Map.of("label", "iPad Oliver"))).withHeader("Authorization", auth));
+                        JsonTree.write(Map.of("label", newLabel))).withHeader("Authorization", auth));
                 assertEquals(200, renameResp.status());
 
                 var renamed = sse.next();
@@ -370,7 +384,7 @@ class EntryScenarioTest {
                 assertEquals(DeviceRenamedEvent.EVENT_NAME, renamed.event());
                 var renamedEvent = DeviceRenamedEvent.fromJson(renamed.data());
                 assertEquals("dev-2", renamedEvent.deviceId());
-                assertEquals("iPad Oliver", renamedEvent.label());
+                assertEquals(newLabel, renamedEvent.label());
                 assertEquals("lan", renamedEvent.pairedFrom());
 
                 var revokeResp = client.send(new HttpRequest("DELETE", "/api/v1/web/devices/dev-3",
@@ -424,7 +438,9 @@ class EntryScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            var res = client.send(HttpRequest.json("PUT", "/api/v1/credentials/github", "{\"secret\":\"s\"}")
+            var secret = Generators.letterStrings(8, 16).next();
+            var res = client.send(HttpRequest.json("PUT", "/api/v1/credentials/github",
+                    "{\"secret\":\"" + secret + "\"}")
                     .withHeader("Authorization", auth));
             assertEquals(200, res.status());
             assertEquals("github",
@@ -477,30 +493,31 @@ class EntryScenarioTest {
                 .orElseThrow();
     }
 
-    private static MockRuntime webRuntime(String scenario) throws Exception {
+    private static MockRuntime webRuntime(String scenario, String runtimeToken, String deviceSecret)
+            throws Exception {
         return MockRuntime.start(MockRuntimeConfig.builder()
                 .scenario(scenario)
                 .webPort(0)
-                .runtimeToken("test-token")
-                .deviceSecret(DEVICE_SECRET)
+                .runtimeToken(runtimeToken)
+                .deviceSecret(deviceSecret)
                 .build());
     }
 
-    private static HttpResponse<String> post(String url, String body) throws Exception {
+    private HttpResponse<String> post(String url, String body) throws Exception {
         var request = java.net.http.HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + DEVICE_SECRET)
+                .header("Authorization", "Bearer " + deviceSecret)
                 .POST(java.net.http.HttpRequest.BodyPublishers.ofString(body))
                 .build();
         return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
     }
 
-    private static HttpResponse<String> put(String url, String body) throws Exception {
+    private HttpResponse<String> put(String url, String body) throws Exception {
         var request = java.net.http.HttpRequest.newBuilder()
                 .uri(URI.create(url))
                 .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + DEVICE_SECRET)
+                .header("Authorization", "Bearer " + deviceSecret)
                 .PUT(java.net.http.HttpRequest.BodyPublishers.ofString(body))
                 .build();
         return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());

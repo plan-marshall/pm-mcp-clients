@@ -24,6 +24,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.mock.junit5.EnableMockRuntime;
@@ -31,13 +33,15 @@ import de.planmarshall.mock.junit5.EnableMockRuntime;
 @DisplayName("RuntimeClient Integration")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 @EnableMockRuntime
+@EnableGeneratorController
 class RuntimeClientIT {
 
     @Test
     @DisplayName("RuntimeClient seamlessly connects and interacts with MockRuntime over Unix domain socket")
     @EnableMockRuntime(scenario = StandardScenarios.ONBOARDING_HAPPY)
     void integratesWithOfficialRuntimeClient(MockRuntime runtime) throws Exception {
-        var client = runtime.client(Map.of("User-Agent", "pm-operator/0.1.0-mock-test"));
+        var userAgent = "pm-operator/" + Generators.letterStrings(4, 10).next().toLowerCase() + "-mock-test";
+        var client = runtime.client(Map.of("User-Agent", userAgent));
 
         // 1. Send status request via RuntimeClient
         var statusRes = client.send(HttpRequest.get("/api/v1/status"));
@@ -57,7 +61,7 @@ class RuntimeClientIT {
         // 3. Verify MockRuntime recorded incoming requests with user-agent
         var recorded = runtime.requests();
         assertTrue(recorded.size() >= 2);
-        assertEquals("pm-operator/0.1.0-mock-test", recorded.getFirst().header("User-Agent"));
+        assertEquals(userAgent, recorded.getFirst().header("User-Agent"));
     }
 
     @Test

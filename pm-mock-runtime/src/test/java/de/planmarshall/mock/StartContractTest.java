@@ -29,6 +29,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.interaction.OperatorLink;
@@ -51,6 +53,7 @@ import de.planmarshall.mock.scenario.ScenarioLoader;
 
 @DisplayName("Start contract over the mock runtime")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class StartContractTest {
 
     private static final String SCENARIO = StandardScenarios.PROJECTS_AND_START;
@@ -251,12 +254,14 @@ class StartContractTest {
             try (var runtime = MockRuntime.start(state("start.chat"))) {
                 var auth = "Bearer " + runtime.token();
 
-                var unknownEntry = client(runtime).send(HttpRequest.get("/api/v1/entries/ent-nope")
+                var unknownEntryId = "ent-" + Generators.letterStrings(4, 10).next().toLowerCase();
+                var unknownEntry = client(runtime).send(HttpRequest.get("/api/v1/entries/" + unknownEntryId)
                         .withHeader("Authorization", auth));
                 assertEquals(404, unknownEntry.status());
 
                 var unknownAct = client(runtime).send(HttpRequest.json("POST",
-                        "/api/v1/entries/ent-3f9a2c41/links/never", "{}")
+                        "/api/v1/entries/ent-3f9a2c41/links/unknown-"
+                                + Generators.letterStrings(4, 10).next().toLowerCase(), "{}")
                         .withHeader("Authorization", auth));
                 assertEquals(409, unknownAct.status());
 
@@ -279,7 +284,7 @@ class StartContractTest {
                 var auth = "Bearer " + runtime.token();
                 var added = client(runtime).send(HttpRequest.json("POST",
                         "/api/v1/entries/ent-3f9a2c41/links/add_description",
-                        JsonTree.write(Map.of("text", "Bring the Codeberg provider in")))
+                        JsonTree.write(Map.of("text", Generators.letterStrings(4, 12).next())))
                         .withHeader("Authorization", auth));
                 assertEquals(200, added.status());
                 assertEquals(1, StartStateResource.fromJson(added.bodyText()).entry().sourceCount());
@@ -306,8 +311,9 @@ class StartContractTest {
         void refusedActs() throws Exception {
             try (var runtime = MockRuntime.start(state("start.sources"))) {
                 var auth = "Bearer " + runtime.token();
+                var unknownSource = "src-" + Generators.letterStrings(4, 8).next().toLowerCase();
                 var noRetry = client(runtime).send(HttpRequest.json("POST",
-                        "/api/v1/entries/ent-3f9a2c41/links/retry:src-nope", "{}")
+                        "/api/v1/entries/ent-3f9a2c41/links/retry:" + unknownSource, "{}")
                         .withHeader("Authorization", auth));
                 assertEquals(409, noRetry.status());
 
@@ -431,15 +437,17 @@ class StartContractTest {
         void pickerRefusals() throws Exception {
             try (var runtime = MockRuntime.start(state("start.sources"))) {
                 var auth = "Bearer " + runtime.token();
-                var unknownRoot = client(runtime).send(HttpRequest.get(
-                        "/api/v1/projects/pm-mcp-clients/files?root=sandbox")
+                var unknownRoot = "unknown-" + Generators.letterStrings(4, 10).next().toLowerCase();
+                var unknownRootRes = client(runtime).send(HttpRequest.get(
+                        "/api/v1/projects/pm-mcp-clients/files?root=" + unknownRoot)
                         .withHeader("Authorization", auth));
-                assertEquals(400, unknownRoot.status());
+                assertEquals(400, unknownRootRes.status());
 
-                var unknownProject = client(runtime).send(HttpRequest.get(
-                        "/api/v1/projects/no-such-project/files?root=checkout")
+                var unknownProject = Generators.letterStrings(4, 10).next().toLowerCase();
+                var unknownProjectRes = client(runtime).send(HttpRequest.get(
+                        "/api/v1/projects/" + unknownProject + "/files?root=checkout")
                         .withHeader("Authorization", auth));
-                assertEquals(404, unknownProject.status());
+                assertEquals(404, unknownProjectRes.status());
             }
         }
     }

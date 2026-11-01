@@ -18,6 +18,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +26,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
@@ -36,6 +39,7 @@ import de.planmarshall.api.source.lesson.UnclaimedLessonSummary;
 
 @DisplayName("LessonSourceScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class LessonSourceScenarioTest {
 
     private static final String PROJECT = "pm-mcp-clients";
@@ -108,16 +112,17 @@ class LessonSourceScenarioTest {
                 assertTrue(exchange.isEventStream());
                 var sse = exchange.events();
 
-                var result = claim(client, auth, PROJECT, "les-0007", false, "retire-lessons-on-landing");
+                var planId = "plan-" + Generators.letterStrings(4, 10).next().toLowerCase();
+                var result = claim(client, auth, PROJECT, "les-0007", false, planId);
                 assertEquals(LessonClaimResult.STATUS_CLAIMED, result.status());
-                assertEquals("retire-lessons-on-landing", result.planId());
+                assertEquals(planId, result.planId());
 
                 var event = sse.next();
                 assertNotNull(event);
                 assertEquals("source.lesson_claimed", event.event());
                 var data = JsonTree.asObject(JsonTree.parse(event.data()));
                 assertEquals("les-0007", JsonTree.string(data, "lesson_id"));
-                assertEquals("retire-lessons-on-landing", JsonTree.string(data, "plan_id"));
+                assertEquals(planId, JsonTree.string(data, "plan_id"));
             }
 
             var remaining = listLessons(client, auth, PROJECT);
@@ -150,10 +155,11 @@ class LessonSourceScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            var result = claim(client, auth, PROJECT, "les-0009", true, "keep-store-append-only");
+            var planId = "plan-" + Generators.letterStrings(4, 10).next().toLowerCase();
+            var result = claim(client, auth, PROJECT, "les-0009", true, planId);
 
             assertEquals(LessonClaimResult.STATUS_CLAIMED, result.status());
-            assertEquals("keep-store-append-only", result.planId());
+            assertEquals(planId, result.planId());
         }
     }
 
@@ -184,14 +190,15 @@ class LessonSourceScenarioTest {
             try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", auth))) {
                 var sse = exchange.events();
 
+                var retireReason = Generators.letterStrings(4, 12).next();
                 var res = client.send(HttpRequest.json("POST",
                         "/api/v1/projects/" + PROJECT + "/sources/lessons/les-0009/retire",
-                        "{\"reason\":\"premise broken\"}").withHeader("Authorization", auth));
+                        JsonTree.write(Map.of("reason", retireReason))).withHeader("Authorization", auth));
                 assertEquals(200, res.status());
 
                 var notice = LessonRetirementNotice.fromJson(res.bodyText());
                 assertTrue(notice.retired());
-                assertEquals("premise broken", notice.reason());
+                assertEquals(retireReason, notice.reason());
 
                 var event = sse.next();
                 assertNotNull(event);
@@ -210,8 +217,9 @@ class LessonSourceScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
+            var unknownLesson = "les-" + Generators.integers(1000, 9999).next();
             var res = client.send(HttpRequest.json("POST",
-                    "/api/v1/projects/" + PROJECT + "/sources/lessons/les-9999/premise-check", "{}")
+                    "/api/v1/projects/" + PROJECT + "/sources/lessons/" + unknownLesson + "/premise-check", "{}")
                     .withHeader("Authorization", auth));
 
             assertEquals(404, res.status());

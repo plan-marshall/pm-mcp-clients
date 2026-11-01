@@ -23,6 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
@@ -35,6 +37,7 @@ import de.planmarshall.api.resource.UnenrolResult;
 
 @DisplayName("EnrolScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class EnrolScenarioTest {
 
     private static final String SCENARIO = StandardScenarios.PROJECTS_AND_START;
@@ -121,7 +124,9 @@ class EnrolScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            var request = new EnrolRequest("/home/oliver/git/new-service", true);
+            var projectId = Generators.letterStrings(4, 10).next().toLowerCase();
+            var checkout = "/home/" + Generators.letterStrings(3, 8).next().toLowerCase() + "/git/" + projectId;
+            var request = new EnrolRequest(checkout, true);
             var response = client.send(HttpRequest.json("POST", "/api/v1/enrol", request.toJson())
                     .withHeader("Authorization", auth));
             assertEquals(200, response.status());
@@ -129,11 +134,11 @@ class EnrolScenarioTest {
             var result = EnrolResult.fromJson(response.bodyText());
             assertAll(
                     () -> assertEquals(EnrolResult.STATUS_ENROLLED, result.status()),
-                    () -> assertEquals("new-service", result.projectId()),
+                    () -> assertEquals(projectId, result.projectId()),
                     () -> assertTrue(result.pilot())
             );
 
-            var comparison = digest(client, auth, "new-service", ".plan%2Fmarshal.json");
+            var comparison = digest(client, auth, projectId, ".plan%2Fmarshal.json");
             assertFalse(comparison.mismatch(), "a freshly enrolled project's store matches its sidecar");
         }
     }
@@ -145,10 +150,11 @@ class EnrolScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            var response = client.send(HttpRequest.json("POST", "/api/v1/projects/alias-app/enrol", "{}")
+            var aliasProject = Generators.letterStrings(4, 10).next().toLowerCase();
+            var response = client.send(HttpRequest.json("POST", "/api/v1/projects/" + aliasProject + "/enrol", "{}")
                     .withHeader("Authorization", auth));
             assertEquals(200, response.status());
-            assertEquals("alias-app", EnrolResult.fromJson(response.bodyText()).projectId());
+            assertEquals(aliasProject, EnrolResult.fromJson(response.bodyText()).projectId());
         }
     }
 
@@ -178,7 +184,8 @@ class EnrolScenarioTest {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            var response = client.send(HttpRequest.get("/api/v1/projects/unknown/stores/digest")
+            var unknownProject = Generators.letterStrings(4, 10).next().toLowerCase();
+            var response = client.send(HttpRequest.get("/api/v1/projects/" + unknownProject + "/stores/digest")
                     .withHeader("Authorization", auth));
             assertEquals(404, response.status());
             var json = JsonTree.asObject(JsonTree.parse(response.bodyText()));
@@ -208,10 +215,11 @@ class EnrolScenarioTest {
             var auth = "Bearer " + runtime.token();
 
             assertEquals("enrol.scan", runtime.currentStateName());
-            var response = client.send(HttpRequest.json("POST", "/api/v1/projects/scan-app/enrol", "{}")
+            var scanProject = Generators.letterStrings(4, 10).next().toLowerCase();
+            var response = client.send(HttpRequest.json("POST", "/api/v1/projects/" + scanProject + "/enrol", "{}")
                     .withHeader("Authorization", auth));
             assertEquals(200, response.status());
-            assertEquals("scan-app", EnrolResult.fromJson(response.bodyText()).projectId());
+            assertEquals(scanProject, EnrolResult.fromJson(response.bodyText()).projectId());
         }
     }
 }

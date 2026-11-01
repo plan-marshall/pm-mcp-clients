@@ -25,6 +25,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.control.ActionAvailability;
 import de.planmarshall.api.control.ArchiveCheck;
 import de.planmarshall.api.control.ChatReadBackResource;
@@ -45,6 +47,7 @@ import de.planmarshall.api.json.JsonTree;
 
 @DisplayName("ControlScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
+@EnableGeneratorController
 class ControlScenarioTest {
 
     private static final String AUTH_HEADER = "Authorization";
@@ -117,19 +120,22 @@ class ControlScenarioTest {
         @DisplayName("cancels a plan with its reason, abandons a paused one, and ends a held one")
         void ending() throws Exception {
             try (var runtime = MockRuntime.start(READY)) {
+                var cancelReason = Generators.letterStrings(4, 12).next();
+                var abandonReason = Generators.letterStrings(4, 12).next();
+                var heldReason = Generators.letterStrings(4, 12).next();
                 var cancelled = WorkActions.fromJson(post(runtime,
                         "/api/v1/plans/fix-relay/actions/cancel",
-                        JsonTree.write(Map.of("reason", "replaced by relay-v2", "close_pr", true)))
+                        JsonTree.write(Map.of("reason", cancelReason, "close_pr", true)))
                         .bodyText());
                 assertEquals("ended", cancelled.state());
 
                 var abandoned = WorkActions.fromJson(post(runtime,
                         "/api/v1/plans/relay-metrics/actions/abandon",
-                        JsonTree.write(Map.of("reason", "no longer needed"))).bodyText());
+                        JsonTree.write(Map.of("reason", abandonReason))).bodyText());
                 assertEquals("ended", abandoned.state());
 
                 var heldEnded = post(runtime, "/api/v1/plans/relay-docs/actions/cancel",
-                        JsonTree.write(Map.of("reason", "the docs lane was dropped")));
+                        JsonTree.write(Map.of("reason", heldReason)));
                 assertEquals(200, heldEnded.status());
                 assertTrue(holds(runtime, "relay-docs").isEmpty());
             }
@@ -362,9 +368,10 @@ class ControlScenarioTest {
                 assertEquals(409, post(runtime, "/api/v1/plans/fix-relay/chat/proposal/accept",
                         "{}").status());
 
+                var turnText = Generators.letterStrings(4, 12).next();
                 var turned = ChatReadBackResource.fromJson(post(runtime,
                         "/api/v1/plans/fix-relay/chat/turns",
-                        JsonTree.write(Map.of("text", "Make the test cover the SSE transport too.")))
+                        JsonTree.write(Map.of("text", turnText)))
                         .bodyText());
                 assertEquals(ChatState.TURN, turned.chatState());
                 assertEquals(4, turned.turns().size());
@@ -427,19 +434,21 @@ class ControlScenarioTest {
     @Test
     @DisplayName("answers 404 for an unknown subject")
     void unknownSubject() throws Exception {
+        var unknownEpic = Generators.letterStrings(4, 10).next().toLowerCase();
+        var unknownPlan = Generators.letterStrings(4, 10).next().toLowerCase();
         try (var runtime = MockRuntime.start(READY)) {
             for (var path : List.of(
-                    "/api/v1/epics/unknown-epic",
-                    "/api/v1/epics/unknown-epic/tokens",
-                    "/api/v1/epics/unknown-epic/archive-check",
-                    "/api/v1/epics/unknown-epic/decomposition",
-                    "/api/v1/epics/unknown-epic/review",
-                    "/api/v1/plans/unknown-plan/tokens",
-                    "/api/v1/plans/unknown-plan/chat")) {
+                    "/api/v1/epics/" + unknownEpic,
+                    "/api/v1/epics/" + unknownEpic + "/tokens",
+                    "/api/v1/epics/" + unknownEpic + "/archive-check",
+                    "/api/v1/epics/" + unknownEpic + "/decomposition",
+                    "/api/v1/epics/" + unknownEpic + "/review",
+                    "/api/v1/plans/" + unknownPlan + "/tokens",
+                    "/api/v1/plans/" + unknownPlan + "/chat")) {
                 assertEquals(404, get(runtime, path).status(), path);
             }
-            assertEquals(404, post(runtime, "/api/v1/plans/unknown-plan/actions/pause", "{}").status());
-            assertEquals(404, post(runtime, "/api/v1/plans/unknown-plan/chat/turns", "{}").status());
+            assertEquals(404, post(runtime, "/api/v1/plans/" + unknownPlan + "/actions/pause", "{}").status());
+            assertEquals(404, post(runtime, "/api/v1/plans/" + unknownPlan + "/chat/turns", "{}").status());
         }
     }
 

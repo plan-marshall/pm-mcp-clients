@@ -26,11 +26,14 @@ import java.util.TreeSet;
 
 
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.mock.http.MockHttpRequest;
@@ -49,9 +52,19 @@ import de.planmarshall.mock.scenario.ScenarioRegistry;
  * state is declared equal on purpose below.
  */
 @DisplayName("ScenarioStateContractTest")
+@EnableGeneratorController
 class ScenarioStateContractTest {
 
-    private static final String AUTH = "Bearer test-token";
+    private String runtimeToken;
+    private String deviceSecret;
+    private String auth;
+
+    @BeforeEach
+    void drawCredentials() {
+        runtimeToken = Generators.letterStrings(8, 16).next();
+        deviceSecret = Generators.letterStrings(8, 16).next();
+        auth = "Bearer " + runtimeToken;
+    }
 
     /**
      * The resources of the {@code control.*} states, which the engine serves from its control
@@ -117,8 +130,8 @@ class ScenarioStateContractTest {
     @DisplayName("every state reaches the resource it concerns")
     void everyStateReachesTheResourceItConcerns(String scenarioName) throws Exception {
         var registry = new ScenarioRegistry();
-        try (var engine = new MockRuntimeEngine(registry, registry.resolve(scenarioName), "test-token",
-                     "test-secret")) {
+        try (var engine = new MockRuntimeEngine(registry, registry.resolve(scenarioName), runtimeToken,
+                     deviceSecret)) {
             var scenario = engine.currentScenario();
             engine.goToState(scenario.start());
             var baseline = new HashMap<String, String>();
@@ -159,7 +172,7 @@ class ScenarioStateContractTest {
         var registry = new ScenarioRegistry();
         for (var scenarioName : StandardScenarios.PRIMARY_SCENARIOS) {
             try (var engine = new MockRuntimeEngine(registry, registry.resolve(scenarioName),
-                         "test-token", "test-secret")) {
+                         runtimeToken, deviceSecret)) {
                 var answer = get(engine, "/api/v1/plans");
                 assertEquals(200, answer.status(), scenarioName + " must answer GET /api/v1/plans");
                 assertNotNull(JsonTree.asArray(answer.json().get("plans")),
@@ -173,7 +186,7 @@ class ScenarioStateContractTest {
     void everySystemStateServesItsLifecycleState() throws Exception {
         var registry = new ScenarioRegistry();
         try (var engine = new MockRuntimeEngine(registry,
-                     registry.resolve(StandardScenarios.REPORTS_AND_SYSTEM), "test-token", "test-secret")) {
+                     registry.resolve(StandardScenarios.REPORTS_AND_SYSTEM), runtimeToken, deviceSecret)) {
             var scenario = engine.currentScenario();
             var states = new TreeSet<String>();
             for (var stateId : scenario.states().keySet()) {
@@ -208,7 +221,7 @@ class ScenarioStateContractTest {
      * @return the answer's status and JSON body
      * @throws IOException on write failure
      */
-    private static Answer get(MockRuntimeEngine engine, String path) throws IOException {
+    private Answer get(MockRuntimeEngine engine, String path) throws IOException {
         var raw = answer(engine, path);
         var split = raw.indexOf("\r\n\r\n");
         var body = split >= 0 ? raw.substring(split + 4) : "";
@@ -338,8 +351,8 @@ class ScenarioStateContractTest {
      *         that does
      * @throws IOException on write failure
      */
-    private static String answer(MockRuntimeEngine engine, String path) throws IOException {
-        var request = new MockHttpRequest("GET", path, Map.of("Authorization", AUTH), new byte[0],
+    private String answer(MockRuntimeEngine engine, String path) throws IOException {
+        var request = new MockHttpRequest("GET", path, Map.of("Authorization", auth), new byte[0],
                 System.nanoTime());
         var out = new ByteArrayOutputStream();
         engine.dispatch(request, new MockHttpResponse(out), false);

@@ -20,11 +20,14 @@ import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.mock.scenario.RouteDefinition;
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.StateDefinition;
 
 @DisplayName("StartRegistry")
+@EnableGeneratorController
 class StartRegistryTest {
 
     private static final String BASE_STATE = "running_work.active";
@@ -33,33 +36,39 @@ class StartRegistryTest {
     @Test
     @DisplayName("seeds the entry and the recipes from the start state merged over the base state")
     void seedsFromTheStateFixture() {
+        var projectId = Generators.letterStrings(3, 8).next().toLowerCase();
+        var entryId = "ent-" + Generators.letterStrings(4, 10).next().toLowerCase();
+        var recipeKey = "recipe-" + Generators.letterStrings(3, 8).next().toLowerCase();
         var registry = new StartRegistry(_ -> {
         });
         registry.init(scenario(
-                Map.of("start", Map.of("recipes", List.of(Map.of("key", "base-recipe", "name", "base-recipe")))),
-                Map.of("start", Map.of("project_id", "p", "kind", "plan", "state", "start.sources",
-                        "entry_id", "ent-test", "sources", List.of()))), START_STATE);
+                Map.of("start", Map.of("recipes", List.of(Map.of("key", recipeKey, "name", recipeKey)))),
+                Map.of("start", Map.of("project_id", projectId, "kind", "plan", "state", "start.sources",
+                        "entry_id", entryId, "sources", List.of()))), START_STATE);
 
-        var entry = registry.find("ent-test");
+        var entry = registry.find(entryId);
         assertNotNull(entry);
-        assertEquals("p", entry.entry().projectId());
-        assertEquals(1, registry.recipes("p").size());
-        assertEquals("base-recipe", registry.recipes("p").getFirst().key());
+        assertEquals(projectId, entry.entry().projectId());
+        assertEquals(1, registry.recipes(projectId).size());
+        assertEquals(recipeKey, registry.recipes(projectId).getFirst().key());
     }
 
     @Test
     @DisplayName("falls back to the GET /api/v1/recipes route when the state names no recipe")
     void seedsRecipesFromTheRoute() {
+        var projectId = Generators.letterStrings(3, 8).next().toLowerCase();
+        var entryId = "ent-" + Generators.letterStrings(4, 10).next().toLowerCase();
+        var recipeKey = "recipe-" + Generators.letterStrings(3, 8).next().toLowerCase();
         var registry = new StartRegistry(_ -> {
         });
         registry.init(scenario(Map.of(),
-                Map.of("start", Map.of("project_id", "p", "kind", "plan", "state", "start.sources",
-                        "entry_id", "ent-test")),
+                Map.of("start", Map.of("project_id", projectId, "kind", "plan", "state", "start.sources",
+                        "entry_id", entryId)),
                 Map.of("GET /api/v1/recipes", RouteDefinition.of(Map.of("recipes",
-                        List.of(Map.of("key", "route-recipe", "name", "route-recipe")))))), START_STATE);
+                        List.of(Map.of("key", recipeKey, "name", recipeKey)))))), START_STATE);
 
-        assertNotNull(registry.find("ent-test"));
-        assertEquals("route-recipe", registry.recipes("p").getFirst().key());
+        assertNotNull(registry.find(entryId));
+        assertEquals(recipeKey, registry.recipes(projectId).getFirst().key());
     }
 
     private static Scenario scenario(Map<String, Object> baseFixture, Map<String, Object> startFixture) {
