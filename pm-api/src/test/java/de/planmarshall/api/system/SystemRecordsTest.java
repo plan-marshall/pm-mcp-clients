@@ -369,6 +369,17 @@ class SystemRecordsTest {
     }
 
     @Test
+    void runtimeStatusReadsTheWireShapeOfTheRuntime() throws Exception {
+        // GET /api/v1/status names the lifecycle state and the withdraw with these fields.
+        var status = RuntimeStatus.fromMap(Map.of("version", "0.9.1", "lifecycle_state", "draining",
+                "draining_by", "the console", "can_withdraw", true, "drain_remaining_count", 2));
+
+        assertEquals(RuntimeLifecycleState.DRAINING, status.state());
+        assertTrue(status.drainWithdrawable());
+        assertEquals(2, status.drainRemainingCount());
+    }
+
+    @Test
     void cleanupKeptItemRoundTripAndValidation() throws Exception {
         var item = new CleanupKeptItem("token-usage", "plan", "pm-mcp-core › token-usage", "exclude", "13 Oct", "the console");
         var json = item.toJson();

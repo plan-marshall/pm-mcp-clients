@@ -107,9 +107,13 @@ public record RuntimeStatus(
             throw new JsonFormatException("Missing version in RuntimeStatus");
         }
         var stateStr = JsonTree.string(map, "state");
+        if (stateStr == null) {
+            stateStr = JsonTree.string(map, "lifecycle_state");
+        }
         var state = RuntimeLifecycleState.fromValue(stateStr);
         var drainingBy = JsonTree.string(map, "draining_by");
-        var drainWithdrawable = Boolean.TRUE.equals(map.get("drain_withdrawable"));
+        var drainWithdrawable = Boolean.TRUE.equals(map.get("drain_withdrawable"))
+                || Boolean.TRUE.equals(map.get("can_withdraw"));
         var remVal = JsonTree.integer(map, KEY_DRAIN_REMAINING_COUNT);
         var drainRemainingCount = remVal != null ? remVal.intValue() : 0;
         var drainRemainingItems = new ArrayList<String>();

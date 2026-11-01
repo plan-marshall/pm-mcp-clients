@@ -12,12 +12,14 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.runtime.RuntimeUnavailableException;
 
 import picocli.CommandLine.Command;
@@ -54,6 +56,55 @@ public final class RuntimeCommand implements Callable<Integer> {
         return 0;
     }
 
+    /**
+     * @param drain    whether the drain was asked
+     * @param whenDone whether the drain was asked by its script name
+     * @param now      whether now was asked
+     * @return the choice of when the options answered, or {@code null} for the dialogue
+     */
+    static RuntimeActDialogue.@Nullable When whenOf(boolean drain, boolean whenDone, boolean now) {
+        if (drain || whenDone) {
+            return RuntimeActDialogue.When.WHEN_DONE;
+        }
+        return now ? RuntimeActDialogue.When.NOW : null;
+    }
+
+    /**
+     * @param spec     the command specification of the verb
+     * @param context  the operator context
+     * @param drain    whether {@code --drain} was given
+     * @param whenDone whether {@code --when-done} was given
+     * @param now      whether {@code --now} was given
+     * @return {@code 0} when the options agree, {@code 2} when they contradict each other
+     */
+    static int rejectContradiction(CommandSpec spec, OperatorContext context, boolean drain,
+                        boolean whenDone, boolean now) {
+        if (!now || !(drain || whenDone)) {
+            return 0;
+        }
+        var err = spec.commandLine().getErr();
+        err.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                            "operator.system.timing_conflict", Map.of()));
+        err.flush();
+        return 2;
+    }
+
+    /**
+     * @param now whether the act runs now
+     * @return the body that names the choice of when
+     */
+    private static Map<String, Object> whenBody(boolean now) {
+        var body = new LinkedHashMap<String, Object>();
+        body.put("when", now ? "now" : DRAIN);
+        if (!now) {
+            body.put(DRAIN, true);
+        }
+        if (now) {
+            body.put("now", true);
+        }
+        return body;
+    }
+
     @Command(name = "start", description = "Starts the runtime unless one runs. Runs without operator checks.")
     static final class StartCommand implements Callable<Integer> {
         @Spec
@@ -84,8 +135,14 @@ public final class RuntimeCommand implements Callable<Integer> {
         @Option(names = "--drain", description = "Stop gracefully after active work completes")
         boolean drain;
 
+        @Option(names = "--when-done", description = "Stop when what runs is done; answers the confirmation")
+        boolean whenDone;
+
         @Option(names = "--now", description = "Stop immediately")
         boolean now;
+
+        @Option(names = "--no-input", description = "Non-interactive mode")
+        boolean noInput;
 
         @Option(names = "--withdraw", description = "Withdraw a requested drain")
         boolean withdraw;
@@ -100,36 +157,52 @@ public final class RuntimeCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             try {
                 if (withdraw) {
-                    var response = context.runtime(false).send(
-                                        HttpRequest.delete("/api/v1/runtime/stop"));
-                    if (response.status() == 200 || response.status() == 204) {
-                        out.println("runtime   drain withdrawn");
-                        out.flush();
-                        return 0;
-                    }
-                    var err = spec.commandLine().getErr();
-                    err.printf("Failed to withdraw drain: HTTP %d%n", response.status());
-                    err.flush();
-                    return 1;
+                    return withdraw(out);
+                }
+                var contradicted = rejectContradiction(spec, context, drain, whenDone, now);
+                if (contradicted != 0) {
+                    return contradicted;
                 }
 
-                var body = new LinkedHashMap<String, Object>();
-                body.put("when", drain ? "drain" : "now");
+                var answer = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.STOP,
+                                    whenOf(drain, whenDone, now), noInput, null);
+                if (answer.when() == null) {
+                    return answer.exitCode();
+                }
+                var stopNow = answer.when() == RuntimeActDialogue.When.NOW;
+
+                var body = whenBody(stopNow);
                 body.put("then", "exit");
-                if (drain) body.put(DRAIN, true);
-                if (now) body.put("now", true);
 
                 var response = context.runtime(false).send(
                                     HttpRequest.json("POST", "/api/v1/runtime/stop", JsonTree.write(body)));
                 if (response.status() != 202 && response.status() != 200) {
                     throw new OperatorRefusedException("runtime stop", response);
                 }
-                out.println(drain ? "runtime   draining" : "runtime   stopping");
+                out.println(stopNow ? "runtime   stopping" : "runtime   draining");
             } catch (RuntimeUnavailableException e) {
-                out.println("runtime   not running");
+                var refusal = RuntimeActDialogue.notStopped(context);
+                out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                    refusal.key(), Map.of()));
+                out.flush();
+                return refusal.exitCode();
             }
             out.flush();
             return 0;
+        }
+
+        private int withdraw(PrintWriter out) throws IOException {
+            var response = context.runtime(false).send(
+                                HttpRequest.delete("/api/v1/runtime/stop"));
+            if (response.status() == 200 || response.status() == 204) {
+                out.println("runtime   drain withdrawn");
+                out.flush();
+                return 0;
+            }
+            var err = spec.commandLine().getErr();
+            err.printf("Failed to withdraw drain: HTTP %d%n", response.status());
+            err.flush();
+            return 1;
         }
     }
 
@@ -143,11 +216,14 @@ public final class RuntimeCommand implements Callable<Integer> {
         @Option(names = "--drain", description = "Restart after active work completes")
         boolean drain;
 
+        @Option(names = "--when-done", description = "Restart when what runs is done; answers the confirmation")
+        boolean whenDone;
+
         @Option(names = "--now", description = "Restart immediately")
         boolean now;
 
-        @Option(names = "--yes", description = "Accept confirmation")
-        boolean yes;
+        @Option(names = "--no-input", description = "Non-interactive mode")
+        boolean noInput;
 
         RestartCommand(OperatorContext context) {
             this.context = context;
@@ -157,11 +233,19 @@ public final class RuntimeCommand implements Callable<Integer> {
         public Integer call() throws IOException {
             context.gate().verify();
             var out = spec.commandLine().getOut();
-            var body = new LinkedHashMap<String, Object>();
+            var contradicted = rejectContradiction(spec, context, drain, whenDone, now);
+            if (contradicted != 0) {
+                return contradicted;
+            }
+            var answer = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.RESTART,
+                                whenOf(drain, whenDone, now), noInput, null);
+            if (answer.when() == null) {
+                return answer.exitCode();
+            }
+            var restartNow = answer.when() == RuntimeActDialogue.When.NOW;
+
+            var body = whenBody(restartNow);
             body.put("then", "restart");
-            body.put("when", drain ? "drain" : "now");
-            if (drain) body.put(DRAIN, true);
-            if (now) body.put("now", true);
 
             var response = context.runtime(true).send(
                                 HttpRequest.json("POST", "/api/v1/operator/runtime/stop", JsonTree.write(body)));
@@ -197,11 +281,14 @@ public final class RuntimeCommand implements Callable<Integer> {
         @Option(names = "--drain", description = "Upgrade after active work completes")
         boolean drain;
 
+        @Option(names = "--when-done", description = "Upgrade when what runs is done; answers the confirmation")
+        boolean whenDone;
+
         @Option(names = "--now", description = "Upgrade immediately")
         boolean now;
 
-        @Option(names = "--yes", description = "Accept confirmation")
-        boolean yes;
+        @Option(names = "--no-input", description = "Non-interactive mode")
+        boolean noInput;
 
         UpgradeCommand(OperatorContext context) {
             this.context = context;
@@ -258,11 +345,22 @@ public final class RuntimeCommand implements Callable<Integer> {
         }
 
         private int executeUpgrade(PrintWriter out) throws IOException {
-            var body = new LinkedHashMap<String, Object>();
-            if (version != null) body.put("version", version);
-            body.put("when", drain ? "drain" : "now");
-            if (drain) body.put(DRAIN, true);
-            if (now) body.put("now", true);
+            var contradicted = rejectContradiction(spec, context, drain, whenDone, now);
+            if (contradicted != 0) {
+                return contradicted;
+            }
+            var answer = RuntimeActDialogue.confirm(context, out, RuntimeActDialogue.Act.UPGRADE,
+                                whenOf(drain, whenDone, now), noInput, version);
+            if (answer.when() == null) {
+                return answer.exitCode();
+            }
+            var upgradeNow = answer.when() == RuntimeActDialogue.When.NOW;
+
+            var body = whenBody(upgradeNow);
+            var target = answer.target() != null ? answer.target() : version;
+            if (target != null) {
+                body.put("version", target);
+            }
 
             var response = context.runtime(true).send(
                                 HttpRequest.json("POST", "/api/v1/operator/runtime/upgrade", JsonTree.write(body)));

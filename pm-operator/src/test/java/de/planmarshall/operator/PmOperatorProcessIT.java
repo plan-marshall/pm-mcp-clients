@@ -383,7 +383,7 @@ class PmOperatorProcessIT {
             assertTrue(stdout.contains("Runtime   pm-mcpd 0.9.1"), "expected runtime; got: " + stdout);
             assertTrue(stdout.contains("Work      plans"), "expected work; got: " + stdout);
             assertTrue(stdout.contains("Workers   2 · 1 busy · 1 idle"), "expected workers; got: " + stdout);
-            assertTrue(stdout.contains("Jobs      build"), "expected jobs; got: " + stdout);
+            assertTrue(stdout.contains("Jobs      locks"), "expected jobs; got: " + stdout);
             assertTrue(stdout.contains("Models"), "expected models; got: " + stdout);
             assertTrue(stdout.contains("Cleanup   due:"), "expected cleanup; got: " + stdout);
         }
