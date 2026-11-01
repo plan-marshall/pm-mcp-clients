@@ -233,7 +233,6 @@
       class="control-actions__dialog"
       data-testid={`control-dialog-${dialog}`}
       role="dialog"
-      aria-modal="true"
       aria-labelledby={titleId}
     >
       {#if dialog === 'pause'}

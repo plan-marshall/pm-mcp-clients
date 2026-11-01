@@ -312,13 +312,13 @@ describe('SystemView component', () => {
     render(SystemView);
 
     await waitFor(() =>
-      expect(screen.getByTitle(/running plans in the overview/i)).toBeVisible(),
+      expect(screen.getByRole('button', { name: /running plans in the overview/i })).toBeVisible(),
     );
 
-    await fireEvent.click(screen.getByTitle(/running plans in the overview/i));
+    await fireEvent.click(screen.getByRole('button', { name: /running plans in the overview/i }));
     expect(get(runtimeStore).currentRoute).toBe('overview');
 
-    await fireEvent.click(screen.getByTitle(/projects with running work/i));
+    await fireEvent.click(screen.getByRole('button', { name: /projects with running work/i }));
     expect(get(runtimeStore).currentRoute).toBe('projects');
   });
 

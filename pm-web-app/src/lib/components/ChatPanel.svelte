@@ -74,8 +74,8 @@
     void close();
   }
 
-  // The listener sits on the window: the control that opened the panel keeps the focus, so a key
-  // press is delivered to it and never to the panel's own subtree.
+  // The listener sits on the window: the panel does not take the focus away from the control that
+  // opened it, so the key press is delivered to that control and not to the panel's own subtree.
   onMount(() => {
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);

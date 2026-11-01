@@ -394,6 +394,9 @@
     </Button>
   </header>
 
+  <!-- The step line scrolls sideways on a phone, so it takes the focus to be scrolled by keyboard
+       (accessibility audit: scrollable-region-focusable); `nav` is not an interactive element, which
+       is what the compiler's rule below objects to. -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <nav class="step-line" tabindex="0" aria-label={$t('project.onboarding.steps')}>
     <ol class="step-line__list">

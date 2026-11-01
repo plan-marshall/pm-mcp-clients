@@ -917,6 +917,7 @@
                 {#if node.duration_seconds > 0}
                   <span class="node-duration">{formatDuration(node.duration_seconds * 1000, $currentLocale)}</span>
                 {/if}
+                <span class="sr-only">{$t('plan.node.select')}</span>
               </button>
             </div>
 

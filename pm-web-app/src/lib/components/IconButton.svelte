@@ -4,14 +4,16 @@
   import { uniqueId } from '../utils/uniqueId';
 
   /**
-   * The square, ghost control of the design system (VD-P-05): one icon, no visible label.
+   * The square, ghost control of the design system (VD-P-05): one icon and, from the tablet width
+   * up, the word that names it (CC-P-07). Below that width the icon stands alone and the control
+   * is square.
    *
    * It stands for row menus (`act.more`), "jump to now", and copy. Because the glyph alone does not
    * name the act, the control is always named by `label` and carries the advisory its view passes
    * from the catalogue's `X.title` key (Interactions Affordances).
    */
   export let icon: string;
-  /** The accessible name; an icon-only control has no visible text to name it. */
+  /** The accessible name and the visible label: the glyph alone does not name the act. */
   export let label: string;
   /** The hover advisory, from the view's `X.title` catalogue key. */
   export let advisory: string | undefined = undefined;

@@ -164,7 +164,10 @@ test.describe('System: figures, filters, upgrade, and cleanup preview (UC-SYS-1.
   });
 
   test('links a work figure to what it counts', async ({ page }) => {
-    await page.getByTitle(/running plans in the overview/i).first().click();
+    await page
+      .getByRole('button', { name: /running plans in the overview/i })
+      .first()
+      .click();
     await expect(page).toHaveURL(/\/overview$/);
   });
 
