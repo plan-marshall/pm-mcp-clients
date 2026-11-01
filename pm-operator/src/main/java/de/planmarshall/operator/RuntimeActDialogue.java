@@ -79,6 +79,26 @@ final class RuntimeActDialogue {
     record Answer(@Nullable When when, int exitCode) {
     }
 
+    /**
+     * What a stop that could not reach the runtime says, and the exit code of its verb.
+     *
+     * @param key      the catalogue key of the line
+     * @param exitCode the exit code: {@code 0} when no runtime runs, {@code 1} when one does not answer
+     */
+    record Refusal(String key, int exitCode) {
+    }
+
+    /** A stop the dialogue could not even ask, carrying the line and the exit code it owes. */
+    private static final class StopRefusedException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+        private final transient Refusal refusal;
+
+        StopRefusedException(Refusal refusal) {
+            super(refusal.key());
+            this.refusal = refusal;
+        }
+    }
+
     private static final String DRAIN = "drain";
     private static final String NOW = "now";
     private static final String RUNNING = "running";
@@ -106,6 +126,11 @@ final class RuntimeActDialogue {
         }
         try {
             return new Answer(ask(context, out, act, version, noInput), 0);
+        } catch (StopRefusedException refused) {
+            out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
+                                refused.refusal.key(), Map.of()));
+            out.flush();
+            return new Answer(null, refused.refusal.exitCode());
         } catch (ChoicePrompt.KeepException _) {
             return new Answer(null, 0);
         } catch (StartPrompt.StartLeftException _) {
@@ -122,8 +147,11 @@ final class RuntimeActDialogue {
     private static @Nullable When ask(OperatorContext context, PrintWriter out, Act act,
                         @Nullable String version, boolean noInput) throws IOException {
         var locale = context.clientEnvironment().locale();
-        if (noInput && act != Act.STOP) {
-            // Restart and upgrade read nothing before the choice, so the script stops at once.
+        if (noInput) {
+            // A script stops at the choice at once; the snapshot is only read for the dialogue.
+            if (act == Act.STOP && provenStopped(context)) {
+                throw new StopRefusedException(new Refusal("operator.system.nothing_to_stop", 0));
+            }
             throw new StartPrompt.MissingInputException("runtime " + act.value(), "when", null);
         }
         SystemSnapshot snapshot;
@@ -131,14 +159,9 @@ final class RuntimeActDialogue {
             snapshot = snapshot(context);
         } catch (RuntimeUnavailableException _) {
             if (act == Act.STOP) {
-                out.println(MessageCatalogue.format(locale, notStoppedKey(context), Map.of()));
-                out.flush();
-                return null;
+                throw new StopRefusedException(notStopped(context));
             }
             snapshot = null;
-        }
-        if (noInput) {
-            throw new StartPrompt.MissingInputException("runtime " + act.value(), "when", null);
         }
         var prompt = new StartPrompt(context, out, locale, false);
         var target = version != null ? version : newerVersion(snapshot);
@@ -156,20 +179,29 @@ final class RuntimeActDialogue {
 
     /**
      * A runtime process that is alive but refuses its socket is not answering, not absent: the two
-     * cases read differently to the operator and the design names the first
+     * cases read differently to the operator, and the design names the first
      * ({@code operator.system.not_answering}).
      *
      * @param context the operator context
-     * @return the catalogue key of the line a refused stop prints
+     * @return the line a stop that could not reach the runtime prints, and its exit code
      */
-    static String notStoppedKey(OperatorContext context) {
+    static Refusal notStopped(OperatorContext context) {
+        return provenStopped(context)
+                            ? new Refusal("operator.system.nothing_to_stop", 0)
+                            : new Refusal("operator.system.not_answering", 1);
+    }
+
+    /**
+     * @param context the operator context
+     * @return {@code true} only when the runtime record proves that no runtime process runs
+     */
+    private static boolean provenStopped(OperatorContext context) {
         try {
-            var alive = RuntimeRecord.read(context.paths().runtimeRecord())
-                                .filter(RuntimeRecord::processAlive).isPresent();
-            return alive ? "operator.system.not_answering" : "operator.system.nothing_to_stop";
+            return RuntimeRecord.read(context.paths().runtimeRecord())
+                                .filter(RuntimeRecord::processAlive).isEmpty();
         } catch (IOException _) {
-            // A record this client cannot read says nothing about a live process.
-            return "operator.system.nothing_to_stop";
+            // A record this client cannot read does not establish that the process is absent.
+            return false;
         }
     }
 

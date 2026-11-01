@@ -218,7 +218,7 @@ class RuntimeActDialogueTest {
 
         assertAll(
                             () -> assertNull(answer.when()),
-                            () -> assertEquals(0, answer.exitCode()),
+                            () -> assertEquals(1, answer.exitCode()),
                             () -> assertTrue(out.toString().contains("The runtime is not answering."), out.toString())
         );
     }

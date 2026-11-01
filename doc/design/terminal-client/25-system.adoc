@@ -259,7 +259,7 @@ $ pm-operator runtime stop
 The runtime is not running; there is nothing to stop.
 ----
 
-* `system` never starts the runtime, as `status` does not; it exits `0`. `runtime stop` (with `--withdraw` too) never starts it either and exits `0` with its line; `runtime restart` without a runtime starts it (`Starting the runtime …`), as every other verb that needs the runtime does (link:../shared/system.adoc#channels[System, Who May]).
+* `system` never starts the runtime, as `status` does not; it exits `0`. `runtime stop` (with `--withdraw` too) never starts it either and exits `0` with its line; `runtime restart` without a runtime starts it (`Starting the runtime …`), as every other verb that needs the runtime does (link:../shared/system.adoc#channels[System, Who May]). A runtime that is alive but does not answer is not the same case: `runtime stop` names it (`operator.system.not_answering`) and exits `1`, because the stop was not performed.
 
 [#texts]
 == Texts of the Terminal

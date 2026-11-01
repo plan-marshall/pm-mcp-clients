@@ -184,8 +184,11 @@ public final class RuntimeCommand implements Callable<Integer> {
                 }
                 out.println(stopNow ? "runtime   stopping" : "runtime   draining");
             } catch (RuntimeUnavailableException e) {
+                var refusal = RuntimeActDialogue.notStopped(context);
                 out.println(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                    RuntimeActDialogue.notStoppedKey(context), Map.of()));
+                                    refusal.key(), Map.of()));
+                out.flush();
+                return refusal.exitCode();
             }
             out.flush();
             return 0;
