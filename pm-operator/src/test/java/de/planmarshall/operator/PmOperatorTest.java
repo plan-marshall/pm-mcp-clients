@@ -681,6 +681,7 @@ class PmOperatorTest {
             var req = server.awaitRequest(Duration.ofSeconds(1));
             assertTrue(req.bodyText().contains("\"drain\":true"), req.bodyText());
             assertTrue(req.bodyText().contains("\"when\":\"drain\""), req.bodyText());
+            assertFalse(req.bodyText().contains("\"now\":true"), req.bodyText());
             assertEquals("runtime   draining", out.toString().strip());
         }
 
@@ -822,6 +823,7 @@ class PmOperatorTest {
             var req = server.awaitRequest(Duration.ofSeconds(1));
             assertTrue(req.bodyText().contains("\"drain\":true"), req.bodyText());
             assertTrue(req.bodyText().contains("\"when\":\"drain\""), req.bodyText());
+            assertFalse(req.bodyText().contains("\"now\":true"), req.bodyText());
         }
 
         @Test
@@ -886,6 +888,7 @@ class PmOperatorTest {
             var req = server.awaitRequest(Duration.ofSeconds(1));
             assertTrue(req.bodyText().contains("\"drain\":true"), req.bodyText());
             assertTrue(req.bodyText().contains("\"when\":\"drain\""), req.bodyText());
+            assertFalse(req.bodyText().contains("\"now\":true"), req.bodyText());
         }
 
         @Test

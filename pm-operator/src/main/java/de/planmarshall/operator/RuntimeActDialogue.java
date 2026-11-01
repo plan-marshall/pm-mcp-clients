@@ -105,9 +105,6 @@ final class RuntimeActDialogue {
     private static final String RUNNING = "running";
     private static final String DOT = " \u00b7 ";
 
-    /** The exit code of a run the operator interrupted with {@code Ctrl+C}. */
-    private static final int EXIT_INTERRUPTED = 130;
-
     private RuntimeActDialogue() {
     }
 
@@ -138,7 +135,7 @@ final class RuntimeActDialogue {
         } catch (ChoicePrompt.KeepException _) {
             return new Answer(null, 0, null);
         } catch (ChoicePrompt.InterruptException _) {
-            return new Answer(null, EXIT_INTERRUPTED, null);
+            return new Answer(null, StartPrompt.EXIT_INTERRUPTED, null);
         } catch (StartPrompt.StartLeftException _) {
             return new Answer(null, StartDialogue.EXIT_MISSING_INPUT, null);
         } catch (StartPrompt.MissingInputException _) {
@@ -163,7 +160,8 @@ final class RuntimeActDialogue {
         SystemSnapshot snapshot;
         try {
             snapshot = snapshot(context);
-        } catch (RuntimeUnavailableException _) {
+        } catch (IOException _) {
+            // No counts, but a restart or an upgrade still asks; a stop says why it cannot.
             if (act == Act.STOP) {
                 throw new StopRefusedException(notStopped(context));
             }
@@ -253,8 +251,9 @@ final class RuntimeActDialogue {
         }
         var what = what(locale, snapshot).strip();
         // The counts are one ICU message, so a zero group leaves its separator behind.
-        while (what.startsWith(DOT)) {
-            what = what.substring(DOT.length()).strip();
+        var separator = DOT.strip();
+        while (what.startsWith(separator)) {
+            what = what.substring(separator.length()).strip();
         }
         return what.isBlank()
                             ? MessageCatalogue.format(locale, "system.confirm.nothing_runs", Map.of())

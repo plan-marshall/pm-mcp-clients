@@ -10,6 +10,7 @@
 package de.planmarshall.operator.transcript;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.planmarshall.mock.StandardScenarios;
@@ -69,11 +70,13 @@ class RuntimeStopDialogueIT {
         try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("system.running");
              var session = harness.open("runtime", "stop")) {
             assertTrue(session.awaitText(KEEP, DialogueHarness.TIMEOUT), session.rawOutput());
+            var shown = session.rawOutput().length();
 
             DialogueHarness.type(session, "k\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             assertEquals(0, session.exitCode(), session.rawOutput());
+            assertFalse(session.rawOutput().substring(shown).contains("Nothing was sent."), session.rawOutput());
             harness.assertNoAct();
         }
     }

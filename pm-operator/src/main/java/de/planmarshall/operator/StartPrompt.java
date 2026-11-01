@@ -32,6 +32,9 @@ public final class StartPrompt {
 
     /** The suffix after every question, as the terminal client draws it. */
     public static final String SUFFIX = "  \u203a ";
+
+    /** The exit code of a run the operator interrupted with {@code Ctrl+C}. */
+    public static final int EXIT_INTERRUPTED = 130;
     private static final String EMPTY = "";
 
     private final OperatorContext context;
