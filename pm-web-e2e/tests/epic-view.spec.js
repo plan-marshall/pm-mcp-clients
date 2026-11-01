@@ -196,7 +196,7 @@ test.describe('Epic View (UC-PLN-5)', () => {
 
     await expect(page.getByTestId('epic-tokens')).toContainText('≥ 3.86 M');
     await expect(page.getByTestId('epic-tokens')).toContainText('3.52 M in');
-    await expect(page.getByTestId('epic-tokens')).toContainText('340 k out');
+    await expect(page.getByTestId('epic-tokens')).toContainText('0.34 M out');
     await expect(page.getByTestId('epic-tokens-unmeasured')).toContainText('1 task not measured');
     await expect(page.getByTestId('epic-own-tokens')).toContainText('120 k');
     await expect(page.getByTestId('epic-plan-tokens-relay-reconnect-backoff')).toContainText(

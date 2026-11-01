@@ -24,6 +24,22 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     await expect(page.locator('.overview')).toBeVisible();
   });
 
+  /**
+   * Opens a plan from the overview by its title.
+   *
+   * The runtime serves the plans that need the operator first, so a card's position is not the
+   * plan's identity: the test names the plan it means.
+   *
+   * @param page the Playwright page
+   * @param title the plan's title in its card
+   */
+  async function openPlan(page, title) {
+    const planCard = page.locator('[data-testid="plan-card"]').filter({ hasText: title });
+    await expect(planCard).toBeVisible();
+    await planCard.click();
+    await expect(page.locator('[data-testid="plan-view"]')).toBeVisible();
+  }
+
   test.afterAll(async ({ request }) => {
     // Reset back to web-pairing scenario for other test suites
     try {
@@ -36,14 +52,8 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
   });
 
   test('views plan process tree, task activity, and off-track indicator', async ({ page }) => {
-    // Click on fix-relay plan card in overview
-    const planCard = page.locator('[data-testid="plan-card"]').first();
-    await expect(planCard).toBeVisible();
-    await planCard.click();
-
-    // Ensure PlanView is mounted
-    const planView = page.locator('[data-testid="plan-view"]');
-    await expect(planView).toBeVisible();
+    // Open the fix-relay plan from the overview.
+    await openPlan(page, 'Fix Relay Transport');
 
     // Verify breadcrumb path project › epic › plan
     await expect(page.locator('[data-testid="breadcrumb-project"]')).toHaveText('pm-mcp-clients');
@@ -154,12 +164,8 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
   test('navigates to epic view, verifies running and staged plans, and returns', async ({
     page,
   }) => {
-    // Open fix-relay plan view
-    const planCard = page.locator('[data-testid="plan-card"]').first();
-    await expect(planCard).toBeVisible();
-    await planCard.click();
-
-    await expect(page.locator('[data-testid="plan-view"]')).toBeVisible();
+    // Open the fix-relay plan view
+    await openPlan(page, 'Fix Relay Transport');
 
     // Click epic link in breadcrumb to navigate to EpicView
     const epicBreadcrumb = page.locator('[data-testid="breadcrumb-epic"]');
@@ -223,8 +229,7 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
   });
 
   test('discloses the token breakdown by phase and role', async ({ page }) => {
-    const planCard = page.locator('[data-testid="plan-card"]').first();
-    await planCard.click();
+    await openPlan(page, 'Fix Relay Transport');
     await expect(page.locator('[data-testid="plan-tokens"]')).toBeVisible();
 
     const toggle = page.locator('[data-testid="tokens-toggle"]');
