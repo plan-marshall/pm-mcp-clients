@@ -12,7 +12,6 @@ package de.planmarshall.api;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
-
 import lombok.experimental.UtilityClass;
 
 /**
