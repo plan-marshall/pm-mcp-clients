@@ -33,6 +33,30 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |pm-mcpd {version} · build {date} ({commit})
 |pm-mcpd {version} · Build {date} ({commit})
 
+|`system.runtime.version_build`
+|pm-mcpd {version} · build {build}
+|pm-mcpd {version} · Build {build}
+
+|`system.lifecycle.draining`
+|draining
+|leert sich
+
+|`system.lifecycle.stopping`
+|stopping
+|stoppt
+
+|`system.lifecycle.upgrading`
+|upgrading
+|aktualisiert
+
+|`system.lifecycle.stopped`
+|stopped
+|gestoppt
+
+|`system.lifecycle.line`
+|{state}{finish, plural, =0 {} one { · # plan finish} other { · # plans finish}}
+|{state}{finish, plural, =0 {} one { · # Plan endet} other { · # Pläne enden}}
+
 |`system.runtime.available`
 |{version} available
 |{version} verfügbar

@@ -62,7 +62,7 @@ Workers   5 · 3 busy · 2 idle
 Jobs      locks  3 held
           build  1 of 2 slots · 1 queued
           test  0 of 1 slot
-Models    last hour · per model · 172 calls · ≥ 5.63 M tokens (≥ 5.10 M in · ≥ 530 k out)
+Models    Last hour · per model · 172 calls · ≥ 5.63 M tokens (≥ 5.10 M in · ≥ 530 k out)
           claude:opus-4.5        42 calls   2.02 M tokens (1.90 M in · 120 k out)   1 retry
           claude:sonnet-4.5      118 calls   3.61 M tokens (3.20 M in · 410 k out)
           codex:gpt-5            12 calls   tokens not measured: not reported by codex   1 error
@@ -76,7 +76,7 @@ pm ›
 * *The first line states the lifecycle* while there is one, in the words of link:../shared/system.adoc#state-line[System, The State of the Runtime]: `draining · 2 plans finish`, `stopping`, `upgrading`, `stopped`. While the runtime runs, the line is left out.
 * *One line per fact*: each job kind states its slots on its own line and the locks theirs; a model whose calls reported no usage says `tokens not measured` once, with the harness that left them out (`system.models.not_measured`).
 * *One step* is a command: the last line names the commands of the figures that lead somewhere (link:../shared/system.adoc#one-step[System, One Step to What a Figure Counts]); `plans` opens the overview of running work, `plan <plan_id>` a plan at its task or job, `cleanup` the cleanup job (xref:26-cleanup.adoc[Cleanup]).
-* *Models* print tokens and never money: the total with its split, in the number format of link:../shared/texts-and-languages.adoc#numbers[Texts and Languages, Numbers]; a total over calls not measured is a floor with `≥` and the count of those calls (link:../shared/system.adoc#models[System, The Models]). The line names the window and the grouping (`last hour · per model`, `today · per role`). `?` on a line prints its raw components as the harness reported them: input, cache read, cache write, output, reasoning, each `not reported` where the harness does not report it.
+* *Models* print tokens and never money: the total with its split, in the number format of link:../shared/texts-and-languages.adoc#numbers[Texts and Languages, Numbers]; a total over calls not measured is a floor with `≥` and the count of those calls (link:../shared/system.adoc#models[System, The Models]). The line names the window and the grouping (`Last hour · per model`, `Today · per role`). `?` on a line prints its raw components as the harness reported them: input, cache read, cache write, output, reasoning, each `not reported` where the harness does not report it.
 * `--project <project_id>` prints the work of that project; without it, every project's together, and a project still recovering says `recovering`.
 
 [#full-screen]
@@ -98,7 +98,7 @@ pm ›
   Jobs      locks  3 held
             build  1 of 2 slots · 1 queued
             test  0 of 1 slot
-  Models    last hour · per model · 172 calls · ≥ 5.63 M tokens (≥ 5.10 M in · ≥ 530 k out)
+  Models    Last hour · per model · 172 calls · ≥ 5.63 M tokens (≥ 5.10 M in · ≥ 530 k out)
   Cleanup   due: 12 plans · 2 epics · 40 logs · frees 1.8 GB
  ─────────────────────────────────────────────────────────────────────────────
  ↑↓ move   Enter open   a actions   ? help   q leave   w window   b by role   p per project
@@ -335,6 +335,14 @@ The texts of the view and of the acts are those of link:../shared/system-texts.a
 |`operator.system.too_narrow`
 |The system view needs {columns} columns; here is a snapshot instead.
 |Die Systemansicht braucht {columns} Spalten; hier ist stattdessen eine Momentaufnahme.
+
+|`operator.system.models.summary`
+|{window} · {by} · {calls, plural, one {# call} other {# calls}} · {tokens}
+|{window} · {by} · {calls, plural, one {# Aufruf} other {# Aufrufe}} · {tokens}
+
+|`operator.system.models.summary_no_tokens`
+|{window} · {by} · {calls, plural, one {# call} other {# calls}}
+|{window} · {by} · {calls, plural, one {# Aufruf} other {# Aufrufe}}
 
 |`operator.system.keep`
 |k) keep it running

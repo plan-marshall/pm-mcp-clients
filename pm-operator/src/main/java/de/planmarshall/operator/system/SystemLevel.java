@@ -371,7 +371,6 @@ public final class SystemLevel {
 
     private List<TuiRow> jobRows(String locale) {
         var jobs = requiredSnapshot().jobs();
-        var kinds = SystemView.jobKinds(jobs);
         var lines = SystemView.jobKindLines(locale, jobs);
         var rows = new ArrayList<TuiRow>(lines.size() + 1);
         for (int index = 0; index < lines.size(); index++) {

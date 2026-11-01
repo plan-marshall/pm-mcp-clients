@@ -1625,24 +1625,24 @@ public final class OverviewFullScreenApp {
                             : SystemLevel.unavailable(window, groupBy, projectId);
         currentSystem.set(level);
         // The status states the lifecycle on entry; a progress event refines it while it lasts.
-        systemBanner = fetchLifecycleLine();
+        systemBanner = SystemView.lifecycleLine(locale, fetchStatus());
         stack.push(TuiLevel.of(TuiLevel.Kind.SYSTEM, SystemLevel.LEVEL_ID, level.breadcrumb(locale)),
                             level.rows(locale), SystemLevel.ROW_RUNTIME);
     }
 
     /**
-     * Reads the lifecycle state the system view states first, the way the printed view does
-     * ({@code doc/design/shared/system.adoc#lifecycle}). A status the client cannot read leaves the
-     * line out; it never empties the view.
+     * Reads the runtime's status for the lifecycle line the system view states first, the way the
+     * printed view does ({@code doc/design/shared/system.adoc#state-line}). A status the client
+     * cannot read leaves the line as it was; it never empties the view.
      *
-     * @return the line, or {@code null} while the runtime runs or its state is not known
+     * @return the status, or {@code null} when it could not be read
      */
     @Nullable
-    String fetchLifecycleLine() {
+    RuntimeStatus fetchStatus() {
         try {
             var response = context.runtime(false).send(HttpRequest.get("/api/v1/status"));
             if (response.status() == 200) {
-                return SystemView.lifecycleLine(locale, RuntimeStatus.fromJson(response.bodyText()));
+                return RuntimeStatus.fromJson(response.bodyText());
             }
         } catch (IOException | IllegalArgumentException _) {
             // The view states no lifecycle it did not receive.
@@ -1704,12 +1704,15 @@ public final class OverviewFullScreenApp {
         }
         // The lifecycle line has two sources of the same fact: the status states it first, and a
         // progress event refines it with what is left by name. The status never overwrites a line
-        // an event wrote, and clears it once the runtime runs again.
-        var lifecycle = fetchLifecycleLine();
-        if (lifecycle == null) {
-            systemBanner = null;
-        } else if (systemBanner == null) {
-            systemBanner = lifecycle;
+        // an event wrote, and clears it once a read says the runtime runs again.
+        var status = fetchStatus();
+        if (status != null) {
+            var lifecycle = SystemView.lifecycleLine(locale, status);
+            if (lifecycle == null) {
+                systemBanner = null;
+            } else if (systemBanner == null) {
+                systemBanner = lifecycle;
+            }
         }
         synchronized (this) {
             var lvl = stack.level();
