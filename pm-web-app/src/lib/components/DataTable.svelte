@@ -79,7 +79,7 @@
           </th>
         {/each}
         {#if menuLabel}
-          <th scope="col" class="data-table__menu-head">{menuLabel}</th>
+          <th scope="col" class="data-table__menu-head"><span class="sr-only">{menuLabel}</span></th>
         {/if}
       </tr>
     </thead>
@@ -126,7 +126,10 @@
   }
 
   .data-table {
+    /* The spec's widths are the column widths: the table takes their sum and grows to the wrapper
+       only when they are narrower than it, so a declared 14rem stays 14rem. */
     inline-size: 100%;
+    max-inline-size: max-content;
     border-collapse: collapse;
     table-layout: fixed;
     color: var(--color-text-primary);
