@@ -75,6 +75,11 @@ public final class SystemView {
     private static final String PARAM_CALLS = "calls";
     private static final String PARAM_TOKENS = "tokens";
     private static final String PARAM_COUNT = "count";
+    private static final String PARAM_VERSION = "version";
+    private static final String PARAM_KIND = "kind";
+    private static final String PARAM_USED = "used";
+    private static final String PARAM_TOTAL = "total";
+    private static final String PARAM_MODEL = "model";
 
     private static final List<String> PLAN_STATE_ORDER =
                         List.of(STATE_RUNNING, "waiting_for_you", "held", "paused", "pausing");
@@ -209,11 +214,11 @@ public final class SystemView {
      */
     public static Figure runtime(RuntimeMetrics runtime, String locale) {
         var content = MessageCatalogue.format(locale, "system.runtime.since",
-                            Map.of("time", clean(runtime.startedAt()),
+                            Map.of(PARAM_TIME, clean(runtime.startedAt()),
                                                 "uptime", SystemFormatting.uptime(runtime.uptimeSeconds())));
         if (runtime.newerVersion() != null) {
             content += DOT + MessageCatalogue.format(locale, "system.runtime.available",
-                                Map.of("version", clean(runtime.newerVersion())));
+                                Map.of(PARAM_VERSION, clean(runtime.newerVersion())));
         }
         var details = new ArrayList<String>(4);
         details.add(memoryLine(locale, runtime));
@@ -228,14 +233,14 @@ public final class SystemView {
                                                     "version", clean(runtime.relaysBehindVersion()))));
         }
         var headline = MessageCatalogue.format(locale, "system.runtime.version_build",
-                            Map.of("version", clean(runtime.version()), "build", clean(runtime.build())));
+                            Map.of(PARAM_VERSION, clean(runtime.version()), "build", clean(runtime.build())));
         return new Figure(MessageCatalogue.format(locale, "system.runtime.title", Map.of()), content, details,
                             headline);
     }
 
     private static String memoryLine(String locale, RuntimeMetrics runtime) {
         var memory = MessageCatalogue.format(locale, "system.runtime.memory",
-                            Map.of("used", SystemFormatting.bytes(runtime.heapUsedBytes()),
+                            Map.of(PARAM_USED, SystemFormatting.bytes(runtime.heapUsedBytes()),
                                                 "max", SystemFormatting.bytes(runtime.heapMaxBytes()),
                                                 "resident", SystemFormatting.bytes(runtime.residentMemoryBytes())));
         var cpu = runtime.cpuPercent() != null && runtime.cpuPercent() >= 0.0
@@ -348,7 +353,7 @@ public final class SystemView {
         var line = String.format(Locale.ROOT, "%-14s%-10s%-12s%-12s", clean(worker.role()),
                             clean(worker.harness()), clean(worker.model()),
                             MessageCatalogue.format(locale, "system.workers.state",
-                                                Map.of("state", worker.state().value())));
+                                                Map.of(PARAM_STATE, worker.state().value())));
         var plan = worker.currentPlanTitle();
         return plan == null || plan.isBlank() ? line.stripTrailing() : line + clean(plan);
     }
@@ -375,9 +380,9 @@ public final class SystemView {
         var lines = new ArrayList<String>(jobs.size());
         for (var kind : jobKinds(jobs)) {
             lines.add(MessageCatalogue.format(locale, "system.jobs.slots_console",
-                                Map.of("kind", clean(kind), "used", integer(jobs, kind, "slots_used"),
-                                                    "total", integer(jobs, kind, "slots_total"),
-                                                    "queued", integer(jobs, kind, "queued"))));
+                                Map.of(PARAM_KIND, clean(kind), PARAM_USED, integer(jobs, kind, "slots_used"),
+                                                    PARAM_TOTAL, integer(jobs, kind, "slots_total"),
+                                                    PARAM_QUEUED, integer(jobs, kind, "queued"))));
         }
         return lines;
     }
@@ -476,7 +481,7 @@ public final class SystemView {
     public static String modelLine(String locale, String label, List<ModelMetric> models) {
         var totals = totals(models.stream().map(ModelTotals::of).toList());
         var calls = MessageCatalogue.format(locale, "system.models.line",
-                            Map.of("calls", totals.calls(), "tokens", modelTokensText(locale, totals, models)));
+                            Map.of(PARAM_CALLS, totals.calls(), PARAM_TOKENS, modelTokensText(locale, totals, models)));
         var line = String.format(Locale.ROOT, "%-22s %s", label, calls);
         var extras = new ArrayList<String>(2);
         if (totals.errors() > 0) {
@@ -499,7 +504,7 @@ public final class SystemView {
     private static String modelTokensText(String locale, ModelTotals totals, List<ModelMetric> models) {
         if (totals.total() == 0 && totals.unmeasured() > 0) {
             return MessageCatalogue.format(locale, "system.models.not_measured",
-                                Map.of("model", harnessOf(models)));
+                                Map.of(PARAM_MODEL, harnessOf(models)));
         }
         return tokensText(locale, totals);
     }
@@ -526,7 +531,7 @@ public final class SystemView {
             return MessageCatalogue.format(locale, "common.tokens.not_measured", Map.of());
         }
         return MessageCatalogue.format(locale, "common.tokens.split",
-                            Map.of("total", TokenFormat.formatTokens(totals.total(), totals.floor(), locale),
+                            Map.of(PARAM_TOTAL, TokenFormat.formatTokens(totals.total(), totals.floor(), locale),
                                                 "in", TokenFormat.formatTokens(totals.in(), totals.floor(), locale),
                                                 "out", TokenFormat.formatTokens(totals.out(), totals.floor(), locale)));
     }
@@ -537,7 +542,7 @@ public final class SystemView {
             case TODAY -> "today";
             case SEVEN_DAYS -> "week";
         };
-        return MessageCatalogue.format(locale, "system.models.window", Map.of("window", windowKey));
+        return MessageCatalogue.format(locale, "system.models.window", Map.of(PARAM_WINDOW, windowKey));
     }
 
     private static Map<String, List<ModelMetric>> grouped(List<ModelMetric> models, @Nullable String groupBy) {
@@ -592,7 +597,7 @@ public final class SystemView {
                             || cleanup.reportsCount() > 0 || cleanup.projectsCount() > 0;
         if (!due) {
             return MessageCatalogue.format(locale, "system.cleanup.line_none",
-                                Map.of("time", clean(cleanup.nextCheckAt())));
+                                Map.of(PARAM_TIME, clean(cleanup.nextCheckAt())));
         }
         return MessageCatalogue.format(locale, "system.cleanup.line_due",
                             Map.of("what", MessageCatalogue.format(locale, "system.cleanup.summary.what",
