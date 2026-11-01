@@ -1462,7 +1462,6 @@
   /* Alongside Section */
   .section-subtitle {
     font-size: var(--text-sm);
-    text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--color-text-muted);
     margin: var(--space-4) 0 var(--space-2) 0;

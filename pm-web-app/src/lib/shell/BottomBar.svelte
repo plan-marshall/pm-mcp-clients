@@ -416,7 +416,7 @@
       border-radius: var(--radius-full);
       background-color: var(--color-brand);
       color: var(--color-on-brand);
-      font-size: 0.65rem;
+      font-size: var(--text-xs);
       font-weight: 700;
     }
   }

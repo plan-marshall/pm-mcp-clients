@@ -247,4 +247,36 @@ describe('WorkControlPanel component', () => {
       expect(apiClient.getPlanActions).toHaveBeenLastCalledWith('relay-metrics');
     });
   });
+
+  it('says why an action cannot run, as the advisory and as its description', async () => {
+    vi.spyOn(apiClient, 'getPlanActions').mockResolvedValue({
+      ...running,
+      actions: [
+        { action: 'pause', available: false, reason: 'the ledger is landing' },
+        { action: 'chat', available: true },
+      ],
+    });
+
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    const pause = await screen.findByTestId('action-pause');
+    const describedBy = pause.getAttribute('aria-describedby');
+
+    expect(pause).toBeDisabled();
+    expect(pause.getAttribute('title')).toBe('the ledger is landing');
+    expect(describedBy).toBeTruthy();
+    expect(document.getElementById(describedBy as string)?.textContent).toContain(
+      'the ledger is landing',
+    );
+  });
+
+  it('names the panel and every control it offers', async () => {
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    expect(await screen.findByTestId('action-pause')).toBeInTheDocument();
+    expect(screen.getByTestId('control-actions')).toHaveAccessibleName();
+    for (const button of screen.getAllByRole('button')) {
+      expect(button).toHaveAccessibleName();
+    }
+  });
 });

@@ -104,7 +104,14 @@
   }
 </script>
 
-<div class="tabs" role="tablist" aria-label={label} bind:this={host} on:keydown={onKeydown}>
+<div
+  class="tabs"
+  role="tablist"
+  aria-label={label}
+  tabindex="-1"
+  bind:this={host}
+  on:keydown={onKeydown}
+>
   {#each tabs as tab (tab.id)}
     <button
       type="button"

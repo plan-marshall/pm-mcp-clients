@@ -47,6 +47,7 @@
   on:click
 >
   <Icon name={icon} size={iconSize} />
+  <span class="icon-btn__label">{label}</span>
 </button>
 
 {#if reason}
@@ -58,6 +59,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: var(--space-1);
     padding: 0;
     border: 1px solid transparent;
     border-radius: var(--radius-md);
@@ -65,6 +67,13 @@
     color: var(--color-text-secondary);
     transition: background-color var(--duration-fast) var(--ease-standard);
     cursor: pointer;
+  }
+
+  /* The glyph is the whole control only where there is no room for the word beside it. */
+  .icon-btn__label {
+    display: none;
+    font-size: var(--text-sm);
+    white-space: nowrap;
   }
 
   .icon-btn--sm {
@@ -97,6 +106,19 @@
     .icon-btn {
       inline-size: 44px;
       block-size: 44px;
+    }
+  }
+
+  /* From the tablet width up the label stands beside the glyph, so the control is not icon-only. */
+  @media (min-width: 768px) {
+    .icon-btn {
+      inline-size: auto;
+      min-inline-size: 34px;
+      padding-inline: var(--space-2);
+    }
+
+    .icon-btn__label {
+      display: inline;
     }
   }
 

@@ -1443,7 +1443,6 @@
   .node-kind-badge {
     font-size: var(--text-xs);
     color: var(--color-text-muted);
-    text-transform: uppercase;
     font-weight: 500;
   }
 
@@ -1636,8 +1635,7 @@
     padding: 1px 6px;
     border-radius: 3px;
     font-weight: 600;
-    font-size: 10px;
-    text-transform: uppercase;
+    font-size: var(--text-xs);
     flex-shrink: 0;
     background-color: var(--color-bg-subtle);
     color: var(--color-text-secondary);

@@ -1746,7 +1746,6 @@
   .designer__pane-title {
     font-size: var(--text-sm);
     font-weight: 700;
-    text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--color-text-secondary);
   }
@@ -1872,7 +1871,6 @@
   .designer__structure-title {
     font-size: var(--text-sm);
     font-weight: 700;
-    text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--color-text-secondary);
     margin-bottom: var(--space-2);

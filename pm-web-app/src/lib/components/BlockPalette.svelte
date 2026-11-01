@@ -177,7 +177,6 @@
   .palette__title {
     font-size: var(--text-sm);
     font-weight: 700;
-    text-transform: uppercase;
     letter-spacing: 0.05em;
     color: var(--color-text-secondary);
   }
@@ -220,7 +219,6 @@
     justify-content: space-between;
     font-size: var(--text-xs);
     font-weight: 700;
-    text-transform: uppercase;
     color: var(--color-text-secondary);
     margin: 0 0 var(--space-1) 0;
   }
@@ -286,7 +284,6 @@
   .palette__detail-heading {
     font-size: var(--text-xs);
     font-weight: 700;
-    text-transform: uppercase;
     color: var(--color-text-secondary);
     margin: var(--space-1) 0 0 0;
   }

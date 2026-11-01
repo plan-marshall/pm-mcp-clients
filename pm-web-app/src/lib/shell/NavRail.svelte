@@ -325,7 +325,7 @@
     border-radius: var(--radius-full);
     background-color: var(--color-brand);
     color: var(--color-on-brand);
-    font-size: 0.7rem;
+    font-size: var(--text-xs);
     font-weight: 700;
   }
 
@@ -335,7 +335,7 @@
     min-inline-size: 1rem;
     block-size: 1rem;
     padding-inline: 0.2rem;
-    font-size: 0.6rem;
+    font-size: var(--text-xs);
   }
 
   .nav-rail__foot {
