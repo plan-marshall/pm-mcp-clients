@@ -185,8 +185,10 @@ public final class SystemView {
             return null;
         }
         var state = MessageCatalogue.format(locale, "system.lifecycle." + status.state().value(), Map.of());
-        return MessageCatalogue.format(locale, "system.lifecycle.line",
-                            Map.of("state", state, "finish", Math.max(0, status.drainRemainingCount())));
+        // The count is what the runtime still holds while it drains; the later states stand alone.
+        var finish = status.state() == RuntimeLifecycleState.DRAINING
+                            ? Math.max(0, status.drainRemainingCount()) : 0;
+        return MessageCatalogue.format(locale, "system.lifecycle.line", Map.of("state", state, "finish", finish));
     }
 
     /**
@@ -362,7 +364,7 @@ public final class SystemView {
         var lines = new ArrayList<String>(jobs.size());
         for (var kind : jobKinds(jobs)) {
             lines.add(MessageCatalogue.format(locale, "system.jobs.slots_console",
-                                Map.of("kind", kind, "used", integer(jobs, kind, "slots_used"),
+                                Map.of("kind", clean(kind), "used", integer(jobs, kind, "slots_used"),
                                                     "total", integer(jobs, kind, "slots_total"),
                                                     "queued", integer(jobs, kind, "queued"))));
         }
@@ -377,7 +379,7 @@ public final class SystemView {
         var kinds = new ArrayList<String>(jobs.size());
         for (var entry : jobs.entrySet()) {
             if (!KINDS_LOCK.equals(entry.getKey()) && JsonTree.asObject(entry.getValue()) != null) {
-                kinds.add(clean(entry.getKey()));
+                kinds.add(entry.getKey());
             }
         }
         // The runtime may serve the kinds in any order; the view states them in the same one every
@@ -415,9 +417,7 @@ public final class SystemView {
     public static Figure models(List<ModelMetric> models, String locale, SystemWindow window,
                         @Nullable String groupBy) {
         var summary = modelsSummary(models, locale, window, groupBy);
-        var details = models.isEmpty()
-                            ? List.of(MessageCatalogue.format(locale, "system.models.none", Map.of()))
-                            : modelLines(locale, models, groupBy);
+        var details = models.isEmpty() ? List.<String>of() : modelLines(locale, models, groupBy);
         return new Figure(MessageCatalogue.format(locale, "system.models.title", Map.of()), summary, details);
     }
 
@@ -474,6 +474,11 @@ public final class SystemView {
         if (totals.retries() > 0) {
             extras.add(MessageCatalogue.format(locale, "system.models.retry", Map.of("count", totals.retries())));
         }
+        if (totals.unmeasured() > 0 && totals.total() > 0) {
+            // The line's total is a floor: the calls left out are counted once, beside the floor.
+            extras.add(MessageCatalogue.format(locale, "system.models.unmeasured",
+                                Map.of("count", totals.unmeasured())));
+        }
         if (!extras.isEmpty()) {
             line += "   " + String.join(DOT, extras);
         }
@@ -494,9 +499,12 @@ public final class SystemView {
      *         grouped by role still names the harness and not the role
      */
     private static String harnessOf(List<ModelMetric> models) {
-        var first = models.isEmpty() ? "" : clean(models.getFirst().harnessAndModel());
-        var colon = first.indexOf(':');
-        return colon > 0 ? first.substring(0, colon) : first;
+        return String.join(", ", models.stream()
+                            .filter(model -> model.unmeasuredCalls() > 0)
+                            .map(model -> clean(model.harnessAndModel()))
+                            .map(name -> name.indexOf(':') > 0 ? name.substring(0, name.indexOf(':')) : name)
+                            .distinct()
+                            .toList());
     }
 
     private static String tokensText(String locale, ModelTotals totals) {

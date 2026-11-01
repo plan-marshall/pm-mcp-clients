@@ -179,13 +179,13 @@ While the runtime is not simply running, the view states it on its first line, i
 
 [source,text]
 ----
-  draining · 2 plans finish
+  draining · 2 left
   stopping
   upgrading
   stopped
 ----
 
-* *`draining`* names what is left: the plans that still finish. A bound (`stop in 4 min`) stands there only where the runtime reports one; a client never computes it. The live form of the same line names the items one by one while it drains (<<draining>>). *`stopping`*, *`upgrading`* and *`stopped`* stand alone; a restart shows as `stopping` and then as the state that follows it.
+* *`draining`* names how much the runtime still holds. It is the runtime's count, not a count the client derives, so the line says `left` rather than naming a kind. The live form of the same line names the items one by one while it drains (<<draining>>). *`stopping`*, *`upgrading`* and *`stopped`* stand alone; a restart shows as `stopping` and then as the state that follows it.
 * The line is the view's own reading of the runtime's status; it states no figure the client did not receive.
 
 [#lifecycle]

@@ -54,8 +54,8 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |gestoppt
 
 |`system.lifecycle.line`
-|{state}{finish, plural, =0 {} one { · # plan finish} other { · # plans finish}}
-|{state}{finish, plural, =0 {} one { · # Plan endet} other { · # Pläne enden}}
+|{state}{finish, plural, =0 {} other { · # left}}
+|{state}{finish, plural, =0 {} other { · # offen}}
 
 |`system.runtime.available`
 |{version} available
@@ -208,6 +208,10 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |`system.models.retry`
 |{count, plural, one {# retry} other {# retries}}
 |{count, plural, one {# Wiederholung} other {# Wiederholungen}}
+
+|`system.models.unmeasured`
+|{count, plural, one {# call not measured} other {# calls not measured}}
+|{count, plural, one {# Aufruf nicht gemessen} other {# Aufrufe nicht gemessen}}
 
 |`system.models.not_measured`
 |tokens not measured: not reported by {model}

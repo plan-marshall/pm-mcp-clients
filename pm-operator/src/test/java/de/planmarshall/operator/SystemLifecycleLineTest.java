@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -37,6 +38,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+@EnableGeneratorController
 @DisplayName("The system view states the lifecycle on its first line")
 class SystemLifecycleLineTest {
 
@@ -121,7 +123,7 @@ class SystemLifecycleLineTest {
         int code = execute("en_US.UTF-8", "system");
 
         assertEquals(0, code, err.toString());
-        assertEquals("draining \u00b7 2 plans finish", out.toString().lines().findFirst().orElse(""),
+        assertEquals("draining \u00b7 2 left", out.toString().lines().findFirst().orElse(""),
                             out.toString());
     }
 
@@ -157,7 +159,7 @@ class SystemLifecycleLineTest {
         int code = execute("de_DE.UTF-8", "system");
 
         assertEquals(0, code, err.toString());
-        assertTrue(out.toString().lines().findFirst().orElse("").startsWith("leert sich \u00b7 2 Pl"),
+        assertTrue(out.toString().lines().findFirst().orElse("").startsWith("leert sich \u00b7 2 offen"),
                             out.toString());
     }
 }

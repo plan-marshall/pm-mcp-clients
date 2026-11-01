@@ -197,6 +197,7 @@ public final class OverviewFullScreenApp {
     private @Nullable String menuDecision;
     private @Nullable String statusMessage;
     private @Nullable String systemBanner;
+    private boolean systemBannerFromEvent;
     private @Nullable PrintWriter consoleOut;
     private @Nullable TuiScreenDriver activeDriver;
     private @Nullable OverviewKeyHandler activeKeyHandler;
@@ -1302,6 +1303,7 @@ public final class OverviewFullScreenApp {
                                 .map(OutputSafety::stripControlSequences).toList());
             systemBanner = MessageCatalogue.format(locale, "system.stopping.line",
                                 Map.of("count", event.remainingCount(), "what", what));
+            systemBannerFromEvent = true;
             terminal.raise(Terminal.Signal.WINCH);
         } catch (IOException _) {
             // A malformed event leaves the last line in place.
@@ -1626,6 +1628,7 @@ public final class OverviewFullScreenApp {
         currentSystem.set(level);
         // The status states the lifecycle on entry; a progress event refines it while it lasts.
         systemBanner = SystemView.lifecycleLine(locale, fetchStatus());
+        systemBannerFromEvent = false;
         stack.push(TuiLevel.of(TuiLevel.Kind.SYSTEM, SystemLevel.LEVEL_ID, level.breadcrumb(locale)),
                             level.rows(locale), SystemLevel.ROW_RUNTIME);
     }
@@ -1703,15 +1706,17 @@ public final class OverviewFullScreenApp {
             return;
         }
         // The lifecycle line has two sources of the same fact: the status states it first, and a
-        // progress event refines it with what is left by name. The status never overwrites a line
-        // an event wrote, and clears it once a read says the runtime runs again.
+        // progress event refines it with what is left by name. A status read replaces a line the
+        // status wrote and leaves an event's line alone; a read that says the runtime runs clears it.
         var status = fetchStatus();
         if (status != null) {
             var lifecycle = SystemView.lifecycleLine(locale, status);
             if (lifecycle == null) {
                 systemBanner = null;
-            } else if (systemBanner == null) {
+                systemBannerFromEvent = false;
+            } else if (systemBanner == null || !systemBannerFromEvent) {
                 systemBanner = lifecycle;
+                systemBannerFromEvent = false;
             }
         }
         synchronized (this) {

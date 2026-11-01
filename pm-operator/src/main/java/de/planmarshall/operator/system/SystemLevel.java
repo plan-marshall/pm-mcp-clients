@@ -372,9 +372,11 @@ public final class SystemLevel {
     private List<TuiRow> jobRows(String locale) {
         var jobs = requiredSnapshot().jobs();
         var lines = SystemView.jobKindLines(locale, jobs);
+        var kinds = SystemView.jobKinds(jobs);
         var rows = new ArrayList<TuiRow>(lines.size() + 1);
         for (int index = 0; index < lines.size(); index++) {
-            rows.add(TuiRow.leaf("sys:jobs:" + index, lines.get(index)));
+            // The id names the kind, so a kind that appears or leaves does not move the selection.
+            rows.add(TuiRow.leaf("sys:jobs:kind:" + SystemView.clean(kinds.get(index)), lines.get(index)));
         }
         rows.add(new TuiRow(ROW_LOCKS, SystemView.locksLine(locale, jobs), null, false, true));
         return rows;

@@ -45,7 +45,7 @@ The verbs of the specification stay as they are: `status` (the running work, wit
 [source,text]
 ----
 pm › system
-draining · 2 plans finish
+draining · 2 left
 System
 Runtime   pm-mcpd 0.9.1 · build 2026-10-02 (a1b2c3d) · running since today 08:14 · 6 h 12 min · 0.10.0 available
           memory 412 MB in use of 1 GB · 680 MB resident · CPU 4 %
@@ -73,7 +73,7 @@ pm ›
 ----
 
 * The same parts in the same order as link:../shared/system.adoc#view[System, The System View], as words: no meaning is in a colour or a glyph alone, a figure not available says so with its reason.
-* *The first line states the lifecycle* while there is one, in the words of link:../shared/system.adoc#state-line[System, The State of the Runtime]: `draining · 2 plans finish`, `stopping`, `upgrading`, `stopped`. While the runtime runs, the line is left out.
+* *The first line states the lifecycle* while there is one, in the words of link:../shared/system.adoc#state-line[System, The State of the Runtime]: `draining · 2 left`, `stopping`, `upgrading`, `stopped`. While the runtime runs, the line is left out.
 * *One line per fact*: each job kind states its slots on its own line and the locks theirs; a model whose calls reported no usage says `tokens not measured` once, with the harness that left them out (`system.models.not_measured`).
 * *One step* is a command: the last line names the commands of the figures that lead somewhere (link:../shared/system.adoc#one-step[System, One Step to What a Figure Counts]); `plans` opens the overview of running work, `plan <plan_id>` a plan at its task or job, `cleanup` the cleanup job (xref:26-cleanup.adoc[Cleanup]).
 * *Models* print tokens and never money: the total with its split, in the number format of link:../shared/texts-and-languages.adoc#numbers[Texts and Languages, Numbers]; a total over calls not measured is a floor with `≥` and the count of those calls (link:../shared/system.adoc#models[System, The Models]). The line names the window and the grouping (`Last hour · per model`, `Today · per role`). `?` on a line prints its raw components as the harness reported them: input, cache read, cache write, output, reasoning, each `not reported` where the harness does not report it.
@@ -87,7 +87,7 @@ pm ›
 ----
  System · pm-mcpd 0.9.1                                           ● connected
  ─────────────────────────────────────────────────────────────────────────────
-  draining · 2 plans finish
+  draining · 2 left
   Runtime   running since today 08:14 · 6 h 12 min       0.10.0 available
             memory 412 MB of 1 GB · 680 MB resident · CPU 4 %
 ▶ Work      plans  3 running · 1 waiting for you · 1 held · 2 paused
