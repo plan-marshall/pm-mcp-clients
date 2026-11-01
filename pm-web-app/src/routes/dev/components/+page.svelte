@@ -13,6 +13,10 @@
   import StatusLabel from '../../../lib/components/StatusLabel.svelte';
   import Tabs from '../../../lib/components/Tabs.svelte';
   import Toast from '../../../lib/components/Toast.svelte';
+  import DataTable from '../../../lib/components/DataTable.svelte';
+  import EmptyState from '../../../lib/components/EmptyState.svelte';
+  import ErrorState from '../../../lib/components/ErrorState.svelte';
+  import Skeleton from '../../../lib/components/Skeleton.svelte';
 
   /**
    * The development page (VD-P-05, VD-S-03): every control of design system v2, in both themes.
@@ -96,6 +100,36 @@
     $t('dev.dialog.consequence.drafts'),
     $t('dev.dialog.consequence.lessons'),
   ];
+
+  /** The columns of the data-table fixture: a text column, a state column and a number column. */
+  $: tableColumns = [
+    { id: 'plan', header: $t('dev.table.column.plan'), width: '14rem' },
+    { id: 'state', header: $t('dev.table.column.state'), width: '7rem' },
+    { id: 'tokens', header: $t('dev.table.column.tokens'), width: '6rem', numeric: true },
+  ];
+
+  /** The rows of the data-table fixture, with an already-formatted number in the last column. */
+  $: tableRows = [
+    {
+      id: '31',
+      cells: {
+        plan: $t('dev.table.plan.core'),
+        state: $t('state.task.done'),
+        tokens: '931k',
+      },
+    },
+    {
+      id: '35',
+      cells: {
+        plan: $t('dev.table.plan.data'),
+        state: $t('state.plan.running'),
+        tokens: '38k',
+      },
+    },
+  ];
+
+  /** The four skeleton shapes of the fixture, in the order VD-P-05 names them. */
+  const SKELETON_SHAPES = ['row', 'card', 'table', 'figure'] as const;
 </script>
 
 <div class="dev">
@@ -258,6 +292,69 @@
         actionLabel={$t('dev.attention.act')}
         onAct={() => {}}
       />
+
+      <h3 class="dev__section-title">{$t('dev.section.data_table')}</h3>
+      <DataTable
+        columns={tableColumns}
+        rows={tableRows}
+        label={$t('dev.table.label')}
+        menuLabel={$t('dev.table.menu')}
+        onMenu={() => {}}
+      />
+
+      <h3 class="dev__section-title">{$t('dev.section.data_table_compact')}</h3>
+      <DataTable
+        columns={tableColumns}
+        rows={tableRows}
+        label={$t('dev.table.label_compact')}
+        menuLabel={$t('dev.table.menu')}
+        compact
+        onMenu={() => {}}
+      />
+
+      <h3 class="dev__section-title">{$t('dev.section.data_table_empty')}</h3>
+      <DataTable columns={tableColumns} rows={[]} label={$t('dev.table.label_empty')}>
+        <svelte:fragment slot="empty">
+          <EmptyState
+            brand
+            title={$t('dev.empty.title')}
+            message={$t('dev.empty.message')}
+            actionLabel={$t('dev.empty.act')}
+            onAct={() => {}}
+          />
+        </svelte:fragment>
+      </DataTable>
+
+      <h3 class="dev__section-title">{$t('dev.section.empty_states')}</h3>
+      <div class="dev__grid">
+        <EmptyState
+          brand
+          title={$t('dev.empty.title')}
+          message={$t('dev.empty.message')}
+          actionLabel={$t('dev.empty.act')}
+          onAct={() => {}}
+        />
+        <EmptyState
+          icon="kind.lesson"
+          title={$t('dev.empty.icon_title')}
+          message={$t('dev.empty.icon_message')}
+        />
+        <ErrorState
+          title={$t('dev.error.title')}
+          message={$t('dev.error.message')}
+          code={$t('dev.error.code')}
+          detailsLabel={$t('dev.error.details')}
+          actionLabel={$t('dev.error.act')}
+          onAct={() => {}}
+        />
+      </div>
+
+      <h3 class="dev__section-title">{$t('dev.section.skeleton')}</h3>
+      <div class="dev__grid">
+        {#each SKELETON_SHAPES as shape (shape)}
+          <Skeleton {shape} rows={3} label={$t('dev.skeleton.label')} />
+        {/each}
+      </div>
     </section>
   {/each}
 </div>

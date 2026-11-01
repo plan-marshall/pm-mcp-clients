@@ -18,6 +18,7 @@ Status: `FINAL`. The design of the web app, the specification its implementation
 * link:workflow-visual-language.adoc[Workflow Visual Language]: one original icon per workflow unit, phase, axis, and recipe; the visual grammar, the SVG contract, the licence gate, the accessible use beside text, the icon catalogue, and the update checklist.
 * link:view-density-and-filtering.adoc[View Density and Filtering]: the three layout modes of the list views, their breakpoint, the shared filter-as-you-type contract, the per-view field matrices, and the adoption rule for future list surfaces.
 * link:interaction-affordances.adoc[Interaction Affordances]: the hover advisory of a control: the `X` → `X.title` key convention, what an advisory may say, the classes it is owed to, and the deterministic check that keeps a tooltip from repeating its label.
+* link:components.adoc[Components]: every control, container and data component of design system v2 (`VD-P-05`) with its specification and one picture each, the rules every component keeps, and the source and test that deliver it.
 * link:brand-mark.adoc[Brand Mark]: the project's own `24 × 24` mark: construction, the brand colour, meaning of the parts, provenance, delivery as an inline `currentColor` drawing and as the two tab copies, the uses (rail head, pairing page, empty states, favicon with the attention dot), theme, accessibility, and usage.
 * link:theme-readability.adoc[Theme Readability]: the design token contract, WCAG 2.1 AA contrast compliance, the audit allowlist, and automated verification across light and dark themes.
 * link:process-designer.adoc[Process Designer] with link:process-designer-texts.adoc[its Texts]: designing a workflow unit, the one part only the web app offers: the input (an uploaded file, a pasted text, an installed unit), the text and the structure side by side, the building blocks, the unit's frontmatter, validating with the composed process, placing on the machine or in the project with the difference first, removing.
@@ -114,6 +115,9 @@ How the app is organised and how one moves from one part to another and back. Un
 
 |The brand mark
 |link:brand-mark.adoc[Brand Mark]: the project's own original `24 × 24` vector, its three ascending plan sheets, baton, and runtime node, its provenance, its delivery as an inline `currentColor` drawing in the app and as the two baked tab copies, the uses of the mark (rail head, pairing page, empty states, favicon with the attention dot), and its usage rules
+
+|The components
+|link:components.adoc[Components]: the specification of `VD-P-05` with one picture per component, the controls of `PLAN-25`, the containers of `PLAN-31` and the data components of `PLAN-35`
 
 |Texts
 |link:../shared/texts-and-languages.adoc[Texts and Languages]; the keys of the area `web` are listed with the design that uses them (link:onboarding-texts.adoc#texts-web[Onboarding], link:entry.adoc#texts[Entry], link:machine-settings.adoc#texts[Machine Settings]); the area `designer` with link:process-designer-texts.adoc#texts[Process Designer]

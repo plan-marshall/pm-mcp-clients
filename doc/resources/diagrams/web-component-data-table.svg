@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 160" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">DataTable</title>
+  <desc id="d">A table with a sticky head on the subtle surface, three rows, a right-aligned number column and a row menu in the last column.</desc>
+  <rect width="360" height="160" fill="#F7F7F5"/>
+  <rect x="16" y="16" width="328" height="112" fill="#FFFFFF" stroke="#E3E3DE"/>
+  <rect x="16" y="16" width="328" height="26" fill="#F0F0EC"/>
+  <g font-size="11" font-weight="600" fill="#3E4450">
+    <text x="28" y="34">Plan</text>
+    <text x="196" y="34">State</text>
+    <text x="272" y="34" text-anchor="end">Tokens</text>
+  </g>
+  <line x1="16" y1="42" x2="344" y2="42" stroke="#CFCFC8"/>
+  <g font-size="12" fill="#16181D">
+    <text x="28" y="62">web core components</text>
+    <text x="196" y="62">done</text>
+    <text x="272" y="62" text-anchor="end" font-variant-numeric="tabular-nums">931k</text>
+    <text x="28" y="90">web data components</text>
+    <text x="196" y="90">running</text>
+    <text x="272" y="90" text-anchor="end" font-variant-numeric="tabular-nums">38k</text>
+    <text x="28" y="118">web design docs</text>
+    <text x="196" y="118">done</text>
+    <text x="272" y="118" text-anchor="end" font-variant-numeric="tabular-nums">4k</text>
+  </g>
+  <line x1="16" y1="68" x2="344" y2="68" stroke="#E3E3DE"/>
+  <line x1="16" y1="96" x2="344" y2="96" stroke="#E3E3DE"/>
+  <g fill="#3E4450">
+    <circle cx="320" cy="62" r="1.4"/>
+    <circle cx="326" cy="62" r="1.4"/>
+    <circle cx="332" cy="62" r="1.4"/>
+    <circle cx="320" cy="90" r="1.4"/>
+    <circle cx="326" cy="90" r="1.4"/>
+    <circle cx="332" cy="90" r="1.4"/>
+    <circle cx="320" cy="118" r="1.4"/>
+    <circle cx="326" cy="118" r="1.4"/>
+    <circle cx="332" cy="118" r="1.4"/>
+  </g>
+  <text x="16" y="148" font-size="11" fill="#5F6672">fixed column widths · sticky head · 40 px rows, 32 px compact · numbers right-aligned ·</text>
+  <text x="16" y="156" font-size="11" fill="#5F6672">row menu in the last column · an empty slot when there are no rows</text>
+</svg>
