@@ -296,6 +296,27 @@ describe('PlanView component', () => {
     expect(days[0]).toHaveTextContent('today');
   });
 
+  it('keeps one day header across a row the runtime dates not at all', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 15, 12));
+    const today = new Date();
+    const datedAt = (hour: number, minute: number): string =>
+      new Date(today.getFullYear(), today.getMonth(), today.getDate(), hour, minute).toISOString();
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      ...mockActivity,
+      entries: [
+        { timestamp: datedAt(14, 5), kind: 'text', content: 'dated' },
+        { timestamp: '', kind: 'text', content: 'the runtime dates this row not at all' },
+        { timestamp: datedAt(14, 6), kind: 'text', content: 'dated again' },
+      ],
+    });
+
+    render(PlanView);
+
+    await screen.findByTestId('task-inspector');
+    expect(await screen.findAllByTestId('activity-day')).toHaveLength(1);
+  });
+
   it('normalizes live activity events and ignores malformed ones', async () => {
     let onEvent: ((event: string, data: unknown) => void) | undefined;
     vi.spyOn(apiClient, 'subscribeTaskActivity').mockImplementation(

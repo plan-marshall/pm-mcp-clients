@@ -189,6 +189,8 @@ Every instant and every duration is shown in one format, defined here and nowher
 |the activity stream, with the date on the first row of each day
 |===
 
+A row of the activity stream the runtime dates only by its clock belongs to the day the client read it: that day opens the group, and a row the runtime dates not at all opens none, so a day carries one header however its rows arrive.
+
 A duration has one rendering in both clients — `Display.duration` in `pm-api` and `formatDuration` in the web app, as the display layer introduces them — and the three duration rows above are the only forms it uses above a minute.
 
 [#numbers]

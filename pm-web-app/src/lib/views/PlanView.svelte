@@ -526,29 +526,27 @@
   /**
    * The day a row opens, where the row carries a date or a clock.
    *
-   * A clock alone carries no date, so it belongs to the day it was read; the header then appears
-   * only when the row opens a day of its own, never a second time for the same day.
+   * A clock alone carries no date, so it belongs to the day it was read. The header appears when
+   * the row opens a day of its own: a row the runtime dates not at all opens none, and the next
+   * dated row of the same day keeps the single header.
    *
    * @param entries the entries of the task's activity
    * @param index the entry's position
    * @returns the day to print above the row, or an empty string
    */
   function dayLabel(entries: ActivityEntry[], index: number): string {
-    const day = formatDay(entries[index]?.timestamp, $currentLocale, new Date(clock));
+    const timestamp = entries[index]?.timestamp;
+    const day = formatDay(timestamp, $currentLocale, new Date(clock));
     if (!day) return '';
-    if (index === 0) return day;
-    const previous = entries[index - 1]?.timestamp;
-    return sameCalendarDay(entries[index]?.timestamp, previous) ? '' : day;
-  }
-
-  /**
-   * @param left a timestamp @param right another timestamp @returns whether they fall on one day
-   */
-  function sameCalendarDay(left?: string | null, right?: string | null): boolean {
     const now = new Date(clock);
-    const leftDay = dayOf(left, now);
-    const rightDay = dayOf(right, now);
-    return leftDay !== null && rightDay !== null && leftDay.getTime() === rightDay.getTime();
+    const own = dayOf(timestamp, now);
+    if (own === null) return day;
+    for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+      const previous = dayOf(entries[cursor]?.timestamp, now);
+      if (previous === null) continue;
+      return previous.getTime() === own.getTime() ? '' : day;
+    }
+    return day;
   }
 
   /**
