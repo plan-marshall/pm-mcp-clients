@@ -1342,10 +1342,8 @@
 
 <style>
   .system-container {
-    max-width: 1200px;
     min-inline-size: 0;
     max-inline-size: 100%;
-    margin: 0 auto;
     width: 100%;
   }
 
