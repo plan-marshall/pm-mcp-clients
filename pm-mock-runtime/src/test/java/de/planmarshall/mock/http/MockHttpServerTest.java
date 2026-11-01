@@ -33,8 +33,8 @@ class MockHttpServerTest {
     @Test
     @DisplayName("starts loopback TCP server, handles requests, and captures arrivals")
     void tcpServerLifecycle() throws Exception {
-        var echoPath = "/" + Generators.letterStrings(4, 10).next();
-        var errorPath = "/" + Generators.letterStrings(4, 10).next();
+        var echoPath = "/echo-" + Generators.letterStrings(4, 10).next();
+        var errorPath = "/error-" + Generators.letterStrings(4, 10).next();
         var payload = Generators.letterStrings(4, 12).next();
         try (var server = MockHttpServer.startTcp(0, (req, res) -> {
                  if (echoPath.equals(req.path())) {

@@ -437,7 +437,7 @@ class StartContractTest {
         void pickerRefusals() throws Exception {
             try (var runtime = MockRuntime.start(state("start.sources"))) {
                 var auth = "Bearer " + runtime.token();
-                var unknownRoot = Generators.letterStrings(4, 10).next().toLowerCase();
+                var unknownRoot = "unknown-" + Generators.letterStrings(4, 10).next().toLowerCase();
                 var unknownRootRes = client(runtime).send(HttpRequest.get(
                         "/api/v1/projects/pm-mcp-clients/files?root=" + unknownRoot)
                         .withHeader("Authorization", auth));

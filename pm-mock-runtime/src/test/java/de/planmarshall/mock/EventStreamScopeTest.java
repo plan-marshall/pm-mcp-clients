@@ -83,9 +83,9 @@ class EventStreamScopeTest {
             var auth = "Bearer " + runtime.token();
 
             String lastId;
-            var firstCheck = Generators.letterStrings(4, 10).next().toLowerCase();
-            var secondCheck = Generators.letterStrings(4, 10).next().toLowerCase();
-            var thirdCheck = Generators.letterStrings(4, 10).next().toLowerCase();
+            var firstCheck = "first-" + Generators.letterStrings(4, 10).next().toLowerCase();
+            var secondCheck = "second-" + Generators.letterStrings(4, 10).next().toLowerCase();
+            var thirdCheck = "third-" + Generators.letterStrings(4, 10).next().toLowerCase();
             try (var first = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", auth))) {
                 var events = first.events();
                 runtime.engine().broadcast("check.result", Map.of("check_id", firstCheck, "result", "pass"));

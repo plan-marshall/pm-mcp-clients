@@ -268,7 +268,7 @@ class NeedsAndFindScenarioTest {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
 
-                var noMatch = Generators.letterStrings(8, 14).next();
+                var noMatch = "absent-" + Generators.letterStrings(8, 14).next();
                 var none = client.send(HttpRequest.get(MachineApiPaths.FIND + "?q=" + noMatch)
                         .withHeader(AUTH_HEADER, auth));
                 assertEquals(200, none.status());

@@ -235,8 +235,8 @@ class MockRuntimeEngineTest {
         assertEquals("missing_scenario_name", res4.json().get("error"));
 
         // 5. Unknown scenario name -> 404
-        var res5 = send("POST", "/mock/scenario?name=" + Generators.letterStrings(6, 12).next(),
-                Map.of(), new byte[0], false);
+        var res5 = send("POST", "/mock/scenario?name=unknown-"
+                + Generators.letterStrings(6, 12).next(), Map.of(), new byte[0], false);
         assertEquals(404, res5.status());
         assertEquals("scenario_not_found", res5.json().get("error"));
     }
@@ -393,7 +393,7 @@ class MockRuntimeEngineTest {
 
         // Wrong Authorization -> 401
         var res2 = send("GET", "/api/v1/status", Map.of("Authorization",
-                "Bearer " + Generators.letterStrings(8, 16).next()), new byte[0], true);
+                "Bearer " + deviceSecret + "x"), new byte[0], true);
         assertEquals(401, res2.status());
 
         // Correct Authorization -> accepted

@@ -92,7 +92,7 @@ class MockRuntimeCliTest {
     @Test
     @DisplayName("falls back to PM_MOCK_WEB_PORT when CLI argument is not specified")
     void webPortEnvFallback() {
-        var envPort = Generators.integers(1024, 65535).next();
+        var envPort = Generators.integers(7421, 65535).next();
         var result = MockRuntimeCli.parse(new String[0], out, err, Map.of("PM_MOCK_WEB_PORT", String.valueOf(envPort)));
         assertEquals(0, result.exitCode());
         assertTrue(result.isSuccess());
@@ -194,7 +194,7 @@ class MockRuntimeCliTest {
     @DisplayName("parses short flags correctly")
     void shortFlags() {
         var base = "/tmp/" + Generators.letterStrings(4, 10).next().toLowerCase();
-        var port = Generators.integers(1024, 65535).next();
+        var port = Generators.integers(7421, 65535).next();
         var token = Generators.letterStrings(4, 12).next();
         var secret = "pmw_" + Generators.letterStrings(4, 12).next();
         var args = new String[]{

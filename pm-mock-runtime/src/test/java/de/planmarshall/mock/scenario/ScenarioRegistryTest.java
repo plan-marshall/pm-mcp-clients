@@ -99,7 +99,7 @@ class ScenarioRegistryTest {
     @Test
     @DisplayName("throws IllegalArgumentException for unknown scenario")
     void throwsOnUnknownScenario() {
-        var unknown = Generators.letterStrings(8, 16).next();
+        var unknown = "absent-" + Generators.letterStrings(8, 16).next();
         var ex = assertThrows(IllegalArgumentException.class, () -> registry.resolve(unknown));
         assertTrue(ex.getMessage().contains("Scenario not found"));
     }
@@ -138,7 +138,7 @@ class ScenarioRegistryTest {
     @Test
     @DisplayName("resolves a legacy alias only when the legacy file is absent")
     void resolvesLegacyAliasAsFallback() {
-        var alias = Generators.letterStrings(4, 12).next();
+        var alias = "alias-" + Generators.letterStrings(4, 12).next().toLowerCase();
         registry.registerLegacyAlias(alias, StandardScenarios.PROJECTS_AND_START
                 + "#projects.explorer");
         var aliased = registry.resolve(alias);
@@ -176,7 +176,7 @@ class ScenarioRegistryTest {
     @Test
     @DisplayName("an alias does not overwrite the primary scenario's own start state")
     void aliasDoesNotOverwritePrimaryStart() {
-        var alias = Generators.letterStrings(4, 12).next();
+        var alias = "ghost-" + Generators.letterStrings(4, 12).next().toLowerCase();
         registry.registerLegacyAlias(alias, StandardScenarios.PROJECTS_AND_START
                 + "#start.sources");
         assertEquals("start.sources", registry.resolve(alias).start());
@@ -196,7 +196,7 @@ class ScenarioRegistryTest {
     @Test
     @DisplayName("finds scenario safely returning Optional and handles clear")
     void findAndClear() {
-        var unknown = Generators.letterStrings(8, 16).next();
+        var unknown = "unknown-" + Generators.letterStrings(8, 16).next();
         assertTrue(registry.find(StandardScenarios.STATUS_ONLY).isPresent());
         assertTrue(registry.find(unknown).isEmpty());
         assertTrue(registry.find(null).isEmpty());
