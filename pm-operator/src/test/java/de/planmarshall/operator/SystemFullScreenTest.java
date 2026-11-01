@@ -265,7 +265,7 @@ class SystemFullScreenTest {
             await(() -> shows(virtual, "Runtime   running since today 08:14"));
             await(() -> shows(virtual, "Work      plans  3 running"));
             await(() -> shows(virtual, "Workers   2 \u00b7 1 busy \u00b7 1 idle"));
-            await(() -> shows(virtual, "Jobs      build  1 of 2 slots"));
+            await(() -> shows(virtual, "Jobs      locks  3 held"));
             await(() -> shows(virtual, "Models    Last hour"));
             await(() -> shows(virtual, "Cleanup   due: 12 plans"));
             await(() -> shows(virtual,

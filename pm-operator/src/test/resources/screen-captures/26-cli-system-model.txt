@@ -1,0 +1,32 @@
+# Screen captures for PLAN-26: Terminal: One System Model (CLI-UC-S-08, CLI-UC-P-06)
+# name | scenario | states | command | keys | columnsxrows | locale | environment | keys before the capture
+#
+# The target of the set is `reports-and-system` -> `system.running` and `system.draining`:
+#   system-print-*   `system` as one shell command: the printed view, with the lifecycle state
+#                    on its first line and one line per job kind
+#   system-screen-*  `system` typed in the console: the full-screen view, closed with `q`, and the
+#                    console ended with `exit`
+#
+# The keyless captures come first, so a run of this set against the code before the change records
+# the old printed and full-screen views of both targets.
+
+system-print-running-120x30-en | reports-and-system | system.running | system | - | 120x30 | en_US.UTF-8 | -
+system-print-running-80x24-en | reports-and-system | system.running | system | - | 80x24 | en_US.UTF-8 | -
+system-print-running-120x30-de | reports-and-system | system.running | system | - | 120x30 | de_DE.UTF-8 | -
+system-print-running-80x24-de | reports-and-system | system.running | system | - | 80x24 | de_DE.UTF-8 | -
+
+system-print-draining-120x30-en | reports-and-system | system.draining | system | - | 120x30 | en_US.UTF-8 | -
+system-print-draining-80x24-en | reports-and-system | system.draining | system | - | 80x24 | en_US.UTF-8 | -
+system-print-draining-120x30-de | reports-and-system | system.draining | system | - | 120x30 | de_DE.UTF-8 | -
+system-print-draining-80x24-de | reports-and-system | system.draining | system | - | 80x24 | de_DE.UTF-8 | -
+
+# The console opens the view on the alternate screen; `q` leaves it and `exit` ends the console.
+system-screen-running-120x30-en | reports-and-system | system.running |  | qexit\n | 120x30 | en_US.UTF-8 | - | system\n
+system-screen-running-80x24-en | reports-and-system | system.running |  | qexit\n | 80x24 | en_US.UTF-8 | - | system\n
+system-screen-running-120x30-de | reports-and-system | system.running |  | qexit\n | 120x30 | de_DE.UTF-8 | - | system\n
+system-screen-running-80x24-de | reports-and-system | system.running |  | qexit\n | 80x24 | de_DE.UTF-8 | - | system\n
+
+system-screen-draining-120x30-en | reports-and-system | system.draining |  | qexit\n | 120x30 | en_US.UTF-8 | - | system\n
+system-screen-draining-80x24-en | reports-and-system | system.draining |  | qexit\n | 80x24 | en_US.UTF-8 | - | system\n
+system-screen-draining-120x30-de | reports-and-system | system.draining |  | qexit\n | 120x30 | de_DE.UTF-8 | - | system\n
+system-screen-draining-80x24-de | reports-and-system | system.draining |  | qexit\n | 80x24 | de_DE.UTF-8 | - | system\n

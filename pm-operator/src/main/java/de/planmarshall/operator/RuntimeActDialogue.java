@@ -16,12 +16,12 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
-import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.runtime.RuntimeRecord;
 import de.planmarshall.api.runtime.RuntimeUnavailableException;
 import de.planmarshall.api.system.SystemSnapshot;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
+import de.planmarshall.operator.system.SystemView;
 
 /**
  * The confirmation of a runtime act ({@code 25-system.adoc#t-stop}, {@code #t-restart},
@@ -102,8 +102,6 @@ final class RuntimeActDialogue {
 
     private static final String DRAIN = "drain";
     private static final String NOW = "now";
-    private static final String RUNNING = "running";
-    private static final String DOT = " \u00b7 ";
 
     private RuntimeActDialogue() {
     }
@@ -249,45 +247,14 @@ final class RuntimeActDialogue {
             return MessageCatalogue.format(locale, "system.confirm.running",
                                 Map.of("what", MessageCatalogue.format(locale, "system.figure.unavailable", Map.of())));
         }
-        var what = what(locale, snapshot).strip();
-        // The counts are one ICU message, so a zero group leaves its separator behind.
-        var separator = DOT.strip();
-        while (what.startsWith(separator)) {
-            what = what.substring(separator.length()).strip();
-        }
+        var what = SystemView.runningNow(locale, snapshot);
         return what.isBlank()
                             ? MessageCatalogue.format(locale, "system.confirm.nothing_runs", Map.of())
                             : MessageCatalogue.format(locale, "system.confirm.running", Map.of("what", what));
     }
 
-    private static String what(String locale, SystemSnapshot snapshot) {
-        return MessageCatalogue.format(locale, "system.confirm.what",
-                            Map.of("plans", count(snapshot.work().plansByState()),
-                                                "epics", count(snapshot.work().epicsByState()),
-                                                "tasks", snapshot.work().tasksRunning(),
-                                                "jobs", jobs(snapshot.jobs()),
-                                                "workers", snapshot.workers().size()));
-    }
-
     private static @Nullable String newerVersion(@Nullable SystemSnapshot snapshot) {
         return snapshot != null ? snapshot.runtime().newerVersion() : null;
-    }
-
-    private static int count(Map<String, Integer> byState) {
-        var count = byState.get(RUNNING);
-        return count != null ? count : 0;
-    }
-
-    private static int jobs(Map<String, Object> jobs) {
-        var used = 0;
-        for (var entry : jobs.entrySet()) {
-            var slots = JsonTree.asObject(entry.getValue());
-            var count = slots != null ? JsonTree.integer(slots, "slots_used") : null;
-            if (count != null) {
-                used += count;
-            }
-        }
-        return used;
     }
 
     private static @Nullable String noteKey(Act act) {
