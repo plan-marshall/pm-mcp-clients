@@ -13,6 +13,35 @@ The list views of the web app (`/reports`, `/decisions`, the running and ended w
 
 It changes nothing about the data: no endpoint, no record, no server-side search, and no pagination semantics.
 
+[#templates]
+== Page Templates Replace the Layout Modes
+
+link:../../claude_review/ux/proposals.adoc#UX-P-03[UX-P-03] replaces the three layout modes with four page
+templates:
+
+[cols="1,2",options="header"]
+|===
+| Template | Width and split
+
+| `lib/templates/TriagePage.svelte`
+| Full width; the list and the detail split 40 / 60. Below 1100 px the detail replaces the list.
+
+| `lib/templates/ObjectPage.svelte`
+| At most 1440 px, centred.
+
+| `lib/templates/WizardPage.svelte`
+| 720 px, centred.
+
+| `lib/templates/DashboardPage.svelte`
+| At most 1440 px, centred.
+|===
+
+A view sits on one template and takes the page's width and split from it: no view sets its own page width, and
+no view keeps a layout toggle or a `pm_view_layout_<view>` choice. The filter of <<filter>> stays with the view —
+the template owns the panes, the view owns its items, its matches and its result count. A list view that has not
+moved yet still carries the modes of <<layouts>>; this section records the target, and the plan that moves the
+view removes the mode from it.
+
 [#layouts]
 == Layout Modes
 
