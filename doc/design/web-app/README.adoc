@@ -442,7 +442,7 @@ body      Runtime   pm-mcpd 0.9.1 · build 2026-10-02 (a1b2c3d)   0.10.0 availab
 * The three acts are buttons in the context tier, not in the body; each opens its confirmation as a dialogue over the view. A figure that leads to what it counts is a link; a figure that is not measured says so and never shows a zero.
 * Grouping and window switches are segmented controls of the part they belong to (`--color-primary-subtle` for the chosen one), not a global filter.
 * The stopped state replaces the body with the page that says the runtime is stopped and how to start it; the header and the frame stay, and the page connects again by itself.
-* Width: `1000px` on the desktop; the parts stack in the same order on the tablet and the phone, and a figure's unit stays with its number.
+* Width: the dashboard template (at most `1440px`, link:view-density-and-filtering.adoc#templates[Page Templates Replace the Layout Modes]); the parts stack in the same order on the tablet and the phone, and a figure's unit stays with its number.
 
 [#cleanup-layout]
 === Cleanup View (`/system/cleanup`)

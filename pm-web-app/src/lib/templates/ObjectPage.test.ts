@@ -60,6 +60,13 @@ describe('ObjectPage', () => {
     expect(root).toContain('width: 100%');
   });
 
+  it('adds no second surface around the strip and the tabs', () => {
+    const style = styleOf(SOURCE);
+
+    expect(style).not.toMatch(/\.object-page__attention\s*\{/);
+    expect(style).not.toMatch(/\.object-page__tabs\s*\{/);
+  });
+
   it('takes the 12 px inset on the phone', () => {
     const style = styleOf(SOURCE);
     const index = style.indexOf('@media (max-width: 480px)');

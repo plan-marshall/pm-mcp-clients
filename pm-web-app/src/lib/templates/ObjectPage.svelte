@@ -5,7 +5,9 @@
    * state asks for something, the tabs and the body.
    *
    * The page is capped at 1440 px and centred. The template owns the regions; the view fills them
-   * with its own content, so no object view sets its own page width.
+   * with its own content, so no object view sets its own page width. The attention slot takes the
+   * `AttentionStrip` component and the tabs slot the `Tabs` component: the template puts no second
+   * surface, border or rule around them.
    */
 </script>
 
@@ -122,18 +124,6 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
-  }
-
-  .object-page__attention {
-    padding: var(--space-3) var(--space-4);
-    border: 1px solid var(--color-attention);
-    border-radius: var(--radius-md);
-    background-color: var(--color-attention-subtle);
-    color: var(--color-attention-text);
-  }
-
-  .object-page__tabs {
-    border-block-end: 1px solid var(--color-border);
   }
 
   .object-page__body {
