@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { t } from '../i18n';
   import type { ChatProposal, ChatTurn } from '../api/client';
   import { uniqueId } from '../utils/uniqueId';
@@ -65,7 +65,7 @@
     }
   }
 
-  /** @param event the key press on the panel */
+  /** @param event the key press anywhere while the panel is open */
   function closeOnEscape(event: KeyboardEvent): void {
     if (event.key !== 'Escape' || !open) {
       return;
@@ -73,11 +73,17 @@
     event.stopPropagation();
     void close();
   }
+
+  // The listener sits on the window: the control that opened the panel keeps the focus, so a key
+  // press is delivered to it and never to the panel's own subtree.
+  onMount(() => {
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  });
 </script>
 
 {#if open}
-  <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-  <aside class="chat-panel" data-testid="chat-panel" aria-label={subject} on:keydown={closeOnEscape}>
+  <aside class="chat-panel" data-testid="chat-panel" aria-label={subject}>
     <header class="chat-panel__head">
       <div class="chat-panel__subject">
         <span class="chat-panel__subject-text">{subject}</span>
