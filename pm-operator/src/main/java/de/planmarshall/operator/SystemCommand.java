@@ -46,7 +46,6 @@ import picocli.CommandLine.Spec;
 @Command(name = "system", description = "Shows the system view; never starts the runtime.")
 public final class SystemCommand implements Callable<Integer> {
 
-    private static final String STATUS_PATH = "/api/v1/status";
     private static final String FOOTER = "plans · cleanup · system --window today · system --by role";
 
     private final OperatorContext context;
@@ -199,7 +198,7 @@ public final class SystemCommand implements Callable<Integer> {
      */
     private @Nullable RuntimeStatus readStatus() {
         try {
-            var response = context.runtime(false).send(HttpRequest.get(STATUS_PATH));
+            var response = context.runtime(false).send(HttpRequest.get("/api/v1/status"));
             return response.status() == 200 ? RuntimeStatus.fromJson(response.bodyText()) : null;
         } catch (IOException _) {
             return null;
