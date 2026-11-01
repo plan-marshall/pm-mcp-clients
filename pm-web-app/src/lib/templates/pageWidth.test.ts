@@ -21,8 +21,11 @@ const VIEWS_ON_TEMPLATES: ReadonlyArray<{ file: string; root: string }> = [
   { file: 'SystemView.svelte', root: '.system-container' },
 ];
 
-/** The templates a view can sit on. */
-const TEMPLATES = ['TriagePage', 'ObjectPage', 'WizardPage', 'DashboardPage'];
+/** The templates a view can sit on: every `*Page.svelte` component in this directory. */
+const TEMPLATES = fs
+  .readdirSync(__dirname)
+  .filter((name) => name.endsWith('Page.svelte'))
+  .map((name) => name.slice(0, -'.svelte'.length));
 
 /**
  * @param file a view file's path
@@ -46,6 +49,21 @@ describe('the page width belongs to the template', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('lists every view that imports a page template', () => {
+    const listed = new Set(VIEWS_ON_TEMPLATES.map((view) => view.file));
+    const unlisted = fs
+      .readdirSync(VIEWS_DIR)
+      .filter((file) => file.endsWith('.svelte'))
+      .filter((file) =>
+        TEMPLATES.some((template) =>
+          sourceOf(path.join(VIEWS_DIR, file)).includes(`templates/${template}.svelte`),
+        ),
+      )
+      .filter((file) => !listed.has(file));
+
+    expect(unlisted).toEqual([]);
+  });
+
   it('sets no max-width on the page root of a view that sits on a template', () => {
     expect(pageWidthOffenders(VIEWS_DIR, VIEWS_ON_TEMPLATES)).toEqual([]);
   });
@@ -66,6 +84,15 @@ describe('the page width belongs to the template', () => {
 
     expect(offenders).toHaveLength(1);
     expect(offenders[0]).toContain('max-inline-size: 1200px');
+  });
+
+  it('reports a view that caps its root with an inline style (control)', () => {
+    const offenders = pageWidthOffenders(CONTROL_DIR, [
+      { file: 'InlineStyleView.svelte', root: '.control-inline-style' },
+    ]);
+
+    expect(offenders).toHaveLength(1);
+    expect(offenders[0]).toContain('max-width: 1200px');
   });
 
   it('reports a page root whose selector matches no rule instead of passing vacuously', () => {
