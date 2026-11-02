@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 140" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">Tabs</title>
+  <desc id="d">Three tabs on one rule: the selected one carries the brand colour and a brand underline, and two of them carry a count.</desc>
+  <rect width="360" height="140" fill="#F7F7F5"/>
+  <line x1="24" y1="80" x2="336" y2="80" stroke="#E3E3DE"/>
+  <g font-size="13">
+    <text x="24" y="70" fill="#5B4BDB">Open</text>
+    <rect x="66" y="58" width="22" height="20" rx="10" fill="#FFF4E0"/>
+    <text x="77" y="72" font-size="11" fill="#8A5200" text-anchor="middle">2</text>
+    <line x1="24" y1="80" x2="96" y2="80" stroke="#5B4BDB" stroke-width="3"/>
+    <text x="116" y="70" fill="#3E4450">Done</text>
+    <text x="176" y="70" fill="#3E4450">Failed</text>
+    <rect x="234" y="58" width="22" height="20" rx="10" fill="#F0F0EC"/>
+    <text x="245" y="72" font-size="11" fill="#3E4450" text-anchor="middle">1</text>
+  </g>
+  <text x="24" y="110" font-size="11" fill="#5F6672">underline style in the brand colour; the counts are CountBadges</text>
+</svg>

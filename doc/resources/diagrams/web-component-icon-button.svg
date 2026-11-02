@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 140" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">IconButton</title>
+  <desc id="d">Three square ghost buttons: one 28 pixels for a row, one 34 pixels, one 40 pixels, each drawn with a single glyph.</desc>
+  <rect width="360" height="140" fill="#F7F7F5"/>
+  <g fill="none" stroke="#3E4450" stroke-width="1.5" stroke-linecap="round">
+    <rect x="24" y="52" width="28" height="28" rx="8" stroke="#E3E3DE" stroke-width="0"/>
+    <circle cx="32" cy="66" r="1.4" fill="#3E4450" stroke="none"/>
+    <circle cx="38" cy="66" r="1.4" fill="#3E4450" stroke="none"/>
+    <circle cx="44" cy="66" r="1.4" fill="#3E4450" stroke="none"/>
+    <rect x="72" y="49" width="34" height="34" rx="8"/>
+    <path d="M83 66h12M89 60v12"/>
+    <rect x="126" y="46" width="40" height="40" rx="8"/>
+    <path d="M146 58v16M138 66h16"/>
+  </g>
+  <text x="24" y="104" font-size="11" fill="#5F6672">sm 28</text>
+  <text x="72" y="104" font-size="11" fill="#5F6672">md 34</text>
+  <text x="126" y="104" font-size="11" fill="#5F6672">lg 40</text>
+  <text x="196" y="66" font-size="12" fill="#3E4450">ghost, square, one glyph,</text>
+  <text x="196" y="82" font-size="12" fill="#3E4450">named by its label</text>
+</svg>

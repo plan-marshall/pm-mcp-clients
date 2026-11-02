@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 160" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">Skeleton</title>
+  <desc id="d">The four skeleton shapes: a row of lines, a card with a title and two lines, a table with a head and rows, and a figure block, all in the subtle surface colour.</desc>
+  <rect width="360" height="160" fill="#F7F7F5"/>
+  <g fill="#F0F0EC">
+    <rect x="16" y="24" width="70" height="10" rx="5"/>
+    <rect x="16" y="40" width="56" height="10" rx="5"/>
+
+    <rect x="100" y="24" width="28" height="12" rx="6"/>
+    <rect x="100" y="42" width="70" height="10" rx="5"/>
+    <rect x="100" y="58" width="56" height="10" rx="5"/>
+
+    <rect x="186" y="24" width="76" height="12" rx="6"/>
+    <rect x="186" y="42" width="76" height="12" rx="6"/>
+    <rect x="186" y="60" width="76" height="12" rx="6"/>
+    <rect x="186" y="78" width="76" height="12" rx="6"/>
+
+    <rect x="278" y="24" width="66" height="48" rx="8"/>
+  </g>
+  <g font-size="10" fill="#5F6672" text-anchor="middle">
+    <text x="51" y="104">row</text>
+    <text x="135" y="104">card</text>
+    <text x="224" y="104">table</text>
+    <text x="311" y="104">figure</text>
+  </g>
+  <text x="16" y="134" font-size="11" fill="#5F6672">a slow shimmer, and none at all where the person asked for reduced motion</text>
+</svg>

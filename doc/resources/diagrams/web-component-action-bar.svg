@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 140" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">ActionBar</title>
+  <desc id="d">A bar with one primary act, three secondary acts and an overflow button that holds the rest.</desc>
+  <rect width="360" height="140" fill="#F7F7F5"/>
+  <rect x="24" y="52" width="312" height="1" fill="#E3E3DE"/>
+  <g font-size="13">
+    <rect x="24" y="64" width="96" height="34" rx="8" fill="#5B4BDB"/>
+    <text x="72" y="86" fill="#FFFFFF" text-anchor="middle">Start the plan</text>
+    <rect x="132" y="64" width="80" height="34" rx="8" fill="#FFFFFF" stroke="#CFCFC8"/>
+    <text x="172" y="86" fill="#16181D" text-anchor="middle">Pause</text>
+    <rect x="224" y="64" width="56" height="34" rx="8" fill="#FFFFFF" stroke="#CFCFC8"/>
+    <text x="252" y="86" fill="#16181D" text-anchor="middle">Edit</text>
+    <rect x="292" y="64" width="44" height="34" rx="8" fill="none"/>
+  </g>
+  <g fill="#3E4450">
+    <circle cx="308" cy="81" r="1.5"/>
+    <circle cx="314" cy="81" r="1.5"/>
+    <circle cx="320" cy="81" r="1.5"/>
+  </g>
+  <text x="24" y="120" font-size="11" fill="#5F6672">one primary, up to three secondary, the rest in the overflow</text>
+</svg>

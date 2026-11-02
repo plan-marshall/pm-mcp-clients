@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { MOCK_RUNTIME_URL } from './helpers/ports.js';
+import { pair } from './helpers/pairing.js';
 
 test.describe('Routing, History & Frame', () => {
   test.beforeEach(async ({ page, request }) => {
@@ -75,5 +76,74 @@ test.describe('Routing, History & Frame', () => {
 
     await page.getByTestId('theme-light').click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+  });
+});
+
+/**
+ * The accessibility baseline of CC-P-07 (Escape and the focus it returns), checked on the running
+ * work of the mock's `running-work` scenario: the pause panel of a plan's acts, its chat, and the
+ * overflow that holds the frame on a phone.
+ */
+test.describe('Accessibility baseline: Escape and the focus it returns', () => {
+  test.beforeEach(async ({ page, request }) => {
+    const res = await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
+      data: { scenario: 'running-work' },
+    });
+    expect(res.ok()).toBeTruthy();
+
+    await pair(page, request);
+    await page.goto('/overview');
+    await expect(page.locator('.overview')).toBeVisible();
+  });
+
+  test('the pause panel closes with Escape and returns the focus to its opener', async ({
+    page,
+  }) => {
+    await page.getByTestId('overview-actions-fix-relay').click();
+    await expect(page.getByTestId('overview-control')).toBeVisible();
+
+    const opener = page.getByTestId('action-pause');
+    await opener.click();
+    await expect(page.getByTestId('pause-title')).toBeVisible();
+    await expect(page.getByTestId('control-dialog-pause')).toBeVisible();
+
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByTestId('control-dialog-pause')).toHaveCount(0);
+    await expect(opener).toBeFocused();
+  });
+
+  test('the chat panel closes with Escape and returns the focus to its opener', async ({
+    page,
+  }) => {
+    await page.getByTestId('overview-actions-fix-relay').click();
+    await expect(page.getByTestId('overview-control')).toBeVisible();
+
+    const opener = page.getByTestId('action-chat');
+    await opener.click();
+    await expect(page.getByTestId('chat-panel')).toBeVisible();
+
+    await page.keyboard.press('Escape');
+
+    await expect(page.getByTestId('chat-panel')).toHaveCount(0);
+    await expect(opener).toBeFocused();
+  });
+
+  test.describe('on a phone', () => {
+    test.use({ viewport: { width: 390, height: 844 } });
+
+    test('the overflow sheet closes with Escape and returns the focus to its opener', async ({
+      page,
+    }) => {
+      const opener = page.getByTestId('bottom-more');
+      await expect(opener).toBeVisible();
+      await opener.click();
+      await expect(page.getByTestId('dialog')).toBeVisible();
+
+      await page.keyboard.press('Escape');
+
+      await expect(page.getByTestId('dialog')).toHaveCount(0);
+      await expect(opener).toBeFocused();
+    });
   });
 });

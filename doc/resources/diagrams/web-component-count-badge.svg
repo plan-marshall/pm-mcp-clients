@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 140" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">CountBadge</title>
+  <desc id="d">A neutral count and an attention count that starts with an exclamation mark, each a pill in the small type size.</desc>
+  <rect width="360" height="140" fill="#F7F7F5"/>
+  <rect x="24" y="54" width="28" height="22" rx="11" fill="#F0F0EC"/>
+  <text x="38" y="70" font-size="12" fill="#3E4450" text-anchor="middle">3</text>
+  <rect x="62" y="54" width="44" height="22" rx="11" fill="#FFF4E0"/>
+  <text x="84" y="70" font-size="12" fill="#8A5200" text-anchor="middle">! 2</text>
+  <text x="126" y="70" font-size="12" fill="#3E4450">needs you</text>
+  <text x="24" y="104" font-size="11" fill="#5F6672">neutral otherwise; only in the rail, tabs and group heads</text>
+</svg>

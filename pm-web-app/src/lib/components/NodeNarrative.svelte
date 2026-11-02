@@ -177,7 +177,6 @@
   .node-narrative__eyebrow {
     margin: 0;
     font-size: var(--text-xs);
-    text-transform: uppercase;
   }
 
   .node-narrative__title-line {
@@ -195,7 +194,6 @@
   .node-narrative__kind {
     font-size: var(--text-xs);
     color: var(--color-text-muted);
-    text-transform: uppercase;
     font-weight: 500;
   }
 
@@ -223,7 +221,6 @@
   .node-narrative__label {
     color: var(--color-text-muted);
     font-size: var(--text-xs);
-    text-transform: uppercase;
   }
 
   .node-narrative__empty {
@@ -315,6 +312,5 @@
 
   .child-node__kind {
     font-size: var(--text-xs);
-    text-transform: uppercase;
   }
 </style>

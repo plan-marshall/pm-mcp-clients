@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 140" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <title id="t">Dialog</title>
+  <desc id="d">A dialogue over a dimmed page: a twelve pixel radius, the title in the large type size, a list of consequences, and the footer acts on the right.</desc>
+  <rect width="360" height="140" fill="#F7F7F5"/>
+  <rect width="360" height="140" fill="#16181D" opacity="0.5"/>
+  <rect x="48" y="20" width="264" height="100" rx="12" fill="#FFFFFF"/>
+  <text x="68" y="48" font-size="15" font-weight="600" fill="#16181D">Delete the plan</text>
+  <g font-size="11" fill="#3E4450">
+    <text x="68" y="66">Drafts that were never committed are lost.</text>
+    <text x="68" y="80">Lessons this plan recorded are kept.</text>
+  </g>
+  <rect x="176" y="90" width="52" height="24" rx="8" fill="none"/>
+  <text x="202" y="107" font-size="12" fill="#3E4450" text-anchor="middle">Cancel</text>
+  <rect x="236" y="90" width="60" height="24" rx="8" fill="#C0362F"/>
+  <text x="266" y="107" font-size="12" fill="#FFFFFF" text-anchor="middle">Delete</text>
+</svg>
