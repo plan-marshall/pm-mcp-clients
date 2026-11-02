@@ -484,11 +484,13 @@ const GUARD_JOURNEYS = [
       await page.goto('/settings');
       await expect(page.locator('.settings-view')).toBeVisible();
 
-      const revoke = page.getByTestId('revoke-btn-dev-1');
+      const row = page.getByTestId('device-row-dev-1');
+      await row.getByTestId('action-bar-overflow').click();
+      const revoke = row.getByTestId('action-revoke');
       await expect(revoke).toBeVisible();
       await revoke.click();
-      await expect(page.getByTestId('revoke-modal')).toBeVisible();
-      await page.getByTestId('revoke-confirm-button').click();
+      await expect(page.getByTestId('confirm-dialog')).toBeVisible();
+      await page.getByTestId('confirm-dialog-confirm').click();
       await expect(page.getByTestId('revoked-view')).toBeVisible();
       await record('RevokedView');
     },
@@ -945,13 +947,15 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await page.goto('/settings');
           await expect(page.locator('.settings-view')).toBeVisible();
 
-          const revokeBtn = page.getByTestId('revoke-btn-dev-1');
+          const row = page.getByTestId('device-row-dev-1');
+          await row.getByTestId('action-bar-overflow').click();
+          const revokeBtn = row.getByTestId('action-revoke');
           await expect(revokeBtn).toBeVisible();
           await revokeBtn.click();
 
-          const modal = page.getByTestId('revoke-modal');
-          await expect(modal).toBeVisible();
-          const confirmBtn = page.getByTestId('revoke-confirm-button');
+          const dialog = page.getByTestId('confirm-dialog');
+          await expect(dialog).toBeVisible();
+          const confirmBtn = page.getByTestId('confirm-dialog-confirm');
           await confirmBtn.click();
 
           await expect(page.getByTestId('revoked-view')).toBeVisible();
