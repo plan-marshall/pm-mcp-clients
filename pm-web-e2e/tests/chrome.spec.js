@@ -387,9 +387,10 @@ test.describe('The command palette', () => {
 
     const field = page.getByTestId('command-palette-field');
     await expect(field).toHaveAttribute('role', 'combobox');
-    await expect(field).toHaveAttribute('aria-expanded', 'true');
+    await expect(field).toHaveAttribute('aria-expanded', 'false');
     await field.fill('relay');
     await expect(page.getByTestId('command-palette-match').first()).toBeVisible();
+    await expect(field).toHaveAttribute('aria-expanded', 'true');
 
     // The selected row is announced through the field's active descendant.
     const selected = await field.getAttribute('aria-activedescendant');
@@ -418,6 +419,69 @@ test.describe('The command palette', () => {
       'Nothing matches \u201crelayy\u201d.',
     );
     await expect(field).toHaveValue('relayy');
+  });
+
+  test('walks Tab through Close, the field and back, never out of the panel', async ({ page }) => {
+    await page.goto('/overview');
+    await expect(page.getByTestId('top-bar')).toBeVisible();
+    await page.keyboard.press('Control+K');
+
+    const field = page.getByTestId('command-palette-field');
+    const close = page.getByTestId('command-palette-close');
+    await expect(field).toBeFocused();
+
+    // Tab leaves the field for Close, then wraps to the field again; Shift+Tab walks back.
+    await page.keyboard.press('Tab');
+    await expect(close).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(field).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(close).toBeFocused();
+  });
+
+  test('keeps the empty text outside the listbox when nothing matches', async ({ page }) => {
+    await page.goto('/overview');
+    await expect(page.getByTestId('top-bar')).toBeVisible();
+    await page.keyboard.press('Control+K');
+
+    await page.getByTestId('command-palette-field').fill('relayy');
+
+    await expect(page.getByTestId('command-palette-empty')).toBeVisible();
+    await expect(
+      page.locator('[role="listbox"] [data-testid="command-palette-empty"]'),
+    ).toHaveCount(0);
+  });
+
+  test('keeps Retry outside the listbox after the find read fails', async ({ page }) => {
+    // The mock cannot serve a failing read: the failure is put in the way of the read itself,
+    // never waited for on a timer.
+    await page.route('**/api/v1/find**', (route) =>
+      route.fulfill({
+        status: 500,
+        contentType: 'application/json',
+        body: '{"error":"unavailable"}',
+      }),
+    );
+
+    try {
+      await page.goto('/overview');
+      await expect(page.getByTestId('top-bar')).toBeVisible();
+      await page.keyboard.press('Control+K');
+
+      await page.getByTestId('command-palette-field').fill('relay');
+
+      const retry = page.getByTestId('command-palette-retry');
+      await expect(retry).toBeVisible();
+      await expect(
+        page.locator('[role="listbox"] [data-testid="command-palette-retry"]'),
+      ).toHaveCount(0);
+      await expect(page.getByTestId('command-palette-field')).toHaveAttribute(
+        'aria-expanded',
+        'false',
+      );
+    } finally {
+      await page.unroute('**/api/v1/find**');
+    }
   });
 });
 
