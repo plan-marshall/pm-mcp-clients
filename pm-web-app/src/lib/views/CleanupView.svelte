@@ -805,14 +805,13 @@
   .badge {
     padding: 0.15rem 0.4rem;
     border-radius: var(--radius-sm);
-    font-size: 0.7rem;
+    font-size: var(--text-xs);
     font-weight: 600;
     background-color: var(--color-bg-subtle);
     color: var(--color-text-secondary);
   }
 
   .badge--kind {
-    text-transform: uppercase;
   }
 
   .cleanup-actions-bar {
