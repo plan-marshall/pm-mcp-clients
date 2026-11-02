@@ -191,8 +191,9 @@ view hands off), the view:
 3. on a normal return, enters the alternate screen again, reads a fresh snapshot, and draws the
    level it left, with the selection it had.
 
-An error in the dialogue leaves the terminal in the normal screen; the view is not re-entered, and
-the console reports the error at the prompt as it does for any verb. `Ctrl+C` is the interrupt of
+An error in the dialogue leaves the terminal in the normal screen; the view re-enters its alternate
+screen on the next turn and shows the error in its status row, so the console keeps the view open
+rather than reporting the error at its prompt. `Ctrl+C` is the interrupt of
 the exit-code table where the dialogue maps it: an action, a hold and a review that the view opens
 leave it with `130` and send nothing, and so do the runtime acts (stop, restart, upgrade, check),
 project add and setup, and the decision the view opens with `!`, whose confirmations are dialogues of
