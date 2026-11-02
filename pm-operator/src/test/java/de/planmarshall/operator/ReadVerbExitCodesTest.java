@@ -11,10 +11,13 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.stream.Stream;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -28,11 +31,18 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 /**
- * Every read verb exits {@code 1} when the runtime refuses the read
- * ({@code doc/design/terminal-client/01-commands.adoc#exit-codes}).
+ * Every read verb exits {@code 1} when the runtime refuses the read, whatever the refusal says
+ * ({@code doc/design/terminal-client/01-commands.adoc#exit-codes}): the runtime answers the
+ * attempts it made before it gave up, the read that names no credential, and the read of a resource
+ * it does not know with the same status the operator reads.
  */
+@EnableGeneratorController
 @DisplayName("A read verb exits 1 when the runtime refuses the read")
 class ReadVerbExitCodesTest {
+
+    private static final String PLAN_ID = Generators.letterStrings(4, 10).next();
+
+    private static final List<Integer> REFUSALS = List.of(500, 401, 404);
 
     @TempDir
     Path tempDir;
@@ -55,9 +65,9 @@ class ReadVerbExitCodesTest {
         }
     }
 
-    /** The read verbs and the arguments that make them read. */
-    static Stream<Arguments> readVerbs() {
-        return Stream.of(
+    /** Every read verb, against each status the runtime may refuse the read with. */
+    static Stream<Arguments> refusedReads() {
+        var reads = List.of(
                             Arguments.of("status", new String[]{"status"}),
                             Arguments.of("status --ended", new String[]{"status", "--ended"}),
                             Arguments.of("system", new String[]{"system"}),
@@ -72,19 +82,23 @@ class ReadVerbExitCodesTest {
                             Arguments.of("cleanup", new String[]{"cleanup"}),
                             Arguments.of("cleanup --kept", new String[]{"cleanup", "--kept"}),
                             Arguments.of("web devices list", new String[]{"web", "devices", "list"}),
-                            Arguments.of("plan report", new String[]{"plan", "report", "fix-relay"}),
-                            Arguments.of("plan", new String[]{"plan", "fix-relay"}),
-                            Arguments.of("epic", new String[]{"epic", "fix-relay"}),
-                            Arguments.of("epic findings", new String[]{"epic", "findings", "fix-relay"}),
-                            Arguments.of("epic watches", new String[]{"epic", "watches", "fix-relay"}));
+                            Arguments.of("plan report", new String[]{"plan", "report", PLAN_ID}),
+                            Arguments.of("plan", new String[]{"plan", PLAN_ID}),
+                            Arguments.of("epic", new String[]{"epic", PLAN_ID}),
+                            Arguments.of("epic findings", new String[]{"epic", "findings", PLAN_ID}),
+                            Arguments.of("epic watches", new String[]{"epic", "watches", PLAN_ID}));
+        return reads.stream().flatMap(read -> REFUSALS.stream()
+                            .map(status -> Arguments.of(read.get()[0] + " answering " + status,
+                                                (String[]) read.get()[1], status)));
     }
 
     @ParameterizedTest(name = "{0}")
-    @MethodSource("readVerbs")
+    @MethodSource("refusedReads")
     @DisplayName("exits 1 on a refused read")
-    void exitsOneOnARefusedRead(String label, String[] args) throws Exception {
+    void exitsOneOnARefusedRead(String label, String[] args, Integer status) throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        fixture.start((request, response) -> response.send(500, null, "{\"error\":\"unavailable\"}"));
+        fixture.start((request, response) -> response.send(status, null,
+                            "{\"error\":\"unavailable\",\"reason\":\"" + request.target() + "\"}"));
 
         var context = new OperatorContext(fixture.environment(), tempDir, true);
         int code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);

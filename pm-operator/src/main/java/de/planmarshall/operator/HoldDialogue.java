@@ -87,6 +87,8 @@ final class HoldDialogue {
             return dialogue.execute(holdId);
         } catch (StartPrompt.MissingInputException _) {
             return StartDialogue.EXIT_MISSING_INPUT;
+        } catch (StartPrompt.InterruptException _) {
+            return StartPrompt.EXIT_INTERRUPTED;
         } catch (StartPrompt.StartLeftException _) {
             return 0;
         }

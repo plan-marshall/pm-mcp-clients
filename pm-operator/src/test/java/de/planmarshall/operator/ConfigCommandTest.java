@@ -13,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -26,6 +28,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+@EnableGeneratorController
 @DisplayName("ConfigCommand")
 class ConfigCommandTest {
 
@@ -72,6 +75,26 @@ class ConfigCommandTest {
                             () -> assertEquals(0, code),
                             () -> assertTrue(out.toString().contains("Machine Settings:")),
                             () -> assertTrue(out.toString().contains("language.interface"))
+        );
+    }
+
+    @Test
+    @DisplayName("a refused settings read names the refusal and leaves with 1")
+    void aRefusedSettingsReadLeavesWithOne() throws Exception {
+        var reason = Generators.letterStrings(6, 16).next();
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target())) {
+                response.json(500, "{\"error\":\"refused\",\"reason\":\"" + reason + "\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("config", "show");
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(out.toString().contains("Unable to load settings: HTTP 500"),
+                                                out.toString())
         );
     }
 

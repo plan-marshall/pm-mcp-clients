@@ -152,7 +152,7 @@ public final class SystemCommand implements Callable<Integer> {
                                 Clock.systemUTC(), new OverviewStateStore(context.stateDirectory()),
                                 context.noticeBuffer());
             app.run(out);
-            return 0;
+            return app.interrupted() ? StartPrompt.EXIT_INTERRUPTED : 0;
         } catch (IOException _) {
             return null;
         } finally {
