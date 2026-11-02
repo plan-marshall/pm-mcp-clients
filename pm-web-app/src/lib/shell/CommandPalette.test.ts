@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { get } from 'svelte/store';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import CommandPalette from './CommandPalette.svelte';
 import {
@@ -81,6 +82,14 @@ function expectOptionsAndGroupsOnly(box: HTMLElement): void {
       )) {
         expect(heading).toHaveAttribute('role', 'presentation');
       }
+      for (const element of Array.from(child.querySelectorAll('*'))) {
+        expect(['presentation', 'option', null]).toContain(element.getAttribute('role'));
+        expect(
+          element.matches(
+            'button, a[href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          ),
+        ).toBe(false);
+      }
     }
   }
 }
@@ -154,7 +163,7 @@ describe('the command palette listbox', () => {
     expect(screen.getByTestId('command-palette-field')).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('keeps Retry outside the listbox after a failed read', () => {
+  it('keeps Retry outside the listbox after a failed read', async () => {
     openPalette({ text: 'relay', matches: [], status: 'failed' });
 
     render(CommandPalette);
@@ -165,6 +174,10 @@ describe('the command palette listbox', () => {
     expect(retry.tagName).toBe('BUTTON');
     expect(retry).not.toHaveAttribute('tabindex');
     expect(screen.getByTestId('command-palette-field')).toHaveAttribute('aria-expanded', 'false');
+
+    // Retry runs the search again: with an empty field it returns the index to the hint.
+    await fireEvent.click(retry);
+    expect(get(searchIndexStore).status).toBe('idle');
   });
 
   it('names an option that is in the document after the answer changes', async () => {
@@ -180,6 +193,11 @@ describe('the command palette listbox', () => {
     const first = field.getAttribute('aria-activedescendant');
     expect(first).toBeTruthy();
     expect(document.getElementById(first ?? '')?.getAttribute('role')).toBe('option');
+    const ids = Array.from(
+      screen.getByRole('listbox').querySelectorAll('[role="option"]'),
+      (option) => option.id,
+    );
+    expect(new Set(ids).size).toBe(ids.length);
 
     searchIndexStore.set({ text: 'fix', matches: [PLAN_MATCH], status: 'done' });
 
