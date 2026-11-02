@@ -76,4 +76,48 @@ class OperatorContextTerminalTest {
             assertTrue(context.ownsTerminal(provided.terminal()));
         }
     }
+
+    @Test
+    @DisplayName("scopes nest, and clearing one returns the view's terminal to its outer scope")
+    void scopesNest() throws Exception {
+        try (var view = VirtualScreenTerminal.create(80, 24);
+             var nested = VirtualScreenTerminal.create(80, 24)) {
+            var context = new OperatorContext(Map.of(), tempDir, true,
+                                ClientEnvironment.capture(Map.of()), view::terminal, null);
+
+            context.useTerminal(view.terminal());
+            context.useTerminal(nested.terminal());
+            assertSame(nested.terminal(), context.createTerminal());
+
+            context.clearTerminal();
+            assertSame(view.terminal(), context.createTerminal(),
+                                "the view's scope is still set after the nested one is cleared");
+
+            context.clearTerminal();
+            assertSame(view.terminal(), context.createTerminal(),
+                                "the provider supplies the terminal again once every scope is cleared");
+        }
+    }
+
+    @Test
+    @DisplayName("a lease closes the terminal only when the context owns it")
+    void leaseClosesOnlyOwnedTerminals() throws Exception {
+        try (var borrowed = VirtualScreenTerminal.create(80, 24);
+             var provided = VirtualScreenTerminal.create(80, 24)) {
+            var context = new OperatorContext(Map.of(), tempDir, true,
+                                ClientEnvironment.capture(Map.of()), provided::terminal, null);
+
+            context.useTerminal(borrowed.terminal());
+            try (var lease = context.openTerminal()) {
+                assertSame(borrowed.terminal(), lease.terminal());
+            }
+            assertFalse(borrowed.isClosed(), "a borrowed terminal is not the lease's to close");
+
+            context.clearTerminal();
+            try (var lease = context.openTerminal()) {
+                assertSame(provided.terminal(), lease.terminal());
+            }
+            assertTrue(provided.isClosed(), "a terminal the context created is closed with its lease");
+        }
+    }
 }

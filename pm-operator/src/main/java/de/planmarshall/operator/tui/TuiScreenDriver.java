@@ -467,6 +467,8 @@ public final class TuiScreenDriver {
      * that case.
      */
     private void registerShutdownHook() {
+        // A view that resumes registers again; the previous hook must not stay registered.
+        removeShutdownHook();
         var hook = new Thread(this::restoreImmediately, "tui-terminal-restore");
         shutdownHook.set(hook);
         try {

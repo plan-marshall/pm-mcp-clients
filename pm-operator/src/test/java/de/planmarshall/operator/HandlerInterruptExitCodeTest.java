@@ -30,6 +30,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import org.jline.terminal.Terminal;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import de.planmarshall.api.host.HostDetection;
 import de.planmarshall.api.resource.RoleDetailResource;
 import de.planmarshall.api.resource.RoleQualificationState;
@@ -62,13 +65,16 @@ import org.junit.jupiter.api.io.TempDir;
  * {@link WorkActionDialogue}, and the chat's and the confirmation's live there only.
  */
 @DisplayName("an interrupt signal at a handler a verb runs leaves with 130 and sends nothing")
+@EnableGeneratorController
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class HandlerInterruptExitCodeTest {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(20);
     private static final Duration POLL = Duration.ofMillis(20);
-    private static final String PROJECT = "pm-mcp-clients";
-    private static final String PLAN = "relay-metrics";
+    /** The project the mock's {@code start-sources} scenario serves; a fixture fact, not input. */
+    private static final String SCENARIO_PROJECT = "pm-mcp-clients";
+
+    private final String plan = Generators.letterStrings(4, 10).next();
 
     @TempDir
     Path tempDir;
@@ -113,7 +119,7 @@ class HandlerInterruptExitCodeTest {
 
             var code = interruptedAt("What does the plan start from?",
                                 () -> PmOperator.execute(started, new PrintWriter(out),
-                                                    new PrintWriter(err), "plan", "add", "--project", PROJECT));
+                                                    new PrintWriter(err), "plan", "add", "--project", SCENARIO_PROJECT));
 
             assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
             assertTrue(startedNothing(runtime), "the interrupt must not start the plan: " + out);
@@ -125,14 +131,14 @@ class HandlerInterruptExitCodeTest {
     void settingsDialogueInterrupt() throws Exception {
         var server = fixture.start((request, response) -> {
             if (request.target().endsWith("/settings")) {
-                response.json(200, "{\"plan_id\":\"" + PLAN + "\",\"revision\":1,\"values\":[]}");
+                response.json(200, "{\"plan_id\":\"" + plan + "\",\"revision\":1,\"values\":[]}");
             } else {
                 response.send(404, null, "");
             }
         });
 
-        var code = interruptedAt("Which settings of " + PLAN,
-                            () -> PlanSettingsDialogue.run(context, new PrintWriter(out), PLAN, null, false));
+        var code = interruptedAt("Which settings of " + plan,
+                            () -> PlanSettingsDialogue.run(context, new PrintWriter(out), plan, null, false));
 
         assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
         assertNoAct(server);
@@ -151,7 +157,7 @@ class HandlerInterruptExitCodeTest {
 
         var code = interruptedAt("Which project?",
                             () -> PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err),
-                                                "plan", "pause", PLAN, "--project", "?"));
+                                                "plan", "pause", plan, "--project", "?"));
 
         assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
         assertNoAct(server);
@@ -220,6 +226,29 @@ class HandlerInterruptExitCodeTest {
                                                 "enrol-harness", client));
 
         assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
+        assertNoAct(server);
+    }
+
+    @Test
+    @DisplayName("the settings inside a work action leave back to the view, not with 130")
+    void settingsInsideTheActionLeaveBack() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if (request.target().endsWith("/actions")) {
+                response.json(200, "{\"subject_id\":\"" + plan + "\",\"subject_kind\":\"plan\","
+                                    + "\"state\":\"running\",\"actions\":[{\"action\":\"settings\","
+                                    + "\"available\":true}]}");
+            } else if (request.target().endsWith("/settings")) {
+                response.json(200, "{\"plan_id\":\"" + plan + "\",\"revision\":1,\"values\":[]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = interruptedAt("Which settings of " + plan,
+                            () -> WorkActionDialogue.run(context, new PrintWriter(out), "plan", plan,
+                                                "settings", false, null, null));
+
+        assertEquals(0, code, "the view's other dialogues leave back: " + out);
         assertNoAct(server);
     }
 

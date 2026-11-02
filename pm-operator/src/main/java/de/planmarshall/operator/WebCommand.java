@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.UserInterruptException;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
@@ -469,6 +470,10 @@ public final class WebCommand implements Callable<Integer> {
                     processInteractiveChoice(runtime, out, reader, list, line.trim());
                 }
             }
+            catch (UserInterruptException interrupt) {
+                // Ctrl+C at the device prompt is the exit-code table's 130, never a swallowed read.
+                throw interrupt;
+            }
             // cui-rewrite:disable InvalidExceptionUsageRecipe
             catch (IOException | RuntimeException _) {
                 // Ignore interactive terminal read exception
@@ -640,6 +645,10 @@ public final class WebCommand implements Callable<Integer> {
                 var answer = reader.readLine(MessageCatalogue.format(context.clientEnvironment().locale(),
                                     "operator.devices.revoke_prompt", Map.of()));
                 return answer == null || (!"b".equalsIgnoreCase(answer.trim()) && !"back".equalsIgnoreCase(answer.trim()));
+            }
+            catch (UserInterruptException interrupt) {
+                // The interrupt must not confirm the destructive revoke.
+                throw interrupt;
             }
             // cui-rewrite:disable InvalidExceptionUsageRecipe
             catch (IOException | RuntimeException _) {
