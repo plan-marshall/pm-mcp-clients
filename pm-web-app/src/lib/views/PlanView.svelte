@@ -32,6 +32,7 @@
     formatDuration,
     formatDay,
     formatTime,
+    dayOf,
     type Locale,
   } from '../display/format';
   import { stripControlSequences } from '../utils/outputSafety';
@@ -321,6 +322,26 @@
   }
 
   /**
+   * Dates a row the runtime sends with a clock only.
+   *
+   * The wire may carry `14:02:11` instead of an instant; such a row belongs to the day it was read,
+   * so the row takes that day with the clock it sent. The day is thus fixed when the row arrives,
+   * and a page left open over midnight keeps its rows where they belong.
+   *
+   * @param timestamp the instant or the bare clock the runtime sends
+   * @param readAt the moment the row was read
+   * @returns the timestamp with a date, or the value unchanged when it already carries one
+   */
+  function dateOnRead(timestamp: string, readAt: Date): string {
+    const clockOnly = /^\d{1,2}:\d{2}(:\d{2})?$/.exec(timestamp.trim());
+    if (!clockOnly) return timestamp;
+    const [hours, minutes, seconds = '00'] = clockOnly[0].split(':');
+    const pad = (value: number): string => String(value).padStart(2, '0');
+    const day = `${readAt.getFullYear()}-${pad(readAt.getMonth() + 1)}-${pad(readAt.getDate())}`;
+    return `${day}T${pad(Number(hours))}:${pad(Number(minutes))}:${pad(Number(seconds))}`;
+  }
+
+  /**
    * Reads one live-activity event into an entry.
    *
    * The stream reports the entry either directly (`task.activity`) or inside an `entry` field
@@ -337,7 +358,7 @@
         : payload;
     if (typeof source.kind !== 'string') return null;
     return {
-      timestamp: textOf(source.timestamp) ?? '',
+      timestamp: dateOnRead(textOf(source.timestamp) ?? textOf(source.time) ?? '', new Date()),
       kind: source.kind,
       tool_name: textOf(source.tool_name),
       tool_target: textOf(source.tool_target),
@@ -360,10 +381,20 @@
     try {
       const loaded = await apiClient.getTaskActivity(pId, tId);
       if (generation !== activityLoadGeneration) return;
-      taskActivity = loaded;
+      const readAt = new Date();
+      taskActivity = {
+        ...loaded,
+        entries: loaded.entries.map((entry) => ({
+          ...entry,
+          timestamp: dateOnRead(entry.timestamp, readAt),
+        })),
+      };
       unsubscribeActivity = apiClient.subscribeTaskActivity(pId, tId, (event, data) => {
         const entry = toActivityEntry(event, data);
         if (taskActivity && entry) {
+          // The row is dated by its arrival, so the clock the headers are measured at moves with
+          // it: a row that arrives just after midnight opens the new day as "today".
+          clock = Date.now();
           taskActivity = {
             ...taskActivity,
             entries: [...taskActivity.entries, entry],
@@ -523,29 +554,29 @@
   }
 
   /**
-   * The day a row opens, where the wire sent an instant for it.
+   * The day a row opens, where the row carries a date or a clock.
    *
-   * A clock alone carries no date, so it opens no day: the header appears only for the first row
-   * of each day the runtime dates.
+   * A row the runtime sends with a clock only was dated when it was read (`dateOnRead`), so its day
+   * is fixed and the header follows the live clock: a page left open over midnight names the same
+   * day `yesterday`, and the next dated row of one day moves under a single header.
    *
    * @param entries the entries of the task's activity
    * @param index the entry's position
    * @returns the day to print above the row, or an empty string
    */
   function dayLabel(entries: ActivityEntry[], index: number): string {
-    const iso = entries[index]?.timestamp;
-    const day = formatDay(iso, $currentLocale, new Date(clock));
+    const timestamp = entries[index]?.timestamp;
+    const now = new Date(clock);
+    const day = formatDay(timestamp, $currentLocale, now);
     if (!day) return '';
-    if (index === 0) return day;
-    const previous = entries[index - 1]?.timestamp;
-    return sameCalendarDay(iso, previous) ? '' : day;
-  }
-
-  /**
-   * @param left an instant @param right another instant @returns whether they fall on one day
-   */
-  function sameCalendarDay(left?: string | null, right?: string | null): boolean {
-    return new Date(left ?? '').toDateString() === new Date(right ?? '').toDateString();
+    const own = dayOf(timestamp, now);
+    if (own === null) return day;
+    for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+      const previous = dayOf(entries[cursor]?.timestamp, now);
+      if (previous === null) continue;
+      return previous.getTime() === own.getTime() ? '' : day;
+    }
+    return day;
   }
 
   /**

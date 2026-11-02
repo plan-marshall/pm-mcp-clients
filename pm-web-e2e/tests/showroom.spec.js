@@ -86,7 +86,13 @@ test.describe('Fully onboarded showroom', () => {
   });
 
   test('walks the six-phase process tree of the running plan', async ({ page }) => {
-    await page.locator('[data-testid="plan-card"]').first().click();
+    // The runtime serves the plans that need the operator first, so the plan is named, not its
+    // position: this walk is about fix-relay's six phases.
+    const planCard = page
+      .locator('[data-testid="plan-card"]')
+      .filter({ hasText: 'Fix Relay Transport' });
+    await expect(planCard).toBeVisible();
+    await planCard.click();
     await expect(page.getByTestId('plan-view')).toBeVisible();
     await expect(page.getByTestId('plan-title')).toHaveText('Fix Relay Transport');
 
