@@ -191,10 +191,12 @@ view hands off), the view:
 3. on a normal return, enters the alternate screen again, reads a fresh snapshot, and draws the
    level it left, with the selection it had.
 
-An error or an interrupt in the dialogue leaves the terminal in the normal screen; the view is not
-re-entered, and the console reports the error at the prompt as it does for any verb. The view's
-`finally` always restores the terminal state, so a terminal is never left in the alternate screen,
-with the cursor hidden, or in keypad application mode.
+An error in the dialogue leaves the terminal in the normal screen; the view is not re-entered, and
+the console reports the error at the prompt as it does for any verb. `Ctrl+C` in a dialogue the view
+opened is the interrupt of the exit-code table: the view is left un-re-entered and the program ends
+with `130`, with nothing sent after the interrupt, so the operator's interrupt reaches the shell. The
+view's `finally` always restores the terminal state, so a terminal is never left in the alternate
+screen, with the cursor hidden, or in keypad application mode.
 
 [#console-keys]
 === Keys of the Console
@@ -206,7 +208,7 @@ with the cursor hidden, or in keypad application mode.
 |`Ctrl+C`
 |clears the line; `↑` brings it back
 |prints `exit or Ctrl+D leaves the console`
-|leaves the dialogue to the prompt, as `q`
+|leaves the dialogue to the prompt, as `q`; in a dialogue the full-screen view opened, it ends the program with `130` and sends nothing
 
 |`Ctrl+D`
 |deletes the character under the cursor

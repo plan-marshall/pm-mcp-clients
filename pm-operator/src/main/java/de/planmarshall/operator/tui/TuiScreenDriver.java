@@ -503,6 +503,8 @@ public final class TuiScreenDriver {
      * Runs a dialogue while the view is suspended: the alternate screen is left, the cursor is
      * shown again, and the dialogue owns the terminal; on return the view enters the alternate
      * screen again and the next turn draws a full frame, because the screen's content is gone.
+     * A dialogue that ended the view through {@link #stop()} is not re-entered: the run restores the
+     * terminal itself.
      *
      * <p>The handler calls this from inside {@link KeyHandler#handle(TuiKeyAction)} or
      * {@link KeyHandler#menu(String)}. Outside a running view the task simply runs.

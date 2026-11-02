@@ -6,15 +6,17 @@
 #             decision prompt
 #   setup-*   `project setup cui-parent` in `projects.being-added`, which draws the identity prompt
 #   hold-*    the hold dialogue of the held plan `relay-cursor-order`: the plan view's actions menu
-#             (`a`) taken with Enter, which draws the hold with its acts and asks for one
+#             (`a`) taken with Enter, which draws the hold with its acts and asks for one. The screen
+#             this set writes is the plan view the keys were typed on; the hold's own prompt is in
+#             the `.stdout.txt` beside it, because the capture is taken before the keys are typed.
 #
 # `\c` is Ctrl+C: it interrupts the two verb-reached dialogues at their first prompt, and the whole
 # output the run leaves behind is written beside the screen. The hold capture leaves its act prompt
 # with `q` and then the view, because Ctrl+C typed into a dialogue the full-screen view has suspended
 # does not reach the line reader: the view's own reader holds the terminal, so the byte is read there
 # and dropped. That is the residue the landing message records; the interrupt of the hold dialogue is
-# proven by `InterruptExitCodeTest`. The project setup states live in `projects-and-start`, not in
-# `fully-onboarded`.
+# proven by `InterruptExitCodeTest` and `ActionsFullScreenTest`. The project setup states live in
+# `projects-and-start`, not in `fully-onboarded`.
 
 review-120x30-en | fully-onboarded | - | epic findings relay-hardening | \c | 120x30 | en_US.UTF-8 | -
 review-80x24-en | fully-onboarded | - | epic findings relay-hardening | \c | 80x24 | en_US.UTF-8 | -

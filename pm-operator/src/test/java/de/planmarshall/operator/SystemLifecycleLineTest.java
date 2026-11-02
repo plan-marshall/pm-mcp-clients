@@ -88,8 +88,16 @@ class SystemLifecycleLineTest {
     }
 
     private SystemSnapshot sampleSnapshot() {
-        var runtime = new RuntimeMetrics(version, build, startedAt, 22320L, 432013312L,
-                            1073741824L, 713031680L, 4.0, 2469606195L, 40802189312L, measuredAt, true,
+        var uptimeSeconds = Generators.integers(60, 100_000).next().longValue();
+        var heapUsed = Generators.integers(1_000_000, 1_000_000_000).next().longValue();
+        var heapMax = heapUsed * 2;
+        var resident = Generators.integers(1_000_000, 1_000_000_000).next().longValue();
+        var cpuPercent = Generators.integers(1, 100).next().doubleValue();
+        var storeBytes = Generators.integers(1_000_000, 1_000_000_000).next().longValue();
+        var diskFree = Generators.integers(1_000_000, 1_000_000_000).next().longValue();
+        var sweepAt = Generators.letterStrings(4, 8).next();
+        var runtime = new RuntimeMetrics(version, build, startedAt, uptimeSeconds, heapUsed,
+                            heapMax, resident, cpuPercent, storeBytes, diskFree, measuredAt, true,
                             "127.0.0.1:7420", "192.168.1.20:7421", 2, 0, null, null, null, null, null, false, null);
         var work = new WorkMetrics(Map.of("running", 3), Map.of(), 2, 0, 1, List.of());
         var workers = List.of(new WorkerMetric(plannerRole, harness, model, WorkerState.BUSY, planTitle));
@@ -97,7 +105,7 @@ class SystemLifecycleLineTest {
                             "locks_held", 1);
         var models = List.of(new ModelMetric(harness + ":" + model, plannerRole, 42, 2020000L, 1900000L, 120000L,
                             0, 0, false, 0));
-        var cleanup = new CleanupSummary(0, 0, 0, 0, 0, 0L, 0, "today 03:00", "tomorrow 03:00");
+        var cleanup = new CleanupSummary(0, 0, 0, 0, 0, 0L, 0, sweepAt, sweepAt);
         return new SystemSnapshot(runtime, work, workers, jobs, models, cleanup, SystemWindow.HOUR, null);
     }
 

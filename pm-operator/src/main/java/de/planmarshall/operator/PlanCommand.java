@@ -212,7 +212,8 @@ public final class PlanCommand implements Callable<Integer> {
      * {@code --tokens}, {@code --components}, {@code --watch}).
      *
      * @param out the writer of the console
-     * @return {@code 0} when the view was left normally, or {@code null} to use the scrollback
+     * @return {@code 0} when the view was left normally, {@code 130} when a dialogue of the view was
+     *         interrupted, or {@code null} to use the scrollback
      * @throws IOException when the terminal cannot be opened
      */
     private @Nullable Integer runFullScreen(PrintWriter out) throws IOException {

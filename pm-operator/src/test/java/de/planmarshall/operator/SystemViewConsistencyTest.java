@@ -86,17 +86,29 @@ class SystemViewConsistencyTest {
     }
 
     private SystemSnapshot sampleSnapshot() {
+        var uptimeSeconds = Generators.integers(60, 100_000).next().longValue();
+        var heapUsed = Generators.integers(1_000_000, 1_000_000_000).next().longValue();
+        var heapMax = heapUsed * 2;
+        var resident = Generators.integers(1_000_000, 1_000_000_000).next().longValue();
+        var cpuPercent = Generators.integers(1, 100).next().doubleValue();
+        var storeBytes = Generators.integers(1_000_000, 1_000_000_000).next().longValue();
+        var diskFree = Generators.integers(1_000_000, 1_000_000_000).next().longValue();
+        var runningPlans = Generators.integers(1, 9).next();
+        var waitingPlans = Generators.integers(1, 9).next();
+        var buildSlots = Generators.integers(1, 4).next();
+        var locksHeld = Generators.integers(1, 9).next();
+        var plansCleaned = Generators.integers(0, 40).next();
         var runtime = new RuntimeMetrics(
                             version,
                             build,
                             startedAt,
-                            22320L,
-                            432013312L,
-                            1073741824L,
-                            713031680L,
-                            4.0,
-                            2469606195L,
-                            40802189312L,
+                            uptimeSeconds,
+                            heapUsed,
+                            heapMax,
+                            resident,
+                            cpuPercent,
+                            storeBytes,
+                            diskFree,
                             measuredAt,
                             true,
                             LOOPBACK,
@@ -111,11 +123,11 @@ class SystemViewConsistencyTest {
                             true,
                             null);
         var work = new WorkMetrics(
-                            Map.of("running", 3, "waiting_for_you", 1, "held", 1, "paused", 2),
-                            Map.of("running", 1, "waiting_for_you", 1),
-                            4,
-                            6,
-                            3,
+                            Map.of("running", runningPlans, "waiting_for_you", waitingPlans),
+                            Map.of("running", runningPlans),
+                            runningPlans,
+                            waitingPlans,
+                            runningPlans,
                             List.of());
         var workers = List.of(
                             new WorkerMetric(plannerRole, claudeHarness, firstModel, WorkerState.BUSY, planTitle),
@@ -123,9 +135,9 @@ class SystemViewConsistencyTest {
                                                 secondPlanTitle),
                             new WorkerMetric(implementerRole, codexHarness, thirdModel, WorkerState.IDLE, null));
         var jobs = Map.<String, Object>of(
-                            "build", Map.of("slots_used", 1, "slots_total", 2, "queued", 1),
+                            "build", Map.of("slots_used", 1, "slots_total", buildSlots, "queued", 1),
                             "test", Map.of("slots_used", 0, "slots_total", 1, "queued", 0),
-                            "locks_held", 3);
+                            "locks_held", locksHeld);
         var models = List.of(
                             new ModelMetric(claudeHarness + ":" + firstModel, plannerRole, calls, totalTokens,
                                                 inputTokens, outputTokens, 0, 1, false, 0),
@@ -133,7 +145,8 @@ class SystemViewConsistencyTest {
                                                 totalTokens, inputTokens, outputTokens, 0, 0, false, 0),
                             new ModelMetric(codexHarness + ":" + thirdModel, implementerRole, calls, 0L, 0L, 0L,
                                                 1, 0, true, calls));
-        var cleanup = new CleanupSummary(12, 2, 40, 5, 1, 1932735283L, 4, "today 03:00", "tomorrow 03:00");
+        var cleanup = new CleanupSummary(plansCleaned, 2, 40, 5, 1, 1932735283L, 4, "today 03:00",
+                            "tomorrow 03:00");
         return new SystemSnapshot(runtime, work, workers, jobs, models, cleanup, SystemWindow.HOUR, null);
     }
 

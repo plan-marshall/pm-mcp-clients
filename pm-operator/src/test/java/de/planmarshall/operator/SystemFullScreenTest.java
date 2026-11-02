@@ -549,8 +549,13 @@ class SystemFullScreenTest {
 
                 statusBody.set(STATUS_DRAINING_FIVE);
                 var reads = statusReads.get();
+                var snapshots = systemTargets.size();
                 virtual.type("r");
                 await(() -> statusReads.get() > reads);
+                await(() -> systemTargets.size() > snapshots);
+                // A move draws the next frame: the reload alone leaves the frame it replaced.
+                virtual.type("j");
+                await(() -> !selectedRow(virtual).contains("Runtime"));
                 assertTrue(shows(virtual, "2 left: build of fix-relay, task of relay-docs"),
                                     virtual.screen().lines().toString());
                 assertFalse(shows(virtual, "5 left"), virtual.screen().lines().toString());
