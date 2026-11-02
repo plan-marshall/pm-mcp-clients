@@ -100,8 +100,11 @@ public final class PmOperator implements Callable<Integer> {
         if (context == null) {
             return 0;
         }
-        if (tui && runFullScreen()) {
-            return 0;
+        if (tui) {
+            var code = runFullScreen();
+            if (code != null) {
+                return code;
+            }
         }
         return new PmConsole(context).run();
     }
@@ -109,19 +112,20 @@ public final class PmOperator implements Callable<Integer> {
     /**
      * Opens the overview directly on the terminal when the machine and the terminal allow it.
      *
-     * @return {@code true} when the full-screen view ran
+     * @return the exit code the view ended with, or {@code null} when the view did not open
      * @throws IOException if the terminal cannot be opened or the view cannot be drawn
      */
     @SuppressWarnings("java:S2093") // the terminal is closed only when this context owns it
-    private boolean runFullScreen() throws IOException {
+    private @Nullable Integer runFullScreen() throws IOException {
         var terminal = context.createTerminal();
         try {
             if (!TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS).available()) {
-                return false;
+                return null;
             }
             var out = new PrintWriter(terminal.writer(), true);
-            new OverviewFullScreenApp(context, terminal, null, null, false).run(out);
-            return true;
+            var app = new OverviewFullScreenApp(context, terminal, null, null, false);
+            app.run(out);
+            return app.interrupted() ? StartPrompt.EXIT_INTERRUPTED : 0;
         } finally {
             if (context.ownsTerminal(terminal)) {
                 terminal.close();

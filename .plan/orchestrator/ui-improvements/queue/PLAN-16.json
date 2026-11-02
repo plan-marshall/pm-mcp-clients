@@ -2,10 +2,10 @@
   "id": "PLAN-16",
   "slug": "web-time-format-and-locale",
   "workstream": "WS-02",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "16-web-time-format-and-locale",
+  "pr": "291",
+  "landing": "landings/PLAN-16.md",
   "seq": 16
 }

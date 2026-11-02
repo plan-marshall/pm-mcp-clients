@@ -52,8 +52,9 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-02)`, `doc/claude_review/ux/proposals.adoc#UX-P-01` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/ux/plan.adoc:24-26 UX-S-02 maps to UX-P-01; ux/proposals.adoc:12-13 '== UX-P-01: The Attention Inbox as Home' exists
+  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-mcp-clients main 94bbefe1: doc/claude_review/ux/plan.adoc UX-S-02 row (line 24) -> UX-P-01 with attention.ts, InboxView.svelte, routes.ts; ux/proposals.adoc:12-13 [#UX-P-01] The Attention Inbox as Home
 - Re-grounded at HEAD 07104678 (2026-10-30) after PR #278, PLAN-39 (PR #274) and `plan-marshall-documentation` PR #135: UC-PLN-7 is `AGREED` and the runtime serves the list, so "derived on the client from the stores that exist" no longer holds. The operator decided two views against one combined entry (what waits; go to work by name), and the web "what waits" view is "a route of its own, a destination of the rail with its count" per the package `needs-and-find`; the rail from `PLAN-39` exists and the rail item and tab title carry the total. `PLAN-83` and `PLAN-52` share the running-work rows with this view.
+- Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): attention.ts, InboxView.svelte and inbox.spec.js are still absent; the claim of the spec narrative that the rail exists holds (nav-inbox.svg icon and routes.ts present); routes.ts has no inbox/attention/needs route yet; OverviewView.svelte is still home.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

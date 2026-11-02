@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -42,14 +43,15 @@ import org.junit.jupiter.api.io.TempDir;
 @DisplayName("The system view states the lifecycle on its first line")
 class SystemLifecycleLineTest {
 
-    private static final String DRAINING_STATUS = """
-                        {"status":"ready","version":"0.9.1","lifecycle_state":"draining",
-                         "draining_by":"the console","can_withdraw":true,"drain_remaining_count":2}
-                        """;
-
-    private static final String STOPPED_STATUS = """
-                        {"status":"ready","version":"0.9.1","lifecycle_state":"stopped"}
-                        """;
+    private final String version = Generators.letterStrings(3, 6).next();
+    private final String build = Generators.letterStrings(6, 12).next();
+    private final String startedAt = Generators.letterStrings(4, 8).next();
+    private final String measuredAt = Generators.letterStrings(3, 5).next();
+    private final String plannerRole = Generators.letterStrings(4, 8).next();
+    private final String harness = Generators.letterStrings(3, 6).next();
+    private final String model = Generators.letterStrings(3, 6).next();
+    private final String planTitle = Generators.letterStrings(4, 10).next();
+    private final int remaining = Generators.integers(1, 20).next();
 
     @TempDir
     Path tempDir;
@@ -64,7 +66,8 @@ class SystemLifecycleLineTest {
         fixture = RuntimeFixture.create();
         out = new StringWriter();
         err = new StringWriter();
-        statusJson = "{\"status\":\"ready\",\"version\":\"0.9.1\",\"lifecycle_state\":\"running\"}";
+        statusJson = "{\"status\":\"ready\",\"version\":\"" + version
+                            + "\",\"lifecycle_state\":\"running\"}";
     }
 
     @AfterEach
@@ -74,17 +77,35 @@ class SystemLifecycleLineTest {
         }
     }
 
-    private static SystemSnapshot sampleSnapshot() {
-        var runtime = new RuntimeMetrics("0.9.1", "2026-10-02 (a1b2c3d)", "today 08:14", 22320L, 432013312L,
-                            1073741824L, 713031680L, 4.0, 2469606195L, 40802189312L, "13:40", true,
+    private String drainingStatus() {
+        return "{\"status\":\"ready\",\"version\":\"" + version + "\",\"lifecycle_state\":\"draining\","
+                            + "\"draining_by\":\"the console\",\"can_withdraw\":true,"
+                            + "\"drain_remaining_count\":" + remaining + "}";
+    }
+
+    private String stoppedStatus() {
+        return "{\"status\":\"ready\",\"version\":\"" + version + "\",\"lifecycle_state\":\"stopped\"}";
+    }
+
+    private SystemSnapshot sampleSnapshot() {
+        var uptimeSeconds = Generators.integers(60, 100_000).next().longValue();
+        var heapUsed = Generators.integers(1_000_000, 1_000_000_000).next().longValue();
+        var heapMax = heapUsed * 2;
+        var resident = Generators.integers(1_000_000, 1_000_000_000).next().longValue();
+        var cpuPercent = Generators.integers(1, 100).next().doubleValue();
+        var storeBytes = Generators.integers(1_000_000, 1_000_000_000).next().longValue();
+        var diskFree = Generators.integers(1_000_000, 1_000_000_000).next().longValue();
+        var sweepAt = Generators.letterStrings(4, 8).next();
+        var runtime = new RuntimeMetrics(version, build, startedAt, uptimeSeconds, heapUsed,
+                            heapMax, resident, cpuPercent, storeBytes, diskFree, measuredAt, true,
                             "127.0.0.1:7420", "192.168.1.20:7421", 2, 0, null, null, null, null, null, false, null);
         var work = new WorkMetrics(Map.of("running", 3), Map.of(), 2, 0, 1, List.of());
-        var workers = List.of(new WorkerMetric("planner", "claude", "opus-4.5", WorkerState.BUSY, "fix-relay"));
+        var workers = List.of(new WorkerMetric(plannerRole, harness, model, WorkerState.BUSY, planTitle));
         var jobs = Map.<String, Object>of("build", Map.of("slots_used", 1, "slots_total", 2, "queued", 0),
                             "locks_held", 1);
-        var models = List.of(new ModelMetric("claude:opus-4.5", "planner", 42, 2020000L, 1900000L, 120000L,
+        var models = List.of(new ModelMetric(harness + ":" + model, plannerRole, 42, 2020000L, 1900000L, 120000L,
                             0, 0, false, 0));
-        var cleanup = new CleanupSummary(0, 0, 0, 0, 0, 0L, 0, "today 03:00", "tomorrow 03:00");
+        var cleanup = new CleanupSummary(0, 0, 0, 0, 0, 0L, 0, sweepAt, sweepAt);
         return new SystemSnapshot(runtime, work, workers, jobs, models, cleanup, SystemWindow.HOUR, null);
     }
 
@@ -117,20 +138,20 @@ class SystemLifecycleLineTest {
     @Test
     @DisplayName("a draining runtime says so on the first line, with what is left")
     void saysDrainingFirst() throws Exception {
-        statusJson = DRAINING_STATUS;
+        statusJson = drainingStatus();
         startRuntime();
 
         int code = execute("en_US.UTF-8", "system");
 
         assertEquals(0, code, err.toString());
-        assertEquals("draining \u00b7 2 left", out.toString().lines().findFirst().orElse(""),
+        assertEquals("draining \u00b7 " + remaining + " left", out.toString().lines().findFirst().orElse(""),
                             out.toString());
     }
 
     @Test
     @DisplayName("a stopped runtime is the first line, as the design words it")
     void saysStoppedFirst() throws Exception {
-        statusJson = STOPPED_STATUS;
+        statusJson = stoppedStatus();
         startRuntime();
 
         int code = execute("en_US.UTF-8", "system");
@@ -153,13 +174,14 @@ class SystemLifecycleLineTest {
     @Test
     @DisplayName("the line and the state words are the catalogue's, in both languages")
     void statesTheLineInBothLanguages() throws Exception {
-        statusJson = DRAINING_STATUS;
+        statusJson = drainingStatus();
         startRuntime();
 
         int code = execute("de_DE.UTF-8", "system");
 
         assertEquals(0, code, err.toString());
-        assertTrue(out.toString().lines().findFirst().orElse("").startsWith("leert sich \u00b7 2 offen"),
+        assertTrue(out.toString().lines().findFirst().orElse("")
+                                                .startsWith("leert sich \u00b7 " + remaining + " offen"),
                             out.toString());
     }
 }

@@ -191,7 +191,8 @@
 
   /**
    * @param rawDate an ISO timestamp
-   * @returns its age in the unit that age has, measured at the list's own clock
+   * @returns its age in the unit that age has (`9 d ago`), or `since 14:02` for a moment of
+   *   today, measured at the list's own clock
    */
   function formatRelative(rawDate?: string): string {
     return formatTime(rawDate, 'relative', $currentLocale, new Date(clock));

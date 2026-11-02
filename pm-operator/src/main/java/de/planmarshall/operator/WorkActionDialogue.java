@@ -90,6 +90,8 @@ final class WorkActionDialogue {
             out.println(MessageCatalogue.format(dialogue.prompt.locale(), "operator.actions.stopped", Map.of()));
             out.flush();
             return StartDialogue.EXIT_MISSING_INPUT;
+        } catch (StartPrompt.InterruptException _) {
+            return StartPrompt.EXIT_INTERRUPTED;
         } catch (StartPrompt.StartLeftException _) {
             return 0;
         }

@@ -47,7 +47,8 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/use-cases/proposals.adoc#CLI-UC-P-07`, `doc/claude_review/cli/use-cases/findings-onboarding-entry.adoc` — read at `doc/claude_review/cli/use-cases/proposals.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main: doc/claude_review/cli/use-cases/proposals.adoc:125 [#CLI-UC-P-07] 'The Config Contract'; findings-onboarding-entry.adoc exists
+  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/cli/use-cases/proposals.adoc:125-126 [#CLI-UC-P-07] The Config Contract; findings-onboarding-entry.adoc present in cli/use-cases/
+- Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): PLAN-26 (be4995e5) shipped: ConfigCommand/'config show' now exits 1 on a refused read (ReadVerbExitCodesTest covers 19 verbs); the spec's dependency PLAN-26 is done, re-read ConfigCommand before D1.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

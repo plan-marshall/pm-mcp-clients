@@ -212,7 +212,8 @@ public final class PlanCommand implements Callable<Integer> {
      * {@code --tokens}, {@code --components}, {@code --watch}).
      *
      * @param out the writer of the console
-     * @return {@code 0} when the view was left normally, or {@code null} to use the scrollback
+     * @return {@code 0} when the view was left normally, {@code 130} when a dialogue of the view was
+     *         interrupted, or {@code null} to use the scrollback
      * @throws IOException when the terminal cannot be opened
      */
     private @Nullable Integer runFullScreen(PrintWriter out) throws IOException {
@@ -238,7 +239,10 @@ public final class PlanCommand implements Callable<Integer> {
                                 Clock.systemUTC(),
                                 new OverviewStateStore(context.stateDirectory()),
                                 context.noticeBuffer());
-            return app.run(out) == TuiScreenDriver.Result.LEFT ? 0 : null;
+            if (app.run(out) != TuiScreenDriver.Result.LEFT) {
+                return null;
+            }
+            return app.interrupted() ? StartPrompt.EXIT_INTERRUPTED : 0;
         } finally {
             if (context.ownsTerminal(terminal)) {
                 terminal.close();
@@ -611,6 +615,8 @@ public final class PlanCommand implements Callable<Integer> {
             String point;
             try {
                 point = point(out);
+            } catch (StartPrompt.InterruptException _) {
+                return StartPrompt.EXIT_INTERRUPTED;
             } catch (StartPrompt.StartLeftException _) {
                 return 0;
             }

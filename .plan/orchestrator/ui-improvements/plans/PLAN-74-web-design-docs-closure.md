@@ -40,7 +40,9 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-13)`, `doc/claude_review/visual-design/plan.adoc#VD-S-09` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main:doc/claude_review/ux/plan.adoc:86 UX-S-13 design docs update; visual-design/plan.adoc:69 VD-S-09 design documents
+  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-mcp-clients main 94bbefe1: doc/claude_review/ux/plan.adoc UX-S-13 row (line 86) update designs; visual-design/plan.adoc VD-S-09 row (line 69) Design documents -> VD-P-09; proposals.adoc:217-218 [#VD-P-09] Changes to the Design Documents
+- Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): doc/design/web-app/components.adoc now exists (added by PLAN-35, 5650c41e), so the 'add components.adoc' part of the deliverables is already partly done and must be reworked as 'update'; README.adoc, brand-mark.adoc and theme-readability.adoc exist and changed since the anchor.
+- RESCOPE at outline (design audit 2026-11-02): no done/dropped list with PLAN ids in web-app/README (Z2); the web-app design status FINAL becomes AGREED (R7-3/R7-4), and the same rule covers the new web-app/components.adoc:15 FINAL.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
 
@@ -39,6 +41,7 @@ import de.planmarshall.operator.tui.VirtualScreenTerminal;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
@@ -49,6 +52,18 @@ class SystemFullScreenTest {
 
     private static final String STATUS_JSON = """
                         {"status":"ready","version":"0.9.1","listener":"unix"}
+                        """;
+
+    private static final String STATUS_DRAINING_THREE = """
+                        {"version":"0.9.1","state":"draining","drain_remaining_count":3}
+                        """;
+
+    private static final String STATUS_DRAINING_FIVE = """
+                        {"version":"0.9.1","state":"draining","drain_remaining_count":5}
+                        """;
+
+    private static final String STATUS_RUNNING = """
+                        {"version":"0.9.1","state":"running"}
                         """;
 
     private static final String PROJECTS_JSON = """
@@ -133,18 +148,25 @@ class SystemFullScreenTest {
     private final Clock clock = Clock.fixed(Instant.parse("2026-10-20T12:00:00Z"), ZoneOffset.UTC);
     private final List<String> systemTargets = Collections.synchronizedList(new ArrayList<>());
     private final BlockingQueue<String[]> pendingEvents = new LinkedBlockingQueue<>();
+    private final AtomicReference<String> statusBody = new AtomicReference<>(STATUS_JSON);
+    private final AtomicInteger statusCode = new AtomicInteger(200);
+    private final AtomicInteger statusReads = new AtomicInteger();
 
     @BeforeEach
     void setUp() throws IOException {
         systemTargets.clear();
         pendingEvents.clear();
+        statusBody.set(STATUS_JSON);
+        statusCode.set(200);
+        statusReads.set(0);
         fixture = RuntimeFixture.create();
         writeLiveRecord();
         fixture.writeToken("test-token");
         fixture.start((request, response) -> {
             var path = request.target();
             if ("/api/v1/status".equals(path)) {
-                response.json(200, STATUS_JSON);
+                statusReads.incrementAndGet();
+                response.json(statusCode.get(), statusBody.get());
             } else if ("/api/v1/projects".equals(path)) {
                 response.json(200, PROJECTS_JSON);
             } else if (path.startsWith("/api/v1/system")) {
@@ -484,6 +506,108 @@ class SystemFullScreenTest {
             virtual.type("q");
             join(thread);
             assertFalse(virtual.alternateScreenActive());
+        }
+    }
+
+    @Nested
+    @DisplayName("the lifecycle line of the full-screen system view")
+    class LifecycleLine {
+
+        @Test
+        @DisplayName("a status read replaces the line the status wrote")
+        void aStatusReadReplacesTheLineTheStatusWrote() throws Exception {
+            statusBody.set(STATUS_DRAINING_THREE);
+            try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+                var context = createContext(virtual);
+                var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+                await(() -> shows(virtual, "draining \u00b7 3 left"));
+
+                statusBody.set(STATUS_DRAINING_FIVE);
+                virtual.type("r");
+                await(() -> shows(virtual, "draining \u00b7 5 left"));
+                assertFalse(shows(virtual, "3 left"), virtual.screen().lines().toString());
+
+                virtual.type("q");
+                join(thread);
+            }
+        }
+
+        @Test
+        @DisplayName("a status read leaves the line a progress event wrote alone")
+        void aStatusReadLeavesTheEventLineAlone() throws Exception {
+            try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+                var context = createContext(virtual);
+                var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+                sendEvent("runtime.draining", "{\"who\":\"you\",\"remaining_count\":2,"
+                                    + "\"remaining_items\":[\"build of fix-relay\",\"task of relay-docs\"],"
+                                    + "\"withdrawable\":true}");
+                await(() -> shows(virtual, "2 left: build of fix-relay, task of relay-docs"));
+
+                statusBody.set(STATUS_DRAINING_FIVE);
+                var reads = statusReads.get();
+                var snapshots = systemTargets.size();
+                virtual.type("r");
+                await(() -> statusReads.get() > reads);
+                await(() -> systemTargets.size() > snapshots);
+                // A move draws the next frame: the reload alone leaves the frame it replaced.
+                virtual.type("j");
+                await(() -> !selectedRow(virtual).contains("Runtime"));
+                assertTrue(shows(virtual, "2 left: build of fix-relay, task of relay-docs"),
+                                    virtual.screen().lines().toString());
+                assertFalse(shows(virtual, "5 left"), virtual.screen().lines().toString());
+
+                virtual.type("q");
+                join(thread);
+            }
+        }
+
+        @Test
+        @DisplayName("a status read clears the line once the runtime runs again")
+        void aStatusReadClearsTheLineOnceTheRuntimeRunsAgain() throws Exception {
+            statusBody.set(STATUS_DRAINING_THREE);
+            try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+                var context = createContext(virtual);
+                var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+                await(() -> shows(virtual, "draining \u00b7 3 left"));
+
+                statusBody.set(STATUS_RUNNING);
+                var reads = statusReads.get();
+                var snapshots = systemTargets.size();
+                virtual.type("r");
+                await(() -> statusReads.get() > reads);
+                await(() -> systemTargets.size() > snapshots);
+                // A move draws the next frame: the reload alone leaves the frame it replaced.
+                virtual.type("j");
+                await(() -> !shows(virtual, "draining \u00b7 3 left"));
+
+                virtual.type("q");
+                join(thread);
+            }
+        }
+
+        @Test
+        @DisplayName("a failed status read leaves the line as it is")
+        void aFailedStatusReadLeavesTheLine() throws Exception {
+            statusBody.set(STATUS_DRAINING_THREE);
+            try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+                var context = createContext(virtual);
+                var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+                await(() -> shows(virtual, "draining \u00b7 3 left"));
+
+                statusCode.set(500);
+                var reads = statusReads.get();
+                var snapshots = systemTargets.size();
+                virtual.type("r");
+                await(() -> statusReads.get() > reads);
+                await(() -> systemTargets.size() > snapshots);
+                // A move draws the next frame: the reload alone leaves the frame it replaced.
+                virtual.type("j");
+                await(() -> !selectedRow(virtual).contains("Runtime"));
+                assertTrue(shows(virtual, "draining \u00b7 3 left"), virtual.screen().lines().toString());
+
+                virtual.type("q");
+                join(thread);
+            }
         }
     }
 }

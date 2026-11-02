@@ -1,0 +1,11 @@
+{
+  "id": "PLAN-91",
+  "slug": "cli-interrupt-and-transcripts",
+  "workstream": "WS-04",
+  "status": "shipped",
+  "lane": "runbook",
+  "plan_marshall_plan_id": "91-cli-interrupt-and-transcripts",
+  "pr": "303",
+  "landing": "landings/PLAN-91.md",
+  "seq": 91
+}

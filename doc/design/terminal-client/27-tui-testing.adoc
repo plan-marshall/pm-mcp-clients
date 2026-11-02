@@ -185,7 +185,8 @@ separated:
 |The operator verb
 
 |keys
-|The keys to type once the screen has settled (`\n` for Enter, `-` for none)
+|The keys to type once the screen has settled (`\n` for Enter, `\t` for Tab, `\e` for Esc,
+`\c` for Ctrl+C, `-` for none)
 
 |columns x rows
 |The pinned terminal size
@@ -198,8 +199,8 @@ separated:
 
 |keys before the capture (optional)
 |Keys typed once the screen has settled, so that the capture shows the state they opened
-(`\n` for Enter, `\t` for Tab, `\e` for Esc, `-` for none). The fifth field's keys are then typed
-after the capture, and they end the process.
+(`\n` for Enter, `\t` for Tab, `\e` for Esc, `\c` for Ctrl+C, `-` for none). The fifth field's keys
+are then typed after the capture, and they end the process.
 
 |broadcast body (optional)
 |A JSON body sent as `POST /mock/broadcast` over the runtime's socket once the screen has settled,

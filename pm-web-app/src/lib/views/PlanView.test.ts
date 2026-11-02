@@ -225,8 +225,11 @@ describe('PlanView component', () => {
 
     const entries = screen.getAllByTestId('activity-entry');
     expect(entries.length).toBe(4);
-    // A clock the runtime already formatted carries no date, so it opens no day header.
-    expect(screen.queryAllByTestId('activity-day')).toHaveLength(0);
+    // A clock the runtime already formatted carries no date of its own, so its group opens the
+    // day it was read.
+    const days = screen.getAllByTestId('activity-day');
+    expect(days).toHaveLength(1);
+    expect(days[0]).toHaveTextContent('today');
     expect(entries[0]).toHaveTextContent('14:02:11');
     expect(entries[0]).toHaveTextContent('Reading the relay transport');
     expect(entries[1]).toHaveTextContent('read');
@@ -268,6 +271,92 @@ describe('PlanView component', () => {
       days[2]?.textContent,
     ]);
     expect(days[2]?.textContent).toMatch(/Sep/);
+  });
+
+  it('opens one day above clock-only rows and a dated row of the same day', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 15, 12));
+    const today = new Date();
+    const datedAt = (hour: number, minute: number): string =>
+      new Date(today.getFullYear(), today.getMonth(), today.getDate(), hour, minute).toISOString();
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      ...mockActivity,
+      entries: [
+        { timestamp: '14:02:11', kind: 'text', content: 'a bare clock' },
+        { timestamp: datedAt(14, 5), kind: 'text', content: 'the same day, dated' },
+        { timestamp: datedAt(14, 6), kind: 'text', content: 'still the same day' },
+      ],
+    });
+
+    render(PlanView);
+
+    await screen.findByTestId('task-inspector');
+    const days = await screen.findAllByTestId('activity-day');
+    expect(days).toHaveLength(1);
+    expect(days[0]).toHaveTextContent('today');
+  });
+
+  it('keeps one day header across a row the runtime dates not at all', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 15, 12));
+    const today = new Date();
+    const datedAt = (hour: number, minute: number): string =>
+      new Date(today.getFullYear(), today.getMonth(), today.getDate(), hour, minute).toISOString();
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      ...mockActivity,
+      entries: [
+        { timestamp: datedAt(14, 5), kind: 'text', content: 'dated' },
+        { timestamp: '', kind: 'text', content: 'the runtime dates this row not at all' },
+        { timestamp: datedAt(14, 6), kind: 'text', content: 'dated again' },
+      ],
+    });
+
+    render(PlanView);
+
+    await screen.findByTestId('task-inspector');
+    expect(await screen.findAllByTestId('activity-day')).toHaveLength(1);
+  });
+
+  it('dates a streamed clock-only row by the day it arrives', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    // The snapshot is read late on one day; the streamed row arrives just after midnight, so the
+    // snapshot's read day and the row's arrival day differ.
+    vi.setSystemTime(new Date(2026, 9, 15, 21, 0, 0));
+    let onEvent: ((event: string, data: unknown) => void) | undefined;
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      ...mockActivity,
+      entries: [
+        {
+          timestamp: new Date(2026, 9, 15, 20, 0, 0).toISOString(),
+          kind: 'text',
+          content: 'the snapshot, read before midnight',
+        },
+      ],
+    });
+    vi.spyOn(apiClient, 'subscribeTaskActivity').mockImplementation(
+      (_planId: string, _taskId: string, callback) => {
+        onEvent = callback;
+        return () => {};
+      },
+    );
+
+    render(PlanView);
+
+    await screen.findByTestId('task-inspector');
+    await waitFor(() => expect(onEvent).toBeDefined());
+    vi.setSystemTime(new Date(2026, 9, 16, 0, 30, 0));
+    onEvent?.('task.activity', {
+      timestamp: '00:29:00',
+      kind: 'text',
+      content: 'arrived after midnight',
+    });
+
+    await waitFor(() => expect(screen.getAllByTestId('activity-entry')).toHaveLength(2));
+
+    // Two days, not one: the row is dated by its arrival, not by the snapshot's read day.
+    const days = screen.getAllByTestId('activity-day');
+    expect(days).toHaveLength(2);
+    expect(days[1]).toHaveTextContent('today');
   });
 
   it('normalizes live activity events and ignores malformed ones', async () => {

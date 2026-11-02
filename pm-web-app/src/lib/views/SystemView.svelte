@@ -19,6 +19,7 @@
     startUnsentInputTracking,
   } from '../stores/unsentInput';
   import { formatSplit, formatBytes, formatTime } from '../display/format';
+  import DashboardPage from '../templates/DashboardPage.svelte';
 
   /** The browser's remembered filters: the window, the grouping, and the project. */
   const SYSTEM_FILTERS_KEY = 'pm_system_filters';
@@ -26,7 +27,7 @@
   let snapshot = $state<SystemSnapshot | null>(null);
   let projects = $state<EnrolledProject[]>([]);
   let isLoading = $state(true);
-  let loadError = $state('');
+  let loadError = $state(false);
   let actionError = $state('');
   let actionSuccess = $state('');
 
@@ -134,7 +135,7 @@
 
   async function loadSnapshot(showSpinner = false) {
     if (showSpinner) isLoading = true;
-    loadError = '';
+    loadError = false;
     try {
       const snap = await apiClient.getSystemSnapshot(selectedWindow, selectedProject || undefined);
       if (!isMounted) return;
@@ -145,7 +146,9 @@
       if (msg === 'network_offline') {
         runtimeStore.update((s) => ({ ...s, isOffline: true }));
       } else {
-        loadError = $t('system.view.load_failed');
+        // The failure is a state, not a text: the words are read where they render, so they
+        // follow a language switch and never show a key.
+        loadError = true;
       }
     } finally {
       if (isMounted) isLoading = false;
@@ -449,70 +452,70 @@
   });
 </script>
 
-<div class="system-container" data-testid="system-view">
-  <div class="system-header">
-    <div class="system-header__titles">
-      <h1 class="system-title">{$t('system.view.title')}</h1>
-      {#if snapshot?.runtime}
-        <span class="system-subtitle mono">
-          pm-mcpd {snapshot.runtime.version}
-        </span>
-      {/if}
-    </div>
+<DashboardPage>
+  <div slot="title" class="system-header__titles">
+    <h1 class="system-title">{$t('system.view.title')}</h1>
+    {#if snapshot?.runtime}
+      <span class="system-subtitle mono">
+        pm-mcpd {snapshot.runtime.version}
+      </span>
+    {/if}
+  </div>
 
-    <div class="system-header__controls">
-      {#if projects.length > 0}
-        <select
-          class="project-filter"
-          aria-label={$t('system.work.per_project')}
-          value={selectedProject}
-          onchange={(event) => handleProjectChange(event.currentTarget.value)}
-          data-testid="system-project-filter"
-        >
-          <option value="">{$t('system.work.all')}</option>
-          {#each projects as project (project.project_id)}
-            <option value={project.project_id}>{project.display_name}</option>
-          {/each}
-        </select>
-      {/if}
+  <div slot="controls" class="system-header__controls">
+    {#if projects.length > 0}
+      <select
+        class="project-filter"
+        aria-label={$t('system.work.per_project')}
+        value={selectedProject}
+        onchange={(event) => handleProjectChange(event.currentTarget.value)}
+        data-testid="system-project-filter"
+      >
+        <option value="">{$t('system.work.all')}</option>
+        {#each projects as project (project.project_id)}
+          <option value={project.project_id}>{project.display_name}</option>
+        {/each}
+      </select>
+    {/if}
 
-      <div class="window-selector" role="group" aria-label={$t('system.view.window_label')}>
-        <button
-          type="button"
-          class="btn-toggle"
-          class:btn-toggle--active={selectedWindow === 'hour'}
-          onclick={() => handleWindowChange('hour')}
-        >
-          {$t('system.models.window', { window: 'hour' })}
-        </button>
-        <button
-          type="button"
-          class="btn-toggle"
-          class:btn-toggle--active={selectedWindow === 'today'}
-          onclick={() => handleWindowChange('today')}
-        >
-          {$t('system.models.window', { window: 'today' })}
-        </button>
-        <button
-          type="button"
-          class="btn-toggle"
-          class:btn-toggle--active={selectedWindow === '7d'}
-          onclick={() => handleWindowChange('7d')}
-        >
-          {$t('system.models.window', { window: 'week' })}
-        </button>
-      </div>
-
+    <div class="window-selector" role="group" aria-label={$t('system.view.window_label')}>
       <button
         type="button"
-        class="refresh-btn"
-        aria-label={$t('system.view.refresh')}
-        onclick={() => loadSnapshot(true)}
+        class="btn-toggle"
+        class:btn-toggle--active={selectedWindow === 'hour'}
+        onclick={() => handleWindowChange('hour')}
       >
-        ↻
+        {$t('system.models.window', { window: 'hour' })}
+      </button>
+      <button
+        type="button"
+        class="btn-toggle"
+        class:btn-toggle--active={selectedWindow === 'today'}
+        onclick={() => handleWindowChange('today')}
+      >
+        {$t('system.models.window', { window: 'today' })}
+      </button>
+      <button
+        type="button"
+        class="btn-toggle"
+        class:btn-toggle--active={selectedWindow === '7d'}
+        onclick={() => handleWindowChange('7d')}
+      >
+        {$t('system.models.window', { window: 'week' })}
       </button>
     </div>
+
+    <button
+      type="button"
+      class="refresh-btn"
+      aria-label={$t('system.view.refresh')}
+      onclick={() => loadSnapshot(true)}
+    >
+      ↻
+    </button>
   </div>
+
+  <div class="system-container" data-testid="system-view">
 
   {#if actionSuccess}
     <div class="notice-alert notice-alert--success" role="status">
@@ -663,7 +666,7 @@
     </div>
   {:else if loadError && !snapshot}
     <div class="notice-alert notice-alert--danger" role="alert">
-      <p>{loadError}</p>
+      <p>{$t('system.view.load_failed')}</p>
       <Button variant="secondary" onclick={() => loadSnapshot(true)}
         >{$t('web.common.retry')}</Button
       >
@@ -1111,19 +1114,17 @@
                         <div class="tags-row">
                           {#if m.retries_count > 0}
                             <span class="badge badge--warning">
-                              {m.retries_count}
-                              {m.retries_count === 1 ? 'retry' : 'retries'}
+                              {$t('system.models.retry', { count: m.retries_count })}
                             </span>
                           {/if}
                           {#if m.errors_count > 0}
                             <span class="badge badge--danger">
-                              {m.errors_count}
-                              {m.errors_count === 1 ? 'error' : 'errors'}
+                              {$t('system.models.error', { count: m.errors_count })}
                             </span>
                           {/if}
                         </div>
                       {:else}
-                        <span class="text-muted">ok</span>
+                        <span class="text-muted">{$t('system.models.ok')}</span>
                       {/if}
                     </td>
                   </tr>
@@ -1135,7 +1136,8 @@
       </section>
     </div>
   {/if}
-</div>
+  </div>
+</DashboardPage>
 
 <!-- Upgrade Consent Dialogue -->
 {#if upgradePhase === 'consent' && snapshot}
@@ -1333,21 +1335,9 @@
 
 <style>
   .system-container {
-    padding: var(--space-6);
-    max-width: 1200px;
     min-inline-size: 0;
     max-inline-size: 100%;
-    margin: 0 auto;
     width: 100%;
-  }
-
-  .system-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: var(--space-4);
-    margin-bottom: var(--space-6);
   }
 
   .system-title {
@@ -1855,9 +1845,6 @@
   }
 
   @media (max-width: 480px) {
-    .system-container {
-      padding: var(--space-3);
-    }
     .metric-row {
       flex-direction: column;
       align-items: flex-start;

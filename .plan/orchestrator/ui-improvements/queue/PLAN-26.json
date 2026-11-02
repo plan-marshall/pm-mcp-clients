@@ -2,10 +2,10 @@
   "id": "PLAN-26",
   "slug": "cli-system-model",
   "workstream": "WS-04",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "26-cli-system-model",
+  "pr": "299",
+  "landing": "landings/PLAN-26.md",
   "seq": 26
 }

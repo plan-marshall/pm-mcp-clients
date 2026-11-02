@@ -132,7 +132,7 @@ final class RuntimeActDialogue {
             return new Answer(null, refused.refusal.exitCode(), null);
         } catch (ChoicePrompt.KeepException _) {
             return new Answer(null, 0, null);
-        } catch (ChoicePrompt.InterruptException _) {
+        } catch (StartPrompt.InterruptException _) {
             return new Answer(null, StartPrompt.EXIT_INTERRUPTED, null);
         } catch (StartPrompt.StartLeftException _) {
             return new Answer(null, StartDialogue.EXIT_MISSING_INPUT, null);

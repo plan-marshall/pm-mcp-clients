@@ -503,6 +503,8 @@ public final class TuiScreenDriver {
      * Runs a dialogue while the view is suspended: the alternate screen is left, the cursor is
      * shown again, and the dialogue owns the terminal; on return the view enters the alternate
      * screen again and the next turn draws a full frame, because the screen's content is gone.
+     * A dialogue that ended the view through {@link #stop()} is not re-entered: the run restores the
+     * terminal itself.
      *
      * <p>The handler calls this from inside {@link KeyHandler#handle(TuiKeyAction)} or
      * {@link KeyHandler#menu(String)}. Outside a running view the task simply runs.
@@ -521,8 +523,19 @@ public final class TuiScreenDriver {
             task.run();
         } finally {
             suspended.set(true);
-            resume(display);
+            if (!stopping.get()) {
+                resume(display);
+            }
         }
+    }
+
+    /**
+     * Leaves the view after the turn that is running: a dialogue the operator interrupted ends the
+     * program instead of returning to the view it was opened from, so the interrupt status of the
+     * exit-code table reaches the shell.
+     */
+    public void stop() {
+        stopping.set(true);
     }
 
     private KeyMap<String> menuKeyMap(TuiMenu menu) {

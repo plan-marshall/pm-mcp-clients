@@ -175,7 +175,7 @@ final class ActionSupport {
      * @param kind       "plan" or "epic"
      * @param options    the termination options
      * @param actionVerb "cancel" or "abandon"
-     * @return exit code (0 on success, 3 on missing input)
+     * @return exit code (0 on success, 3 on missing input, 130 when the operator interrupted)
      * @throws IOException on network or runtime error
      */
     static int endWork(OperatorContext context, CommandSpec spec, String kind,
@@ -196,17 +196,18 @@ final class ActionSupport {
                 var prompt = new StartPrompt(context, out, locale, false);
                 var leaveLabel = MessageCatalogue.format(locale,
                                     "operator.dialogue.label." + actionVerb.toLowerCase(Locale.ROOT), Map.of());
-                String reason;
                 try {
-                    reason = askEndReason(prompt, "control.action", leaveLabel, id);
+                    var reason = askEndReason(prompt, "control.action", leaveLabel, id);
+                    if (reason == null) {
+                        return 1;
+                    }
+                    effectiveReason = reason;
+                    if (!confirmEnd(context, prompt, kind, id, actionVerb, leaveLabel)) {
+                        return 0;
+                    }
+                } catch (StartPrompt.InterruptException _) {
+                    return StartPrompt.EXIT_INTERRUPTED;
                 } catch (StartPrompt.StartLeftException _) {
-                    return 0;
-                }
-                if (reason == null) {
-                    return 1;
-                }
-                effectiveReason = reason;
-                if (!confirmEnd(context, prompt, kind, id, actionVerb, leaveLabel)) {
                     return 0;
                 }
             } else {
@@ -239,6 +240,8 @@ final class ActionSupport {
                             Map.of()));
         try {
             return consent.askConsent();
+        } catch (StartPrompt.InterruptException interrupt) {
+            throw interrupt;
         } catch (StartPrompt.StartLeftException _) {
             return false;
         }

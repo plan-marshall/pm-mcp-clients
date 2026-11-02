@@ -55,6 +55,18 @@ Source of this plan (read before scoping):
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cross-cutting/plan.adoc#CC-S-05`, `doc/claude_review/cross-cutting/proposals.adoc#CC-P-07` — read at `doc/claude_review/cross-cutting/plan.adoc`
   - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/cross-cutting/plan.adoc:40-44 states CC-S-05 with CC-P-07; proposals.adoc:81-82 '== CC-P-07: Accessibility Baseline' exists
+- Re-grounded at HEAD 418579a0 (2026-11-01), before emit: OBSERVED (`git log c4dc9bb4..origin/main -- <file>`) `WorkControlPanel.svelte`
+  and `WorkControlPanel.test.ts` are unchanged since the review's head, `ChatPanel.svelte` changed once, `workspace.spec.js` three
+  times and `pm-web-e2e/package.json` twice; `tests/helpers/a11y.js` is absent and `package.json` declares no axe package. Read all of
+  them as they stand. The axe-core dependency is the operator's decision of 2026-10-25 (Decisions of `epic.md`) and the only one this
+  plan adds. Two plans change the shell while this one runs or lands: `PLAN-35` (data components, adds to `/dev/components`) and
+  `PLAN-46` (command palette, adds a panel to the top bar with Escape and a Tab trap; its pull request is open): audit what is on
+  `main` at the head, and a serious axe issue in a view this plan did not touch is reported, never silenced. The e2e baseline
+  is not known to be green: one lane reported six failures on `origin/main` at `ae0cb6b8` (`plan-view.spec.js` x3, `showroom.spec.js`
+  x1, the plan text guard de/en x2), another reported 308 passed after `PLAN-16`; record the failing names at the base before the
+  first change, and a failure that exists there is not this plan's. Pre-commit drift: `-Ppre-commit` rewrites about 177 `pm-api`
+  main sources and one `pm-mock-runtime` source (already on `main`; PR #294 is open to land it); restore a rewrite that is not this
+  plan's from `origin/main` before the commit and keep the pull request under 100 files.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
