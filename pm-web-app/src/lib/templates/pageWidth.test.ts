@@ -53,8 +53,8 @@ describe('the page width belongs to the template', () => {
 
   it('renders every listed view inside a page template', () => {
     const offenders = VIEWS_ON_TEMPLATES.filter((view) => {
-      const source = sourceOf(path.join(VIEWS_DIR, view.file));
-      return !TEMPLATES.some((template) => source.includes(`<${template}`));
+      const markup = sourceOf(path.join(VIEWS_DIR, view.file)).replace(/<!--[\s\S]*?-->/g, '');
+      return !TEMPLATES.some((template) => markup.includes(`<${template}`));
     }).map((view) => view.file);
 
     expect(offenders).toEqual([]);
@@ -126,6 +126,24 @@ describe('the page width belongs to the template', () => {
     expect(offenders).toEqual([
       'GhostRootView.svelte (.control-ghost-root): no element carries the page-root class',
     ]);
+  });
+
+  it('reports a cap that only a media query adds (control)', () => {
+    const offenders = pageWidthOffenders(CONTROL_DIR, [
+      { file: 'MediaCappedView.svelte', root: '.control-media-root' },
+    ]);
+
+    expect(offenders).toHaveLength(1);
+    expect(offenders[0]).toContain('max-width: 900px');
+  });
+
+  it('reports a cap written as a style directive (control)', () => {
+    const offenders = pageWidthOffenders(CONTROL_DIR, [
+      { file: 'DirectiveView.svelte', root: '.control-directive-root' },
+    ]);
+
+    expect(offenders).toHaveLength(1);
+    expect(offenders[0]).toContain('max-width: directive');
   });
 
   it('reports a page root whose selector matches no rule instead of passing vacuously', () => {

@@ -1,6 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+/** A CSS comment, dropped before any rule is read. */
+const CSS_COMMENT = /\/\*[\s\S]*?\*\//g;
+
+/** An HTML comment, dropped before the markup is read. */
+const HTML_COMMENT = /<!--[\s\S]*?-->/g;
+
 /**
  * Reads the CSS a Svelte component carries in its own `<style>` block.
  *
@@ -21,67 +27,98 @@ export function styleOf(componentPath: string): string {
 }
 
 /**
- * Reads one top-level rule of a stylesheet by its selector.
+ * Reads every rule of a stylesheet whose selector is exactly the given one.
  *
- * The selector is matched literally and must be followed by `{`, so `.triage-page` never picks up
- * the `.triage-page__filters` rule that only shares a prefix; no regular expression is built, so
- * the selector needs no escaping.
+ * Comments are dropped first, and a match must start a rule — the character before it is the start
+ * of the sheet or one of `{`, `}`, `;` — so a commented-out rule and a descendant selector such as
+ * `.wrap .system-container` are both ignored. A selector inside a media query is a rule of its own
+ * and is returned too, so a cap that applies only below a breakpoint is never missed.
+ *
+ * @param style the stylesheet text
+ * @param selector the rule's selector, exactly as the component writes it
+ * @returns the declarations of every matching rule, in source order
+ */
+export function rulesOf(style: string, selector: string): string[] {
+  const cleaned = style.replace(CSS_COMMENT, '');
+  const rules: string[] = [];
+  let from = 0;
+  while (from <= cleaned.length) {
+    const at = cleaned.indexOf(selector, from);
+    if (at < 0) {
+      break;
+    }
+    const rest = at + selector.length;
+    const before = cleaned.slice(0, at).trimEnd();
+    const startsRule =
+      before === '' || ['{', '}', ';'].some((boundary) => before.endsWith(boundary));
+    if (startsRule && cleaned.slice(rest).trimStart().startsWith('{')) {
+      const open = cleaned.indexOf('{', rest);
+      const close = cleaned.indexOf('}', open + 1);
+      if (open >= 0 && close >= 0) {
+        rules.push(cleaned.slice(open + 1, close));
+      }
+      from = close >= 0 ? close + 1 : rest;
+    } else {
+      from = rest;
+    }
+  }
+  return rules;
+}
+
+/**
+ * Reads one top-level rule of a stylesheet by its selector.
  *
  * @param style the stylesheet text
  * @param selector the rule's selector, exactly as the component writes it
  * @returns the declarations of the first matching rule, or an empty string
  */
 export function ruleOf(style: string, selector: string): string {
-  let from = 0;
-  while (from <= style.length) {
-    const at = style.indexOf(selector, from);
-    if (at < 0) {
-      return '';
-    }
-    const rest = at + selector.length;
-    if (style.slice(rest).trimStart().startsWith('{')) {
-      const open = style.indexOf('{', rest);
-      const close = style.indexOf('}', open + 1);
-      return open < 0 || close < 0 ? '' : style.slice(open + 1, close);
-    }
-    from = rest;
-  }
-  return '';
+  return rulesOf(style, selector)[0] ?? '';
 }
 
 /**
  * @param markup a component's markup
- * @returns every opening or closing tag, with the `>` inside a quoted value or a `{…}` block kept
+ * @param open the index of a tag's opening `<`
+ * @returns the index of the tag's closing `>`, or `-1` when the tag is never closed
+ */
+function tagEnd(markup: string, open: number): number {
+  let quote = '';
+  let braces = 0;
+  for (let index = open + 1; index < markup.length; index++) {
+    const char = markup[index];
+    if (quote) {
+      if (char === quote) {
+        quote = '';
+      }
+    } else if (char === '"' || char === "'") {
+      quote = char;
+    } else if (char === '{') {
+      braces++;
+    } else if (char === '}') {
+      braces = Math.max(0, braces - 1);
+    } else if (char === '>' && braces === 0) {
+      return index;
+    }
+  }
+  return -1;
+}
+
+/**
+ * @param markup a component's markup
+ * @returns every tag, with the `>` inside a quoted value or a `{…}` block kept
  */
 function tagsOf(markup: string): string[] {
   const tags: string[] = [];
   let from = 0;
-  while (from < markup.length) {
-    const open = markup.indexOf('<', from);
-    if (open < 0) {
+  let open = markup.indexOf('<', from);
+  while (open >= 0) {
+    const close = tagEnd(markup, open);
+    if (close < 0) {
       break;
     }
-    let index = open + 1;
-    let quote = '';
-    let braces = 0;
-    for (; index < markup.length; index++) {
-      const char = markup[index];
-      if (quote) {
-        if (char === quote) {
-          quote = '';
-        }
-      } else if (char === '"' || char === "'") {
-        quote = char;
-      } else if (char === '{') {
-        braces++;
-      } else if (char === '}') {
-        braces = Math.max(0, braces - 1);
-      } else if (char === '>' && braces === 0) {
-        break;
-      }
-    }
-    tags.push(markup.slice(open, index + 1));
-    from = index + 1;
+    tags.push(markup.slice(open, close + 1));
+    from = close + 1;
+    open = markup.indexOf('<', from);
   }
   return tags;
 }
@@ -129,23 +166,33 @@ function pageRootTag(markup: string, selector: string): string {
 
 /**
  * @param componentPath the component's file
- * @returns the component's markup, without its `<style>` block
+ * @returns the component's markup, without its `<style>` block and without its HTML comments
  */
 function markupOf(componentPath: string): string {
   return fs
     .readFileSync(componentPath, 'utf-8')
-    .replace(/<style>[\s\S]*?<\/style>/g, '');
+    .replace(/<style>[\s\S]*?<\/style>/g, '')
+    .replace(HTML_COMMENT, '');
 }
 
 /**
- * Reads the inline `style` of the element that carries a view's page-root class.
+ * Reads the inline width declarations of the element that carries a view's page-root class: its
+ * `style` attribute and any `style:max-width` or `style:max-inline-size` directive.
  *
  * @param componentPath the component's file
  * @param selector the page-root selector, e.g. `.system-container`
- * @returns the `style` attribute's value, or an empty string when the root carries none
+ * @returns the declarations, or an empty string when the root carries none
  */
 export function rootInlineStyle(componentPath: string, selector: string): string {
-  return attributeOf(pageRootTag(markupOf(componentPath), selector), 'style');
+  const tag = pageRootTag(markupOf(componentPath), selector);
+  const declarations = [attributeOf(tag, 'style')];
+  if (tag.includes('style:max-width')) {
+    declarations.push('max-width: directive');
+  }
+  if (tag.includes('style:max-inline-size')) {
+    declarations.push('max-inline-size: directive');
+  }
+  return declarations.filter(Boolean).join(' ');
 }
 
 /**
@@ -162,8 +209,8 @@ export function pageRootCarriedByMarkup(componentPath: string, selector: string)
 /**
  * Reports every listed view whose page root carries a page-width cap.
  *
- * Both spellings are read, in the stylesheet and in the root's inline `style`: `max-width` and
- * `max-inline-size`, except the fluid `max-inline-size: 100%`. CSS comments are dropped and a
+ * Both spellings are read, in every rule for the root and in its inline declarations: `max-width`
+ * and `max-inline-size`, except the fluid `max-inline-size: 100%`. CSS comments are dropped and a
  * custom property such as `--max-width` is not a cap. A listed view whose page root matches no
  * rule, or whose class no element carries, is reported too: an empty rule would otherwise pass
  * the check whenever the selector is renamed or the rule is deleted, which is the vacuous pass
@@ -179,16 +226,15 @@ export function pageWidthOffenders(
 ): string[] {
   return views.flatMap((view) => {
     const file = path.join(viewsDir, view.file);
-    const root = ruleOf(styleOf(file), view.root);
-    if (!root.trim()) {
+    const rules = rulesOf(styleOf(file), view.root);
+    if (rules.length === 0) {
       return [`${view.file} (${view.root}): no rule found for the page root`];
     }
     if (!pageRootCarriedByMarkup(file, view.root)) {
       return [`${view.file} (${view.root}): no element carries the page-root class`];
     }
-    const declarations = `${root}\n${rootInlineStyle(file, view.root)}`;
-    const effective = declarations.replace(/\/\*[\s\S]*?\*\//g, '');
-    return /(?<![\w-])max-width\s*:|(?<![\w-])max-inline-size\s*:(?!\s*100%)/.test(effective)
+    const declarations = `${rules.join('\n')}\n${rootInlineStyle(file, view.root)}`;
+    return /(?<![\w-])max-width\s*:|(?<![\w-])max-inline-size\s*:(?!\s*100%)/.test(declarations)
       ? [`${view.file} (${view.root}): ${declarations.trim()}`]
       : [];
   });
