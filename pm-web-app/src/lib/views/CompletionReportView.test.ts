@@ -56,6 +56,12 @@ describe('CompletionReportView component', () => {
       state: 'partial',
       cause: 'the vendored tree is not tracked',
     },
+    change: {
+      files: 12,
+      insertions: 340,
+      deletions: 27,
+      unplanned: 2,
+    },
     token_usage: {
       total: 412000,
       input: 380000,
@@ -177,6 +183,20 @@ describe('CompletionReportView component', () => {
     expect(diagram.textContent).toBe(
       'relay ──> cursor ──> fsync\n  └────> sse ──────> websocket (not traced)',
     );
+  });
+
+  it('shows the size of the change with its unplanned count', async () => {
+    render(CompletionReportView, { planId: 'fix-relay', report: mockReport });
+
+    expect(screen.getByText('Change')).toBeInTheDocument();
+    expect(screen.getByText('12 files · +340 −27 · 2 unplanned')).toBeInTheDocument();
+  });
+
+  it('leaves the Change line out when the plan carries no measured size', async () => {
+    render(CompletionReportView, { planId: 'fix-relay', report: { ...mockReport, change: null } });
+
+    expect(screen.queryByText('Change')).toBeNull();
+    expect(screen.queryByText(/files · \+/)).toBeNull();
   });
 
   it('renders tokens section with coverage, breakdown, and toggles raw components', async () => {
