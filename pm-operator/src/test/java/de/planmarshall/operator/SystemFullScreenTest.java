@@ -595,8 +595,13 @@ class SystemFullScreenTest {
 
                 statusCode.set(500);
                 var reads = statusReads.get();
+                var snapshots = systemTargets.size();
                 virtual.type("r");
                 await(() -> statusReads.get() > reads);
+                await(() -> systemTargets.size() > snapshots);
+                // A move draws the next frame: the reload alone leaves the frame it replaced.
+                virtual.type("j");
+                await(() -> !selectedRow(virtual).contains("Runtime"));
                 assertTrue(shows(virtual, "draining \u00b7 3 left"), virtual.screen().lines().toString());
 
                 virtual.type("q");
