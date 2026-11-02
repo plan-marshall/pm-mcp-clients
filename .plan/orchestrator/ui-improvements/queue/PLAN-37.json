@@ -2,10 +2,10 @@
   "id": "PLAN-37",
   "slug": "web-accessibility-baseline",
   "workstream": "WS-02",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "37-web-accessibility-baseline",
+  "pr": "297",
+  "landing": "landings/PLAN-37.md",
   "seq": 37
 }

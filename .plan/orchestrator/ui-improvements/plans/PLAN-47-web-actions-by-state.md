@@ -62,15 +62,16 @@ Source of this plan (read before scoping):
   - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/ux/plan.adoc:40-43 UX-S-05 maps to UX-P-04; ux/proposals.adoc:176-177 '== UX-P-04: One Primary Act per State' exists
 - HYPOTHESIS: the API does not yet send the offered acts for every resource — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/control/` (verify-at-outline)
   - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-api/.../api/control/WorkActions.java:25,37 carries offered acts for plan and epic only (subject_kind plan|epic); no acts list on system, project, device or decision resources
+- Re-grounded note at HEAD 2c25ed1d (2026-11-02, orchestrator, read not run): the shipped plans changed what this spec assumes. (1) `ActionBar.svelte` and `ActionBar.test.ts` EXIST (PLAN-25, `8b19a4a7`): one primary, up to three secondary, the rest in an overflow `IconButton` menu with arrow/Home/End/Tab/Escape handling; prop `acts` (`id`, `label`, `advisory`, `disabled`, `disabledReason`), `busy`, `onAct(id)`; `doc/design/web-app/components.adoc#action-bar` says "which acts a state offers arrives with the actions-by-state work". Deliverable 2 therefore EXTENDS this component, it does not create it; keep its overflow behaviour and tests. `ConfirmDialog.svelte`, `lib/actions/byState.ts` and its test are still absent; `Dialog.svelte` exists. (2) `ControlActionsBar.svelte` (619 lines) was reworked by PLAN-37 (`c5bfb1ca`): Escape on `window`, the opener remembered and restored (with a first-enabled fallback when a confirm disabled the opener), `aria-describedby` to the visible reason on disabled acts, 44 px phone targets (five places), covered by `ControlActionsBar.test.ts` and three `workspace.spec.js` checks. Deliverable 3 removes this component: carry those behaviours and keep those tests green (or move them to the replacement), never lose them silently. `WorkControlPanel.svelte` also carries PLAN-37's 44 px target. (3) `SystemView.svelte` now sits inside `DashboardPage` (PLAN-43, `2c25ed1d`: header in the template slots, `.system-container` as content block, `pageWidth.test.ts` guards the root) and PLAN-37 added aria-labels to the work figures; the running PLAN-90 deliverable 3 edits the same file (words and the frozen load-failure string), different hunks: rebase if it lands first. "No own page width" is now enforced by `pageWidth.test.ts`; a view this plan touches that is not listed there stays unchecked. (4) `IconButton` draws its label from 768 px (PLAN-37) and the running PLAN-89 deliverable 5 verifies how that reads in the `ActionBar` overflow and the `DataTable` row menu: do not change `IconButton` here. (5) The design-system v2 data components (PLAN-35: `DataTable`, `EmptyState`, `ErrorState`, `Skeleton`) exist for any list this plan touches. (6) The pm-api `WorkActions.java` HYPOTHESIS below was last corroborated at `cc5794c9`; re-confirm at the current HEAD as the verify-first clause says.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
 
 - OBSERVED: `pm-web-app/src/lib/actions/byState.ts` — absent at HEAD c4dc9bb4; created by this plan
 - OBSERVED: `pm-web-app/src/lib/actions/byState.test.ts` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `pm-web-app/src/lib/components/ActionBar.svelte` — absent at HEAD c4dc9bb4; created by this plan
+- OBSERVED: `pm-web-app/src/lib/components/ActionBar.svelte` — present at HEAD 2c25ed1d (created by PLAN-25); this plan extends it
 - OBSERVED: `pm-web-app/src/lib/components/ConfirmDialog.svelte` — absent at HEAD c4dc9bb4; created by this plan
-- OBSERVED: `pm-web-app/src/lib/components/ControlActionsBar.svelte` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-web-app/src/lib/components/ControlActionsBar.svelte` — present at HEAD c4dc9bb4 (reworked by PLAN-37; removed by this plan)
 - OBSERVED: `pm-web-app/src/lib/components/ControlActionsBar.test.ts` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-web-app/src/lib/components/WorkControlPanel.svelte` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-web-app/src/lib/views/SystemView.svelte` — present at HEAD c4dc9bb4
@@ -82,8 +83,8 @@ Source of this plan (read before scoping):
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-43` (`web-page-templates`), `PLAN-76` (`shared-port-assignment`)
-- Overlaps with: none known at staging
+- Depends on: `PLAN-43` (`web-page-templates`), `PLAN-76` (`shared-port-assignment`) — both shipped
+- Overlaps with: PLAN-90 (running; `SystemView.svelte`, different hunks), PLAN-89 (running; `IconButton`, `DataTable`, `ChatPanel` verification, no shared declared file)
 - Adjacent to: none
 
 ## Hand-Off Command

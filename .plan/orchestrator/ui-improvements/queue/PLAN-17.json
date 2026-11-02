@@ -2,10 +2,10 @@
   "id": "PLAN-17",
   "slug": "cli-runtime-act-confirm",
   "workstream": "WS-04",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "17-cli-runtime-act-confirm",
+  "pr": "292",
+  "landing": "landings/PLAN-17.md",
   "seq": 17
 }
