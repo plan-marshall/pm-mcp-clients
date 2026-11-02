@@ -17,11 +17,22 @@ export const FAILING_IMPACTS = ['serious', 'critical'];
  * Runs axe-core over the page as it stands and keeps the issues that fail the run.
  *
  * @param {import('@playwright/test').Page} page the page of the view to audit
+ * @param {{ include?: string | string[] }} [options] the selectors to keep the audit inside, so a
+ *   panel opened over a view is audited on its own
  * @returns {Promise<{ violations: Array<object>, failing: Array<object> }>} the audit's own result
  *   and the subset that gates
  */
-export async function auditViewA11y(page) {
-  const result = await new AxeBuilder({ page }).withTags(AUDIT_TAGS).analyze();
+export async function auditViewA11y(page, options = {}) {
+  let builder = new AxeBuilder({ page }).withTags(AUDIT_TAGS);
+  const selectors = options.include
+    ? Array.isArray(options.include)
+      ? options.include
+      : [options.include]
+    : [];
+  for (const selector of selectors) {
+    builder = builder.include(selector);
+  }
+  const result = await builder.analyze();
   const failing = result.violations.filter((violation) =>
     FAILING_IMPACTS.includes(violation.impact ?? ''),
   );

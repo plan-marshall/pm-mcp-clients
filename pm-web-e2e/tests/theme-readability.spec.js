@@ -1080,6 +1080,92 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
     }
   });
 
+  test.describe('Accessibility audit of the command palette (axe-core)', () => {
+    /** The two widths of the palette audit: the desktop and the phone. */
+    const PALETTE_VIEWPORTS = [
+      { name: 'desktop', width: 1440, height: 900 },
+      { name: 'phone', width: 390, height: 844 },
+    ];
+
+    /** The four states the palette is opened in. */
+    const PALETTE_STATES = ['empty field', 'results', 'no match', 'failed read'];
+
+    /** The selector the palette audit stays inside. */
+    const PALETTE_SELECTOR = '[data-testid="command-palette"]';
+
+    /**
+     * Opens the palette over the overview in one state.
+     *
+     * @param {import('@playwright/test').Page} page the page of the paired app
+     * @param {string} state one entry of `PALETTE_STATES`
+     */
+    async function openPalette(page, state) {
+      await page.goto('/overview');
+      await expect(page.getByTestId('top-bar')).toBeVisible();
+      await page.keyboard.press('Control+K');
+      await expect(page.getByTestId('command-palette')).toBeVisible();
+
+      const field = page.getByTestId('command-palette-field');
+      if (state === 'empty field') {
+        return;
+      }
+      if (state === 'failed read') {
+        // The mock cannot serve a failing read, so the failure is put in the way of the read.
+        await page.route('**/api/v1/find**', (route) =>
+          route.fulfill({
+            status: 500,
+            contentType: 'application/json',
+            body: '{"error":"unavailable"}',
+          }),
+        );
+      }
+      await field.fill(state === 'results' ? 'relay' : 'relayy');
+      if (state === 'results') {
+        await expect(page.getByTestId('command-palette-match').first()).toBeVisible();
+      } else if (state === 'no match') {
+        await expect(page.getByTestId('command-palette-empty')).toBeVisible();
+      } else {
+        await expect(page.getByTestId('command-palette-retry')).toBeVisible();
+      }
+    }
+
+    for (const locale of GUARD_LOCALES) {
+      for (const viewport of PALETTE_VIEWPORTS) {
+        for (const state of PALETTE_STATES) {
+          test(`palette: ${state} in ${locale} at ${viewport.width}px`, async ({
+            page,
+            request,
+          }) => {
+            await page.setViewportSize({ width: viewport.width, height: viewport.height });
+            await pairInLocale(page, request, 'fully-onboarded', locale);
+
+            try {
+              await openPalette(page, state);
+              const { violations, failing } = await auditViewA11y(page, {
+                include: PALETTE_SELECTOR,
+              });
+              const label = `command palette: ${state} (${locale}, ${viewport.name})`;
+              for (const violation of violations) {
+                if (!failing.includes(violation)) {
+                  console.log(`[a11y] ${formatA11yViolation(label, violation)}`);
+                }
+              }
+              const failures = failing.map((violation) =>
+                formatA11yViolation(label, violation),
+              );
+              expect(
+                failures,
+                `serious accessibility issues found:\n${failures.join('\n')}`,
+              ).toEqual([]);
+            } finally {
+              await page.unroute('**/api/v1/find**');
+            }
+          });
+        }
+      }
+    }
+  });
+
   test.describe('Declared View Coverage Guard', () => {
     test('all 22 declared views in src/lib/views/ are present and were audited', () => {
       const viewsDir = path.resolve(__dirname, '../../pm-web-app/src/lib/views');

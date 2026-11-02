@@ -20,6 +20,19 @@ describe('IconButton component', () => {
     expect(container.querySelector('.icon-btn__label')?.textContent).toBe('More');
   });
 
+  it('shows a short visible label apart from the longer accessible name', () => {
+    const { container } = render(IconButton, {
+      props: {
+        icon: 'act.more',
+        label: 'Row menu: web-core-components',
+        visibleLabel: 'Row menu',
+      },
+    });
+
+    expect(screen.getByRole('button')).toHaveAccessibleName('Row menu: web-core-components');
+    expect(container.querySelector('.icon-btn__label')?.textContent).toBe('Row menu');
+  });
+
   it('says why it is disabled, as the advisory and as its description', () => {
     render(IconButton, {
       props: { icon: 'act.more', label: 'More', disabled: true, disabledReason: 'Nothing to copy' },
