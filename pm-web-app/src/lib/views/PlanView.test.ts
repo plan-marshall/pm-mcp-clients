@@ -317,6 +317,45 @@ describe('PlanView component', () => {
     expect(await screen.findAllByTestId('activity-day')).toHaveLength(1);
   });
 
+  it('dates a streamed clock-only row by the day it arrives', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 16, 9, 0, 0));
+    let onEvent: ((event: string, data: unknown) => void) | undefined;
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      ...mockActivity,
+      entries: [
+        {
+          timestamp: new Date(2026, 9, 15, 20, 0, 0).toISOString(),
+          kind: 'text',
+          content: 'yesterday, dated',
+        },
+      ],
+    });
+    vi.spyOn(apiClient, 'subscribeTaskActivity').mockImplementation(
+      (_planId: string, _taskId: string, callback) => {
+        onEvent = callback;
+        return () => {};
+      },
+    );
+
+    render(PlanView);
+
+    await screen.findByTestId('task-inspector');
+    await waitFor(() => expect(onEvent).toBeDefined());
+    // Past midnight, a row arrives with a bare clock: it belongs to the day it arrived.
+    vi.setSystemTime(new Date(2026, 9, 16, 0, 30, 0));
+    onEvent?.('task.activity', {
+      timestamp: '00:29:00',
+      kind: 'text',
+      content: 'arrived after midnight',
+    });
+
+    await waitFor(() => expect(screen.getAllByTestId('activity-entry')).toHaveLength(2));
+
+    const days = screen.getAllByTestId('activity-day');
+    expect(days.map((day) => day.textContent)).toEqual(['yesterday', 'today']);
+  });
+
   it('normalizes live activity events and ignores malformed ones', async () => {
     let onEvent: ((event: string, data: unknown) => void) | undefined;
     vi.spyOn(apiClient, 'subscribeTaskActivity').mockImplementation(

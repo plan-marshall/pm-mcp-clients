@@ -53,8 +53,6 @@
   let reportRoleBreakdown = $state<TokenBreakdownItem[] | null>(null);
   /** The moment the day headers are measured at; a quiet timer moves it across midnight. */
   let clock = $state(Date.now());
-  /** The moment the open task's activity was read, which dates its clock-only rows. */
-  let activityReadAt = $state(Date.now());
 
   /**
    * How the plan ended: the process resource's own record, or what Ended Work handed the view.
@@ -324,6 +322,26 @@
   }
 
   /**
+   * Dates a row the runtime sends with a clock only.
+   *
+   * The wire may carry `14:02:11` instead of an instant; such a row belongs to the day it was read,
+   * so the row takes that day with the clock it sent. The day is thus fixed when the row arrives,
+   * and a page left open over midnight keeps its rows where they belong.
+   *
+   * @param timestamp the instant or the bare clock the runtime sends
+   * @param readAt the moment the row was read
+   * @returns the timestamp with a date, or the value unchanged when it already carries one
+   */
+  function dateOnRead(timestamp: string, readAt: Date): string {
+    const clockOnly = /^\d{1,2}:\d{2}(:\d{2})?$/.exec(timestamp.trim());
+    if (!clockOnly) return timestamp;
+    const [hours, minutes, seconds = '00'] = clockOnly[0].split(':');
+    const pad = (value: number): string => String(value).padStart(2, '0');
+    const day = `${readAt.getFullYear()}-${pad(readAt.getMonth() + 1)}-${pad(readAt.getDate())}`;
+    return `${day}T${pad(Number(hours))}:${pad(Number(minutes))}:${pad(Number(seconds))}`;
+  }
+
+  /**
    * Reads one live-activity event into an entry.
    *
    * The stream reports the entry either directly (`task.activity`) or inside an `entry` field
@@ -340,7 +358,7 @@
         : payload;
     if (typeof source.kind !== 'string') return null;
     return {
-      timestamp: textOf(source.timestamp) ?? '',
+      timestamp: dateOnRead(textOf(source.timestamp) ?? textOf(source.time) ?? '', new Date()),
       kind: source.kind,
       tool_name: textOf(source.tool_name),
       tool_target: textOf(source.tool_target),
@@ -363,10 +381,14 @@
     try {
       const loaded = await apiClient.getTaskActivity(pId, tId);
       if (generation !== activityLoadGeneration) return;
-      taskActivity = loaded;
-      // A row that carries only a clock belongs to the day its activity was read, not to the day
-      // the page last re-rendered: a stream kept open over midnight keeps its rows' day.
-      activityReadAt = Date.now();
+      const readAt = new Date();
+      taskActivity = {
+        ...loaded,
+        entries: loaded.entries.map((entry) => ({
+          ...entry,
+          timestamp: dateOnRead(entry.timestamp, readAt),
+        })),
+      };
       unsubscribeActivity = apiClient.subscribeTaskActivity(pId, tId, (event, data) => {
         const entry = toActivityEntry(event, data);
         if (taskActivity && entry) {
@@ -531,10 +553,9 @@
   /**
    * The day a row opens, where the row carries a date or a clock.
    *
-   * A clock alone carries no date, so it belongs to the day the activity was read, which the view
-   * keeps beside the stream: a page left open over midnight does not move its rows. The header
-   * appears when the row opens a day of its own; a row the runtime dates not at all opens none,
-   * and the next dated row of the same day keeps the single header.
+   * A row the runtime sends with a clock only was dated when it was read (`dateOnRead`), so its day
+   * is fixed and the header follows the live clock: a page left open over midnight names the same
+   * day `yesterday`, and the next dated row of one day moves under a single header.
    *
    * @param entries the entries of the task's activity
    * @param index the entry's position
@@ -542,13 +563,13 @@
    */
   function dayLabel(entries: ActivityEntry[], index: number): string {
     const timestamp = entries[index]?.timestamp;
-    const readAt = new Date(activityReadAt);
-    const day = formatDay(timestamp, $currentLocale, readAt);
+    const now = new Date(clock);
+    const day = formatDay(timestamp, $currentLocale, now);
     if (!day) return '';
-    const own = dayOf(timestamp, readAt);
+    const own = dayOf(timestamp, now);
     if (own === null) return day;
     for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
-      const previous = dayOf(entries[cursor]?.timestamp, readAt);
+      const previous = dayOf(entries[cursor]?.timestamp, now);
       if (previous === null) continue;
       return previous.getTime() === own.getTime() ? '' : day;
     }

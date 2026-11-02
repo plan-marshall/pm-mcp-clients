@@ -255,6 +255,7 @@ describe('SystemView component', () => {
 
     await waitFor(() => {
       expect(screen.getByText('1 retry')).toBeInTheDocument();
+      expect(screen.getByText('1 error')).toBeInTheDocument();
     });
   });
 
