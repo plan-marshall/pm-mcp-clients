@@ -44,7 +44,7 @@
   /** The filter query; it runs over the loaded reports only. */
   let query = $state('');
   /**
-   * The reports read by opening their detail in the split layout: they stay in the list, marked
+   * The reports read by opening their detail in the list beside it: they stay in the list, marked
    * read, until the detail closes, so the selected row does not vanish under the pointer.
    */
   let retainedReadIds = $state<Record<string, boolean>>({});
@@ -195,7 +195,7 @@
   }
 
   /**
-   * Drops the rows that opening a detail in split mode read in place.
+   * Drops the rows that opening a detail read in place.
    *
    * A row whose read request is still in flight stays: its outcome decides whether it goes as
    * read or comes back as unread, and dropping it now would lose it if the request fails.
@@ -306,7 +306,7 @@
       if (ids.length > 0) {
         // One read counts once, and the ids are taken before the list drops them. A report outside
         // the loaded page still counts: the server's unread count includes it, and a read of an
-        // older report on another client must move the pill too.
+        // older report on another client must move the unread count too.
         const newlyRead = [...new Set(ids)].filter((id) => !countedReadIds.has(id));
         for (const id of newlyRead) countedReadIds.add(id);
         items = items.filter((i) => !ids.includes(i.id) || retainedReadIds[i.id]);
@@ -351,7 +351,14 @@
     loadError = '';
     try {
       const page: ReportsPage = await apiClient.getReports();
-      items = page.items || [];
+      const served = page.items || [];
+      // A row read beside its open detail stays in the list even when a reload no longer serves it:
+      // the runtime has marked it read, and the detail still shows it. Only closing the detail drops
+      // it ({@link flushRetainedReads}).
+      const retained = items.filter(
+        (item) => retainedReadIds[item.id] && !served.some((fresh) => fresh.id === item.id),
+      );
+      items = [...retained, ...served];
       // The reloaded count already includes every read this view counted, so those markers go.
       // A read whose response is still in flight keeps its marker: that response must not subtract
       // a read the fresh count already reflects.
@@ -388,7 +395,7 @@
   /**
    * Marks a report read.
    *
-   * In split mode the row stays in the list, marked read, so the detail keeps its selected row
+   * In the list beside the detail the row stays, marked read, so the detail keeps its selected row
    * beside it; {@link flushRetainedReads} drops it once the detail closes.
    *
    * The retained marker is set before the request rather than after it: the runtime can emit
@@ -569,8 +576,8 @@
   async function openDetail(item: ReportItem) {
     if (item.subject_deleted) return;
 
-    // Opening the details reads the report, in the same act. The split layout keeps the row it
-    // read in place, so the list beside the detail does not lose its selection.
+    // Opening the details reads the report, in the same act. The list beside the detail keeps the
+    // row it read in place, so it does not lose its selection.
     void markRead(item, opensCompletionDetail(item));
 
     const kind = subjectKindOf(item);

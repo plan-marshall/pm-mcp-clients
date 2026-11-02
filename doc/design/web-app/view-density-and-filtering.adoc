@@ -53,7 +53,7 @@ Every adopted view offers the same three modes and remembers the choice per view
 
 | Comfortable
 | `comfortable`
-| Today's single column with a readable measure (`900px` for reports, `800px` for decisions), the current spacing, and the full body of every item. This is the default when the browser holds no valid choice.
+| Today's single column with a readable measure (`800px` for decisions), the current spacing, and the full body of every item. This is the default when the browser holds no valid choice.
 
 | Compact
 | `compact`
@@ -61,7 +61,7 @@ Every adopted view offers the same three modes and remembers the choice per view
 
 | Split
 | `split`
-| The list on the left, the detail on the right. Reports use `minmax(320px, 420px) minmax(0, 1fr)`; decisions use `minmax(300px, 380px) minmax(0, 1fr)`. The list pane scrolls independently and stays mounted; the selected item is marked with `aria-current` and a primary left border. The hard width cap is removed only in this mode.
+| The list on the left, the detail on the right. Decisions use `minmax(300px, 380px) minmax(0, 1fr)`. The list pane scrolls independently and stays mounted; the selected item is marked with `aria-current` and a primary left border. The hard width cap is removed only in this mode.
 |===
 
 [#breakpoint]

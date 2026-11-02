@@ -85,7 +85,7 @@ describe('ReportsView component', () => {
     });
   });
 
-  /** @returns the completion report the split detail fetches for `fix-relay` */
+  /** @returns the completion report the detail fetches for `fix-relay` */
   function fixRelayCompletion(): PlanCompletionReport {
     return {
       plan_id: 'fix-relay',
@@ -592,6 +592,53 @@ describe('ReportsView component', () => {
     expect(active).toHaveAttribute('aria-current', 'true');
   });
 
+  it('keeps the row beside its detail when the list reloads', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
+    await waitFor(() => {
+      expect(document.querySelector('.completion-report')).not.toBeNull();
+    });
+
+    // The runtime announces a report the view cannot place, so it reloads the list; the server no
+    // longer serves the report the open detail read.
+    const callsBefore = (apiClient.getReports as ReturnType<typeof vi.fn>).mock.calls.length;
+    eventHandler?.('report.sent', { report_id: 'rep-9001' });
+    await waitFor(() => {
+      expect((apiClient.getReports as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(
+        callsBefore,
+      );
+    });
+
+    const active = document.querySelector('.report-card--active');
+    expect(active).not.toBeNull();
+    expect(active).toHaveAttribute('data-report-id', 'rep-0142');
+  });
+
+  it('names the row menu with the report and moves the focus in and back out', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+    const trigger = within(card).getByRole('button', {
+      name: 'Report actions: Ended: merged (#214)',
+    });
+    await fireEvent.click(trigger);
+
+    const entry = await within(card).findByRole('menuitem', { name: /Mark read/i });
+    await waitFor(() => {
+      expect(entry).toHaveFocus();
+    });
+
+    await fireEvent.keyDown(entry, { key: 'Escape' });
+    await waitFor(() => {
+      expect(trigger).toHaveFocus();
+    });
+    expect(within(card).queryByRole('menuitem')).toBeNull();
+  });
+
   it('keeps the active card when the read event arrives before the read request resolves', async () => {
     vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
     let resolveRead: (() => void) | undefined;
@@ -791,7 +838,7 @@ describe('ReportsView component', () => {
     await screen.findByText('Ended: merged (#214)');
 
     // The runtime also announces reads of the older page this view has not loaded; the server's
-    // unread count includes them, so the pill has to move.
+    // unread count includes them, so the unread count has to move.
     eventHandler?.('report.read', { report_id: 'rep-0120' });
     await waitFor(() => {
       expect(screen.getByText(/2 unread/)).toBeInTheDocument();

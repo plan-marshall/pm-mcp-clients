@@ -396,26 +396,27 @@ The theme is a choice this browser remembers: light, dark, or system, offered to
 [#reports-layout]
 === Reports View (`/reports`)
 
-The list and, in place of the list, a report's detail, with the browser's back returning to the list. It is a reading view: one column, the machine's reports grouped by project, epic, and plan.
+The page sits on the `TriagePage` template (link:view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates Replace the Layout Modes]): the list on the left, the report's detail on the right, the detail replacing the list below 1100 px. It sets no page width of its own and keeps no layout mode.
 
 ----
-header
+filters   [Filter reports]
+header    Reports · 5 unread reports                          [Mark all shown read]
 ──────────────────────────────────────────────────────────────────────────
-context   Reports                                              [Mark all shown read]
-──────────────────────────────────────────────────────────────────────────
-body      relay-hardening
-            fix-relay ended: merged (#214)           2 h ago    [Show details]
-            relay-docs landed                         4 h ago    [Show details]
-          pm-mcp-clients
-            pm-mcp-clients is onboarded              yesterday  [Show details]
+body      pm-mcp-clients
+            ◇ relay-hardening
+              • fix-relay   fix-relay ended: merged (#214)  17 d ago  [Show the details] [⋯ Report actions]
+              • docs-typo   docs-typo ended: no change      17 d ago  [Show the details] [⋯ Report actions]
+          This machine
+            • machine       Cleanup is due: 12 candidates from 3 projects
 ──────────────────────────────────────────────────────────────────────────
           [Show 12 older]
 ----
 
-* The subject is the report's own text from the catalogue with its parameters; the relative time is the only figure the client adds, and `--font-mono` is used only inside the subject (a plan id, a pull request number).
-* The detail replaces the list in the same body: its head names the report and carries _Back_; its body is the completion report or the view the report leads to (link:../shared/completion-report.adoc[Completion Report]). The route stays `/reports`; the browser's back returns to the list without a reload.
-* The unread state is a left rule and the word _new_, never only a background tint. _Show the details_ opens the detail and marks the report read; _Mark all shown read_ acts on the list as shown.
-* Width: `1200px` on the desktop, one column on the tablet and the phone. An empty list says that nothing is new and that read reports are not shown again (link:../shared/reports.adoc#read[Reports, Reading a Report]).
+* The subject is the report's own text from the catalogue with its parameters; the relative time is the only figure the client adds, and `--font-mono` is used only for the identifiers of the path and the time advisory.
+* An unread row leads with a dot and sets its subject in the semibold weight; a row read by opening its detail stays beside the detail until the detail closes, without the dot and in the normal weight, and names its state _read_ in words.
+* The row menu stands at the end of the row: the word _Report actions_ beside the glyph from the tablet width up, its accessible name carrying the row's subject. It holds _Mark read_ for that one report; _Show the details_ opens the detail and marks the report read; _Mark all shown read_ acts on the list as shown.
+* A report of the machine (`system.*`) stands in the group _This machine_ of its own, whatever project the wire also names (link:../shared/reports.adoc#list[Reports, The List]).
+* An empty list says that nothing is new and that read reports are not shown again (link:../shared/reports.adoc#read[Reports, Reading a Report]).
 
 [#system-layout]
 === System View (`/system`)

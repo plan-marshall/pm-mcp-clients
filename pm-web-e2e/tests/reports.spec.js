@@ -95,11 +95,10 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
 
     // While the detail is open the row stays beside it, read: no dot, the normal weight.
     const active = page.locator('.report-card--active');
-    if ((await active.count()) > 0) {
-      await expect(active).toHaveAttribute('data-unread', 'false');
-      await expect(active.locator('.report-card__unread-dot')).toHaveCount(0);
-      await expect(active.getByTestId('report-read-state')).toContainText('read');
-    }
+    await expect(active).toHaveCount(1);
+    await expect(active).toHaveAttribute('data-unread', 'false');
+    await expect(active.locator('.report-card__unread-dot')).toHaveCount(0);
+    await expect(active.getByTestId('report-read-state')).toContainText('read');
 
     // Back on the list the report the view read is gone from the unread reports.
     await page.getByRole('button', { name: /^Back$/ }).click();
@@ -256,6 +255,7 @@ test.describe('Reports: paths, details, and the quiet notice (UC-PLN-6)', () => 
 
     await expect(page.locator('.completion-report')).toBeVisible();
     await expect(page.locator('.reports-tree')).toBeVisible();
+    await expect(page.locator('.report-card--active')).toHaveCount(1);
     // One read moves the count; the scenario's own announce of another read may move it once more.
     await expect.poll(() => unreadCount(page)).toBeLessThan(before);
 

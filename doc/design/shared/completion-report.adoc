@@ -187,6 +187,10 @@ Keys of the area `report`, shared by both clients; the outcome is `overview.ende
 |conflicts with {item}
 |widerspricht {item}
 
+|`report.completion.change`
+|Change
+|Änderung
+
 |`report.completion.change_map`
 |Change map
 |Änderungskarte
