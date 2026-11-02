@@ -453,8 +453,8 @@ public final class WebCommand implements Callable<Integer> {
 
         private void handleInteractive(RuntimeClient runtime, PrintWriter out, List<?> list) {
             var locale = context.clientEnvironment().locale();
-            try (var terminal = context.createTerminal()) {
-                var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            try (var lease = context.openTerminal()) {
+                var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
                 var prompt = MessageCatalogue.format(locale, "operator.devices.act_prompt",
                                     Map.of("range", "1-" + list.size()))
                                     + MessageCatalogue.format(locale, "operator.devices.act_options",
@@ -635,8 +635,8 @@ public final class WebCommand implements Callable<Integer> {
         }
 
         private boolean confirm() {
-            try (var terminal = context.createTerminal()) {
-                var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            try (var lease = context.openTerminal()) {
+                var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
                 var answer = reader.readLine(MessageCatalogue.format(context.clientEnvironment().locale(),
                                     "operator.devices.revoke_prompt", Map.of()));
                 return answer == null || (!"b".equalsIgnoreCase(answer.trim()) && !"back".equalsIgnoreCase(answer.trim()));

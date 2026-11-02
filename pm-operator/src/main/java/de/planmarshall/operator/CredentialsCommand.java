@@ -146,39 +146,41 @@ public final class CredentialsCommand implements Callable<Integer> {
     private int store(PrintWriter out, String key, String mode, boolean yes) throws IOException {
         var locale = locale();
         char[] secret;
-        Terminal terminal = context.createTerminal();
-        try {
-            secret = SecretReader.read(terminal, out, locale);
-        } catch (IOException | UserInterruptException e) {
-            out.println(MessageCatalogue.format(locale, "operator.credentials.read_failed",
-                                Map.of("reason", TerminalSanitizer.sanitize(e.getMessage()))));
-            out.flush();
-            return PmOperator.EXIT_FAILURE;
-        }
-        try {
-            if (secret.length == 0) {
+        try (var lease = context.openTerminal()) {
+            var terminal = lease.terminal();
+            try {
+                secret = SecretReader.read(terminal, out, locale);
+            } catch (IOException | UserInterruptException e) {
                 out.println(MessageCatalogue.format(locale, "operator.credentials.read_failed",
-                                    Map.of("reason", "empty")));
+                                    Map.of("reason", TerminalSanitizer.sanitize(e.getMessage()))));
                 out.flush();
                 return PmOperator.EXIT_FAILURE;
             }
-            if (!yes && !confirm(terminal)) {
-                return 0;
+            try {
+                if (secret.length == 0) {
+                    out.println(MessageCatalogue.format(locale, "operator.credentials.read_failed",
+                                        Map.of("reason", "empty")));
+                    out.flush();
+                    return PmOperator.EXIT_FAILURE;
+                }
+                if (!yes && !confirm(terminal)) {
+                    return 0;
+                }
+                var body = new LinkedHashMap<String, Object>();
+                body.put(MODE, mode);
+                body.put(SECRET, new String(secret));
+                if (entryKind != null && !entryKind.isBlank()) {
+                    body.put(KIND, entryKind);
+                }
+                if (projectScope != null && !projectScope.isBlank()) {
+                    body.put(PROJECT, projectScope);
+                }
+                var response = context.runtime(true).send(
+                                    HttpRequest.json("PUT", path(key), JsonTree.write(body)));
+                return reportStored(out, key, response);
+            } finally {
+                SecretReader.dispose(secret);
             }
-            var body = new LinkedHashMap<String, Object>();
-            body.put(MODE, mode);
-            body.put(SECRET, new String(secret));
-            if (entryKind != null && !entryKind.isBlank()) {
-                body.put(KIND, entryKind);
-            }
-            if (projectScope != null && !projectScope.isBlank()) {
-                body.put(PROJECT, projectScope);
-            }
-            var response = context.runtime(true).send(
-                                HttpRequest.json("PUT", path(key), JsonTree.write(body)));
-            return reportStored(out, key, response);
-        } finally {
-            SecretReader.dispose(secret);
         }
     }
 

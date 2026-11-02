@@ -380,8 +380,8 @@ public final class RolesCommand implements Callable<Integer> {
         }
 
         private boolean confirm() throws IOException {
-            try (var terminal = context.createTerminal()) {
-                var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            try (var lease = context.openTerminal()) {
+                var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
                 String line;
                 try {
                     line = reader.readLine(MessageCatalogue.get("operator.roles.qualify.confirm") + " \u203a ");

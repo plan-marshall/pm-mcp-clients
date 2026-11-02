@@ -118,6 +118,7 @@ public final class PmOperator implements Callable<Integer> {
     @SuppressWarnings("java:S2093") // the terminal is closed only when this context owns it
     private @Nullable Integer runFullScreen() throws IOException {
         var terminal = context.createTerminal();
+        context.useTerminal(terminal);
         try {
             if (!TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS).available()) {
                 return null;
@@ -127,6 +128,7 @@ public final class PmOperator implements Callable<Integer> {
             app.run(out);
             return app.interrupted() ? StartPrompt.EXIT_INTERRUPTED : 0;
         } finally {
+            context.clearTerminal();
             if (context.ownsTerminal(terminal)) {
                 terminal.close();
             }

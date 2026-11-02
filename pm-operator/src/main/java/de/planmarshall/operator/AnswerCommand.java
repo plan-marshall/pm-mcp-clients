@@ -225,7 +225,8 @@ public final class AnswerCommand implements Callable<Integer> {
     }
 
     private int handleInteractive(RuntimeClient runtime, PrintWriter out, DecisionEnvelope envelope) {
-        try (var terminal = context.createTerminal()) {
+        try (var lease = context.openTerminal()) {
+            var terminal = lease.terminal();
             if (System.console() == null && !(terminal instanceof DumbTerminal)) {
                 printDecisionDetail(out, envelope);
                 out.flush();

@@ -212,8 +212,8 @@ public final class AcceptEditCommand implements Callable<Integer> {
     }
 
     private boolean confirm() throws IOException {
-        try (var terminal = context.createTerminal()) {
-            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+        try (var lease = context.openTerminal()) {
+            var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
             var line = reader.readLine(MessageCatalogue.get("enrolment.accept.confirm") + " \u203a ");
             if (line == null) {
                 return false;

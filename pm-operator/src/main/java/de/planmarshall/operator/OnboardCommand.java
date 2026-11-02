@@ -241,8 +241,8 @@ public final class OnboardCommand implements Callable<Integer> {
     }
 
     private boolean confirm(String prompt) throws IOException {
-        try (var terminal = context.createTerminal()) {
-            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+        try (var lease = context.openTerminal()) {
+            var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
             var line = reader.readLine(prompt + " \u203a ");
             return line != null && (line.isBlank() || line.trim().toLowerCase().startsWith("y")
                                 || line.trim().toLowerCase().startsWith("j"));
