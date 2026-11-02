@@ -194,7 +194,7 @@ With `--no-input` an unscreened source stops the run like a flagged one.
 * A number is shown at once as the URL of the pull request in the project's repository; the URL is what is stored and shown from then on. A URL of another repository is refused: a plan adopts only a pull request of its own project.
 * `source-pr.observe` fails with its cause: `not open` (merged or closed, with when), `its head branch is not writable by the agent identity` (a fork, or a protected branch), `not found`; each offers _try again_ and _remove it_.
 * `source-pr.flagged` and `source-pr.unscreened` are the issue's dialogues (<<flagged>>); _use it anyway_ and _accept it as untrusted_ ask for the reason, which is recorded.
-* *The changed files* are stored as the pull request's head and marked `untrusted` unless the operator authored the pull request: code from outside, possibly from a fork, never read by a model as instructions; the plan's review and integrity checks apply to them as to every change it lands.
+* *The changed files* are stored and marked as link:../shared/starting-work.adoc#pull-request[Starting Work, A Pull Request] says.
 * As a direct verb: `plan add --pull-request 236`; with `--no-input` a flagged pull request stops the run.
 
 [#lesson]
@@ -258,7 +258,7 @@ pm ›
 ----
 
 * `source-local-changes.preview` lists the changed files against the branch with their counts of lines; `n` leaves them out, and nothing is recorded. With no local changes left when the preview runs, the source fails with `the checkout has no local changes any more`, to be removed.
-* At creation the changes are captured as a snapshot commit, and the plan takes the land lane and lands them by the project's landing; a file changed between the preview and the creation is captured with the rest, and the creation names it.
+* At creation the changes are captured and landed as link:../shared/starting-work.adoc#local-changes[Starting Work, Local Changes] says; the creation names a file changed since the preview.
 * *A landing that commits*: a plan from the local changes needs a landing that commits them. While the project's landing in force is `landing.files`, `start.sources` does not offer the local changes: the key is left out, and the line below the keys names the reason and the project's setting `landing`, which the operator changes in the project's settings (`project setup <project_id>`; link:../shared/starting-work.adoc#landing-refused[Starting Work, A Landing That Does Not Fit]):
 
 [source,text]
@@ -352,7 +352,7 @@ The decomposition follows at once, in the same dialogue (<<decomposition>>); aft
 [#adopt]
 === Adopting an Epic from Elsewhere (`start-epic.adopt`, `start-epic.adopt-failed`)
 
-Where the project's ledger holds an epic that does not run on this machine, ① of `epic add` offers it above the keys of the sources, at most ten of them (link:../shared/starting-work.adoc#adopt[Starting Work, Adopting an Epic from Elsewhere]):
+What adopting offers and does is link:../shared/starting-work.adoc#adopt[Starting Work, Adopting an Epic from Elsewhere]; in the terminal ① of `epic add` offers it above the keys of the sources:
 
 [source,text]
 ----
@@ -364,8 +364,8 @@ pm › epic add
 Follow it? [Enter]   q) leave   ?   › ⏎
 ----
 
-* Adopting takes no sources: the epic's store on this machine is created from its ledger, and the run ends with _Follow it_. `epic add --adopt <epic_id>` does the same as one shell command. The lines are `start.epic.adopt.offer`, `operator.start.adopt.option` with the key `operator.start.key.adopt`, `operator.start.adopt.done`, and `operator.start.follow`.
-* Where the ledger cannot be adopted (`start-epic.adopt-failed`: unreadable, with the failing file; invalid; or ended), the cause is printed (`start.epic.adopt.failed`) with `t) try again` (after the ledger was repaired through git), `b) back` to ①, and `x) abandon`.
+* `epic add --adopt <epic_id>` adopts as one shell command. The lines are `start.epic.adopt.offer`, `operator.start.adopt.option` with the key `operator.start.key.adopt`, `operator.start.adopt.done`, and `operator.start.follow`.
+* Where the ledger cannot be adopted (`start-epic.adopt-failed`), the cause is printed (`start.epic.adopt.failed`) with `t) try again`, `b) back` to ①, and `x) abandon`.
 
 [#decomposition]
 === The Decomposition

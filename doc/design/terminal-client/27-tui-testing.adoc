@@ -147,8 +147,7 @@ The tests skip with an assumption when `/usr/bin/script` is missing. No native P
 
 The console cases are the regression for the hand-off: before the fix, `PlansCommand` opened a
 second JLine terminal, JLine fell back to a dumb `0 × 0` terminal, the view refused, and the console
-printed the status tree instead. The failing-before capture is in
-link:../../agy/operator-tui-pty-and-console-handoff-plan-report.md[the plan's report].
+printed the status tree instead.
 
 [#screen-captures]
 == Screen Captures for Review

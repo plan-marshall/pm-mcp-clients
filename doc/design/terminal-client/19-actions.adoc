@@ -20,7 +20,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 ----
   plan pause <plan_id> [--now|--after-task|--after-phase]
   plan start <plan_id>
-  plan cancel <plan_id> [--reason <text>] [--close-pr|--keep-pr]   on an integrity pause, its abort
+  plan cancel <plan_id> [--reason <text>] [--close-pr|--keep-pr]   on an integrity hold, its abort
   plan abandon <plan_id> [--reason <text>] [--close-pr|--keep-pr]
   plan chat <plan_id>                    the chat with the plan's planning role; on an ended plan, about its archive
   config <aspect> --plan <plan_id>       the plan's settings, in every state until it has ended (plan-defaults with
@@ -40,8 +40,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 * All are operator acts, in the console and as one shell command, except the reads `epic <epic_id>` (the view), `epic findings` and `epic watches`, which run without the checks, and direct verbs: an argument answers its state, a missing one is asked (the reason of a cancel or an abandon too), and `--no-input` stops there (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]).
 * An action the state does not allow is refused with the state and the actions it allows (`fix-relay is paused: start, abandon, chat, settings`).
 * *Settings* is an action of every state of a plan until it has ended: `config <aspect> --plan <plan_id>` sets the plan's own value of an aspect, where the plan first needs it or later (xref:02-levels.adoc#level-model[Machine, Project, Plan]; <<settings>>).
-* `plan cancel` on a plan held by an integrity pause is that pause's abort: its dialogue is `Abort fix-relay?`, and the plan ends `aborted` (link:../shared/work-actions.adoc#confirm-end[Ending a Plan]); its epic is told `cancelled` (link:../shared/work-actions.adoc#epic-told[The Epic Is Told]). A waiting or held plan is cancelled like a running one.
-* `pm-operator abort plan` and `abort epic` are the shell forms of the specification: they do what `plan cancel` (or `abandon`, by the plan's state) and `epic cancel` do.
+* `plan cancel` on a plan held by an integrity hold is that hold's abort: its dialogue is `Abort fix-relay?`, and the plan ends `aborted` (link:../shared/work-actions.adoc#confirm-end[Ending a Plan]); its epic is told `cancelled` (link:../shared/work-actions.adoc#epic-told[The Epic Is Told]). A waiting or held plan is cancelled like a running one.
 * The reviews and the chat are dialogues; as one shell command they need a terminal, like every dialogue.
 
 [#full-screen]
@@ -70,7 +69,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 
 * *The menu is modal*: while it is open, only its mnemonics, `↑` `↓` with `Enter`, and `a` or `Esc` (which close it) act; the keys of the view wait until it is closed.
 * *Its mnemonics* are texts of the catalogue, `operator.actions.key.*` (xref:22-texts-actions.adoc#actions-keys[Keys]), in the language of the client; none is `a`, which closes the menu in every language.
-* *What it offers* follows the state, from the runtime (link:../shared/work-actions.adoc#plan-actions[A Plan's Actions], link:../shared/work-actions.adoc#epic-actions[An Epic's Actions]): a running plan, and one waiting for you, _Pause…_, _Cancel…_, _Chat…_, _Settings…_, the waiting one with the decision first (`!`); a pausing plan _Start_, _Cancel…_, _Chat…_, _Settings…_; a paused plan _Start_, _Abandon…_, _Chat…_, _Settings…_; a held plan those of a running one below the acts of its hold (<<holds>>), whose _end the plan_ is the menu's _Cancel…_ (on an integrity pause _Abort…_); an epic its actions by its state, _Archive…_ shown disabled while it lands (`A  Archive… (the ledger is landing)`); an ended plan or epic _Chat…_ alone (`fix-relay has ended: its view, and a chat about it`; <<chat-ended>>).
+* *What it offers* follows the state, from the runtime (link:../shared/work-actions.adoc#plan-actions[A Plan's Actions], link:../shared/work-actions.adoc#epic-actions[An Epic's Actions]): a running plan, and one waiting for you, _Pause…_, _Cancel…_, _Chat…_, _Settings…_, the waiting one with the decision first (`!`); a pausing plan _Start_, _Cancel…_, _Chat…_, _Settings…_; a paused plan _Start_, _Abandon…_, _Chat…_, _Settings…_; a held plan those of a running one below the acts of its hold (<<holds>>), whose _end the plan_ is the menu's _Cancel…_ (on an integrity hold _Abort…_); an epic its actions by its state, _Archive…_ shown disabled while it lands (`A  Archive… (the ledger is landing)`); an ended plan or epic _Chat…_ alone (`fix-relay has ended: its view, and a chat about it`; <<chat-ended>>).
 * An action with `…` leaves the view for its dialogue and returns to it afterwards; _Start_ and _Next plan_ act in place and the row follows. _Settings…_ asks which aspect (`plan-defaults`, `roles`, `integrations`, `providers`; <<settings>>) and runs `config <aspect> --plan <plan_id>`.
 * A plan's own pull request is shown by its number (`#214`), a terminal hyperlink (OSC 8) where the terminal shows one; the dialogues print its URL.
 
@@ -116,7 +115,7 @@ pm ›
 
 * `plan pause` without an answer asks; `--after-task` is the answer of the default, and `--no-input` without one stops.
 * `plan start` asks nothing (`plan.start`): a paused plan runs on from where it rests, a pausing one has its pause withdrawn.
-* `plan cancel` and `plan abandon` ask the reason when `--reason` is missing; it is required, and `--no-input` without it stops. Afterwards the consent asks for the act the runtime performs in the plan's state (_Cancel the plan_, _Abandon the plan_, or _Abort the plan_ on an integrity pause): `y` sends, `n` and `q` send nothing, and Enter has no default.
+* `plan cancel` and `plan abandon` ask the reason when `--reason` is missing; it is required, and `--no-input` without it stops. Afterwards the consent asks for the act the runtime performs in the plan's state (_Cancel the plan_, _Abandon the plan_, or _Abort the plan_ on an integrity hold): `y` sends, `n` and `q` send nothing, and Enter has no default.
 
 [#settings]
 === A Plan's Settings (`plan-settings.open`, `plan-settings.aspect`, `plan-settings.value`, `plan-settings.validate`, `plan-settings.apply`)
@@ -206,7 +205,7 @@ pm › epic auto relay-hardening off
 ✓ relay-hardening starts no plan by itself any more; what runs goes on.
 ----
 
-* *Common files* (`epic auto <epic_id> --common-files <n>`, `m` in the menu below an epic's row, beside the toggle): how many files a plan may share with a running plan and still start beside it, the epic's `overlap_max_files`, taken from the project's `epic.overlap_max_files` when the epic started. One act naming the value it sets, told among the epic's events, and the epic at once starts what the new value admits (`✓ relay-hardening allows 2 common files; relay-docs started`, `control.epic.overlap_done`); the head of `epic <epic_id>` shows it (`Common files allowed: 0`), and the project's default is changed in the project's settings (link:../shared/work-actions.adoc#epic-auto[Automatic: On or Off]).
+* *Common files* (`epic auto <epic_id> --common-files <n>`, `m` in the menu below an epic's row, beside the toggle): the value and its act are those of link:../shared/work-actions.adoc#epic-auto[Actions on Plans and Epics, Automatic: On or Off]. The terminal prints the act's line (`✓ relay-hardening allows 2 common files; relay-docs started`, `control.epic.overlap_done`), and the head of `epic <epic_id>` shows the value (`Common files allowed: 0`).
 * Switched on with nothing launchable, the line says why (`Nothing can start now: relay-docs waits: overlap with relay-auth-v2`, `control.epic.auto_nothing`).
 * The head of `epic <epic_id>` names the mode (`automatic`, `manual`), and its events what the epic did by itself after a plan ended (link:../shared/epic-view.adoc#reactions[Epic View, What the Epic Does by Itself]).
 
@@ -255,7 +254,7 @@ pm ›
 ----
 
 * *The head*: the title, the state (`running`, `waiting for you`, `held`, `landing`, `ended`), how many plans run of how many may, since when it runs, and the count of what needs the operator; below it the epic's project with the command that opens it (`operator.plan.tree.context`, xref:16-plan-view.adoc#plan-view-texts[The Plan View, Texts]); what waits stands first below that, each with the command that opens it.
-* *The workstreams*: each plan with its status as link:../shared/epic-view.adoc#layout[Epic View] lists it: the queue row's status (`staged`, `running`, `pausing`, `paused`, `handed back`, `shipped` for a row `merged` or `completed`, `returned`, `cancelled`, `abandoned`, and the row's other ended statuses by their names), with `waiting for you` and `held` shown from its plan; a plan aborted from an integrity pause is `abandoned` here and keeps its outcome `aborted`, and a plan released with its project changes no row (link:../shared/work-actions.adoc#epic-told[The Epic Is Told]), what it waits for (a dependency, a lock, the scope, an overlap with a running plan), and since when. A running plan's status is followed by its phase and its state (`refine · waiting for you`); a shipped one by its pull request. `plan <plan_id>` opens a plan's view.
+* *The workstreams*: each plan with its status and what it waits for, as link:../shared/epic-view.adoc#layout[Epic View] lists them. A running plan's status is followed by its phase and its state (`refine · waiting for you`); a shipped one by its pull request. `plan <plan_id>` opens a plan's view.
 * *Sources, landings, findings, watches, events*: the sources as stored; each landing with its pull request and the epic's analysis; the open items with their counts and the review that opens them; the events, newest first, the ten newest in the tree and all of them in the full-screen view.
 * *Tokens*: the sum of the epic's plans and of its own tasks (decompose, landing, review), with the split, as the runtime sums it (link:../shared/epic-view.adoc#layout[Epic View]); a floor with `≥` and the count of tasks not measured where there are any; never money, and no budget of its own. `epic <epic_id> --tokens` prints the figure per plan and the epic's own after the tree, each plan with the command that opens it; in the full-screen view the line opens like a node.
 * An ended epic prints as it ended, read-only, with `ended` and its end (`completed`, `cancelled`, `released`) in its first line (xref:15-overview.adoc#ended[Ended Work]).
@@ -275,7 +274,7 @@ fix-relay · execute · held · holds: a condition since 14:02
 [source,text]
 ----
 pm › plan relay-cursor-order
-relay-cursor-order · execute · held · holds: an integrity pause since 10:31
+relay-cursor-order · execute · held · holds: an integrity hold since 10:31
   cause   the plan's store file references.json changed outside the runtime
   recorded  4,812 bytes   sha256 3f9a…c21e
   current   5,034 bytes   sha256 b70d…9a44
@@ -297,7 +296,7 @@ The acts of a hold are those of the shared design (link:../shared/work-actions.a
 |condition
 |the act it names as a dialogue: `g) grant read access to <project>…`, `c) add the credential <name>…`, or `b) raise the budget…`; then `r) retry   x) end the plan…`
 
-|integrity pause
+|integrity hold
 |the tampered file with its recorded and current size and digest; `c) accept the change…   x) abort the plan…` (an epic's: `x) cancel the epic…`); no diff and no restore, since the prior content is not kept
 
 |held item of an epic

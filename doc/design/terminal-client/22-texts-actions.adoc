@@ -85,7 +85,7 @@ The texts of the actions, the dialogues, the settings, the review, and the holds
 
 |`operator.actions.cancel.confirm`
 |{action, select, cancel {Cancel the plan} abandon {Abandon the plan} other {Abort the plan}}
-|{action, select, cancel {Brich den Plan ab} abandon {Gib den Plan auf} other {Brich den Plan wegen der Integritätspause ab}}
+|{action, select, cancel {Brich den Plan ab} abandon {Gib den Plan auf} other {Brich den Plan wegen der Integritätssperre ab}}
 
 |`operator.actions.keep`
 |{action, select, cancel {no, keep it running} abandon {no, keep it paused} other {no, keep it held}}
@@ -93,7 +93,7 @@ The texts of the actions, the dialogues, the settings, the review, and the holds
 
 |`operator.actions.result.ended`
 |{plan} {outcome, select, cancelled {cancelled} abandoned {abandoned} other {aborted}} and archived
-|{plan} {outcome, select, cancelled {abgebrochen} abandoned {aufgegeben} other {wegen der Integritätspause abgebrochen}} und archiviert
+|{plan} {outcome, select, cancelled {abgebrochen} abandoned {aufgegeben} other {wegen der Integritätssperre abgebrochen}} und archiviert
 
 |`operator.actions.result.pr_closed`
 |#{number} closed

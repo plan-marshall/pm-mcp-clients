@@ -12,7 +12,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:README.adoc#visual-language[Web App, Visual Language] (the tokens, the grid and the type scale every component draws from), link:theme-readability.adoc[Theme Readability] (the contrast every colour pair owes), link:interaction-affordances.adoc[Interaction Affordances] (the advisory of a control), link:brand-mark.adoc[Brand Mark] (the mark an empty state carries), link:workflow-visual-language.adoc[Workflow Visual Language] (the icon contract)_
 
-Status: `FINAL`. This document is the authority for the components of design system v2: the specification of `VD-P-05`, one picture per component, and the surface the implementation delivers. The controls arrived with `PLAN-25`, the containers with `PLAN-31`, and the data components with `PLAN-35`; every component this document describes lives in `pm-web-app/src/lib/components/` with a test beside it and a fixture on the development page `/dev/components` (built only in development).
+Status: `AGREED`. This document is the authority for the components of design system v2: the specification of `VD-P-05`, one picture per component, and the surface the implementation delivers. Every component this document describes lives in `pm-web-app/src/lib/components/` with a test beside it and a fixture on the development page `/dev/components` (built only in development).
 
 The proposal (`doc/claude_review/visual-design/proposals.adoc#VD-P-05`) states what each component is; the sections below repeat that specification and add what the shipped component answers to.
 

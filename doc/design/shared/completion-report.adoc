@@ -7,9 +7,9 @@ link:../README.adoc[Design] » Completion Report
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4] (ended work)_
 
-_Relies on: link:../../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work], link:../../../../pm-mcp-core/doc/specification/store-schemas/02-workflow-state-store.adoc#plan-history[The Plan's History]_
+_Relies on: link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work], link:../../../../pm-mcp-core/doc/specification/store-schemas/02-workflow-state-store.adoc#plan-history[The Plan's History]_
 
-Status: `DRAFT`. Shared by both clients: link:../terminal-client/24-reports.adoc#completion[Terminal Client, Reports], link:../web-app/README.adoc#structure[Web App].
+Status: `AGREED`. Shared by both clients: link:../terminal-client/24-reports.adoc#completion[Terminal Client, Reports], link:../web-app/README.adoc#structure[Web App].
 
 How a plan went, on one page: the detail of the report of its end (link:reports.adoc#detail[Reports, The Detail]) and one step from the plan as it ended (link:plan-view.adoc#ended[Plan View, An Ended Plan]). The plan view shows the process node by node; the completion report says what came of it. It is a view of its own, read from the archive and the plan's records (its completion record, its re-planning records, its decisions, its usage records); the client computes nothing in it. It is the resource `GET /api/v1/plans/{plan_id}/completion`.
 
@@ -50,8 +50,8 @@ How a plan went, on one page: the detail of the report of its end (link:reports.
 * *Deliverables*: how many of all are done, each with its state (done `✓`, not done `○`, dropped by a re-planning `–`); a plan that ended before its outline has none and says so (`no deliverables yet: it ended in refine`).
 * *Change*: the size of the plan's change at its last capture, with the count of its unplanned changes (`plan.change.size`, link:plan-view.adoc#change-size[Plan View, Change So Far]); a plan with no measured size leaves the line out.
 * *Re-planning*: how often the plan was revised, each with its trigger (the base moved, a failed gate, a chat of the operator) and what changed in one line; opening one leads to it in the plan's history.
-* *Decisions*: how many were asked, each with its id, the answer, and how it was taken, as its decision record names it (link:../../../../pm-mcp-core/doc/specification/model-work/06-envelopes-questions-deadlines.adoc#own-words[Answers in the Operator's Own Words]): by you, with the channel and device, chosen, interpreted from your words, your own option, or left to the plan, which took the part's recommendation (`delegated`); by a quorum; or withdrawn; opening one shows it as recorded (link:decisions.adoc#outcomes[Decisions, When It Ends Elsewhere]).
-* *Own calls*: the decisions the plan took on its own, apart from _Decisions_ and never mixed with them: shortcuts first, each with the limit it accepts and the condition that ends it, and each with the self-review's judgment (`consistent`, or `conflicts` with the item it names). A design call and a replaced dependency follow. The report shows the calls in the order the runtime recorded them and adds none.
+* *Decisions*: how many were asked, each with its id, the answer, and how it was taken, as its record in the decision log names it (link:../../../../pm-mcp-core/doc/specification/model-work/06-envelopes-questions-deadlines.adoc#own-words[Answers in the Operator's Own Words]): by you, with the channel and device, chosen, interpreted from your words, your own option, or left to the plan, which took the part's recommendation (`delegated`); by a quorum; or withdrawn; opening one shows it as recorded (link:decisions.adoc#outcomes[Decisions, When It Ends Elsewhere]).
+* *Own calls*: the calls the plan made on its own, apart from _Decisions_ and never mixed with them: shortcuts first, each with the limit it accepts and the condition that ends it, and each with the self-review's judgment (`consistent`, or `conflicts` with the item it names). A design call and a replaced dependency follow. The report shows the calls in the order the runtime recorded them and adds none.
 * *Change map*: the fixed-width text diagram the runtime rendered, shown as delivered in a fixed-width font, never redrawn or re-wrapped; `partial` or `indeterminate` with its cause, and its lists one step away. The client computes no part of the map.
 * *Tokens*: the tokens the plan used, with the split and the wall time, the workers, the models, and the coverage; _Tokens_ opens the section of its own, one step away (<<tokens>>). No money is shown.
 * *Actions*: _Its plan view_ opens the plan as it ended; _Chat_ opens the read-only chat about it (link:work-actions.adoc#chat-ended[A Chat About Ended Work]). The report has no other action: the archive never changes.
@@ -59,7 +59,7 @@ How a plan went, on one page: the detail of the report of its end (link:reports.
 [#tokens]
 == Tokens
 
-What the plan used, in tokens and never in money (link:../../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money]). Every figure is one the runtime derived from the plan's usage records; the client formats it (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]) and adds nothing up.
+What the plan used, in tokens and never in money (link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money]). Every figure is one the runtime derived from the plan's usage records; the client formats it (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]) and adds nothing up.
 
 ----
   fix-relay · tokens                                merged · #214 · today 11:20
@@ -312,4 +312,4 @@ Keys of the area `report`, shared by both clients; the outcome is `overview.ende
 |—
 |===
 
-The reasons a task was not measured and the cause classes are texts of their closed lists, keys `report.tokens.unmeasured_reason.<reason>` and `report.tokens.cause.<cause_class>`, added with the contract (link:../../plans/report-contract.adoc[`report-contract`]); the figures use `common.tokens.*` (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]).
+The reasons a task was not measured and the cause classes are texts of their closed lists, keys `report.tokens.unmeasured_reason.<reason>` and `report.tokens.cause.<cause_class>`, added with the contract (`report-contract`); the figures use `common.tokens.*` (link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]).

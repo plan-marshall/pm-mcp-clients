@@ -9,12 +9,12 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue/14-machine-onboarding.adoc[State Catalogue, Machine Onboarding], link:../../../../pm-mcp-core/doc/specification/state-catalogue/19-onboarding-aspects-models-providers.adoc[Onboarding Aspects, Part 2], link:../../../../pm-mcp-core/doc/specification/store-schemas/12-machine-stores.adoc#consent[Store Schemas, Consent Before Acting], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#two-channels[CLI, Coordination & Security, Operator Choices in the Web App and the Terminal], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App]_
 
-Status: `DRAFT`. The principles are those of the link:README.adoc#principles[Web App]. Each state is designed for both clients: the web app here (a wireframe), and the terminal dialogue of the console `pm-operator` in link:../terminal-client/README.adoc[Terminal Client] (a transcript of every state, with its texts). The sketches are ASCII sketches of layout and content, not of the visual style. Names, versions, paths, models and figures in them are examples.
+Status: `AGREED`. A part of link:onboarding.adoc[Onboarding]; its introduction applies here.
 
 [#texts]
 == Texts
 
-Every text of the screens above is a key of the message catalogue (link:../shared/texts-and-languages.adoc#keys[Texts and Languages, Keys and Packs]). The keys of the areas `common` and `onboard` are shared with the terminal client and listed with their texts in its tables (link:../terminal-client/09-texts-common.adoc#texts[Common, Frame, Automatic Run], link:../terminal-client/10-texts-steps-1-2.adoc[Steps 1 and 2] and link:../terminal-client/11-texts-steps-3-5.adoc[Steps 3 to 5], link:../terminal-client/12-texts-steps-6-7.adoc[Steps 6 and 7]); the web app adds the keys of the area `web` below for what only it shows. A shared label written in lower case (a link label of the terminal, `look again`) is shown on a button with its first letter capitalised (_Look again_, _Suche erneut_); the text is the same.
+Every text of the screens above is a key of the message catalogue (link:../shared/texts-and-languages.adoc#keys[Texts and Languages, Keys and Packs]). The keys of the areas `common` and `onboard` are shared with the terminal client; their texts are in the packs, which the terminal's text documents link (link:../terminal-client/09-texts-common.adoc#texts[Common, Frame, Automatic Run], link:../terminal-client/10-texts-steps-1-2.adoc[Steps 1 and 2] and link:../terminal-client/11-texts-steps-3-5.adoc[Steps 3 to 5], link:../terminal-client/12-texts-steps-6-7.adoc[Steps 6 and 7]); the web app adds the keys of the area `web` below for what only it shows. A shared label written in lower case (a link label of the terminal, `look again`) is shown on a button with its first letter capitalised (_Look again_, _Suche erneut_); the text is the same.
 
 [#texts-shared]
 === Shared Keys Used Here
@@ -75,7 +75,7 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |`onboard.completed.title`; `project.explorer.add` (link:../shared/project-explorer.adoc#texts[Project Explorer])
 |===
 
-Every `onboard` key named above is defined with its texts in the terminal client's tables, since its dialogues say the same (link:../terminal-client/09-texts-common.adoc#texts[Common], link:../terminal-client/10-texts-steps-1-2.adoc[Steps 1 and 2], link:../terminal-client/11-texts-steps-3-5.adoc[Steps 3 to 5], link:../terminal-client/12-texts-steps-6-7.adoc[Steps 6 and 7]).
+Every `onboard` key named above has its texts in the pack link:https://github.com/plan-marshall/pm-mcp-clients/blob/main/pm-api/src/main/resources/messages/onboarding.en.properties[`onboarding.en.properties`] with its German twin, shared with the terminal client, since its dialogues say the same (link:../terminal-client/09-texts-common.adoc#texts[Common], link:../terminal-client/10-texts-steps-1-2.adoc[Steps 1 and 2], link:../terminal-client/11-texts-steps-3-5.adoc[Steps 3 to 5], link:../terminal-client/12-texts-steps-6-7.adoc[Steps 6 and 7]).
 
 [#texts-web]
 === Keys of the Web App

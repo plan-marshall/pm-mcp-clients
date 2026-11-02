@@ -49,7 +49,7 @@ Two packages of this repository are on the critical path of the core epic: `prof
 [#rules]
 == Standing Rules
 
-Beside the rules of `CLAUDE.md` and of link:README.adoc#how[How to Work a Package], for every plan of the epic:
+Beside the rules of `CLAUDE.md` and of link:../../../plan-marshall-documentation/doc/developer/project-setup.adoc#_planning_the_work[Project Setup § Planning the Work], for every plan of the epic:
 
 * *Use cases and specification first.* A package implements what the use cases, the specification sections its file names, and the design state; a gap found in a use case or the specification is fixed there first (`plan-marshall-documentation`, `doc/use-cases/`, `doc/specification/`), a gap in a client's design here (`doc/design/`).
 * *Both clients, one state.* A state is never designed or built for one client only; the texts come from the message catalogue, never from a client's code.

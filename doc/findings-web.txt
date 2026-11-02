@@ -1,4 +1,0 @@
-Findings for running pm-web-app
-
-Positive (keep here )
-- plans/session-log: The tree on left with naratives on the right
