@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue/14-machine-onboarding.adoc[State Catalogue, Machine Onboarding], link:../../../../pm-mcp-core/doc/specification/state-catalogue/19-onboarding-aspects-models-providers.adoc[Onboarding Aspects, Part 2], link:../../../../pm-mcp-core/doc/specification/store-schemas/12-machine-stores.adoc#consent[Store Schemas, Consent Before Acting], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#two-channels[CLI, Coordination & Security, Operator Choices in the Web App and the Terminal], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App]_
 
-Status: `DRAFT`. The principles are those of the link:README.adoc#principles[Web App]. Each state is designed for both clients: the web app here (a wireframe), and the terminal dialogue of the console `pm-operator` in link:../terminal-client/README.adoc[Terminal Client] (a transcript of every state, with its texts). The sketches are ASCII sketches of layout and content, not of the visual style. Names, versions, paths, models and figures in them are examples.
+Status: `AGREED`. A part of link:onboarding.adoc[Onboarding]; its introduction applies here.
 
 [#roles]
 == ④ Roles (`roles.review`)
@@ -417,7 +417,7 @@ The run shows the step bar moving and each step's check lines as they report:
 
 * *Change* runs that step again as a later run (`onboard.next`), its current value as the proposal, as the machine's settings would; once the step is done, the result is shown again (`onboard.auto-result`) with the changed value.
 * A value the operator gave during the run has the reason `you were asked`.
-* ② enrols every supported harness found that can run workers, the first of them in the order of the client id the default (`onboard.auto.reason.all_supported`); a harness whose check fails stops the run in `harness.blocked` (xref:onboarding.adoc#harness-probe[harness-probe]), where the operator may leave it out. ③ allows every model the probes listed; for a harness that cannot list its models the run stops in `catalogue.select` for that harness alone, where the operator types its model ids, and the result shows them with `you were asked`.
+* ② enrols every supported harness found that can run workers, the first of them in the order of the harness id the default (`onboard.auto.reason.all_supported`); a harness whose check fails stops the run in `harness.blocked` (xref:onboarding.adoc#harness-probe[harness-probe]), where the operator may leave it out. ③ allows every model the probes listed; for a harness that cannot list its models the run stops in `catalogue.select` for that harness alone, where the operator types its model ids, and the result shows them with `you were asked`.
 
 Terminal: link:../terminal-client/05-transcripts-entry.adoc#t-auto[Terminal Client, transcript].
 

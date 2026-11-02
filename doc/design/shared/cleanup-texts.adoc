@@ -7,7 +7,7 @@ link:../README.adoc[Design] » link:system.adoc[System] » link:cleanup.adoc[Cle
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]_
 
-Status: `DRAFT`. The texts of link:cleanup.adoc[Cleanup], shared by both clients.
+Status: `AGREED`. The texts of link:cleanup.adoc[Cleanup], shared by both clients.
 
 [#texts]
 == Texts

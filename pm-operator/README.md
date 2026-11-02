@@ -8,7 +8,7 @@
 
 - **Interactive Console (`pm-operator`)**: Built on JLine 4 with terminal capability detection, command completion, history persistence, styled prompts (`pm ›`, `pm [setup 3/7] ›`), and asynchronous notifications (`ConsoleNotice`).
 - **Direct CLI Verbs**: Command tree implemented via Picocli (`status`, `runtime`, `config`, `project`, `projects`, `plan`, `epic`, `recipe`, `questions`, `answer`, `reports`, `web`, `client`, `drain`, `abort`).
-- **Operator Gate (`PM-SEC-3`)**: Verifies interactive terminal attachment (`System.console() != null && System.console().isTerminal()`) and refuses each operator act (exit code 4) if coding-agent host signals (`ANTIGRAVITY_AGENT`, `CLAUDE_CODE`, `OPENCODE_CLIENT`, `CODEX_*`) are present. The gate covers acts only: the read-only verbs and the console entry run without it, and the console checks each act it dispatches.
+- **Operator Gate (`PM-SEC-3`)**: Verifies interactive terminal attachment (`System.console() != null && System.console().isTerminal()`) and refuses each operator act (exit code 4) if harness signals (`ANTIGRAVITY_AGENT`, `CLAUDE_CODE`, `OPENCODE_CLIENT`, `CODEX_*`) are present. The gate covers acts only: the read-only verbs and the console entry run without it, and the console checks each act it dispatches.
 - **Unix Domain Socket Client**: Communicates with the daemon exclusively over local Unix domain sockets via `pm-api` (`UnixSocketHttpClient`), authenticated with `run/runtime.token`.
 - **QR Code Pairing**: Generates ASCII and ANSI terminal QR codes (`QrCodeRenderer`) for pairing browsers and mobile devices with the runtime's web listener.
 

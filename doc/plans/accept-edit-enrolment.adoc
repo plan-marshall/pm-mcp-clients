@@ -1,0 +1,27 @@
+= `pm-operator accept-edit enrolment <project_id>`
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `accept-edit-enrolment`
+
+[horizontal]
+Serves:: the client-work track (link:epic-clients.adoc[the client work])
+Where:: `pm-operator`, `pm-mock-runtime`
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== Tasks
+
+. `accept-edit` takes the forms of the specification, `enrolment <project_id>` among them, in place of `<store path> --project <id>`; the act shows the file and asks the confirmation before it sends the acceptance.
+  Anchor: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/02-operator-channel.adoc#operator-accept-edit[CLI, Coordination & Security § Accept-Edit]; link:../../../plan-marshall-documentation/doc/concepts/enrolment.adoc#rebaseline[Concepts § Enrolment, Re-Baseline]; link:../../../pm-mcp-core/doc/specification/store-schemas/11-enrolment-store.adoc#enrolment-store[Store Schemas § Project Enrolment Store].
+  Proof: `AcceptEditCommandTest`: `accept-edit enrolment <project_id>` sends the acceptance only after the confirmation; the old form `<store path> --project <id>` is a usage error (exit `2`).
+. The mock runtime serves an `enrolment_tampered` refusal that names `pm-operator accept-edit enrolment <project_id>`, and its acceptance.
+  Anchor: link:../../../plan-marshall-documentation/doc/concepts/enrolment.adoc#check[Concepts § Enrolment, The Check].
+  Proof: the terminal's tests against the mock runtime run from the refusal through the named command to the project served again.
+
+== Trace
+
+Requirements, specification sections, and watch documents stay in `plan-marshall-documentation` (those of the engine in `pm-mcp-core`) and are only referenced here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:../../../plan-marshall-documentation/doc/developer/project-setup.adoc#_planning_the_work[Project Setup § Planning the Work]).
+
+* Requirement: link:../../../plan-marshall-documentation/doc/requirements/08-security.adoc#PM-SEC-3[PM-SEC-3]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/02-operator-channel.adoc#operator-accept-edit[CLI, Coordination & Security § Accept-Edit]; link:../../../pm-mcp-core/doc/specification/store-schemas/11-enrolment-store.adoc#enrolment-store[Store Schemas § Project Enrolment Store]
+* Concept: link:../../../plan-marshall-documentation/doc/concepts/enrolment.adoc[Concepts § Enrolment]
