@@ -65,8 +65,11 @@ class SystemViewConsistencyTest {
     private final int pairedDevices = Generators.integers(1, 9).next();
     private final int calls = Generators.integers(1, 500).next();
     private final long totalTokens = Generators.integers(1_000, 9_000_000).next();
-    private final long inputTokens = totalTokens / 2;
+    private final long inputTokens = totalTokens / 3;
     private final long outputTokens = totalTokens - inputTokens;
+    private final long secondTotalTokens = totalTokens + Generators.integers(2, 999).next();
+    private final long secondInputTokens = secondTotalTokens / 3;
+    private final long secondOutputTokens = secondTotalTokens - secondInputTokens;
 
     @TempDir
     Path tempDir;
@@ -145,7 +148,8 @@ class SystemViewConsistencyTest {
                             new ModelMetric(claudeHarness + ":" + firstModel, plannerRole, calls, totalTokens,
                                                 inputTokens, outputTokens, 0, 1, false, 0),
                             new ModelMetric(claudeHarness + ":" + secondModel, implementerRole, calls,
-                                                totalTokens, inputTokens, outputTokens, 0, 0, false, 0),
+                                                secondTotalTokens, secondInputTokens, secondOutputTokens,
+                                                0, 0, false, 0),
                             new ModelMetric(codexHarness + ":" + thirdModel, implementerRole, calls, 0L, 0L, 0L,
                                                 1, 0, true, calls));
         var cleanup = new CleanupSummary(plansCleaned, 2, 40, 5, 1, 1932735283L, 4, "today 03:00",
@@ -205,15 +209,23 @@ class SystemViewConsistencyTest {
     void bothViewsShowTheSameTokenUnits() {
         var snapshot = sampleSnapshot();
         for (var lang : List.of("en", "de")) {
-            var split = MessageCatalogue.format(lang, "common.tokens.split",
-                                Map.of("total", TokenFormat.formatTokens(totalTokens, false, lang),
-                                                    "in", TokenFormat.formatTokens(inputTokens, false, lang),
-                                                    "out", TokenFormat.formatTokens(outputTokens, false, lang)));
-            var printedText = printed(snapshot, lang);
-            assertTrue(printedText.contains(split), lang + " printed: " + printedText);
-            assertTrue(fullScreenLines(snapshot, lang).stream().anyMatch(line -> line.contains(split)),
-                                lang + " full screen: " + fullScreenLines(snapshot, lang));
+            var first = split(lang, totalTokens, inputTokens, outputTokens);
+            var second = split(lang, secondTotalTokens, secondInputTokens, secondOutputTokens);
+            for (var expected : List.of(first, second)) {
+                var printedText = printed(snapshot, lang);
+                assertTrue(printedText.contains(expected), lang + " printed: " + printedText);
+                assertTrue(fullScreenLines(snapshot, lang).stream()
+                                                        .anyMatch(line -> line.contains(expected)),
+                                    lang + " full screen: " + fullScreenLines(snapshot, lang));
+            }
         }
+    }
+
+    private static String split(String lang, long total, long in, long out) {
+        return MessageCatalogue.format(lang, "common.tokens.split",
+                            Map.of("total", TokenFormat.formatTokens(total, false, lang),
+                                                "in", TokenFormat.formatTokens(in, false, lang),
+                                                "out", TokenFormat.formatTokens(out, false, lang)));
     }
 
     @Test

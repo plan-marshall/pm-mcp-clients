@@ -13,6 +13,8 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -26,6 +28,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+@EnableGeneratorController
 @DisplayName("ConfigCommand")
 class ConfigCommandTest {
 
@@ -78,9 +81,14 @@ class ConfigCommandTest {
     @Test
     @DisplayName("a refused settings read names the refusal and leaves with 1")
     void aRefusedSettingsReadLeavesWithOne() throws Exception {
-        fixture.start((request, response) -> response.json(500, """
-                            {"error":"refused","reason":"the store is unreadable"}
-                            """));
+        var reason = Generators.letterStrings(6, 16).next();
+        fixture.start((request, response) -> {
+            if ("/api/v1/config".equals(request.target())) {
+                response.json(500, "{\"error\":\"refused\",\"reason\":\"" + reason + "\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
 
         int code = execute("config", "show");
         assertAll(

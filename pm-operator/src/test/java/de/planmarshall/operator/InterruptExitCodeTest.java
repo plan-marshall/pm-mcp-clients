@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -41,44 +43,28 @@ import org.junit.jupiter.api.condition.OS;
 
 /**
  * {@code Ctrl+C} at a prompt of a dialogue the full-screen views open ({@code CLI-CC-S-01}): the
- * two handlers no verb reaches on its own leave with the interrupt status of the exit-code table and
- * send nothing to the runtime. The interrupt is the terminal's {@code INT} signal, which is what
- * {@code Ctrl+C} raises; everything a verb reaches is driven on a real pseudo-terminal in
+ * handlers a verb does not reach on its own leave with the interrupt status of the exit-code table
+ * and send nothing to the runtime. The interrupt is the terminal's {@code INT} signal, which is what
+ * {@code Ctrl+C} raises; the same cases are driven on a real pseudo-terminal in
  * {@code transcript.InterruptDialogueIT}, where the process exit status is the assertion.
  */
-@DisplayName("Ctrl+C at a view-only dialogue leaves with 130 and sends nothing")
+@EnableGeneratorController
+@DisplayName("Ctrl+C at a dialogue leaves with 130 and sends nothing")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class InterruptExitCodeTest {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(20);
     private static final Duration POLL = Duration.ofMillis(20);
-    private static final String PAUSE_PROMPT = "Where does p hold?";
-    private static final String HOLD_CAUSE = "the worker stopped";
 
-    private static final String PLAN_ACTIONS = """
-                        {"subject_id":"p","subject_kind":"plan","state":"running","epic_id":"e",
-                         "actions":[{"action":"pause","available":true},{"action":"cancel","available":true}]}
-                        """;
-
-    private static final String STALLED_HOLD = """
-                        [{"hold_id":"H-1","subject_id":"p","subject_kind":"plan","kind":"stalled",
-                          "cause":"the worker stopped","attempts":2,"acts":["retry","recycle","end_plan"]}]
-                        """;
-
-    private static final String REVIEW = """
-                        {"review_id":"R-1","epic_id":"e","register":"findings","state":"open",
-                         "decided":0,"total":1,"items":[
-                           {"item_id":"F-1","register":"findings","statement":"Reconnect loses the last event",
-                            "rules":["cover every transport"],"origin":"landing","trust":"trusted",
-                            "state":"open","proposal":"promote to a plan"}]}
-                        """;
-
-    private static final String ONBOARDING_CONSENT = """
-                        {"scope":"machine","state":"harness.consent","summary":"Look for harnesses on this machine?",
-                         "completed_steps":1,"auto":false,
-                         "links":{"yes":{"href":"/api/v1/onboarding/harness/scan","method":"POST","next":"harness.choose","preselected":true},
-                                  "no":{"href":"/api/v1/onboarding/harness/decline","method":"POST","next":"harness.consent"}}}
-                        """;
+    private final String subject = Generators.letterStrings(2, 8).next();
+    private final String epic = Generators.letterStrings(2, 8).next();
+    private final String hold = Generators.letterStrings(2, 8).next();
+    private final String holdCause = Generators.letterStrings(8, 20).next();
+    private final String onboarding =
+                        Generators.letterStrings(8, 20).next();
+    private final String statement = Generators.letterStrings(8, 20).next();
+    private final String project = Generators.letterStrings(4, 10).next();
+    private final String setupSummary = Generators.letterStrings(8, 20).next();
 
     private RuntimeFixture fixture;
     private VirtualScreenTerminal virtual;
@@ -107,19 +93,55 @@ class InterruptExitCodeTest {
         fixture.close();
     }
 
+    private String pausePrompt() {
+        return "Where does " + subject + " hold?";
+    }
+
+    private String planActions() {
+        return "{\"subject_id\":\"" + subject + "\",\"subject_kind\":\"plan\",\"state\":\"running\","
+                            + "\"epic_id\":\"" + epic + "\",\"actions\":[{\"action\":\"pause\","
+                            + "\"available\":true},{\"action\":\"cancel\",\"available\":true}]}";
+    }
+
+    private String stalledHold() {
+        return "[{\"hold_id\":\"" + hold + "\",\"subject_id\":\"" + subject + "\","
+                            + "\"subject_kind\":\"plan\",\"kind\":\"stalled\",\"cause\":\"" + holdCause + "\","
+                            + "\"attempts\":2,\"acts\":[\"retry\",\"recycle\",\"end_plan\"]}]";
+    }
+
+    private String review() {
+        return "{\"review_id\":\"R-1\",\"epic_id\":\"" + epic + "\",\"register\":\"findings\","
+                            + "\"state\":\"open\",\"decided\":0,\"total\":1,\"items\":[{\"item_id\":\"F-1\","
+                            + "\"register\":\"findings\",\"statement\":\"" + statement + "\",\"rules\":[],"
+                            + "\"origin\":\"landing\",\"trust\":\"trusted\",\"state\":\"open\"}]}";
+    }
+
+    private String onboardingConsent() {
+        return "{\"scope\":\"machine\",\"state\":\"harness.consent\",\"summary\":\"" + onboarding + "\","
+                            + "\"completed_steps\":1,\"auto\":false,\"links\":{\"yes\":{\"href\":\""
+                            + "/api/v1/onboarding/harness/scan\",\"method\":\"POST\",\"preselected\":true}}}";
+    }
+
+    private String projectSetup() {
+        return "{\"scope\":\"project\",\"state\":\"project.zzz\",\"kind\":\"operator_wait\",\"step\":3,"
+                            + "\"total_steps\":10,\"summary\":\"" + setupSummary + "\",\"links\":{\"record\":"
+                            + "{\"href\":\"/api/v1/projects/" + project + "/setup\",\"method\":\"POST\","
+                            + "\"preselected\":true}}}";
+    }
+
     @Test
     @DisplayName("the work action dialogue: the pause prompt interrupted leaves with 130")
     void workActionDialogueInterrupt() throws Exception {
         var server = fixture.start((request, response) -> {
             if (request.target().endsWith("/actions")) {
-                response.json(200, PLAN_ACTIONS);
+                response.json(200, planActions());
             } else {
                 response.send(404, null, "");
             }
         });
 
-        var code = interruptedAt(PAUSE_PROMPT, () -> WorkActionDialogue.run(context, new PrintWriter(out),
-                            "plan", "p", "pause", false, null, null));
+        var code = interruptedAt(pausePrompt(), () -> WorkActionDialogue.run(context, new PrintWriter(out),
+                            "plan", subject, "pause", false, null, null));
 
         assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
         assertEquals(130, code, out.toString());
@@ -131,13 +153,13 @@ class InterruptExitCodeTest {
     void holdDialogueInterrupt() throws Exception {
         var server = fixture.start((request, response) -> {
             if (request.target().endsWith("/holds")) {
-                response.json(200, STALLED_HOLD);
+                response.json(200, stalledHold());
             } else {
                 response.send(404, null, "");
             }
         });
 
-        var code = interruptedAt(HOLD_CAUSE, () -> HoldDialogue.run(context, new PrintWriter(out), "p", null,
+        var code = interruptedAt(holdCause, () -> HoldDialogue.run(context, new PrintWriter(out), subject, null,
                             false));
 
         assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
@@ -150,14 +172,14 @@ class InterruptExitCodeTest {
     void reviewDialogueInterrupt() throws Exception {
         var server = fixture.start((request, response) -> {
             if (request.target().contains("/review")) {
-                response.json(200, REVIEW);
+                response.json(200, review());
             } else {
                 response.send(404, null, "");
             }
         });
 
-        var code = interruptedAt("Reconnect loses the last event",
-                            () -> ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+        var code = interruptedAt(statement,
+                            () -> ReviewDialogue.run(context, new PrintWriter(out), epic, "findings", false));
 
         assertEquals(130, code, out.toString());
         assertNoAct(server);
@@ -168,8 +190,8 @@ class InterruptExitCodeTest {
     void planPauseInterrupt() throws Exception {
         var server = fixture.start((request, response) -> response.send(404, null, ""));
 
-        var code = interruptedAt(PAUSE_PROMPT, () -> PmOperator.execute(context, new PrintWriter(out),
-                            new PrintWriter(new StringWriter()), "plan", "pause", "p"));
+        var code = interruptedAt(pausePrompt(), () -> PmOperator.execute(context, new PrintWriter(out),
+                            new PrintWriter(new StringWriter()), "plan", "pause", subject));
 
         assertEquals(130, code, out.toString());
         assertNoAct(server);
@@ -181,7 +203,7 @@ class InterruptExitCodeTest {
         var server = fixture.start((request, response) -> response.send(404, null, ""));
 
         var code = interruptedAt("Reason", () -> PmOperator.execute(context, new PrintWriter(out),
-                            new PrintWriter(new StringWriter()), "plan", "cancel", "p"));
+                            new PrintWriter(new StringWriter()), "plan", "cancel", subject));
 
         assertEquals(130, code, out.toString());
         assertNoAct(server);
@@ -192,42 +214,32 @@ class InterruptExitCodeTest {
     void onboardInterrupt() throws Exception {
         var server = fixture.start((request, response) -> {
             if (OnboardCommand.STATE_PATH.equals(request.target())) {
-                response.json(200, ONBOARDING_CONSENT);
+                response.json(200, onboardingConsent());
             } else {
                 response.send(404, null, "");
             }
         });
 
-        var code = interruptedAt("Look for harnesses on this machine?",
-                            () -> PmOperator.execute(context, new PrintWriter(out),
-                                                new PrintWriter(new StringWriter()), "onboard"));
+        var code = interruptedAt("Look for harnesses on this machine?", () -> PmOperator.execute(context,
+                            new PrintWriter(out), new PrintWriter(new StringWriter()), "onboard"));
 
         assertEquals(130, code, out.toString());
         assertNoAct(server);
     }
-
-    private static final String PROJECT_SETUP = """
-                        {"scope":"project","state":"project.zzz","kind":"operator_wait","step":3,
-                         "total_steps":10,"summary":"Continue the setup of cui-parent",
-                         "links":{"record":{"href":"/api/v1/projects/cui-parent/setup","method":"POST",
-                           "preselected":true}}}
-                        """;
 
     @Test
     @DisplayName("project setup: the state prompt interrupted leaves with 130")
     void projectSetupInterrupt() throws Exception {
         var server = fixture.start((request, response) -> {
             if (request.target().endsWith("/setup")) {
-                response.json(200, PROJECT_SETUP);
+                response.json(200, projectSetup());
             } else {
                 response.send(404, null, "");
             }
         });
 
-        var code = interruptedAt("Continue the setup of cui-parent",
-                            () -> PmOperator.execute(context, new PrintWriter(out),
-                                                new PrintWriter(new StringWriter()), "project", "setup",
-                                                "cui-parent"));
+        var code = interruptedAt(setupSummary, () -> PmOperator.execute(context, new PrintWriter(out),
+                            new PrintWriter(new StringWriter()), "project", "setup", project));
 
         assertEquals(130, code, out.toString());
         assertNoAct(server);

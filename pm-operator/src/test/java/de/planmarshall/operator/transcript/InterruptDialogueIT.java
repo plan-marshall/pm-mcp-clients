@@ -12,6 +12,8 @@ package de.planmarshall.operator.transcript;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.time.Duration;
 import java.util.concurrent.locks.LockSupport;
 
@@ -32,6 +34,7 @@ import org.junit.jupiter.api.condition.OS;
  * while JLine still reads the terminal in its cooked mode reaches the terminal driver instead of the
  * reader.
  */
+@EnableGeneratorController
 @DisplayName("Ctrl+C at a verb's dialogue leaves with 130 and sends nothing")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class InterruptDialogueIT {
@@ -42,6 +45,8 @@ class InterruptDialogueIT {
     /** How long the screen must stay unchanged before the prompt is read as ready for keys. */
     private static final Duration SETTLE = Duration.ofMillis(700);
     private static final Duration POLL = Duration.ofMillis(25);
+
+    private final String reason = Generators.letterStrings(8, 24).next();
 
     @Test
     @DisplayName("plan pause: the point prompt interrupted leaves with 130")
@@ -80,7 +85,7 @@ class InterruptDialogueIT {
              var session = harness.open("plan", "cancel", "fix-relay")) {
             awaitPrompt(session, "Reason");
 
-            DialogueHarness.type(session, "because the approach changed\n");
+            DialogueHarness.type(session, reason + "\n");
             awaitPrompt(session, "y) yes");
 
             DialogueHarness.type(session, INTERRUPT);

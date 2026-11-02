@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -41,6 +43,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 
 import picocli.CommandLine;
 
+@EnableGeneratorController
 @DisplayName("WebCommand.DevicesCommand")
 class WebDevicesCommandTest {
 
@@ -385,15 +388,14 @@ class WebDevicesCommandTest {
      */
     private void seedRefusedRoutes() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
+        var reason = Generators.letterStrings(6, 16).next();
         fixture.start((request, response) -> {
             if ("/api/v1/status".equals(request.target())) {
                 response.json(200, """
                                     {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
                                     """);
             } else {
-                response.json(400, """
-                                    {"error":"refused","reason":"the request is refused"}
-                                    """);
+                response.json(400, "{\"error\":\"refused\",\"reason\":\"" + reason + "\"}");
             }
         });
     }
