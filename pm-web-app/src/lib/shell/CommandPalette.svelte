@@ -130,20 +130,39 @@
   /** The matches grouped by kind in the order served; a run of one kind may be ended. */
   const groups = $derived(groupFindMatches(matches));
 
+  /** The prefix of a group heading's id, unique to this panel. */
+  const groupTitlePrefix = uniqueId('command-palette-group');
+
   /** @param index a row's position @returns the DOM id the active descendant names */
   function optionId(index: number): string {
     return `command-palette-option-${index}`;
   }
 
-  /** @param key a row's key @returns the id of the option that row renders as */
-  function rowOptionId(key: string): string {
-    return optionId(rows.findIndex((row) => row.key === key));
-  }
+  /**
+   * One id per row key, built once per answer: an option's id comes from its row key through this
+   * map, never from a scan of the rows for every row that renders.
+   */
+  const optionIds = $derived(new Map(rows.map((row, index) => [row.key, optionId(index)])));
 
   /** The id of the row the field's active descendant names, or `undefined` for no row. */
   const selectedOptionId = $derived(
-    selectedKey === null ? undefined : rowOptionId(selectedKey),
+    selectedKey === null ? undefined : optionIds.get(selectedKey),
   );
+
+  /** @param index a group's position @returns the id of the heading that names it */
+  function groupTitleId(index: number): string {
+    return `${groupTitlePrefix}-${index}`;
+  }
+
+  // The selection moves through the list, so the row it now names is brought into view. A document
+  // without the method (a test's jsdom) keeps the selection as it is.
+  $effect(() => {
+    const id = selectedOptionId;
+    const option = id ? document.getElementById(id) : null;
+    if (option && typeof option.scrollIntoView === 'function') {
+      option.scrollIntoView({ block: 'nearest' });
+    }
+  });
 
   // A selection whose row the new answer no longer carries falls back to the first row, so Enter
   // always has somewhere to go.
@@ -248,7 +267,7 @@
       move(event.key === 'ArrowDown' ? 1 : -1);
       return;
     }
-    // A button in the panel (a row, Retry) keeps its own Enter: only the field's Enter opens the
+    // A button in the panel (Close, Retry) keeps its own Enter: only the field's Enter opens the
     // selection.
     if (event.key === 'Enter' && (event.target as HTMLElement | null)?.tagName !== 'BUTTON') {
       event.preventDefault();
@@ -263,7 +282,8 @@
   }
 
   /**
-   * Moves the focus through the panel's own controls: the field, the rows, and Retry.
+   * Moves the focus through the panel's own Tab stops, in the order Tab walks them: Close, the
+   * field, and Retry where a read failed.
    *
    * @param direction how far the focus moves, wrapping at both ends
    */
@@ -376,7 +396,7 @@
         class="command-palette__field"
         type="search"
         role="combobox"
-        aria-expanded="true"
+        aria-expanded={rows.length > 0}
         aria-autocomplete="list"
         aria-controls="command-palette-rows"
         aria-activedescendant={selectedOptionId}
@@ -402,68 +422,64 @@
         aria-label={$t('overview.find.title')}
       >
         {#each groups as group, index (index)}
-          <div class="command-palette__group" role="group" aria-label={$t(`overview.find.kind.${group.kind}`)}>
-            {#if index === 0 || groups[index - 1]?.kind !== group.kind}
-              <h3 class="command-palette__group-title">
-                {$t(`overview.find.kind.${group.kind}`)}
-              </h3>
-            {/if}
-            <ul class="command-palette__list" role="presentation">
+          <div class="command-palette__group" role="group" aria-labelledby={groupTitleId(index)}>
+            <h3
+              class="command-palette__group-title"
+              class:sr-only={index > 0 && groups[index - 1]?.kind === group.kind}
+              id={groupTitleId(index)}
+            >
+              {$t(`overview.find.kind.${group.kind}`)}
+            </h3>
+            <div class="command-palette__list">
               {#each group.matches as match (matchKey(match))}
-                <li role="presentation">
-                  <div
-                    role="option"
-                    id={rowOptionId(matchKey(match))}
-                    tabindex="-1"
-                    class="command-palette__row"
-                    class:command-palette__row--selected={isSelected(matchKey(match))}
-                    aria-selected={isSelected(matchKey(match))}
-                    data-testid="command-palette-match"
-                    data-kind={match.kind}
-                    onclick={() => openRow({ key: matchKey(match), kind: match.kind, match })}
-                    onmouseenter={() => (selectedKey = matchKey(match))}
-                  >
-                    <span class="command-palette__match-title">{plain(match.title)}</span>
-                    {#if locationOf(match).length > 0}
-                      <span class="command-palette__match-location">{locationOf(match)}</span>
-                    {/if}
-                    {#if match.ended}
-                      <span class="command-palette__match-ended">
-                        {$t('overview.find.ended')}
-                        {#if match.outcome}
-                          · {$t('overview.ended.outcome', { outcome: match.outcome })}
-                        {/if}
-                      </span>
-                    {/if}
-                  </div>
-                </li>
+                <div
+                  role="option"
+                  id={optionIds.get(matchKey(match))}
+                  tabindex="-1"
+                  class="command-palette__row"
+                  class:command-palette__row--selected={isSelected(matchKey(match))}
+                  aria-selected={isSelected(matchKey(match))}
+                  data-testid="command-palette-match"
+                  data-kind={match.kind}
+                  onclick={() => openRow({ key: matchKey(match), kind: match.kind, match })}
+                  onmouseenter={() => (selectedKey = matchKey(match))}
+                >
+                  <span class="command-palette__match-title">{plain(match.title)}</span>
+                  {#if locationOf(match).length > 0}
+                    <span class="command-palette__match-location">{locationOf(match)}</span>
+                  {/if}
+                  {#if match.ended}
+                    <span class="command-palette__match-ended">
+                      {$t('overview.find.ended')}
+                      {#if match.outcome}
+                        · {$t('overview.ended.outcome', { outcome: match.outcome })}
+                      {/if}
+                    </span>
+                  {/if}
+                </div>
               {/each}
-            </ul>
+            </div>
           </div>
         {/each}
 
-        {#if acts.length > 0}
-          <ul class="command-palette__list" role="presentation">
-            {#each acts as act (act.key)}
-              <li role="presentation">
-                <div
-                  role="option"
-                  id={rowOptionId(act.key)}
-                  tabindex="-1"
-                  class="command-palette__row"
-                  class:command-palette__row--selected={isSelected(act.key)}
-                  aria-selected={isSelected(act.key)}
-                  data-testid="command-palette-act"
-                  onclick={() => openRow(act)}
-                  onmouseenter={() => (selectedKey = act.key)}
-                >
-                  <span class="command-palette__act-label">{act.label}</span>
-                </div>
-              </li>
-            {/each}
-          </ul>
-        {/if}
+        {#each acts as act (act.key)}
+          <div
+            role="option"
+            id={optionIds.get(act.key)}
+            tabindex="-1"
+            class="command-palette__row command-palette__act"
+            class:command-palette__row--selected={isSelected(act.key)}
+            aria-selected={isSelected(act.key)}
+            data-testid="command-palette-act"
+            onclick={() => openRow(act)}
+            onmouseenter={() => (selectedKey = act.key)}
+          >
+            <span class="command-palette__act-label">{act.label}</span>
+          </div>
+        {/each}
+      </div>
 
+      <div class="command-palette__status" data-testid="command-palette-status">
         {#if $searchIndexStore.text.length > 0 && $searchIndexStore.status === 'done' && matches.length === 0}
           <p class="command-palette__empty" data-testid="command-palette-empty">
             {$t('overview.find.empty', { text: $searchIndexStore.text })}
