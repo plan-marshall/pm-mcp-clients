@@ -238,7 +238,10 @@ public final class EnrolHarnessCommand implements Callable<Integer> {
             String line;
             try {
                 line = reader.readLine(MessageCatalogue.get("enrolment.harness.confirm") + " \u203a ");
-            } catch (EndOfFileException | UserInterruptException _) {
+            } catch (UserInterruptException _) {
+                // The interrupt is the exit-code table's 130, not a declined confirmation.
+                throw new StartPrompt.InterruptException();
+            } catch (EndOfFileException _) {
                 return false;
             }
             if (line == null) {

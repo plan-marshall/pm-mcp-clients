@@ -120,7 +120,7 @@ final class WorkActionDialogue {
             case "start" -> start();
             case "cancel", "abandon" -> EPIC.equals(kind) ? endEpic() : end(action, actions);
             case "chat" -> chat(epic);
-            case "settings" -> PlanSettingsDialogue.run(context, out, id, null, !prompt.asks());
+            case "settings" -> settings();
             case "next" -> next(epic);
             case "auto" -> auto(epic);
             case "common_files" -> commonFiles();
@@ -135,6 +135,19 @@ final class WorkActionDialogue {
                 yield 1;
             }
         };
+    }
+
+    /**
+     * Runs the settings dialogue. It is one of the view's other dialogues — beside the chat, a start
+     * and a confirmation — so a {@code Ctrl+C} in it leaves back to the view as {@code q} does
+     * ({@code 04-console.adoc#console-dialogue-handoff}), never ending the view with {@code 130}.
+     *
+     * @return the exit code the action leaves with
+     * @throws IOException on transport failure
+     */
+    private int settings() throws IOException {
+        var code = PlanSettingsDialogue.run(context, out, id, null, !prompt.asks());
+        return code == StartPrompt.EXIT_INTERRUPTED ? 0 : code;
     }
 
     private int generic(String action) throws IOException {

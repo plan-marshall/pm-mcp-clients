@@ -150,7 +150,10 @@ public final class CredentialsCommand implements Callable<Integer> {
             var terminal = lease.terminal();
             try {
                 secret = SecretReader.read(terminal, out, locale);
-            } catch (IOException | UserInterruptException e) {
+            } catch (UserInterruptException _) {
+                // The interrupt at the secret prompt is the exit-code table's 130 as well.
+                throw new StartPrompt.InterruptException();
+            } catch (IOException e) {
                 out.println(MessageCatalogue.format(locale, "operator.credentials.read_failed",
                                     Map.of("reason", TerminalSanitizer.sanitize(e.getMessage()))));
                 out.flush();
@@ -231,7 +234,10 @@ public final class CredentialsCommand implements Callable<Integer> {
             var line = reader.readLine(MessageCatalogue.format(locale(),
                                 "operator.credentials.store_confirm", Map.of()));
             return line == null || !"b".equalsIgnoreCase(line.trim());
-        } catch (UserInterruptException | EndOfFileException _) {
+        } catch (UserInterruptException _) {
+            // The interrupt is the exit-code table's 130, not a declined confirmation.
+            throw new StartPrompt.InterruptException();
+        } catch (EndOfFileException _) {
             return false;
         }
     }

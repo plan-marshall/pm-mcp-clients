@@ -181,5 +181,5 @@ The exit codes are those of a verb run as one shell command; the console itself 
 |operator checks: no interactive terminal, or a coding-agent environment (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[Operator Channel Isolation], item 2).
 
 |`130`
-|interrupted with `Ctrl+C`; the state stays where it is, as with `q`.
+|interrupted with `Ctrl+C` at any prompt the verb asks — the starting dialogue, its settings, the project selector, the decision prompt of `answer --interactive`, the credential store, the harness enrolment, the role qualification and the automatic onboarding's confirmation, as in an action, a hold, a review, the runtime acts or project add and setup a view opens; the state stays where it is, as with `q`. The view's other dialogues — the chat, a start, the settings and a confirmation inside the view — leave back to the view instead (xref:04-console.adoc#console-dialogue-handoff[A Dialogue out of the Full-Screen View]).
 |===

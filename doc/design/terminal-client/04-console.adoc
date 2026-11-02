@@ -194,10 +194,12 @@ view hands off), the view:
 An error in the dialogue leaves the terminal in the normal screen; the view is not re-entered, and
 the console reports the error at the prompt as it does for any verb. `Ctrl+C` is the interrupt of
 the exit-code table where the dialogue maps it: an action, a hold and a review that the view opens
-leave it with `130` and send nothing. The verb that opened the view ends the program with that
-status, so the operator's interrupt reaches the shell; a view the console opened returns to the
-console's prompt with it, as every other verb does, and the view's other dialogues — the chat, a
-start, the settings and the confirmation — still leave back to the view as `q` does. The view's
+leave it with `130` and send nothing, and so do the runtime acts (stop, restart, upgrade, check) and
+project add and setup, whose confirmations are dialogues of the view as well. The verb that opened
+the view ends the program with that status, so the operator's interrupt reaches the shell; a view
+the console opened returns to the console's prompt with it, as every other verb does, and the view's
+other dialogues — the chat, a start, the settings and the confirmation — still leave back to the
+view as `q` does. The view's
 `finally` always restores the terminal state, so a terminal is never left in the alternate screen,
 with the cursor hidden, or in keypad application mode.
 

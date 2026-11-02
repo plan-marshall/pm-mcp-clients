@@ -3195,6 +3195,8 @@ public final class OverviewFullScreenApp {
                 return answer != null && ("y".equalsIgnoreCase(answer.trim())
                                     || "yes".equalsIgnoreCase(answer.trim()));
             } catch (EndOfFileException | UserInterruptException _) {
+                // The confirmation is one of the view's other dialogues
+                // (04-console.adoc#console-dialogue-handoff): q and Ctrl+C leave it back to the view.
                 return false;
             } finally {
                 if (owned) {
