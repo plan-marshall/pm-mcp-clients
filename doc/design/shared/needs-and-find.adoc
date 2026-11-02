@@ -74,7 +74,7 @@ One field, one answer: the operator types a part of an id, a part of a title, or
 * *A match* shows its kind, its title, where it belongs (`project › epic › plan`), and, for ended work, the word `ended` with its outcome. Selecting a match opens it where it belongs: the plan view, the epic view, the decision, the project, or the report.
 * *No match* says so and keeps the text the operator typed, so one character can be corrected instead of retyping: `Nothing matches “relayy”.` with the field still holding `relayy`.
 * *An empty text is refused* by the runtime, and the client never sends one: an empty field is a hint, not a search (`overview.find.hint`), and the field's own clear action returns to the hint.
-* *Plain text*: the typed text and every title are shown as plain text, after removing control sequences, never as markup and never as a link the client follows on its own — a title may come from a project (`overview.find.plain`).
+* *Plain text*: the typed text and every title are shown as plain text, after removing control sequences, never as markup and never as a link the client follows on its own — a title may come from a project.
 * *Live* is not needed: a match is read when the text changes, at most one request per keystroke pause, and the last answer wins; a match whose work ended while the list is open stays until the next read.
 
 [#terminal]
