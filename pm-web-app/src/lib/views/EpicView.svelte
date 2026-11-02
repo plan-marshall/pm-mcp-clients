@@ -982,6 +982,7 @@
     onAccept={() => answerReviewProposal(true)}
     onReject={() => answerReviewProposal(false)}
     onToggle={openReviewChat}
+    onClose={() => (reviewChatOpen = false)}
   />
 {/if}
 

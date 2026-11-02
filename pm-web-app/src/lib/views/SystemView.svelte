@@ -526,19 +526,221 @@
       </div>
     {/if}
 
-    {#if snapshot?.runtime.upgrade_available_version && upgradePhase === 'idle'}
-      <section class="upgrade-panel upgrade-panel--available" aria-labelledby="upgrade-available">
-        <div class="upgrade-panel__head">
-          <h2 id="upgrade-available" class="upgrade-panel__title">
-            {$t('system.upgrade.available_title', {
-              version: snapshot.runtime.upgrade_available_version,
-            })}
-          </h2>
-          <span class="text-muted text-sm">
-            {$t('system.upgrade.available_summary', {
-              installed: snapshot.runtime.version,
-              version: snapshot.runtime.upgrade_available_version,
-              date: snapshot.runtime.upgrade_available_date ?? $t('system.figure.unavailable'),
+        <div class="metrics-list">
+          <div class="metric-row">
+            <span class="metric-label">{$t('system.runtime.field.version')}</span>
+            <span class="metric-value mono">
+              pm-mcpd {snapshot.runtime.version}
+              {#if snapshot.runtime.build_date}
+                · build {snapshot.runtime.build_date}
+              {/if}
+              {#if snapshot.runtime.git_commit}
+                ({snapshot.runtime.git_commit})
+              {/if}
+            </span>
+          </div>
+
+          {#if snapshot.runtime.upgrade_available_version}
+            <div class="metric-row metric-row--highlight">
+              <span class="metric-label">{$t('system.runtime.field.update')}</span>
+              <span class="metric-value">
+                <strong
+                  >{$t('system.runtime.available', {
+                    version: snapshot.runtime.upgrade_available_version,
+                  })}</strong
+                >
+                {#if snapshot.runtime.upgrade_release_notes_url}
+                  <a
+                    href={snapshot.runtime.upgrade_release_notes_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    class="link-muted"
+                  >
+                    {$t('system.runtime.release_notes')}
+                  </a>
+                {/if}
+              </span>
+            </div>
+          {:else}
+            <div class="metric-row">
+              <span class="metric-label">{$t('system.runtime.field.update')}</span>
+              <span class="metric-value text-muted">
+                {$t('system.runtime.not_checked')}
+                <button type="button" class="btn-inline" onclick={handleCheckUpgrade}>
+                  {$t('system.runtime.check_now')}
+                </button>
+              </span>
+            </div>
+          {/if}
+
+          {#if snapshot.runtime.uptime_formatted}
+            <div class="metric-row">
+              <span class="metric-label">{$t('system.runtime.field.uptime')}</span>
+              <span class="metric-value">{snapshot.runtime.uptime_formatted}</span>
+            </div>
+          {/if}
+
+          <div class="metric-row">
+            <span class="metric-label">{$t('system.runtime.field.memory')}</span>
+            <span class="metric-value">
+              {$t('system.runtime.memory', {
+                used: formatBytes(snapshot.runtime.memory_used_bytes || 0),
+                max: formatBytes(snapshot.runtime.memory_max_bytes || 0),
+                resident: snapshot.runtime.memory_resident_bytes
+                  ? formatBytes(snapshot.runtime.memory_resident_bytes)
+                  : $t('system.figure.unavailable'),
+              })}
+            </span>
+          </div>
+
+          <div class="metric-row">
+            <span class="metric-label">{$t('system.runtime.field.cpu')}</span>
+            <span class="metric-value">
+              {#if snapshot.runtime.cpu_measured && snapshot.runtime.cpu_percent !== null}
+                {snapshot.runtime.cpu_percent} %
+              {:else}
+                <span class="text-muted">{$t('system.figure.unavailable_reason')}</span>
+              {/if}
+            </span>
+          </div>
+
+          <div class="metric-row">
+            <span class="metric-label">{$t('system.runtime.field.store')}</span>
+            <span class="metric-value">
+              {$t('system.runtime.store', {
+                size: formatBytes(snapshot.runtime.machine_store_bytes || 0),
+                free: formatBytes(snapshot.runtime.disk_free_bytes || 0),
+                time:
+                  formatTime(snapshot.runtime.disk_measured_at, 'short', $currentLocale) ||
+                  $t('system.figure.unavailable'),
+              })}
+            </span>
+          </div>
+
+          <div class="metric-row">
+            <span class="metric-label">{$t('system.runtime.field.listeners')}</span>
+            <span class="metric-value">
+              {$t('system.runtime.listeners', {
+                loopback: snapshot.runtime.loopback_address ? 'open' : 'off',
+                loopback_address: snapshot.runtime.loopback_address || '',
+                lan: snapshot.runtime.lan_address ? 'open' : 'off',
+                lan_address: snapshot.runtime.lan_address || '',
+                devices: snapshot.runtime.lan_devices_count || 0,
+              })}
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Work Card -->
+      <section class="card" aria-labelledby="heading-work">
+        <div class="card-header">
+          <h2 id="heading-work" class="card-title">{$t('system.work.title')}</h2>
+          {#if snapshot.work.recovering_projects && snapshot.work.recovering_projects.length > 0}
+            <span class="badge badge--warning">
+              {$t('system.work.recovering')}: {snapshot.work.recovering_projects.join(', ')}
+            </span>
+          {/if}
+        </div>
+
+        <div class="metrics-list">
+          <div class="metric-row">
+            <span class="metric-label">{$t('system.work.field.plans')}</span>
+            <div class="metric-value tags-row">
+              {#if snapshot.work.plans_by_state && Object.keys(snapshot.work.plans_by_state).length > 0}
+                {#each Object.entries(snapshot.work.plans_by_state) as [st, count]}
+                  {#if count > 0}
+                    <button
+                      type="button"
+                      class="status-tag status-tag--{st} status-tag--link"
+                      aria-label={`${count} ${displayState('plan', st, $t)} — ${$t(
+                        'system.work.link.plans',
+                        {
+                          state: displayState('plan', st, $t),
+                          count,
+                        },
+                      )}`}
+                      onclick={() => openOverview('plans')}
+                    >
+                      {count}
+                      {displayState('plan', st, $t)}
+                    </button>
+                  {/if}
+                {/each}
+              {:else}
+                <span class="text-muted">{$t('system.work.none_running')}</span>
+              {/if}
+            </div>
+          </div>
+
+          <div class="metric-row">
+            <span class="metric-label">{$t('system.work.field.epics')}</span>
+            <div class="metric-value tags-row">
+              {#if snapshot.work.epics_by_state && Object.keys(snapshot.work.epics_by_state).length > 0}
+                {#each Object.entries(snapshot.work.epics_by_state) as [st, count]}
+                  {#if count > 0}
+                    <button
+                      type="button"
+                      class="status-tag status-tag--{st} status-tag--link"
+                      aria-label={`${count} ${displayState('epic', st, $t)} — ${$t(
+                        'system.work.link.epics',
+                        {
+                          state: displayState('epic', st, $t),
+                          count,
+                        },
+                      )}`}
+                      onclick={() => openOverview('epics')}
+                    >
+                      {count}
+                      {displayState('epic', st, $t)}
+                    </button>
+                  {/if}
+                {/each}
+              {:else}
+                <span class="text-muted">{$t('system.work.none_running')}</span>
+              {/if}
+            </div>
+          </div>
+
+          <div class="metric-row">
+            <span class="metric-label">{$t('system.work.field.tasks')}</span>
+            <span class="metric-value">
+              {$t('system.work.tasks', {
+                running: snapshot.work.tasks_running || 0,
+                queued: snapshot.work.tasks_queued || 0,
+              })}
+            </span>
+          </div>
+
+          <div class="metric-row">
+            <span class="metric-label">{$t('system.work.field.projects')}</span>
+            <span class="metric-value">
+              <button
+                type="button"
+                class="metric-link"
+                aria-label={`${$t('system.work.projects', {
+                  count: snapshot.work.active_projects_count || 0,
+                })} — ${$t('system.work.link.projects', {
+                  count: snapshot.work.active_projects_count || 0,
+                })}`}
+                onclick={() => navigateTo('projects')}
+              >
+                {$t('system.work.projects', { count: snapshot.work.active_projects_count || 0 })}
+              </button>
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 3. Workers Card -->
+      <section class="card" aria-labelledby="heading-workers">
+        <div class="card-header">
+          <h2 id="heading-workers" class="card-title">{$t('system.workers.title')}</h2>
+          <span class="badge">
+            {$t('system.workers.count', {
+              count: snapshot.workers.length,
+              busy: snapshot.workers.filter((w) => w.state.toLowerCase() === 'busy').length,
+              idle: snapshot.workers.filter((w) => w.state.toLowerCase() === 'idle').length,
             })}
           </span>
         </div>

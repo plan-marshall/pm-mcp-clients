@@ -901,7 +901,6 @@
                 onclick={() => selectNode(node.node_id)}
                 aria-pressed={isNodeSelected(node.node_id)}
                 aria-current={isNodeSelected(node.node_id) ? 'true' : undefined}
-                aria-label={`${stripControlSequences(node.title)} — ${$t('plan.node.select')}`}
                 data-advisory={$t('plan.node.select.title')}
                 data-testid="select-node-{node.node_id}"
               >
@@ -918,6 +917,7 @@
                 {#if node.duration_seconds > 0}
                   <span class="node-duration">{formatDuration(node.duration_seconds * 1000, $currentLocale)}</span>
                 {/if}
+                <span class="sr-only">{$t('plan.node.select')}</span>
               </button>
             </div>
 
@@ -1443,7 +1443,6 @@
   .node-kind-badge {
     font-size: var(--text-xs);
     color: var(--color-text-muted);
-    text-transform: uppercase;
     font-weight: 500;
   }
 
@@ -1636,8 +1635,7 @@
     padding: 1px 6px;
     border-radius: 3px;
     font-weight: 600;
-    font-size: 10px;
-    text-transform: uppercase;
+    font-size: var(--text-xs);
     flex-shrink: 0;
     background-color: var(--color-bg-subtle);
     color: var(--color-text-secondary);
