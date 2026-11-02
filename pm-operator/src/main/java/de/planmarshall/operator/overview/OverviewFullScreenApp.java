@@ -1347,6 +1347,11 @@ public final class OverviewFullScreenApp {
     }
 
     void refreshActiveLevels() {
+        if (interrupted.get()) {
+            // The program is leaving with the interrupt status: a read of an unresponsive runtime
+            // must not delay it.
+            return;
+        }
         TuiLevel.Kind targetKind;
         String targetProjectId;
         synchronized (this) {
@@ -1709,6 +1714,11 @@ public final class OverviewFullScreenApp {
      * Reads the system snapshot again with the operator's window and project.
      */
     void refreshSystem() {
+        if (interrupted.get()) {
+            // The program is leaving with the interrupt status: a read of an unresponsive runtime
+            // must not delay it.
+            return;
+        }
         var level = currentSystem.get();
         if (level == null) {
             return;
