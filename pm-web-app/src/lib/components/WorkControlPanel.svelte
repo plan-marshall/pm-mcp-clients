@@ -622,9 +622,17 @@
   data-testid="work-control"
   aria-label={$t('control.actions.title', { subject: subjectId })}
 >
-  <div data-testid="control-actions">
-    <ActionBar acts={barActs} {busy} onAct={chooseAct} />
-  </div>
+  {#if ended}
+    <div data-testid="control-actions">
+      <ActionBar acts={barActs} {busy} onAct={chooseAct} />
+    </div>
+  {:else if actions}
+    <div data-testid="control-actions">
+      <ActionBar acts={barActs} {busy} onAct={chooseAct} />
+    </div>
+  {:else}
+    <p class="control-actions__empty" data-testid="control-actions-empty">…</p>
+  {/if}
 
   {#if notice}
     <p class="work-control__notice" data-testid="control-notice" role="status">{notice}</p>
@@ -635,7 +643,6 @@
   {#if subjectKind === 'plan' && holds.length > 0}
     <Button
       variant="secondary"
-      class="work-control__hold"
       data-testid="open-hold"
       on:click={openHold}
     >
@@ -924,6 +931,12 @@
   .work-control__failure {
     background-color: var(--color-danger-subtle);
     color: var(--color-danger);
+  }
+
+  .control-actions__empty {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
   }
 
   .control-dialog {

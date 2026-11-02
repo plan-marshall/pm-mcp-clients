@@ -15,7 +15,7 @@ import { apiClient, type ArchiveCheck, type PlanSettingsRecord, type WorkActions
  * @returns the open menu
  */
 async function openOverflow(): Promise<HTMLElement> {
-  await fireEvent.click(screen.getByTestId('action-bar-overflow'));
+  await fireEvent.click(await screen.findByTestId('action-bar-overflow'));
   return screen.findByRole('menu');
 }
 
@@ -77,6 +77,15 @@ describe('WorkControlPanel component', () => {
     });
     vi.spyOn(apiClient, 'applyPlanAction').mockResolvedValue(running);
     vi.spyOn(apiClient, 'applyEpicAction').mockResolvedValue(running);
+    vi.spyOn(apiClient, 'getPlanHolds').mockResolvedValue([]);
+  });
+
+  it('renders no acts while the actions are still loading', async () => {
+    vi.spyOn(apiClient, 'getPlanActions').mockReturnValue(new Promise(() => {}));
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    expect(await screen.findByTestId('control-actions-empty')).toBeInTheDocument();
+    expect(screen.queryByTestId('control-actions')).not.toBeInTheDocument();
   });
 
   it('loads the plan actions and offers them', async () => {
@@ -165,6 +174,7 @@ describe('WorkControlPanel component', () => {
     render(WorkControlPanel, { props: { subjectId: 'relay-metrics', subjectKind: 'plan' } });
 
     expect(await screen.findByTestId('action-start')).toBeInTheDocument();
+    expect(screen.queryByTestId('action-pause')).not.toBeInTheDocument();
     await openOverflow();
     await fireEvent.click(screen.getByTestId('action-abandon'));
     expect(await screen.findByTestId('end-title')).toHaveTextContent('Abandon relay-metrics?');
@@ -320,6 +330,18 @@ describe('WorkControlPanel component', () => {
       'Archive relay-hardening?',
     );
     expect(screen.getByTestId('archive-line-control.archive.open_findings')).toBeInTheDocument();
+    expect(
+      screen
+        .getByTestId('archive-line-control.archive.open_findings')
+        .querySelector('[role="img"]')
+        ?.getAttribute('aria-label'),
+    ).toBe('not met');
+    expect(
+      screen
+        .getByTestId('archive-line-control.archive.no_plan_active')
+        .querySelector('[role="img"]')
+        ?.getAttribute('aria-label'),
+    ).toBe('passed');
     expect(screen.getByTestId('archive-carried')).toHaveTextContent('3 kept findings');
     expect(screen.getByTestId('archive-confirm')).toBeDisabled();
 

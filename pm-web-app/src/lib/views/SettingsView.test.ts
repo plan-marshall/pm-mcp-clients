@@ -72,7 +72,7 @@ describe('SettingsView component', () => {
 
     expect(screen.getByTestId('this-browser-badge')).toHaveTextContent('this one');
     expect(screen.getByTestId('listener-status')).toHaveTextContent('Network listener: on.');
-    expect(screen.getByTestId('revoke-others-button')).toBeInTheDocument();
+    expect(screen.getByTestId('devices-section-acts')).toBeInTheDocument();
   });
 
   it('allows renaming a device inline and saves the new label', async () => {
@@ -131,10 +131,15 @@ describe('SettingsView component', () => {
     render(SettingsView);
 
     await waitFor(() => {
-      expect(screen.getByTestId('revoke-others-button')).toBeInTheDocument();
+      expect(screen.getByTestId('devices-section-acts')).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getByTestId('revoke-others-button'));
+    await fireEvent.click(
+      within(screen.getByTestId('devices-section-acts')).getByTestId('action-bar-overflow'),
+    );
+    await fireEvent.click(
+      await within(screen.getByTestId('devices-section-acts')).findByTestId('action-revoke_others'),
+    );
 
     expect(await screen.findByTestId('confirm-dialog')).toBeInTheDocument();
     expect(screen.getByText(/1 device other than this one/i)).toBeInTheDocument();

@@ -136,9 +136,14 @@ describe('Paired devices against the mock runtime scenarios', () => {
     const revokeOthersSpy = vi.spyOn(apiClient, 'revokeOtherDevices').mockResolvedValue();
 
     render(SettingsView);
-    await waitFor(() => expect(screen.getByTestId('revoke-others-button')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId('devices-section-acts')).toBeInTheDocument());
 
-    await fireEvent.click(screen.getByTestId('revoke-others-button'));
+    await fireEvent.click(
+      within(screen.getByTestId('devices-section-acts')).getByTestId('action-bar-overflow'),
+    );
+    await fireEvent.click(
+      await within(screen.getByTestId('devices-section-acts')).findByTestId('action-revoke_others'),
+    );
     expect(await screen.findByTestId('confirm-dialog')).toHaveTextContent(
       '2 devices other than this one',
     );

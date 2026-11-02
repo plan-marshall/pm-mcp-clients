@@ -30,8 +30,11 @@
 
   let typed = '';
 
+  // A reopened dialog starts from nothing: the name is a guard for this opening, not credit.
+  $: if (!open) typed = '';
+
   /** A typed name is only a guard where the act asks for one. */
-  $: typedMatches = typedName === undefined || typed === typedName;
+  $: typedMatches = typedName === undefined || (typedName !== '' && typed === typedName);
 </script>
 
 <Dialog {open} {title} danger {consequences} {onClose} testid="confirm-dialog">

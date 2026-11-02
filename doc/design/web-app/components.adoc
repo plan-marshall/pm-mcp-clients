@@ -54,9 +54,11 @@ Source and surface: `pm-web-app/src/lib/components/IconButton.svelte`, tests in 
 
 image::../../resources/diagrams/web-component-action-bar.svg[ActionBar with one primary act and the rest in the overflow,360,align=center]
 
-One primary act, up to three secondary acts, and an overflow `IconButton` that opens the menu of the rest. The bar is a style here; which acts a plan or an epic offers by its state arrives with the actions-by-state work.
+One primary act, up to three secondary acts, and an overflow `IconButton` that opens the menu of the rest. The acts a state offers, and their roles, come from `pm-web-app/src/lib/actions/byState.ts`: one table per resource kind (`plan`, `epic`, `project`, `device`, `runtime`). Where the runtime sends the offered acts of a plan or an epic, they decide which acts exist and whether they can run; the table decides their order and their role.
 
-Source and surface: `pm-web-app/src/lib/components/ActionBar.svelte`, tests in `ActionBar.test.ts`; the prop is `acts` (`id`, `label`, `disabled`, `disabledReason`, `advisory`), with `onAct(id)` reporting the chosen one.
+A destructive act (cancel, abandon, release, unenrol, revoke, delete) is never primary and never red at rest: it lives in the overflow and asks through `ConfirmDialog`, which names the consequences in the danger colour.
+
+Source and surface: `pm-web-app/src/lib/components/ActionBar.svelte`, tests in `ActionBar.test.ts`; the props are `acts` (`id`, `label`, `role` (`primary`, `secondary`, `overflow`), `destructive`, `disabled`, `disabledReason`, `advisory`), with `onAct(id)` reporting the chosen one. `pm-web-app/src/lib/components/ConfirmDialog.svelte` draws the confirmation, with `title`, `consequences`, `actionLabel`, `cancelLabel` and an optional `typedName`.
 
 [#status-label]
 === StatusLabel

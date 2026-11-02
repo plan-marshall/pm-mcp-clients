@@ -8,9 +8,10 @@
    * The visual bar of acts (VD-P-05, UX-P-04): one primary, up to three secondary, and the rest in
    * an overflow `IconButton` with a menu.
    *
-   * The bar draws the acts it is given; which acts a state offers, and in which order, comes with
-   * `web-actions-by-state`. The first act is the primary one, so a caller orders its list by
-   * importance rather than by markup.
+   * The bar draws the acts it is given, with the role each act carries: a roleless list keeps the
+   * old positional reading (first act primary, the next three secondary), and a destructive act is
+   * never primary and never secondary, whatever role the caller marked. `lib/actions/byState.ts`
+   * is where a state's acts and their roles come from.
    *
    * The overflow is a menu in the sense the role promises: opening it moves the focus to its first
    * enabled entry, the arrow keys and Home/End move within it, Tab closes it and puts the focus back
@@ -52,7 +53,7 @@
     : acts.find((act) => !act.destructive);
   $: rest = acts.filter((act) => act !== primary);
   $: secondary = rest
-    .filter((act) => (hasRoles ? act.role === 'secondary' && !act.destructive : true))
+    .filter((act) => (hasRoles ? act.role === 'secondary' && !act.destructive : !act.destructive))
     .slice(0, MAX_SECONDARY);
   $: overflow = rest.filter((act) => !secondary.includes(act));
 

@@ -128,4 +128,28 @@ describe('ConfirmDialog', () => {
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
+
+  it('asks for the name again after a closed confirmation is reopened', async () => {
+    const { rerender } = render(ConfirmDialog, {
+      props: {
+        open: true,
+        title: 'Revoke all others?',
+        consequences: CONSEQUENCES,
+        actionLabel: 'Revoke them',
+        cancelLabel: 'Keep them',
+        typedName: 'Safari on iPad',
+      },
+    });
+
+    await fireEvent.input(screen.getByTestId('confirm-dialog-input'), {
+      target: { value: 'Safari on iPad' },
+    });
+    expect(screen.getByTestId('confirm-dialog-confirm')).toBeEnabled();
+
+    await rerender({ open: false });
+    await rerender({ open: true });
+
+    expect(screen.getByTestId('confirm-dialog-confirm')).toBeDisabled();
+    expect(screen.getByTestId('confirm-dialog-input')).toHaveValue('');
+  });
 });

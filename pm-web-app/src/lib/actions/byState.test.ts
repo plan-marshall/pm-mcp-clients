@@ -157,6 +157,10 @@ describe('actsFor', () => {
     expect(actsFor('project', 'unheard_of')).toEqual([]);
   });
 
+  it('offers no act when the API explicitly offers none', () => {
+    expect(actsFor('plan', 'running', [])).toEqual([]);
+  });
+
   it('names the five resource kinds the use cases carry', () => {
     expect(RESOURCE_KINDS).toEqual(['plan', 'epic', 'project', 'device', 'runtime']);
   });

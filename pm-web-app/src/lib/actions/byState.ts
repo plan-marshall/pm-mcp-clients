@@ -174,7 +174,7 @@ export const DEVICE_ACTS: Record<string, ActSpec[]> = {
 /** The runtime's acts by lifecycle state (UC-P-02). */
 export const RUNTIME_ACTS: Record<string, ActSpec[]> = {
   running: [
-    { id: 'check', labelKey: 'system.runtime.check_now', advisoryKey: 'system.action.check.title', ...PRIMARY },
+    { id: 'check', labelKey: 'system.runtime.check_now', advisoryKey: 'system.runtime.check_now.title', ...PRIMARY },
     { id: 'stop', labelKey: 'system.action.stop', advisoryKey: 'system.action.stop.title', ...SECONDARY },
     { id: 'restart', labelKey: 'system.action.restart', advisoryKey: 'system.action.restart.title', ...SECONDARY },
   ],
@@ -182,7 +182,7 @@ export const RUNTIME_ACTS: Record<string, ActSpec[]> = {
     { id: 'upgrade', labelKey: 'system.action.upgrade', advisoryKey: 'system.action.upgrade.title', ...PRIMARY },
     { id: 'stop', labelKey: 'system.action.stop', advisoryKey: 'system.action.stop.title', ...SECONDARY },
     { id: 'restart', labelKey: 'system.action.restart', advisoryKey: 'system.action.restart.title', ...SECONDARY },
-    { id: 'check', labelKey: 'system.runtime.check_now', advisoryKey: 'system.action.check.title', ...OVERFLOW },
+    { id: 'check', labelKey: 'system.runtime.check_now', advisoryKey: 'system.runtime.check_now.title', ...OVERFLOW },
   ],
   draining: [
     { id: 'withdraw_stop', labelKey: 'system.stopping.withdraw', advisoryKey: 'system.stopping.withdraw.title', ...PRIMARY },
@@ -261,7 +261,7 @@ export function actsFor(
   offered?: OfferedAction[] | null,
 ): ActSpec[] {
   const table = ACT_TABLES[kind][state] ?? [];
-  if (!offered || offered.length === 0) {
+  if (offered === null || offered === undefined) {
     return table;
   }
   const byAction = new Map(offered.map((entry) => [entry.action, entry]));

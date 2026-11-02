@@ -226,6 +226,23 @@ describe('ActionBar', () => {
     expect(screen.getByRole('button', { name: 'Chat' })).toBeInTheDocument();
   });
 
+  it('keeps a destructive act out of a roleless list’s bar too', async () => {
+    render(ActionBar, {
+      props: {
+        acts: [
+          { id: 'chat', label: 'Chat' },
+          { id: 'revoke', label: 'Revoke it', destructive: true },
+        ],
+      },
+    });
+
+    expect(screen.getByRole('button', { name: 'Chat' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Revoke it' })).not.toBeInTheDocument();
+
+    await fireEvent.click(screen.getByTestId('action-bar-overflow'));
+    expect(screen.getByRole('menuitem', { name: 'Revoke it' })).toBeInTheDocument();
+  });
+
   it('gives every act its id as its test id', async () => {
     render(ActionBar, {
       props: {

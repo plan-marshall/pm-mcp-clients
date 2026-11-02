@@ -119,7 +119,9 @@ test.describe('Paired Devices Flow (UC-ENT-2)', () => {
   });
 
   test('asks for the typed name before revoking all others', async ({ page }) => {
-    await page.getByTestId('revoke-others-button').click();
+    const section = page.getByTestId('devices-section-acts');
+    await section.getByTestId('action-bar-overflow').click();
+    await section.getByTestId('action-revoke_others').click();
 
     const dialog = page.getByTestId('confirm-dialog');
     await expect(dialog).toBeVisible();

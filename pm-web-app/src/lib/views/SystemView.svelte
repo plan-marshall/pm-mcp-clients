@@ -382,7 +382,7 @@
       ? 'draining'
       : upgradePhase !== 'idle'
         ? 'upgrading'
-        : snapshot?.runtime.upgrade_available_version
+        : snapshot?.runtime.upgrade_available_version && snapshot.runtime.upgrade_possible !== false
           ? 'update_available'
           : 'running',
   );
@@ -833,12 +833,7 @@
           {:else}
             <div class="metric-row">
               <span class="metric-label">{$t('system.runtime.field.update')}</span>
-              <span class="metric-value text-muted">
-                {$t('system.runtime.not_checked')}
-                <button type="button" class="btn-inline" onclick={handleCheckUpgrade}>
-                  {$t('system.runtime.check_now')}
-                </button>
-              </span>
+              <span class="metric-value text-muted">{$t('system.runtime.not_checked')}</span>
             </div>
           {/if}
 
@@ -1655,16 +1650,6 @@
   .badge--danger {
     background-color: var(--color-danger-subtle);
     color: var(--color-danger-text);
-  }
-
-  .btn-inline {
-    background: none;
-    border: none;
-    color: var(--color-primary);
-    text-decoration: underline;
-    font-size: var(--text-sm);
-    cursor: pointer;
-    margin-left: var(--space-2);
   }
 
   .link-muted {

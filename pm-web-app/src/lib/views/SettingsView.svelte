@@ -6,7 +6,7 @@
   import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import LanListenerModal from '../components/LanListenerModal.svelte';
   import CredentialEntry from '../components/CredentialEntry.svelte';
-  import { DEVICE_ACTS } from '../actions/byState';
+  import { DEVICE_ACTS, type ActSpec } from '../actions/byState';
   import { apiClient, type PairedDevice } from '../api/client';
   import { currentLocale } from '../i18n';
   import { formatDay, formatTime } from '../display/format';
@@ -213,21 +213,30 @@
   $: thisLabel = devices.find((d) => isThisBrowser(d))?.label ?? $runtimeStore.deviceLabel;
 
   /**
+   * @param act a device act from the table
+   * @returns the act as the bar draws it
+   */
+  function barAct(act: ActSpec) {
+    return {
+      id: act.id,
+      label: $t(act.labelKey),
+      advisory: act.advisoryKey ? $t(act.advisoryKey) : undefined,
+      role: act.role,
+      destructive: act.destructive,
+    };
+  }
+
+  /**
    * @param device a paired device
    * @returns the acts the device's row offers (UX-P-04)
    */
   function deviceActs(device: PairedDevice) {
     const state = isThisBrowser(device) ? 'this_device' : 'other_device';
-    return DEVICE_ACTS[state]
-      .filter((act) => act.id !== 'revoke_others')
-      .map((act) => ({
-        id: act.id,
-        label: $t(act.labelKey),
-        advisory: act.advisoryKey ? $t(act.advisoryKey) : undefined,
-        role: act.role,
-        destructive: act.destructive,
-      }));
+    return DEVICE_ACTS[state].filter((act) => act.id !== 'revoke_others').map(barAct);
   }
+
+  /** The section's own act: revoking every other device, in its overflow. */
+  $: sectionActs = DEVICE_ACTS.this_device.filter((act) => act.id === 'revoke_others').map(barAct);
 
   /**
    * @param device a paired device
@@ -302,13 +311,9 @@
         <p class="settings-section__subtitle">{$t('devices.list.subtitle')}</p>
       </div>
       {#if otherDevicesCount > 0}
-        <Button
-          variant="secondary"
-          on:click={() => promptRevoke('others')}
-          data-testid="revoke-others-button"
-        >
-          {$t('devices.act.revoke_others')}
-        </Button>
+        <div data-testid="devices-section-acts">
+          <ActionBar acts={sectionActs} onAct={() => promptRevoke('others')} />
+        </div>
       {/if}
     </div>
 
