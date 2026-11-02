@@ -594,6 +594,8 @@ describe('ReportsView component', () => {
 
   it('keeps the row beside its detail when the list reloads', async () => {
     vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    let servedPage: ReportsPage = mockPage;
+    vi.spyOn(apiClient, 'getReports').mockImplementation(() => Promise.resolve(servedPage));
 
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
@@ -604,17 +606,48 @@ describe('ReportsView component', () => {
 
     // The runtime announces a report the view cannot place, so it reloads the list; the server no
     // longer serves the report the open detail read.
-    const callsBefore = (apiClient.getReports as ReturnType<typeof vi.fn>).mock.calls.length;
+    servedPage = {
+      items: mockReports.filter((report) => report.id !== 'rep-0142'),
+      unread_count: 2,
+      has_older: false,
+      older_count: 0,
+    };
     eventHandler?.('report.sent', { report_id: 'rep-9001' });
-    await waitFor(() => {
-      expect((apiClient.getReports as ReturnType<typeof vi.fn>).mock.calls.length).toBeGreaterThan(
-        callsBefore,
-      );
-    });
 
+    await waitFor(() => {
+      expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+    });
     const active = document.querySelector('.report-card--active');
     expect(active).not.toBeNull();
     expect(active).toHaveAttribute('data-report-id', 'rep-0142');
+    // The row the reload serves no more is kept once, not duplicated.
+    expect(document.querySelectorAll('[data-report-id="rep-0142"]')).toHaveLength(1);
+  });
+
+  it('drops the row of a detail another detail replaces', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const firstCard = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+    await fireEvent.click(
+      within(firstCard).getByRole('button', { name: /Show the details/i }),
+    );
+    await waitFor(() => {
+      expect(apiClient.getPlanCompletion).toHaveBeenCalledWith('fix-relay');
+    });
+
+    const secondCard = screen.getByText('Ended: no change').closest('.report-card') as HTMLElement;
+    await fireEvent.click(
+      within(secondCard).getByRole('button', { name: /Show the details/i }),
+    );
+    await waitFor(() => {
+      expect(apiClient.getPlanCompletion).toHaveBeenCalledWith('docs-typo');
+    });
+
+    expect(document.querySelector('[data-report-id="rep-0142"]')).toBeNull();
+    expect(document.querySelector('[data-report-id="rep-0139"]')).not.toBeNull();
   });
 
   it('names the row menu with the report and moves the focus in and back out', async () => {
@@ -632,7 +665,22 @@ describe('ReportsView component', () => {
       expect(entry).toHaveFocus();
     });
 
+    // The arrow keys and Home/End move within the menu; with one entry the focus stays on it.
+    await fireEvent.keyDown(entry, { key: 'ArrowDown' });
+    expect(entry).toHaveFocus();
+    await fireEvent.keyDown(entry, { key: 'End' });
+    expect(entry).toHaveFocus();
+
     await fireEvent.keyDown(entry, { key: 'Escape' });
+    await waitFor(() => {
+      expect(trigger).toHaveFocus();
+    });
+    expect(within(card).queryByRole('menuitem')).toBeNull();
+
+    // Tab closes the menu as well and puts the focus back on the control.
+    await fireEvent.click(trigger);
+    const reopened = await within(card).findByRole('menuitem', { name: /Mark read/i });
+    await fireEvent.keyDown(reopened, { key: 'Tab' });
     await waitFor(() => {
       expect(trigger).toHaveFocus();
     });

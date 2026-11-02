@@ -144,6 +144,11 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
       .click();
     await expect(page.locator('.reports-view')).toBeVisible();
 
+    // The scenario announces a report and its read a moment after the list was drawn. Waiting for
+    // the count those two events produce is the page's own condition, and it keeps the empty state
+    // that follows stable.
+    await expect(page.getByTestId('unread-count')).toContainText('6 unread reports');
+
     const markAllBtn = page.getByRole('button', { name: /Mark all shown read/i });
     await expect(markAllBtn).toBeVisible();
     await markAllBtn.click();
@@ -153,6 +158,7 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await expect(
       page.getByText('Nothing new. Reports you have read are not shown any more.'),
     ).toBeVisible();
+    await expect(page.getByTestId('unread-count')).toHaveCount(0);
   });
 });
 

@@ -352,13 +352,21 @@
     try {
       const page: ReportsPage = await apiClient.getReports();
       const served = page.items || [];
+      const servedIds = new Set(served.map((fresh) => fresh.id));
       // A row read beside its open detail stays in the list even when a reload no longer serves it:
-      // the runtime has marked it read, and the detail still shows it. Only closing the detail drops
-      // it ({@link flushRetainedReads}).
-      const retained = items.filter(
-        (item) => retainedReadIds[item.id] && !served.some((fresh) => fresh.id === item.id),
-      );
-      items = [...retained, ...served];
+      // the runtime has marked it read, and the detail still shows it. Only closing the detail (or
+      // opening another one) drops it ({@link flushRetainedReads}). Each retained row keeps its
+      // place among the rows the reload still serves, so the newest-first order stands.
+      const merged = [...served];
+      for (const row of items) {
+        if (!retainedReadIds[row.id] || servedIds.has(row.id)) continue;
+        const successor = items
+          .slice(items.indexOf(row) + 1)
+          .find((later) => servedIds.has(later.id));
+        const at = successor ? merged.findIndex((later) => later.id === successor.id) : -1;
+        merged.splice(at < 0 ? merged.length : at, 0, row);
+      }
+      items = merged;
       // The reloaded count already includes every read this view counted, so those markers go.
       // A read whose response is still in flight keeps its marker: that response must not subtract
       // a read the fresh count already reflects.
@@ -464,6 +472,13 @@
    */
   function showDetail(planId: string): void {
     activeDetailPlanId = planId;
+    // A row the previous detail read has no detail of its own any more; it goes unless its own read
+    // request is still in flight, whose outcome decides whether it goes or comes back as unread.
+    for (const id of Object.keys(retainedReadIds)) {
+      if (pendingReadIds.has(id)) continue;
+      const row = items.find((item) => item.id === id);
+      if (!row || planIdOf(row) !== planId) dropRetainedRow(id);
+    }
     syncedRouteReportPlan = planId;
     runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: planId }));
   }
