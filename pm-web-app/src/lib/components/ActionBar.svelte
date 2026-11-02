@@ -23,6 +23,10 @@
     label: string;
     /** The hover advisory, from the view's `X.title` key. */
     advisory?: string;
+    /** Where the act sits; without a role the order decides, as before. */
+    role?: 'primary' | 'secondary' | 'overflow';
+    /** Whether the act cannot be taken back; it never leaves the overflow. */
+    destructive?: boolean;
     disabled?: boolean;
     /** Why the act cannot run; the control carries it as advisory and description. */
     disabledReason?: string;
@@ -41,9 +45,16 @@
   let open = false;
   let host: HTMLDivElement | undefined = undefined;
 
-  $: primary = acts.at(0);
-  $: secondary = acts.slice(1, 1 + MAX_SECONDARY);
-  $: overflow = acts.slice(1 + MAX_SECONDARY);
+  /** Whether the caller named the rolls rather than only the order. */
+  $: hasRoles = acts.some((act) => act.role !== undefined);
+  $: primary = hasRoles
+    ? acts.find((act) => act.role === 'primary' && !act.destructive)
+    : acts.find((act) => !act.destructive);
+  $: rest = acts.filter((act) => act !== primary);
+  $: secondary = rest
+    .filter((act) => (hasRoles ? act.role === 'secondary' && !act.destructive : true))
+    .slice(0, MAX_SECONDARY);
+  $: overflow = rest.filter((act) => !secondary.includes(act));
 
   /** @returns the button that opened the menu */
   function overflowButton(): HTMLButtonElement | null {
@@ -162,6 +173,7 @@
       disabled={busy || primary.disabled}
       disabledReason={primary.disabledReason}
       title={primary.advisory}
+      data-testid={`action-${primary.id}`}
       on:click={(event) => choose(primary.id, false, event.currentTarget as HTMLElement | null)}
     >
       {primary.label}
@@ -174,6 +186,7 @@
       disabled={busy || act.disabled}
       disabledReason={act.disabledReason}
       title={act.advisory}
+      data-testid={`action-${act.id}`}
       on:click={(event) => choose(act.id, false, event.currentTarget as HTMLElement | null)}
     >
       {act.label}
@@ -201,6 +214,7 @@
               role="menuitem"
               tabindex="-1"
               class="action-bar__item"
+              data-testid={`action-${act.id}`}
               disabled={busy || act.disabled}
               title={act.disabled ? (act.disabledReason ?? act.advisory) : act.advisory}
               on:click={() => choose(act.id, true)}

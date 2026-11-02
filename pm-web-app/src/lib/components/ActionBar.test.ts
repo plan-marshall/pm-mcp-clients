@@ -171,4 +171,76 @@ describe('ActionBar', () => {
     await fireEvent.keyDown(screen.getByRole('menu'), { key: 'Home' });
     expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Archive' }));
   });
+
+  it('renders the role an act carries, not its position', async () => {
+    const onAct = vi.fn();
+    render(ActionBar, {
+      props: {
+        acts: [
+          { id: 'chat', label: 'Chat', role: 'secondary' },
+          { id: 'start', label: 'Start', role: 'primary' },
+          { id: 'settings', label: 'Settings', role: 'overflow' },
+          { id: 'pause', label: 'Pause', role: 'secondary' },
+        ],
+        onAct,
+      },
+    });
+
+    const start = screen.getByRole('button', { name: 'Start' });
+    expect(start.className).toContain('btn--primary');
+    expect(screen.getByRole('button', { name: 'Chat' }).className).toContain('btn--secondary');
+    expect(screen.queryByText('Settings')).not.toBeInTheDocument();
+
+    await fireEvent.click(start);
+    expect(onAct).toHaveBeenCalledWith('start');
+  });
+
+  it('keeps a destructive act out of the bar, in the overflow', async () => {
+    render(ActionBar, {
+      props: {
+        acts: [
+          { id: 'chat', label: 'Chat', role: 'primary' },
+          { id: 'revoke', label: 'Revoke it', role: 'overflow', destructive: true },
+        ],
+      },
+    });
+
+    expect(screen.queryByText('Revoke it')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Revoke it' })).not.toBeInTheDocument();
+
+    await fireEvent.click(screen.getByTestId('action-bar-overflow'));
+    expect(screen.getByRole('menuitem', { name: 'Revoke it' })).toBeInTheDocument();
+  });
+
+  it('never draws a destructive act as the primary act, whatever the caller marks', () => {
+    render(ActionBar, {
+      props: {
+        acts: [
+          { id: 'revoke', label: 'Revoke it', role: 'primary', destructive: true },
+          { id: 'chat', label: 'Chat', role: 'secondary' },
+        ],
+      },
+    });
+
+    expect(screen.queryByRole('button', { name: 'Revoke it' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Chat' })).toBeInTheDocument();
+  });
+
+  it('gives every act its id as its test id', async () => {
+    render(ActionBar, {
+      props: {
+        acts: [
+          { id: 'start', label: 'Start', role: 'primary' },
+          { id: 'chat', label: 'Chat', role: 'secondary' },
+          { id: 'archive', label: 'Archive', role: 'overflow' },
+        ],
+      },
+    });
+
+    expect(screen.getByTestId('action-start')).toBeInTheDocument();
+    expect(screen.getByTestId('action-chat')).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByTestId('action-bar-overflow'));
+    expect(screen.getByTestId('action-archive')).toBeInTheDocument();
+  });
 });
