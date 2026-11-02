@@ -46,7 +46,8 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/cross-cutting/plan.adoc#CLI-CC-S-06`, `doc/claude_review/cli/cross-cutting/proposals.adoc#CLI-CC-P-05` — read at `doc/claude_review/cli/cross-cutting/plan.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/cli/cross-cutting/plan.adoc:58-59 [#CLI-CC-S-06] The Proof of Presence; proposals.adoc:97 CLI-CC-P-05
+  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-mcp-clients main 94bbefe1: doc/claude_review/cli/cross-cutting/plan.adoc:58-59 [#CLI-CC-S-06] The Proof of Presence (proposals CLI-CC-P-05 later); proposals.adoc:97-98 [#CLI-CC-P-05] exists; the review lives in pm-mcp-clients, not in plan-marshall-documentation; doc/plans/README.adoc exists
+- HOLD (design audit 2026-11-02, inbox design-audit-001): the plan turns L-1 into PM-SEC-3 text, a package and an ADR while its milestone is unplanned. Do not emit; either rescope it to an operator decision recorded on L-1, or keep it held until the milestone is planned.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

@@ -66,8 +66,10 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/proposals.adoc#UX-P-10`, `doc/claude_review/use-cases/proposals.adoc#UC-P-07` — read at `doc/claude_review/ux/proposals.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/ux/proposals.adoc:339 [#UX-P-10]; doc/claude_review/use-cases/proposals.adoc:138 [#UC-P-07] Project onboarding and the start gate
+  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/ux/proposals.adoc:339-340 [#UX-P-10]; use-cases/proposals.adoc:138-139 UC-P-07 Project onboarding and the start gate
 - Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 changed `doc/design/shared/project-explorer.adoc` (`#project-row`): in the web app the row of a ready project carries _Add a plan_ (`project.action.add_plan`) beside its marks, a project that is not ready shows it disabled with the reason (`project.action.disabled_not_ready`), and _Add an epic_ stays among the actions. this plan builds it as deliverable 4 (moved here from `PLAN-83`, together with the project acts of the former `PLAN-47` D4), into the rebuilt grid and table cards. The design also now orders projects as the runtime serves them (needs the operator first, then the start of their oldest active work): "last activity" on a card is information, never a sort key.
+- Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): PLAN-43 shipped (templates); project.action.add_plan and project.action.disabled_not_ready already exist in projects.en.properties (added with the PR #278 design); ProjectExplorerView/ProjectOnboardingView were touched by PLAN-90/a11y.
+- RESCOPE at outline (design audit 2026-11-02): Done-when for a package row is 'the row stays done, no link' (Z2).
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

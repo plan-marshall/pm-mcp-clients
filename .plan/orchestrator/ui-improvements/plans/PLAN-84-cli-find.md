@@ -54,6 +54,7 @@ The web half is `PLAN-46` (the command palette behind the top bar's search butto
   adds them in `overview.{en,de}.properties`; this plan reads them at its head and adds only the ones still missing if it runs
   first. Both plans declare `overview.{en,de}.properties` and do not run at the same time. The `FindCommand` texts of the
   terminal stay in `operator.*` as declared here.
+- RESCOPE at outline (design audit 2026-11-02): Done-when for a package row is 'the row stays done, no link' (Z2); also add the needs/find rows to the spec command tree (terminal-client/01-commands).
 - Verify-first clause: before each deliverable, re-read the named files at the current HEAD and confirm or refute every claim above; `PLAN-82` must have landed (the contract and the mock), `PLAN-36` and `PLAN-42` edit `PmOperator`, `PmConsole`, the command listing and the catalogue pair. A refuted claim re-scopes the deliverable and is reported.
 
 ## Expected Surface

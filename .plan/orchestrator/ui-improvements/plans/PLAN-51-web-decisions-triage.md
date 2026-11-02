@@ -73,8 +73,10 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-08)`, `doc/claude_review/ux/proposals.adoc#UX-P-06` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/ux/plan.adoc:58 has UX-S-08 (Decisions as triage); ux/proposals.adoc:269 [#UX-P-06]
+  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/ux/plan.adoc:58 UX-S-08 -> UX-P-06; ux/proposals.adoc:269-270 UX-P-06 Decisions as Triage
 - Re-grounded note at HEAD 07104678 (2026-10-30): PR #278 added a rule to `doc/design/shared/decisions.adoc` (#announce): a notification fires only for a decision the client has not announced before (none after a reconnect or a reload), decisions arriving within one second make one notification, several open the list of open decisions (`decision.notify.several`) and one opens that decision. this plan builds it as deliverable 5 (moved here from `PLAN-83`); the triage view must not re-announce on its own re-read.
+- Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): PLAN-43 shipped (#301): templates live in pm-web-app/src/lib/templates/ (TriagePage, ObjectPage, WizardPage, DashboardPage) and its D3 guard lists views sitting on a template; DecisionView does not use TriagePage yet and this plan must add itself to that list. Key decision.notify.several is not yet in decisions.en.properties (to be created).
+- RESCOPE at outline (design audit 2026-11-02): Done-when for a package row is 'the row stays done, no link' (Z2).
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

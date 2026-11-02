@@ -5,6 +5,7 @@ workstream: WS-05
 
 > Staged plan spec — one shippable unit of work, ready for hand-off on the `runbook` lane.
 > This spec is SELF-SUFFICIENT: the emitted command is a one-line pointer and carries no brief.
+> Scope note (cleanup 2026-11-02): 6 deliverables reach the split guard. Kept as one plan because the style classes, the glyph classes and the colour roles share one set of files; the lane may split by deliverable at outline when a pull request would pass 100 files, and says so in the progress record.
 
 ## Objective
 
@@ -75,7 +76,8 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-03`, `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-05` — read at `doc/claude_review/cli/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main: doc/claude_review/cli/visual-design/plan.adoc:29 [#CLI-VD-S-03] and :50 [#CLI-VD-S-05]
+  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-mcp-clients main 94bbefe1: doc/claude_review/cli/visual-design/plan.adoc:29-30 [#CLI-VD-S-03] Apply the Roles and :50-51 [#CLI-VD-S-05] The Brand Line unchanged
+- Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Style.java, Glyphs.java and their tests are still absent in pm-operator tui/; tui/ now also holds TuiScreenDriver, TuiLayout, TuiMenu etc. and operator/system sources changed (PLAN-26); transcript/ now has IT classes (CancelDialogueIT, SummaryLineIT, PseudoTerminal, PtySession); Expected Surface needs no removal.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

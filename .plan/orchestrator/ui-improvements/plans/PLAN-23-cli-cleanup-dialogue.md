@@ -43,13 +43,14 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/use-cases/plan.adoc#CLI-UC-S-07`, `doc/claude_review/cli/use-cases/proposals.adoc#CLI-UC-P-05` — read at `doc/claude_review/cli/use-cases/plan.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/cli/use-cases/plan.adoc:73-74 [#CLI-UC-S-07] The Cleanup Dialogue; proposals.adoc:96 CLI-UC-P-05
+  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/cli/use-cases/plan.adoc:73 [#CLI-UC-S-07] The Cleanup Dialogue; proposals.adoc:96-97 [#CLI-UC-P-05]
 - Re-grounded note at HEAD 5348e89e (2026-10-30): `cli-gate-scope` (PLAN-14, shipped, PR #277) decided on the
   operator's word that the whole `cleanup` verb is an operator act, refused with exit `4` under a host marker, and
   rewrote `26-cleanup.adoc` and the command listing to say so (`cleanup` and `--kept` marked `[op]`; `--release` joined
   `--delete`, `--remind`, `--ignore`). The statement "`cleanup` is a read" in this spec's sources is therefore stale.
   `CleanupCommand` and `26-cleanup.adoc`, both declared here, changed: re-read them at HEAD before the first
   deliverable. The `cleanup-view` still prints the job.
+- Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): CleanupCommand still has no ChoicePrompt dialogue and CleanupDialogueIT is still @Disabled (PLAN-23 still open). The spec's 'keep cleanup --list' names an option that exists neither in CleanupCommand nor in 26-cleanup.adoc (printed form is plain 'cleanup' / '--kept', whole verb now [op] after PLAN-14); PLAN-26 (be4995e5) also touched system.*.properties.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
