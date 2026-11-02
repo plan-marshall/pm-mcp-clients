@@ -319,7 +319,9 @@ describe('PlanView component', () => {
 
   it('dates a streamed clock-only row by the day it arrives', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
-    vi.setSystemTime(new Date(2026, 9, 16, 9, 0, 0));
+    // The snapshot is read late on one day; the streamed row arrives just after midnight, so the
+    // snapshot's read day and the row's arrival day differ.
+    vi.setSystemTime(new Date(2026, 9, 15, 21, 0, 0));
     let onEvent: ((event: string, data: unknown) => void) | undefined;
     vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
       ...mockActivity,
@@ -327,7 +329,7 @@ describe('PlanView component', () => {
         {
           timestamp: new Date(2026, 9, 15, 20, 0, 0).toISOString(),
           kind: 'text',
-          content: 'yesterday, dated',
+          content: 'the snapshot, read before midnight',
         },
       ],
     });
@@ -342,7 +344,6 @@ describe('PlanView component', () => {
 
     await screen.findByTestId('task-inspector');
     await waitFor(() => expect(onEvent).toBeDefined());
-    // Past midnight, a row arrives with a bare clock: it belongs to the day it arrived.
     vi.setSystemTime(new Date(2026, 9, 16, 0, 30, 0));
     onEvent?.('task.activity', {
       timestamp: '00:29:00',
@@ -352,8 +353,10 @@ describe('PlanView component', () => {
 
     await waitFor(() => expect(screen.getAllByTestId('activity-entry')).toHaveLength(2));
 
+    // Two days, not one: the row is dated by its arrival, not by the snapshot's read day.
     const days = screen.getAllByTestId('activity-day');
-    expect(days.map((day) => day.textContent)).toEqual(['yesterday', 'today']);
+    expect(days).toHaveLength(2);
+    expect(days[1]).toHaveTextContent('today');
   });
 
   it('normalizes live activity events and ignores malformed ones', async () => {

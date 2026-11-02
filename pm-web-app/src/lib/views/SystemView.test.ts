@@ -225,6 +225,23 @@ describe('SystemView component', () => {
     expect(screen.getByText(text)).toBeInTheDocument();
   });
 
+  it('pluralizes the retry status word for a count above one', async () => {
+    const snapshot = {
+      ...mockSnapshot,
+      models: [{ ...mockSnapshot.models[0], retries_count: 2, errors_count: 0 }],
+    };
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(snapshot);
+    useCatalogue('de');
+
+    render(SystemView);
+
+    await waitFor(() => {
+      expect(screen.getByText('System')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('2 Wiederholungen')).toBeInTheDocument();
+  });
+
   it('keeps each status word in the row of its own model', async () => {
     vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
     useCatalogue('de');

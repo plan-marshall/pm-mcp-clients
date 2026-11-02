@@ -392,6 +392,9 @@
       unsubscribeActivity = apiClient.subscribeTaskActivity(pId, tId, (event, data) => {
         const entry = toActivityEntry(event, data);
         if (taskActivity && entry) {
+          // The row is dated by its arrival, so the clock the headers are measured at moves with
+          // it: a row that arrives just after midnight opens the new day as "today".
+          clock = Date.now();
           taskActivity = {
             ...taskActivity,
             entries: [...taskActivity.entries, entry],
