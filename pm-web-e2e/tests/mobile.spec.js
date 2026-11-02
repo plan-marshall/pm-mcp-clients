@@ -89,7 +89,7 @@ test.describe('Mobile viewports (WEB-1)', () => {
       await expectNoHorizontalOverflow(page);
     });
 
-    test(`reports filter and split layout stay usable at ${phone.label}`, async ({
+    test(`reports filter and the triage pane stay usable at ${phone.label}`, async ({
       page,
       request,
     }) => {
@@ -102,6 +102,7 @@ test.describe('Mobile viewports (WEB-1)', () => {
         .getByRole('button', { name: /Reports/i })
         .click();
       await expect(page.locator('.reports-view')).toBeVisible();
+      await expect(page.locator('[data-testid="triage-page"]')).toBeVisible();
 
       const filter = page.getByTestId('filter-input');
       await expectWithinViewport(page, filter, phone.width);
@@ -109,11 +110,15 @@ test.describe('Mobile viewports (WEB-1)', () => {
       await expect(page.locator('.report-card')).toHaveCount(1);
       await expectNoHorizontalOverflow(page);
 
-      await page.getByTestId('layout-split').click();
-      await expect(page.locator('.reports-view')).toHaveAttribute('data-layout', 'split');
-      // Below the split breakpoint the view is one column: the empty detail pane is hidden.
-      await expect(page.locator('.reports-split__detail')).toBeHidden();
-      await expect(page.locator('.reports-tree')).toBeVisible();
+      // Below the triage breakpoint the detail replaces the list, never both panes.
+      await filter.fill('');
+      await expect(page.locator('.report-card').first()).toBeVisible();
+      await page
+        .locator('.report-card', { hasText: 'Ended: merged (#214)' })
+        .getByRole('button', { name: /Show the details/i })
+        .click();
+      await expect(page.locator('.completion-report')).toBeVisible();
+      await expect(page.locator('.reports-tree')).toBeHidden();
       await expectNoHorizontalOverflow(page);
     });
   }

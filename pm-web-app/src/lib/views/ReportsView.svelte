@@ -1044,6 +1044,7 @@
         <Button
           variant="secondary"
           size="small"
+          data-testid="report-details"
           disabled={item.subject_deleted}
           disabledReason={item.subject_deleted
             ? $t('report.action.details.deleted.title', {

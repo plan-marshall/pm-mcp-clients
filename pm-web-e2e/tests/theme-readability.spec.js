@@ -296,7 +296,7 @@ const GUARD_JOURNEYS = [
 
       const card = page.locator('.report-card', { hasText: 'fix-relay' });
       await expect(card).toBeVisible();
-      await card.locator('.action-btn--detail').click();
+      await card.getByTestId('report-details').click();
       await expect(page.locator('.completion-report')).toBeVisible();
       await expect(page.locator('.report-title')).toBeVisible();
       await record('CompletionReportView');
@@ -761,7 +761,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           // Open and audit CompletionReportView without silent skips
           const planCard = page.locator('.report-card', { hasText: 'fix-relay' });
           await expect(planCard).toBeVisible();
-          const detailBtn = planCard.locator('.action-btn--detail');
+          const detailBtn = planCard.getByTestId('report-details');
           await expect(detailBtn).toBeVisible();
           await detailBtn.click();
           await expect(page.locator('.completion-report')).toBeVisible();
