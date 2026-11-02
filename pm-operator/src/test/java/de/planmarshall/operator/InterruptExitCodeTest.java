@@ -65,6 +65,14 @@ class InterruptExitCodeTest {
                           "cause":"the worker stopped","attempts":2,"acts":["retry","recycle","end_plan"]}]
                         """;
 
+    private static final String REVIEW = """
+                        {"review_id":"R-1","epic_id":"e","register":"findings","state":"open",
+                         "decided":0,"total":1,"items":[
+                           {"item_id":"F-1","register":"findings","statement":"Reconnect loses the last event",
+                            "rules":["cover every transport"],"origin":"landing","trust":"trusted",
+                            "state":"open","proposal":"promote to a plan"}]}
+                        """;
+
     private RuntimeFixture fixture;
     private VirtualScreenTerminal virtual;
     private StringWriter out;
@@ -126,6 +134,48 @@ class InterruptExitCodeTest {
                             false));
 
         assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
+        assertEquals(130, code, out.toString());
+        assertNoAct(server);
+    }
+
+    @Test
+    @DisplayName("the review dialogue: the decision prompt interrupted leaves with 130")
+    void reviewDialogueInterrupt() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if (request.target().contains("/review")) {
+                response.json(200, REVIEW);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = interruptedAt("Reconnect loses the last event",
+                            () -> ReviewDialogue.run(context, new PrintWriter(out), "e", "findings", false));
+
+        assertEquals(130, code, out.toString());
+        assertNoAct(server);
+    }
+
+    @Test
+    @DisplayName("plan pause: the point prompt interrupted leaves with 130")
+    void planPauseInterrupt() throws Exception {
+        var server = fixture.start((request, response) -> response.send(404, null, ""));
+
+        var code = interruptedAt(PAUSE_PROMPT, () -> PmOperator.execute(context, new PrintWriter(out),
+                            new PrintWriter(new StringWriter()), "plan", "pause", "p"));
+
+        assertEquals(130, code, out.toString());
+        assertNoAct(server);
+    }
+
+    @Test
+    @DisplayName("plan cancel: the end reason interrupted leaves with 130")
+    void planCancelReasonInterrupt() throws Exception {
+        var server = fixture.start((request, response) -> response.send(404, null, ""));
+
+        var code = interruptedAt("Reason", () -> PmOperator.execute(context, new PrintWriter(out),
+                            new PrintWriter(new StringWriter()), "plan", "cancel", "p"));
+
         assertEquals(130, code, out.toString());
         assertNoAct(server);
     }

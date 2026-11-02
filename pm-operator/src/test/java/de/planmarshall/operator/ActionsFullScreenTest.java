@@ -9,11 +9,14 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.keymap.KeyMap;
 import org.jline.terminal.Terminal;
 import org.jline.utils.InfoCmp;
@@ -337,6 +340,39 @@ class ActionsFullScreenTest {
             ControlFixture.join(thread);
 
             assertTrue(app.interrupted(), out.toString());
+            assertFalse(control.requests().stream().anyMatch(
+                                                    request -> request.endsWith(
+                                                                        "/api/v1/plans/relay-cursor-order/holds/H-0001/resolve")),
+                                control.requests().toString());
+        }
+    }
+
+    @Test
+    @DisplayName("the plans verb returns 130 when the dialogue it opened is interrupted")
+    void shouldReturnTheInterruptStatusFromTheVerb() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(160, 45)) {
+            var context = control.context(virtual);
+            var out = new StringWriter();
+            var code = new AtomicInteger(-1);
+            var thread = Thread.ofPlatform().start(() -> code.set(PmOperator.execute(context,
+                                new PrintWriter(out), new PrintWriter(new StringWriter()),
+                                "plans", "--project", "pm-mcp-clients")));
+            ControlFixture.await(() -> virtual.alternateScreenActive()
+                                && ControlFixture.shows(virtual, "by plan"));
+            select(virtual, "Relay Cursor Order");
+            virtual.type("a");
+            ControlFixture.await(() -> ControlFixture.shows(virtual, "Accept the change\u2026"));
+            virtual.type("c");
+            ControlFixture.await(() -> out.toString().contains("y) yes"));
+
+            var deadline = System.nanoTime() + 5_000_000_000L;
+            while (thread.isAlive() && System.nanoTime() < deadline) {
+                virtual.terminal().raise(Terminal.Signal.INT);
+                ControlFixture.delay(20L);
+            }
+            ControlFixture.join(thread);
+
+            assertEquals(130, code.get(), out.toString());
             assertFalse(control.requests().stream().anyMatch(
                                                     request -> request.endsWith(
                                                                         "/api/v1/plans/relay-cursor-order/holds/H-0001/resolve")),
