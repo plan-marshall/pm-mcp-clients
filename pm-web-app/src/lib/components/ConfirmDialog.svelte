@@ -34,7 +34,7 @@
   $: typedMatches = typedName === undefined || typed === typedName;
 </script>
 
-<Dialog {open} {title} danger {consequences} {onClose}>
+<Dialog {open} {title} danger {consequences} {onClose} testid="confirm-dialog">
   {#if typedName !== undefined}
     <label class="confirm-dialog__field">
       {$t('web.confirm.typed_name', { name: typedName })}

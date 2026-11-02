@@ -2,8 +2,11 @@
   import { onMount, onDestroy } from 'svelte';
   import { t } from '../i18n';
   import Button from '../components/Button.svelte';
+  import ActionBar from '../components/ActionBar.svelte';
+  import ConfirmDialog from '../components/ConfirmDialog.svelte';
   import LanListenerModal from '../components/LanListenerModal.svelte';
   import CredentialEntry from '../components/CredentialEntry.svelte';
+  import { DEVICE_ACTS } from '../actions/byState';
   import { apiClient, type PairedDevice } from '../api/client';
   import { currentLocale } from '../i18n';
   import { formatDay, formatTime } from '../display/format';
@@ -207,6 +210,63 @@
 
   $: otherDevicesCount = devices.filter((d) => !isThisBrowser(d)).length;
   $: thisLabel = devices.find((d) => isThisBrowser(d))?.label ?? $runtimeStore.deviceLabel;
+
+  /**
+   * @param device a paired device
+   * @returns the acts the device's row offers (UX-P-04)
+   */
+  function deviceActs(device: PairedDevice) {
+    const state = isThisBrowser(device) ? 'this_device' : 'other_device';
+    return DEVICE_ACTS[state]
+      .filter((act) => act.id !== 'revoke_others')
+      .map((act) => ({
+        id: act.id,
+        label: $t(act.labelKey),
+        advisory: act.advisoryKey ? $t(act.advisoryKey) : undefined,
+        role: act.role,
+        destructive: act.destructive,
+      }));
+  }
+
+  /**
+   * @param device a paired device
+   * @param id the act its row reported
+   */
+  function chooseDeviceAct(device: PairedDevice, id: string): void {
+    if (id === 'rename') {
+      startRename(device);
+      return;
+    }
+    if (id === 'revoke') {
+      promptRevoke(device);
+    }
+  }
+
+  /** The confirmation the revoke asks for, with the name to type where the act needs one. */
+  function revokeTitle(): string {
+    if (pendingRevokeTarget === 'others') {
+      return $t('devices.revoke.others_title', {
+        count: otherDevicesCount,
+        label: thisLabel ?? '',
+      });
+    }
+    return $t('devices.revoke.title', { label: pendingRevokeTarget?.label ?? '' });
+  }
+
+  /** @returns what the revoke costs, in the words of the device it ends */
+  function revokeConsequences(): string[] {
+    if (pendingRevokeTarget === 'others') {
+      return [$t('devices.revoke.explain', { label: thisLabel ?? '' })];
+    }
+    if (pendingRevokeTarget && isThisBrowser(pendingRevokeTarget)) {
+      return [$t('devices.revoke.this_one')];
+    }
+    return [$t('devices.revoke.explain', { label: pendingRevokeTarget?.label ?? '' })];
+  }
+
+  // The title and the consequences name the target, so they follow `pendingRevokeTarget`.
+  $: revokeTitleText = pendingRevokeTarget === null ? '' : revokeTitle();
+  $: revokeConsequenceList = pendingRevokeTarget === null ? [] : revokeConsequences();
 </script>
 
 <div class="settings-view" data-testid="settings-view">
@@ -242,7 +302,7 @@
       </div>
       {#if otherDevicesCount > 0}
         <Button
-          variant="danger"
+          variant="secondary"
           on:click={() => promptRevoke('others')}
           data-testid="revoke-others-button"
         >
@@ -315,22 +375,10 @@
                   {$t('devices.list.last_used', { time: formatRelative(device.last_used_at) })}
                 </td>
                 <td>
-                  <div class="device-actions">
-                    <Button
-                      variant="ghost"
-                      on:click={() => startRename(device)}
-                      data-testid={`rename-btn-${device.device_id}`}
-                    >
-                      {$t('devices.act.rename')}
-                    </Button>
-                    <Button
-                      variant="danger"
-                      on:click={() => promptRevoke(device)}
-                      data-testid={`revoke-btn-${device.device_id}`}
-                    >
-                      {$t('devices.act.revoke')}
-                    </Button>
-                  </div>
+                  <ActionBar
+                    acts={deviceActs(device)}
+                    onAct={(id) => chooseDeviceAct(device, id)}
+                  />
                 </td>
               </tr>
             {/each}
@@ -377,52 +425,16 @@
     <LanListenerModal onClose={() => (lanModalOpen = false)} onChanged={loadData} />
   {/if}
 
-  {#if pendingRevokeTarget}
-    <div class="modal-backdrop" role="dialog" aria-modal="true" data-testid="revoke-modal">
-      <div class="modal-card">
-        {#if pendingRevokeTarget === 'others'}
-          <h2 class="modal-title">
-            {$t('devices.revoke.others_title', {
-              count: otherDevicesCount,
-              label: thisLabel ?? '',
-            })}
-          </h2>
-          <p class="modal-explain">
-            {$t('devices.revoke.explain', { label: thisLabel ?? '' })}
-          </p>
-          <div class="modal-actions">
-            <Button variant="ghost" on:click={cancelRevoke} data-testid="revoke-cancel-button">
-              {$t('devices.revoke.keep')}
-            </Button>
-            <Button variant="danger" on:click={confirmRevoke} data-testid="revoke-confirm-button">
-              {$t('devices.revoke.action')}
-            </Button>
-          </div>
-        {:else}
-          {@const targetDev = pendingRevokeTarget}
-          {@const isCurrent = isThisBrowser(targetDev)}
-          <h2 class="modal-title">
-            {$t('devices.revoke.title', { label: targetDev.label })}
-          </h2>
-          <p class="modal-explain">
-            {#if isCurrent}
-              {$t('devices.revoke.this_one')}
-            {:else}
-              {$t('devices.revoke.explain', { label: targetDev.label })}
-            {/if}
-          </p>
-          <div class="modal-actions">
-            <Button variant="ghost" on:click={cancelRevoke} data-testid="revoke-cancel-button">
-              {$t('devices.revoke.keep')}
-            </Button>
-            <Button variant="danger" on:click={confirmRevoke} data-testid="revoke-confirm-button">
-              {$t('devices.revoke.action')}
-            </Button>
-          </div>
-        {/if}
-      </div>
-    </div>
-  {/if}
+  <ConfirmDialog
+    open={pendingRevokeTarget !== null}
+    title={revokeTitleText}
+    consequences={revokeConsequenceList}
+    actionLabel={$t('devices.revoke.action')}
+    cancelLabel={$t('devices.revoke.keep')}
+    typedName={pendingRevokeTarget === 'others' ? (thisLabel ?? '') : undefined}
+    onConfirm={confirmRevoke}
+    onClose={cancelRevoke}
+  />
 </div>
 
 <style>
@@ -519,12 +531,6 @@
     color: var(--color-text-primary);
   }
 
-  .device-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
-
   .text-secondary {
     color: var(--color-text-secondary);
   }
@@ -612,48 +618,6 @@
     color: var(--color-text-secondary);
   }
 
-  .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background-color: var(--color-overlay);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-4);
-    z-index: 100;
-  }
-
-  .modal-card {
-    background-color: var(--color-bg-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    padding: var(--space-6);
-    max-width: 32rem;
-    width: 100%;
-    box-shadow: var(--shadow-md);
-  }
-
-  .modal-title {
-    font-size: var(--text-lg);
-    font-weight: 600;
-    color: var(--color-text-primary);
-    margin: 0 0 var(--space-2) 0;
-  }
-
-  .modal-explain {
-    font-size: var(--text-sm);
-    color: var(--color-text-secondary);
-    line-height: 1.5;
-    margin: 0 0 var(--space-6) 0;
-  }
-
-  .modal-actions {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: var(--space-3);
-  }
-
   @media (max-width: 768px) {
     .settings-view {
       padding: var(--space-4) var(--space-3);
@@ -664,11 +628,6 @@
     .devices-table th:nth-child(3),
     .devices-table td:nth-child(3) {
       display: none;
-    }
-
-    .modal-actions {
-      flex-direction: column-reverse;
-      align-items: stretch;
     }
   }
 </style>

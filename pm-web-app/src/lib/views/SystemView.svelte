@@ -20,6 +20,8 @@
   } from '../stores/unsentInput';
   import { formatSplit, formatBytes, formatTime } from '../display/format';
   import DashboardPage from '../templates/DashboardPage.svelte';
+  import ActionBar from '../components/ActionBar.svelte';
+  import { actsFor } from '../actions/byState';
 
   /** The browser's remembered filters: the window, the grouping, and the project. */
   const SYSTEM_FILTERS_KEY = 'pm_system_filters';
@@ -360,6 +362,71 @@
     actionError = '';
   }
 
+  /** Keeps the runtime running after a stop was asked; the drain banner's act. */
+  async function withdrawStop(): Promise<void> {
+    actionError = '';
+    try {
+      await apiClient.withdrawStop();
+      runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
+      actionSuccess = $t('system.stopping.withdrawn');
+    } catch (err: unknown) {
+      actionError = (err as Error)?.message || $t('system.action.failed');
+    }
+  }
+
+  /** The runtime's lifecycle state, which selects its acts (UC-P-02). */
+  let runtimeState = $derived(
+    $runtimeStore.isDraining
+      ? 'draining'
+      : upgradePhase !== 'idle'
+        ? 'upgrading'
+        : snapshot?.runtime.upgrade_available_version
+          ? 'update_available'
+          : 'running',
+  );
+
+  /** While the runtime drains or upgrades, its own panel carries the acts. */
+  let showRuntimeActs = $derived(runtimeState === 'running' || runtimeState === 'update_available');
+
+  /** The runtime card's acts, from the state's table. */
+  let runtimeActs = $derived(
+    actsFor('runtime', runtimeState).map((spec) => ({
+      id: spec.id,
+      label: $t(spec.labelKey),
+      advisory: spec.advisoryKey ? $t(spec.advisoryKey) : undefined,
+      role: spec.role,
+    })),
+  );
+
+  /** @param id the act the runtime bar reports */
+  function handleRuntimeAct(id: string): void {
+    switch (id) {
+      case 'check':
+        void handleCheckUpgrade();
+        return;
+      case 'stop':
+        openModal('stop');
+        return;
+      case 'restart':
+        openModal('restart');
+        return;
+      case 'upgrade':
+        openUpgradeConsent();
+        return;
+      case 'withdraw_stop':
+        void withdrawStop();
+        return;
+      case 'stop_now':
+        void apiClient.stopRuntime('now');
+        return;
+      case 'start':
+        void loadSnapshot(true);
+        return;
+      default:
+        return;
+    }
+  }
+
   /**
    * @returns the step index the upgrade reached, for the check list
    */
@@ -527,7 +594,7 @@
     </div>
   {/if}
 
-  {#if snapshot?.runtime.upgrade_available_version && upgradePhase === 'idle'}
+  {#if snapshot?.runtime.upgrade_available_version && upgradePhase === 'idle' && !$runtimeStore.isDraining}
     <section class="upgrade-panel upgrade-panel--available" aria-labelledby="upgrade-available">
       <div class="upgrade-panel__head">
         <h2 id="upgrade-available" class="upgrade-panel__title">
@@ -719,19 +786,11 @@
       <section class="card" aria-labelledby="heading-runtime">
         <div class="card-header">
           <h2 id="heading-runtime" class="card-title">{$t('system.runtime.title')}</h2>
-          <div class="card-actions">
-            <Button variant="secondary" onclick={() => openModal('stop')}>
-              {$t('system.action.stop')}
-            </Button>
-            <Button variant="secondary" onclick={() => openModal('restart')}>
-              {$t('system.action.restart')}
-            </Button>
-            {#if snapshot.runtime.upgrade_possible}
-              <Button variant="primary" onclick={openUpgradeConsent}>
-                {$t('system.action.upgrade')}
-              </Button>
-            {/if}
-          </div>
+          {#if showRuntimeActs}
+            <div class="card-actions">
+              <ActionBar acts={runtimeActs} busy={isExecutingAction} onAct={handleRuntimeAct} />
+            </div>
+          {/if}
         </div>
 
         <div class="metrics-list">

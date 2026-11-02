@@ -1,7 +1,23 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import WorkControlPanel from './WorkControlPanel.svelte';
-import { apiClient, type PlanSettingsRecord, type WorkActions } from '../api/client';
+import { apiClient, type ArchiveCheck, type PlanSettingsRecord, type WorkActions } from '../api/client';
+
+/**
+ * `WorkControlPanel` (UC-CTL-1..5, UX-P-04): it draws the acts the state offers through
+ * `ActionBar`, keeps the destructive ones behind the overflow and their confirmation, and carries
+ * the panel's own dialogues.
+ */
+
+/**
+ * Opens the bar's overflow so an act that lives there can be chosen.
+ *
+ * @returns the open menu
+ */
+async function openOverflow(): Promise<HTMLElement> {
+  await fireEvent.click(screen.getByTestId('action-bar-overflow'));
+  return screen.findByRole('menu');
+}
 
 describe('WorkControlPanel component', () => {
   const running: WorkActions = {
@@ -30,6 +46,23 @@ describe('WorkControlPanel component', () => {
     ],
   };
 
+  const archiveCheck: ArchiveCheck = {
+    epic_id: 'relay-hardening',
+    lines: [
+      { label: 'control.archive.no_plan_active', passed: true },
+      {
+        label: 'control.archive.open_findings',
+        passed: false,
+        note: '2',
+        action: 'review-findings',
+      },
+    ],
+    carried_findings: 3,
+    carried_watches: 5,
+    completion_review_first: false,
+    passed: false,
+  };
+
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.spyOn(apiClient, 'getPlanActions').mockResolvedValue(running);
@@ -43,15 +76,20 @@ describe('WorkControlPanel component', () => {
       revision: 8,
     });
     vi.spyOn(apiClient, 'applyPlanAction').mockResolvedValue(running);
-    vi.spyOn(apiClient, 'getPlanHolds').mockResolvedValue([]);
+    vi.spyOn(apiClient, 'applyEpicAction').mockResolvedValue(running);
   });
 
   it('loads the plan actions and offers them', async () => {
     render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
 
     expect(await screen.findByTestId('action-pause')).toBeInTheDocument();
-    expect(screen.getByTestId('action-settings')).toBeInTheDocument();
     expect(apiClient.getPlanActions).toHaveBeenCalledWith('fix-relay');
+    expect(screen.getByTestId('action-chat')).toBeInTheDocument();
+    expect(screen.queryByTestId('action-cancel')).not.toBeInTheDocument();
+
+    const menu = await openOverflow();
+    expect(within(menu).getByTestId('action-settings')).toBeInTheDocument();
+    expect(within(menu).getByTestId('action-cancel')).toBeInTheDocument();
   });
 
   it('applies the pause the dialogue asked for and tells the view', async () => {
@@ -71,10 +109,122 @@ describe('WorkControlPanel component', () => {
     expect(onChanged).toHaveBeenCalled();
   });
 
+  it('asks where a plan holds before it sends the pause', async () => {
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    await fireEvent.click(await screen.findByTestId('action-pause'));
+    expect(screen.getByTestId('pause-title')).toHaveTextContent('Pause fix-relay?');
+    await fireEvent.click(screen.getByLabelText('After the current phase'));
+    await fireEvent.click(screen.getByTestId('pause-confirm'));
+
+    await waitFor(() => {
+      expect(apiClient.applyPlanAction).toHaveBeenCalledWith('fix-relay', 'pause', {
+        point: 'phase',
+      });
+    });
+  });
+
+  it('confirms an end with a required reason and the pull request choice', async () => {
+    render(WorkControlPanel, {
+      props: {
+        subjectId: 'fix-relay',
+        subjectKind: 'plan',
+        pullRequestNumber: 214,
+      },
+    });
+
+    await openOverflow();
+    await fireEvent.click(screen.getByTestId('action-cancel'));
+    expect(await screen.findByTestId('end-title')).toHaveTextContent('Cancel fix-relay?');
+    expect(screen.getByTestId('end-confirm')).toBeDisabled();
+
+    await fireEvent.input(screen.getByTestId('end-reason'), {
+      target: { value: 'the approach is replaced by plan relay-v2' },
+    });
+    await fireEvent.click(screen.getByLabelText('Close the pull request with the reason'));
+    await fireEvent.click(screen.getByTestId('end-confirm'));
+
+    await waitFor(() => {
+      expect(apiClient.applyPlanAction).toHaveBeenCalledWith('fix-relay', 'cancel', {
+        reason: 'the approach is replaced by plan relay-v2',
+        close_pr: true,
+      });
+    });
+  });
+
+  it('confirms an abandon of a paused plan', async () => {
+    vi.spyOn(apiClient, 'getPlanActions').mockResolvedValue({
+      ...running,
+      subject_id: 'relay-metrics',
+      state: 'paused',
+      actions: [
+        { action: 'start', available: true },
+        { action: 'abandon', available: true },
+      ],
+    });
+    render(WorkControlPanel, { props: { subjectId: 'relay-metrics', subjectKind: 'plan' } });
+
+    expect(await screen.findByTestId('action-start')).toBeInTheDocument();
+    await openOverflow();
+    await fireEvent.click(screen.getByTestId('action-abandon'));
+    expect(await screen.findByTestId('end-title')).toHaveTextContent('Abandon relay-metrics?');
+    await fireEvent.input(screen.getByTestId('end-reason'), { target: { value: 'obsolete' } });
+    await fireEvent.click(screen.getByTestId('end-confirm'));
+
+    await waitFor(() => {
+      expect(apiClient.applyPlanAction).toHaveBeenCalledWith('relay-metrics', 'abandon', {
+        reason: 'obsolete',
+        close_pr: false,
+      });
+    });
+  });
+
+  it('names the abort of an integrity pause as the end act', async () => {
+    vi.spyOn(apiClient, 'getPlanActions').mockResolvedValue({
+      ...running,
+      subject_id: 'relay-cursor-order',
+      state: 'held',
+      hold_kind: 'integrity_pause',
+      actions: [{ action: 'cancel', available: true }],
+    });
+    render(WorkControlPanel, { props: { subjectId: 'relay-cursor-order', subjectKind: 'plan' } });
+
+    await openOverflow();
+    const cancel = screen.getByTestId('action-cancel');
+    expect(cancel).toHaveTextContent('Abort the plan');
+    await fireEvent.click(cancel);
+    expect(await screen.findByTestId('end-title')).toHaveTextContent('Abort relay-cursor-order?');
+    await fireEvent.input(screen.getByTestId('end-reason'), { target: { value: 'replaced' } });
+    await fireEvent.click(screen.getByTestId('end-confirm'));
+
+    await waitFor(() => {
+      expect(apiClient.applyPlanAction).toHaveBeenCalledWith('relay-cursor-order', 'abort', {
+        reason: 'replaced',
+        close_pr: false,
+      });
+    });
+  });
+
+  it('closes a dialogue on Escape and gives the focus back', async () => {
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    const pause = await screen.findByTestId('action-pause');
+    await fireEvent.click(pause);
+    expect(screen.getByTestId('control-dialog-pause')).toBeInTheDocument();
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('control-dialog-pause')).not.toBeInTheDocument();
+    });
+    expect(document.activeElement).toBe(pause);
+  });
+
   it('opens the plan settings and reports where a change applies', async () => {
     render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
 
-    await fireEvent.click(await screen.findByTestId('action-settings'));
+    await openOverflow();
+    await fireEvent.click(screen.getByTestId('action-settings'));
     expect(await screen.findByTestId('settings-modal')).toBeInTheDocument();
 
     await fireEvent.change(screen.getByTestId('settings-value-landing'), {
@@ -104,8 +254,9 @@ describe('WorkControlPanel component', () => {
     });
     render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
 
-    await fireEvent.click(await screen.findByTestId('action-settings'));
-    await fireEvent.change(screen.getByTestId('settings-value-landing'), {
+    await openOverflow();
+    await fireEvent.click(screen.getByTestId('action-settings'));
+    await fireEvent.change(await screen.findByTestId('settings-value-landing'), {
       target: { value: 'landing.files' },
     });
     await fireEvent.click(screen.getByTestId('settings-apply-landing'));
@@ -120,6 +271,89 @@ describe('WorkControlPanel component', () => {
         'landing.files',
         8,
       );
+    });
+  });
+
+  it('toggles a named value of an epic rather than flipping it', async () => {
+    const epic: WorkActions = {
+      subject_id: 'relay-hardening',
+      subject_kind: 'epic',
+      state: 'running',
+      auto_enabled: true,
+      overlap_max_files: 0,
+      actions: [
+        { action: 'next', available: true },
+        { action: 'auto', available: true },
+      ],
+    };
+    vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue(epic);
+    render(WorkControlPanel, { props: { subjectId: 'relay-hardening', subjectKind: 'epic' } });
+
+    expect(await screen.findByTestId('action-next')).toBeInTheDocument();
+    await openOverflow();
+    expect(screen.getByTestId('action-auto')).toHaveTextContent('Automatic: on');
+    await fireEvent.click(screen.getByTestId('action-auto'));
+
+    await waitFor(() => {
+      expect(apiClient.applyEpicAction).toHaveBeenCalledWith('relay-hardening', 'auto', {
+        enabled: false,
+      });
+    });
+  });
+
+  it('shows the archive check and keeps archiving disabled until every line passes', async () => {
+    const onReview = vi.fn();
+    vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue({
+      subject_id: 'relay-hardening',
+      subject_kind: 'epic',
+      state: 'running',
+      actions: [{ action: 'archive', available: true }],
+    });
+    vi.spyOn(apiClient, 'getEpicArchiveCheck').mockResolvedValue(archiveCheck);
+    render(WorkControlPanel, {
+      props: { subjectId: 'relay-hardening', subjectKind: 'epic', onReview },
+    });
+
+    await openOverflow();
+    await fireEvent.click(screen.getByTestId('action-archive'));
+    expect(await screen.findByTestId('archive-title')).toHaveTextContent(
+      'Archive relay-hardening?',
+    );
+    expect(screen.getByTestId('archive-line-control.archive.open_findings')).toBeInTheDocument();
+    expect(screen.getByTestId('archive-carried')).toHaveTextContent('3 kept findings');
+    expect(screen.getByTestId('archive-confirm')).toBeDisabled();
+
+    await fireEvent.click(screen.getByTestId('archive-review-findings'));
+    expect(onReview).toHaveBeenCalledWith('findings');
+  });
+
+  it('offers to raise the scope when the epic runs its full scope', async () => {
+    vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue({
+      subject_id: 'relay-hardening',
+      subject_kind: 'epic',
+      state: 'running',
+      actions: [{ action: 'next', available: true }],
+    });
+    render(WorkControlPanel, {
+      props: {
+        subjectId: 'relay-hardening',
+        subjectKind: 'epic',
+        scope: 3,
+        running: 3,
+        nextPlan: 'relay-token-rotation',
+      },
+    });
+
+    await fireEvent.click(await screen.findByTestId('action-next'));
+    expect(screen.getByTestId('raise-confirm')).toHaveTextContent(
+      'Raise to 4 at once and start it',
+    );
+    await fireEvent.click(screen.getByTestId('raise-confirm'));
+
+    await waitFor(() => {
+      expect(apiClient.applyEpicAction).toHaveBeenCalledWith('relay-hardening', 'next', {
+        raise_scope: true,
+      });
     });
   });
 
@@ -274,7 +508,7 @@ describe('WorkControlPanel component', () => {
     render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
 
     expect(await screen.findByTestId('action-pause')).toBeInTheDocument();
-    expect(screen.getByTestId('control-actions')).toHaveAccessibleName();
+    expect(screen.getByTestId('work-control')).toHaveAccessibleName();
     for (const button of screen.getAllByRole('button')) {
       expect(button).toHaveAccessibleName();
     }

@@ -20,6 +20,8 @@
   export let consequences: string[] = [];
   /** Reports the close the dialog asks for; the view decides when it is gone. */
   export let onClose: () => void = () => {};
+  /** The test id of the dialog's own box; a composing dialog names itself. */
+  export let testid = 'dialog';
 
   /** The elements the Tab key walks, in document order. */
   const FOCUSABLE =
@@ -132,7 +134,7 @@
       aria-labelledby={titleId}
       tabindex="-1"
       use:takeFocus
-      data-testid="dialog"
+      data-testid={testid}
     >
       <h2 class="dialog__title" id={titleId}>{title}</h2>
 

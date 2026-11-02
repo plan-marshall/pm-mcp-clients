@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { MOCK_RUNTIME_URL } from './helpers/ports.js';
+import { expectNothingRedAtRest, openOverflow } from './helpers/acts.js';
 
 test.describe('Paired Devices Flow (UC-ENT-2)', () => {
   test.beforeEach(async ({ page, request }) => {
@@ -37,8 +38,22 @@ test.describe('Paired Devices Flow (UC-ENT-2)', () => {
     await expect(page.getByTestId('listener-status')).toContainText('Network listener: on.');
   });
 
+  test('draws rename beside a device and revoke in its overflow, nothing red at rest', async ({
+    page,
+  }) => {
+    const row = page.getByTestId('device-row-dev-3');
+
+    await expect(row.getByTestId('action-rename')).toBeVisible();
+    await expect(row.getByTestId('action-revoke')).toHaveCount(0);
+    await expectNothingRedAtRest(page);
+
+    const menu = await openOverflow(row);
+    await expect(menu.getByTestId('action-revoke')).toBeVisible();
+  });
+
   test('renames a device and updates the table', async ({ page }) => {
-    const renameBtn = page.getByTestId('rename-btn-dev-2');
+    const row = page.getByTestId('device-row-dev-2');
+    const renameBtn = row.getByTestId('action-rename');
     await expect(renameBtn).toBeVisible();
     await renameBtn.click();
 
@@ -62,37 +77,57 @@ test.describe('Paired Devices Flow (UC-ENT-2)', () => {
     await expect(page.getByTestId('listener-off-button')).not.toBeVisible();
   });
 
-  test('revokes another device via confirmation modal', async ({ page }) => {
-    const revokeBtn = page.getByTestId('revoke-btn-dev-3');
-    await expect(revokeBtn).toBeVisible();
-    await revokeBtn.click();
+  test('revokes another device via the confirmation dialog', async ({ page }) => {
+    const row = page.getByTestId('device-row-dev-3');
+    await openOverflow(row);
+    await row.getByTestId('action-revoke').click();
 
-    // Modal opens
-    const modal = page.getByTestId('revoke-modal');
-    await expect(modal).toBeVisible();
-    await expect(modal).toContainText('Revoke Chrome on build-box?');
+    // The confirmation names the consequence in the danger colour
+    const dialog = page.getByTestId('confirm-dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toContainText('Revoke Chrome on build-box?');
+    await expect(dialog).toContainText('It is signed out at once');
 
-    // Confirm
-    const confirmBtn = page.getByTestId('revoke-confirm-button');
+    const confirmBtn = page.getByTestId('confirm-dialog-confirm');
     await confirmBtn.click();
-    await expect(modal).not.toBeVisible();
+    await expect(dialog).not.toBeVisible();
 
     // Verify device removed
     await expect(page.getByTestId('device-row-dev-3')).not.toBeVisible();
   });
 
   test('revoking this browser redirects to revoked page or pairing', async ({ page }) => {
-    const revokeBtn = page.getByTestId('revoke-btn-dev-1');
-    await expect(revokeBtn).toBeVisible();
-    await revokeBtn.click();
+    // The pairing names the device this browser is; its row is the one that ends the session.
+    const deviceId = await page.evaluate(() => localStorage.getItem('pm_device_id'));
+    const row = page.getByTestId(`device-row-${deviceId}`);
+    await openOverflow(row);
+    await row.getByTestId('action-revoke').click();
 
-    const modal = page.getByTestId('revoke-modal');
-    await expect(modal).toBeVisible();
+    const dialog = page.getByTestId('confirm-dialog');
+    await expect(dialog).toBeVisible();
 
-    const confirmBtn = page.getByTestId('revoke-confirm-button');
+    const confirmBtn = page.getByTestId('confirm-dialog-confirm');
     await confirmBtn.click();
 
     // Should either land on revoked page or pairing page
-    await expect(page.getByRole('button', { name: 'Pair this browser' })).toBeVisible();
+    await expect(
+      page.getByTestId('revoked-view').or(page.getByRole('button', { name: 'Pair this browser' })),
+    ).toBeVisible();
+  });
+
+  test('asks for the typed name before revoking all others', async ({ page }) => {
+    await page.getByTestId('revoke-others-button').click();
+
+    const dialog = page.getByTestId('confirm-dialog');
+    await expect(dialog).toBeVisible();
+    const confirmBtn = page.getByTestId('confirm-dialog-confirm');
+    await expect(confirmBtn).toBeDisabled();
+
+    // The dialog names the exact label to type; typing it enables the act.
+    const text = await dialog.innerText();
+    const name = /Type (.+) to confirm/.exec(text)?.[1];
+    expect(name).toBeTruthy();
+    await page.getByTestId('confirm-dialog-input').fill(name);
+    await expect(confirmBtn).toBeEnabled();
   });
 });

@@ -1,10 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import SettingsView from './SettingsView.svelte';
 import ListenerOffView from './ListenerOffView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type PairedDevice } from '../api/client';
+
+/**
+ * @param id the device id
+ * @returns the row the device draws its acts in
+ */
+function deviceRow(id: string): HTMLElement {
+  return screen.getByTestId(`device-row-${id}`);
+}
 
 /**
  * The paired devices (UC-ENT-2) as a view test against `paired-devices` and
@@ -92,9 +100,11 @@ describe('Paired devices against the mock runtime scenarios', () => {
     });
 
     render(SettingsView);
-    await waitFor(() => expect(screen.getByTestId('rename-btn-dev-2')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(within(deviceRow('dev-2')).getByTestId('action-rename')).toBeInTheDocument(),
+    );
 
-    await fireEvent.click(screen.getByTestId('rename-btn-dev-2'));
+    await fireEvent.click(within(deviceRow('dev-2')).getByTestId('action-rename'));
     const input = screen.getByTestId('rename-input-dev-2');
     await fireEvent.input(input, { target: { value: 'iPad Oliver' } });
     await fireEvent.click(screen.getByTestId('save-rename-dev-2'));
@@ -107,11 +117,16 @@ describe('Paired devices against the mock runtime scenarios', () => {
     const revokeSpy = vi.spyOn(apiClient, 'revokeDevice').mockResolvedValue();
 
     render(SettingsView);
-    await waitFor(() => expect(screen.getByTestId('revoke-btn-dev-3')).toBeInTheDocument());
+    await waitFor(() =>
+      expect(within(deviceRow('dev-3')).getByTestId('action-bar-overflow')).toBeInTheDocument(),
+    );
 
-    await fireEvent.click(screen.getByTestId('revoke-btn-dev-3'));
-    expect(screen.getByTestId('revoke-modal')).toHaveTextContent('Revoke Chrome on build-box?');
-    await fireEvent.click(screen.getByTestId('revoke-confirm-button'));
+    await fireEvent.click(within(deviceRow('dev-3')).getByTestId('action-bar-overflow'));
+    await fireEvent.click(await within(deviceRow('dev-3')).findByTestId('action-revoke'));
+    expect(await screen.findByTestId('confirm-dialog')).toHaveTextContent(
+      'Revoke Chrome on build-box?',
+    );
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
 
     expect(revokeSpy).toHaveBeenCalledWith('dev-3');
     await waitFor(() => expect(screen.queryByText('Chrome on build-box')).not.toBeInTheDocument());
@@ -124,9 +139,14 @@ describe('Paired devices against the mock runtime scenarios', () => {
     await waitFor(() => expect(screen.getByTestId('revoke-others-button')).toBeInTheDocument());
 
     await fireEvent.click(screen.getByTestId('revoke-others-button'));
-    expect(screen.getByTestId('revoke-modal')).toHaveTextContent('2 devices other than this one');
+    expect(await screen.findByTestId('confirm-dialog')).toHaveTextContent(
+      '2 devices other than this one',
+    );
 
-    await fireEvent.click(screen.getByTestId('revoke-confirm-button'));
+    await fireEvent.input(screen.getByTestId('confirm-dialog-input'), {
+      target: { value: 'Firefox on mbp-oliver' },
+    });
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
     expect(revokeOthersSpy).toHaveBeenCalled();
     await waitFor(() => {
       expect(screen.getByText('Firefox on mbp-oliver')).toBeInTheDocument();
@@ -139,11 +159,16 @@ describe('Paired devices against the mock runtime scenarios', () => {
     vi.spyOn(apiClient, 'revokeDevice').mockResolvedValue();
 
     render(SettingsView);
-    await waitFor(() => expect(screen.getByTestId('revoke-btn-dev-1')).toBeInTheDocument());
-    await fireEvent.click(screen.getByTestId('revoke-btn-dev-1'));
+    await waitFor(() =>
+      expect(within(deviceRow('dev-1')).getByTestId('action-bar-overflow')).toBeInTheDocument(),
+    );
+    await fireEvent.click(within(deviceRow('dev-1')).getByTestId('action-bar-overflow'));
+    await fireEvent.click(await within(deviceRow('dev-1')).findByTestId('action-revoke'));
 
-    expect(screen.getByTestId('revoke-modal')).toHaveTextContent('It is the browser you are using');
-    await fireEvent.click(screen.getByTestId('revoke-confirm-button'));
+    expect(await screen.findByTestId('confirm-dialog')).toHaveTextContent(
+      'It is the browser you are using',
+    );
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
 
     await waitFor(() => {
       expect(runtimeStore).toBeDefined();

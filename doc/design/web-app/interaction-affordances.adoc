@@ -110,6 +110,18 @@ A control is audited by its class, not one by one. Every class below must carry 
 
 The audit table of a change records, per control, its class, its label key, its advisory key, and the decision (advisory added, or deliberately none). The completion report of a web change carries that table.
 
+[#acts]
+== Acts and Their Confirmations
+
+An act is a control that changes the resource it belongs to. The acts a state offers come from one table per resource kind in `pm-web-app/src/lib/actions/byState.ts` (`plan`, `epic`, `project`, `device`, `runtime`); a view never keeps its own button list. `ActionBar` draws them, and `ConfirmDialog` asks before a destructive one runs.
+
+* *One primary act.* A state has at most one primary act, and the table marks it `primary`; the bar's first act is not automatically the primary one. A state that asks for nothing (a running plan) has none.
+* *Up to three secondary acts.* The rest go into the overflow menu, whose button carries `web.common.more` and `web.common.more.title`.
+* *Destructive acts.* Cancel, abandon, release, unenrol, revoke and delete are marked `destructive`: they are never primary, never one of the outlined secondary acts, and never red at rest. They live in the overflow and ask through `ConfirmDialog`, which names the consequences in the danger colour (`--color-danger`).
+* *Typed names.* Where the act is as wide as a pairing or an enrolment, the confirmation asks the operator to type the resource's name; the confirming act stays disabled until the exact name is typed. Revoking all other devices and unenrolling a project are the two cases.
+* *The API's acts win.* Where the runtime sends the offered acts of a resource (a plan's and an epic's actions), they decide which acts exist and whether they can run; the table decides their order and their role. An act the table does not know is appended to the overflow, never promoted to the primary one.
+* *Advisories.* An act's advisory is the `X.title` key beside its label key `X`, and follows the rules of this document. The destructive acts name the consequence ("End the plan for good; this cannot be taken back"); an act whose label already says everything carries none.
+
 [#enforcement]
 == Enforcement
 

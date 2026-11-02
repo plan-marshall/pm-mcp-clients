@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { MOCK_RUNTIME_URL } from './helpers/ports.js';
+import { expectNothingRedAtRest, openOverflow } from './helpers/acts.js';
 
 // Controlling work (UC-CTL-1..5): the mock runtime's contract for a plan's and an epic's actions,
 // its holds, and a plan's settings, and the web app's own views of them.
@@ -127,7 +128,7 @@ test.describe('Controlling work (UC-CTL-1..5)', () => {
     expect((await applied.json()).applied).toBe(true);
   });
 
-  test('shows a running plan’s actions, its pause dialogue, and the point it holds at', async ({
+  test('shows a running plan’s acts, its pause dialogue, and the point it holds at', async ({
     page,
     request,
   }) => {
@@ -136,8 +137,10 @@ test.describe('Controlling work (UC-CTL-1..5)', () => {
 
     await expect(page.getByTestId('plan-title')).toHaveText('Fix Relay Transport');
     await expect(page.getByTestId('action-pause')).toBeVisible();
-    await expect(page.getByTestId('action-cancel')).toBeVisible();
-    await expect(page.getByTestId('action-settings')).toBeVisible();
+    await expect(page.getByTestId('action-chat')).toBeVisible();
+    // A destructive act is never at rest: cancel lives in the overflow.
+    await expect(page.getByTestId('action-cancel')).toHaveCount(0);
+    await expectNothingRedAtRest(page);
 
     await page.getByTestId('action-pause').click();
     await expect(page.getByTestId('pause-title')).toContainText('Pause fix-relay?');
@@ -147,10 +150,32 @@ test.describe('Controlling work (UC-CTL-1..5)', () => {
     await expect(page.getByTestId('action-start')).toBeVisible({ timeout: 5000 });
   });
 
+  test('keeps settings and cancel in the overflow of a running plan', async ({ page, request }) => {
+    await pairBrowser(page, request);
+    await page.goto('/plans/fix-relay');
+
+    const menu = await openOverflow(page.getByTestId('control-actions'));
+    await expect(menu.getByTestId('action-settings')).toBeVisible();
+    await expect(menu.getByTestId('action-cancel')).toBeVisible();
+  });
+
+  test('draws one primary act per state', async ({ page, request }) => {
+    await pairBrowser(page, request);
+
+    await page.goto('/plans/relay-metrics');
+    await expect(page.getByTestId('action-start')).toBeVisible();
+    await expect(page.locator('[data-testid="control-actions"] .btn--primary')).toHaveCount(1);
+
+    await page.goto('/plans/fix-relay');
+    await expect(page.getByTestId('action-pause')).toBeVisible();
+    await expect(page.locator('[data-testid="control-actions"] .btn--primary')).toHaveCount(0);
+  });
+
   test('shows what ends before a cancel and asks for the reason', async ({ page, request }) => {
     await pairBrowser(page, request);
     await page.goto('/plans/fix-relay');
 
+    await openOverflow(page.getByTestId('control-actions'));
     await page.getByTestId('action-cancel').click();
     await expect(page.getByTestId('end-title')).toContainText('Cancel fix-relay?');
     await expect(page.getByTestId('end-confirm')).toBeDisabled();
@@ -182,6 +207,7 @@ test.describe('Controlling work (UC-CTL-1..5)', () => {
     await pairBrowser(page, request);
     await page.goto('/plans/fix-relay');
 
+    await openOverflow(page.getByTestId('control-actions'));
     await page.getByTestId('action-settings').click();
     await expect(page.getByTestId('settings-modal')).toBeVisible();
     await expect(page.getByTestId('settings-origin-landing')).toContainText('from the project');
@@ -213,20 +239,23 @@ test.describe('Controlling work (UC-CTL-1..5)', () => {
     await expect(page.getByTestId('epic-mode')).toContainText('Automatic: on');
 
     await expect(page.getByTestId('action-next')).toBeVisible();
-    await expect(page.getByTestId('action-auto')).toContainText('Automatic: on');
-    await expect(page.getByTestId('action-archive')).toBeVisible();
+    const menu = await openOverflow(page.getByTestId('control-actions'));
+    await expect(menu.getByTestId('action-auto')).toContainText('Automatic: on');
+    await expect(menu.getByTestId('action-archive')).toBeVisible();
   });
 
   test('toggles an epic’s automatic mode with the value it sets', async ({ page, request }) => {
     await pairBrowser(page, request);
     await page.goto('/epics/relay-hardening');
 
-    await expect(page.getByTestId('action-auto')).toContainText('Automatic: on');
-    await page.getByTestId('action-auto').click();
+    const menu = await openOverflow(page.getByTestId('control-actions'));
+    await expect(menu.getByTestId('action-auto')).toContainText('Automatic: on');
+    await menu.getByTestId('action-auto').click();
 
     await expect(page.getByTestId('control-notice')).toContainText('starts no plan by itself', {
       timeout: 5000,
     });
+    await openOverflow(page.getByTestId('control-actions'));
     await expect(page.getByTestId('action-auto')).toContainText('Automatic: off');
   });
 
@@ -234,6 +263,7 @@ test.describe('Controlling work (UC-CTL-1..5)', () => {
     await pairBrowser(page, request);
     await page.goto('/epics/relay-hardening');
 
+    await openOverflow(page.getByTestId('control-actions'));
     await page.getByTestId('action-archive').click();
 
     await expect(page.getByTestId('archive-title')).toContainText('Archive relay-hardening?');
