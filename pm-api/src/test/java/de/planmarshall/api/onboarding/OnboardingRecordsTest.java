@@ -37,6 +37,19 @@ import de.planmarshall.api.system.CleanupDurations;
 @EnableGeneratorController
 class OnboardingRecordsTest {
 
+    /**
+     * @return a generated string that is not blank, so a value a record treats as absent is a value
+     */
+    private static String nonBlankString() {
+        for (var attempt = 0; attempt < 100; attempt++) {
+            var value = Generators.nonEmptyStrings().next();
+            if (!value.isBlank()) {
+                return value;
+            }
+        }
+        throw new IllegalStateException("Generators.nonEmptyStrings produced only blank values");
+    }
+
     @Nested
     @DisplayName("OnboardingAspect")
     class AspectTests {
@@ -174,8 +187,8 @@ class OnboardingRecordsTest {
         @DisplayName("reports an unassigned role")
         void shouldReportUnassigned() throws Exception {
             var roleId = Generators.nonEmptyStrings().next();
-            var harnessId = Generators.nonEmptyStrings().next();
-            var modelId = Generators.nonEmptyStrings().next();
+            var harnessId = nonBlankString();
+            var modelId = nonBlankString();
             var effort = Generators.nonEmptyStrings().next();
             var origin = Generators.nonEmptyStrings().next();
             var assigned = new RoleAssignment(roleId, harnessId, modelId, effort, origin);
