@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue/04-plan-finalize-terminal.adoc#running-work[Running Work], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#needs-operator[What Needs the Operator, at a Glance], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#overview-resource[The Overview Resource and Its Events], link:../../../../pm-mcp-core/doc/specification/store-schemas/02-workflow-state-store.adoc#titles[Titles and Names], link:../../../../pm-mcp-core/doc/specification/store-schemas/02-workflow-state-store.adoc#phase-start[The Start of the Current Phase], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#event-streams[Events per Scope], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work]_
 
-Status: `DRAFT`. Shared by both clients: link:../terminal-client/15-overview.adoc[Terminal Client, The Overview], link:../web-app/README.adoc[Web App].
+Status: `AGREED`. Shared by both clients: link:../terminal-client/15-overview.adoc[Terminal Client, The Overview], link:../web-app/README.adoc[Web App].
 
 `PM-MCP` runs many plans and epics over many projects. The overview is where the operator sees what runs and what needs attention, in two dimensions: the projects, and in a project its plans and epics. This document is what both clients show; how each draws it is its own design.
 
@@ -107,7 +107,7 @@ Order: as the runtime serves it, projects that need the operator first, then by 
 [#distinction]
 == Telling Them Apart
 
-A plan and an epic differ by three things at once, so that none carries the meaning alone: an icon, a colour, and a word. The web app takes its icons from the icon set of its design system (link:../../plans/implemented/web-design.adoc[`web-design`], under a permissive licence such as Apache-2.0, MIT, or ISC); the terminal uses a glyph, with ASCII where UTF-8 is missing:
+A plan and an epic differ by three things at once, so that none carries the meaning alone: an icon, a colour, and a word. The web app takes its icons from the icon set of its design system (`web-design`, under a permissive licence such as Apache-2.0, MIT, or ISC); the terminal uses a glyph, with ASCII where UTF-8 is missing:
 
 [cols="1,1,1,2",options="header"]
 |===

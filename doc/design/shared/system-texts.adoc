@@ -7,7 +7,7 @@ link:../README.adoc[Design] » link:system.adoc[System] » Texts
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2]_
 
-Status: `DRAFT`. The texts of link:system.adoc[System], shared by both clients.
+Status: `AGREED`. The texts of link:system.adoc[System], shared by both clients.
 
 [#texts]
 == Texts

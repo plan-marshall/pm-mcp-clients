@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/store-schemas/12-machine-stores.adoc#consent[Consent Before Acting], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#consents[Consents] (the closed list of the kinds)_
 
-Status: `DRAFT`. Shared by both clients: link:../terminal-client/03-dialogues.adoc#consent[Terminal Client, Dialogues, Consent], link:../terminal-client/08-transcripts-later.adoc#t-consents[Terminal Client, The Remembered Consents], link:../web-app/onboarding.adoc#consent[Web App, Onboarding, Consent], link:../web-app/machine-settings.adoc#consents[Web App, Machine Settings, Remembered Consents].
+Status: `AGREED`. Shared by both clients: link:../terminal-client/03-dialogues.adoc#consent[Terminal Client, Dialogues, Consent], link:../terminal-client/08-transcripts-later.adoc#t-consents[Terminal Client, The Remembered Consents], link:../web-app/onboarding.adoc#consent[Web App, Onboarding, Consent], link:../web-app/machine-settings.adoc#consents[Web App, Machine Settings, Remembered Consents].
 
 Nothing happens on the machine until the operator says so: every action that looks at the machine, runs a program found on it, writes to its credential store on its own, calls a provider, or spends model tokens waits in a consent state first. What the operator does with their own hands needs none: a token the operator types is stored on that act alone. This design is the one place that says how a consent state looks and behaves in both clients, which kinds of consent there are, where the remembered ones are listed and withdrawn, and the texts they share. A client's part shows its own rendering and links here.
 

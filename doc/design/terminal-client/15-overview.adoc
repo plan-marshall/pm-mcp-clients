@@ -17,6 +17,7 @@ What the overview of running work shows and in which order is link:../shared/pla
 
 * *`plans`* opens the full-screen view: two levels to move through with the keyboard, live, until the operator leaves it (<<full-screen>>).
 * *`status`* prints the same content once as a tree into the scrollback: to read, to copy, for a screen reader, and on every terminal the full-screen view cannot use (<<status-tree>>). It is what `plans` prints instead where the full-screen view is not available.
+* *`status --json`* (and `plans --json`) gives a script the same picture: the projects, plans, epics, and what needs the operator as one JSON document with stable field names on stdout, with exit code `0`; a refused request exits `1` and prints the error code on stderr (xref:01-commands.adoc#exit-codes[Exit Codes]).
 * The prompt's badges keep counting what waits while neither is open (xref:04-console.adoc#prompt[The Prompt]).
 
 [#full-screen]

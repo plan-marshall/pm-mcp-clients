@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:README.adoc[Web App Overview], link:workflow-visual-language.adoc[Workflow Visual Language]_
 
-Status: `FINAL`. This document is the design authority for theme readability, semantic design tokens, WCAG 2.1 AA contrast compliance, and automated verification across light and dark themes in `pm-web-app`.
+Status: `AGREED`. This document is the design authority for theme readability, semantic design tokens, WCAG 2.1 AA contrast compliance, and automated verification across light and dark themes in `pm-web-app`.
 
 [#overview]
 == Overview and Problem Statement

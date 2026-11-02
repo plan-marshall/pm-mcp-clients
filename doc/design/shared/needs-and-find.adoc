@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#needs-operator[What Needs the Operator, at a Glance], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#needs-operator-list[Everything That Waits, as One List], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#find-work[Finding Work by Name], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#event-streams[Events per Scope], link:plan-overview.adoc#item-rows[Plan Overview, A Plan, an Epic]_
 
-Status: `AGREED` (accepted by the operator on 2026-10-31, both views). Shared by both clients: link:../terminal-client/04-console.adoc#pushed[Terminal Client, What the Runtime Pushes], link:../web-app/needs-and-find.adoc[Web App, What Waits and Find]. Work package link:../../plans/needs-and-find.adoc[`needs-and-find`].
+Status: `AGREED`. Shared by both clients: link:../terminal-client/04-console.adoc#pushed[Terminal Client, What the Runtime Pushes], link:../web-app/needs-and-find.adoc[Web App, What Waits and Find]. Work package link:../../plans/needs-and-find.adoc[`needs-and-find`].
 
 The operator asks two questions of the machine, and each is one view with one job. _What needs me now?_ is answered by the list of everything that waits (<<waits>>). _Where is the work I know the name of?_ is answered by going to work by name (<<find>>). They are two views, never one combined entry: the first is about acting, the second about finding, and a list that did both would answer neither well.
 
