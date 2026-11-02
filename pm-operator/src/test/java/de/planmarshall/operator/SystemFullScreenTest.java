@@ -150,6 +150,7 @@ class SystemFullScreenTest {
     private final BlockingQueue<String[]> pendingEvents = new LinkedBlockingQueue<>();
     private final AtomicReference<String> statusBody = new AtomicReference<>(STATUS_JSON);
     private final AtomicInteger statusCode = new AtomicInteger(200);
+    private final AtomicInteger systemCode = new AtomicInteger(200);
     private final AtomicInteger statusReads = new AtomicInteger();
 
     @BeforeEach
@@ -158,6 +159,7 @@ class SystemFullScreenTest {
         pendingEvents.clear();
         statusBody.set(STATUS_JSON);
         statusCode.set(200);
+        systemCode.set(200);
         statusReads.set(0);
         fixture = RuntimeFixture.create();
         writeLiveRecord();
@@ -171,7 +173,7 @@ class SystemFullScreenTest {
                 response.json(200, PROJECTS_JSON);
             } else if (path.startsWith("/api/v1/system")) {
                 systemTargets.add(path);
-                response.json(200, SYSTEM_JSON);
+                response.json(systemCode.get(), SYSTEM_JSON);
             } else if ("/api/v1/reports".equals(path)) {
                 response.json(200, "{\"items\":[],\"unread_count\":0,\"has_older\":false,\"older_count\":0}");
             } else if ("/api/v1/events".equals(path)) {
@@ -506,6 +508,62 @@ class SystemFullScreenTest {
             virtual.type("q");
             join(thread);
             assertFalse(virtual.alternateScreenActive());
+        }
+    }
+
+    @Test
+    @DisplayName("an interrupted runtime act ends the system verb with 130 and restores the terminal")
+    void runtimeActInterruptEndsTheVerb() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var context = createContext(virtual);
+            context.setConsoleActive(true);
+            var out = new StringWriter();
+            var code = new AtomicInteger(-1);
+            var thread = new Thread(() -> code.set(PmOperator.execute(context, new PrintWriter(out),
+                                new PrintWriter(new StringWriter()), "system")));
+            thread.start();
+            await(() -> virtual.alternateScreenActive()
+                                && shows(virtual, "System \u00b7 pm-mcpd 0.9.1"));
+            virtual.type("a");
+            await(() -> shows(virtual, "Stop\u2026"));
+            virtual.type("s");
+            await(() -> out.toString().contains("Stop the runtime?"));
+
+            var deadline = System.nanoTime() + 5_000_000_000L;
+            while (thread.isAlive() && System.nanoTime() < deadline) {
+                virtual.terminal().raise(org.jline.terminal.Terminal.Signal.INT);
+                delay(20L);
+            }
+            join(thread);
+
+            assertEquals(StartPrompt.EXIT_INTERRUPTED, code.get(), out.toString());
+            assertFalse(virtual.alternateScreenActive());
+            assertTrue(virtual.screen().cursorVisible(), "the cursor stays hidden");
+            assertEquals(1, virtual.screen().alternation().exits(),
+                                "exit_ca_mode is sent once, not again by the restore");
+        }
+    }
+
+    @Test
+    @DisplayName("a failed system read still draws the status line from the status body")
+    void aFailedSystemReadKeepsTheStatusLine() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var context = createContext(virtual);
+            context.setConsoleActive(true);
+            var out = new StringWriter();
+            var thread = new Thread(() -> PmOperator.execute(context, new PrintWriter(out),
+                                new PrintWriter(new StringWriter()), "system"));
+            thread.start();
+            await(() -> virtual.alternateScreenActive()
+                                && shows(virtual, "System \u00b7 pm-mcpd 0.9.1"));
+
+            systemCode.set(500);
+            statusBody.set(STATUS_DRAINING_FIVE);
+            virtual.type("r");
+            await(() -> shows(virtual, "draining \u00b7 5 left"));
+
+            virtual.type("q");
+            join(thread);
         }
     }
 

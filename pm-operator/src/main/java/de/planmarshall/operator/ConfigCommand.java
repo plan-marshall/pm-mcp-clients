@@ -219,8 +219,8 @@ public final class ConfigCommand implements Callable<Integer> {
         boolean consentsListed = !settings.consents().isEmpty();
         int consentsIndex = aspectCount + credentialCount + 1;
         int documentsIndex = consentsIndex + (consentsListed ? 1 : 0);
-        try (var terminal = context.createTerminal()) {
-            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+        try (var lease = context.openTerminal()) {
+            var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
             var line = reader.readLine(MessageCatalogue.format(locale, "operator.settings.open_prompt",
                                 Map.of(RANGE, "1-" + documentsIndex))
                                 + "   q) " + MessageCatalogue.format(locale, "operator.devices.leave", Map.of())
@@ -899,8 +899,8 @@ public final class ConfigCommand implements Callable<Integer> {
         }
 
         private boolean confirm(PrintWriter out, String locale) throws IOException {
-            try (var terminal = context.createTerminal()) {
-                var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            try (var lease = context.openTerminal()) {
+                var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
                 var line = reader.readLine(MessageCatalogue.format(locale, "operator.settings.apply_again", Map.of()));
                 out.flush();
                 return line == null || !"k".equalsIgnoreCase(line.trim());
@@ -908,8 +908,8 @@ public final class ConfigCommand implements Callable<Integer> {
         }
 
         private void interact(PrintWriter out, String locale, MachineSettingsRecord settings) throws IOException {
-            try (var terminal = context.createTerminal()) {
-                var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            try (var lease = context.openTerminal()) {
+                var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
                 var line = reader.readLine(MessageCatalogue.format(locale, "operator.consents.withdraw_prompt",
                                     Map.of(RANGE, "1-" + settings.consents().size()))
                                     + "   q) " + MessageCatalogue.format(locale, "operator.consents.quit", Map.of())
@@ -1003,8 +1003,8 @@ public final class ConfigCommand implements Callable<Integer> {
             if (!context.isInteractiveTerminal()) {
                 return current.wireValue();
             }
-            try (var terminal = context.createTerminal()) {
-                var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            try (var lease = context.openTerminal()) {
+                var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
                 var line = reader.readLine(MessageCatalogue.format(locale, "operator.config.documents.prompt", Map.of()));
                 if (line == null || line.isBlank()) {
                     return null;
@@ -1050,8 +1050,8 @@ public final class ConfigCommand implements Callable<Integer> {
         }
 
         private boolean confirmRetry(String locale) throws IOException {
-            try (var terminal = context.createTerminal()) {
-                var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            try (var lease = context.openTerminal()) {
+                var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
                 var line = reader.readLine(MessageCatalogue.format(locale, "operator.settings.apply_again", Map.of()));
                 return line == null || !"k".equalsIgnoreCase(line.trim());
             }

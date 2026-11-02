@@ -71,6 +71,10 @@ public final class PlansCommand implements Callable<Integer> {
         } catch (IOException _) {
             // terminal unavailable
         }
+        var lendsTerminal = terminal != null;
+        if (lendsTerminal) {
+            context.useTerminal(terminal);
+        }
 
         try {
             var availability = terminal == null ? null
@@ -101,6 +105,9 @@ public final class PlansCommand implements Callable<Integer> {
             }
             return delegateToStatus();
         } finally {
+            if (lendsTerminal) {
+                context.clearTerminal();
+            }
             if (context.ownsTerminal(terminal)) {
                 terminal.close();
             }

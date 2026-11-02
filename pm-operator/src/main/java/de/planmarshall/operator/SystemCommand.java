@@ -141,6 +141,7 @@ public final class SystemCommand implements Callable<Integer> {
         } catch (IOException _) {
             return null;
         }
+        context.useTerminal(terminal);
         try {
             var availability = TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS);
             if (!availability.available()) {
@@ -156,6 +157,7 @@ public final class SystemCommand implements Callable<Integer> {
         } catch (IOException _) {
             return null;
         } finally {
+            context.clearTerminal();
             if (context.ownsTerminal(terminal)) {
                 try {
                     terminal.close();

@@ -74,6 +74,8 @@ final class PlanSettingsDialogue {
                                 Map.of("state", missing.state())));
             out.flush();
             return StartDialogue.EXIT_MISSING_INPUT;
+        } catch (StartPrompt.InterruptException _) {
+            return StartPrompt.EXIT_INTERRUPTED;
         } catch (StartPrompt.StartLeftException _) {
             return 0;
         }

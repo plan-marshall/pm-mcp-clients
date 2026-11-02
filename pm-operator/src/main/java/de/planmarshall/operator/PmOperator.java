@@ -16,6 +16,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.Callable;
+import org.jline.reader.UserInterruptException;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.PmVersion;
@@ -118,6 +119,7 @@ public final class PmOperator implements Callable<Integer> {
     @SuppressWarnings("java:S2093") // the terminal is closed only when this context owns it
     private @Nullable Integer runFullScreen() throws IOException {
         var terminal = context.createTerminal();
+        context.useTerminal(terminal);
         try {
             if (!TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS).available()) {
                 return null;
@@ -127,6 +129,7 @@ public final class PmOperator implements Callable<Integer> {
             app.run(out);
             return app.interrupted() ? StartPrompt.EXIT_INTERRUPTED : 0;
         } finally {
+            context.clearTerminal();
             if (context.ownsTerminal(terminal)) {
                 terminal.close();
             }
@@ -162,6 +165,10 @@ public final class PmOperator implements Callable<Integer> {
         commandLine.setOut(out);
         commandLine.setErr(err);
         commandLine.setExecutionExceptionHandler((exception, command, parseResult) -> {
+            if (exception instanceof StartPrompt.InterruptException
+                                || exception instanceof UserInterruptException) {
+                return StartPrompt.EXIT_INTERRUPTED;
+            }
             if (exception instanceof OperatorSecurityException ose) {
                 err.println(command.getCommandName() + ": " + ose.getMessage());
                 err.flush();

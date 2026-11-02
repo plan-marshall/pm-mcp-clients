@@ -73,6 +73,8 @@ final class WorkChatDialogue {
             out.flush();
             return null;
         } catch (StartPrompt.StartLeftException _) {
+            // The chat is one of the view's other dialogues (04-console.adoc#console-dialogue-handoff):
+            // q and Ctrl+C both leave it back to the view, and nothing is sent.
             return null;
         }
     }

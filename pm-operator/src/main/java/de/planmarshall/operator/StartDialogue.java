@@ -122,6 +122,8 @@ final class StartDialogue {
         } catch (StartPrompt.MissingInputException missing) {
             dialogue.printMissing(missing);
             return EXIT_MISSING_INPUT;
+        } catch (StartPrompt.InterruptException _) {
+            return StartPrompt.EXIT_INTERRUPTED;
         } catch (StartPrompt.StartLeftException _) {
             dialogue.prompt.line("start.entry.left", Map.of());
             return EXIT_OK;

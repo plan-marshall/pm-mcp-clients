@@ -78,7 +78,7 @@ class InterruptExitCodeTest {
         Files.createDirectories(fixture.paths().stateDir());
         Files.writeString(fixture.paths().runtimeRecord(), "{\"pid\":" + self.pid() + ",\"start_instant\":\""
                             + self.info().startInstant().orElseThrow() + "\"}");
-        fixture.writeToken("test-token");
+        fixture.writeToken(Generators.letterStrings(16, 32).next());
         virtual = VirtualScreenTerminal.create(160, 40);
         out = new StringWriter();
         var env = new HashMap<>(fixture.environment());
