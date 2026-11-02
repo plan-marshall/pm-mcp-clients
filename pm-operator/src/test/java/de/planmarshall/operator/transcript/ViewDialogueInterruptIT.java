@@ -30,10 +30,11 @@ import org.junit.jupiter.api.condition.OS;
  * key reaches the reader, and the process leaves with the interrupt status of the exit-code table,
  * {@code 130}, having sent nothing to the runtime.
  *
- * <p>Every case drives the real view on a real pseudo-terminal: {@code plans} opens the overview,
- * the row is selected with the view's own keys, the actions menu opens on {@code a}, and the
- * dialogue is the entry the menu runs. The interrupt is typed as {@code \u0003}, never raised as a
- * signal, so a dialogue that reads a second terminal cannot pass by accident.
+ * <p>Every case drives the real view on a real pseudo-terminal: {@code plans} (or, for the hold, the
+ * plan view of the held plan) is opened as a direct verb, the row is selected with the view's own
+ * keys where the level has rows, the actions menu opens on {@code a}, and the dialogue is the entry
+ * the menu runs. The interrupt is typed as {@code \u0003}, never raised as a signal, so a dialogue
+ * that reads a second terminal cannot pass by accident.
  */
 @DisplayName("Ctrl+C typed into a dialogue a view opened leaves with 130 and sends nothing")
 @EnabledOnOs({OS.MAC, OS.LINUX})

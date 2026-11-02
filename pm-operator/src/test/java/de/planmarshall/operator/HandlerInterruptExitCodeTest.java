@@ -49,11 +49,11 @@ import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * {@code Ctrl+C} at the prompt of every handler a verb can run ({@code CLI-CC-S-01}): the handler
- * maps the interrupt to the exit-code table's {@code 130} and sends nothing. Each case raises the
+ * The interrupt signal at the prompt of every handler a verb can run ({@code CLI-CC-S-01}): the
+ * handler maps it to the exit-code table's {@code 130} and sends nothing. Each case raises the
  * terminal's {@code INT} signal — what {@code Ctrl+C} raises — at the prompt the handler draws; the
- * typed key is proven on a real pseudo-terminal in {@code transcript.InterruptDialogueIT} and
- * {@code transcript.ViewDialogueInterruptIT}.
+ * typed key itself is proven on a real pseudo-terminal in {@code transcript.InterruptDialogueIT},
+ * {@code transcript.ViewDialogueInterruptIT} and {@code transcript.DirectDialogueInterruptIT}.
  *
  * <p>Three handlers keep the design's other answer: the view's other dialogues — the chat, a start,
  * the settings and a confirmation — leave back to the view as {@code q} does
@@ -61,7 +61,7 @@ import org.junit.jupiter.api.io.TempDir;
  * nested mapping is {@link WorkActionDialogue}'s, and the confirmation's is
  * {@code OverviewFullScreenApp.askYes}'s, both recorded in the landing report with that sentence.
  */
-@DisplayName("Ctrl+C at a handler a verb runs leaves with 130 and sends nothing")
+@DisplayName("an interrupt signal at a handler a verb runs leaves with 130 and sends nothing")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class HandlerInterruptExitCodeTest {
 
@@ -123,7 +123,7 @@ class HandlerInterruptExitCodeTest {
     @Test
     @DisplayName("the settings dialogue: its group prompt interrupted leaves with 130")
     void settingsDialogueInterrupt() throws Exception {
-        fixture.start((request, response) -> {
+        var server = fixture.start((request, response) -> {
             if (request.target().endsWith("/settings")) {
                 response.json(200, "{\"plan_id\":\"" + PLAN + "\",\"revision\":1,\"values\":[]}");
             } else {
@@ -135,12 +135,13 @@ class HandlerInterruptExitCodeTest {
                             () -> PlanSettingsDialogue.run(context, new PrintWriter(out), PLAN, null, false));
 
         assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
+        assertNoAct(server);
     }
 
     @Test
     @DisplayName("the project selector: its prompt interrupted leaves with 130")
     void projectSelectorInterrupt() throws Exception {
-        fixture.start((request, response) -> {
+        var server = fixture.start((request, response) -> {
             if ("/api/v1/projects".equals(request.target())) {
                 response.json(200, "{\"projects\":[{\"project_id\":\"alpha\"},{\"project_id\":\"beta\"}]}");
             } else {
@@ -153,30 +154,33 @@ class HandlerInterruptExitCodeTest {
                                                 "plan", "pause", PLAN, "--project", "?"));
 
         assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
+        assertNoAct(server);
     }
 
     @Test
     @DisplayName("the automatic onboarding's confirmation interrupted leaves with 130")
     void onboardAutomaticConfirmationInterrupt() throws Exception {
-        fixture.start((request, response) -> response.send(404, null, ""));
+        var server = fixture.start((request, response) -> response.send(404, null, ""));
 
         var code = interruptedAt("Decide everything for me?",
                             () -> PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err),
                                                 "onboard", "--auto"));
 
         assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
+        assertNoAct(server);
     }
 
     @Test
     @DisplayName("the credential confirmation interrupted leaves with 130")
     void credentialsConfirmationInterrupt() throws Exception {
-        fixture.start((request, response) -> response.send(404, null, ""));
+        var server = fixture.start((request, response) -> response.send(404, null, ""));
 
         var code = interruptedAtAfter("Store the new token?", "s3cret\n",
                             () -> PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err),
                                                 "credentials", "set", "sonar"));
 
         assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
+        assertNoAct(server);
     }
 
     @Test
@@ -189,7 +193,7 @@ class HandlerInterruptExitCodeTest {
                                                 "record valid", List.of("correctness")),
                             Map.of("source_set", "shipped", "class", "writer", "form", "fresh",
                                                 "harness", "claude", "model", "opus-4.5", "effort", "high"));
-        fixture.start((request, response) -> {
+        var server = fixture.start((request, response) -> {
             if (request.target().startsWith("/api/v1/roles/implementer")) {
                 response.json(200, detail.toJson());
             } else {
@@ -202,19 +206,33 @@ class HandlerInterruptExitCodeTest {
                                                 "roles", "qualify", "implementer"));
 
         assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
+        assertNoAct(server);
     }
 
     @Test
     @DisplayName("the harness enrolment's confirmation interrupted leaves with 130")
     void enrolmentConfirmationInterrupt() throws Exception {
         var client = supportedClientWithProbe();
-        fixture.start((request, response) -> response.send(404, null, ""));
+        var server = fixture.start((request, response) -> response.send(404, null, ""));
 
         var code = interruptedAt("Record this harness enrolment?",
                             () -> PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err),
                                                 "enrol-harness", client));
 
         assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
+        assertNoAct(server);
+    }
+
+    private static void assertNoAct(FakeRuntimeServer server) {
+        var sent = server.requests().stream()
+                            .filter(request -> !isRead(request.method()))
+                            .toList();
+        assertTrue(sent.isEmpty(), "expected no act at the runtime, got " + sent);
+    }
+
+    private static boolean isRead(String method) {
+        var upper = method.toUpperCase(java.util.Locale.ROOT);
+        return "GET".equals(upper) || "HEAD".equals(upper) || "OPTIONS".equals(upper);
     }
 
     private String supportedClientWithProbe() throws IOException {
