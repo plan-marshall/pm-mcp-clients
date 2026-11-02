@@ -95,6 +95,8 @@ class SystemViewConsistencyTest {
         var diskFree = Generators.integers(1_000_000, 1_000_000_000).next().longValue();
         var runningPlans = Generators.integers(1, 9).next();
         var waitingPlans = Generators.integers(1, 9).next();
+        var heldPlans = Generators.integers(1, 9).next();
+        var pausedPlans = Generators.integers(1, 9).next();
         var buildSlots = Generators.integers(1, 4).next();
         var locksHeld = Generators.integers(1, 9).next();
         var plansCleaned = Generators.integers(0, 40).next();
@@ -123,8 +125,9 @@ class SystemViewConsistencyTest {
                             true,
                             null);
         var work = new WorkMetrics(
+                            Map.of("running", runningPlans, "waiting_for_you", waitingPlans,
+                                                "held", heldPlans, "paused", pausedPlans),
                             Map.of("running", runningPlans, "waiting_for_you", waitingPlans),
-                            Map.of("running", runningPlans),
                             runningPlans,
                             waitingPlans,
                             runningPlans,
