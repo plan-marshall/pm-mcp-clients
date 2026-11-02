@@ -253,6 +253,19 @@ class HandlerInterruptExitCodeTest {
     }
 
     @Test
+    @DisplayName("the credential secret prompt interrupted leaves with 130")
+    void credentialsSecretPromptInterrupt() throws Exception {
+        var server = fixture.start((request, response) -> response.send(404, null, ""));
+
+        var code = interruptedAt("Token (not shown",
+                            () -> PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err),
+                                                "credentials", "set", "sonar"));
+
+        assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
+        assertNoAct(server);
+    }
+
+    @Test
     @DisplayName("the device revoke confirmation interrupted leaves with 130 and deletes nothing")
     void revokeConfirmationInterrupt() throws Exception {
         var server = fixture.start((request, response) -> response.json(200, "{}"));
