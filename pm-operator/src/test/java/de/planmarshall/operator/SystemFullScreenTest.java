@@ -66,10 +66,6 @@ class SystemFullScreenTest {
                         {"version":"0.9.1","state":"running"}
                         """;
 
-    private static final String STATUS_STOPPING = """
-                        {"version":"0.9.1","state":"stopping"}
-                        """;
-
     private static final String PROJECTS_JSON = """
                         {
                           "projects": [
