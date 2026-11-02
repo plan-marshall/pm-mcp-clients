@@ -111,7 +111,10 @@ test.describe('Paired Devices Flow (UC-ENT-2)', () => {
 
     // Should either land on revoked page or pairing page
     await expect(
-      page.getByTestId('revoked-view').or(page.getByRole('button', { name: 'Pair this browser' })),
+      page
+        .getByTestId('revoked-view')
+        .or(page.getByRole('button', { name: 'Pair this browser' }))
+        .first(),
     ).toBeVisible();
   });
 
