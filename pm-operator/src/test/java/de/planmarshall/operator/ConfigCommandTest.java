@@ -82,7 +82,7 @@ class ConfigCommandTest {
                             {"error":"refused","reason":"the store is unreadable"}
                             """));
 
-        int code = execute("config");
+        int code = execute("config", "show");
         assertAll(
                             () -> assertEquals(1, code),
                             () -> assertTrue(out.toString().contains("Unable to load settings: HTTP 500"),

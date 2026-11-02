@@ -521,7 +521,9 @@ public final class TuiScreenDriver {
             task.run();
         } finally {
             suspended.set(true);
-            resume(display);
+            if (!stopping.get()) {
+                resume(display);
+            }
         }
     }
 

@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.StringWriter;
 import org.jline.keymap.KeyMap;
+import org.jline.terminal.Terminal;
 import org.jline.utils.InfoCmp;
 
 import de.planmarshall.operator.overview.OverviewFullScreenApp;
@@ -306,6 +307,40 @@ class ActionsFullScreenTest {
             ControlFixture.delay(150L);
             virtual.type("q");
             ControlFixture.join(thread);
+        }
+    }
+
+    @Test
+    @DisplayName("Ctrl+C at a hold's prompt ends the view with the interrupt status")
+    void shouldEndTheViewOnAnInterruptedDialogue() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(160, 45)) {
+            var context = control.context(virtual);
+            var out = new StringWriter();
+            var app = control.app(context, virtual,
+                                new OverviewFullScreenApp.InitialSelection("pm-mcp-clients", null, false));
+            var thread = ControlFixture.start(app, out);
+            ControlFixture.await(() -> virtual.alternateScreenActive()
+                                && ControlFixture.shows(virtual, "by plan"));
+            select(virtual, "Relay Cursor Order");
+            virtual.type("a");
+            ControlFixture.await(() -> ControlFixture.shows(virtual, "Accept the change\u2026"));
+            virtual.type("c");
+            ControlFixture.await(() -> out.toString().contains("y) yes"));
+            assertFalse(app.interrupted(), out.toString());
+
+            // The reader installs its interrupt handler only once it reads, so the raise repeats.
+            var deadline = System.nanoTime() + 5_000_000_000L;
+            while (thread.isAlive() && System.nanoTime() < deadline) {
+                virtual.terminal().raise(Terminal.Signal.INT);
+                ControlFixture.delay(20L);
+            }
+            ControlFixture.join(thread);
+
+            assertTrue(app.interrupted(), out.toString());
+            assertFalse(control.requests().stream().anyMatch(
+                                                    request -> request.endsWith(
+                                                                        "/api/v1/plans/relay-cursor-order/holds/H-0001/resolve")),
+                                control.requests().toString());
         }
     }
 
