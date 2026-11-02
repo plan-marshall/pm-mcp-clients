@@ -2,10 +2,10 @@
   "id": "PLAN-35",
   "slug": "web-data-components",
   "workstream": "WS-02",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "35-web-data-components",
+  "pr": "302",
+  "landing": "landings/PLAN-35.md",
   "seq": 35
 }

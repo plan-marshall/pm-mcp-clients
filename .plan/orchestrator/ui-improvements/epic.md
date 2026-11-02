@@ -226,6 +226,20 @@ plan spec names the plan, proposal and finding documents it comes from.
   `stopping`) and now carries the `kind="item"` fix. One claim stays `unverifiable`: PLAN-16 claim 1 (a stale
   locale cache causes CC-F-10) needs a runtime repro. The verify-first clauses stay open by design: each plan
   settles its own.
+- Merge rule for a pull request with CodeRabbit (the operator's word, 2026-11-02): at least ONE CodeRabbit review of some head must exist and its findings
+  must be handled; heads pushed after it need no review of their own. The lane re-triggers once and merges without waiting for a further review. A landing
+  that fits this is conforming, not an operator decision; one with no CodeRabbit review at all (a `skip-bot-review` label aside) or with unhandled findings of
+  the review that exists is reported as outside the rule.
+- Landing analysis in three layers (the operator's rule, 2026-11-01; it applies to every lane result, a follow-up included).
+  The analysis reads and never builds: the lane's test runs, logs and screenshots stay its account. The landing report states a
+  verdict per layer. (1) SPECIFIED: what the spec and the documents it binds require, clause by clause: each Done-when, the Standing
+  Constraints (the design document is updated in the same pull request), the design text, and for a fix the findings it answers.
+  (2) IMPLEMENTED: what the merge diff contains against (1), file by file: what is missing, what is added beyond the declaration, and
+  what the PR body or the message claims that the diff does not do (a stale comment, a document that should have changed).
+  (3) CORRECT: whether the change is right. Read the changed code for defects (logic, state, error and empty paths, the semantics of
+  the markup, the keyboard and focus walk) and read each test for whether it would fail without the change and asserts the harm, not a
+  proxy. A test whose name matches a finding is not evidence that the finding is fixed. A defect found by reading is recorded as
+  'read, not run' with file and line, and gets an owner or an operator decision.
 
 ## Decisions
 
@@ -349,6 +363,123 @@ plan spec names the plan, proposal and finding documents it comes from.
   plans (design and contract first, consumers after) and its terminal "find" is its own plan (PLAN-84) rather than a
   deliverable of PLAN-36; PLAN-83 keeps the three parts of its package together. The packages' own rows in
   `doc/plans/README.adoc` stay `open` and are set to `done` by the plans that complete them.
+- 2026-11-02 — The operator settled the merge rule ("There must be at least one CodeRabbit review. If later heads are not reviewed that is ok. Try it but do not wait
+  for further reviews"): the open question on heads the reviewer never saw is closed (PLAN-17, 37, 43 conform). PR #294 closed by the orchestrator on the operator's word
+  (redundant, the same 178 paths landed as #298). PLAN-26's first line is settled: the operator chose option 1 ("1. update, land the changes"), so `draining · 2 left` stays and the
+  design (`shared/system.adoc#state-line`) is right as it reads; `stop in M min` and `restarting` are not restored and no plan is staged for them. The ledger is landed
+  after this entry.
+- 2026-11-02 — PLAN-43 landing analysed (PR #301, `2c25ed1d`, `landings/PLAN-43.md`) in the three layers and drained; row shipped. Layer 1/2: D1 (four templates, widths and
+  the 1099 px collapse as UX-P-03 words them), D2 (`SystemView` inside `DashboardPage`, `system.spec.js` and `SystemView.test.ts` not in the diff) and D3 (`pageWidth.test.ts`
+  with eight control fixtures) met; D3's red run was taken after the move commit, the detection is proved by the controls (the lane says so). 11 declared files present,
+  17 beyond (README.adoc, `templateStyle.ts`, 14 fixtures, one pm-api test fixed with the operator's approval in the lane: `Generators.nonEmptyStrings()` can yield a blank
+  string that `RoleAssignment.assigned()` treats as unassigned). Layer 3 (read, not run): templates sound; the tests read stylesheet text, so only the dashboard has been
+  drawn by a browser; `SystemView` fills two of four regions (grid and updated line unproven); an unfilled `id` slot of `ObjectPage` draws an empty pill. Sonar: lane
+  `confirmed` 0 at `3049c450`, my read `undecidable`, an unverified lead. Emitted PLAN-47 (acts by state) after re-grounding its spec at `2c25ed1d`: `ActionBar` exists (PLAN-25)
+  and is extended, `ControlActionsBar` carries PLAN-37's Escape, focus return and reasons and must not lose them, `SystemView` is shared with PLAN-90 (different hunks).
+  PLAN-41 (verify-web-design-system) is held until PLAN-89 and PLAN-90 land: run now it would file their fixes as findings.
+- 2026-11-02 — PLAN-89 recorded running on the operator's word ("#89 is running"): four running (43, 89, 90, 91), N=4, no slot free.
+  Next emit when a slot frees: PLAN-41 (verify-web-design-system), PLAN-21 or PLAN-84 (terminal).
+- 2026-11-02 — PLAN-37 landing analysed (PR #297, `c5bfb1ca`, `landings/PLAN-37.md`) in the three layers and drained; row shipped. Layer 1/2: D1 (Escape and the
+  returned focus on the pause panel and the chat; the overflow's Escape predates the plan) and D2 met; D3's e2e command not met as written (seven base
+  failures, PLAN-90); 7 of 7 declared files, 22 beyond, one dependency (the approved `@axe-core/playwright`); no uppercase and no font under 12 px remain
+  (grep), 44 px targets in three components. Layer 3 (read, not run): sound; three leads not reproduced (the `IconButton` label from 768 px against the
+  `DataTable` row menu's 60 px column and long name; `ChatPanel`'s Escape guard on any `role="dialog"`; the opener on Safari/Firefox clicks) and the audit
+  runs `de` at 1440 px only: all in PLAN-89 deliverable 5 and 4. Sonar: lane `confirmed` 0 at `f5e00490`, my read `undecidable`, an unverified lead. The merge
+  rested on the operator's selection in the lane with the last head unreviewed and four threads open. Emitted PLAN-89 (palette hardening; the audit helper
+  it needs has landed; gate determinate, no prompt, one file shared with PLAN-90) after adding deliverable 5 to its spec.
+- 2026-11-01 — PLAN-91 recorded running on the operator's word ("#91 is running"): four running (37, 43, 90, 91), N=4, no slot free.
+  Next emit when a slot frees: PLAN-21 or PLAN-84 (terminal), PLAN-89 after PLAN-37.
+- 2026-11-01 — PLAN-35 landing analysed (PR #302, `5650c41e`, `landings/PLAN-35.md`) in the three layers and drained; row shipped. Layer 1/2: the
+  four components and the components document as specified, 7 of 7 declared files present, 24 beyond (17 pictures, 4 tests, a fixture, 2
+  catalogue files), all explained; the pre-commit drift claim verified (the squash holds 31 files, none of the 178; it had landed as #298).
+  Layer 3 (read, not run): sound; the numeric-alignment, density and reduced-motion tests assert markers the component writes, not CSS;
+  three CSS leads not reproduced (collapsed border under a sticky head, `%` widths under `max-content`, the row-menu name composed in the
+  component). Sonar: the lane read `confirmed` 0 at `eecf5a31`, my read after the merge is `undecidable`, recorded as an unverified lead.
+  The merge rested on the operator's selection in the lane, not on the standing authorisation. Emitted PLAN-91 (CLI, free of the running web
+  plans; gate determinate, no prompt, dependencies shipped); three run (37, 43, 90) plus PLAN-91 awaiting its start.
+- 2026-11-01 — PLAN-90 recorded running on the operator's word ("#90 is running"): four running (35, 37, 43, 90), N=4, no slot free.
+  Next emit: PLAN-91 when a slot frees (PLAN-89 after PLAN-37).
+- 2026-11-01 — PLAN-26 landing analysed (PR #299, `be4995e5`, `landings/PLAN-26.md`) in the three layers and drained; row shipped. Layer 1:
+  D1 and D3's exit codes as specified; D2's first line is NOT the specified text (`draining · 2 left` built, `draining · 2 plans finish ·
+  stop in 4 min` and `restarting` specified) and the run rewrote the design (`shared/system.adoc#state-line`) to the built line; the PR
+  body states `2 plans finish`, which the code, catalogue, design and test do not print. The run's reason ("the wire carries no drain
+  deadline") is true of the client record only: the design lists the deadline in the status (`system.adoc:365`). Layer 2: 16 files added
+  beyond a 7-entry declaration (production: a wire-name fix in `RuntimeStatus`, 49 lines of full-screen banner logic, exit 1 in four
+  write paths of `WebCommand`/`ConfigCommand`); the `pm-api` `SystemSnapshot` was used as the model (the spec's new type was refuted
+  correctly). Layer 3 (read, not run): no formatter defect; the full-screen lifecycle logic and the four write-verb refusals have no
+  test; the new tests use literals and two carry an unused `@EnableGeneratorController`. The Sonar claim is `undecidable` after the
+  merge. Lane leads about the web checked by reading: the hardcoded `retry`/`error`/`ok` words and the frozen load-failure string
+  in `SystemView.svelte` are CONFIRMED (now PLAN-90 deliverable 3); `0.12 M` is REFUTED (`format.ts` gives `120 k`); `waiting for_you`
+  not reproduced. Test gaps are PLAN-91 deliverable 3. Three running: PLAN-35, 37, 43; one slot free. Emitted PLAN-90
+  (`web-green-baseline-and-time-residue`, WS-03, ports 20900/20901): gate determinate, 0 overlaps, no dependency open, the first of
+  the staged fix plans; its green e2e baseline is what PLAN-37's third deliverable needs. Not chosen: PLAN-91 (next), PLAN-21, 84, 79,
+  85, 18 (free), PLAN-24 (operator), PLAN-89 (waits for PLAN-37).
+- 2026-11-01 — Fix plans staged at the operator's word ("collect the open aspect and create large follow-up / fix PRs, each costs a
+  CodeReview"): PLAN-89 (`web-palette-hardening`: palette listbox, the strengthened tests, the design document, the axe audit of the palette;
+  after PLAN-37), PLAN-90 (`web-green-baseline-and-time-residue`: the seven red e2e tests and the PLAN-16 formatter residue) and
+  PLAN-91 (`cli-interrupt-and-transcripts`: Ctrl+C status in eight handlers and the three transcript goldens). Gate: determinate, 0
+  overlaps for all three. Staged, not emitted: four plans run. Each is one pull request on purpose and carries the 100-file limit of
+  the required reviewer. Not collected, and why: the German glossary, `MOCK-201`, `PM_OPERATOR_DEV_ALLOW_AGENT`, stylelint and the other
+  dependency choices (operator decisions); the labelled clear action of the palette and `drain` confirmation (design decisions); `format:check`
+  on 42 files and the dark contrast audit (after the view plans, owned by PLAN-85 and PLAN-70); the two SystemView leads (not
+  reproduced by reading); the older residues of PLAN-03, 04, 10, 12, 15 and 19 (Watches below), which predate many landings and were
+  not re-verified.
+- 2026-11-01 — Operator rule recorded in Queue annotations: every lane result is analysed in three layers (specified, implemented,
+  correct), by reading and never by building. Applied at once to PR #300: layer 1 met with a design-document gap, layer 2 present with
+  an overstated "exactly those six", layer 3 one new ARIA defect and three weak tests (landing report). PLAN-43 recorded `running`
+  at the operator's word: four plans run (26, 35, 37, 43), N=4, no slot free.
+- 2026-11-01 — PLAN-46 follow-up landing analysed (PR #300, `1ce32d80`, section "Follow-up landing" of `landings/PLAN-46.md`) and
+  drained together with `rb-37-web-accessibility-baseline-001.md`. The six CodeRabbit findings of PR #296 are fixed in the merged
+  tree, each with a test of the matching name (read in `git show 1ce32d80:`; the failing-first logs and test counts are the run's
+  account). The PR carried `skip-bot-review` and no review, on the operator's pasted word. The PLAN-46 row stays `shipped` (PR
+  296): the fix is not a queue row. Sonar for PR 300 reads `undecidable` after the merge, an unverified lead. The PLAN-37 message is
+  an observation (`merge_state=open`, PR #297 open, required reviewer refused on quota four times): archived, row stays
+  `running`. No slot was freed by either message, so nothing new was emitted; PLAN-43 stays emitted and awaiting its start.
+- 2026-11-01 — PLAN-46 landing analysed (PR #296, `d7f7ffc8`, `landings/PLAN-46.md`) and drained; row shipped. The reviewer block
+  ended: CodeRabbit accepted a trigger at 11:12Z and reviewed `42aee47d` (the message does not say who triggered it), and the lane merged. The lane's message says that review had "no
+  findings, no threads"; `ci pr comments` shows six inline findings (two Major: no touch close control and the arrow-key selection
+  not exposed to assistive technology; four Minor) with no reply, and the merged `CommandPalette.svelte` is unchanged since that head.
+  Recorded as contradicted, shipped anyway (it is merged), the findings carried as a Watch with no owner. Also landed, at the
+  operator's request through the lane: PR #298 (`f5de8449`), the pre-commit import order of 178 `main` sources, the same 178 paths as
+  the still-open PR #294, which is now redundant. Running after it: PLAN-26, 35, 37 (three of N=4). Emitted PLAN-43
+  (`web-page-templates`, WS-03, ports 20430/20431) into the free slot: it unblocks the most plans (47, 49, 51, 52, 53, 54, 55, 58,
+  59, 60, 88), dependencies PLAN-39 and 76 shipped, determinate gate with 0 overlaps against 26, 35 and 37. A re-grounded note was
+  added to the spec (`SystemView` changed since staging, its own `max-width: 1200px`, the two PLAN-17 web defects are not its content,
+  the e2e baseline). Not chosen: PLAN-21 and 84 (terminal, free), PLAN-23 (now asks an overlap prompt against PLAN-26), PLAN-79,
+  PLAN-85 (re-read list; `routes.ts`, `AppShell` changed by PLAN-46), PLAN-18 (verify lane), PLAN-24 (operator).
+- 2026-11-01 — PLAN-17 landing analysed (PR #292, `66c1495a`, `landings/PLAN-17.md`) and drained; row shipped. Running after it:
+  PLAN-35, 37 and 46 (three of N=4, PLAN-46 blocked on the reviewer, PR #296). Verified against the merge: 16 files, `@Disabled`
+  gone from `RuntimeStopDialogueIT`, `--when-done`/`--now` on all three acts; the surface expanded (9 added: the new
+  `RuntimeActDialogue`, `StartPrompt`, `ChoicePrompt` and two design documents beside the tests; `DrainCommand` and
+  `SystemLevel` declared and untouched); the Sonar claim (0 at `230fe51e`) is `undecidable` after the merge. Emitted PLAN-26
+  (`cli-system-model`, WS-04, ports 20260/20261) into the free slot: its one dependency left, PLAN-17, shipped; determinate gate
+  with 0 overlaps against PLAN-35, 37 and 46. Chosen over PLAN-21/23 because it opens the longest chain (26 → 34 → 36, 44 → 50;
+  PLAN-33). A note was added to the spec: PLAN-17 touched `25-system.adoc` and the `system.*` catalogue the spec declares but not
+  `SystemLevel`, and `SystemSnapshot` already exists in `pm-api` although the spec says it creates one. Not chosen: PLAN-21, 23 (next
+  terminal plans; PLAN-30 waits for both), PLAN-24 (needs the operator), PLAN-79 (no terminal plan runs now, but it rewrites test
+  files PLAN-21/23/26 add to, and is exposed to the 100-file limit), PLAN-43 and 85 (PLAN-16 re-read list), PLAN-18 (verify lane).
+- 2026-11-01 — PLAN-35 recorded running on the operator's word ("#35 is running"): three running (17, 35, 46). The operator then
+  answered the quota question: the CodeRabbit quota does not limit four parallel plans, because they run unattended and a queued
+  or retried review costs them nothing ("So emit the fourth"). This replaces the orchestrator's own reason for holding the fourth
+  slot back (see the entry below). Emitted PLAN-37 (`web-accessibility-baseline`, ports 20370/20371) into it: dependencies PLAN-31
+  and 76 shipped, determinate gate with 0 overlaps against PLAN-17, 35 and 46 (`blocking_count: 0`), not among the specs PLAN-16
+  touched, and its one new dependency (`@axe-core/playwright`) is the operator's decision of 2026-10-25. Not chosen: PLAN-24
+  (needs the operator present), PLAN-79 (held while the terminal PLAN-17 runs), PLAN-43 and 85 (named in the PLAN-16 re-read
+  list), PLAN-18 (a verify plan on the other lane). A re-grounded note was added to the spec (the e2e baseline is not known to be
+  green; the pre-commit drift of PR #294).
+- 2026-11-01 — PLAN-16 and PLAN-87 landings analysed (PR #291 `9890d74b`, PR #293 `418579a0`; `landings/PLAN-16.md`,
+  `landings/PLAN-87.md`) and drained; both rows shipped. PLAN-46's message (`rb-46-web-command-palette-001.md`) is an
+  observation, not a landing: PR #296 is open and blocked on the required reviewer; the message is archived and its row recorded
+  `running` on the evidence of the open PR and the message (the operator had not said so; they are told). Running after it:
+  PLAN-17 and PLAN-46, two of N=4. Emitted PLAN-35 (`web-data-components`, WS-02, ports 20350/20351) at the operator's request
+  ("analyze landed and emit"): its dependencies PLAN-31, 16 and 76 are shipped, the gate reads it determinate with no overlap
+  against the running PLAN-17 and PLAN-46 (`blocking_count: 0`, 0 indeterminate), it is the next link of the web chain
+  (PLAN-16 -> 35 -> 45), and its claims were re-read at `origin/main` (the four components and `components.adoc` absent, the
+  dev page, the README and `display/format.ts` present). A note on the pre-commit drift (PR #294 open) was added to the spec.
+  One slot stays free: with only PLAN-17 and PLAN-46 running, about thirty specs read prompt-free, but the reviewer quota already
+  holds PLAN-46 for hours, so the orchestrator emitted one plan rather than two; PLAN-24 (a security decision record that needs the
+  operator present and a pull request in the sibling repository) and PLAN-79 (held while the terminal PLAN-17 runs) were not
+  emitted. The operator may ask for a second plan.
 - 2026-10-31 — PLAN-78 landing analysed (PR #288, `1651554b`, `landings/PLAN-78.md`) and drained; row shipped. Running after
   it: PLAN-16, 17 and 87, which is three of N=4, so one slot is free. Earlier the same day PLAN-82 landed (PR #284, `7d7b4d71`,
   `landings/PLAN-82.md`) and PLAN-87 was emitted and recorded running on the operator's word (its spec re-counted at HEAD
@@ -505,10 +636,77 @@ plan spec names the plan, proposal and finding documents it comes from.
   `rb-86-shared-error-texts-001.md` (PLAN-86, opencode), same two keys. Recurrence 2026-10-31:
   `rb-09-web-display-layer-001.md` (PLAN-09, opencode) and `rb-78-cui-testing-api-001.md` (PLAN-78, opencode), same two keys
   each. Recurrence 2026-10-31: `rb-82-needs-and-find-contract-001.md` (PLAN-82, opencode), same two keys. Recurrence 2026-10-31:
-  `rb-78-cui-testing-api-003.md` (PLAN-78, the landing message, opencode), same two keys.
+  `rb-78-cui-testing-api-003.md` (PLAN-78, the landing message, opencode), same two keys. Recurrence 2026-11-01:
+  `rb-16-web-time-format-and-locale-001.md` (PLAN-16), `rb-46-web-command-palette-001.md` (PLAN-46, merge_state open) and
+  `rb-87-cui-testing-mock-runtime-001.md` (PLAN-87), opencode, same two keys each.
+  Recurrence 2026-11-01: `rb-17-cli-runtime-act-confirm-001.md` (PLAN-17, opencode), same two keys.
+  Recurrence 2026-11-01: `rb-46-web-command-palette-002.md` (PLAN-46, the landing message, opencode), same two keys.
+  Recurrence 2026-11-01: `rb-46-web-command-palette-003.md` (PLAN-46 follow-up) and `rb-37-web-accessibility-baseline-001.md` (PLAN-37, merge_state open), opencode, same two keys each.
+  Recurrence 2026-11-01: `rb-26-cli-system-model-001.md` (PLAN-26, opencode), same two keys.
 
 ## Watches
 
+- Fix plans staged 2026-11-01: PLAN-89, PLAN-90, PLAN-91 (see the Decisions entry). PLAN-89 waits for PLAN-37 (the audit helper). PLAN-90's
+  seven red e2e tests are the base failures of PLAN-37's third deliverable: when PLAN-90 lands, that gate command can pass. Emit order
+  when slots free: PLAN-90 (RUNNING since 2026-11-01; now with deliverable 3, the SystemView words), then PLAN-91
+  (PLAN-26 has landed and did not touch `status`; now with deliverable 3, the tests PLAN-26 left out), then PLAN-89.
+- PLAN-26 follow-ups (landing report): (1) SETTLED 2026-11-02, the operator kept `draining · 2 left` (the rest of this item is history): keep `draining · 2 left` (the design says so now)
+  or restore `draining · N plans finish · stop in M min` and `restarting`, which needs the client record to read the drain deadline the
+  design lists (`system.adoc:365`) and the runtime to send it (pm-mcp-core, not read); (2) PLAN-30 D4 (the exit-code table for every verb)
+  is partly done: 19 read verbs and four write paths exit 1 on a refusal; re-scope it before emit; (3) the `running-work` mock scenario has
+  no `GET /api/v1/system` route (only `/system/cleanup` links), so the system view there shows only its load failure: a mock change no plan owns;
+  (4) re-read PLAN-23, 30, 32, 41, 42, 48 at `be4995e5` (they name files PLAN-26 changed).
+- PLAN-35 follow-ups (landing report): re-read PLAN-43, 45, 51, 53, 55, 58 against the shipped components; the view plans bring the
+  components in (no view calls them yet) and should assert the CSS-level behaviour where they touch it (alignment, 40/32 px rows, head border,
+  `%` widths); PR #294 was closed on 2026-11-02.
+- PLAN-43 follow-ups (landing report): PLAN-90 deliverable 3 rebases over the `SystemView.svelte` move; PLAN-51, 53, 55, 58 add their view to `VIEWS_ON_TEMPLATES`, are the first
+  browser check of Triage, Object and Wizard, and fill or guard the `ObjectPage` id slot; a pm-api owner may sweep `nonEmptyStrings()` where a record treats blank as absent
+  (`OnboardingRecordsTest` 134, 167-168, 517, `SystemRecordsTest` 153-154, not read); flaky `designer.spec.js:157` and `reports.spec.js:34/89` have no owner.
+- PLAN-37 follow-ups (landing report): PLAN-89 deliverables 4 and 5 (the leads above and the wider audit); `SystemView.svelte` is now touched by PLAN-37 (merged),
+  PLAN-90 deliverable 3 and PLAN-43 (hunks differ, rebase when either lands); the operator's call on the standing merge authorization for heads the reviewer
+  never saw. The send button of the chat no longer disables itself on an empty message (the lane's choice).
+- (history, PLAN-37 has since merged as `c5bfb1ca`) PLAN-37 was stopped at the reviewer (observation `rb-37-web-accessibility-baseline-001.md`, 2026-11-01T15:14Z; PR #297 `open`, head
+  `f27e1161`, read with `ci pr view` and the PR comments). CodeRabbit refused four triggers on quota (11:41Z, 13:13Z, 13:23Z, 14:56Z);
+  no review exists; the lane's next allowed trigger is 2026-11-01T16:26:44Z; it will not merge without a review. The session has
+  stopped, so the plan holds a slot while idle. DECISION FOR THE OPERATOR: re-trigger `@coderabbitai review` after 16:26Z, or label
+  PR #297 `skip-bot-review` as for #298 and #300. Lane account, not re-run: D1 and D2 met; D3's gate command
+  (`-pl pm-web-e2e verify -Pe2e`) does not pass as written because of seven e2e failures it did not cause; the names equal those the
+  PLAN-46 run recorded on `main` (`epic-view.spec.js:190`, `plan-view.spec.js` x3, `showroom.spec.js:88`, the `plan` text guard
+  de/en), so the two runs agree. The audit covers the German interface at 1440x900 only. Sonar `confirmed` 0 at
+  `f27e1161`, corroborated by my own read (analysis revision equals head). Under-declared surface: `start.{en,de}.properties` in `pm-api`.
+  The seven red e2e tests need an owner; the epic has none.
+- PLAN-17 landed (PR #292, `66c1495a`, analysed 2026-11-01); see `landings/PLAN-17.md`. Open: (1) the terminal specs that name a
+  file it changed are to be re-read at HEAD `66c1495a` before emit: PLAN-21, 23, 30, 36, 42, 48, 84 (operator catalogue pair,
+  `01-commands.adoc`, `RuntimeCommand`) and PLAN-26 (re-read, note added); PLAN-23 also reads `ChoicePrompt`, which now throws
+  `InterruptException` and exits 130. (2) Under-declared surface: 9 files added to a 9-entry declaration; with PLAN-16 and 82 the
+  third plan to do so. (3) Ctrl+C still exits 0 in eight non-runtime handlers (`WorkActionDialogue`, `ReviewDialogue`,
+  `HoldDialogue`, `ProjectCommand`, `PlanCommand`, `OnboardCommand`, `ActionSupport` x2) and no plan owns them; two web defects the
+  run reported in `SystemView.svelte`: read again at `be4995e5` after the PLAN-26 lane reported the same area: the English
+  `retry`/`error`/`ok` words and the load-failure string stored at the error (so it does not follow a language switch) are CONFIRMED by
+  reading and are owned by PLAN-90 deliverable 3; the raw `waiting for_you` state id is NOT reproduced (no `replace(` call), owned by no plan. (4) The lane merged after a question the operator answered
+  in free text that did not grant the merge ("fix all and check again"), on the standing review authorization; same practice as
+  PLAN-16 and 87 — the operator may want to confirm it covers that. (5) `ci pr comments` counts issue comments as unresolved
+  review threads and names no thread ids (a provider defect on the plan-marshall side). (6) The Sonar claim could not be
+  re-measured after the merge. — re-check each where it is consumed.
+- PLAN-16 and PLAN-87 landed (PR #291 `9890d74b`, PR #293 `418579a0`, analysed 2026-11-01); see `landings/PLAN-16.md` and
+  `landings/PLAN-87.md`. Open: (1) PLAN-16 rewrote 19 views and 6 components, so the staged web specs that name them are to be
+  re-read at HEAD `418579a0` before emit: PLAN-43, 45, 47, 51, 52, 53, 54, 55, 58, 59, 60, 62, 64, 66, 72, 73, 83, 85, 88 (the list
+  is in the landing report). (2) PLAN-16 under-declared its surface (10 declared, 38 realized, 5 added: `MockRuntimeEngine.java`
+  in a module the spec did not name, `OnboardingScenarioTest`, `client.ts`, `sourceLabels.ts`, `runtime.ts`); with PLAN-82 this is
+  the second plan to do so. (3) PLAN-16's residue: the framing words and unit marks live in `display/format.ts` (a follow-up adds
+  `common.time.*` keys), `relative` has no `since 14:02` form, the activity day header exists only where the wire dates a row,
+  `project.time.*` keys are unused. (4) Both landings' Sonar claims (0 at `1f10f52b` and `7f7249fc`) could not be re-measured
+  after the merge (`undecidable`). — re-check each where it is consumed.
+- Pre-existing red tests on `main`, reported by two lanes (2026-11-01, not verified here): PLAN-46's run saw `plan-view.spec.js` x3,
+  `showroom.spec.js` x1 and the `theme-readability.spec.js` text guard for `plan` de/en x2 fail identically on `origin/main`
+  (`ae0cb6b8`); PLAN-87's run saw three transcript goldens fail in `pm-operator verify -Pintegration-tests` (`status.transcript`,
+  `start-plan.transcript`, `start-plan-no-input.transcript`) identically on an untouched `main`. No plan owns either. PLAN-16's run reports 308 e2e tests green on its own branch, which may mean it fixed the web ones;
+  not measured on `main` since. — re-measure on the current `main` (PLAN-37 records the failing names at its base), then decide
+  an owner for what remains.
+- PLAN-46 residue (2026-11-01, PR #296 merged): `overview.find.plain` is cited in the shared design's prose with no Texts row and no
+  catalogue key (nobody owns it); the palette field has no labelled clear button (the design names no key); `/` now belongs to the
+  palette, so a view's filter no longer focuses on `/` (the design assigns the key to the panel; an intended change). PLAN-46's
+  message counts five files outside its declaration. — settle where the next find consumer (PLAN-84) reads the design.
 - PLAN-82 landed (PR #284, `7d7b4d71`, analysed 2026-10-31); see `landings/PLAN-82.md`. Three things stay open. (1) The
   consumers must re-read their specs at HEAD `7d7b4d71` before emit: PLAN-36, 49, 52, 55 name files PLAN-82 changed
   (`overview.*`/`plan_view.*` catalogues, `ActivePlanSummary`, the mock engine and scenarios, the `pm-operator` status
@@ -529,20 +727,31 @@ plan spec names the plan, proposal and finding documents it comes from.
   projects with project onboarding" was withdrawn after reading PLAN-64: the project onboarding view and the machine
   onboarding screens are different views and documents. — re-check the split at each emit of the plans it touched.
 > ↪ Relocated to `settled.md` § "Retired Watches (2026-10-28 to 2026-10-30)" — the watch is retired, its subject is closed (PR #276 merged as `44803a77`)
-- Required-reviewer quota (PLAN-78 landed, 2026-10-31; see `landings/PLAN-78.md`): the decision that was open here is
-  closed. PR #288 got one CodeRabbit review (head `0860ba13`, after the wait window and the operator-directed retry; two low
-  findings, fixed); its re-trigger on the final head `7854b8f4` was refused ("rate limit"), and the PR merged
-  (`1651554b`) on the operator's merge word under the standing authorization (a qualifying review exists on a head of the
-  PR). The quota still refuses re-triggers, so a plan whose PR never gets its first review blocks, as PLAN-78 did for about
-  nine hours (10:55 to 20:21). — check at PLAN-87 and PLAN-79, the next conversions.
+- PLAN-46 review findings fixed in intent (PR #300, `1ce32d80`, 2026-11-01), but the three-layer analysis (read, not run) found
+  more; see `landings/PLAN-46.md`, section "Three-layer analysis of PR #300". OPEN, for the operator: (C1) the results container is
+  now a `listbox` and still holds the empty-state paragraph and the Retry button, invalid owned content in the "no match" and "failed"
+  states; (C2, C3) a heading and a repeated label inside the listbox group, a constant `aria-expanded`; the design document was not
+  updated in the PR although the plan's Standing Constraints require it; the filter test never asserts the selection and another test
+  leaks a `scrollIntoView` stub. One more small fix PR would close them; no queue row. Earlier text: The six findings CodeRabbit filed on
+  `42aee47d` (two Major: no touch close control, arrow-key selection not exposed; four Minor) are in the merged code with tests. The
+  fix had no bot review (`skip-bot-review`), so the two accessibility changes (combobox with `aria-activedescendant`, close control)
+  rest on the lane's self-review; PLAN-37's axe-core audit is the first independent check once it merges, if it reaches the palette
+  (not established). Open: the palette's clear action is the browser's own, `type="search"`, no catalogue key; `/` belongs to the
+  palette now. PR #294 is redundant (the same 178 paths landed as PR #298): close it, the operator's call. The merge authorisation
+  question stays open: PLAN-17 merged after a free-text answer that did not grant it, PLAN-46 on a review whose findings were
+  unhandled; PR #300 merged on the operator's word and a label.
 - Pull requests over 100 files cannot be reviewed (PLAN-78 run, 2026-10-31): CodeRabbit, the required reviewer, refuses
   more than 100 files and, once its quota is spent, every retry; Sourcery refuses above 150,000 diff characters. PLAN-78's
   first PR (197 files) was never reviewed and was closed; the second (#288) merged. The 197 came from the `pre-commit` gate
   rewriting the import grouping of 171 `pm-api` main sources (pre-existing drift on `main`, no plan owns it). PLAN-78 landed
   with 25 files (the rewrite restored from `origin/main` twice, on the operator's decision), and its message says the drift
-  stays on `main` (170-odd rewrites). PLAN-79 (about 116 classes) and PLAN-87 (45, running) are exposed to the same. —
-  decide whether a small chore plan or commit cleans the drift on `main` first (then no plan's gate run rewrites it), and
-  whether PLAN-79 is split in two plans.
+  stays on `main` (170-odd rewrites). PLAN-87 landed (40 files) and had the operator route the rewrite into its own pull
+  request: PR #294 (`style: apply the pre-commit import grouping to main sources`, label `skip-bot-review`, 177 `pm-api` sources
+  and one `pm-mock-runtime` source). On 2026-11-01 the PLAN-46 lane landed the same 178 paths as PR #298 (`f5de8449`, label
+  `skip-bot-review`), so the rewrite is gone from `main` and PR #294 is redundant and still open (the operator's to close). Runs
+  that start from `f5de8449` or merge it forward no longer meet the rewrite (PLAN-35, 37, 26 started earlier). PLAN-79 (about 116 classes) may still need a split;
+  PLAN-87's share of classes taking generated input was 40 of 45, against 25 of 73 in `pm-api`, so its estimate is a hypothesis to
+  check at its outline.
 - Cleanup reminder interval has no write path (PLAN-09 residue, 2026-10-31): `cleanup_durations` is a single integer, so
   the reminder cannot be set from the clients; the run answered it on the PR as a server-contract gap. — no plan owns it;
   decide with the daemon repository.
