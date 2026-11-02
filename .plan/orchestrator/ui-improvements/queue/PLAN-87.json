@@ -2,10 +2,10 @@
   "id": "PLAN-87",
   "slug": "cui-testing-mock-runtime",
   "workstream": "WS-01",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "87-cui-testing-mock-runtime",
+  "pr": "293",
+  "landing": "landings/PLAN-87.md",
   "seq": 87
 }

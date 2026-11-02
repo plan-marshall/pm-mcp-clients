@@ -52,6 +52,14 @@ Source of this plan (read before scoping):
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/visual-design/plan.adoc#VD-S-04`, `doc/claude_review/visual-design/proposals.adoc#VD-P-05` — read at `doc/claude_review/visual-design/plan.adoc`
   - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/visual-design/plan.adoc:40-42 states VD-S-04 with VD-P-05, VD-P-07; proposals.adoc:195 '== VD-P-07: Data Display' exists
+- Re-grounded at HEAD 418579a0 (2026-11-01), after `PLAN-16` landed (PR #291): OBSERVED (`git cat-file` at `origin/main`) the four
+  components and `doc/design/web-app/components.adoc` are still absent, `pm-web-app/src/routes/dev/components/+page.svelte`,
+  `doc/design/web-app/README.adoc` and `pm-web-app/src/lib/display/format.ts` are present, so the claim that the formatting helpers
+  came with `PLAN-16` holds; read `display/format.ts` and `i18n/index.ts` as they stand (PLAN-16 rewrote both). `PLAN-16` changed 19
+  views and 6 components: take the state words and time texts from the display layer, not from the views' old strings. Pre-commit
+  drift: `-Ppre-commit` rewrites about 177 `pm-api` main sources and one `pm-mock-runtime` main source (drift already on `main`;
+  PR #294 is open to land it separately, at the operator's word). A rewrite that is not this plan's is restored from `origin/main`
+  before the commit, as `PLAN-16` and `PLAN-87` did, and the pull request stays under 100 files (the required reviewer refuses more).
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

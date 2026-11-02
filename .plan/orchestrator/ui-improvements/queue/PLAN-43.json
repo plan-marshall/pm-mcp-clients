@@ -2,10 +2,10 @@
   "id": "PLAN-43",
   "slug": "web-page-templates",
   "workstream": "WS-03",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "43-web-page-templates",
+  "pr": "301",
+  "landing": "landings/PLAN-43.md",
   "seq": 43
 }
