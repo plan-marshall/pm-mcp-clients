@@ -363,6 +363,12 @@ The status of a package is `open`, `blocked`, `done` or `dropped`; a `dropped` r
 |`overview-order-and-size`
 |Milestone 11
 
+|link:relay-session-mode-removal.adoc[`relay-session-mode-removal`]
+|`pm-mcp serve` only as the job relay: the option `--client`, the session mode and its headers removed
+|`open`
+|nothing
+|client work
+
 |link:operator-drain-signal.adoc[`operator-drain-signal`]
 |`pm-operator drain` as the signal of the recorded runtime process with its bounded wait; withdrawing a drain only as `runtime stop --withdraw`
 |`open`
