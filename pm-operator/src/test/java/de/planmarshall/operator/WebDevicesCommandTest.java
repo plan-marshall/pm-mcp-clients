@@ -376,4 +376,57 @@ class WebDevicesCommandTest {
         assertEquals("enabled (lan), port 8080, not open",
                             WebCommand.describe(Map.of("enabled", true, "lan", true, "port", 8080, "open", false)));
     }
+
+    /**
+     * Serves the three routes these commands write as refused, so that every act is answered with
+     * HTTP 400 and nothing is changed.
+     *
+     * @throws Exception if the fixture cannot serve
+     */
+    private void seedRefusedRoutes() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
+                                    """);
+            } else {
+                response.json(400, """
+                                    {"error":"refused","reason":"the request is refused"}
+                                    """);
+            }
+        });
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+                        "rename, dev-2, Failed to rename device: HTTP 400",
+                        "revoke, dev-3, Failed to revoke: HTTP 400",
+                        "listener-off, '', Failed to turn listener off: HTTP 400"
+    })
+    @DisplayName("a refused act on a device names the refusal and leaves with 1")
+    void aRefusedActLeavesWithOne(String action, String argument, String expectedOutput) throws Exception {
+        seedRefusedRoutes();
+
+        var context = createContext("");
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code;
+        if ("rename".equals(action)) {
+            code = cmd.execute(action, argument, "iPad Oliver");
+        } else if ("revoke".equals(action)) {
+            code = cmd.execute(action, argument);
+        } else {
+            code = cmd.execute(action);
+        }
+
+        var output = writer.toString();
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(output.contains(expectedOutput), output),
+                            () -> assertFalse(output.contains("\u2713"), output)
+        );
+    }
 }

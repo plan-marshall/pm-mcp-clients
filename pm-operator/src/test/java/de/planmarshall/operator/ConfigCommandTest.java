@@ -75,6 +75,21 @@ class ConfigCommandTest {
         );
     }
 
+    @Test
+    @DisplayName("a refused settings read names the refusal and leaves with 1")
+    void aRefusedSettingsReadLeavesWithOne() throws Exception {
+        fixture.start((request, response) -> response.json(500, """
+                            {"error":"refused","reason":"the store is unreadable"}
+                            """));
+
+        int code = execute("config");
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(out.toString().contains("Unable to load settings: HTTP 500"),
+                                                out.toString())
+        );
+    }
+
 
     @Test
     @DisplayName("config <aspect> --plan refuses the verb's other options")

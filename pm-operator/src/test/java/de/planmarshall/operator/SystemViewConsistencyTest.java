@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -48,6 +49,25 @@ class SystemViewConsistencyTest {
     private static final String LOOPBACK = "127.0.0.1:7420";
     private static final String NETWORK = "192.168.1.20:7421";
 
+    private final String version = Generators.letterStrings(3, 6).next();
+    private final String build = Generators.letterStrings(6, 12).next();
+    private final String startedAt = Generators.letterStrings(4, 8).next();
+    private final String measuredAt = Generators.letterStrings(3, 5).next();
+    private final String plannerRole = Generators.letterStrings(4, 8).next();
+    private final String implementerRole = Generators.letterStrings(4, 8).next();
+    private final String claudeHarness = Generators.letterStrings(3, 6).next();
+    private final String codexHarness = Generators.letterStrings(3, 6).next();
+    private final String firstModel = Generators.letterStrings(3, 6).next();
+    private final String secondModel = Generators.letterStrings(3, 6).next();
+    private final String thirdModel = Generators.letterStrings(3, 6).next();
+    private final String planTitle = Generators.letterStrings(4, 10).next();
+    private final String secondPlanTitle = Generators.letterStrings(4, 10).next();
+    private final int pairedDevices = Generators.integers(1, 9).next();
+    private final int calls = Generators.integers(1, 500).next();
+    private final long totalTokens = Generators.integers(1_000, 9_000_000).next();
+    private final long inputTokens = totalTokens / 2;
+    private final long outputTokens = totalTokens - inputTokens;
+
     @TempDir
     Path tempDir;
 
@@ -65,11 +85,11 @@ class SystemViewConsistencyTest {
         }
     }
 
-    private static SystemSnapshot sampleSnapshot() {
+    private SystemSnapshot sampleSnapshot() {
         var runtime = new RuntimeMetrics(
-                            "0.9.1",
-                            "2026-10-02 (a1b2c3d)",
-                            "today 08:14",
+                            version,
+                            build,
+                            startedAt,
                             22320L,
                             432013312L,
                             1073741824L,
@@ -77,11 +97,11 @@ class SystemViewConsistencyTest {
                             4.0,
                             2469606195L,
                             40802189312L,
-                            "13:40",
+                            measuredAt,
                             true,
                             LOOPBACK,
                             NETWORK,
-                            2,
+                            pairedDevices,
                             0,
                             null,
                             "0.10.0",
@@ -98,19 +118,21 @@ class SystemViewConsistencyTest {
                             3,
                             List.of());
         var workers = List.of(
-                            new WorkerMetric("planner", "claude", "opus-4.5", WorkerState.BUSY, "fix-relay"),
-                            new WorkerMetric("implementer", "claude", "sonnet-4.5", WorkerState.BUSY, "relay-docs"),
-                            new WorkerMetric("implementer", "codex", "gpt-5", WorkerState.IDLE, null));
+                            new WorkerMetric(plannerRole, claudeHarness, firstModel, WorkerState.BUSY, planTitle),
+                            new WorkerMetric(implementerRole, claudeHarness, secondModel, WorkerState.BUSY,
+                                                secondPlanTitle),
+                            new WorkerMetric(implementerRole, codexHarness, thirdModel, WorkerState.IDLE, null));
         var jobs = Map.<String, Object>of(
                             "build", Map.of("slots_used", 1, "slots_total", 2, "queued", 1),
                             "test", Map.of("slots_used", 0, "slots_total", 1, "queued", 0),
                             "locks_held", 3);
         var models = List.of(
-                            new ModelMetric("claude:opus-4.5", "planner", 42, 2020000L, 1900000L, 120000L,
-                                                0, 1, false, 0),
-                            new ModelMetric("claude:sonnet-4.5", "implementer", 118, 3610000L, 3200000L,
-                                                410000L, 0, 0, false, 0),
-                            new ModelMetric("codex:gpt-5", "implementer", 12, 0L, 0L, 0L, 1, 0, true, 12));
+                            new ModelMetric(claudeHarness + ":" + firstModel, plannerRole, calls, totalTokens,
+                                                inputTokens, outputTokens, 0, 1, false, 0),
+                            new ModelMetric(claudeHarness + ":" + secondModel, implementerRole, calls,
+                                                totalTokens, inputTokens, outputTokens, 0, 0, false, 0),
+                            new ModelMetric(codexHarness + ":" + thirdModel, implementerRole, calls, 0L, 0L, 0L,
+                                                1, 0, true, calls));
         var cleanup = new CleanupSummary(12, 2, 40, 5, 1, 1932735283L, 4, "today 03:00", "tomorrow 03:00");
         return new SystemSnapshot(runtime, work, workers, jobs, models, cleanup, SystemWindow.HOUR, null);
     }
@@ -143,10 +165,10 @@ class SystemViewConsistencyTest {
                             .toList();
     }
 
-    private static String listenersLine(String lang) {
+    private String listenersLine(String lang) {
         return MessageCatalogue.format(lang, "system.runtime.listeners_console",
                             Map.of("loopback", LOOPBACK, "loopback_address", LOOPBACK,
-                                                "lan", NETWORK, "lan_address", NETWORK, "devices", 2));
+                                                "lan", NETWORK, "lan_address", NETWORK, "devices", pairedDevices));
     }
 
     @Test
@@ -168,9 +190,9 @@ class SystemViewConsistencyTest {
         var snapshot = sampleSnapshot();
         for (var lang : List.of("en", "de")) {
             var split = MessageCatalogue.format(lang, "common.tokens.split",
-                                Map.of("total", TokenFormat.formatTokens(2020000L, false, lang),
-                                                    "in", TokenFormat.formatTokens(1900000L, false, lang),
-                                                    "out", TokenFormat.formatTokens(120000L, false, lang)));
+                                Map.of("total", TokenFormat.formatTokens(totalTokens, false, lang),
+                                                    "in", TokenFormat.formatTokens(inputTokens, false, lang),
+                                                    "out", TokenFormat.formatTokens(outputTokens, false, lang)));
             var printedText = printed(snapshot, lang);
             assertTrue(printedText.contains(split), lang + " printed: " + printedText);
             assertTrue(fullScreenLines(snapshot, lang).stream().anyMatch(line -> line.contains(split)),
@@ -182,7 +204,8 @@ class SystemViewConsistencyTest {
     @DisplayName("both views say a model's tokens are not measured once, with the harness that left them out")
     void bothViewsNameTheReasonOnce() {
         var snapshot = sampleSnapshot();
-        var codex = MessageCatalogue.format("en", "system.models.not_measured", Map.of("model", "codex"));
+        var codex = MessageCatalogue.format("en", "system.models.not_measured",
+                            Map.of("model", codexHarness));
         assertEquals(
                             fullScreenLines(snapshot, "en").stream().filter(line -> line.contains(codex)).count(),
                             printed(snapshot, "en").lines().filter(line -> line.contains(codex)).count(),
