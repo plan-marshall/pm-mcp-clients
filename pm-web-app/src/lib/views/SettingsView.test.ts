@@ -1,10 +1,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import SettingsView from './SettingsView.svelte';
 import { runtimeStore, navigateTo } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient } from '../api/client';
+
+/**
+ * @param id the device id
+ * @returns the row the device draws its acts in
+ */
+function deviceRow(id: string): HTMLElement {
+  return screen.getByTestId(`device-row-${id}`);
+}
 
 describe('SettingsView component', () => {
   const mockDevices = [
@@ -64,7 +72,7 @@ describe('SettingsView component', () => {
 
     expect(screen.getByTestId('this-browser-badge')).toHaveTextContent('this one');
     expect(screen.getByTestId('listener-status')).toHaveTextContent('Network listener: on.');
-    expect(screen.getByTestId('revoke-others-button')).toBeInTheDocument();
+    expect(screen.getByTestId('devices-section-acts')).toBeInTheDocument();
   });
 
   it('allows renaming a device inline and saves the new label', async () => {
@@ -76,10 +84,10 @@ describe('SettingsView component', () => {
     render(SettingsView);
 
     await waitFor(() => {
-      expect(screen.getByTestId('rename-btn-dev-2')).toBeInTheDocument();
+      expect(within(deviceRow('dev-2')).getByTestId('action-rename')).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getByTestId('rename-btn-dev-2'));
+    await fireEvent.click(within(deviceRow('dev-2')).getByTestId('action-rename'));
 
     const input = screen.getByTestId('rename-input-dev-2');
     expect(input).toBeInTheDocument();
@@ -99,16 +107,17 @@ describe('SettingsView component', () => {
     render(SettingsView);
 
     await waitFor(() => {
-      expect(screen.getByTestId('revoke-btn-dev-2')).toBeInTheDocument();
+      expect(within(deviceRow('dev-2')).getByTestId('action-bar-overflow')).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getByTestId('revoke-btn-dev-2'));
+    await fireEvent.click(within(deviceRow('dev-2')).getByTestId('action-bar-overflow'));
+    await fireEvent.click(await within(deviceRow('dev-2')).findByTestId('action-revoke'));
 
-    // Modal is opened
-    expect(screen.getByTestId('revoke-modal')).toBeInTheDocument();
+    // The confirmation names the consequence, in the danger colour
+    expect(await screen.findByTestId('confirm-dialog')).toBeInTheDocument();
     expect(screen.getByText(/Revoke Safari on iPad\?/i)).toBeInTheDocument();
 
-    await fireEvent.click(screen.getByTestId('revoke-confirm-button'));
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
 
     expect(revokeSpy).toHaveBeenCalledWith('dev-2');
     await waitFor(() => {
@@ -116,21 +125,33 @@ describe('SettingsView component', () => {
     });
   });
 
-  it('shows modal when revoking all other devices and updates list', async () => {
+  it('asks for the typed name before revoking all other devices', async () => {
     const revokeOthersSpy = vi.spyOn(apiClient, 'revokeOtherDevices').mockResolvedValue();
 
     render(SettingsView);
 
     await waitFor(() => {
-      expect(screen.getByTestId('revoke-others-button')).toBeInTheDocument();
+      expect(screen.getByTestId('devices-section-acts')).toBeInTheDocument();
     });
 
-    await fireEvent.click(screen.getByTestId('revoke-others-button'));
+    await fireEvent.click(
+      within(screen.getByTestId('devices-section-acts')).getByTestId('action-bar-overflow'),
+    );
+    await fireEvent.click(
+      await within(screen.getByTestId('devices-section-acts')).findByTestId('action-revoke_others'),
+    );
 
-    expect(screen.getByTestId('revoke-modal')).toBeInTheDocument();
+    expect(await screen.findByTestId('confirm-dialog')).toBeInTheDocument();
     expect(screen.getByText(/1 device other than this one/i)).toBeInTheDocument();
 
-    await fireEvent.click(screen.getByTestId('revoke-confirm-button'));
+    const confirm = screen.getByTestId('confirm-dialog-confirm');
+    expect(confirm).toBeDisabled();
+
+    await fireEvent.input(screen.getByTestId('confirm-dialog-input'), {
+      target: { value: 'Firefox on mbp-oliver' },
+    });
+    expect(confirm).toBeEnabled();
+    await fireEvent.click(confirm);
 
     expect(revokeOthersSpy).toHaveBeenCalled();
     await waitFor(() => {

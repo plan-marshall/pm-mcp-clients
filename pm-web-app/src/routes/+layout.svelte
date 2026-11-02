@@ -29,8 +29,27 @@
   import LessonSourceModal from '../lib/components/LessonSourceModal.svelte';
   import GitSourceIntakeModal from '../lib/components/GitSourceIntakeModal.svelte';
   import AppShell from '../lib/shell/AppShell.svelte';
+  import ActionBar from '../lib/components/ActionBar.svelte';
+  import { RUNTIME_ACTS } from '../lib/actions/byState';
   import { lessonSourceModalStore, closeLessonSource } from '../lib/stores/lessonSource';
   import { gitSourceModalStore, closeGitSource } from '../lib/stores/gitSource';
+
+  /**
+   * Runs the act the drain banner reports (UX-P-04: withdraw the stop, or stop now).
+   *
+   * @param id the chosen act
+   */
+  function chooseDrainingAct(id: string): void {
+    if (id === 'withdraw_stop') {
+      void apiClient.withdrawStop().then(() => {
+        runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
+      });
+      return;
+    }
+    if (id === 'stop_now') {
+      void apiClient.stopRuntime('now');
+    }
+  }
 
   interface Props {
     children?: import('svelte').Snippet;
@@ -147,32 +166,30 @@
   <AppShell {themeChoice} onChooseTheme={chooseTheme}>
     {#snippet notices()}
       {#if $runtimeStore.isDraining}
-        <div class="draining-banner" role="status">
+        <div class="draining-banner" role="status" data-testid="draining-banner">
           <span class="draining-text">
             {$t('system.stopping.line', {
-              count: $runtimeStore.drainInfo?.count ?? 0,
+              count: $runtimeStore.drainInfo?.items?.length ?? $runtimeStore.drainInfo?.count ?? 0,
               what: $runtimeStore.drainInfo?.what ?? $t('system.stopping.running_work'),
             })}
           </span>
+          {#if $runtimeStore.drainInfo?.items?.length}
+            <ul class="draining-list" data-testid="draining-list">
+              {#each $runtimeStore.drainInfo.items as item (item)}
+                <li>{item}</li>
+              {/each}
+            </ul>
+          {/if}
           <div class="draining-actions">
-            <button
-              class="draining-btn draining-btn--stop"
-              data-advisory={$t('system.stopping.stop_now.title')}
-              onclick={async () => {
-                await apiClient.stopRuntime('now');
-              }}
-            >
-              {$t('system.stopping.stop_now')}
-            </button>
-            <button
-              class="draining-btn draining-btn--withdraw"
-              onclick={async () => {
-                await apiClient.withdrawStop();
-                runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
-              }}
-            >
-              {$t('system.confirm.keep')}
-            </button>
+            <ActionBar
+              acts={RUNTIME_ACTS.draining.map((act) => ({
+                id: act.id,
+                label: $t(act.labelKey),
+                advisory: act.advisoryKey ? $t(act.advisoryKey) : undefined,
+                role: act.role,
+              }))}
+              onAct={chooseDrainingAct}
+            />
           </div>
         </div>
       {/if}
@@ -248,25 +265,11 @@
     gap: var(--space-2);
   }
 
-  .draining-btn {
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--text-sm);
-    font-weight: 600;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    border: 1px solid currentColor;
-    background: transparent;
-  }
-
-  .draining-btn--stop {
-    background-color: var(--color-danger);
-    color: var(--color-danger-contrast);
-    border-color: transparent;
-  }
-
-  .draining-btn--withdraw {
-    background-color: transparent;
-    color: inherit;
+  .draining-list {
+    margin: 0;
+    padding-inline-start: var(--space-5);
+    font-weight: 400;
+    color: var(--color-text-secondary);
   }
 
   .sr-only {

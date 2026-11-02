@@ -61,7 +61,14 @@ export interface RuntimeState {
   /** When that listener was turned off, for the page that waits for it. */
   listenerClosedAt?: string | null;
   isDraining: boolean;
-  drainInfo?: { count?: number; what?: string; who?: string; since?: string } | null;
+  drainInfo?: {
+    count?: number;
+    what?: string;
+    who?: string;
+    since?: string;
+    /** What still runs, where the runtime names the items; the count is then its length. */
+    items?: string[];
+  } | null;
   isStopped: boolean;
   stoppedInfo?: { command?: string; who?: string; time?: string } | null;
   activeStep: number;
@@ -466,7 +473,11 @@ export async function initRuntime(): Promise<void> {
       activeStep: deriveStepFromState(currentState?.state),
       isDraining: status.lifecycle_state === 'draining',
       drainInfo: status.lifecycle_state === 'draining'
-        ? { who: status.draining_by, count: status.drain_remaining_count }
+        ? {
+            who: status.draining_by,
+            items: status.drain_remaining_items,
+            count: status.drain_remaining_items?.length ?? status.drain_remaining_count,
+          }
         : null,
       isStopped: status.lifecycle_state === 'stopped',
       isOffline: false,
@@ -625,14 +636,19 @@ function handleLifecycleEvent(event: string, data: unknown): void {
       draining_by?: string;
       remaining_count?: number;
       remaining_work_count?: number;
+      remaining_items?: string[];
+      items?: string[];
     };
+    const items = payload.remaining_items ?? payload.items;
     runtimeStore.update((s) => ({
       ...s,
       isDraining: true,
       isStopped: false,
       drainInfo: {
         who: payload.who ?? payload.draining_by,
-        count: payload.count ?? payload.remaining_count ?? payload.remaining_work_count,
+        // The items are the list itself; where the runtime names them, their length is the count.
+        items,
+        count: items?.length ?? payload.count ?? payload.remaining_count ?? payload.remaining_work_count,
       },
     }));
   } else if (event === 'runtime.drain_withdrawn') {
