@@ -165,7 +165,7 @@ Terminal: `pm-operator config documents` (link:../terminal-client/08-transcripts
 [#cleanup]
 == The Cleanup's Durations (`settings.cleanup-durations`, `settings.record`)
 
-How long ended work is kept before the cleanup offers it, the machine's `cleanup.*` (link:../shared/cleanup.adoc#durations[Cleanup, How Long Work Is Kept]; link:../../../../pm-mcp-core/doc/specification/timeouts/03-retention-host-config.adoc#cleanup[Timeouts & Budgets, One Cleanup]); the line sums them up (`system.cleanup.durations.summary`), and *Change* opens them in place:
+How long ended work is kept before the cleanup offers it, the machine's `cleanup.*` (link:../shared/cleanup.adoc#durations[Cleanup, How Long Work Is Kept]; link:../../../../pm-mcp-core/doc/specification/timeouts/03-retention-harness-config.adoc#cleanup[Timeouts & Budgets, One Cleanup]); the line sums them up (`system.cleanup.durations.summary`), and *Change* opens them in place:
 
 [source,text]
 ----

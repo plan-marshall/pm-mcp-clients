@@ -22,7 +22,7 @@ The status of a package is `open`, `blocked`, `done` or `dropped`; a `dropped` r
 |Milestone 2
 
 |`profile-documents`
-|Host-detection data in the profile documents
+|Harness-detection data in the profile documents
 |`done`
 |nothing
 |Milestone 2
@@ -391,6 +391,12 @@ The status of a package is `open`, `blocked`, `done` or `dropped`; a `dropped` r
 |The code carries the documents' names: `harness_id`, the verb `pm-operator harness`, the harness detection, `pm-operator decision-log export`, the intent's `choices`, the hold `integrity_hold`; the old stored names stay readable
 |`open`
 |`operator-command-tree`
+|client work
+
+|link:harness-names-in-code.adoc[`harness-names-in-code`]
+|The code says harness where the documents do: the detection's members, the operator gate, the relay's help and Javadoc, the neutral profile's signal variable
+|`open`
+|`harness-decision-log-hold-names`; `relay-session-mode-removal`
 |client work
 
 |===
