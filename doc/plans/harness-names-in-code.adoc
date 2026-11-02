@@ -1,0 +1,23 @@
+= The harness named in the code as the documents name it
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `harness-names-in-code`
+
+[horizontal]
+Serves:: the client-work track (link:epic-clients.adoc[the client work])
+Where:: `pm-api`, `pm-operator`, `pm-relay`
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+The documents name the coding agent that runs workers the _harness_; _host_ means only the machine. `harness-decision-log-hold-names` renames the package `de.planmarshall.api.host` and `HostDetection`; the members, constants, Javadoc and help texts below still say _host_ for the harness. The renames change no behaviour, and a stored or wire name stays readable: a reader accepts the old name beside the new one, and every writer writes the new one. _Host_ for the machine (the `Host` header, `LoopbackHost`, the LAN listener's `host`, `HOSTNAME`, the host tools of a project's checkout) stays.
+
+== Tasks
+
+. *The detection's members.* In the harness detection (`HostDetection` before `harness-decision-log-hold-names`) the record `Host`, the list `HOSTS`, `host(String)`, `loadHosts()` and `toHost(...)` become `Harness`, `HARNESSES`, `harness(String)`, `loadHarnesses()` and `toHarness(...)`; the Javadoc of the class, of `ProfileDocumentReader` (`Detection`, `Identity`, the profile reduced to its two detection objects) and of the package names the harness, its session identifier and its build, and the table as the Harness Integration Table of the harness-integration specification.
+  Proof: `HostDetectionTest` (renamed with the class) and `ProfileDocumentReaderTest` pass; `git grep -w -i -e host -e hosts` over the package finds nothing.
+. *The operator gate.* `OperatorGate.detectHost` becomes `detectHarness`, `HOST_PRECEDENCE` `HARNESS_PRECEDENCE`, `hostsInPrecedence()` `harnessesInPrecedence()`, the component `Marker.host` `Marker.harness`, the parameter `hostName` `harnessId`; its Javadoc names the Harness Integration Table. In the tests `PmOperatorProcessIT.HOST_SIGNALS` becomes `HARNESS_SIGNALS` and `HarnessIsolationArchTest.HOST_PACKAGE` follows the renamed package.
+  Proof: `OperatorGateTest` and `PmOperatorProcessIT` pass under the new names; `git grep -n -i "detectHost\|HOST_PRECEDENCE\|HOST_SIGNALS"` finds nothing.
+. *The relay's help and Javadoc.* The picocli descriptions of `PmMcp` (`Host-facing command line of PM-MCP.`) and `ServeCommand` (`STDIO relay between a host or worker and the PM-MCP runtime.`) name the harness; the Javadoc of `PmMcp`, `package-info`, `ProtocolData`, `Relay`, `IdentityArguments` and `RelayMode`, and the display names and comments of `PmMcpProcessIT`, `PmMcpTest` and `RelayTest` say harness where they mean it. What `relay-session-mode-removal` removes (the host session, `--client`) is not renamed.
+  Proof: `PmMcpTest` asserts the help texts; `git grep -w -i -e host -e "host's"` over `pm-relay/src` finds only the machine.
+. *The neutral profile's signal.* The primary signal variable of `profiles/neutral.json`, `PM_MCP_NEUTRAL_HOST`, becomes `PM_MCP_NEUTRAL_HARNESS`. The detection never matches the neutral profile (it is the fallback and is filtered out of the table), so no reader of the old variable is needed.
+  Proof: `ProfileDocumentReaderTest` reads the shipped neutral document; `git grep PM_MCP_NEUTRAL_HOST` finds nothing.
