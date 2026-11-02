@@ -76,6 +76,11 @@ function expectOptionsAndGroupsOnly(box: HTMLElement): void {
     expect(['option', 'group']).toContain(role);
     if (role === 'group') {
       expect(child.querySelectorAll('[role="option"]').length).toBeGreaterThan(0);
+      for (const heading of Array.from(
+        child.querySelectorAll('h1, h2, h3, h4, h5, h6'),
+      )) {
+        expect(heading).toHaveAttribute('role', 'presentation');
+      }
     }
   }
 }
@@ -180,14 +185,18 @@ describe('the command palette listbox', () => {
 
     await waitFor(() => {
       const changed = field.getAttribute('aria-activedescendant');
-      if (changed) {
-        expect(document.getElementById(changed)?.getAttribute('role')).toBe('option');
-      }
+      expect(changed).toBeTruthy();
+      const option = document.getElementById(changed ?? '');
+      expect(option?.getAttribute('role')).toBe('option');
+      expect(option?.textContent).toContain('Fix Relay Transport');
     });
   });
 
   it('brings the selected option into view when ArrowDown moves the selection', async () => {
-    const scroll = vi.fn();
+    const scrolled: Element[] = [];
+    const scroll = vi.fn(function (this: Element) {
+      scrolled.push(this);
+    });
     const original = Element.prototype.scrollIntoView;
     Element.prototype.scrollIntoView = scroll as unknown as typeof Element.prototype.scrollIntoView;
 
@@ -202,9 +211,14 @@ describe('the command palette listbox', () => {
 
       const field = screen.getByTestId('command-palette-field');
       scroll.mockClear();
+      scrolled.length = 0;
       await fireEvent.keyDown(field, { key: 'ArrowDown' });
 
-      await waitFor(() => expect(scroll).toHaveBeenCalled());
+      await waitFor(() => {
+        const active = field.getAttribute('aria-activedescendant');
+        expect(active).toBeTruthy();
+        expect(scrolled.at(-1)).toBe(document.getElementById(active ?? ''));
+      });
     } finally {
       Element.prototype.scrollIntoView = original;
     }
