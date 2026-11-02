@@ -227,10 +227,7 @@ public final class PlanCommand implements Callable<Integer> {
         } catch (IOException _) {
             return null;
         }
-        var lendsTerminal = terminal != null;
-        if (lendsTerminal) {
-            context.useTerminal(terminal);
-        }
+        context.useTerminal(terminal);
         try {
             var availability = TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS);
             if (!availability.available()) {
@@ -248,9 +245,7 @@ public final class PlanCommand implements Callable<Integer> {
             }
             return app.interrupted() ? StartPrompt.EXIT_INTERRUPTED : 0;
         } finally {
-            if (lendsTerminal) {
-                context.clearTerminal();
-            }
+            context.clearTerminal();
             if (context.ownsTerminal(terminal)) {
                 terminal.close();
             }

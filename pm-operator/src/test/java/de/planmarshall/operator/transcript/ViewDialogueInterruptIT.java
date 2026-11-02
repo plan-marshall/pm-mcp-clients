@@ -161,7 +161,7 @@ class ViewDialogueInterruptIT {
                             .orElse("");
     }
 
-    private static void await(BooleanSupplier condition) throws Exception {
+    private static void await(BooleanSupplier condition) {
         var deadline = System.nanoTime() + DialogueHarness.TIMEOUT.toNanos();
         while (System.nanoTime() < deadline) {
             if (condition.getAsBoolean()) {
