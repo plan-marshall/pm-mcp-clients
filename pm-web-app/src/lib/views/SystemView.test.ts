@@ -1,10 +1,23 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import SystemView from './SystemView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type SystemSnapshot } from '../api/client';
+import { currentLocale, messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
 import { get } from 'svelte/store';
+
+/**
+ * Puts one catalogue and its language in place, as a language switch does.
+ *
+ * @param locale the interface locale
+ * @param overrides the entries this test changes
+ */
+function useCatalogue(locale: 'de' | 'en', overrides: Record<string, string> = {}): void {
+  currentLocale.set(locale);
+  messagesStore.set({ ...loadMessages(locale), ...overrides });
+}
 
 describe('SystemView component', () => {
   let eventHandler: ((event: string, data: unknown) => void) | null = null;
@@ -174,6 +187,10 @@ describe('SystemView component', () => {
     });
   });
 
+  afterEach(() => {
+    useCatalogue('en');
+  });
+
   it('renders the 6-part dashboard with metrics and models', async () => {
     vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
 
@@ -190,6 +207,107 @@ describe('SystemView component', () => {
     expect(screen.getByText('claude:opus-4.5')).toBeInTheDocument();
     expect(screen.getByText(/1 retry/)).toBeInTheDocument();
     expect(screen.getByText(/1 error/)).toBeInTheDocument();
+  });
+
+  it.each([
+    ['retry', '1 Wiederholung'],
+    ['error', '1 Fehler'],
+  ])('names the model status word %s in the interface language', async (_word, text) => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    useCatalogue('de');
+
+    render(SystemView);
+
+    await waitFor(() => {
+      expect(screen.getByText('System')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(text)).toBeInTheDocument();
+  });
+
+  it('pluralizes the retry status word for a count above one', async () => {
+    const snapshot = {
+      ...mockSnapshot,
+      models: [{ ...mockSnapshot.models[0], retries_count: 2, errors_count: 0 }],
+    };
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(snapshot);
+    useCatalogue('de');
+
+    render(SystemView);
+
+    await waitFor(() => {
+      expect(screen.getByText('System')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('2 Wiederholungen')).toBeInTheDocument();
+  });
+
+  it('keeps each status word in the row of its own model', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    useCatalogue('de');
+
+    render(SystemView);
+
+    await waitFor(() => {
+      expect(screen.getByText('System')).toBeInTheDocument();
+    });
+
+    const retryRow = screen.getByText('claude:opus-4.5').closest('tr') as HTMLElement;
+    const errorRow = screen.getByText('codex:gpt-5').closest('tr') as HTMLElement;
+    expect(within(retryRow).getByText('1 Wiederholung')).toBeInTheDocument();
+    expect(within(errorRow).getByText('1 Fehler')).toBeInTheDocument();
+  });
+
+  it('follows a language switch with the status words of a loaded snapshot', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    useCatalogue('de');
+
+    render(SystemView);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Wiederholung')).toBeInTheDocument();
+    });
+
+    useCatalogue('en');
+
+    await waitFor(() => {
+      expect(screen.getByText('1 retry')).toBeInTheDocument();
+      expect(screen.getByText('1 error')).toBeInTheDocument();
+    });
+  });
+
+  it('names the model status word ok from the catalogue', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    // The word of a healthy model reads the same in both packs, so only a changed pack shows
+    // that the view reads it there instead of writing it in the markup.
+    useCatalogue('de', { 'system.models.ok': 'einverstanden' });
+
+    render(SystemView);
+
+    await waitFor(() => {
+      expect(screen.getByText('System')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('einverstanden')).toBeInTheDocument();
+  });
+
+  it('follows a language switch with the text of a failed load', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockRejectedValue(new Error('boom'));
+    useCatalogue('de');
+
+    render(SystemView);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('Die Systemübersicht konnte nicht geladen werden'),
+      ).toBeInTheDocument();
+    });
+
+    useCatalogue('en');
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to load system snapshot')).toBeInTheDocument();
+    });
   });
 
   it('toggles time windows and triggers data reload with window query param', async () => {
