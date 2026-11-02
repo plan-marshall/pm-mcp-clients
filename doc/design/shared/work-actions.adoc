@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-contro
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#epic-resource[The Epic as a Resource], link:../../../../pm-mcp-core/doc/specification/runtime-lifecycle/02-plan-pause-and-stalled-plans.adoc#plan-pause[Pausing and Starting a Plan], link:../../../../pm-mcp-core/doc/specification/state-catalogue/04-plan-finalize-terminal.adoc#plan-end[Cancelling and Abandoning], link:../../../../pm-mcp-core/doc/specification/state-catalogue/01-conventions-generic-conditions.adoc#holds[Holds and Their Acts], link:../../../../pm-mcp-core/doc/specification/phase-workflows/08-dynamic-re-planning.adoc#replan-chat[Revision from a Chat], link:../../../../pm-mcp-core/doc/specification/workflow-dsl/09-plan-instance.adoc#plan-overrides[Plan Overrides], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#concurrent-changes[Concurrent Changes of a Setting], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-informed[The Epic Is Told], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-actions[An Epic's Actions], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#findings-watches[An Epic's Findings and Watches], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-review[The Review], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-auto[An Epic Runs by Itself]; link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc[Epic Coordination]_
 
-Status: `DRAFT`. Shared by both clients: link:../terminal-client/19-actions.adoc[Terminal Client, Actions], link:../web-app/README.adoc[Web App].
+Status: `AGREED`. Shared by both clients: link:../terminal-client/19-actions.adoc[Terminal Client, Actions], link:../web-app/README.adoc[Web App].
 
 A plan and an epic carry their actions wherever they are shown: their row in Running Work (link:plan-overview.adoc[Plan Overview]), the head of the plan view (link:plan-view.adoc[Plan View]), and an epic's level of Running Work. The actions are those of the current state only; the client takes them from the runtime and never decides itself what applies.
 
@@ -52,7 +52,7 @@ The actions of the plan's state (`plan.actions`):
 * *Pause* asks where the plan holds, _after the current task_ preselected (`plan.pause-when`, <<pause>>); *Start* acts at once (`plan.start`): a paused plan runs on from where it rests, a pausing one has its pause withdrawn. Neither needs a confirmation: each is undone by the other.
 * A plan always runs once it exists: a plan an epic starts is created and run in one act, so there is no state of a plan that waits to be started.
 * *Waiting for you* and *held* offer the actions of a running plan; the decision is answered in its own view (link:decisions.adoc[Decisions]), the hold resolved by its acts (<<holds>>), whose _End the plan_ is _Cancel_.
-* *Cancel* and *Abandon* confirm first (<<confirm-end>>). They are one end, named by the state the plan is in: a running, pausing, waiting, or held plan is cancelled, a paused one abandoned. Only the cancel of a plan held by an integrity pause is that pause's _Abort_, which ends the plan as `aborted` (<<holds>>).
+* *Cancel* and *Abandon* confirm first (<<confirm-end>>). They are one end, named by the state the plan is in: a running, pausing, waiting, or held plan is cancelled, a paused one abandoned. Only the cancel of a plan held by an integrity hold is that hold's _Abort_, which ends the plan as `aborted` (<<holds>>).
 * *A plan of an epic* says on every action which epic is told (`relay-hardening is told`), and after it, that it was (<<epic-told>>).
 * An action that applies but cannot run now is disabled with its reason (`the runtime is reconnecting`).
 * *A plan's own pull request* is shown by its number with a link to the provider (`#214`), in its row, its head, and the dialogues.
@@ -94,7 +94,7 @@ While it is pausing (`plan.pausing`), its row says where it will hold and what s
 * The dialogue is `plan.confirm-end`; confirmed, the plan ends (`plan.end`) and is archived with its outcome and the reason (`plan.archived`).
 * The reason is required; it goes to the plan's archive, to the epic, and to the pull request's closing comment. `#214` is a link to the pull request at the provider.
 * _Abandon_ is the same dialogue for a paused plan, without _What ends_, with _Keep it paused_ and _Abandon the plan_.
-* _Abort_ is the same dialogue for a plan held by an integrity pause (`Abort fix-relay?`), with _Keep it held_ and _Abort the plan_; afterwards the plan is archived as aborted.
+* _Abort_ is the same dialogue for a plan held by an integrity hold (`Abort fix-relay?`), with _Keep it held_ and _Abort the plan_; afterwards the plan is archived as aborted.
 * The plan's lesson claim is released with the end, and its open tasks, workers, and jobs end; nothing of this asks the operator.
 
 [#outcomes]
@@ -128,7 +128,7 @@ Wherever ended work is shown (its row in Ended Work, its plan view, its epic's v
 |the release of the project, whatever the plan's state
 
 |`aborted`
-|the _Abort_ of an integrity pause, with the operator's reason
+|the _Abort_ of an integrity hold, with the operator's reason
 |===
 
 An epic ends `completed` (archived because it is through, <<archive-check>>), `cancelled` (the operator's _Cancel_, <<cancel-epic>>), or `released` (the release of the project, which ends it together with its plans, each `released`; the epic's ledger stays in the repository untouched, and the end is recorded on this machine only). The reason stands beside the outcome wherever the operator gave one.
@@ -136,7 +136,7 @@ An epic ends `completed` (archived because it is through, <<archive-check>>), `c
 [#epic-told]
 === The Epic Is Told
 
-After an action on a plan of an epic (`plan.inform-epic`), the row of the plan shows for a moment `relay-hardening told`, and the epic's level shows the act among its events: paused, started, cancelled, abandoned, revised in a chat, or settings changed, with the reason. The _Abort_ of a plan held by an integrity pause is a cancel to the epic: the epic is told `cancelled`, and the plan's row in the epic shows `abandoned`, as for every plan that ended `aborted`, while the plan keeps its outcome `aborted` wherever it is shown as ended work (<<outcomes>>). What the epic does with it comes later, as any epic event, and a decision it raises reaches the operator as every decision does (link:decisions.adoc[Decisions]). The release of a project is no act on one plan: it ends the epic with its plans, so nothing is told.
+After an action on a plan of an epic (`plan.inform-epic`), the row of the plan shows for a moment `relay-hardening told`, and the epic's level shows the act among its events: paused, started, cancelled, abandoned, revised in a chat, or settings changed, with the reason. The _Abort_ of a plan held by an integrity hold is a cancel to the epic: the epic is told `cancelled`, and the plan's row in the epic shows `abandoned`, as for every plan that ended `aborted`, while the plan keeps its outcome `aborted` wherever it is shown as ended work (<<outcomes>>). What the epic does with it comes later, as any epic event, and a decision it raises reaches the operator as every decision does (link:decisions.adoc[Decisions]). The release of a project is no act on one plan: it ends the epic with its plans, so nothing is told.
 
 [#settings]
 === A Plan's Settings
@@ -272,12 +272,12 @@ Each line is a check of the runtime (`epic.archive-check`); a failing one leads 
                                                   [Keep it]  [Cancel the epic]
 ----
 
-The dialogue is `epic.confirm-cancel`; confirmed, the epic's tasks are withdrawn, its plans end or run on as chosen, and its ledger is archived as cancelled (`epic.cancel`). An epic held by an integrity pause is cancelled the same way; the cancel is that pause's _Abort_, and the epic ends `cancelled`.
+The dialogue is `epic.confirm-cancel`; confirmed, the epic's tasks are withdrawn, its plans end or run on as chosen, and its ledger is archived as cancelled (`epic.cancel`). An epic held by an integrity hold is cancelled the same way; the cancel is that hold's _Abort_, and the epic ends `cancelled`.
 
 [#holds]
 == What Holds a Plan
 
-A plan, an epic, or a landing that does not go on without a decision being asked shows its hold where the decision would be: on its row as the marker of what needs the operator, and first in its view. A hold is one of exactly five kinds: `stalled`, `condition`, `integrity_pause`, `held`, `landing_failed`. A paused plan is no hold: pausing is the operator's own choice, and the plan shows it by its state.
+A plan, an epic, or a landing that does not go on without a decision being asked shows its hold where the decision would be: on its row as the marker of what needs the operator, and first in its view. A hold is one of exactly five kinds: `stalled`, `condition`, `integrity_hold`, `held`, `landing_failed`. A paused plan is no hold: pausing is the operator's own choice, and the plan shows it by its state.
 
 ----
   fix-relay holds: a condition                                         since 14:02
@@ -297,7 +297,7 @@ A plan, an epic, or a landing that does not go on without a decision being asked
 |condition
 |the act it names, as a dialogue (_Grant read access…_, _Add the credential…_, which opens the credential of the machine's settings (link:../web-app/machine-settings.adoc#credentials[Machine Settings, Credentials]; terminal `credentials set <credential_key>`), _Raise the budget…_), _Retry now_, _End the plan…_
 
-|integrity pause
+|integrity hold
 |the tampered file with its recorded and current size and digest; _Accept the change…_, _Abort the plan…_ (an epic's: _Cancel the epic…_)
 
 |held item of an epic
@@ -309,11 +309,11 @@ A plan, an epic, or a landing that does not go on without a decision being asked
 
 * *After the act* (`hold.apply`): released (`hold.released`), the plan, the epic, or the landing goes on, and the view says so (`fix-relay goes on`); still held, the hold is shown again (`hold.show`) with what still holds and its cause (`Still held: the plan reads cui-http, which this project may not read`), its acts offered again.
 * Every act is offered in both clients; a hold that clears by itself (a provider is back) leaves with a line in the events (`the provider answered again`).
-* *An integrity pause* shows no diff and offers no restore, since the prior content is not kept: the hold names the tampered file (`plan fix-relay · references.json`) with its recorded and current size and SHA-256 digest; _Accept the change…_ accepts it as it is, after a confirmation that shows the same facts, and the runtime verifies again before the plan goes on; the other way out is _Abort the plan…_ (an epic's _Cancel the epic…_). An operator wait of the paused scope stays open and cannot be answered until the pause ends.
+* *An integrity hold* shows no diff and offers no restore, since the prior content is not kept: the hold names the tampered file (`plan fix-relay · references.json`) with its recorded and current size and SHA-256 digest; _Accept the change…_ accepts it as it is, after a confirmation that shows the same facts, and the runtime verifies again before the plan goes on; the other way out is _Abort the plan…_ (an epic's _Cancel the epic…_). An operator wait of the paused scope stays open and cannot be answered until the pause ends.
 * *The act* is the operator's (`hold.resolve`), applied by the runtime (`hold.apply`).
 * An act that cannot be undone (_Accept the change_, _End the plan_, _Abort the plan_, _Cancel the epic_, _Give up the removal_) confirms first and names what follows.
 * *Give up the removal* ends the short landing that removes moved documents from git: the removal's branch is dropped and the files remain tracked in git where they were, and the source keeps its copy; the two are no longer one, and the dialogue says so.
-* *End the plan* is the plan's _Cancel_, *Cancel the epic* the epic's (<<confirm-end>>, <<cancel-epic>>); *Abort the plan* is the cancel of a plan held by an integrity pause, that pause's resolution _abort_, which ends the plan as `aborted` with the operator's reason (<<outcomes>>).
+* *End the plan* is the plan's _Cancel_, *Cancel the epic* the epic's (<<confirm-end>>, <<cancel-epic>>); *Abort the plan* is the cancel of a plan held by an integrity hold, that hold's resolution _abort_, which ends the plan as `aborted` with the operator's reason (<<outcomes>>).
 
 [#review]
 == Reviewing Findings or Watches

@@ -3,61 +3,61 @@
 :toclevels: 2
 :nofooter:
 
-One plan file per work package. A work package is what one session takes up and lands as one pull request here, updating the documents in `plan-marshall-documentation` as part of the same work. The files hold the tasks; what the tasks mean and require is stated in the documentation repository and linked by relative paths. The links assume the repositories checked out beside each other (`../plan-marshall-documentation`, `../pm-mcp-clients`, `../pm-mcp-core`, `../plan-marshall-mcp`); they do not resolve in the web view of a single repository.
+One file per work package and this index. How the work is planned, what a package file holds, when a package is ready, and what happens to a package when it is done are stated only in link:../../../plan-marshall-documentation/doc/developer/project-setup.adoc#_planning_the_work[Project Setup § Planning the Work]. The links assume the repositories checked out beside each other (`../plan-marshall-documentation`, `../pm-mcp-clients`, `../pm-mcp-core`, `../plan-marshall-mcp`); they do not resolve in the web view of a single repository.
 
-The modules of this repository, their packages and their dependency rules are listed only in the link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc[Module Structure Specification]; each package file names where it lands.
+The modules of this repository are listed only in the link:../../../plan-marshall-documentation/doc/specification/module-structure.adoc[Module Structure Specification]; each package file names where it lands.
 
 [#packages]
 == Packages
 
-The packages listed serve roadmap Milestones 2 to 4, and the packages of the link:epic-clients.adoc[client work] (the mock runtime, the two clients, and their test infrastructure, which serve use cases not yet in a roadmap milestone); later milestones are not cut into packages yet, except the module `pm-web-app` of Milestone 11, which `web-app-foundation` pulls forward for the client work, `cli-unit-validate` of Milestone 11, and `landlock-on-wsl2` of Milestone 7, and a package that names one of them as the home of something says what is left out here. This table is the only place that states the status of a package and what it depends on; the package files do not repeat either. A package is *ready* when its status is `open` and everything in its _Depends on_ column is `done`. Ready packages can be worked in parallel, also across the repositories. A dependency that has no work package yet keeps a package `blocked`; it is replaced by the package when that is planned. A package that depends on a `blocked` package is `blocked` too.
+The status of a package is `open`, `blocked`, `done` or `dropped`; a `dropped` row names its reason. Dependencies are named by package id, a package of another repository as `<repository>` / `<id>`. A package serves a roadmap milestone or the client-work track: the client work built against the mock runtime (the mock runtime, the two clients, and their test infrastructure) serves the link:epic-clients.adoc[client-work epic], and the milestone that delivers the runtime a client view needs carries the integration of that view with the real runtime (link:../../../plan-marshall-documentation/doc/roadmap.adoc[Roadmap]). The work packages of the other repositories: link:../../../pm-mcp-core/doc/plans/README.adoc[`pm-mcp-core`] and link:../../../plan-marshall-mcp/doc/plans/README.adoc[`plan-marshall-mcp`].
 
 [cols="3,4,1,3,2",options="header"]
 |===
 |Package |Deliverable |Status |Depends on |Serves
-|link:implemented/api-contract.adoc[`api-contract`]
+|`api-contract`
 |API contract of `/api/v1` in `pm-api`
 |`done`
 |nothing
 |Milestone 2
 
-|link:implemented/profile-documents.adoc[`profile-documents`]
+|`profile-documents`
 |Host-detection data in the profile documents
 |`done`
 |nothing
 |Milestone 2
 
-|link:implemented/operator-checks.adoc[`operator-checks`]
+|`operator-checks`
 |Operator checks of `pm-operator`
 |`done`
-|link:implemented/profile-documents.adoc[`profile-documents`]
+|`profile-documents`
 |Milestone 2
 
-|link:implemented/command-tree.adoc[`command-tree`]
+|`command-tree`
 |Command tree of both binaries
 |`done`
-|link:implemented/api-contract.adoc[`api-contract`]; link:implemented/operator-checks.adoc[`operator-checks`]
+|`api-contract`; `operator-checks`
 |Milestone 2
 
-|link:implemented/installation-layout.adoc[`installation-layout`]
+|`installation-layout`
 |Installation layout seen from the binaries
 |`done`
 |nothing
 |Milestone 2
 
-|link:implemented/integration-layers.adoc[`integration-layers`]
+|`integration-layers`
 |Exit: integration-test layers of this repository
 |`done`
-|link:implemented/operator-checks.adoc[`operator-checks`]; link:implemented/command-tree.adoc[`command-tree`]
+|`operator-checks`; `command-tree`
 |Milestone 2
 
-|link:implemented/operator-enrolment-verbs.adoc[`operator-enrolment-verbs`]
+|`operator-enrolment-verbs`
 |Operator verbs of enrolment and store integrity
 |`done`
-|link:implemented/api-contract.adoc[`api-contract`]; link:implemented/operator-checks.adoc[`operator-checks`]; link:implemented/command-tree.adoc[`command-tree`]
+|`api-contract`; `operator-checks`; `command-tree`
 |Milestone 3
 
-|link:implemented/exec-read-denied-paths.adoc[`exec-read-denied-paths`]
+|`exec-read-denied-paths`
 |`pm-exec`: several read-denied paths
 |`done`
 |nothing
@@ -72,13 +72,13 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |link:exec-hardening.adoc[`exec-hardening`]
 |`pm-exec`: scopes, system call filter, parent watch and self-check
 |`open`
-|link:exec-listed-read-set.adoc[`exec-listed-read-set`]
+|`exec-listed-read-set`
 |Milestone 4
 
-|link:implemented/operator-harness-and-roles-verbs.adoc[`operator-harness-and-roles-verbs`]
+|`operator-harness-and-roles-verbs`
 |Operator verbs of harness enrolment and roles
 |`done`
-|link:implemented/api-contract.adoc[`api-contract`]; link:implemented/command-tree.adoc[`command-tree`]
+|`api-contract`; `command-tree`
 |Milestone 4
 
 |link:landlock-on-wsl2.adoc[`landlock-on-wsl2`]
@@ -87,244 +87,244 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |the first fully integrated run of the system and the operator's Windows machine with WSL2 (no work package)
 |Milestone 7
 
-|link:implemented/mock-runtime.adoc[`mock-runtime`]
-|Mock runtime `pm-mock-runtime` and its scenario format; the five-scenario catalog, closed scenario schema, scoped SSE with `Last-Event-ID`, and `/mcp` (foundation of the scenario consolidation, link:../agy/implemented/mock-runtime-foundation-and-consolidation-plan.md[`mock-runtime-foundation-and-consolidation`])
+|`mock-runtime`
+|Mock runtime `pm-mock-runtime` and its scenario format; the five-scenario catalog, closed scenario schema, scoped SSE with `Last-Event-ID`, and `/mcp`
 |`done`
-|link:implemented/api-contract.adoc[`api-contract`]
-|Milestone 2; epic clients
+|`api-contract`
+|Milestone 2; client work
 
-|link:implemented/message-catalogue.adoc[`message-catalogue`]
+|`message-catalogue`
 |Message catalogue in `pm-api`, English and German packs, served by the mock runtime
 |`done`
-|link:implemented/mock-runtime.adoc[`mock-runtime`]
-|epic clients
+|`mock-runtime`
+|client work
 
-|link:implemented/cli-test-infra.adoc[`cli-test-infra`]
+|`cli-test-infra`
 |Transcript tests of `pm-operator` against the mock runtime
 |`done`
-|link:implemented/mock-runtime.adoc[`mock-runtime`]
-|epic clients
+|`mock-runtime`
+|client work
 
-|link:implemented/cli-design.adoc[`cli-design`]
+|`cli-design`
 |Logical design of the terminal client, accepted by the operator
 |`done`
 |nothing
-|epic clients
+|client work
 
-|link:implemented/web-design.adoc[`web-design`]
+|`web-design`
 |Visual design of the web app (Claude Design), accepted by the operator; its visual language (frame, grid, breakpoints, typography, colour tokens, states, themes, routes) and the reports, system, and cleanup layouts complete
 |`done`
 |nothing
-|epic clients
+|client work
 
-|link:implemented/cli-onboarding.adoc[`cli-onboarding`]
+|`cli-onboarding`
 |The console `pm-operator`: entry and onboarding
 |`done`
-|link:implemented/cli-design.adoc[`cli-design`]; link:implemented/cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:implemented/operator-checks.adoc[`operator-checks`]; link:implemented/onboarding-contract.adoc[`onboarding-contract`]; link:implemented/entry-contract.adoc[`entry-contract`]
-|epic clients
+|`cli-design`; `cli-test-infra`; `message-catalogue`; `operator-checks`; `onboarding-contract`; `entry-contract`
+|client work
 
-|link:implemented/web-app-foundation.adoc[`web-app-foundation`]
+|`web-app-foundation`
 |Module `pm-web-app`, its design system and test infrastructure
 |`done`
-|link:implemented/web-design.adoc[`web-design`]; link:implemented/mock-runtime.adoc[`mock-runtime`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
-|Milestone 11, pulled forward; epic clients
+|`web-design`; `mock-runtime`; `message-catalogue`
+|Milestone 11, pulled forward; client work
 
-|link:implemented/web-onboarding.adoc[`web-onboarding`]
+|`web-onboarding`
 |Onboarding and start in the web app
 |`done`
-|link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]; link:implemented/onboarding-contract.adoc[`onboarding-contract`]; link:implemented/entry-contract.adoc[`entry-contract`]
-|epic clients
+|`web-app-foundation`; `web-design`; `onboarding-contract`; `entry-contract`
+|client work
 
-|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]
+|`operator-interaction-contract`
 |What every operator interaction shares: a state for a client, the operator's links, the event catalogue, texts, client inputs
 |`done`
-|link:implemented/api-contract.adoc[`api-contract`]; link:implemented/mock-runtime.adoc[`mock-runtime`]
-|epic clients
+|`api-contract`; `mock-runtime`
+|client work
 
-|link:implemented/decision-contract.adoc[`decision-contract`]
+|`decision-contract`
 |Decisions: contract and mock runtime
 |`done`
-|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the chat's records)
-|epic clients
+|`operator-interaction-contract`; `control-contract` (the chat's records)
+|client work
 
-|link:implemented/onboarding-contract.adoc[`onboarding-contract`]
+|`onboarding-contract`
 |Onboarding: contract and mock runtime
 |`done`
-|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
-|epic clients
+|`operator-interaction-contract`; `message-catalogue`
+|client work
 
-|link:implemented/entry-contract.adoc[`entry-contract`]
+|`entry-contract`
 |Entry: contract and mock runtime
 |`done`
-|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]
-|epic clients
+|`operator-interaction-contract`
+|client work
 
-|link:implemented/cli-decisions.adoc[`cli-decisions`]
+|`cli-decisions`
 |Decisions in the terminal
 |`done`
-|link:implemented/decision-contract.adoc[`decision-contract`]; link:implemented/cli-design.adoc[`cli-design`]; link:implemented/cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:implemented/cli-start.adoc[`cli-start`] (the chat dialogue)
-|epic clients
+|`decision-contract`; `cli-design`; `cli-test-infra`; `message-catalogue`; `cli-start` (the chat dialogue)
+|client work
 
-|link:implemented/web-decisions.adoc[`web-decisions`]
+|`web-decisions`
 |Decisions in the web app
 |`done`
-|link:implemented/decision-contract.adoc[`decision-contract`]; link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]; link:implemented/web-start.adoc[`web-start`] (the chat panel)
-|epic clients
+|`decision-contract`; `web-app-foundation`; `web-design`; `web-start` (the chat panel)
+|client work
 
-|link:implemented/project-contract.adoc[`project-contract`]
+|`project-contract`
 |Projects: contract and mock runtime
 |`done`
-|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]
-|epic clients
+|`operator-interaction-contract`
+|client work
 
-|link:implemented/cli-projects.adoc[`cli-projects`]
+|`cli-projects`
 |Projects in the terminal
 |`done`
-|link:implemented/project-contract.adoc[`project-contract`]; link:implemented/cli-onboarding.adoc[`cli-onboarding`]
-|epic clients
+|`project-contract`; `cli-onboarding`
+|client work
 
-|link:implemented/web-projects.adoc[`web-projects`]
+|`web-projects`
 |Projects in the web app
 |`done`
-|link:implemented/project-contract.adoc[`project-contract`]; link:implemented/web-onboarding.adoc[`web-onboarding`]
-|epic clients
+|`project-contract`; `web-onboarding`
+|client work
 
-|link:implemented/process-contract.adoc[`process-contract`]
+|`process-contract`
 |A plan's process: contract and mock runtime
 |`done`
-|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]
-|epic clients
+|`operator-interaction-contract`
+|client work
 
-|link:implemented/cli-plan-view.adoc[`cli-plan-view`]
+|`cli-plan-view`
 |A plan's process in the terminal
 |`done`
-|link:implemented/process-contract.adoc[`process-contract`]; link:implemented/cli-overview.adoc[`cli-overview`]
-|epic clients
+|`process-contract`; `cli-overview`
+|client work
 
-|link:implemented/web-plan-view.adoc[`web-plan-view`]
+|`web-plan-view`
 |A plan's process in the web app
 |`done`
-|link:implemented/process-contract.adoc[`process-contract`]; link:implemented/web-overview.adoc[`web-overview`]
-|epic clients
+|`process-contract`; `web-overview`
+|client work
 
-|link:implemented/control-contract.adoc[`control-contract`]
+|`control-contract`
 |Controlling work: contract and mock runtime
 |`done`
-|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]
-|epic clients
+|`operator-interaction-contract`
+|client work
 
-|link:implemented/cli-actions.adoc[`cli-actions`]
+|`cli-actions`
 |Actions on plans and epics in the terminal
 |`done`
-|link:implemented/control-contract.adoc[`control-contract`]; link:implemented/cli-overview.adoc[`cli-overview`]; link:implemented/cli-plan-view.adoc[`cli-plan-view`]; link:implemented/cli-start.adoc[`cli-start`]
-|epic clients
+|`control-contract`; `cli-overview`; `cli-plan-view`; `cli-start`
+|client work
 
-|link:implemented/web-actions.adoc[`web-actions`]
+|`web-actions`
 |Actions on plans and epics in the web app
 |`done`
-|link:implemented/control-contract.adoc[`control-contract`]; link:implemented/web-overview.adoc[`web-overview`]; link:implemented/web-plan-view.adoc[`web-plan-view`]; link:implemented/web-start.adoc[`web-start`]
-|epic clients
+|`control-contract`; `web-overview`; `web-plan-view`; `web-start`
+|client work
 
-|link:implemented/start-contract.adoc[`start-contract`]
+|`start-contract`
 |Starting work: contract and mock runtime
 |`done`
-|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the chat's records)
-|epic clients
+|`operator-interaction-contract`; `control-contract` (the chat's records)
+|client work
 
-|link:implemented/cli-start.adoc[`cli-start`]
+|`cli-start`
 |Starting work in the terminal
 |`done`
-|link:implemented/start-contract.adoc[`start-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the decomposition); link:implemented/cli-projects.adoc[`cli-projects`]
-|epic clients
+|`start-contract`; `control-contract` (the decomposition); `cli-projects`
+|client work
 
-|link:implemented/web-start.adoc[`web-start`]
+|`web-start`
 |Starting work in the web app
 |`done`
-|link:implemented/start-contract.adoc[`start-contract`]; link:implemented/control-contract.adoc[`control-contract`] (the decomposition); link:implemented/web-projects.adoc[`web-projects`]; link:implemented/cli-start.adoc[`cli-start`] (the same scenarios in the terminal)
-|epic clients
+|`start-contract`; `control-contract` (the decomposition); `web-projects`; `cli-start` (the same scenarios in the terminal)
+|client work
 
-|link:implemented/overview-contract.adoc[`overview-contract`]
+|`overview-contract`
 |Overview of running work: contract and mock runtime
 |`done`
-|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]
-|epic clients
+|`operator-interaction-contract`
+|client work
 
-|link:implemented/cli-overview.adoc[`cli-overview`]
+|`cli-overview`
 |Overview of running work in the terminal
 |`done`
-|link:implemented/overview-contract.adoc[`overview-contract`]; link:implemented/cli-design.adoc[`cli-design`]; link:implemented/cli-test-infra.adoc[`cli-test-infra`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
-|epic clients
+|`overview-contract`; `cli-design`; `cli-test-infra`; `message-catalogue`
+|client work
 
-|link:implemented/web-overview.adoc[`web-overview`]
+|`web-overview`
 |Overview of running work in the web app
 |`done`
-|link:implemented/overview-contract.adoc[`overview-contract`]; link:implemented/web-app-foundation.adoc[`web-app-foundation`]; link:implemented/web-design.adoc[`web-design`]
-|epic clients
+|`overview-contract`; `web-app-foundation`; `web-design`
+|client work
 
-|link:implemented/report-contract.adoc[`report-contract`]
+|`report-contract`
 |Reports to the operator and a plan's completion report: contract and mock runtime
 |`done`
-|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
-|epic clients
+|`operator-interaction-contract`; `message-catalogue`
+|client work
 
-|link:implemented/cli-reports.adoc[`cli-reports`]
+|`cli-reports`
 |Reports and the completion report in the terminal
 |`done`
-|link:implemented/report-contract.adoc[`report-contract`]; link:implemented/system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:implemented/cli-overview.adoc[`cli-overview`] (the full-screen view); link:implemented/cli-plan-view.adoc[`cli-plan-view`] (an ended plan's view)
-|epic clients
+|`report-contract`; `system-contract` (a subject deleted by the cleanup); `cli-overview` (the full-screen view); `cli-plan-view` (an ended plan's view)
+|client work
 
-|link:implemented/web-reports.adoc[`web-reports`]
+|`web-reports`
 |Reports and the completion report in the web app
 |`done`
-|link:implemented/report-contract.adoc[`report-contract`]; link:implemented/system-contract.adoc[`system-contract`] (a subject deleted by the cleanup); link:implemented/web-overview.adoc[`web-overview`] (the frame and the first view); link:implemented/web-plan-view.adoc[`web-plan-view`] (an ended plan's view)
-|epic clients
+|`report-contract`; `system-contract` (a subject deleted by the cleanup); `web-overview` (the frame and the first view); `web-plan-view` (an ended plan's view)
+|client work
 
-|link:implemented/completion-own-calls-change-map.adoc[`completion-own-calls-change-map`]
+|`completion-own-calls-change-map`
 |A plan's own calls and change map in the completion report: design, contract, mock runtime, and both clients
 |`done`
-|link:implemented/cli-reports.adoc[`cli-reports`]; link:implemented/web-reports.adoc[`web-reports`]
-|Milestone 10; epic clients
+|`cli-reports`; `web-reports`
+|Milestone 10; client work
 
-|link:implemented/system-contract.adoc[`system-contract`]
+|`system-contract`
 |The system view, the runtime's lifecycle, and the cleanup: contract and mock runtime
 |`done`
-|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:implemented/report-contract.adoc[`report-contract`] (the closed kinds of reports)
-|epic clients
+|`operator-interaction-contract`; `message-catalogue`; `report-contract` (the closed kinds of reports)
+|client work
 
-|link:implemented/cli-system.adoc[`cli-system`]
+|`cli-system`
 |The system view, the runtime's lifecycle, and the cleanup in the terminal
 |`done`
-|link:implemented/system-contract.adoc[`system-contract`]; link:implemented/cli-overview.adoc[`cli-overview`] (the full-screen view)
-|epic clients
+|`system-contract`; `cli-overview` (the full-screen view)
+|client work
 
-|link:implemented/web-system.adoc[`web-system`]
+|`web-system`
 |The system view, the runtime's lifecycle, and the cleanup in the web app
 |`done`
-|link:implemented/system-contract.adoc[`system-contract`]; link:implemented/web-overview.adoc[`web-overview`] (the frame and the first view); link:implemented/web-design.adoc[`web-design`]
-|epic clients
+|`system-contract`; `web-overview` (the frame and the first view); `web-design`
+|client work
 
-|link:implemented/designer-contract.adoc[`designer-contract`]
+|`designer-contract`
 |Designing a process: contract and mock runtime
 |`done`
-|link:implemented/operator-interaction-contract.adoc[`operator-interaction-contract`]; link:implemented/message-catalogue.adoc[`message-catalogue`]; link:implemented/process-contract.adoc[`process-contract`] (the composed process)
-|epic clients
+|`operator-interaction-contract`; `message-catalogue`; `process-contract` (the composed process)
+|client work
 
-|link:implemented/web-designer.adoc[`web-designer`]
+|`web-designer`
 |The process designer in the web app (the web app only)
 |`done`
-|link:implemented/designer-contract.adoc[`designer-contract`]; link:implemented/web-plan-view.adoc[`web-plan-view`] (the structure and the composed process); link:implemented/web-projects.adoc[`web-projects`] (a project's setup); link:implemented/web-design.adoc[`web-design`]
-|epic clients
+|`designer-contract`; `web-plan-view` (the structure and the composed process); `web-projects` (a project's setup); `web-design`
+|client work
 
 |link:cli-unit-validate.adoc[`cli-unit-validate`]
 |Validating a workflow unit and listing the catalogue in the terminal, machine-readable for a coding agent
 |`open`
-|link:implemented/designer-contract.adoc[`designer-contract`]; link:implemented/command-tree.adoc[`command-tree`]; link:implemented/message-catalogue.adoc[`message-catalogue`]
+|`designer-contract`; `command-tree`; `message-catalogue`
 |Milestone 11
 
-|link:implemented/intent-views.adoc[`intent-views`]
+|`intent-views`
 |Intent, outline, and their checks in both clients: the plan's intent record and outline record, results per criterion, the epic's intent and its done-when checks, the spread of `over_size`
 |`done`
-|link:implemented/api-contract.adoc[`api-contract`]
+|`api-contract`
 |Milestones 8, 10, 11, and 12
 
 |link:diagrams.adoc[`diagrams`]
@@ -333,88 +333,64 @@ The packages listed serve roadmap Milestones 2 to 4, and the packages of the lin
 |the layout endpoints of the runtime (roadmap Milestone 11, no package yet); `web-plan-view`; `message-catalogue`
 |Milestones 11 and 14
 
-|link:../agy/implemented/cli-fullscreen-foundation-plan.md[`cli-fullscreen-foundation`]
+|`cli-fullscreen-foundation`
 |The full-screen TUI framework (`de.planmarshall.operator.tui`), the virtual-terminal screen-test harness, the cross-view design and key registry, and the CLI/config hygiene the TUI review found
 |`done`
-|link:implemented/cli-overview.adoc[`cli-overview`]; link:implemented/cli-plan-view.adoc[`cli-plan-view`]; link:implemented/cli-projects.adoc[`cli-projects`]; link:implemented/cli-reports.adoc[`cli-reports`]; link:implemented/cli-system.adoc[`cli-system`]
-|epic clients
+|`cli-overview`; `cli-plan-view`; `cli-projects`; `cli-reports`; `cli-system`
+|client work
 
 |link:start-lesson-untrusted.adoc[`start-lesson-untrusted`]
 |A lesson written from untrusted text at the start: its mark in the choice, its screening, flagged and unscreened as for an issue
 |`open`
-|link:implemented/start-contract.adoc[`start-contract`]; link:implemented/cli-start.adoc[`cli-start`]; link:implemented/web-start.adoc[`web-start`]
+|`start-contract`; `cli-start`; `web-start`
 |Milestone 10
 
 |link:overview-order-and-size.adoc[`overview-order-and-size`]
 |Running work in the stable order the runtime serves; a plan's size of change in the plan view and the completion report
 |`open`
-|link:implemented/overview-contract.adoc[`overview-contract`]; link:implemented/web-plan-view.adoc[`web-plan-view`]
+|`overview-contract`; `web-plan-view`
 |Milestones 10 and 11
 
 |link:needs-and-find.adoc[`needs-and-find`]
 |Everything that waits as one list, and finding work by name, in both clients; the badges of `credential` and `cleanup_due`
 |`open`
-|link:implemented/overview-contract.adoc[`overview-contract`]; link:overview-order-and-size.adoc[`overview-order-and-size`]
+|`overview-contract`; `overview-order-and-size`
 |Milestone 11
 
 |link:web-moving-between-plans.adoc[`web-moving-between-plans`]
 |Web app: the work list beside a plan and an epic, _Add a plan_ on a project's row, one notification for a burst and none after a reconnect
 |`open`
-|link:overview-order-and-size.adoc[`overview-order-and-size`]
+|`overview-order-and-size`
 |Milestone 11
 
-|===
+|link:relay-session-mode-removal.adoc[`relay-session-mode-removal`]
+|`pm-mcp serve` only as the job relay: the option `--client`, the session mode and its headers removed
+|`open`
+|nothing
+|client work
 
-[#full-screen-status]
-=== Full-Screen Status of the Terminal Packages
-
-The five terminal packages above were landed with their scrollback forms — the tree of `status` and
-`plans`, the printed plan and epic views, the printed projects, reports, and system views — and
-their full-screen forms were left to the foundation and the five plans it unblocks. This table
-records where each full-screen form now lives; a package's own row above stays `done` for the
-scrollback form it delivered.
-
-[cols="3,3,3",options="header"]
-|===
-|Package |Full-screen form |Delivered by
-
-|`cli-overview`
-|the frame, levels, key registry, narrow fallback, and the overview itself
-|link:../agy/implemented/cli-fullscreen-foundation-plan.md[`cli-fullscreen-foundation`] (frame); `cli-fullscreen-overview` (the overview)
-
-|`cli-plan-view`
-|the plan view as a level of the frame
-|`cli-fullscreen-plan-view`
-
-|`cli-projects`
-|the Explorer as the `projects` root, with the project levels
-|`cli-fullscreen-projects`
-
-|`cli-reports`
-|the unread reports as a level of the frame
-|`cli-fullscreen-reports-system`
-
+|link:operator-drain-signal.adoc[`operator-drain-signal`]
+|`pm-operator drain` as the signal of the recorded runtime process with its bounded wait; withdrawing a drain only as `runtime stop --withdraw`
+|`open`
 |`cli-system`
-|the system view as a level of the frame
-|`cli-fullscreen-reports-system`
+|client work
 
-|`cli-actions`
-|the actions of a plan or epic, below its row
-|`cli-fullscreen-actions`
+|link:operator-command-tree.adoc[`operator-command-tree`]
+|`pm-operator` registers the command tree of the design: the verbs it does not have folded into their design verbs or removed, a verb without a counterpart reported
+|`open`
+|`command-tree`; `operator-enrolment-verbs`
+|client work
+
+|link:accept-edit-enrolment.adoc[`accept-edit-enrolment`]
+|`pm-operator accept-edit` in the forms of the specification, `enrolment <project_id>` among them
+|`open`
+|`operator-enrolment-verbs`
+|client work
+
+|link:harness-decision-log-hold-names.adoc[`harness-decision-log-hold-names`]
+|The code carries the documents' names: `harness_id`, the verb `pm-operator harness`, the harness detection, `pm-operator decision-log export`, the intent's `choices`, the hold `integrity_hold`; the old stored names stay readable
+|`open`
+|`operator-command-tree`
+|client work
+
 |===
-
-The implementation plans of the full-screen forms are the `doc/agy/cli-fullscreen-*.md` files; they
-are staged plans of the client work and are not separate roadmap packages.
-
-The work packages of the other repositories: link:../../../pm-mcp-core/doc/plans/README.adoc[`pm-mcp-core`] and link:../../../plan-marshall-mcp/doc/plans/README.adoc[`plan-marshall-mcp`].
-
-[#how]
-== How to Work a Package
-
-* *Design packages are run directly.* A package whose file says _Worked by: a Claude Code session directly_ (`cli-design`, `web-design`) is not worked through plan-marshall and is not part of an epic; its file says how it is run, and its row is set to `done` once the operator accepted the design. The rules below apply to every other package.
-* *Take it.* A package is worked in the usual plan-marshall flow: a branch, the commits of the plan, and a pull request opened at finalize. The pull request of the package sets its row to `done` in the table above, within its commits. Nothing marks a package as taken before that pull request is open, so list the open pull requests of this repository for one that names the package before starting. A package whose dependency lies in another repository is ready when that dependency is merged there and its `SNAPSHOT` is deployed.
-* *Trace first.* The packages are cut from the roadmap items, with the requirements, sections, and watch documents the roadmap names. Before code, build the trace matrix of the project skill `traced-implementation` (`../plan-marshall-documentation/.claude/skills/traced-implementation/SKILL.md`) for the package: every requirement bullet, every specification section, and every watch item anchored to them, each with its destinations. Split or extend the package where the matrix shows it; a row left out is recorded `out of slice` with its reason.
-* *Present and remaining.* The roadmap item a package serves states what the code already covers. Read it first: a package delivers the remainder, never a second form of what exists.
-* *Dependencies are the order.* The roadmap milestone a package serves says for which exit it is needed, not when it may start. Add a dependency you discover, and a new package, to the table above.
-* *Done.* A package is done with its guarding tests, `verify`, `verify -Ppre-commit` (its rewrites reviewed and committed), `verify -Pcoverage`, and `verify -Pintegration-tests` green, and the native build where it touches a binary.
-* *Documents.* The code documentation of a package and its work package file with the index live here. The specification and requirement documents live in `plan-marshall-documentation`: a statement of a requirement or specification that a package proves wrong is corrected there, never worked around in code, and the concept, developer, and user documentation of the package, the deletion of the implemented specification sections and watch items, and the update of the roadmap item are made there as well. The plan of the package updates those documents directly, as part of its own work, and merges that pull request itself once the code is on `main` here.

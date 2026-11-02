@@ -7,7 +7,7 @@ link:../README.adoc[Design] » link:README.adoc[Web App] » link:process-designe
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3]_
 
-Status: `DRAFT`. The texts of link:process-designer.adoc[Process Designer].
+Status: `AGREED`. The texts of link:process-designer.adoc[Process Designer].
 
 [#texts]
 == Texts

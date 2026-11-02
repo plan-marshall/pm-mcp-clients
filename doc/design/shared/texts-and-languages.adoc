@@ -11,7 +11,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#i18n[Module Structure, Languages and Internationalisation]_
 
-Status: `DRAFT`.
+Status: `AGREED`.
 
 How the texts of the web app and the command-line binaries are written, kept, and translated. The architecture (one catalogue in `pm-api`, served to the web app, packs checked at build time) is specified in the section linked above; this document is about the texts themselves.
 
@@ -31,7 +31,7 @@ How the texts of the web app and the command-line binaries are written, kept, an
 |the instructions of the units and roles, which stay in English
 |===
 
-The few texts of `pm-mcp` (the relay's errors, which the host and its model read) follow the interface language like those of `pm-operator` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3]); their keys live in the area `relay`.
+The few texts of `pm-mcp` (the relay's errors, which the harness and its model read) follow the interface language like those of `pm-operator` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3]); their keys live in the area `relay`.
 
 A question a model asks the operator is in the model language; the frame around it (buttons, what it blocks, the recommendation label) is in the interface language.
 
@@ -67,7 +67,7 @@ The domain vocabulary stays as it is in every language: it is what the operator 
 |Ledger |das |an epic's committed record of its workstreams, plans, findings, and watches
 |Checkout |der |a project's working copy of its repository on this machine
 |Prompt |der |the input line of the terminal client
-|Coding Agent |der |a coding agent such as the one a harness runs; also the host of `pm-mcp`
+|Coding Agent |der |a coding agent such as the one a harness runs, which also runs `pm-mcp`
 |Bot |der |a review bot of the provider
 |Web-App |die |the web app of `PM-MCP`
 |Slot |der |a place a job or a worker takes from a bounded number (a build slot, a model slot)
@@ -196,7 +196,7 @@ A duration has one rendering in both clients — `Display.duration` in `pm-api` 
 [#numbers]
 == Numbers: Tokens
 
-Every count of tokens is shown in one format, defined here and nowhere else: the plan view, the epic view, the completion report, the system view, and the harness list use it (link:../../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money]). The runtime sends exact counts; the client only formats them, through the keys below, and never adds or derives a figure.
+Every count of tokens is shown in one format, defined here and nowhere else: the plan view, the epic view, the completion report, the system view, and the harness list use it (link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money]). The runtime sends exact counts; the client only formats them, through the keys below, and never adds or derives a figure.
 
 [cols="2,1,1",options="header"]
 |===
