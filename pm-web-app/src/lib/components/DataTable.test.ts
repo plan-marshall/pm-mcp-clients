@@ -124,6 +124,22 @@ describe('DataTable', () => {
     expect(screen.getAllByRole('columnheader')).toHaveLength(COLUMNS.length);
   });
 
+  it('shows the short menu label beside the glyph, and the row name only as the accessible name', () => {
+    render(DataTable, {
+      props: { columns: COLUMNS, rows: ROWS, label: LABEL, menuLabel: 'Row menu' },
+    });
+
+    const visible = Array.from(
+      document.querySelectorAll('.data-table__menu .icon-btn__label'),
+    ).map((label) => label.textContent);
+    expect(visible).toEqual(['Row menu', 'Row menu']);
+    expect(
+      screen
+        .getAllByRole('button', { name: /^Row menu/ })
+        .map((menu) => menu.getAttribute('aria-label')),
+    ).toEqual(['Row menu: web-core-components', 'Row menu: web-data-components']);
+  });
+
   it('draws the empty slot a view fills when the table has no rows', () => {
     const EMPTY = 'No plan is running';
     const { container } = render(DataTableEmptyFixture, {
