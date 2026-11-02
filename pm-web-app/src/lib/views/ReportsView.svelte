@@ -15,8 +15,11 @@
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import CompletionReportView from './CompletionReportView.svelte';
 
-  /** The group key of the reports the machine itself writes (`system.*`); it stands apart. */
-  const MACHINE_GROUP_KEY = '__machine__';
+  /**
+   * The group key of the reports the machine itself writes (`system.*`); it stands apart. The NUL
+   * prefix is a character no project id may carry, so no project can share the machine's group.
+   */
+  const MACHINE_GROUP_KEY = '\u0000machine';
 
   let items = $state<ReportItem[]>([]);
   let unreadCount = $state(0);
@@ -43,6 +46,8 @@
 
   /** The filter query; it runs over the loaded reports only. */
   let query = $state('');
+  /** The reports whose body is open past its one line in the list. */
+  let shownBodies = $state<Record<string, boolean>>({});
   /**
    * The reports read by opening their detail in the list beside it: they stay in the list, marked
    * read, until the detail closes, so the selected row does not vanish under the pointer.
@@ -349,6 +354,7 @@
   async function loadReports() {
     isLoading = true;
     loadError = '';
+    actionError = '';
     try {
       const page: ReportsPage = await apiClient.getReports();
       const served = page.items || [];
@@ -707,11 +713,29 @@
   /**
    * Chosen from the row menu: mark the report read.
    *
+   * The row leaves the list when the read settles; the focus then moves to the next row's menu, the
+   * previous one's, or the heading, so a keyboard operator keeps their place.
+   *
    * @param item the report the act names
    */
   async function chooseMarkRead(item: ReportItem): Promise<void> {
-    await closeRowMenu(true);
+    const cards = Array.from(document.querySelectorAll<HTMLElement>('.report-card'));
+    const index = cards.findIndex((card) => card.dataset.reportId === item.id);
+    const successor =
+      cards[index + 1]?.querySelector<HTMLElement>('[data-testid="report-row-menu"]') ??
+      cards[index - 1]?.querySelector<HTMLElement>('[data-testid="report-row-menu"]');
+
+    await closeRowMenu();
     await markRead(item);
+
+    const remaining = Array.from(document.querySelectorAll<HTMLElement>('.report-card'));
+    const row = remaining.find((card) => card.dataset.reportId === item.id);
+    if (row) {
+      // The read failed: the row is still there, and its own control takes the focus back.
+      row.querySelector<HTMLElement>('[data-testid="report-row-menu"]')?.focus();
+      return;
+    }
+    (successor ?? document.querySelector<HTMLElement>('.reports-heading'))?.focus();
   }
 
   /** @param event the key press inside an open menu */
@@ -831,7 +855,7 @@
         <!-- Header -->
         <header class="reports-header">
           <div class="reports-header__title-row">
-            <h1 class="reports-heading">{$t('report.list.title')}</h1>
+            <h1 class="reports-heading" tabindex="-1">{$t('report.list.title')}</h1>
             {#if unreadCount > 0}
               <span class="unread-count" data-testid="unread-count">
                 {$t('report.list.unread', { count: unreadCount })}
@@ -1056,9 +1080,22 @@
     </div>
 
     {#if item.body || item.summary}
-      <div class="report-card__body text-muted" data-model-text>
+      {@const bodyOpen = Boolean(shownBodies[item.id])}
+      <div
+        class="report-card__body text-muted"
+        class:report-card__body--clamped={!bodyOpen}
+        data-model-text
+      >
         {item.body || item.summary}
       </div>
+      <Button
+        variant="ghost"
+        size="small"
+        aria-expanded={bodyOpen}
+        onclick={() => (shownBodies[item.id] = !bodyOpen)}
+      >
+        {bodyOpen ? $t('report.body.less') : $t('report.body.more')}
+      </Button>
     {/if}
 
     <div class="report-card__actions">
@@ -1092,6 +1129,7 @@
         <IconButton
           icon="act.more"
           size="sm"
+          data-testid="report-row-menu"
           label={$t('report.list.row_menu')}
           aria-label={rowMenuLabel(item)}
           advisory={$t('report.list.row_menu.title')}
@@ -1376,6 +1414,15 @@
     font-size: var(--text-xs);
     line-height: 1.4;
     padding-left: var(--space-4);
+  }
+
+  /* The list shows the body on one line; the control below opens the rest in place. */
+  .report-card__body--clamped {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .report-card__actions {

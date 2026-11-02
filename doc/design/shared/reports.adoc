@@ -106,7 +106,7 @@ The runtime writes a report for a closed list of kinds; the client shows each re
 |one line, the catalogue's text of its kind
 
 |Body
-|a short text below the subject, one line in the list, the rest one step away; where it carries a title, a reason, or a file name from a plan, it is untrusted text (<<safety>>)
+|a short text below the subject, one line in the list, with _Show the text_ opening the rest in place (`report.body.more`, `report.body.less`); where it carries a title, a reason, or a file name from a plan, it is untrusted text (<<safety>>)
 
 |Created
 |when it happened, as the overview shows times (`today 11:20`, `yesterday 18:40`, `3 d ago`)

@@ -113,6 +113,8 @@ test.describe('Mobile viewports (WEB-1)', () => {
       // Below the triage breakpoint the detail replaces the list, never both panes.
       await filter.fill('');
       await expect(page.locator('.report-card').first()).toBeVisible();
+      // With no report selected the narrow layout hides the empty detail pane.
+      await expect(page.locator('[data-testid="triage-detail"]')).toBeHidden();
       await page
         .locator('.report-card', { hasText: 'Ended: merged (#214)' })
         .getByRole('button', { name: /Show the details/i })

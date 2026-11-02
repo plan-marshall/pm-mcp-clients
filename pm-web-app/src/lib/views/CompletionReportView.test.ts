@@ -199,6 +199,16 @@ describe('CompletionReportView component', () => {
     expect(screen.queryByText(/files · \+/)).toBeNull();
   });
 
+  it('leaves the unplanned part out when the change carries no unplanned count', async () => {
+    render(CompletionReportView, {
+      planId: 'fix-relay',
+      report: { ...mockReport, change: { files: 12, insertions: 340, deletions: 27 } },
+    });
+
+    expect(screen.getByText('12 files · +340 −27')).toBeInTheDocument();
+    expect(screen.queryByText(/unplanned/)).toBeNull();
+  });
+
   it('renders tokens section with coverage, breakdown, and toggles raw components', async () => {
     render(CompletionReportView, { planId: 'fix-relay', report: mockReport });
 

@@ -656,6 +656,18 @@ describe('ReportsView component', () => {
     expect(document.querySelector('[data-report-id="rep-0139"]')).not.toBeNull();
   });
 
+  it('keeps the body to one line until its control shows the rest', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+    expect(card.querySelector('.report-card__body--clamped')).not.toBeNull();
+
+    await fireEvent.click(within(card).getByRole('button', { name: 'Show the text' }));
+    expect(card.querySelector('.report-card__body--clamped')).toBeNull();
+    expect(within(card).getByRole('button', { name: 'Hide the text' })).toBeInTheDocument();
+  });
+
   it('names the row menu with the report and moves the focus in and back out', async () => {
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
