@@ -427,6 +427,7 @@
               class="command-palette__group-title"
               class:sr-only={index > 0 && groups[index - 1]?.kind === group.kind}
               id={groupTitleId(index)}
+              role="presentation"
             >
               {$t(`overview.find.kind.${group.kind}`)}
             </h3>
