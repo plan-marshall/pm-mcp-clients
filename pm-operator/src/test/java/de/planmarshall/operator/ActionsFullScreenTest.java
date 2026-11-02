@@ -380,6 +380,37 @@ class ActionsFullScreenTest {
         }
     }
 
+    @Test
+    @DisplayName("the plan view verb returns 130 when the dialogue it opened is interrupted")
+    void shouldReturnTheInterruptStatusFromThePlanViewVerb() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(160, 45)) {
+            var context = control.context(virtual);
+            var out = new StringWriter();
+            var code = new AtomicInteger(-1);
+            var thread = Thread.ofPlatform().start(() -> code.set(PmOperator.execute(context,
+                                new PrintWriter(out), new PrintWriter(new StringWriter()),
+                                "plan", "fix-relay")));
+            ControlFixture.await(() -> virtual.alternateScreenActive()
+                                && ControlFixture.shows(virtual, "phase execute"));
+            virtual.type("a");
+            ControlFixture.await(() -> ControlFixture.shows(virtual, "Pause\u2026"));
+            virtual.type("p");
+            ControlFixture.await(() -> out.toString().contains("Where does fix-relay hold?"));
+
+            var deadline = System.nanoTime() + 5_000_000_000L;
+            while (thread.isAlive() && System.nanoTime() < deadline) {
+                virtual.terminal().raise(Terminal.Signal.INT);
+                ControlFixture.delay(20L);
+            }
+            ControlFixture.join(thread);
+
+            assertEquals(130, code.get(), out.toString());
+            assertFalse(control.requests().stream().anyMatch(
+                                                    request -> request.endsWith("/api/v1/plans/fix-relay/actions/pause")),
+                                control.requests().toString());
+        }
+    }
+
     private Thread openProject(OperatorContext context, VirtualScreenTerminal virtual) throws Exception {
         return openProject(context, virtual, new StringWriter());
     }

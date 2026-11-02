@@ -73,6 +73,13 @@ class InterruptExitCodeTest {
                             "state":"open","proposal":"promote to a plan"}]}
                         """;
 
+    private static final String ONBOARDING_CONSENT = """
+                        {"scope":"machine","state":"harness.consent","summary":"Look for harnesses on this machine?",
+                         "completed_steps":1,"auto":false,
+                         "links":{"yes":{"href":"/api/v1/onboarding/harness/scan","method":"POST","next":"harness.choose","preselected":true},
+                                  "no":{"href":"/api/v1/onboarding/harness/decline","method":"POST","next":"harness.consent"}}}
+                        """;
+
     private RuntimeFixture fixture;
     private VirtualScreenTerminal virtual;
     private StringWriter out;
@@ -175,6 +182,52 @@ class InterruptExitCodeTest {
 
         var code = interruptedAt("Reason", () -> PmOperator.execute(context, new PrintWriter(out),
                             new PrintWriter(new StringWriter()), "plan", "cancel", "p"));
+
+        assertEquals(130, code, out.toString());
+        assertNoAct(server);
+    }
+
+    @Test
+    @DisplayName("onboard: the first state prompt interrupted leaves with 130")
+    void onboardInterrupt() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if (OnboardCommand.STATE_PATH.equals(request.target())) {
+                response.json(200, ONBOARDING_CONSENT);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = interruptedAt("Look for harnesses on this machine?",
+                            () -> PmOperator.execute(context, new PrintWriter(out),
+                                                new PrintWriter(new StringWriter()), "onboard"));
+
+        assertEquals(130, code, out.toString());
+        assertNoAct(server);
+    }
+
+    private static final String PROJECT_SETUP = """
+                        {"scope":"project","state":"project.zzz","kind":"operator_wait","step":3,
+                         "total_steps":10,"summary":"Continue the setup of cui-parent",
+                         "links":{"record":{"href":"/api/v1/projects/cui-parent/setup","method":"POST",
+                           "preselected":true}}}
+                        """;
+
+    @Test
+    @DisplayName("project setup: the state prompt interrupted leaves with 130")
+    void projectSetupInterrupt() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if (request.target().endsWith("/setup")) {
+                response.json(200, PROJECT_SETUP);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = interruptedAt("Continue the setup of cui-parent",
+                            () -> PmOperator.execute(context, new PrintWriter(out),
+                                                new PrintWriter(new StringWriter()), "project", "setup",
+                                                "cui-parent"));
 
         assertEquals(130, code, out.toString());
         assertNoAct(server);
