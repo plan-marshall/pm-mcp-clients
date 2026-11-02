@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import SystemView from './SystemView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
@@ -223,6 +223,39 @@ describe('SystemView component', () => {
     });
 
     expect(screen.getByText(text)).toBeInTheDocument();
+  });
+
+  it('keeps each status word in the row of its own model', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    useCatalogue('de');
+
+    render(SystemView);
+
+    await waitFor(() => {
+      expect(screen.getByText('System')).toBeInTheDocument();
+    });
+
+    const retryRow = screen.getByText('claude:opus-4.5').closest('tr') as HTMLElement;
+    const errorRow = screen.getByText('codex:gpt-5').closest('tr') as HTMLElement;
+    expect(within(retryRow).getByText('1 Wiederholung')).toBeInTheDocument();
+    expect(within(errorRow).getByText('1 Fehler')).toBeInTheDocument();
+  });
+
+  it('follows a language switch with the status words of a loaded snapshot', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    useCatalogue('de');
+
+    render(SystemView);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 Wiederholung')).toBeInTheDocument();
+    });
+
+    useCatalogue('en');
+
+    await waitFor(() => {
+      expect(screen.getByText('1 retry')).toBeInTheDocument();
+    });
   });
 
   it('names the model status word ok from the catalogue', async () => {

@@ -90,6 +90,15 @@ describe('formatTime', () => {
       );
     });
 
+    it('renders a moment of today that has not happened yet as just now', () => {
+      // A clock ahead of "now" is a start that has not begun: it has no since form.
+      expectBothLocales(
+        (locale) => formatTime(at(10, 16, 12, 30), 'relative', locale, NOW),
+        'just now',
+        'gerade eben',
+      );
+    });
+
     it('renders the age in the unit that distance has when the moment is not today', () => {
       // The same distances, read across midnight: not today, so the age applies.
       const justAfterMidnight = new Date(2026, 9, 17, 0, 0, 30);

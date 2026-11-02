@@ -143,7 +143,7 @@ export function formatTime(
   if (style === 'short') {
     return shortText(date, locale, distance);
   }
-  if (distance === 0) {
+  if (distance === 0 && date.getTime() <= now.getTime()) {
     return word(locale, 'common.time.since', { time: clockText(date, locale) });
   }
   return ageText(Math.max(0, now.getTime() - date.getTime()), locale);
