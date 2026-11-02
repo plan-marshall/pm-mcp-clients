@@ -1,9 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import DecisionView from './DecisionView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type ChatReadBack, type DecisionEnvelope } from '../api/client';
+
+/** The `scrollIntoView` the document carried before a test replaced it. */
+const originalScrollIntoView = Element.prototype.scrollIntoView;
 
 describe('DecisionView component', () => {
   const mockDecision: DecisionEnvelope = {
@@ -106,6 +109,12 @@ describe('DecisionView component', () => {
     vi.spyOn(apiClient, 'endDecisionChat').mockRejectedValue(new Error('no chat'));
     vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
     localStorage.clear();
+  });
+
+  // A stub a test installed for the scroll is removed again, so no later test of this file runs
+  // with it.
+  afterEach(() => {
+    Element.prototype.scrollIntoView = originalScrollIntoView;
   });
 
   it('renders open decisions and waivers', async () => {
@@ -757,21 +766,28 @@ describe('DecisionView component', () => {
     });
 
     it('clears the local filter when it hides the requested decision', async () => {
-      // Arrange: both decisions load, and the filter keeps dec-101 out of the list.
+      // Arrange: the split layout shows the list beside the detail pane, and the filter keeps
+      // dec-101 out of the list.
+      localStorage.setItem('pm_view_layout_decisions', 'split');
       render(DecisionView);
-      await screen.findByText('Select merge strategy');
+      await screen.findByTestId('decision-summary-dec-101');
       const filter = (await screen.findByLabelText('Filter decisions')) as HTMLInputElement;
       await fireEvent.input(filter, { target: { value: 'waiver' } });
       await waitFor(() =>
-        expect(screen.queryByText('Select merge strategy')).not.toBeInTheDocument(),
+        expect(screen.queryByTestId('decision-summary-dec-101')).not.toBeInTheDocument(),
       );
 
       // Act: the palette names dec-101, which the filter hides.
       runtimeStore.update((state) => ({ ...state, selectedDecisionId: 'dec-101' }));
 
-      // Assert: the filter is cleared and the decision is shown.
-      await waitFor(() => expect(screen.getByText('Select merge strategy')).toBeInTheDocument());
+      // Assert: the filter is cleared, dec-101 is the selected decision, and its detail pane is
+      // not left empty.
+      const summary = await screen.findByTestId('decision-summary-dec-101');
       expect(filter.value).toBe('');
+      expect(summary).toHaveAttribute('aria-current', 'true');
+      const detail = summary.closest('.decisions-split')?.querySelector('.decisions-split__detail');
+      expect(detail).not.toBeNull();
+      expect(detail).toHaveTextContent('How should the branch be updated?');
     });
 
     it('scrolls to a decision whose card mounts after the request', async () => {
