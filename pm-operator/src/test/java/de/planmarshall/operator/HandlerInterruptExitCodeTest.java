@@ -49,8 +49,8 @@ import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * The interrupt signal at the prompt of every handler a verb can run ({@code CLI-CC-S-01}): the
- * handler maps it to the exit-code table's {@code 130} and sends nothing. Each case raises the
+ * The interrupt signal at the prompt of the handlers a verb can run on its own ({@code CLI-CC-S-01}):
+ * the handler maps it to the exit-code table's {@code 130} and sends nothing. Each case raises the
  * terminal's {@code INT} signal — what {@code Ctrl+C} raises — at the prompt the handler draws; the
  * typed key itself is proven on a real pseudo-terminal in {@code transcript.InterruptDialogueIT},
  * {@code transcript.ViewDialogueInterruptIT} and {@code transcript.DirectDialogueInterruptIT}.
