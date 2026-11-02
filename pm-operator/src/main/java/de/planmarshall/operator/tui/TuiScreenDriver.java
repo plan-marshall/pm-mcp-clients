@@ -403,6 +403,8 @@ public final class TuiScreenDriver {
         terminal.puts(InfoCmp.Capability.cursor_normal);
         terminal.puts(InfoCmp.Capability.exit_ca_mode);
         terminal.flush();
+        // The alternate screen is left here; a later restore must not leave it a second time.
+        alternateActive.set(false);
         display.reset();
     }
 
@@ -412,7 +414,6 @@ public final class TuiScreenDriver {
     }
 
     private void restore() {
-        alternateActive.set(false);
         restoreImmediately();
         removeShutdownHook();
     }
@@ -434,9 +435,13 @@ public final class TuiScreenDriver {
         }
         stopping.set(true);
         try {
-            terminal.puts(InfoCmp.Capability.keypad_local);
-            terminal.puts(InfoCmp.Capability.cursor_normal);
-            terminal.puts(InfoCmp.Capability.exit_ca_mode);
+            // A suspended view already left the alternate screen: writing the sequences again would
+            // send exit_ca_mode twice for one screen.
+            if (alternateActive.compareAndSet(true, false)) {
+                terminal.puts(InfoCmp.Capability.keypad_local);
+                terminal.puts(InfoCmp.Capability.cursor_normal);
+                terminal.puts(InfoCmp.Capability.exit_ca_mode);
+            }
             terminal.flush();
         } finally {
             restoreAttributes();

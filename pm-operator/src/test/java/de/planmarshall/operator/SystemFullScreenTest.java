@@ -509,6 +509,39 @@ class SystemFullScreenTest {
         }
     }
 
+    @Test
+    @DisplayName("an interrupted runtime act ends the system verb with 130 and restores the terminal")
+    void runtimeActInterruptEndsTheVerb() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var context = createContext(virtual);
+            context.setConsoleActive(true);
+            var out = new StringWriter();
+            var code = new AtomicInteger(-1);
+            var thread = new Thread(() -> code.set(PmOperator.execute(context, new PrintWriter(out),
+                                new PrintWriter(new StringWriter()), "system")));
+            thread.start();
+            await(() -> virtual.alternateScreenActive()
+                                && shows(virtual, "System \u00b7 pm-mcpd 0.9.1"));
+            virtual.type("a");
+            await(() -> shows(virtual, "Stop\u2026"));
+            virtual.type("s");
+            await(() -> out.toString().contains("Stop the runtime?"));
+
+            var deadline = System.nanoTime() + 5_000_000_000L;
+            while (thread.isAlive() && System.nanoTime() < deadline) {
+                virtual.terminal().raise(org.jline.terminal.Terminal.Signal.INT);
+                delay(20L);
+            }
+            join(thread);
+
+            assertEquals(StartPrompt.EXIT_INTERRUPTED, code.get(), out.toString());
+            assertFalse(virtual.alternateScreenActive());
+            assertTrue(virtual.screen().cursorVisible(), "the cursor stays hidden");
+            assertEquals(1, virtual.screen().alternation().exits(),
+                                "exit_ca_mode is sent once, not again by the restore");
+        }
+    }
+
     @Nested
     @DisplayName("the lifecycle line of the full-screen system view")
     class LifecycleLine {

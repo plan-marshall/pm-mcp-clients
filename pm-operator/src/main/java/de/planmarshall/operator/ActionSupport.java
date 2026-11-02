@@ -283,8 +283,11 @@ final class ActionSupport {
                                         "operator.actions.chat.follow_up_started",
                                         Map.of("description", OutputSafety.stripControlSequences(description))));
                     out.flush();
-                    return StartDialogue.run(context, out, EntryKind.PLAN,
+                    var code = StartDialogue.run(context, out, EntryKind.PLAN,
                                         new StartAnswers().withDescription(description));
+                    // The chat is one of the view's other dialogues: a start it opens leaves back
+                    // with it, so its interrupt never ends the console or the view with 130.
+                    return code == StartPrompt.EXIT_INTERRUPTED ? 0 : code;
                 }
                 return 0;
             }
