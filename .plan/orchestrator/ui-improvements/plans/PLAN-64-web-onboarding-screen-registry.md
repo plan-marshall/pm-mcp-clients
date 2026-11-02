@@ -57,7 +57,8 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/use-cases/plan.adoc (UC-S-02)`, `doc/claude_review/use-cases/proposals.adoc#UC-P-01` — read at `doc/claude_review/use-cases/plan.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main:doc/claude_review/use-cases/plan.adoc:26-29 row UC-S-02 -> UC-P-01 (screen registry); proposals.adoc:16 [#UC-P-01] exists
+  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/use-cases/plan.adoc:26 UC-S-02 -> UC-P-01; use-cases/proposals.adoc:16-17 UC-P-01 Every state has a designed screen; no generic state card
+- Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): screens.ts and screens.registry.test.ts still absent (created by this plan, correct); OnboardingView, SettingsView and onboarding.* catalogue changed since the anchor (PLAN-90 time/locale, a11y): re-read before D1.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

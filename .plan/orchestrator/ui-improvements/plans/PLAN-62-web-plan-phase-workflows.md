@@ -57,9 +57,10 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/use-cases/plan.adoc (UC-S-05)`, `doc/claude_review/use-cases/proposals.adoc#UC-P-04` — read at `doc/claude_review/use-cases/plan.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main doc/claude_review/use-cases/plan.adoc:50 UC-S-05 (Plan tree with phase workflows); use-cases/proposals.adoc:98 [#UC-P-04] exists
+  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/use-cases/plan.adoc:50 UC-S-05 -> UC-P-04; use-cases/proposals.adoc:98-99 UC-P-04 The plan shows its phase workflows and its intent
 - HYPOTHESIS: the instance diagram data of `PM-IMPL-5` is available through the API the plan view already reads — confirm/refute at `pm-api/src/main/java/de/planmarshall/api/process/` (verify-at-outline)
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: ProcessNode.java has subNodes, state and pruneReason; NodeState.NOT_TAKEN, PruneReason enum exist; PlanView reads it via client.ts:2978 getPlanProcess (GET /plans/{id}/process). PM-IMPL-5 is named only in the review/spec
+  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-api/.../process/ProcessNode.java:34,48-49 subNodes/state/pruneReason; NodeState.java:23 NOT_TAKEN; PruneReason.java:17 enum; client.ts:3107 getPlanProcess (GET /api/v1/plans/{id}/process, moved from :2978); PlanView.svelte:172 calls it
+- Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): client.ts line cited in older evidence moved (getPlanProcess now client.ts:3107); PLAN-43 shipped ObjectPage template, relevant to the PlanView rework; PlanView, NodeNarrative, processNode.ts and plan-view.spec.js changed (PLAN-90/a11y/token work).
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface
