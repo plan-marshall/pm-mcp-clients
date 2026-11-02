@@ -417,7 +417,7 @@ The run shows the step bar moving and each step's check lines as they report:
 
 * *Change* runs that step again as a later run (`onboard.next`), its current value as the proposal, as the machine's settings would; once the step is done, the result is shown again (`onboard.auto-result`) with the changed value.
 * A value the operator gave during the run has the reason `you were asked`.
-* ② enrols every supported harness found that can run workers, the first of them in the order of the client id the default (`onboard.auto.reason.all_supported`); a harness whose check fails stops the run in `harness.blocked` (xref:onboarding.adoc#harness-probe[harness-probe]), where the operator may leave it out. ③ allows every model the probes listed; for a harness that cannot list its models the run stops in `catalogue.select` for that harness alone, where the operator types its model ids, and the result shows them with `you were asked`.
+* ② enrols every supported harness found that can run workers, the first of them in the order of the harness id the default (`onboard.auto.reason.all_supported`); a harness whose check fails stops the run in `harness.blocked` (xref:onboarding.adoc#harness-probe[harness-probe]), where the operator may leave it out. ③ allows every model the probes listed; for a harness that cannot list its models the run stops in `catalogue.select` for that harness alone, where the operator types its model ids, and the result shows them with `you were asked`.
 
 Terminal: link:../terminal-client/05-transcripts-entry.adoc#t-auto[Terminal Client, transcript].
 

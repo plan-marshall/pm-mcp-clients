@@ -98,8 +98,8 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |Listener  Socket · {loopback, select, off {Loopback aus} other {Loopback {loopback_address}}} · {lan, select, off {Netzwerk aus} other {Netzwerk {lan_address} ({devices, plural, one {# Gerät} other {# Geräte}})}}
 
 |`system.runtime.relays_behind`
-|{count, plural, one {# host session runs} other {# host sessions run}} pm-mcp {version} · pm-operator client update
-|{count, plural, one {# Host-Sitzung läuft} other {# Host-Sitzungen laufen}} mit pm-mcp {version} · pm-operator client update
+|{count, plural, one {# harness session runs} other {# harness sessions run}} pm-mcp {version} · pm-operator harness update
+|{count, plural, one {# Harness-Sitzung läuft} other {# Harness-Sitzungen laufen}} mit pm-mcp {version} · pm-operator harness update
 
 |`system.work.title`
 |Work
@@ -426,8 +426,8 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |{version} wird geholt, geprüft und neben {installed} installiert, und die Links werden umgestellt. Dann stoppt die Runtime, wie du gewählt hast, und startet mit {version}; laufende Arbeit geht vom letzten gespeicherten Stand weiter. Schlägt ein Schritt fehl, bleibt {installed} oder wird wiederhergestellt, und du erfährst warum.
 
 |`system.upgrade.afterwards`
-|Afterwards: pm-operator client update for {count, plural, one {# host} other {# hosts}}.
-|Danach: pm-operator client update für {count, plural, one {# Host} other {# Hosts}}.
+|Afterwards: pm-operator harness update for {count, plural, one {# harness} other {# harnesses}}.
+|Danach: pm-operator harness update für {count, plural, one {# Harness} other {# Harnesses}}.
 
 |`system.upgrade.title`
 |Upgrading to {version}

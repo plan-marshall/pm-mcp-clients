@@ -7,7 +7,7 @@ link:../README.adoc[Design] » Plan View
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1], reached from link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
 
-_Relies on: link:../../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator] (the completion report), link:../../../../pm-mcp-core/doc/specification/store-schemas/03-findings-and-review-records.adoc#phase-sub-workflows[Phases as Sub-Workflows], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-resource[The Plan's Process as a Structure], link:../../../../pm-mcp-core/doc/specification/store-schemas/02-workflow-state-store.adoc#plan-history[The Plan's History], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-events[Events of the Process], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work]_
+_Relies on: link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator] (the completion report), link:../../../../pm-mcp-core/doc/specification/store-schemas/03-findings-and-review-records.adoc#phase-sub-workflows[Phases as Sub-Workflows], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-resource[The Plan's Process as a Structure], link:../../../../pm-mcp-core/doc/specification/store-schemas/02-workflow-state-store.adoc#plan-history[The Plan's History], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-events[Events of the Process], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work]_
 
 Status: `AGREED`. Shared by both clients: link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], link:../web-app/README.adoc[Web App].
 
@@ -133,7 +133,7 @@ A leaf shows what runs or ran in it:
 [#worker]
 == A Worker at Work
 
-Selecting a task of a leaf shows what its worker does, as it does it (link:../../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#worker-activity[What a Worker Does]):
+Selecting a task of a leaf shows what its worker does, as it does it (link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#worker-activity[What a Worker Does]):
 
 ----
   fix-relay › execute › execute.envelope · TASK-003
@@ -160,7 +160,7 @@ The line below the tokens says how large the plan's change was at its last captu
 [#tokens]
 == Tokens So Far
 
-The second line of the head says how many tokens the plan has used so far, with the split: `tokens so far   412 k (380 k in · 32 k out)` (link:../../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money]).
+The second line of the head says how many tokens the plan has used so far, with the split: `tokens so far   412 k (380 k in · 32 k out)` (link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money]).
 
 * *The figure* is the runtime's: the sum of the plan's usage records, `tokens = in + out`, in the number format of link:texts-and-languages.adoc#numbers[Texts and Languages, Numbers]. The client adds nothing up.
 * *Coverage*: where some tasks of the plan were measured and others not, the figure is a floor with `≥` and the count beside it (`≥ 412 k (≥ 380 k in · ≥ 32 k out) · 2 of 17 tasks not measured`). Where model calls happened but no task's usage was measured, the line says `not measured` with the coverage (`not measured · 3 of 3 tasks not measured`), never `0` and never a `≥`. Before the plan's first model call it says `none yet`.

@@ -115,8 +115,8 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Schließe die Prüfung ab
 
 |`control.hold.title`
-|{kind, select, stalled {{name} is stalled} condition {{name} holds: a condition} integrity_pause {{name} holds: an integrity pause} held {{name} holds: a held item} other {{name} holds: a failed landing}}
-|{kind, select, stalled {{name} steht} condition {{name} wird durch eine Bedingung aufgehalten} integrity_pause {{name} wird durch eine Integritätspause aufgehalten} held {{name} wird durch einen zurückgehaltenen Eintrag aufgehalten} other {{name} wird durch eine fehlgeschlagene Landung aufgehalten}}
+|{kind, select, stalled {{name} is stalled} condition {{name} holds: a condition} integrity_hold {{name} holds: an integrity hold} held {{name} holds: a held item} other {{name} holds: a failed landing}}
+|{kind, select, stalled {{name} steht} condition {{name} wird durch eine Bedingung aufgehalten} integrity_hold {{name} wird durch eine Integritätssperre aufgehalten} held {{name} wird durch einen zurückgehaltenen Eintrag aufgehalten} other {{name} wird durch eine fehlgeschlagene Landung aufgehalten}}
 
 |`control.hold.kind.stalled`
 |stalled
@@ -126,9 +126,9 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |a condition
 |eine Bedingung
 
-|`control.hold.kind.integrity_pause`
-|an integrity pause
-|eine Integritätspause
+|`control.hold.kind.integrity_hold`
+|an integrity hold
+|eine Integritätssperre
 
 |`control.hold.kind.held`
 |a held item
@@ -204,7 +204,7 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 
 |`control.hold.act.abort_plan`
 |Abort the plan…
-|Brich den Plan wegen der Integritätspause ab…
+|Brich den Plan wegen der Integritätssperre ab…
 
 |`control.hold.act.cancel_epic`
 |Cancel the epic…

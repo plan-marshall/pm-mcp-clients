@@ -20,7 +20,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 ----
   plan pause <plan_id> [--now|--after-task|--after-phase]
   plan start <plan_id>
-  plan cancel <plan_id> [--reason <text>] [--close-pr|--keep-pr]   on an integrity pause, its abort
+  plan cancel <plan_id> [--reason <text>] [--close-pr|--keep-pr]   on an integrity hold, its abort
   plan abandon <plan_id> [--reason <text>] [--close-pr|--keep-pr]
   plan chat <plan_id>                    the chat with the plan's planning role; on an ended plan, about its archive
   config <aspect> --plan <plan_id>       the plan's settings, in every state until it has ended (plan-defaults with
@@ -40,7 +40,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 * All are operator acts, in the console and as one shell command, except the reads `epic <epic_id>` (the view), `epic findings` and `epic watches`, which run without the checks, and direct verbs: an argument answers its state, a missing one is asked (the reason of a cancel or an abandon too), and `--no-input` stops there (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]).
 * An action the state does not allow is refused with the state and the actions it allows (`fix-relay is paused: start, abandon, chat, settings`).
 * *Settings* is an action of every state of a plan until it has ended: `config <aspect> --plan <plan_id>` sets the plan's own value of an aspect, where the plan first needs it or later (xref:02-levels.adoc#level-model[Machine, Project, Plan]; <<settings>>).
-* `plan cancel` on a plan held by an integrity pause is that pause's abort: its dialogue is `Abort fix-relay?`, and the plan ends `aborted` (link:../shared/work-actions.adoc#confirm-end[Ending a Plan]); its epic is told `cancelled` (link:../shared/work-actions.adoc#epic-told[The Epic Is Told]). A waiting or held plan is cancelled like a running one.
+* `plan cancel` on a plan held by an integrity hold is that hold's abort: its dialogue is `Abort fix-relay?`, and the plan ends `aborted` (link:../shared/work-actions.adoc#confirm-end[Ending a Plan]); its epic is told `cancelled` (link:../shared/work-actions.adoc#epic-told[The Epic Is Told]). A waiting or held plan is cancelled like a running one.
 * The reviews and the chat are dialogues; as one shell command they need a terminal, like every dialogue.
 
 [#full-screen]
@@ -69,7 +69,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 
 * *The menu is modal*: while it is open, only its mnemonics, `↑` `↓` with `Enter`, and `a` or `Esc` (which close it) act; the keys of the view wait until it is closed.
 * *Its mnemonics* are texts of the catalogue, `operator.actions.key.*` (xref:22-texts-actions.adoc#actions-keys[Keys]), in the language of the client; none is `a`, which closes the menu in every language.
-* *What it offers* follows the state, from the runtime (link:../shared/work-actions.adoc#plan-actions[A Plan's Actions], link:../shared/work-actions.adoc#epic-actions[An Epic's Actions]): a running plan, and one waiting for you, _Pause…_, _Cancel…_, _Chat…_, _Settings…_, the waiting one with the decision first (`!`); a pausing plan _Start_, _Cancel…_, _Chat…_, _Settings…_; a paused plan _Start_, _Abandon…_, _Chat…_, _Settings…_; a held plan those of a running one below the acts of its hold (<<holds>>), whose _end the plan_ is the menu's _Cancel…_ (on an integrity pause _Abort…_); an epic its actions by its state, _Archive…_ shown disabled while it lands (`A  Archive… (the ledger is landing)`); an ended plan or epic _Chat…_ alone (`fix-relay has ended: its view, and a chat about it`; <<chat-ended>>).
+* *What it offers* follows the state, from the runtime (link:../shared/work-actions.adoc#plan-actions[A Plan's Actions], link:../shared/work-actions.adoc#epic-actions[An Epic's Actions]): a running plan, and one waiting for you, _Pause…_, _Cancel…_, _Chat…_, _Settings…_, the waiting one with the decision first (`!`); a pausing plan _Start_, _Cancel…_, _Chat…_, _Settings…_; a paused plan _Start_, _Abandon…_, _Chat…_, _Settings…_; a held plan those of a running one below the acts of its hold (<<holds>>), whose _end the plan_ is the menu's _Cancel…_ (on an integrity hold _Abort…_); an epic its actions by its state, _Archive…_ shown disabled while it lands (`A  Archive… (the ledger is landing)`); an ended plan or epic _Chat…_ alone (`fix-relay has ended: its view, and a chat about it`; <<chat-ended>>).
 * An action with `…` leaves the view for its dialogue and returns to it afterwards; _Start_ and _Next plan_ act in place and the row follows. _Settings…_ asks which aspect (`plan-defaults`, `roles`, `integrations`, `providers`; <<settings>>) and runs `config <aspect> --plan <plan_id>`.
 * A plan's own pull request is shown by its number (`#214`), a terminal hyperlink (OSC 8) where the terminal shows one; the dialogues print its URL.
 
@@ -115,7 +115,7 @@ pm ›
 
 * `plan pause` without an answer asks; `--after-task` is the answer of the default, and `--no-input` without one stops.
 * `plan start` asks nothing (`plan.start`): a paused plan runs on from where it rests, a pausing one has its pause withdrawn.
-* `plan cancel` and `plan abandon` ask the reason when `--reason` is missing; it is required, and `--no-input` without it stops. Afterwards the consent asks for the act the runtime performs in the plan's state (_Cancel the plan_, _Abandon the plan_, or _Abort the plan_ on an integrity pause): `y` sends, `n` and `q` send nothing, and Enter has no default.
+* `plan cancel` and `plan abandon` ask the reason when `--reason` is missing; it is required, and `--no-input` without it stops. Afterwards the consent asks for the act the runtime performs in the plan's state (_Cancel the plan_, _Abandon the plan_, or _Abort the plan_ on an integrity hold): `y` sends, `n` and `q` send nothing, and Enter has no default.
 
 [#settings]
 === A Plan's Settings (`plan-settings.open`, `plan-settings.aspect`, `plan-settings.value`, `plan-settings.validate`, `plan-settings.apply`)
@@ -274,7 +274,7 @@ fix-relay · execute · held · holds: a condition since 14:02
 [source,text]
 ----
 pm › plan relay-cursor-order
-relay-cursor-order · execute · held · holds: an integrity pause since 10:31
+relay-cursor-order · execute · held · holds: an integrity hold since 10:31
   cause   the plan's store file references.json changed outside the runtime
   recorded  4,812 bytes   sha256 3f9a…c21e
   current   5,034 bytes   sha256 b70d…9a44
@@ -296,7 +296,7 @@ The acts of a hold are those of the shared design (link:../shared/work-actions.a
 |condition
 |the act it names as a dialogue: `g) grant read access to <project>…`, `c) add the credential <name>…`, or `b) raise the budget…`; then `r) retry   x) end the plan…`
 
-|integrity pause
+|integrity hold
 |the tampered file with its recorded and current size and digest; `c) accept the change…   x) abort the plan…` (an epic's: `x) cancel the epic…`); no diff and no restore, since the prior content is not kept
 
 |held item of an epic

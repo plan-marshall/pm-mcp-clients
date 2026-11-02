@@ -381,4 +381,10 @@ The status of a package is `open`, `blocked`, `done` or `dropped`; a `dropped` r
 |`operator-enrolment-verbs`
 |client work
 
+|link:harness-decision-log-hold-names.adoc[`harness-decision-log-hold-names`]
+|The code carries the documents' names: `harness_id`, the verb `pm-operator harness`, the harness detection, `pm-operator decision-log export`, the intent's `choices`, the hold `integrity_hold`; the old stored names stay readable
+|`open`
+|`operator-command-tree`
+|client work
+
 |===

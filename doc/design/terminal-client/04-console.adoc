@@ -53,9 +53,9 @@ Every kind of the closed list of `needs_operator` (link:../shared/plan-overview.
 |`1 waits for you` (`operator.console.badge.operator_waits`)
 |`plan <id>`, `epic <id>`
 
-|`integrity_pause`
-|`◆ Integrity pause · plan fix-relay: <reason>` (`operator.console.notice.integrity_pause`)
-|`1 integrity pause` (`operator.console.badge.integrity_pauses`)
+|`integrity_hold`
+|`◆ Integrity hold · plan fix-relay: <reason>` (`operator.console.notice.integrity_hold`)
+|`1 integrity hold` (`operator.console.badge.integrity_holds`)
 |`plan <id>`
 
 |`stalled`
@@ -89,7 +89,7 @@ Every kind of the closed list of `needs_operator` (link:../shared/plan-overview.
 |`project setup <id>`
 |===
 
-The holds among the kinds are exactly `stalled`, `condition`, `integrity_pause`, `held`, and `landing_failed`; the command of each opens the hold with its acts (xref:19-actions.adoc#holds[What Holds a Plan]). The open onboardings are badges of their own, not notices: `setup 3/7` for the machine (`operator.console.badge.setup`) and `setup <project_id> 5/9` for each (before its enrolment, the directory name of its checkout stands for the id) project's (`operator.console.badge.setup_project`).
+The holds among the kinds are exactly `stalled`, `condition`, `integrity_hold`, `held`, and `landing_failed`; the command of each opens the hold with its acts (xref:19-actions.adoc#holds[What Holds a Plan]). The open onboardings are badges of their own, not notices: `setup 3/7` for the machine (`operator.console.badge.setup`) and `setup <project_id> 5/9` for each (before its enrolment, the directory name of its checkout stands for the id) project's (`operator.console.badge.setup_project`).
 
 A notice is printed *above* the prompt: the line the operator is typing is taken off, the notice is printed, and the prompt is drawn again with the typed text and the cursor where they were. Nothing typed is lost, and nothing typed becomes an answer.
 
@@ -291,9 +291,9 @@ The console's own texts, area `operator`; the conventions of the texts are those
 |{count, plural, one {# waits for you} other {# wait for you}}
 |{count, plural, one {# wartet auf dich} other {# warten auf dich}}
 
-|`operator.console.badge.integrity_pauses`
-|{count, plural, one {# integrity pause} other {# integrity pauses}}
-|{count, plural, one {# Integritätspause} other {# Integritätspausen}}
+|`operator.console.badge.integrity_holds`
+|{count, plural, one {# integrity hold} other {# integrity holds}}
+|{count, plural, one {# Integritätssperre} other {# Integritätssperren}}
 
 |`operator.console.badge.stalled`
 |{count, plural, one {# stalled} other {# stalled}}
@@ -379,9 +379,9 @@ The console's own texts, area `operator`; the conventions of the texts are those
 |{scope, select, epic {Epic} other {Plan}} {name} waits for you: {what}
 |{scope, select, epic {Epic} other {Plan}} {name} wartet auf dich: {what}
 
-|`operator.console.notice.integrity_pause`
-|Integrity pause · plan {plan}: {reason}
-|Integritätspause · Plan {plan}: {reason}
+|`operator.console.notice.integrity_hold`
+|Integrity hold · plan {plan}: {reason}
+|Integritätssperre · Plan {plan}: {reason}
 
 |`operator.console.notice.stalled`
 |Plan {plan} stalled: {reason}

@@ -92,7 +92,7 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 
 |`control.end.title`
 |{action, select, cancel {Cancel} abandon {Abandon} other {Abort}} {plan}?
-|{plan} {action, select, cancel {abbrechen} abandon {aufgeben} other {wegen der Integritätspause abbrechen}}?
+|{plan} {action, select, cancel {abbrechen} abandon {aufgeben} other {wegen der Integritätssperre abbrechen}}?
 
 |`control.end.label.what_ends`
 |What ends
@@ -128,7 +128,7 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 
 |`control.end.afterwards`
 |the plan is archived as {outcome, select, cancelled {cancelled} abandoned {abandoned} other {aborted}}; its branch stays
-|der Plan wird als {outcome, select, cancelled {abgebrochen} abandoned {aufgegeben} other {wegen einer Integritätspause abgebrochen}} archiviert; sein Branch bleibt
+|der Plan wird als {outcome, select, cancelled {abgebrochen} abandoned {aufgegeben} other {wegen einer Integritätssperre abgebrochen}} archiviert; sein Branch bleibt
 
 |`control.end.keep`
 |{action, select, cancel {Keep it running} abandon {Keep it paused} other {Keep it held}}
@@ -136,7 +136,7 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 
 |`control.end.action`
 |{action, select, cancel {Cancel the plan} abandon {Abandon the plan} other {Abort the plan}}
-|{action, select, cancel {Brich den Plan ab} abandon {Gib den Plan auf} other {Brich den Plan wegen der Integritätspause ab}}
+|{action, select, cancel {Brich den Plan ab} abandon {Gib den Plan auf} other {Brich den Plan wegen der Integritätssperre ab}}
 
 |`control.settings.title`
 |Settings · {plan}

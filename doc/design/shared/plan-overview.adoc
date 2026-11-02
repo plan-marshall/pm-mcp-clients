@@ -66,7 +66,7 @@ Order: as the runtime serves it, projects that need the operator first, then by 
 |its icon, colour, and the word `epic`
 
 |Needs the operator
-|the marker with the count and the kind of the first, from one closed list: `decision`, `waiver`, `waits for you` (any other operator wait), the holds `stalled`, `needs a fix` (a condition), `integrity pause`, `held`, `landing failed`, and `setup` (`! 2 · decision`, `! stalled`); the machine's own items, `credential` and `cleanup due`, belong to no plan and show in the list of everything that waits and in the terminal's badges
+|the marker with the count and the kind of the first, from one closed list: `decision`, `waiver`, `waits for you` (any other operator wait), the holds `stalled`, `needs a fix` (a condition), `integrity hold`, `held`, `landing failed`, and `setup` (`! 2 · decision`, `! stalled`); the machine's own items, `credential` and `cleanup due`, belong to no plan and show in the list of everything that waits and in the terminal's badges
 |the same, counting its plans' items too, and `new findings` of its own
 
 |Title
@@ -99,7 +99,7 @@ Order: as the runtime serves it, projects that need the operator first, then by 
 |===
 
 * *A paused plan* is no item of what needs the operator: the operator paused it, and its state says so (`paused`); it carries the marker only for what else waits in it, a decision for example.
-* *The holds* are exactly `stalled`, `condition`, `integrity_pause`, `held`, and `landing_failed`; each opens its acts (link:work-actions.adoc#holds[What Holds a Plan]). The other kinds are answered where they are asked.
+* *The holds* are exactly `stalled`, `condition`, `integrity_hold`, `held`, and `landing_failed`; each opens its acts (link:work-actions.adoc#holds[What Holds a Plan]). The other kinds are answered where they are asked.
 * Order within a project: as the runtime serves it, those that need the operator first, then the newest started; the plans below an epic in the same order. Activity moves no row, and a client does not sort again. The time beside a row says how recently it was active.
 * Times are shown as durations, rounded to what matters (`25 min`, `2 h 10 min`, `3 d`), and computed at each redraw; nothing counts in place by the second.
 * Selecting a plan leads into its plan view (link:plan-view.adoc[Plan View]), selecting an epic into its epic view (link:epic-view.adoc[Epic View]); from either, its project is one step away, and from a plan of an epic its epic (link:plan-view.adoc#way-out[Plan View, Its Project and Its Epic]); selecting the marker leads to what waits: a decision or a waiver request (link:decisions.adoc[Decisions]), a hold (link:work-actions.adoc#holds[What Holds a Plan]), new findings (link:work-actions.adoc#review[Reviewing Findings or Watches]).
@@ -147,7 +147,7 @@ A project's ended plans and epics are a list of their own, apart from Running Wo
 ----
 
 * *Where*: per project, opened from the project's level of Running Work (_Ended work_) and from the project's actions in the explorer (link:project-explorer.adoc#actions[Actions of a Project]), also for a project with nothing running.
-* *A row*: the kind as in Running Work (<<distinction>>), the title, the outcome (a plan: merged, no change, handed back, returned, cancelled, abandoned, released, or aborted from an integrity pause; an epic: completed, cancelled, released; link:work-actions.adoc#outcomes[How a Plan Ends]), the plan's own pull request by its number with a link, the reason where the operator gave one, and when it ended.
+* *A row*: the kind as in Running Work (<<distinction>>), the title, the outcome (a plan: merged, no change, handed back, returned, cancelled, abandoned, released, or aborted from an integrity hold; an epic: completed, cancelled, released; link:work-actions.adoc#outcomes[How a Plan Ends]), the plan's own pull request by its number with a link, the reason where the operator gave one, and when it ended.
 * *Order and paging*: newest first, a page at a time, with _Newer_ and _Older_; the runtime pages, the client never loads the whole archive.
 * *Opening one*: an ended plan opens its plan view, an ended epic its epic view, both read-only and as it ended: the last state of every node, the outcome, the reason, and the end time in the head, and no action but _Chat_ (link:plan-view.adoc#live[Plan View, Live]; link:epic-view.adoc#layout[Epic View]).
 * *Chat*, on a row and in the view, opens a read-only chat about the ended plan or epic, whose one proposal is a follow-up plan (link:work-actions.adoc#chat-ended[A Chat About Ended Work]).
@@ -233,9 +233,9 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |waits for you
 |wartet auf dich
 
-|`overview.needs.integrity_pause`
-|integrity pause
-|Integritätspause
+|`overview.needs.integrity_hold`
+|integrity hold
+|Integritätssperre
 
 |`overview.needs.stalled`
 |stalled
@@ -355,7 +355,7 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 
 |`overview.ended.outcome`
 |{outcome, select, merged {merged} no_change {no change} handed_back {handed back} returned {returned} cancelled {cancelled} abandoned {abandoned} released {released} aborted {aborted} other {ended}}
-|{outcome, select, merged {zusammengeführt} no_change {ohne Änderung} handed_back {übergeben} returned {zurückgegeben} cancelled {abgebrochen} abandoned {aufgegeben} released {abgegeben} aborted {wegen einer Integritätspause abgebrochen} other {beendet}}
+|{outcome, select, merged {zusammengeführt} no_change {ohne Änderung} handed_back {übergeben} returned {zurückgegeben} cancelled {abgebrochen} abandoned {aufgegeben} released {abgegeben} aborted {wegen einer Integritätssperre abgebrochen} other {beendet}}
 
 |`overview.ended.epic_end`
 |{end, select, completed {completed} cancelled {cancelled} released {released} other {ended}}

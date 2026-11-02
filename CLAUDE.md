@@ -15,7 +15,7 @@ Structure Specification of the product (`doc/specification/module-structure.adoc
 documentation (requirements, specifications, implementation watch, roadmap, concept, developer and user documentation)
 lives there, not in this repository, except the specifications of the engine with their implementation watch, which
 live beside its code in `plan-marshall/pm-mcp-core` (`doc/Specification.adoc`, `doc/specification/`; the store
-schemas, the identifiers, the timeouts, the client profiles and model work among them). The one exception is the
+schemas, the identifiers, the timeouts, the harness profiles and model work among them). The one exception is the
 design of the two clients and of what they share, in `doc/design/` (index `doc/design/README.adoc`): it is the
 specification their implementation follows and lives here, beside the code. The use cases stay there, one set for both
 clients. Every concrete

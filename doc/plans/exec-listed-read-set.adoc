@@ -17,7 +17,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
   Anchor: link:../../../pm-mcp-core/doc/specification/job-runtime/02-confinement-and-environment.adoc#worker-read-set[Job Runtime § Worker Read Set].
   Proof: the cases of task 1 in `PmExecIT` on macOS.
 . `headless.readable_paths` in every shipped profile document of `pm-api`.
-  Anchor: link:../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#headless-readable-paths[Client Profiles § Readable Paths].
+  Anchor: link:../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#headless-readable-paths[Harness Profiles § Readable Paths].
   Proof: every shipped profile document validates with the member.
 
 == Trace
@@ -28,5 +28,5 @@ built from them before code (link:../../../plan-marshall-documentation/doc/devel
 
 * Requirements: link:../../../plan-marshall-documentation/doc/requirements/08-security.adoc#PM-SEC-5[PM-SEC-5]
 * Specification: link:../../../pm-mcp-core/doc/specification/job-runtime/02-confinement-and-environment.adoc#worker-read-set[Job Runtime § Worker Read Set];
-  link:../../../pm-mcp-core/doc/specification/client-profiles/01-profile-schema.adoc#headless-readable-paths[Client Profiles § Readable Paths]
+  link:../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#headless-readable-paths[Harness Profiles § Readable Paths]
 * Watch: link:../../../pm-mcp-core/doc/implementation-watch/job-runtime.adoc#PM-WATCH-JOB-38[PM-WATCH-JOB-38]

@@ -4,7 +4,7 @@ The client contract of [plan-marshall-mcp](https://github.com/plan-marshall/plan
 
 | Module | What it is |
 |---|---|
-| [`pm-api`](pm-api/) | Client contract of the daemon's API: socket client, on-demand start, runtime-token validation, and host detection |
+| [`pm-api`](pm-api/) | Client contract of the daemon's API: socket client, on-demand start, runtime-token validation, and harness detection |
 | [`pm-exec`](pm-exec/) | Job confinement launcher, native binary `pm-exec` |
 | [`pm-relay`](pm-relay/) | Harness- and model-facing CLI with the `serve` relay, native binary `pm-mcp` |
 | [`pm-operator`](pm-operator/) | Terminal operator CLI and interactive JLine console, native binary `pm-operator` |
@@ -105,7 +105,7 @@ java -jar pm-operator/target/pm-operator-0.1.0-SNAPSHOT.jar
 
 #### Operator Security Preconditions (`PM-SEC-3`)
 - `pm-operator` requires an **interactive terminal** (`System.console() != null`).
-- It refuses execution (exit code `4`) if coding-agent host signals (`ANTIGRAVITY_AGENT`, `CLAUDE_CODE`, `OPENCODE_CLIENT`, `CODEX_*`) are present in the environment.
+- It refuses execution (exit code `4`) if harness signals (`ANTIGRAVITY_AGENT`, `CLAUDE_CODE`, `OPENCODE_CLIENT`, `CODEX_*`) are present in the environment.
 - If testing inside an IDE or assistant terminal session where these variables are set, clear them:
   ```bash
   env -u ANTIGRAVITY_AGENT -u GEMINI_CLI -u CLAUDE_CODE -u OPENCODE_CLIENT java -jar pm-operator/target/pm-operator-0.1.0-SNAPSHOT.jar status

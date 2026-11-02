@@ -379,7 +379,7 @@ A colour never carries a meaning alone: every state also has its word and, where
 
 |Held or stalled
 |A warning or danger badge on the row that holds, with the hold's kind
-|`held`, `stalled`, `integrity pause`
+|`held`, `stalled`, `integrity hold`
 |===
 
 A badge is at most one per kind per row; a row that carries both a state and a hold shows the hold first. The overview's `! n` badge is the operator's one count of what needs them (link:../shared/plan-overview.adoc#item-rows[Plan Overview, A Plan, an Epic]); the reports entry's count is unread reports only and never mixes with it. A check that has not run says so; nothing is shown as done that was not checked.
