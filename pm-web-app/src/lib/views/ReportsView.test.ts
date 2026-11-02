@@ -284,8 +284,9 @@ describe('ReportsView component', () => {
     render(ReportsView);
 
     await waitFor(() => {
+      expect(screen.getByText('Nothing new')).toBeInTheDocument();
       expect(
-        screen.getByText('Nothing new. Reports you have read are not shown any more.'),
+        screen.getByText('Reports you have read are not shown any more.'),
       ).toBeInTheDocument();
     });
   });
@@ -620,8 +621,13 @@ describe('ReportsView component', () => {
     const active = document.querySelector('.report-card--active');
     expect(active).not.toBeNull();
     expect(active).toHaveAttribute('data-report-id', 'rep-0142');
-    // The row the reload serves no more is kept once, not duplicated.
+    // The row the reload serves no more is kept once, in the place its successor defines.
     expect(document.querySelectorAll('[data-report-id="rep-0142"]')).toHaveLength(1);
+    expect(
+      Array.from(document.querySelectorAll('.report-card')).map((card) =>
+        card.getAttribute('data-report-id'),
+      ),
+    ).toEqual(['rep-0142', 'rep-0139', 'rep-0131']);
   });
 
   it('drops the row of a detail another detail replaces', async () => {

@@ -274,6 +274,10 @@ Keys of the area `report`, shared by both clients (link:texts-and-languages.adoc
 |Nothing new
 |Nichts Neues
 
+|`report.list.empty.message`
+|Reports you have read are not shown any more.
+|Gelesene Berichte werden nicht mehr gezeigt.
+
 |`report.state.unread`
 |unread
 |ungelesen

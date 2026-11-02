@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 Status: `FINAL`.
 
-The list views of the web app (`/reports`, `/decisions`, the running and ended work of the overview, and the workstreams of an epic) hold their items client-side already. This design gives them one deliberate way to use a wide window and one shared way to find an item in the list: three layout modes and a filter-as-you-type control.
+The list views of the web app (`/reports`, `/decisions`, the running and ended work of the overview, and the workstreams of an epic) hold their items client-side already. This design gives each of them one deliberate way to use a wide window — one of the four page templates (<<templates>>) — and one shared way to find an item in the list: a filter-as-you-type control. The three layout modes of <<layouts>> remain only for the views that have not moved onto a template yet.
 
 It changes nothing about the data: no endpoint, no record, no server-side search, and no pagination semantics.
 

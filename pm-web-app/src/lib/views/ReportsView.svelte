@@ -876,7 +876,7 @@
         {:else if items.length === 0}
           <EmptyState
             title={$t('report.list.empty.title')}
-            message={$t('report.list.empty')}
+            message={$t('report.list.empty.message')}
             titleLevel={2}
           />
         {:else if matchingItems.length === 0}

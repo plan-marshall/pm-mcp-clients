@@ -155,9 +155,10 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
 
     // Should transition to empty state
     await expect(page.locator('.empty-state')).toBeVisible();
-    await expect(
-      page.getByText('Nothing new. Reports you have read are not shown any more.'),
-    ).toBeVisible();
+    await expect(page.locator('.empty-state')).toContainText('Nothing new');
+    await expect(page.locator('.empty-state')).toContainText(
+      'Reports you have read are not shown any more.',
+    );
     await expect(page.getByTestId('unread-count')).toHaveCount(0);
   });
 });
