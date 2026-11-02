@@ -55,11 +55,11 @@ import org.junit.jupiter.api.io.TempDir;
  * typed key itself is proven on a real pseudo-terminal in {@code transcript.InterruptDialogueIT},
  * {@code transcript.ViewDialogueInterruptIT} and {@code transcript.DirectDialogueInterruptIT}.
  *
- * <p>Three handlers keep the design's other answer: the view's other dialogues — the chat, a start,
- * the settings and a confirmation — leave back to the view as {@code q} does
- * ({@code 04-console.adoc#console-dialogue-handoff}), so they are not cases here; the settings'
- * nested mapping is {@link WorkActionDialogue}'s, and the confirmation's is
- * {@code OverviewFullScreenApp.askYes}'s, both recorded in the landing report with that sentence.
+ * <p>The view's other dialogues — the chat, a start, the settings and a confirmation — leave back to
+ * the view as {@code q} does ({@code 04-console.adoc#console-dialogue-handoff}). A start and the
+ * settings are cases here for their direct-verb path, where the interrupt is the exit-code table's
+ * 130; the view's own mapping of them to "leave back" lives in {@code OverviewFullScreenApp} and
+ * {@link WorkActionDialogue}, and the chat's and the confirmation's live there only.
  */
 @DisplayName("an interrupt signal at a handler a verb runs leaves with 130 and sends nothing")
 @EnabledOnOs({OS.MAC, OS.LINUX})
