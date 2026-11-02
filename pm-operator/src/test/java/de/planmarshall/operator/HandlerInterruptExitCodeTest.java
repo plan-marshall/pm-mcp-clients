@@ -252,6 +252,19 @@ class HandlerInterruptExitCodeTest {
         assertNoAct(server);
     }
 
+    @Test
+    @DisplayName("the device revoke confirmation interrupted leaves with 130 and deletes nothing")
+    void revokeConfirmationInterrupt() throws Exception {
+        var server = fixture.start((request, response) -> response.json(200, "{}"));
+
+        var code = interruptedAt("Revoke?",
+                            () -> PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err),
+                                                "web", "devices", "revoke", "dev-1", "--interactive"));
+
+        assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
+        assertNoAct(server);
+    }
+
     private static void assertNoAct(FakeRuntimeServer server) {
         var sent = server.requests().stream()
                             .filter(request -> !isRead(request.method()))
