@@ -175,17 +175,89 @@ describe('ReportsView component', () => {
     });
   });
 
-  it('marks a single report read when clicking Mark read', async () => {
+  it('marks a single report read from its row menu', async () => {
     render(ReportsView);
 
     await waitFor(() => {
       expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
     });
 
-    const markReadButtons = screen.getAllByRole('button', { name: /Mark read/i });
-    await fireEvent.click(markReadButtons[0]);
+    const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+    await fireEvent.click(within(card).getByRole('button', { name: /Report actions/i }));
+    await fireEvent.click(await within(card).findByRole('menuitem', { name: /Mark read/i }));
 
-    expect(apiClient.markReportRead).toHaveBeenCalledWith('rep-0142');
+    await waitFor(() => {
+      expect(apiClient.markReportRead).toHaveBeenCalledWith('rep-0142');
+    });
+  });
+
+  it('marks unread rows with a dot and the bold subject', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+    expect(card).toHaveAttribute('data-unread', 'true');
+    expect(card.querySelector('.report-card__unread-dot')).not.toBeNull();
+    expect(screen.getAllByText('unread').length).toBeGreaterThan(0);
+    expect(
+      screen.getByText('Ended: merged (#214)').classList.contains('report-card__subject--unread'),
+    ).toBe(true);
+  });
+
+  it('moves the row it opens from unread to read in the list beside the detail', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const details = screen.getAllByRole('button', { name: /Show the details/i });
+    await fireEvent.click(details[0]);
+
+    await waitFor(() => {
+      expect(document.querySelector('.completion-report')).not.toBeNull();
+    });
+    const active = document.querySelector('.report-card--active') as HTMLElement;
+    expect(active).toHaveAttribute('data-unread', 'false');
+    expect(active.querySelector('.report-card__unread-dot')).toBeNull();
+    expect(within(active).getByTestId('report-read-state')).toHaveTextContent('read');
+    expect(
+      screen.getByText('Ended: merged (#214)').classList.contains('report-card__subject--unread'),
+    ).toBe(false);
+  });
+
+  it('puts the machine reports in a group of their own', async () => {
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: [
+        {
+          id: 'rep-0130',
+          from: { project: 'pm-mcp-clients' },
+          kind: 'system.cleanup_due',
+          subject: 'Cleanup is due',
+          created_at: '2026-10-16T09:00:00Z',
+          created: 'today 09:00',
+        },
+        mockReports[0],
+      ],
+      unread_count: 2,
+      has_older: false,
+      older_count: 0,
+    });
+
+    render(ReportsView);
+    await screen.findByText('Cleanup is due');
+
+    const sections = [...document.querySelectorAll('.project-section')];
+    const machine = sections.find((section) =>
+      section.querySelector('.project-header')?.textContent?.includes('This machine'),
+    );
+    expect(machine).toBeDefined();
+    expect(machine?.textContent).toContain('Cleanup is due');
+    expect(machine?.textContent).not.toContain('Ended: merged (#214)');
+
+    const project = sections.find((section) =>
+      section.querySelector('.project-header')?.textContent?.includes('pm-mcp-clients'),
+    );
+    expect(project?.textContent).not.toContain('Cleanup is due');
   });
 
   it('marks all shown reports read', async () => {
@@ -277,7 +349,9 @@ describe('ReportsView component', () => {
 
     render(ReportsView);
 
-    const card = (await screen.findByText(/relay-docs waits/)).closest('.report-card');
+    const card = (
+      await screen.findByText('relay-docs waits: overlap with relay-auth-v2 (2 files)')
+    ).closest('.report-card');
     expect(card).not.toBeNull();
     await fireEvent.click(
       within(card as HTMLElement).getByRole('button', { name: /Show the details/i }),
@@ -491,29 +565,21 @@ describe('ReportsView component', () => {
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
   });
 
-  it('switches layouts and remembers the choice across a remount', async () => {
-    const { unmount } = render(ReportsView);
-    await screen.findByText('Ended: merged (#214)');
-    expect(document.querySelector('.reports-view')).toHaveAttribute('data-layout', 'comfortable');
-
-    await fireEvent.click(screen.getByTestId('layout-compact'));
-    expect(document.querySelector('.reports-view')).toHaveAttribute('data-layout', 'compact');
-    expect(localStorage.getItem('pm_view_layout_reports')).toBe('compact');
-
-    unmount();
+  it('sits on the triage template with no layout toggle', async () => {
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
-    expect(document.querySelector('.reports-view')).toHaveAttribute('data-layout', 'compact');
-    expect(screen.getByTestId('layout-compact')).toHaveAttribute('aria-pressed', 'true');
+
+    expect(document.querySelector('[data-testid="triage-page"]')).not.toBeNull();
+    expect(screen.queryByTestId('layout-split')).toBeNull();
+    expect(screen.queryByTestId('layout-compact')).toBeNull();
   });
 
-  it('keeps the list beside the detail in split mode and marks the active card', async () => {
+  it('keeps the list beside the detail and marks the active card', async () => {
     vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
 
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
 
-    await fireEvent.click(screen.getByTestId('layout-split'));
     const details = screen.getAllByRole('button', { name: /Show the details/i });
     await fireEvent.click(details[0]);
 
@@ -538,7 +604,6 @@ describe('ReportsView component', () => {
 
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
-    await fireEvent.click(screen.getByTestId('layout-split'));
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
 
     await waitFor(() => {
@@ -572,7 +637,6 @@ describe('ReportsView component', () => {
 
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
-    await fireEvent.click(screen.getByTestId('layout-split'));
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
 
     await waitFor(() => {
@@ -596,14 +660,13 @@ describe('ReportsView component', () => {
 
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
-    await fireEvent.click(screen.getByTestId('layout-split'));
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
       expect(document.querySelector('.completion-report')).not.toBeNull();
     });
 
     // The operator closes the detail before the read request settles.
-    await fireEvent.click(screen.getByRole('button', { name: /Back to reports/i }));
+    await fireEvent.click(screen.getByRole('button', { name: /^Back$/i }));
     expect(document.querySelector('.completion-report')).toBeNull();
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
 
@@ -629,12 +692,11 @@ describe('ReportsView component', () => {
 
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
-    await fireEvent.click(screen.getByTestId('layout-split'));
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
       expect(document.querySelector('.completion-report')).not.toBeNull();
     });
-    await fireEvent.click(screen.getByRole('button', { name: /Back to reports/i }));
+    await fireEvent.click(screen.getByRole('button', { name: /^Back$/i }));
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
 
     if (!resolveRead) throw new Error('the pending read request was never created');
@@ -657,7 +719,6 @@ describe('ReportsView component', () => {
 
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
-    await fireEvent.click(screen.getByTestId('layout-split'));
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
       expect(document.querySelector('.completion-report')).not.toBeNull();
@@ -690,7 +751,6 @@ describe('ReportsView component', () => {
 
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
-    await fireEvent.click(screen.getByTestId('layout-split'));
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
       expect(document.querySelector('.completion-report')).not.toBeNull();
@@ -716,7 +776,9 @@ describe('ReportsView component', () => {
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
 
-    await fireEvent.click(screen.getAllByRole('button', { name: /Mark read/i })[0]);
+    const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+    await fireEvent.click(within(card).getByRole('button', { name: /Report actions/i }));
+    await fireEvent.click(await within(card).findByRole('menuitem', { name: /Mark read/i }));
 
     await waitFor(() => {
       expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
@@ -748,7 +810,6 @@ describe('ReportsView component', () => {
 
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
-    await fireEvent.click(screen.getByTestId('layout-split'));
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
       expect(document.querySelector('.completion-report')).not.toBeNull();

@@ -1,17 +1,22 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { t, currentLocale } from '../i18n';
   import { formatDay, formatTime as formatInstant } from '../display/format';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
-  import Spinner from '../components/Spinner.svelte';
+  import IconButton from '../components/IconButton.svelte';
   import FilterInput from '../components/FilterInput.svelte';
-  import ViewLayoutToggle from '../components/ViewLayoutToggle.svelte';
+  import EmptyState from '../components/EmptyState.svelte';
+  import ErrorState from '../components/ErrorState.svelte';
+  import Skeleton from '../components/Skeleton.svelte';
+  import TriagePage from '../templates/TriagePage.svelte';
   import { apiClient, normaliseReportItem, type ReportItem, type ReportsPage } from '../api/client';
   import { runtimeStore, refreshReportsCount, syncUrl, navigateTo } from '../stores/runtime';
-  import { createViewLayout, VIEW_LAYOUTS } from '../stores/viewLayout';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
   import CompletionReportView from './CompletionReportView.svelte';
+
+  /** The group key of the reports the machine itself writes (`system.*`); it stands apart. */
+  const MACHINE_GROUP_KEY = '__machine__';
 
   let items = $state<ReportItem[]>([]);
   let unreadCount = $state(0);
@@ -19,7 +24,10 @@
   let olderCount = $state(0);
   let isLoading = $state(true);
   let isLoadingOlder = $state(false);
-  let errorMessage = $state('');
+  /** A failed read of the list; the list area says so and offers the retry. */
+  let loadError = $state('');
+  /** A failed act on an already loaded list (mark read, mark all, older page). */
+  let actionError = $state('');
 
   /** The coalesced quiet notice of the reports that arrived while this view was open. */
   let noticeCount = $state(0);
@@ -33,12 +41,8 @@
   let activeDetailPlanId = $state<string | null>(null);
   let syncedRouteReportPlan: string | null | undefined;
 
-  /** The layout choice, remembered per view. */
-  const layout = createViewLayout('reports', 'comfortable');
   /** The filter query; it runs over the loaded reports only. */
   let query = $state('');
-  /** The reports whose body the compact layout keeps open. */
-  let shownBodies = $state<Record<string, boolean>>({});
   /**
    * The reports read by opening their detail in the split layout: they stay in the list, marked
    * read, until the detail closes, so the selected row does not vanish under the pointer.
@@ -59,12 +63,19 @@
    */
   const countedReadIds = new Set<string>();
 
+  /** The row whose actions menu is open, or `null`. */
+  let openMenuId = $state<string | null>(null);
+  /** The menu the open row drew, for its keys and its focus. */
+  let menuHost: HTMLDivElement | undefined = $state(undefined);
+  /** The control that opened the menu, so closing it puts the focus back there. */
+  let menuTrigger: HTMLElement | undefined;
+
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
 
   interface ProjectGroup {
-    project: string;
-    projectId?: string;
+    key: string;
+    isMachine: boolean;
     epicGroups: Record<string, ReportItem[]>;
     planItems: ReportItem[];
     projectItems: ReportItem[];
@@ -99,18 +110,17 @@
     const projectMap: Record<string, ProjectGroup> = {};
 
     for (const item of matchingItems) {
-      const proj = item.from?.project || $t('report.list.machine');
-      if (!projectMap[proj]) {
-        projectMap[proj] = {
-          project: proj,
-          projectId: item.from?.project,
+      const key = groupKeyOf(item);
+      if (!projectMap[key]) {
+        projectMap[key] = {
+          key,
+          isMachine: key === MACHINE_GROUP_KEY,
           epicGroups: {},
           planItems: [],
           projectItems: [],
         };
       }
-      const group = projectMap[proj];
-      if (!group.projectId && item.from?.project) group.projectId = item.from.project;
+      const group = projectMap[key];
       if (item.from?.epic) {
         if (!group.epicGroups[item.from.epic]) {
           group.epicGroups[item.from.epic] = [];
@@ -125,6 +135,27 @@
 
     return Object.values(projectMap);
   });
+
+  /**
+   * The group a report belongs to: its project, or the group of the machine when the runtime wrote
+   * it about the machine itself (`system.*`). A machine report stays out of a project's group even
+   * where the wire names the project that happened to be running.
+   *
+   * @param item a report
+   * @returns its group key
+   */
+  function groupKeyOf(item: ReportItem): string {
+    if (item.kind?.startsWith('system.')) return MACHINE_GROUP_KEY;
+    return item.from?.project || MACHINE_GROUP_KEY;
+  }
+
+  /**
+   * @param item a report
+   * @returns whether the list still shows it as unread
+   */
+  function isUnread(item: ReportItem): boolean {
+    return !retainedReadIds[item.id];
+  }
 
   /**
    * The fields the list can show for one report.
@@ -317,7 +348,7 @@
 
   async function loadReports() {
     isLoading = true;
-    errorMessage = '';
+    loadError = '';
     try {
       const page: ReportsPage = await apiClient.getReports();
       items = page.items || [];
@@ -332,7 +363,7 @@
       olderCount = page.older_count;
       void refreshReportsCount();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('report.list.load_failed');
+      loadError = (err as Error)?.message || $t('report.list.load_failed');
     } finally {
       isLoading = false;
     }
@@ -348,7 +379,7 @@
       hasOlder = page.has_older;
       olderCount = page.older_count;
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('report.list.older_failed');
+      actionError = (err as Error)?.message || $t('report.list.older_failed');
     } finally {
       isLoadingOlder = false;
     }
@@ -399,7 +430,7 @@
         delete retainedReadIds[item.id];
         retainedReadIds = { ...retainedReadIds };
       }
-      errorMessage = (err as Error)?.message || $t('report.list.mark_read_failed');
+      actionError = (err as Error)?.message || $t('report.list.mark_read_failed');
     }
   }
 
@@ -414,7 +445,7 @@
       unreadCount = 0;
       void refreshReportsCount();
     } catch (err: unknown) {
-      errorMessage = (err as Error)?.message || $t('report.list.mark_all_failed');
+      actionError = (err as Error)?.message || $t('report.list.mark_all_failed');
     }
   }
 
@@ -540,7 +571,7 @@
 
     // Opening the details reads the report, in the same act. The split layout keeps the row it
     // read in place, so the list beside the detail does not lose its selection.
-    void markRead(item, $layout === 'split' && opensCompletionDetail(item));
+    void markRead(item, opensCompletionDetail(item));
 
     const kind = subjectKindOf(item);
     if (kind === 'plan' || kind === 'plan_completed') {
@@ -598,6 +629,129 @@
 
   /**
    * @param report a report
+   * @returns the accessible name of its actions menu, carrying the subject so two menus differ
+   */
+  function rowMenuLabel(report: ReportItem): string {
+    const subject = (report.subject ?? '').trim();
+    return subject
+      ? `${$t('report.list.row_menu')}: ${subject}`
+      : $t('report.list.row_menu');
+  }
+
+  /** @returns the entries of the open menu a person can reach */
+  function rowMenuItems(): HTMLButtonElement[] {
+    if (!menuHost) return [];
+    return Array.from(menuHost.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).filter(
+      (entry) => !entry.disabled,
+    );
+  }
+
+  /**
+   * Opens one row's actions menu and puts the focus on its first entry.
+   *
+   * @param id the report whose menu opens
+   * @param trigger the control that opened it, which the focus returns to
+   */
+  async function openRowMenu(id: string, trigger?: HTMLElement): Promise<void> {
+    openMenuId = id;
+    menuTrigger = trigger;
+    await tick();
+    rowMenuItems()[0]?.focus();
+  }
+
+  /**
+   * @param returnFocus whether the focus goes back to the control that opened the menu
+   */
+  async function closeRowMenu(returnFocus = false): Promise<void> {
+    openMenuId = null;
+    if (returnFocus) {
+      await tick();
+      menuTrigger?.focus();
+    }
+  }
+
+  /**
+   * @param id the report whose menu is asked for
+   * @param trigger the control the click came from
+   */
+  function toggleRowMenu(id: string, trigger?: HTMLElement): void {
+    if (openMenuId === id) {
+      void closeRowMenu();
+    } else {
+      void openRowMenu(id, trigger);
+    }
+  }
+
+  /**
+   * Chosen from the row menu: mark the report read.
+   *
+   * @param item the report the act names
+   */
+  async function chooseMarkRead(item: ReportItem): Promise<void> {
+    await closeRowMenu(true);
+    await markRead(item);
+  }
+
+  /** @param event the key press inside an open menu */
+  function onMenuKeydown(event: KeyboardEvent): void {
+    const entries = rowMenuItems();
+    if (event.key === 'Escape') {
+      event.stopPropagation();
+      void closeRowMenu(true);
+      return;
+    }
+    if (event.key === 'Tab') {
+      // The entries are not in the tab sequence, so letting the default run from a node that the
+      // close is about to remove would drop the focus on the body. Put it back on the trigger and
+      // let the next Tab continue from there.
+      event.preventDefault();
+      void closeRowMenu(true);
+      return;
+    }
+    if (event.key === 'Home') {
+      event.preventDefault();
+      entries[0]?.focus();
+      return;
+    }
+    if (event.key === 'End') {
+      event.preventDefault();
+      entries[entries.length - 1]?.focus();
+      return;
+    }
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
+      return;
+    }
+    event.preventDefault();
+    if (entries.length === 0) {
+      return;
+    }
+    const current = entries.indexOf(document.activeElement as HTMLButtonElement);
+    const step = event.key === 'ArrowDown' ? 1 : -1;
+    const next = (current + step + entries.length) % entries.length;
+    entries[next]?.focus();
+  }
+
+  /** @param event the key press anywhere, `Escape` closing a menu the focus has left */
+  function closeOnEscape(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && openMenuId !== null) {
+      void closeRowMenu(true);
+    }
+  }
+
+  /** @param event the click, closing a menu the click landed outside of */
+  function closeOnOutside(event: MouseEvent): void {
+    const target = event.target as Node;
+    if (
+      openMenuId !== null &&
+      !menuHost?.contains(target) &&
+      !menuTrigger?.contains(target)
+    ) {
+      void closeRowMenu();
+    }
+  }
+
+  /**
+   * @param report a report
    * @returns the name the deleted-subject explanation uses
    */
   function subjectLabelOf(report: ReportItem): string {
@@ -634,192 +788,12 @@
   }
 </script>
 
-<div
-  class="reports-view"
-  class:layout-split={$layout === 'split'}
-  class:layout-compact={$layout === 'compact'}
-  data-layout={$layout}
->
-  {#snippet reportCard(item: ReportItem)}
-    {@const isActive = activeDetailPlanId !== null && activeDetailPlanId === planIdOf(item)}
-    <div
-      class="report-card"
-      class:report-card--deleted={item.subject_deleted}
-      class:report-card--active={isActive}
-      aria-current={isActive ? 'true' : undefined}
-      data-report-id={item.id}
-    >
-      <div class="report-card__header">
-        <span class="item-glyph" aria-hidden="true">▸</span>
-        <span class="report-from mono">
-          {#if item.from?.project}
-            <button
-              type="button"
-              class="path-link"
-              aria-label={$t('report.from.open_project', { project: item.from.project })}
-              onclick={() => openFromPart('project', item)}
-            >
-              {item.from.project}
-            </button>
-          {:else}
-            <span class="text-muted">{$t('report.list.machine')}</span>
-          {/if}
-          {#if item.from?.epic}
-            <span class="path-sep" aria-hidden="true">›</span>
-            <button
-              type="button"
-              class="path-link"
-              aria-label={$t('report.from.open_epic', { epic: item.from.epic })}
-              onclick={() => openFromPart('epic', item)}
-            >
-              {item.from.epic}
-            </button>
-          {/if}
-          {#if item.from?.plan}
-            <span class="path-sep" aria-hidden="true">›</span>
-            <button
-              type="button"
-              class="path-link"
-              aria-label={$t('report.from.open_plan', { plan: item.from.plan })}
-              onclick={() => openFromPart('plan', item)}
-            >
-              {item.from.plan}
-            </button>
-          {/if}
-        </span>
-        <span class="item-subject font-semibold">{item.subject}</span>
-        {#if retainedReadIds[item.id]}
-          <span class="item-state text-muted" data-testid="report-read-state">
-            {$t('report.state.read')}
-          </span>
-        {/if}
-        <span class="item-time text-muted" title={reportMoment(item)}
-          >{formatReportTime(item)}</span
-        >
-      </div>
+<svelte:window onkeydown={closeOnEscape} onclick={closeOnOutside} />
 
-      {#if item.body || item.summary}
-        {@const bodyOpen = $layout !== 'compact' || shownBodies[item.id]}
-        <div
-          class="report-card__body text-muted"
-          class:report-card__body--clamped={$layout === 'compact' && !bodyOpen}
-          data-model-text
-        >
-          {item.body || item.summary}
-        </div>
-        {#if $layout === 'compact'}
-          <button
-            type="button"
-            class="body-disclosure"
-            aria-expanded={bodyOpen}
-            onclick={() => (shownBodies[item.id] = !shownBodies[item.id])}
-          >
-            {bodyOpen ? $t('report.body.less') : $t('report.body.more')}
-          </button>
-        {/if}
-      {/if}
-
-      <div class="report-card__actions">
-        {#if hasDetail(item)}
-          {#if item.subject_deleted}
-            <button
-              class="action-btn action-btn--detail"
-              disabled
-              data-advisory={$t('report.action.details.deleted.title', {
-                item: subjectLabelOf(item),
-                date: reportDay(item),
-              })}
-            >
-              {$t('report.action.details')}
-            </button>
-            <span class="deleted-note text-muted">
-              {$t('report.detail.deleted_by_cleanup', {
-                item: subjectLabelOf(item),
-                date: reportDay(item),
-              })}
-            </span>
-          {:else}
-            <button
-              class="action-btn action-btn--detail"
-              data-advisory={$t('report.action.details.title')}
-              onclick={() => openDetail(item)}
-            >
-              {$t('report.action.details')}
-            </button>
-          {/if}
-        {/if}
-        <button
-          class="action-btn action-btn--read"
-          data-advisory={$t('report.action.mark_read.title')}
-          onclick={() => markRead(item)}
-        >
-          {$t('report.action.mark_read')}
-        </button>
-      </div>
-    </div>
-  {/snippet}
-
-  <div class="arrival-notice" role="status" aria-live="polite" data-testid="report-arrival-notice">
-    {#if noticeCount === 1}
-      {$t('report.notice.one', { from: noticeFrom, subject: noticeSubject })}
-    {:else if noticeCount > 1}
-      {$t('report.notice.many', { count: noticeCount, from: noticeFrom })}
-    {/if}
-  </div>
-
-  {#snippet listPane()}
-    <div class="reports-container">
-      <!-- Header -->
-      <header class="reports-header">
-        <div class="reports-header__title-row">
-          <h1 class="reports-heading">
-            {$t('report.list.title')}
-            {#if unreadCount > 0}
-              <span class="unread-pill">
-                {$t('report.list.unread', { count: unreadCount })}
-              </span>
-            {/if}
-          </h1>
-          <div class="reports-header__actions">
-            <ViewLayoutToggle
-              layout={$layout}
-              modes={VIEW_LAYOUTS}
-              onchange={(mode) => layout.set(mode)}
-            />
-            {#if items.length > 0}
-              <Button
-                variant="secondary"
-                size="small"
-                onclick={markAllShownRead}
-                data-advisory={$t('report.action.mark_all_read.title')}
-              >
-                {$t('report.action.mark_all_read')}
-              </Button>
-            {/if}
-          </div>
-        </div>
-      </header>
-
-      {#if errorMessage}
-        <div class="error-banner" role="alert">
-          <p>{errorMessage}</p>
-          <Button variant="secondary" size="small" onclick={loadReports}>
-            {$t('web.common.retry')}
-          </Button>
-        </div>
-      {/if}
-
-      {#if isLoading}
-        <div class="loading-state">
-          <Spinner size="2.5rem" label={$t('report.list.loading')} />
-        </div>
-      {:else if items.length === 0}
-        <div class="empty-state">
-          <p class="empty-title">
-            {$t('report.list.empty')}
-          </p>
-        </div>
-      {:else}
+<div class="reports-view">
+  <TriagePage selected={activeDetailPlanId !== null}>
+    <div slot="filters">
+      {#if items.length > 0 && !isLoading}
         <FilterInput
           value={query}
           label={$t('report.filter.label')}
@@ -827,50 +801,105 @@
           resultCount={matchingItems.length}
           onchange={(value) => (query = value)}
         />
+      {/if}
+    </div>
 
-        {#if matchingItems.length === 0}
+    <div slot="list">
+      <div class="reports-container">
+        <!-- Header -->
+        <header class="reports-header">
+          <div class="reports-header__title-row">
+            <h1 class="reports-heading">{$t('report.list.title')}</h1>
+            {#if unreadCount > 0}
+              <span class="unread-count" data-testid="unread-count">
+                {$t('report.list.unread', { count: unreadCount })}
+              </span>
+            {/if}
+            <div class="reports-header__actions">
+              {#if items.length > 0}
+                <Button
+                  variant="secondary"
+                  size="small"
+                  onclick={markAllShownRead}
+                  title={$t('report.action.mark_all_read.title')}
+                >
+                  {$t('report.action.mark_all_read')}
+                </Button>
+              {/if}
+            </div>
+          </div>
+        </header>
+
+        {#if actionError}
+          <div class="error-line" role="alert">
+            <p>{actionError}</p>
+            <Button variant="ghost" size="small" onclick={loadReports}>
+              {$t('web.common.retry')}
+            </Button>
+          </div>
+        {/if}
+
+        {#if isLoading}
+          <div class="loading-state">
+            <Skeleton shape="card" rows={3} label={$t('report.list.loading')} />
+          </div>
+        {:else if loadError}
+          <ErrorState
+            title={$t('report.list.load_failed')}
+            message={loadError}
+            actionLabel={$t('web.common.retry')}
+            onAct={loadReports}
+            titleLevel={2}
+          />
+        {:else if items.length === 0}
+          <EmptyState
+            title={$t('report.list.empty.title')}
+            message={$t('report.list.empty')}
+            titleLevel={2}
+          />
+        {:else if matchingItems.length === 0}
           <div class="empty-state" data-testid="report-filter-empty">
             <p class="empty-title">{$t('report.filter.no_matches')}</p>
           </div>
         {:else}
           <!-- Grouped List -->
           <div class="reports-tree">
-            {#each groupedReports as pGroup}
+            {#each groupedReports as pGroup (pGroup.key)}
               <section class="project-section">
                 <h2 class="project-header">
                   <span class="project-glyph" aria-hidden="true"><Icon name="state.dot" size={16} /></span>
-                  {#if pGroup.projectId}
-                    <button
-                      type="button"
-                      class="group-link"
-                      aria-label={$t('report.from.open_project', { project: pGroup.project })}
-                      onclick={() =>
-                        navigateTo('projects', { explorerProjectId: pGroup.projectId })}
-                    >
-                      {pGroup.project}
-                    </button>
-                  {:else}
+                  {#if pGroup.isMachine}
                     <span class="project-title">{$t('report.list.machine')}</span>
+                  {:else}
+                    <Button
+                      variant="ghost"
+                      size="small"
+                      aria-label={$t('report.from.open_project', { project: pGroup.key })}
+                      onclick={() =>
+                        navigateTo('projects', { explorerProjectId: pGroup.key })}
+                    >
+                      {pGroup.key}
+                    </Button>
                   {/if}
                 </h2>
 
                 <div class="project-content">
                   <!-- Epic groups -->
-                  {#each Object.entries(pGroup.epicGroups) as [epicName, epicItems]}
+                  {#each Object.entries(pGroup.epicGroups) as [epicName, epicItems] (epicName)}
                     <div class="epic-section">
                       <h3 class="epic-header">
                         <span class="epic-glyph" aria-hidden="true">◇</span>
-                        <button
-                          type="button"
-                          class="group-link"
+                        <Button
+                          variant="ghost"
+                          size="small"
                           aria-label={$t('report.from.open_epic', { epic: epicName })}
                           onclick={() => openFromPart('epic', epicItems[0])}
                         >
                           {epicName}
-                        </button>
+                        </Button>
                       </h3>
                       <div class="items-list">
-                        {#each epicItems as item}
+                        {#each epicItems as item (item.id)}
                           {@render reportCard(item)}
                         {/each}
                       </div>
@@ -880,7 +909,7 @@
                   <!-- Plan items under project without epic -->
                   {#if pGroup.planItems.length > 0}
                     <div class="items-list">
-                      {#each pGroup.planItems as item}
+                      {#each pGroup.planItems as item (item.id)}
                         {@render reportCard(item)}
                       {/each}
                     </div>
@@ -889,7 +918,7 @@
                   <!-- Project-level items -->
                   {#if pGroup.projectItems.length > 0}
                     <div class="items-list">
-                      {#each pGroup.projectItems as item}
+                      {#each pGroup.projectItems as item (item.id)}
                         {@render reportCard(item)}
                       {/each}
                     </div>
@@ -901,7 +930,7 @@
         {/if}
 
         <!-- Pagination -->
-        {#if hasOlder}
+        {#if hasOlder && !isLoading && !loadError && items.length > 0}
           {#if query.trim().length > 0}
             <p class="loaded-only-hint" data-testid="loaded-only-hint">
               {$t('report.filter.loaded_only')}
@@ -912,7 +941,7 @@
               variant="secondary"
               disabled={isLoadingOlder}
               onclick={loadOlder}
-              data-advisory={$t('report.list.show_older.title')}
+              title={$t('report.list.show_older.title')}
             >
               {#if isLoadingOlder}
                 {$t('report.list.loading_older')}
@@ -924,66 +953,168 @@
             </Button>
           </div>
         {/if}
+      </div>
+    </div>
+
+    <div slot="detail">
+      {#if activeDetailPlanId}
+        {#key activeDetailPlanId}
+          <CompletionReportView planId={activeDetailPlanId} onClose={closeDetail} />
+        {/key}
+      {:else}
+        <p class="split-placeholder">{$t('report.split.select')}</p>
       {/if}
     </div>
-  {/snippet}
+  </TriagePage>
+</div>
 
-  {#if $layout === 'split'}
-    <div class="reports-split" class:reports-split--has-detail={activeDetailPlanId !== null}>
-      <div class="reports-split__list">
-        {@render listPane()}
-      </div>
-      <div
-        class="reports-split__detail"
-        class:reports-split__detail--empty={activeDetailPlanId === null}
-      >
-        {#if activeDetailPlanId}
-          {#key activeDetailPlanId}
-            <CompletionReportView planId={activeDetailPlanId} onClose={closeDetail} />
-          {/key}
+{#snippet reportCard(item: ReportItem)}
+  {@const isActive = activeDetailPlanId !== null && activeDetailPlanId === planIdOf(item)}
+  {@const unread = isUnread(item)}
+  <article
+    class="report-card"
+    class:report-card--deleted={item.subject_deleted}
+    class:report-card--active={isActive}
+    class:report-card--unread={unread}
+    aria-current={isActive ? 'true' : undefined}
+    data-report-id={item.id}
+    data-unread={unread ? 'true' : 'false'}
+  >
+    <div class="report-card__header">
+      {#if unread}
+        <span class="report-card__unread-dot" aria-hidden="true"></span>
+        <span class="sr-only">{$t('report.state.unread')}</span>
+      {:else}
+        <span class="item-state text-muted" data-testid="report-read-state">
+          {$t('report.state.read')}
+        </span>
+      {/if}
+      <span class="report-from mono">
+        {#if item.from?.project}
+          <Button
+            variant="ghost"
+            size="small"
+            aria-label={$t('report.from.open_project', { project: item.from.project })}
+            onclick={() => openFromPart('project', item)}
+          >
+            {item.from.project}
+          </Button>
         {:else}
-          <p class="split-placeholder">{$t('report.split.select')}</p>
+          <span class="text-muted">{$t('report.list.machine')}</span>
+        {/if}
+        {#if item.from?.epic}
+          <span class="path-sep" aria-hidden="true">›</span>
+          <Button
+            variant="ghost"
+            size="small"
+            aria-label={$t('report.from.open_epic', { epic: item.from.epic })}
+            onclick={() => openFromPart('epic', item)}
+          >
+            {item.from.epic}
+          </Button>
+        {/if}
+        {#if item.from?.plan}
+          <span class="path-sep" aria-hidden="true">›</span>
+          <Button
+            variant="ghost"
+            size="small"
+            aria-label={$t('report.from.open_plan', { plan: item.from.plan })}
+            onclick={() => openFromPart('plan', item)}
+          >
+            {item.from.plan}
+          </Button>
+        {/if}
+      </span>
+      <span class="report-card__subject" class:report-card__subject--unread={unread}>
+        {item.subject}
+      </span>
+      <span class="item-time text-muted" title={reportMoment(item)}
+        >{formatReportTime(item)}</span
+      >
+    </div>
+
+    {#if item.body || item.summary}
+      <div class="report-card__body text-muted" data-model-text>
+        {item.body || item.summary}
+      </div>
+    {/if}
+
+    <div class="report-card__actions">
+      {#if hasDetail(item)}
+        <Button
+          variant="secondary"
+          size="small"
+          disabled={item.subject_deleted}
+          disabledReason={item.subject_deleted
+            ? $t('report.action.details.deleted.title', {
+                item: subjectLabelOf(item),
+                date: reportDay(item),
+              })
+            : undefined}
+          title={$t('report.action.details.title')}
+          onclick={() => openDetail(item)}
+        >
+          {$t('report.action.details')}
+        </Button>
+        {#if item.subject_deleted}
+          <span class="deleted-note text-muted">
+            {$t('report.detail.deleted_by_cleanup', {
+              item: subjectLabelOf(item),
+              date: reportDay(item),
+            })}
+          </span>
+        {/if}
+      {/if}
+      <div class="report-card__menu">
+        <IconButton
+          icon="act.more"
+          size="sm"
+          label={$t('report.list.row_menu')}
+          aria-label={rowMenuLabel(item)}
+          advisory={$t('report.list.row_menu.title')}
+          aria-haspopup="menu"
+          aria-expanded={openMenuId === item.id}
+          onclick={(event: MouseEvent) => toggleRowMenu(item.id, event.currentTarget as HTMLElement)}
+        />
+        {#if openMenuId === item.id}
+          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+          <div
+            class="report-card__menu-list"
+            role="menu"
+            tabindex="-1"
+            bind:this={menuHost}
+            onkeydown={onMenuKeydown}
+          >
+            <button
+              type="button"
+              role="menuitem"
+              tabindex="-1"
+              class="report-card__menu-item"
+              title={$t('report.action.mark_read.title')}
+              onclick={() => chooseMarkRead(item)}
+            >
+              {$t('report.action.mark_read')}
+            </button>
+          </div>
         {/if}
       </div>
     </div>
-  {:else if activeDetailPlanId}
-    {#key activeDetailPlanId}
-      <CompletionReportView planId={activeDetailPlanId} onClose={closeDetail} />
-    {/key}
-  {:else}
-    {@render listPane()}
+  </article>
+{/snippet}
+
+<div class="arrival-notice" role="status" aria-live="polite" data-testid="report-arrival-notice">
+  {#if noticeCount === 1}
+    {$t('report.notice.one', { from: noticeFrom, subject: noticeSubject })}
+  {:else if noticeCount > 1}
+    {$t('report.notice.many', { count: noticeCount, from: noticeFrom })}
   {/if}
 </div>
 
 <style>
+  /* The triage template owns the page's width and its split; the view owns its items. */
   .reports-view {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: var(--space-6) var(--space-4);
-  }
-
-  /* The split layout uses the window: the list keeps a readable measure, the detail takes the rest. */
-  .reports-view.layout-split {
-    max-width: none;
-  }
-
-  .reports-split {
-    display: grid;
-    grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
-    gap: var(--space-6);
-    align-items: start;
-  }
-
-  .reports-split__list {
-    min-width: 0;
-    max-height: calc(100vh - var(--space-8));
-    overflow-y: auto;
-    position: sticky;
-    top: var(--space-4);
-  }
-
-  .reports-split__detail {
-    min-width: 0;
+    inline-size: 100%;
+    min-inline-size: 0;
   }
 
   .split-placeholder {
@@ -1008,7 +1139,7 @@
   }
 
   .reports-header {
-    margin-bottom: var(--space-6);
+    margin-bottom: var(--space-4);
     border-bottom: 1px solid var(--color-border);
     padding-bottom: var(--space-4);
   }
@@ -1035,39 +1166,37 @@
 
   .reports-heading {
     font-size: var(--text-2xl);
-    font-weight: 700;
+    font-weight: var(--weight-semibold);
     color: var(--color-text-primary);
     margin: 0;
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
   }
 
-  .unread-pill {
-    font-size: var(--text-xs);
-    font-weight: 600;
-    padding: var(--space-1) var(--space-3);
-    background: var(--color-primary-subtle);
+  /* The unread count is text, not a pill: the design system names a state in words. */
+  .unread-count {
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
     color: var(--color-primary);
-    border-radius: var(--radius-full);
   }
 
-  .error-banner {
+  .error-line {
     background: var(--color-danger-subtle);
     border: 1px solid var(--color-danger-border);
     color: var(--color-danger);
-    padding: var(--space-4);
+    padding: var(--space-3) var(--space-4);
     border-radius: var(--radius-md);
     margin-bottom: var(--space-4);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: var(--space-3);
+  }
+
+  .error-line p {
+    margin: 0;
   }
 
   .loading-state {
-    display: flex;
-    justify-content: center;
-    padding: var(--space-10) 0;
+    padding: var(--space-4) 0;
   }
 
   .empty-state {
@@ -1087,7 +1216,7 @@
   .reports-tree {
     display: flex;
     flex-direction: column;
-    gap: var(--space-6);
+    gap: var(--space-4);
   }
 
   .project-section {
@@ -1099,7 +1228,7 @@
 
   .project-header {
     font-size: var(--text-lg);
-    font-weight: 700;
+    font-weight: var(--weight-semibold);
     color: var(--color-text-primary);
     margin: 0 0 var(--space-3) 0;
     display: flex;
@@ -1126,7 +1255,7 @@
 
   .epic-header {
     font-size: var(--text-base);
-    font-weight: 600;
+    font-weight: var(--weight-semibold);
     color: var(--color-text-secondary);
     margin: 0;
     display: flex;
@@ -1163,8 +1292,14 @@
     font-size: var(--text-sm);
   }
 
-  .item-glyph {
-    color: var(--color-primary);
+  /* The dot is the design system's mark of what is new; the bold subject carries the same word. */
+  .report-card__unread-dot {
+    inline-size: var(--space-2);
+    block-size: var(--space-2);
+    border-radius: var(--radius-full);
+    background-color: var(--color-primary);
+    flex: 0 0 auto;
+    align-self: center;
   }
 
   .report-from {
@@ -1174,28 +1309,6 @@
     color: var(--color-text-secondary);
     font-size: var(--text-xs);
     flex-wrap: wrap;
-  }
-
-  .path-link,
-  .group-link {
-    background: none;
-    border: none;
-    padding: 0;
-    font: inherit;
-    color: var(--color-primary);
-    cursor: pointer;
-    text-align: left;
-    text-decoration: none;
-  }
-
-  .path-link:hover,
-  .group-link:hover {
-    text-decoration: underline;
-  }
-
-  .group-link {
-    font-weight: 700;
-    color: var(--color-text-primary);
   }
 
   .path-sep {
@@ -1216,60 +1329,19 @@
     box-shadow: inset 3px 0 0 var(--color-primary);
   }
 
-  /* Compact: tighter rows, one header line, and a two-line body behind a disclosure. */
-  .reports-view.layout-compact .report-card {
-    padding: var(--space-2) var(--space-3);
-    gap: var(--space-1);
-  }
-
-  .reports-view.layout-compact .reports-tree,
-  .reports-view.layout-compact .items-list {
-    gap: var(--space-1);
-  }
-
-  .reports-view.layout-compact .report-card__header {
-    flex-wrap: nowrap;
-    overflow: hidden;
-  }
-
-  .reports-view.layout-compact .report-card__body {
-    padding-left: 0;
-  }
-
-  .report-card__body--clamped {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .body-disclosure {
-    align-self: flex-start;
-    padding: 0;
-    background: none;
-    border: none;
-    color: var(--color-primary);
-    font-size: var(--text-xs);
-    font-weight: 500;
-    text-decoration: underline;
-  }
-
   .item-state {
     font-size: var(--text-xs);
     font-style: italic;
   }
 
-  .action-btn:disabled {
-    color: var(--color-text-muted);
-    cursor: not-allowed;
-    text-decoration: line-through;
+  .report-card__subject {
+    color: var(--color-text-primary);
+    flex: 1 1 auto;
+    min-inline-size: 12rem;
   }
 
-  .item-subject {
-    color: var(--color-text-primary);
-    flex: 1;
-    min-width: 180px;
+  .report-card__subject--unread {
+    font-weight: var(--weight-semibold);
   }
 
   .item-time {
@@ -1285,58 +1357,51 @@
 
   .report-card__actions {
     display: flex;
-    gap: var(--space-3);
+    gap: var(--space-2);
+    align-items: center;
     margin-top: var(--space-1);
     padding-left: var(--space-4);
   }
 
-  .action-btn {
-    background: none;
+  .report-card__menu {
+    position: relative;
+    display: inline-flex;
+  }
+
+  .report-card__menu-list {
+    position: absolute;
+    inset-block-start: calc(100% + var(--space-1));
+    inset-inline-end: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    min-inline-size: 180px;
+    padding: var(--space-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-raised);
+    box-shadow: var(--shadow-2);
+  }
+
+  .report-card__menu-item {
+    padding: var(--space-2) var(--space-3);
     border: none;
-    padding: 0;
-    font-size: var(--text-xs);
-    font-weight: 500;
-    cursor: pointer;
-    text-decoration: underline;
-  }
-
-  .action-btn--detail {
-    color: var(--color-primary);
-  }
-
-  .action-btn--read {
-    color: var(--color-text-muted);
-  }
-
-  .action-btn--read:hover {
+    border-radius: var(--radius-sm);
+    background: none;
     color: var(--color-text-primary);
+    font-size: var(--text-sm);
+    text-align: start;
+    cursor: pointer;
+  }
+
+  .report-card__menu-item:hover:not(:disabled) {
+    background-color: var(--color-bg-subtle);
   }
 
   .pagination-bar {
     display: flex;
     justify-content: center;
     margin-top: var(--space-6);
-  }
-
-  @media (max-width: 959px) {
-    /* Below the split breakpoint the view is one column again. */
-    .reports-split {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .reports-split__list {
-      position: static;
-      max-height: none;
-      overflow-y: visible;
-    }
-
-    .reports-split--has-detail .reports-split__list {
-      display: none;
-    }
-
-    .reports-split__detail--empty {
-      display: none;
-    }
   }
 
   @media (max-width: 640px) {

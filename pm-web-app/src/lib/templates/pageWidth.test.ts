@@ -8,9 +8,10 @@ import { pageWidthOffenders } from '../../test/templateStyle';
  * the width and the split, so a second cap on the view would narrow the page twice.
  *
  * The list grows as the plans that move a view add it — PLAN-51, PLAN-53, PLAN-55 and PLAN-58 move
- * the decision, start, plan and epic views onto their templates, and each one appends its view and
- * the selector of its page root here. The control fixture proves the guard still reports a view
- * that carries a width, and a renamed selector is reported instead of passing vacuously.
+ * the decision, start, plan and epic views onto their templates, PLAN-54 moves the reports view onto
+ * `TriagePage`, and each one appends its view and the selector of its page root here. The control
+ * fixture proves the guard still reports a view that carries a width, and a renamed selector is
+ * reported instead of passing vacuously.
  */
 
 const VIEWS_DIR = path.resolve(__dirname, '../views');
@@ -19,6 +20,7 @@ const CONTROL_DIR = path.resolve(__dirname, '../../test/fixtures/templateViews')
 /** The views that sit on a page template, with the selector of their page root. */
 const VIEWS_ON_TEMPLATES: ReadonlyArray<{ file: string; root: string }> = [
   { file: 'SystemView.svelte', root: '.system-container' },
+  { file: 'ReportsView.svelte', root: '.reports-view' },
 ];
 
 /** The templates a view can sit on: every `*Page.svelte` component in this directory. */

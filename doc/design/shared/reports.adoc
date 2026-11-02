@@ -115,31 +115,37 @@ The runtime writes a report for a closed list of kinds; the client shows each re
 |when the runtime made it available to the clients; beside _created_ where it was sent more than a minute later (`sent 09:40`, after a restart of the runtime), else left out of the row; the report's line of details always shows both
 
 |Detail
-|the action _Show the details_ where the report has a detail (<<detail>>); a report without one offers _Mark read_ alone
+|the action _Show the details_ where the report has a detail (<<detail>>); the row menu holds _Mark read_ for the one report (<<read>>), and a report without a detail offers _Mark read_ alone
 |===
 
 [#list]
 == The List
+
+The page sits on the `TriagePage` template (link:../web-app/view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates Replace the Layout Modes]): the list on the left, the detail on the right, the detail replacing the list below 1100 px. It sets no page width and keeps no layout mode.
 
 ----
   Reports · 5 unread                                       [Mark all shown read]
   ─────────────────────────────────────────────────────────────────────────────
   pm-mcp-clients
     ◇ relay-hardening
-      ▸ fix-relay          Ended: merged (#214)                   today 11:20
-                           3 of 3 deliverables · 2 h 40 min       [Details] [Read]
-      ▸ relay-token-store  Started by relay-hardening (2 of 3)    today 11:21
-      ▸ relay-docs         Waits: overlap with relay-auth-v2      today 11:21
-    ▸ docs-typo            Ended: no change                       today 09:02
-                           sent 09:40                             [Details] [Read]
+      • fix-relay          Ended: merged (#214)                   today 11:20
+                           3 of 3 deliverables · 2 h 40 min       [Details] [⋯]
+      • relay-token-store  Started by relay-hardening (2 of 3)    today 11:21
+      • relay-docs         Waits: overlap with relay-auth-v2      today 11:21
+    • docs-typo            Ended: no change                       today 09:02
+                           sent 09:40                             [Details] [⋯]
   pm-mcp-core
     ▪ project              Onboarded                              yesterday 18:40
+  This machine
+    ▪ machine             12 plans · 2 epics · 40 logs can be deleted
   ─────────────────────────────────────────────────────────────────────────────
                                                              [Show 12 older]
 ----
 
 * *Unread only*: the list shows the unread reports and nothing else; a report read in any client leaves it at once. There is no list of read reports: they are kept by the runtime and gone from the clients, until the cleanup offers them for deletion after `cleanup.reports_after_days` (link:cleanup.adoc#what[Cleanup, What the Cleanup Covers]).
-* *Grouped*: by project, then by epic, then by plan; a plan of no epic stands directly below its project, a report of the project itself (`▪ project`) at the end of its group. A report of the machine (`system.cleanup_due`) stands in a group _This machine_ of its own, ordered with the others by its newest report. Groups are ordered by their newest report; within a group the newest first. A group is a heading, not a report: it shows no count and offers no action.
+* *Unread stands out*: an unread row leads with a dot and its subject is set in the semibold weight; a row read in this view stays beside its detail until the detail closes, without the dot and in the normal weight, and names its state _read_ in words.
+* *Grouped*: by project, then by epic, then by plan; a plan of no epic stands directly below its project, a report of the project itself (`▪ project`) at the end of its group. A report of the machine (`system.*`, `report.list.machine` "This machine") stands in a group _This machine_ of its own, whatever project the wire also names, ordered with the others by its newest report. Groups are ordered by their newest report; within a group the newest first. A group is a heading, not a report: it shows no count and offers no action.
+* *Row menu*: the `⋯` control at the end of a row holds _Mark read_ for that one report (`report.action.mark_read`); its accessible name carries the row's subject. It opens with the focus on its first entry, the arrow keys and Home/End move within it, and Escape or Tab closes it and puts the focus back on the control.
 * *Newest first*, a page at a time: the runtime pages, the client never loads every unread report at once; _Show older_ names how many more there are.
 * *Unread reports never expire*: a report stays unread until the operator reads it, however old it is, and the cleanup never offers it.
 * *Selecting a part of the path* (the project, the epic, the plan) opens that view without reading the report; only _Show the details_ reads it (<<read>>).
@@ -173,7 +179,7 @@ A report that arrives while a client is open is a quiet notice:
 
 A report is read in one of two ways, by the operator's act only:
 
-* *Mark read*: one report (_Mark read_ on its row), or all reports shown (_Mark all shown read_). _All shown_ sends the ids the list shows, never "everything": a report that arrived after the list was drawn and is not shown yet stays unread.
+* *Mark read*: one report (_Mark read_ in the row menu), or all reports shown (_Mark all shown read_). _All shown_ sends the ids the list shows, never "everything": a report that arrived after the list was drawn and is not shown yet stays unread.
 * *Show the details*: opening a report's detail from the report reads it, in the same act. Opening the same view another way (the plan from Running Work, the epic from its row) reads no report.
 * *Requests*: one report is marked read by `POST /api/v1/reports/{report_id}/read`, the reports shown by `POST /api/v1/reports/read` with their ids; the clients follow `GET /api/v1/reports/events` for new and read reports; the flow is the states `reports.list`, `reports.choose`, `reports.detail`, `reports.read` of link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6].
 * *One operator, every device*: read is per machine. A report read in the web app on one device is read in every browser and in the terminal, and the clients drop it from their lists live, by the runtime's event; a client that shows it in that moment drops the row and says nothing more.
@@ -255,6 +261,26 @@ Keys of the area `report`, shared by both clients (link:texts-and-languages.adoc
 |`report.action.mark_all_read`
 |Mark all shown read
 |Markiere alle gezeigten als gelesen
+
+|`report.list.row_menu`
+|Report actions
+|Aktionen für den Bericht
+
+|`report.list.row_menu.title`
+|Open this report's actions
+|Öffne die Aktionen dieses Berichts
+
+|`report.list.empty.title`
+|Nothing new
+|Nichts Neues
+
+|`report.state.unread`
+|unread
+|ungelesen
+
+|`report.state.read`
+|read
+|gelesen
 
 |`report.read.done`
 |{count, plural, one {# report marked read} other {# reports marked read}}.
