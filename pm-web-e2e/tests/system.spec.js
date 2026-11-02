@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { MOCK_RUNTIME_URL } from './helpers/ports.js';
+import { expectNothingRedAtRest } from './helpers/acts.js';
 
 test.describe('System View, Runtime Lifecycle & Cleanup (UC-SYS-1..3)', () => {
   test.beforeEach(async ({ page, request }) => {
@@ -187,6 +188,28 @@ test.describe('System: figures, filters, upgrade, and cleanup preview (UC-SYS-1.
     await expect(page.getByTestId('upgrade-steps')).toBeVisible();
     await page.getByRole('button', { name: /Withdraw the upgrade/i }).click();
     await expect(page.getByTestId('upgrade-withdrawn')).toContainText('0.9.1 keeps running');
+  });
+
+  test('shows only stop now and withdraw while the runtime drains', async ({ page, request }) => {
+    const scenario = await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
+      data: { scenario: 'reports-and-system' },
+    });
+    expect(scenario.ok()).toBeTruthy();
+    const draining = await request.post(`${MOCK_RUNTIME_URL}/mock/goto/system.draining`);
+    expect(draining.ok()).toBeTruthy();
+    await page.reload();
+    await expect(page.getByTestId('system-view')).toBeVisible();
+
+    const banner = page.getByTestId('draining-banner');
+    await expect(banner).toBeVisible();
+    await expect(banner).toContainText('Stopping when what runs is done');
+    await expect(banner.getByRole('button', { name: 'Withdraw the stop' })).toBeVisible();
+    await expect(banner.getByRole('button', { name: 'Stop now' })).toBeVisible();
+
+    // Nothing red at rest, and the draining state carries no upgrade and no running acts.
+    await expect(page.getByTestId('upgrade-consent')).toHaveCount(0);
+    await expect(page.getByTestId('system-view').getByTestId('action-bar-overflow')).toHaveCount(0);
+    await expectNothingRedAtRest(page);
   });
 
   test('opens a cleanup item read-only and keeps the unchecked items', async ({ page }) => {

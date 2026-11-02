@@ -1,9 +1,14 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { t } from '../i18n';
-  import ControlActionsBar from './ControlActionsBar.svelte';
+  import ActionBar from './ActionBar.svelte';
+  import Button from './Button.svelte';
   import HoldResolutionModal from './HoldResolutionModal.svelte';
   import PlanSettingsModal from './PlanSettingsModal.svelte';
   import ChatPanel from './ChatPanel.svelte';
+  import Icon from './Icon.svelte';
+  import { uniqueId } from '../utils/uniqueId';
+  import { actsFor, type ActSpec } from '../actions/byState';
   import {
     apiClient,
     type ArchiveCheck,
@@ -83,6 +88,221 @@
   let chatSubject = $derived(subjectKind === 'epic' ? `epic:${subjectId}` : subjectId);
   let loadedSubject = $state('');
 
+  type Dialog = 'pause' | 'end' | 'raise' | 'overlap' | 'archive' | null;
+
+  let dialog = $state<Dialog>(null);
+  let pausePoint = $state('task');
+  let endAction = $state<'cancel' | 'abandon' | 'abort'>('cancel');
+  let endReason = $state('');
+  let closePullRequest = $state(false);
+  let overlapCount = $state(0);
+
+  /** The control that opened the dialog, so the focus goes back to it when the dialog closes. */
+  let opener: HTMLElement | null = null;
+
+  /** The open dialog's box, which takes the focus when it opens. */
+  let dialogElement = $state<HTMLElement | null>(null);
+
+  /** The id of the open dialog's title, for `aria-labelledby`. */
+  const titleId = uniqueId('control-dialog-title');
+
+  let automatic = $derived(autoValue ?? autoStart ?? actions?.auto_enabled !== false);
+  let commonFiles = $derived(actions?.overlap_max_files ?? 0);
+
+  /** The state the acts of this panel are derived from. */
+  let actState = $derived(planState());
+  let actSpecs = $derived(
+    ended
+      ? [{ id: 'chat', labelKey: 'control.plan.chat', advisoryKey: 'control.plan.chat_ended.title', role: 'secondary' as const }]
+      : actsFor(subjectKind, actState, actions?.actions),
+  );
+  let barActs = $derived(actSpecs.map(toBarAct));
+
+  /**
+   * @returns the state word the acts-by-state table knows
+   */
+  function planState(): string {
+    const state = actions?.state ?? 'running';
+    if (state === 'waiting') return 'waiting_for_you';
+    if (ended) return 'ended';
+    return state;
+  }
+
+  /**
+   * @param spec the act's table entry
+   * @returns the act as the bar draws it
+   */
+  function toBarAct(spec: ActSpec) {
+    return {
+      id: spec.id,
+      label: label(spec.id),
+      advisory: spec.advisoryKey ? $t(spec.advisoryKey) : undefined,
+      role: spec.role,
+      destructive: spec.destructive,
+      disabled: spec.disabled,
+      disabledReason: spec.disabledReason,
+    };
+  }
+
+  /** The label of one action, by the subject's kind. */
+  function label(action: string): string {
+    if (subjectKind === 'epic') {
+      switch (action) {
+        case 'next':
+          return nextPlan
+            ? $t('control.epic.next', { plan: nextPlan })
+            : $t('control.epic.next_any');
+        case 'auto':
+          return $t('control.epic.auto', {
+            mode: automatic ? 'on' : 'off',
+          });
+        case 'common_files':
+          return $t('control.epic.overlap', { count: commonFiles });
+        case 'findings':
+          return $t('control.epic.findings_review');
+        case 'watches':
+          return $t('control.epic.watches_review');
+        case 'decompose':
+          return $t('control.epic.decompose_again');
+        case 'archive':
+          return $t('control.epic.archive');
+        case 'cancel':
+          return $t('control.epic.cancel');
+        case 'chat':
+          return $t('control.epic.chat');
+        default:
+          return $t(`control.epic.${action}`);
+      }
+    }
+    if (action === 'cancel' && actions?.hold_kind === 'integrity_pause') {
+      return $t('control.end.action', { action: 'abort' });
+    }
+    return $t(`control.plan.${action}`);
+  }
+
+  /** The act a plan's end is named by: cancel, abandon, or the abort of an integrity pause. */
+  function endAct(): 'cancel' | 'abandon' | 'abort' {
+    if (actions?.hold_kind === 'integrity_pause') {
+      return 'abort';
+    }
+    return endAction;
+  }
+
+  /**
+   * Opens a dialog, remembering the control the focus goes back to when it closes.
+   *
+   * @param next the dialog to show
+   */
+  function openDialog(next: Exclude<Dialog, null>): void {
+    const active = document.activeElement;
+    opener = active instanceof HTMLElement ? active : null;
+    dialog = next;
+    void tick().then(() => dialogElement?.focus());
+  }
+
+  /**
+   * Closes the dialog and gives the focus back to the control that opened it.
+   *
+   * A confirm disables the opener while the action runs, and a disabled control cannot take the
+   * focus; the keyboard then stays in the panel, on the first act that can still run.
+   */
+  async function closeDialog(): Promise<void> {
+    const previous = opener;
+    dialog = null;
+    opener = null;
+    dialogElement = null;
+    await tick();
+    if (previous?.isConnected && !(previous as HTMLButtonElement).disabled) {
+      previous.focus();
+      return;
+    }
+    const fallback = document.querySelector<HTMLButtonElement>(
+      '[data-testid="control-actions"] button:not([disabled])',
+    );
+    fallback?.focus();
+  }
+
+  /** @param event the key press anywhere while a dialog is open */
+  function closeOnEscape(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && dialog) {
+      event.stopPropagation();
+      void closeDialog();
+    }
+  }
+
+  /**
+   * Routes an act the bar reports: the dialogs stay here, and the panel applies the rest.
+   *
+   * @param id the chosen act
+   */
+  function chooseAct(id: string): void {
+    if (ended) {
+      void openChat();
+      return;
+    }
+    if (subjectKind === 'epic') {
+      chooseEpic(id);
+      return;
+    }
+    if (id === 'pause') {
+      pausePoint = actions?.pausing_point ?? 'task';
+      openDialog('pause');
+      return;
+    }
+    if (id === 'cancel' || id === 'abandon') {
+      endAction = id;
+      endReason = '';
+      closePullRequest = false;
+      openDialog('end');
+      return;
+    }
+    void handleAction(id);
+  }
+
+  /** @param id the chosen act of an epic */
+  function chooseEpic(id: string): void {
+    if (id === 'next') {
+      if (scope > 0 && running >= scope) {
+        openDialog('raise');
+        return;
+      }
+      void handleAction('next', { raise_scope: false });
+      return;
+    }
+    if (id === 'common_files') {
+      overlapCount = commonFiles;
+      openDialog('overlap');
+      return;
+    }
+    if (id === 'archive') {
+      openDialog('archive');
+      return;
+    }
+    void handleAction(id);
+  }
+
+  function confirmPause(): void {
+    void closeDialog();
+    void handleAction('pause', { point: pausePoint });
+  }
+
+  function confirmEnd(): void {
+    if (!endReason.trim()) return;
+    const act = endAct();
+    void closeDialog();
+    void handleAction(act, { reason: endReason.trim(), close_pr: closePullRequest });
+  }
+
+  function confirmRaise(): void {
+    void closeDialog();
+    void handleAction('next', { raise_scope: true });
+  }
+
+  function confirmOverlap(): void {
+    void closeDialog();
+    void handleAction('common_files', { count: overlapCount });
+  }
+
   // A new subject starts from nothing; the panel is reused when Overview switches rows.
   $effect(() => {
     const key = `${subjectKind}:${subjectId}:${ended}`;
@@ -103,6 +323,7 @@
     chatOpen = false;
     chat = null;
     endedProposal = null;
+    dialog = null;
     void load();
   });
 
@@ -149,7 +370,7 @@
       return;
     }
     if (subjectKind === 'epic' && (action === 'findings' || action === 'watches')) {
-      onReview(action);
+      onReview(action === 'findings' ? 'findings' : 'watches');
       return;
     }
     if (subjectKind === 'epic' && action === 'decompose') {
@@ -159,15 +380,16 @@
     busy = true;
     const previousAuto = actions?.auto_enabled;
     try {
+      const wanted = action === 'auto' ? { enabled: payload.enabled ?? !automatic } : payload;
       const response =
         subjectKind === 'epic'
-          ? await apiClient.applyEpicAction(subjectId, action, payload)
-          : await apiClient.applyPlanAction(subjectId, action, payload);
+          ? await apiClient.applyEpicAction(subjectId, action, wanted)
+          : await apiClient.applyPlanAction(subjectId, action, wanted);
       actions = response;
       if (action === 'auto' && typeof response.auto_enabled === 'boolean') {
         autoValue = response.auto_enabled;
       }
-      notice = noticeFor(action, payload, previousAuto, response);
+      notice = noticeFor(action, wanted, previousAuto, response);
       await load();
       onChanged();
     } catch (err: unknown) {
@@ -393,31 +615,23 @@
   }
 </script>
 
-<section class="work-control" data-testid="work-control">
-  {#if !ended}
-    <ControlActionsBar
-      {subjectId}
-      {subjectKind}
-      {actions}
-      {archiveCheck}
-      {busy}
-      {scope}
-      {running}
-      {nextPlan}
-      {pullRequestNumber}
-      autoEnabled={autoValue ?? autoStart}
-      onAction={handleAction}
-    />
+<svelte:window on:keydown={closeOnEscape} />
+
+<section
+  class="work-control"
+  data-testid="work-control"
+  aria-label={$t('control.actions.title', { subject: subjectId })}
+>
+  {#if ended}
+    <div data-testid="control-actions">
+      <ActionBar acts={barActs} {busy} onAct={chooseAct} />
+    </div>
+  {:else if actions}
+    <div data-testid="control-actions">
+      <ActionBar acts={barActs} {busy} onAct={chooseAct} />
+    </div>
   {:else}
-    <button
-      type="button"
-      class="work-control__chat"
-      data-testid="action-chat"
-      data-advisory={$t('control.plan.chat_ended.title')}
-      onclick={openChat}
-    >
-      {$t('control.plan.chat')}
-    </button>
+    <p class="control-actions__empty" data-testid="control-actions-empty">…</p>
   {/if}
 
   {#if notice}
@@ -427,9 +641,206 @@
     <p class="work-control__failure" data-testid="control-failure" role="alert">{failure}</p>
   {/if}
   {#if subjectKind === 'plan' && holds.length > 0}
-    <button type="button" class="work-control__hold" data-testid="open-hold" onclick={openHold}>
+    <Button
+      variant="secondary"
+      data-testid="open-hold"
+      on:click={openHold}
+    >
       {$t('control.hold.resolve_title')}
-    </button>
+    </Button>
+  {/if}
+
+  {#if dialog}
+    <div
+      class="control-dialog"
+      data-testid={`control-dialog-${dialog}`}
+      role="dialog"
+      aria-labelledby={titleId}
+      tabindex="-1"
+      bind:this={dialogElement}
+    >
+      {#if dialog === 'pause'}
+        <h4 class="control-dialog__title" id={titleId} data-testid="pause-title">
+          {$t('control.pause.title', { plan: subjectId })}
+        </h4>
+        <fieldset class="control-dialog__choices">
+          <legend class="control-dialog__legend">{$t('control.pause.where')}</legend>
+          {#each ['now', 'task', 'phase'] as point (point)}
+            <label class="control-dialog__choice">
+              <input
+                type="radio"
+                name="pause-point-{subjectId}"
+                value={point}
+                checked={pausePoint === point}
+                onchange={() => (pausePoint = point)}
+              />
+              {point === 'now'
+                ? $t('control.pause.now')
+                : point === 'task'
+                  ? $t('control.pause.after_task')
+                  : $t('control.pause.after_phase')}
+            </label>
+          {/each}
+        </fieldset>
+        <div class="control-dialog__actions">
+          <Button variant="secondary" data-testid="pause-keep" on:click={closeDialog}>
+            {$t('control.pause.keep_running')}
+          </Button>
+          <Button variant="primary" data-testid="pause-confirm" disabled={busy} on:click={confirmPause}>
+            {$t('control.pause.action')}
+          </Button>
+        </div>
+      {:else if dialog === 'end'}
+        <h4 class="control-dialog__title" id={titleId} data-testid="end-title">
+          {$t('control.end.title', { action: endAct(), plan: subjectId })}
+        </h4>
+        {#if pullRequestNumber !== null}
+          <p class="control-dialog__line">
+            {$t('control.end.pr_open', { number: pullRequestNumber })}
+          </p>
+          <label class="control-dialog__choice">
+            <input type="checkbox" bind:checked={closePullRequest} />
+            {$t('control.end.close_pr_choice')}
+          </label>
+        {/if}
+        <label class="control-dialog__field">
+          {$t('control.end.label.reason')}
+          <input
+            type="text"
+            data-testid="end-reason"
+            bind:value={endReason}
+            placeholder={$t('control.end.reason_required')}
+          />
+        </label>
+        {#if !endReason.trim()}
+          <p class="control-dialog__hint">{$t('control.end.reason_required')}</p>
+        {/if}
+        <p class="control-dialog__line">
+          {$t('control.end.afterwards', { outcome: endAct() })}
+        </p>
+        <div class="control-dialog__actions">
+          <Button variant="secondary" data-testid="end-keep" on:click={closeDialog}>
+            {$t('control.end.keep', { action: endAct() })}
+          </Button>
+          <Button
+            variant="danger"
+            data-testid="end-confirm"
+            disabled={busy || !endReason.trim()}
+            on:click={confirmEnd}
+          >
+            {$t('control.end.action', { action: endAct() })}
+          </Button>
+        </div>
+      {:else if dialog === 'raise'}
+        <h4 class="control-dialog__title" id={titleId}>{$t('control.epic.next_any')}</h4>
+        <p class="control-dialog__line">
+          {$t('control.epic.scope_full', {
+            epic: subjectId,
+            running,
+            scope,
+            plan: nextPlan,
+          })}
+        </p>
+        <div class="control-dialog__actions">
+          <Button variant="secondary" data-testid="raise-leave" on:click={closeDialog}>
+            {$t('control.epic.next_leave')}
+          </Button>
+          <Button variant="primary" data-testid="raise-confirm" disabled={busy} on:click={confirmRaise}>
+            {$t('control.epic.next_raise', { count: scope + 1 })}
+          </Button>
+        </div>
+      {:else if dialog === 'overlap'}
+        <h4 class="control-dialog__title" id={titleId}>
+          {$t('control.epic.overlap_change')}
+        </h4>
+        <p class="control-dialog__line">
+          {$t('control.epic.overlap_means', { count: overlapCount })}
+        </p>
+        <label class="control-dialog__field">
+          {$t('control.epic.overlap_change')}
+          <input type="number" min="0" data-testid="overlap-count" bind:value={overlapCount} />
+        </label>
+        <div class="control-dialog__actions">
+          <Button variant="secondary" data-testid="overlap-leave" on:click={closeDialog}>
+            {$t('control.epic.leave_it')}
+          </Button>
+          <Button
+            variant="primary"
+            data-testid="overlap-confirm"
+            disabled={busy}
+            on:click={confirmOverlap}
+          >
+            {$t('control.epic.overlap_save')}
+          </Button>
+        </div>
+      {:else if dialog === 'archive'}
+        <h4 class="control-dialog__title" id={titleId} data-testid="archive-title">
+          {$t('control.archive.title', { epic: subjectId })}
+        </h4>
+        {#if archiveCheck}
+          {#if archiveCheck.completion_review_first}
+            <p class="control-dialog__line" data-testid="archive-review-first">
+              {$t('control.archive.review_first')}
+            </p>
+          {:else}
+            <ul class="control-dialog__checks">
+              {#each archiveCheck.lines as line (line.label)}
+                <li class="control-dialog__check" data-testid={`archive-line-${line.label}`}>
+                  <span class="control-dialog__check-glyph"
+                    ><Icon
+                      name={line.passed ? 'state.check' : 'state.error'}
+                      size={16}
+                      label={$t(
+                        line.passed ? 'control.archive.check.passed' : 'control.archive.check.failed',
+                      )}
+                    /></span
+                  >
+                  <span>{$t(line.label)}</span>
+                  {#if line.note}
+                    <span class="control-dialog__check-note">{line.note}</span>
+                  {/if}
+                  {#if line.action === 'review-findings'}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      class="control-dialog__link"
+                      data-testid="archive-review-findings"
+                      on:click={() => onReview('findings')}
+                    >
+                      {$t('control.archive.review_findings')}
+                    </Button>
+                  {/if}
+                </li>
+              {/each}
+            </ul>
+            <p class="control-dialog__line" data-testid="archive-carried">
+              {$t('control.archive.carried', {
+                findings: archiveCheck.carried_findings,
+                watches: archiveCheck.carried_watches,
+              })}
+            </p>
+          {/if}
+        {:else}
+          <p class="control-dialog__line">…</p>
+        {/if}
+        <div class="control-dialog__actions">
+          <Button variant="secondary" data-testid="archive-not-yet" on:click={closeDialog}>
+            {$t('control.archive.not_yet')}
+          </Button>
+          <Button
+            variant="primary"
+            data-testid="archive-confirm"
+            disabled={busy || !archiveCheck?.passed}
+            on:click={() => {
+              void closeDialog();
+              void handleAction('archive');
+            }}
+          >
+            {$t('control.archive.action')}
+          </Button>
+        </div>
+      {/if}
+    </div>
   {/if}
 </section>
 
@@ -522,11 +933,115 @@
     color: var(--color-danger);
   }
 
-  .work-control__hold,
-  .work-control__chat {
+  .control-actions__empty {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-muted);
+  }
+
+  .control-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--color-primary);
+    border-radius: var(--radius-md);
+    background-color: var(--color-bg-subtle);
+  }
+
+  .control-dialog__title {
+    margin: 0;
+    font-size: var(--text-base);
+  }
+
+  .control-dialog__choices {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    border: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .control-dialog__legend {
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+  }
+
+  .control-dialog__choice {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
     min-height: 44px;
-    padding: var(--space-2) var(--space-3);
-    cursor: pointer;
-    align-self: flex-start;
+    font-size: var(--text-sm);
+  }
+
+  .control-dialog__field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    font-size: var(--text-xs);
+    color: var(--color-text-secondary);
+  }
+
+  .control-dialog__field input {
+    min-height: 44px;
+    padding: var(--space-1) var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    background-color: var(--color-bg-surface);
+    color: var(--color-text-primary);
+  }
+
+  .control-dialog__line {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--color-text-secondary);
+  }
+
+  .control-dialog__hint {
+    margin: 0;
+    font-size: var(--text-xs);
+    color: var(--color-warning-text);
+  }
+
+  .control-dialog__checks {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .control-dialog__check {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+  }
+
+  .control-dialog__check-glyph {
+    font-weight: 700;
+  }
+
+  .control-dialog__check-note {
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+  }
+
+  .control-dialog__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    justify-content: flex-end;
+  }
+
+  @media (max-width: 480px) {
+    .control-dialog__actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
   }
 </style>
