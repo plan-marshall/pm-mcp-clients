@@ -87,18 +87,26 @@
   /**
    * Sends the cleanup durations the page shows: how long work is kept, and the reminder interval.
    *
-   * The setting travels as one value, so both figures go in it: the reminder has no setting of its
-   * own, and a page that showed it while sending only the days would say "saved" for a value the
-   * runtime never received.
+   * The setting travels as one record, so both figures go in it; the categories the page does not
+   * show keep the values the runtime holds, so saving the visible ones never resets them. An empty
+   * or fractional input writes nothing: the record would otherwise fall back to the defaults.
    */
   async function saveCleanup(): Promise<void> {
+    const days = Number(cleanupDays);
+    const remind = Number(cleanupRemindDays);
+    if (!Number.isInteger(days) || days < 1 || !Number.isInteger(remind) || remind < 1) {
+      error = $t('web.settings.update_failed');
+      notice = '';
+      return;
+    }
+    const recorded = settings?.cleanup_durations;
     const durations = {
-      plans_after_days: cleanupDays,
-      epics_after_days: cleanupDays,
-      logs_after_days: cleanupDays,
-      reports_after_days: cleanupDays,
-      unenrolled_after_days: cleanupDays,
-      remind_after_days: cleanupRemindDays,
+      plans_after_days: days,
+      epics_after_days: recorded?.epics_after_days ?? days,
+      logs_after_days: recorded?.logs_after_days ?? days,
+      reports_after_days: recorded?.reports_after_days ?? days,
+      unenrolled_after_days: recorded?.unenrolled_after_days ?? days,
+      remind_after_days: remind,
     };
     await applySetting('cleanup_durations', JSON.stringify(durations));
   }

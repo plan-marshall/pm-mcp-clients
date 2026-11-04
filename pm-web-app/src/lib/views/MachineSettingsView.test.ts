@@ -106,12 +106,23 @@ describe('MachineSettingsView component', () => {
   });
 
   it('sends the reminder interval beside the days and shows it again after a reload', async () => {
-    const updateSpy = vi.spyOn(apiClient, 'updateMachineSetting').mockResolvedValue({
-      applied: true,
-      conflict: false,
-      revision: 5,
-    });
     let recorded: MachineSettingsRecord = settings;
+    const updateSpy = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockImplementation(async (key: string, value: string | null) => {
+        // The runtime keeps what it was sent, so the reload reads it back from the update itself.
+        if (key === 'cleanup_durations' && value) {
+          recorded = {
+            ...recorded,
+            revision: recorded.revision + 1,
+            cleanup_durations: {
+              ...recorded.cleanup_durations,
+              ...(JSON.parse(value) as Record<string, number>),
+            },
+          };
+        }
+        return { applied: true, conflict: false, revision: recorded.revision };
+      });
     vi.spyOn(apiClient, 'getMachineSettings').mockImplementation(async () => recorded);
 
     const first = render(MachineSettingsView);
@@ -128,24 +139,61 @@ describe('MachineSettingsView component', () => {
     });
     const sent = JSON.parse(updateSpy.mock.calls[0]?.[1] ?? '{}') as Record<string, number>;
     expect(sent.plans_after_days).toBe(45);
-    expect(sent.epics_after_days).toBe(45);
     expect(sent.remind_after_days).toBe(7);
+    // A category the page does not show keeps the value the runtime holds.
+    expect(sent.epics_after_days).toBe(settings.cleanup_durations.epics_after_days);
 
-    // A reload reads the runtime's record back: the second read answers with the saved value.
-    recorded = {
-      ...settings,
-      revision: 5,
-      cleanup_durations: {
-        ...settings.cleanup_durations,
-        plans_after_days: 45,
-        remind_after_days: 7,
-      },
-    };
+    // A reload reads the runtime's record back: the saved value is shown again.
     first.unmount();
     render(MachineSettingsView);
     await waitFor(() => {
       expect(screen.getByTestId('cleanup-remind-days')).toHaveValue(7);
     });
+  });
+
+  it('keeps the other categories when one of them has its own retention', async () => {
+    vi.spyOn(apiClient, 'getMachineSettings').mockResolvedValue({
+      ...settings,
+      cleanup_durations: { ...settings.cleanup_durations, epics_after_days: 90 },
+    });
+    const updateSpy = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockResolvedValue({ applied: true, conflict: false, revision: 5 });
+
+    render(MachineSettingsView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('save-cleanup')).toBeInTheDocument();
+    });
+    await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '45' } });
+    await fireEvent.click(screen.getByTestId('save-cleanup'));
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalled();
+    });
+    const sent = JSON.parse(updateSpy.mock.calls[0]?.[1] ?? '{}') as Record<string, number>;
+    expect(sent.plans_after_days).toBe(45);
+    expect(sent.epics_after_days).toBe(90);
+  });
+
+  it('writes nothing when a duration the page would send is empty', async () => {
+    const updateSpy = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockResolvedValue({ applied: true, conflict: false, revision: 5 });
+
+    render(MachineSettingsView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('save-cleanup')).toBeInTheDocument();
+    });
+    await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '' } });
+    await fireEvent.click(screen.getByTestId('save-cleanup'));
+
+    // An empty number would reach the runtime as a missing field and be filled with the defaults.
+    await waitFor(() => {
+      expect(screen.getByText('The change was not saved.')).toBeInTheDocument();
+    });
+    expect(updateSpy).not.toHaveBeenCalled();
   });
 
   it('reports a conflict instead of overwriting the current value', async () => {

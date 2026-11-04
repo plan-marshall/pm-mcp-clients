@@ -6996,7 +6996,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         machineSettingsRevision, currentMachineValue(update.key())).toMap());
                 return;
             }
-            applyMachineSetting(update.key(), update.value());
+            if (!applyMachineSetting(update.key(), update.value())) {
+                // A value the setting cannot read is refused, so a caller never sees "saved" for a
+                // record none of whose figures took effect.
+                response.json(400, Map.of(KEY_ERROR, "invalid_value",
+                        KEY_MESSAGE, "The value is not readable for " + update.key()));
+                return;
+            }
             machineSettingsRevision++;
             broadcastEvent(MachineSettingsChangedEvent.EVENT_NAME, new MachineSettingsChangedEvent(
                     update.key(), update.value(), machineSettingsRevision, "web").toMap());
@@ -7004,7 +7010,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
-    private void applyMachineSetting(String key, @Nullable String value) {
+    /**
+     * @param key the setting key
+     * @param value its new value, or {@code null} for a withdrawal
+     * @return whether the setting could read the value; a cleanup record that cannot be read is
+     *     reported so the caller is not told it was saved
+     */
+    private boolean applyMachineSetting(String key, @Nullable String value) {
         if (KEY_DOCUMENTS_MODE.equals(key) && value != null) {
             applyDocumentsMode(value);
         } else if (KEY_LANGUAGE_INTERFACE.equals(key) && isSupportedLanguage(value)) {
@@ -7012,7 +7024,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         } else if (KEY_LANGUAGE_MODEL.equals(key) && isSupportedLanguage(value)) {
             machineLanguageModel = Objects.requireNonNull(value);
         } else if (KEY_CLEANUP_DURATIONS.equals(key) && value != null) {
-            applyCleanupDurations(value);
+            return applyCleanupDurations(value);
         } else if (KEY_PLAN_DEFAULTS.equals(key) && value != null) {
             applyPlanDefaults(value);
         } else if (key.startsWith(CONSENT_PREFIX)) {
@@ -7020,6 +7032,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         } else if (key.startsWith(CREDENTIAL_PREFIX)) {
             applyCredentialRotation(key, value);
         }
+        return true;
     }
 
     private void applyCredentialRotation(String key, @Nullable String value) {
@@ -7044,11 +7057,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
-    private void applyCleanupDurations(String value) {
+    /**
+     * @param value the cleanup durations a client sent, as a record or a bare number of days
+     * @return whether the value could be read and applied; a value that cannot keeps the current
+     *     durations and is reported back
+     */
+    private boolean applyCleanupDurations(String value) {
         var trimmed = value.trim();
         if (trimmed.startsWith("{")) {
-            // The clients send the whole record, so the reminder interval travels with the days;
-            // a value it cannot read keeps the current durations.
+            // The clients send the whole record, so the reminder interval travels with the days.
             try {
                 var durations = CleanupDurations.fromJson(trimmed);
                 machineCleanupDurations.put(KEY_PLANS_AFTER_DAYS, durations.plansAfterDays());
@@ -7057,18 +7074,19 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 machineCleanupDurations.put(KEY_REPORTS_AFTER_DAYS, durations.reportsAfterDays());
                 machineCleanupDurations.put(KEY_UNENROLLED_AFTER_DAYS, durations.unenrolledAfterDays());
                 machineCleanupDurations.put(KEY_REMIND_AFTER_DAYS, durations.remindAfterDays());
+                return true;
             } catch (IOException _) {
-                // keep the current durations when the value is not a readable record
+                return false;
             }
-            return;
         }
         try {
             int days = Integer.parseInt(trimmed);
             for (var field : CLEANUP_DAY_KEYS) {
                 machineCleanupDurations.put(field, days);
             }
+            return true;
         } catch (NumberFormatException _) {
-            // keep the current durations when the value is not a number
+            return false;
         }
     }
 

@@ -386,6 +386,29 @@ class OnboardingScenarioTest {
         }
 
         @Test
+        @DisplayName("refuses a cleanup record it cannot read and keeps the revision")
+        void shouldRefuseAnUnreadableCleanupRecord() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+                var before = MachineSettingsRecord.fromJson(new String(
+                        client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth)).body(),
+                        StandardCharsets.UTF_8));
+
+                var refused = put(client, auth,
+                        "{\"key\":\"cleanup_durations\",\"value\":\"{\\\"plans_after_days\\\":\",\"revision\":"
+                                + before.revision() + "}");
+
+                assertEquals(400, refused);
+                var after = MachineSettingsRecord.fromJson(new String(
+                        client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth)).body(),
+                        StandardCharsets.UTF_8));
+                assertEquals(before.revision(), after.revision());
+                assertEquals(before.cleanupDurations().plansAfterDays(), after.cleanupDurations().plansAfterDays());
+            }
+        }
+
+        @Test
         @DisplayName("applies plan defaults, cleanup durations, rejects an unknown mode, and is idempotent on an unknown consent")
         void shouldApplyTheSettingsKeys() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
