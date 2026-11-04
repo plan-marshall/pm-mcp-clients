@@ -42,11 +42,6 @@ function languageTag(locale: string): string {
   return locale.startsWith('de') ? 'de-DE' : 'en-GB';
 }
 
-/** @param locale the interface locale @returns whether it is German */
-function isGerman(locale: string): boolean {
-  return locale.startsWith('de');
-}
-
 /**
  * @param iso the runtime's instant @returns the date, or `null` when the value is not an instant
  */
@@ -261,33 +256,31 @@ function decimalText(value: number, digits: number, locale: string): string {
  * @returns `412`, `4.2 k`, `830 k`, `1.24 M`, or the floor form `≥ 412 k`
  */
 export function formatTokens(count: number, floor = false, locale: Locale = 'en'): string {
-  if (count <= 0) return '0';
-  return renderTokens(count, tokenUnit(count, locale), floor, locale);
+  return renderTokens(count, tokenUnit(count), floor, locale);
 }
 
 /** The unit a count of tokens is shown in, or `null` for a count below a thousand. */
 interface TokenUnit {
   /** The divisor from a token count to the shown figure. */
   factor: number;
-  /** The unit mark the packs fix. */
-  suffix: string;
+  /** The catalogue key that fixes the unit mark, with `{value}` for the figure. */
+  key: string;
   /** The decimals the unit shows. */
   digits: number;
 }
 
 /**
- * @param count the exact count @param locale the interface locale @returns the unit it is shown in
+ * @param count the exact count @returns the unit it is shown in
  */
-function tokenUnit(count: number, locale: string): TokenUnit | null {
+function tokenUnit(count: number): TokenUnit | null {
   if (count < 1000) return null;
-  const german = isGerman(locale);
   if (count < 10_000) {
-    return { factor: 1000, suffix: german ? 'Tsd.' : 'k', digits: 1 };
+    return { factor: 1000, key: 'common.tokens.thousands', digits: 1 };
   }
   if (count < 1_000_000) {
-    return { factor: 1000, suffix: german ? 'Tsd.' : 'k', digits: 0 };
+    return { factor: 1000, key: 'common.tokens.thousands', digits: 0 };
   }
-  return { factor: 1_000_000, suffix: german ? 'Mio.' : 'M', digits: 2 };
+  return { factor: 1_000_000, key: 'common.tokens.millions', digits: 2 };
 }
 
 /**
@@ -298,17 +291,20 @@ function renderTokens(
   count: number,
   unit: TokenUnit | null,
   floor: boolean,
-  locale: string,
+  locale: Locale,
 ): string {
-  if (!unit) {
-    const plain = String(Math.max(0, count));
-    return floor ? `≥ ${plain}` : plain;
-  }
-  const step = 10 ** unit.digits;
-  const scaled = count / unit.factor;
-  const rounded = floor ? Math.floor(scaled * step) / step : Math.round(scaled * step) / step;
-  const text = `${decimalText(rounded, unit.digits, locale)} ${unit.suffix}`;
-  return floor ? `≥ ${text}` : text;
+  const figure = unit
+    ? word(locale, unit.key, {
+        value: decimalText(
+          floor
+            ? Math.floor((count / unit.factor) * 10 ** unit.digits) / 10 ** unit.digits
+            : Math.round((count / unit.factor) * 10 ** unit.digits) / 10 ** unit.digits,
+          unit.digits,
+          locale,
+        ),
+      })
+    : String(Math.max(0, count));
+  return floor ? word(locale, 'common.tokens.at_least', { value: figure }) : figure;
 }
 
 /**
@@ -322,7 +318,7 @@ function renderTokens(
  * @param output the output and reasoning tokens
  * @param floor whether the figures are floors
  * @param locale the interface locale
- * @returns `412 k (380 k in · 32 k out)`, `412 Tsd. (380 Tsd. rein · 32 Tsd. raus)`
+ * @returns `412 k tokens (380 k in · 32 k out)`, `412 Tsd. Tokens (380 Tsd. rein · 32 Tsd. raus)`
  */
 export function formatSplit(
   total: number,
@@ -331,11 +327,12 @@ export function formatSplit(
   floor = false,
   locale: Locale = 'en',
 ): string {
-  const german = isGerman(locale);
-  const unit = tokenUnit(total, locale);
-  const inLabel = german ? 'rein' : 'in';
-  const outLabel = german ? 'raus' : 'out';
-  return `${renderTokens(total, unit, floor, locale)} (${renderTokens(input, unit, floor, locale)} ${inLabel} · ${renderTokens(output, unit, floor, locale)} ${outLabel})`;
+  const unit = tokenUnit(total);
+  return word(locale, 'common.tokens.split', {
+    total: renderTokens(total, unit, floor, locale),
+    in: renderTokens(input, unit, floor, locale),
+    out: renderTokens(output, unit, floor, locale),
+  });
 }
 
 /**

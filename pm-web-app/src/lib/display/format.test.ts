@@ -208,37 +208,136 @@ describe('formatTokens', () => {
     ['whole thousands', 830_000, false, '830 k', '830 Tsd.'],
     ['millions with two decimals', 1_240_000, false, '1.24 M', '1,24 Mio.'],
   ])('renders %s', (_label, count, floor, english, german) => {
-    expect(formatTokens(count, floor, 'en')).toBe(english);
-    expect(formatTokens(count, floor, 'de')).toBe(german);
+    expectBothLocales((locale) => formatTokens(count, floor, locale), english, german);
   });
 
   it('rounds a floor down at the precision shown', () => {
-    expect(formatTokens(412_680, true, 'en')).toBe('≥ 412 k');
-    expect(formatTokens(4_280, true, 'en')).toBe('≥ 4.2 k');
-    expect(formatTokens(1_249_000, true, 'en')).toBe('≥ 1.24 M');
+    expectBothLocales(
+      (locale) => formatTokens(412_680, true, locale),
+      '≥ 412 k',
+      '≥ 412 Tsd.',
+    );
+    expectBothLocales((locale) => formatTokens(4_280, true, locale), '≥ 4.2 k', '≥ 4,2 Tsd.');
+    expectBothLocales((locale) => formatTokens(1_249_000, true, locale), '≥ 1.24 M', '≥ 1,24 Mio.');
   });
 
   it('renders zero for no count', () => {
-    expect(formatTokens(0, false, 'en')).toBe('0');
+    expectBothLocales((locale) => formatTokens(0, false, locale), '0', '0');
+  });
+
+  it('renders the floor form for a count of zero or less', () => {
+    // A floor over no measured record is the floor of nothing, never the exact zero.
+    expectBothLocales((locale) => formatTokens(0, true, locale), '≥ 0', '≥ 0');
+    expectBothLocales((locale) => formatTokens(-5, true, locale), '≥ 0', '≥ 0');
   });
 });
 
 describe('formatSplit', () => {
   it('takes the unit of its total, in both languages', () => {
-    expect(formatSplit(412_000, 380_000, 32_000, true, 'en')).toBe(
-      '≥ 412 k (≥ 380 k in · ≥ 32 k out)',
+    expectBothLocales(
+      (locale) => formatSplit(412_000, 380_000, 32_000, true, locale),
+      '≥ 412 k tokens (≥ 380 k in · ≥ 32 k out)',
+      '≥ 412 Tsd. Tokens (≥ 380 Tsd. rein · ≥ 32 Tsd. raus)',
     );
-    expect(formatSplit(412_000, 380_000, 32_000, false, 'de')).toBe(
-      '412 Tsd. (380 Tsd. rein · 32 Tsd. raus)',
+    expectBothLocales(
+      (locale) => formatSplit(412_000, 380_000, 32_000, false, locale),
+      '412 k tokens (380 k in · 32 k out)',
+      '412 Tsd. Tokens (380 Tsd. rein · 32 Tsd. raus)',
     );
   });
 
   it('shows every part in the total’s unit, even a part far below it', () => {
-    expect(formatSplit(1002, 998, 4, false, 'en')).toBe('1.0 k (1.0 k in · 0.0 k out)');
+    expectBothLocales(
+      (locale) => formatSplit(1002, 998, 4, false, locale),
+      '1.0 k tokens (1.0 k in · 0.0 k out)',
+      '1,0 Tsd. Tokens (1,0 Tsd. rein · 0,0 Tsd. raus)',
+    );
   });
 
   it('shows plain numbers when the total is below a thousand', () => {
-    expect(formatSplit(412, 380, 32, false, 'en')).toBe('412 (380 in · 32 out)');
+    expectBothLocales(
+      (locale) => formatSplit(412, 380, 32, false, locale),
+      '412 tokens (380 in · 32 out)',
+      '412 Tokens (380 rein · 32 raus)',
+    );
+  });
+});
+
+describe('the token marks and labels come from the catalogue', () => {
+  /**
+   * Renders one token form against a pack that overrides the key it must read.
+   *
+   * The override is what proves the key is read: a mark written in code cannot follow it.
+   *
+   * @param render the formatter call, given the locale
+   * @param englishKey the key the English pack overrides
+   * @param englishValue the value the English pack carries for it
+   * @param germanKey the key the German pack overrides
+   * @param germanValue the value the German pack carries for it
+   * @param english the text the overridden English pack yields
+   * @param german the text the overridden German pack yields
+   */
+  function expectTokenForm(
+    render: (locale: 'de' | 'en') => string,
+    englishKey: string,
+    englishValue: string,
+    germanKey: string,
+    germanValue: string,
+    english: string,
+    german: string,
+  ): void {
+    useCatalogue('en', { [englishKey]: englishValue });
+    expect(render('en')).toBe(english);
+    useCatalogue('de', { [germanKey]: germanValue });
+    expect(render('de')).toBe(german);
+  }
+
+  it('takes the thousand mark from the pack', () => {
+    expectTokenForm(
+      (locale) => formatTokens(4200, false, locale),
+      'common.tokens.thousands',
+      '{value} K',
+      'common.tokens.thousands',
+      '{value} Taus.',
+      '4.2 K',
+      '4,2 Taus.',
+    );
+  });
+
+  it('takes the million mark from the pack', () => {
+    expectTokenForm(
+      (locale) => formatTokens(1_240_000, false, locale),
+      'common.tokens.millions',
+      '{value} MM',
+      'common.tokens.millions',
+      '{value} Mill.',
+      '1.24 MM',
+      '1,24 Mill.',
+    );
+  });
+
+  it('takes the split labels from the pack', () => {
+    expectTokenForm(
+      (locale) => formatSplit(412_000, 380_000, 32_000, false, locale),
+      'common.tokens.split',
+      '{total} TOK ({in} IN · {out} OUT)',
+      'common.tokens.split',
+      '{total} WERT ({in} EIN · {out} AUS)',
+      '412 k TOK (380 k IN · 32 k OUT)',
+      '412 Tsd. WERT (380 Tsd. EIN · 32 Tsd. AUS)',
+    );
+  });
+
+  it('takes the at-least prefix from the pack', () => {
+    expectTokenForm(
+      (locale) => formatTokens(412_680, true, locale),
+      'common.tokens.at_least',
+      'AT LEAST {value}',
+      'common.tokens.at_least',
+      'MINDESTENS {value}',
+      'AT LEAST 412 k',
+      'MINDESTENS 412 Tsd.',
+    );
   });
 });
 
