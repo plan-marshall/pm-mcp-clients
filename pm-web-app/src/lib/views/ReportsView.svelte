@@ -50,6 +50,8 @@
   let query = $state('');
   /** The reports whose body is open past its one line in the list. */
   let shownBodies = $state<Record<string, boolean>>({});
+  /** The reports whose body is longer than the one line the list gives it. */
+  let overflowingBodies = $state<Set<string>>(new Set());
   /**
    * The reports read by opening their detail in the list beside it: they stay in the list, marked
    * read, until the detail closes, so the selected row does not vanish under the pointer.
@@ -155,6 +157,25 @@
     if (item.kind?.startsWith('system.')) return MACHINE_GROUP_KEY;
     return item.from?.project || MACHINE_GROUP_KEY;
   }
+
+  // The body control is offered only where the clamped line actually hides text. The measurement
+  // runs after the list or either pane changes; a layout-less environment (a unit test) reports no
+  // height at all and keeps the control, so the branch stays reachable there.
+  $effect(() => {
+    void items;
+    void query;
+    void activeDetailPlanId;
+    const overflow = new Set<string>();
+    for (const node of document.querySelectorAll<HTMLElement>('.report-card__body')) {
+      const id = node.closest<HTMLElement>('.report-card')?.dataset.reportId;
+      if (!id) continue;
+      const clamped = node.classList.contains('report-card__body--clamped');
+      if (!clamped || node.scrollHeight === 0 || node.scrollHeight > node.clientHeight + 1) {
+        overflow.add(id);
+      }
+    }
+    overflowingBodies = overflow;
+  });
 
   /**
    * @param item a report
@@ -1113,14 +1134,16 @@
       >
         {item.body || item.summary}
       </div>
-      <Button
-        variant="ghost"
-        size="small"
-        aria-expanded={bodyOpen}
-        onclick={() => (shownBodies[item.id] = !bodyOpen)}
-      >
-        {bodyOpen ? $t('report.body.less') : $t('report.body.more')}
-      </Button>
+      {#if overflowingBodies.has(item.id)}
+        <Button
+          variant="ghost"
+          size="small"
+          aria-expanded={bodyOpen}
+          onclick={() => (shownBodies[item.id] = !bodyOpen)}
+        >
+          {bodyOpen ? $t('report.body.less') : $t('report.body.more')}
+        </Button>
+      {/if}
     {/if}
 
     <div class="report-card__actions">
