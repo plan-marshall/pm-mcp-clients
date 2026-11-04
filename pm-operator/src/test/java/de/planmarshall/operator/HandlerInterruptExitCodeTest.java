@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -23,6 +25,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -30,10 +33,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import org.jline.terminal.Terminal;
 
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
-
 import de.planmarshall.api.host.HostDetection;
+import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.resource.RoleDetailResource;
 import de.planmarshall.api.resource.RoleQualificationState;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
@@ -286,7 +287,7 @@ class HandlerInterruptExitCodeTest {
     }
 
     private static boolean isRead(String method) {
-        var upper = method.toUpperCase(java.util.Locale.ROOT);
+        var upper = method.toUpperCase(Locale.ROOT);
         return "GET".equals(upper) || "HEAD".equals(upper) || "OPTIONS".equals(upper);
     }
 
@@ -381,7 +382,7 @@ class HandlerInterruptExitCodeTest {
     }
 
     private static boolean startedNothing(MockRuntime runtime) throws IOException {
-        var response = runtime.client().send(de.planmarshall.api.http.HttpRequest.get("/mock/acts"));
+        var response = runtime.client().send(HttpRequest.get("/mock/acts"));
         var body = response.bodyText();
         // Opening the entry is the verb's own first act; starting the plan would be a second one.
         return !body.contains("/start");

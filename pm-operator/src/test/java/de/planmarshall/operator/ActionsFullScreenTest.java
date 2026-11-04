@@ -432,7 +432,7 @@ class ActionsFullScreenTest {
 
             var deadline = System.nanoTime() + 5_000_000_000L;
             while (thread.isAlive() && System.nanoTime() < deadline) {
-                virtual.terminal().raise(org.jline.terminal.Terminal.Signal.INT);
+                virtual.terminal().raise(Terminal.Signal.INT);
                 ControlFixture.delay(20L);
             }
             ControlFixture.join(thread);
