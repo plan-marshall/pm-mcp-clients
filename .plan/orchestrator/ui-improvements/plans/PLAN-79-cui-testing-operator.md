@@ -48,7 +48,7 @@ Convert the tests of `pm-operator` to the `pm-dev-java-cui:cui-testing` standard
 - HOLD (design audit 2026-11-02): it rewrites the tests of Drain, AcceptEdit, Start, Onboard and Enrol, which the D25 (drain: signal the pid of state/runtime.json, withdraw as 'runtime stop --withdraw'), D26 and R7-7 (accept-edit enrolment <project_id>) package changes. Sequence it after that package; also sequence it with PLAN-92 (shared handler tests).
 - Verify-first clause: before each deliverable, re-read the test tree at the current HEAD; `PLAN-77` must have landed. The terminal plans in flight edit these files; re-read which of them landed. A refuted claim re-scopes the deliverable and is reported.
 
-- Design audit 002 (2026-11-02, archived): sequence this plan after the packages `operator-drain-signal` (D25), `operator-command-tree` (D26) and `accept-edit-enrolment` (R7-7), all open in `doc/plans/` at `28634b2a`; none is a ledger plan yet (operator decision, see the epic Decisions of 2026-11-02). PLAN-92 has shipped (`c7d9dcb8`): its handler tests are the base of the rewrite.
+- Design audit 002 (2026-11-02, archived): sequence this plan after the packages `operator-drain-signal` (D25), `operator-command-tree` (D26) and `accept-edit-enrolment` (R7-7), all open in `doc/plans/` at `28634b2a`; they are the three deliverables of PLAN-97 (staged 2026-11-04 on the operator's word): sequence this plan after PLAN-97. PLAN-92 has shipped (`c7d9dcb8`): its handler tests are the base of the rewrite.
 
 ## Expected Surface
 
