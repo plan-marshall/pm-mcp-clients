@@ -387,6 +387,43 @@ class WebDevicesCommandTest {
      *
      * @throws Exception if the fixture cannot serve
      */
+    @Test
+    @DisplayName("a refused act in the interactive list leaves with 1 and the refusal")
+    void aRefusedInteractiveActLeavesWithOne() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var deviceId = Generators.letterStrings(4, 8).next();
+        var label = Generators.letterStrings(4, 8).next();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
+                                    """);
+            } else if ("/api/v1/web/devices".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    [{"device_id":"%s","label":"%s"}]
+                                    """.formatted(deviceId, label));
+            } else if ("DELETE".equals(request.method())) {
+                response.json(400, "{\"error\":\"refused\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        // Choose the one device, revoke it, and confirm the prompt.
+        var context = createContext("1\nx\n\n");
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("-i");
+
+        var output = writer.toString();
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(output.contains("Failed to revoke: HTTP 400"), output)
+        );
+    }
+
     private void seedRefusedRoutes() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
         var reason = Generators.letterStrings(6, 16).next();

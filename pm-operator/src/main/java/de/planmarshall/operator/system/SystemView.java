@@ -317,7 +317,7 @@ public final class SystemView {
         var key = "overview.state." + state;
         return MessageCatalogue.hasKey(locale, key)
                             ? MessageCatalogue.format(locale, key, Map.of())
-                            : state.replace('_', ' ');
+                            : clean(state.replace('_', ' '));
     }
 
     /**

@@ -66,6 +66,10 @@ class SystemFullScreenTest {
                         {"version":"0.9.1","state":"running"}
                         """;
 
+    private static final String STATUS_STOPPING = """
+                        {"version":"0.9.1","state":"stopping"}
+                        """;
+
     private static final String PROJECTS_JSON = """
                         {
                           "projects": [
@@ -377,6 +381,8 @@ class SystemFullScreenTest {
             virtual.type("\r");
             await(() -> shows(virtual, "\u00b7 Jobs"));
             await(() -> shows(virtual, "locks  3 held"));
+            await(() -> shows(virtual, "build  1 of 2 slots \u00b7 1 queued"));
+            await(() -> shows(virtual, "test  0 of 1 slot"));
 
             virtual.type("jj");
             await(() -> selectedRow(virtual).contains("locks"));
@@ -401,6 +407,30 @@ class SystemFullScreenTest {
 
             await(() -> shows(virtual, "Stopping when what runs is done"));
             await(() -> shows(virtual, "2 left: build of fix-relay, task of relay-docs"));
+
+            virtual.type("q");
+            join(thread);
+        }
+    }
+
+    @Test
+    @DisplayName("a status that moves past draining replaces the event's line")
+    void theDrainingLineGivesWayToTheStatus() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var context = createContext(virtual);
+            var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+
+            sendEvent("runtime.draining", "{\"who\":\"you\",\"remaining_count\":2,"
+                                + "\"remaining_items\":[\"build of fix-relay\",\"task of relay-docs\"],"
+                                + "\"withdrawable\":true}");
+            await(() -> shows(virtual, "Stopping when what runs is done"));
+
+            statusBody.set(STATUS_STOPPING);
+            sendEvent("system.metrics", "{}");
+            await(() -> shows(virtual, "stopping"));
+
+            assertFalse(shows(virtual, "Stopping when what runs is done"),
+                                virtual.screen().lines().toString());
 
             virtual.type("q");
             join(thread);

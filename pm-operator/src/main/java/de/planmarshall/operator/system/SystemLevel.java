@@ -103,17 +103,30 @@ public final class SystemLevel {
     /** The figures the selection can rest on. */
     public enum Figure {
         /** The runtime's identity, uptime, memory, storage, and listeners. */
-        RUNTIME,
+        RUNTIME(ROW_RUNTIME),
         /** The plans, epics, tasks, and projects at work. */
-        WORK,
+        WORK(ROW_WORK),
         /** The workers of the machine. */
-        WORKERS,
+        WORKERS(ROW_WORKERS),
         /** The job kinds, their slots, and the locks. */
-        JOBS,
+        JOBS(ROW_JOBS),
         /** The models' calls in the window. */
-        MODELS,
+        MODELS(ROW_MODELS),
         /** The cleanup of ended work. */
-        CLEANUP
+        CLEANUP(ROW_CLEANUP);
+
+        private final String rowId;
+
+        Figure(String rowId) {
+            this.rowId = rowId;
+        }
+
+        /**
+         * @return the id of the root row the figure draws
+         */
+        public String rowId() {
+            return rowId;
+        }
     }
 
     private final @Nullable SystemSnapshot snapshot;
@@ -250,15 +263,20 @@ public final class SystemLevel {
      * @return the figure the row belongs to, or {@code null} for a detail row
      */
     public static @Nullable Figure figureOf(String rowId) {
-        return switch (rowId) {
-            case ROW_RUNTIME -> Figure.RUNTIME;
-            case ROW_WORK -> Figure.WORK;
-            case ROW_WORKERS -> Figure.WORKERS;
-            case ROW_JOBS -> Figure.JOBS;
-            case ROW_MODELS -> Figure.MODELS;
-            case ROW_CLEANUP -> Figure.CLEANUP;
-            default -> null;
-        };
+        for (var figure : Figure.values()) {
+            if (figure.rowId().equals(rowId)) {
+                return figure;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * @param figure the figure
+     * @return the id of the root row the figure draws
+     */
+    public static String rowIdOf(Figure figure) {
+        return figure.rowId();
     }
 
     /**
@@ -346,10 +364,12 @@ public final class SystemLevel {
 
     private List<TuiRow> rootRows(String locale) {
         var figures = SystemView.root(snapshot, locale, window, groupBy);
+        // Figure's declaration order is the order SystemView.root draws the six figures in.
+        var rootFigures = Figure.values();
         var rows = new ArrayList<TuiRow>(figures.size());
-        var ids = List.of(ROW_RUNTIME, ROW_WORK, ROW_WORKERS, ROW_JOBS, ROW_MODELS, ROW_CLEANUP);
         for (int index = 0; index < figures.size(); index++) {
-            rows.add(new TuiRow(ids.get(index), SystemView.rowLine(figures.get(index)),
+            var figure = rootFigures[index];
+            rows.add(new TuiRow(figure.rowId(), SystemView.rowLine(figures.get(index)),
                                 SystemView.rowDetails(figures.get(index)), false, true));
         }
         return rows;

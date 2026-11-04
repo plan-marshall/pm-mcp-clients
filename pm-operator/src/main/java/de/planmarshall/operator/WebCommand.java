@@ -446,13 +446,13 @@ public final class WebCommand implements Callable<Integer> {
             if (interactive && context.isInteractiveTerminal()) {
                 var parsed = JsonTree.parse(response.body());
                 if (parsed instanceof List<?> list && !list.isEmpty()) {
-                    handleInteractive(runtime, out, list);
+                    return handleInteractive(runtime, out, list);
                 }
             }
             return 0;
         }
 
-        private void handleInteractive(RuntimeClient runtime, PrintWriter out, List<?> list) {
+        private int handleInteractive(RuntimeClient runtime, PrintWriter out, List<?> list) {
             var locale = context.clientEnvironment().locale();
             try (var lease = context.openTerminal()) {
                 var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
@@ -467,8 +467,9 @@ public final class WebCommand implements Callable<Integer> {
                                                                             "operator.devices.leave", Map.of())));
                 var line = reader.readLine(prompt);
                 if (line != null) {
-                    processInteractiveChoice(runtime, out, reader, list, line.trim());
+                    return processInteractiveChoice(runtime, out, reader, list, line.trim());
                 }
+                return 0;
             }
             catch (UserInterruptException interrupt) {
                 // Ctrl+C at the device prompt is the exit-code table's 130, never a swallowed read.
@@ -476,36 +477,37 @@ public final class WebCommand implements Callable<Integer> {
             }
             // cui-rewrite:disable InvalidExceptionUsageRecipe
             catch (IOException | RuntimeException _) {
-                // Ignore interactive terminal read exception
+                // The act did not run: say so and leave with the failure, never a silent 0.
+                out.println(MessageCatalogue.format(locale, "operator.devices.act_failed", Map.of()));
+                out.flush();
+                return PmOperator.EXIT_FAILURE;
             }
         }
 
-        private void processInteractiveChoice(RuntimeClient runtime, PrintWriter out, LineReader reader, List<?> list, String choice) throws IOException {
+        private int processInteractiveChoice(RuntimeClient runtime, PrintWriter out, LineReader reader, List<?> list, String choice) throws IOException {
             if ("q".equalsIgnoreCase(choice) || "leave".equalsIgnoreCase(choice) || choice.isEmpty()) {
-                return;
+                return 0;
             }
             if ("o".equalsIgnoreCase(choice)) {
                 this.others = true;
-                handleRevoke(runtime, out);
-                return;
+                return handleRevoke(runtime, out);
             }
             if ("n".equalsIgnoreCase(choice)) {
-                handleListenerOff(runtime, out);
-                return;
+                return handleListenerOff(runtime, out);
             }
-            processDeviceIndexChoice(runtime, out, reader, list, choice);
+            return processDeviceIndexChoice(runtime, out, reader, list, choice);
         }
 
-        private void processDeviceIndexChoice(RuntimeClient runtime, PrintWriter out, LineReader reader, List<?> list, String choice) throws IOException {
+        private int processDeviceIndexChoice(RuntimeClient runtime, PrintWriter out, LineReader reader, List<?> list, String choice) throws IOException {
             var locale = context.clientEnvironment().locale();
             int num;
             try {
                 num = Integer.parseInt(choice);
             } catch (NumberFormatException _) {
-                return;
+                return 0;
             }
             if (num < 1 || num > list.size()) {
-                return;
+                return 0;
             }
             var item = list.get(num - 1);
             var devInfo = extractDeviceInfo(item, num);
@@ -515,7 +517,7 @@ public final class WebCommand implements Callable<Integer> {
             var actLine = reader.readLine(MessageCatalogue.format(locale,
                                 "operator.devices.rename_or_revoke_prompt", Map.of()));
             if (actLine == null) {
-                return;
+                return 0;
             }
             var act = actLine.trim();
             if ("r".equalsIgnoreCase(act) || RENAME.equalsIgnoreCase(act)) {
@@ -524,12 +526,15 @@ public final class WebCommand implements Callable<Integer> {
                 if (newLbl != null && !newLbl.trim().isEmpty()) {
                     this.deviceId = devInfo.id();
                     this.newLabel = newLbl.trim();
-                    handleRename(runtime, out);
+                    return handleRename(runtime, out);
                 }
-            } else if ("x".equalsIgnoreCase(act) || REVOKE.equalsIgnoreCase(act)) {
-                this.deviceId = devInfo.id();
-                handleRevoke(runtime, out);
+                return 0;
             }
+            if ("x".equalsIgnoreCase(act) || REVOKE.equalsIgnoreCase(act)) {
+                this.deviceId = devInfo.id();
+                return handleRevoke(runtime, out);
+            }
+            return 0;
         }
 
         private record DeviceInfo(String id, String label) {

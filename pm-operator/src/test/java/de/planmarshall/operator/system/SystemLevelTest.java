@@ -261,4 +261,18 @@ class SystemLevelTest {
         assertNotNull(rows.getFirst().line());
         assertEquals("System", unavailable.breadcrumb("en"));
     }
+
+    @Test
+    @DisplayName("the root rows and the selection share one figure-to-id mapping")
+    void derivesTheRootRowIdsFromTheFigureMapping() {
+        var rows = level().rows("en", SystemLevel.Section.ROOT);
+
+        assertEquals(SystemLevel.Figure.values().length, rows.size());
+        for (var row : rows) {
+            var figure = SystemLevel.figureOf(row.id());
+            assertNotNull(figure, row.id());
+            assertEquals(row.id(), SystemLevel.rowIdOf(figure), figure.name());
+        }
+        assertNull(SystemLevel.figureOf("sys:workers:0"));
+    }
 }

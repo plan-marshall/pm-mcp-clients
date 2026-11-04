@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -35,6 +36,7 @@ import de.planmarshall.api.system.WorkerMetric;
 import de.planmarshall.api.system.WorkerState;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.system.SystemLevel;
+import de.planmarshall.operator.system.SystemView;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -189,6 +191,18 @@ class SystemViewConsistencyTest {
         return MessageCatalogue.format(lang, "system.runtime.listeners_console",
                             Map.of("loopback", LOOPBACK, "loopback_address", LOOPBACK,
                                                 "lan", NETWORK, "lan_address", NETWORK, "devices", pairedDevices));
+    }
+
+    @Test
+    @DisplayName("a state key with a control sequence reaches the work line clean")
+    void stateKeysPrintClean() {
+        var escapedKey = "run\u001b[31mning";
+        var work = new WorkMetrics(Map.of(escapedKey, 3), Map.of(), 1, 0, 1, List.of());
+
+        var line = SystemView.work(work, "en").line();
+
+        assertFalse(line.contains("\u001b"), line);
+        assertTrue(line.contains("running"), line);
     }
 
     @Test

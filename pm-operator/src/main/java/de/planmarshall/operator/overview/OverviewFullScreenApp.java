@@ -54,6 +54,7 @@ import de.planmarshall.api.report.ReportKind;
 import de.planmarshall.api.report.ReportsPage;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.system.RuntimeDrainingEvent;
+import de.planmarshall.api.system.RuntimeLifecycleState;
 import de.planmarshall.api.system.RuntimeStatus;
 import de.planmarshall.api.system.SystemSnapshot;
 import de.planmarshall.api.system.SystemWindow;
@@ -1739,7 +1740,10 @@ public final class OverviewFullScreenApp {
             if (lifecycle == null) {
                 systemBanner = null;
                 systemBannerFromEvent = false;
-            } else if (systemBanner == null || !systemBannerFromEvent) {
+            } else if (!systemBannerFromEvent
+                                || status.state() != RuntimeLifecycleState.DRAINING) {
+                // An event's line refines the drain by name and survives a status that still
+                // drains; any later state is the status's to state.
                 systemBanner = lifecycle;
                 systemBannerFromEvent = false;
             }
