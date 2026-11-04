@@ -9,6 +9,7 @@ import {
 } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
 import {
+  dayOf,
   formatBytes,
   formatDay,
   formatDuration,
@@ -126,6 +127,32 @@ describe('formatTime', () => {
         'vor 2 h',
       );
     });
+
+    it('renders a moment of today under a minute ago in the since form', () => {
+      expectBothLocales(
+        (locale) => formatTime(at(10, 16, 11, 59, 30), 'relative', locale, NOW),
+        'since 11:59',
+        'seit 11:59',
+      );
+    });
+
+    it('renders a moment of today under an hour ago in the since form', () => {
+      expectBothLocales(
+        (locale) => formatTime(at(10, 16, 11, 15), 'relative', locale, NOW),
+        'since 11:15',
+        'seit 11:15',
+      );
+    });
+
+    it('renders the age of a moment older than a year in years', () => {
+      // 400 days before NOW: the year is the unit the distance has, not the month.
+      const moreThanAYearAgo = new Date(2025, 8, 11, 12, 0, 0).toISOString();
+      expectBothLocales(
+        (locale) => formatTime(moreThanAYearAgo, 'relative', locale, NOW),
+        'last year',
+        'letztes Jahr',
+      );
+    });
   });
 
   describe('short', () => {
@@ -184,6 +211,23 @@ describe('formatTime', () => {
     it('opens the day of a row that carries only a clock', () => {
       expectBothLocales((locale) => formatDay('14:02:11', locale, NOW), 'today', 'heute');
     });
+  });
+});
+
+describe('dayOf', () => {
+  it('opens the day of an instant', () => {
+    expect(dayOf(at(10, 15, 18, 40), NOW)).toEqual(new Date(2026, 9, 15));
+  });
+
+  it('opens the day it was read for a row that carries only a clock', () => {
+    expect(dayOf('14:02:11', NOW)).toEqual(new Date(2026, 9, 16));
+  });
+
+  it('opens no day for a value that is neither an instant nor a clock', () => {
+    expect(dayOf('not a date', NOW)).toBeNull();
+    expect(dayOf('25:99', NOW)).toBeNull();
+    expect(dayOf('', NOW)).toBeNull();
+    expect(dayOf(null, NOW)).toBeNull();
   });
 });
 

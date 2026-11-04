@@ -20,7 +20,41 @@ export type TimeStyle = 'relative' | 'short' | 'clock';
  *
  * The activity stream may carry a clock alone, and a clock is the day it was read.
  */
-const CLOCK_ONLY = /^\d{1,2}:\d{2}(:\d{2})?$/;
+const CLOCK_ONLY = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/;
+
+/** The shape of a value that claims to be a clock, whether or not the clock can exist. */
+const CLOCK_SHAPED = /^\d{1,2}:\d{2}/;
+
+/** The parts of a bare clock. */
+export interface ClockParts {
+  /** The hour of the day, 0 to 23. */
+  hours: number;
+  /** The minute of the hour, 0 to 59. */
+  minutes: number;
+  /** The second of the minute, 0 to 59; `:00` when the clock carries none. */
+  seconds: number;
+}
+
+/**
+ * Reads a bare clock a row carries instead of an instant.
+ *
+ * A clock that cannot exist (`25:99`) is not a clock: nothing is built from it, so no constructed
+ * instant reaches a screen.
+ *
+ * @param timestamp the value a row carries
+ * @returns the clock's parts, or `null` when the value is not a clock the runtime could have sent
+ */
+export function clockParts(timestamp: string | null | undefined): ClockParts | null {
+  const match = CLOCK_ONLY.exec((timestamp ?? '').trim());
+  if (!match) return null;
+  const parts = {
+    hours: Number(match[1]),
+    minutes: Number(match[2]),
+    seconds: Number(match[3] ?? '0'),
+  };
+  if (parts.hours > 23 || parts.minutes > 59 || parts.seconds > 59) return null;
+  return parts;
+}
 
 /**
  * @param locale the interface locale
@@ -109,6 +143,29 @@ function ageText(ms: number, locale: Locale): string {
 }
 
 /**
+ * Dates a row the runtime sends with a clock only.
+ *
+ * The wire may carry `14:02:11` instead of an instant; such a row belongs to the day it was read,
+ * so the row takes that day with the clock it sent. The day is thus fixed when the row arrives,
+ * and a page left open over midnight keeps its rows where they belong.
+ *
+ * @param timestamp the instant or the bare clock the runtime sends
+ * @param readAt the moment the row was read
+ * @returns the timestamp with a date, the value unchanged when it already carries one, and an
+ *   empty string for a value shaped like a clock that cannot exist — no constructed instant ever
+ *   reaches a row
+ */
+export function dateOnRead(timestamp: string, readAt: Date): string {
+  const clock = clockParts(timestamp);
+  if (!clock) {
+    return CLOCK_SHAPED.test((timestamp ?? '').trim()) ? '' : timestamp;
+  }
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  const day = `${readAt.getFullYear()}-${pad(readAt.getMonth() + 1)}-${pad(readAt.getDate())}`;
+  return `${day}T${pad(clock.hours)}:${pad(clock.minutes)}:${pad(clock.seconds)}`;
+}
+
+/**
  * Renders a moment in one of the three styles the design defines.
  *
  * `relative` is a moment of today as `since 14:02` and any older moment as the distance to now in
@@ -177,7 +234,7 @@ export function dayOf(
   timestamp: string | null | undefined,
   now: Date = new Date(),
 ): Date | null {
-  const moment = parseInstant(timestamp) ?? (CLOCK_ONLY.test((timestamp ?? '').trim()) ? now : null);
+  const moment = parseInstant(timestamp) ?? (clockParts(timestamp) ? now : null);
   return moment === null ? null : startOfDay(moment);
 }
 

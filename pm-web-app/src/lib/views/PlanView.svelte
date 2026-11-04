@@ -27,6 +27,7 @@
     navigateTo,
   } from '../stores/runtime';
   import {
+    dateOnRead,
     formatSplit,
     formatTokens,
     formatDuration,
@@ -319,26 +320,6 @@
     return Array.isArray(value)
       ? value.filter((item): item is string => typeof item === 'string')
       : [];
-  }
-
-  /**
-   * Dates a row the runtime sends with a clock only.
-   *
-   * The wire may carry `14:02:11` instead of an instant; such a row belongs to the day it was read,
-   * so the row takes that day with the clock it sent. The day is thus fixed when the row arrives,
-   * and a page left open over midnight keeps its rows where they belong.
-   *
-   * @param timestamp the instant or the bare clock the runtime sends
-   * @param readAt the moment the row was read
-   * @returns the timestamp with a date, or the value unchanged when it already carries one
-   */
-  function dateOnRead(timestamp: string, readAt: Date): string {
-    const clockOnly = /^\d{1,2}:\d{2}(:\d{2})?$/.exec(timestamp.trim());
-    if (!clockOnly) return timestamp;
-    const [hours, minutes, seconds = '00'] = clockOnly[0].split(':');
-    const pad = (value: number): string => String(value).padStart(2, '0');
-    const day = `${readAt.getFullYear()}-${pad(readAt.getMonth() + 1)}-${pad(readAt.getDate())}`;
-    return `${day}T${pad(Number(hours))}:${pad(Number(minutes))}:${pad(Number(seconds))}`;
   }
 
   /**

@@ -52,7 +52,6 @@ class ProjectsCatalogueTest {
                 "project.explorer.most_used",
                 "project.explorer.filter",
                 "project.explorer.empty",
-                "project.explorer.last_active",
                 "project.adding.title",
                 "project.adding.step",
                 "project.adding.continue",
@@ -180,12 +179,6 @@ class ProjectsCatalogueTest {
     @Test
     @DisplayName("formats parameterized messages in English and German")
     void shouldFormatParameterizedMessages() {
-        var enLastActive = MessageCatalogue.format("en", "project.explorer.last_active", Map.of("duration", "2 min"));
-        assertEquals("2 min ago", enLastActive);
-
-        var deLastActive = MessageCatalogue.format("de", "project.explorer.last_active", Map.of("duration", "2 Min."));
-        assertEquals("vor 2 Min.", deLastActive);
-
         var enSetupNeeds = MessageCatalogue.format("en", "project.state.setup_needs", Map.of("need", "credential sonar"));
         assertEquals("setup needs: credential sonar", enSetupNeeds);
 
