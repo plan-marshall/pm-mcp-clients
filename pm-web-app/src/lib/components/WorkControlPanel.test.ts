@@ -227,13 +227,16 @@ describe('WorkControlPanel component', () => {
       ],
     });
     const apply = vi.spyOn(apiClient, 'applyEpicAction').mockResolvedValue(running);
-    render(WorkControlPanel, { props: { subjectId: 'relay-hardening', subjectKind: 'epic' } });
+    render(WorkControlPanel, {
+      props: { subjectId: 'relay-hardening', subjectKind: 'epic', running: 2 },
+    });
 
     await openOverflow();
     await fireEvent.click(screen.getByTestId('action-cancel'));
     expect(await screen.findByTestId('confirm-dialog')).toHaveTextContent(
       'Cancel relay-hardening?',
     );
+    expect(screen.getByTestId('epic-cancel-plans')).toHaveTextContent('2 plans run');
     expect(apply).not.toHaveBeenCalled();
 
     await fireEvent.input(screen.getByTestId('epic-cancel-reason'), {
@@ -248,6 +251,23 @@ describe('WorkControlPanel component', () => {
         reason: 'superseded by the next epic',
       });
     });
+  });
+
+  it('names no plan count when the view does not know how many run', async () => {
+    vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue({
+      subject_id: 'relay-hardening',
+      subject_kind: 'epic',
+      state: 'running',
+      overlap_max_files: 0,
+      actions: [{ action: 'cancel', available: true }],
+    });
+    render(WorkControlPanel, { props: { subjectId: 'relay-hardening', subjectKind: 'epic' } });
+
+    await openOverflow();
+    await fireEvent.click(screen.getByTestId('action-cancel'));
+
+    expect(await screen.findByTestId('confirm-dialog')).toBeInTheDocument();
+    expect(screen.queryByTestId('epic-cancel-plans')).not.toBeInTheDocument();
   });
 
   it('gives the focus back to the opener once the confirmed act settles', async () => {

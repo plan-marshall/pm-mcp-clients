@@ -190,7 +190,10 @@ test.describe('System: figures, filters, upgrade, and cleanup preview (UC-SYS-1.
     await expect(page.getByTestId('upgrade-withdrawn')).toContainText('0.9.1 keeps running');
   });
 
-  test('shows only stop now and withdraw while the runtime drains', async ({ page, request }) => {
+  test('lists what the drain still runs, counts it, and shrinks it as it ends', async ({
+    page,
+    request,
+  }) => {
     const scenario = await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
       data: { scenario: 'reports-and-system' },
     });

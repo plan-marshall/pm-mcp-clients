@@ -1002,12 +1002,7 @@
   </fieldset>
   <label class="control-dialog__field">
     {$t('control.end.label.reason')}
-    <input
-      type="text"
-      data-testid="epic-cancel-reason"
-      bind:value={cancelReason}
-      placeholder={$t('control.end.reason_required')}
-    />
+    <input type="text" data-testid="epic-cancel-reason" bind:value={cancelReason} />
   </label>
   {#if !cancelReason.trim()}
     <p class="control-dialog__hint">{$t('control.end.reason_required')}</p>

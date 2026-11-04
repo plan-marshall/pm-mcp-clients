@@ -110,6 +110,8 @@
       await apiClient.stopRuntime('now');
       stopNowConfirm = false;
     } catch (err: unknown) {
+      // The refusal belongs in the banner; the short confirmation has done its work.
+      stopNowConfirm = false;
       drainingFailure = $t('system.stopping.stop_now_failed', { reason: refusalOf(err) });
     } finally {
       drainingBusy = false;

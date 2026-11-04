@@ -274,7 +274,9 @@ describe('the app shell', () => {
     const banner = await screen.findByTestId('draining-banner');
 
     await fireEvent.click(within(banner).getByRole('button', { name: 'Stop now' }));
-    expect(screen.getByTestId('stop-now-confirm')).toBeVisible();
+    expect(screen.getByTestId('stop-now-confirm')).toHaveTextContent(
+      'Withdraw what still runs (1 left) and stop now?',
+    );
     expect(stopNow).not.toHaveBeenCalled();
     await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
     expect(stopNow).toHaveBeenCalledWith('now');
@@ -285,6 +287,44 @@ describe('the app shell', () => {
 
     refuseWithdraw(new Error('too late'));
     expect(await screen.findByTestId('draining-failure')).toHaveTextContent('too late');
+  });
+
+  it('shows the refusal of Stop now and ignores a second confirm while it runs', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...STATUS,
+      lifecycle_state: 'draining',
+      draining_by: 'the console',
+      drain_remaining_items: ['build of fix-relay'],
+    });
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isDraining: true,
+        drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
+      }),
+    );
+    let refuseStopNow: (reason: Error) => void = () => {};
+    const pending = new Promise<void>((_resolve, reject) => {
+      refuseStopNow = reject;
+    });
+    const stopNow = vi.spyOn(apiClient, 'stopRuntime').mockReturnValue(pending);
+
+    render(Layout);
+    const banner = await screen.findByTestId('draining-banner');
+    await fireEvent.click(within(banner).getByRole('button', { name: 'Stop now' }));
+    const confirm = screen.getByTestId('confirm-dialog-confirm');
+    await fireEvent.click(confirm);
+    await fireEvent.click(confirm);
+    expect(stopNow).toHaveBeenCalledOnce();
+
+    refuseStopNow(new Error('already stopping'));
+    expect(await screen.findByTestId('draining-failure')).toHaveTextContent('already stopping');
   });
 
   it('probes the connection again after 30 seconds and reports the machine online again', async () => {

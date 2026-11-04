@@ -28,9 +28,11 @@ export async function expectNothingRedAtRest(page, { timeout = 5000 } = {}) {
     document.body.appendChild(probe);
     const danger = getComputedStyle(probe).backgroundColor;
     probe.remove();
-    // An act can be red as a filled control or as danger-coloured text on an interactive
-    // element; both are the act's colour, not the rest of the page's.
+    // An act can be red as a filled control or as danger-coloured text on an act of a bar; both
+    // are the act's colour. A danger-coloured status outside a bar (an offline indicator) is not
+    // an act at rest and stays out of this check.
     const INTERACTIVE = new Set(['button', 'a', 'summary']);
+    const IN_A_BAR = '[data-testid="action-bar"], [data-testid="control-actions"], [role="menu"]';
     return Array.from(document.querySelectorAll('*'))
       .filter((element) => {
         const style = getComputedStyle(element);
@@ -42,7 +44,7 @@ export async function expectNothingRedAtRest(page, { timeout = 5000 } = {}) {
           INTERACTIVE.has(element.tagName.toLowerCase()) ||
           role === 'button' ||
           role === 'menuitem';
-        return interactive && style.color === danger;
+        return interactive && style.color === danger && element.closest(IN_A_BAR) !== null;
       })
       .map((element) => `${element.tagName.toLowerCase()}.${String(element.className ?? '')}`)
       .slice(0, 10);

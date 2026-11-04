@@ -45,6 +45,13 @@ test.describe('the row menu of the data table', () => {
         // German, so both locales are measured.
         await page.evaluate((value) => localStorage.setItem('pm_locale', value), locale);
         await page.goto('/dev/components');
+        // The word beside the glyph is what the column has to hold; wait for the localised one,
+        // so a catalogue that has not arrived cannot be measured as the humanised key.
+        await expect(
+          page
+            .locator('[data-testid="data-table"] tbody tr:first-child td.data-table__menu button')
+            .first(),
+        ).toContainText(locale === 'de' ? 'Zeilenmenü' : 'Row menu');
 
         const overhang = await measured(
           page,

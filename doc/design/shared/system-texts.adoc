@@ -341,10 +341,6 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |Stop now
 |Stoppe jetzt
 
-|`system.stopping.confirm_now`
-|Withdraw {tasks, plural, one {# task} other {# tasks}} and stop {jobs, plural, one {# job} other {# jobs}} now?
-|{tasks, plural, one {# Task} other {# Tasks}} zurückziehen und {jobs, plural, one {# Job} other {# Jobs}} jetzt stoppen?
-
 |`system.stopping.confirm_now_left`
 |Withdraw what still runs ({count} left) and stop now?
 |Ziehe zurück, was noch läuft ({count} übrig), und stoppe jetzt?
