@@ -2784,11 +2784,13 @@
             {
               "kind": "plan",
               "id": "fix-relay",
+              "name": "execute task of fix-relay",
               "summary": "1 task still running"
             },
             {
               "kind": "build",
               "id": "build-42",
+              "name": "build of fix-relay",
               "summary": "a build holds a slot"
             }
           ],
@@ -2815,6 +2817,27 @@
             "draining_by": "the console",
             "event": "runtime.draining",
             "at": "2026-10-16T12:00:00Z",
+            "remaining_items": [
+              "execute task of fix-relay",
+              "build of fix-relay"
+            ],
+            "remaining_work_count": 2,
+            "scope": {
+              "kind": "machine"
+            }
+          }
+        },
+        {
+          "after_ms": 1800,
+          "event": "runtime.draining",
+          "data": {
+            "draining_by": "the console",
+            "event": "runtime.draining",
+            "at": "2026-10-16T12:00:02Z",
+            "remaining_items": [
+              "execute task of fix-relay"
+            ],
+            "remaining_work_count": 1,
             "scope": {
               "kind": "machine"
             }

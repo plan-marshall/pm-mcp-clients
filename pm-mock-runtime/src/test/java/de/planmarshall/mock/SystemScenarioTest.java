@@ -10,6 +10,7 @@
 package de.planmarshall.mock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -141,6 +142,10 @@ class SystemScenarioTest {
             assertEquals("draining", statusMap.get("lifecycle_state"));
             assertEquals("the console", statusMap.get("draining_by"));
             assertEquals(true, statusMap.get("can_withdraw"));
+            // A drain names what it still runs, so the clients draw the list and its count.
+            var drainItems = JsonTree.asArray(statusMap.get("drain_remaining_items"));
+            assertNotNull(drainItems, "a drain names what it still runs");
+            assertFalse(drainItems.isEmpty(), "a drain names at least one item");
 
             // 2. Withdraw drain
             var resWithdraw = client.send(HttpRequest.delete("/api/v1/operator/runtime/stop").withHeader("Authorization", auth));

@@ -210,6 +210,14 @@ class ScenarioStateContractTest {
                     assertEquals(blockers.size(),
                             JsonTree.integer(status.json(), "drain_remaining_count"),
                             "system.draining drain_remaining_count");
+
+                    // The live form names what it still runs: the status lists the blockers by name.
+                    var items = JsonTree.asArray(status.json().get("drain_remaining_items"));
+                    assertNotNull(items, "system.draining drain_remaining_items");
+                    var names = blockers.stream()
+                            .map(blocker -> JsonTree.string(JsonTree.asObject(blocker), "name"))
+                            .toList();
+                    assertEquals(names, items, "system.draining names its remaining work");
                 }
             }
         }

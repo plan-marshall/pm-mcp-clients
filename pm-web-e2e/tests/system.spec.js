@@ -202,9 +202,18 @@ test.describe('System: figures, filters, upgrade, and cleanup preview (UC-SYS-1.
 
     const banner = page.getByTestId('draining-banner');
     await expect(banner).toBeVisible();
-    await expect(banner).toContainText('Stopping when what runs is done');
+    await expect(banner.getByTestId('draining-text')).toContainText(
+      '2 left: execute task of fix-relay, build of fix-relay',
+    );
+    await expect(banner.getByTestId('draining-list').getByRole('listitem')).toHaveCount(2);
     await expect(banner.getByRole('button', { name: 'Withdraw the stop' })).toBeVisible();
     await expect(banner.getByRole('button', { name: 'Stop now' })).toBeVisible();
+
+    // The runtime reports the work that finished: the line and the list shrink with it.
+    await expect(banner.getByTestId('draining-text')).toContainText(
+      '1 left: execute task of fix-relay',
+    );
+    await expect(banner.getByTestId('draining-list').getByRole('listitem')).toHaveCount(1);
 
     // Nothing red at rest, and the draining state carries no upgrade and no running acts.
     await expect(page.getByTestId('upgrade-consent')).toHaveCount(0);
