@@ -114,7 +114,7 @@ class TuiCapabilityIT {
             assertFalse(session.screen().invertedRows().isEmpty(),
                                 "the selected row is drawn in reverse: " + session.screenText());
             assertTrue(session.screen().cellStyles().stream().flatMap(List::stream)
-                                .anyMatch(style -> !AnsiScreen.CellStyle.PLAIN.equals(style)),
+                                                    .anyMatch(style -> !AnsiScreen.CellStyle.PLAIN.equals(style)),
                                 "the view writes styled cells: " + session.screenText());
 
             session.send("q");
