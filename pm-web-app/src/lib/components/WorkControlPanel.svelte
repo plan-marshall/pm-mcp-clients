@@ -20,7 +20,7 @@
     type PlanSettingsRecord,
     type WorkActions,
   } from '../api/client';
-  import { navigateTo } from '../stores/runtime';
+  import { navigateTo, openCompletionReport } from '../stores/runtime';
 
   interface SettingsConflict {
     aspect: string;
@@ -126,7 +126,9 @@
   let actSpecs = $derived(
     ended
       ? [{ id: 'chat', labelKey: 'control.plan.chat', advisoryKey: 'control.plan.chat_ended.title', role: 'secondary' as const }]
-      : actsFor(subjectKind, actState, actions?.actions),
+      : // The panel posts only the acts it handles itself. `decision` is the plan page's own act
+        // (PLAN-55); leaving it out keeps a primary the panel cannot run off the bar.
+        actsFor(subjectKind, actState, actions?.actions).filter((spec) => spec.id !== 'decision'),
   );
   let barActs = $derived(actSpecs.map(toBarAct));
 
@@ -311,7 +313,10 @@
    */
   function chooseAct(id: string): void {
     if (ended) {
-      void openChat();
+      // The ended panel draws the chat alone; no act of the table is posted from here.
+      if (id === 'chat' || id === 'follow_up') {
+        void openChat();
+      }
       return;
     }
     if (subjectKind === 'epic') {
@@ -328,6 +333,22 @@
       endReason = '';
       closePullRequest = false;
       openDialog('end');
+      return;
+    }
+    if (id === 'resolve_hold') {
+      openHold();
+      return;
+    }
+    if (id === 'report') {
+      openCompletionReport(subjectId);
+      return;
+    }
+    if (id === 'follow_up') {
+      void openChat();
+      return;
+    }
+    // The plan page owns the decision; the panel never posts it as an act of its own.
+    if (id === 'decision') {
       return;
     }
     void handleAction(id);

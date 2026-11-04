@@ -109,13 +109,21 @@ test.describe('Paired Devices Flow (UC-ENT-2)', () => {
     const confirmBtn = page.getByTestId('confirm-dialog-confirm');
     await confirmBtn.click();
 
-    // Should either land on revoked page or pairing page
-    await expect(
-      page
-        .getByTestId('revoked-view')
-        .or(page.getByRole('button', { name: 'Pair this browser' }))
-        .first(),
-    ).toBeVisible();
+    // Revoking this browser clears its secret and lands on the page that says so.
+    await expect(page.getByTestId('revoked-view')).toBeVisible();
+  });
+
+  test('does not read a mounted dialog as an act at rest', async ({ page }) => {
+    const row = page.getByTestId('device-row-dev-3');
+    await openOverflow(row);
+    await row.getByTestId('action-revoke').click();
+    await expect(page.getByTestId('confirm-dialog')).toBeVisible();
+
+    const refused = await expectNothingRedAtRest(page, { timeout: 500 }).then(
+      () => false,
+      () => true,
+    );
+    expect(refused).toBe(true);
   });
 
   test('asks for the typed name before revoking all others', async ({ page }) => {

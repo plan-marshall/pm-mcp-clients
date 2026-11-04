@@ -215,9 +215,12 @@ test.describe('System: figures, filters, upgrade, and cleanup preview (UC-SYS-1.
     );
     await expect(banner.getByTestId('draining-list').getByRole('listitem')).toHaveCount(1);
 
-    // Nothing red at rest, and the draining state carries no upgrade and no running acts.
+    // The drain's acts stand in the banner; the runtime card draws no bar of its own.
+    await expect(banner.getByTestId('action-bar')).toHaveCount(1);
+    await expect(page.getByTestId('system-view').getByTestId('action-bar')).toHaveCount(0);
+
+    // Nothing red at rest, and the draining state carries no upgrade consent.
     await expect(page.getByTestId('upgrade-consent')).toHaveCount(0);
-    await expect(page.getByTestId('system-view').getByTestId('action-bar-overflow')).toHaveCount(0);
     await expectNothingRedAtRest(page);
   });
 

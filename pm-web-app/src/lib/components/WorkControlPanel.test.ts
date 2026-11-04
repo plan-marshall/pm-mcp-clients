@@ -312,6 +312,64 @@ describe('WorkControlPanel component', () => {
     expect(document.activeElement).toBe(pause);
   });
 
+  it('drops the decision act another view owns instead of posting it', async () => {
+    vi.spyOn(apiClient, 'getPlanActions').mockResolvedValue({
+      ...running,
+      state: 'waiting',
+      actions: [{ action: 'decision', available: true }],
+    });
+    const apply = vi.spyOn(apiClient, 'applyPlanAction').mockResolvedValue(running);
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    await screen.findByTestId('control-actions');
+    expect(screen.queryByTestId('action-decision')).not.toBeInTheDocument();
+    expect(apply).not.toHaveBeenCalled();
+  });
+
+  it('routes the report act to the completion report instead of posting it', async () => {
+    vi.spyOn(apiClient, 'getPlanActions').mockResolvedValue({
+      ...running,
+      state: 'waiting',
+      actions: [
+        { action: 'pause', available: true },
+        { action: 'report', available: true },
+      ],
+    });
+    const apply = vi.spyOn(apiClient, 'applyPlanAction').mockResolvedValue(running);
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    await openOverflow();
+    await fireEvent.click(screen.getByTestId('action-report'));
+
+    await waitFor(() => expect(window.location.pathname).toBe('/reports'));
+    expect(apply).not.toHaveBeenCalled();
+  });
+
+  it('opens the plan’s hold for the resolve_hold act instead of posting it', async () => {
+    const hold = {
+      hold_id: 'H-0001',
+      subject_id: 'fix-relay',
+      subject_kind: 'plan',
+      kind: 'condition',
+      cause: 'the plan reads cui-http, which this project may not read',
+      attempts: 3,
+      acts: ['retry', 'end_plan'],
+    };
+    vi.spyOn(apiClient, 'getPlanActions').mockResolvedValue({
+      ...running,
+      state: 'held',
+      actions: [{ action: 'resolve_hold', available: true }],
+    });
+    vi.spyOn(apiClient, 'getPlanHolds').mockResolvedValue([hold]);
+    const apply = vi.spyOn(apiClient, 'applyPlanAction').mockResolvedValue(running);
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    await fireEvent.click(await screen.findByTestId('action-resolve_hold'));
+
+    expect(screen.getByTestId('hold-modal')).toBeInTheDocument();
+    expect(apply).not.toHaveBeenCalledWith('fix-relay', 'resolve_hold', expect.anything());
+  });
+
   it('opens the plan settings and reports where a change applies', async () => {
     render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
 
