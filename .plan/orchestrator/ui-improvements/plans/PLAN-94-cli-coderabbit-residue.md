@@ -76,6 +76,8 @@ Close the findings of CodeRabbit on `pm-operator` (and the `pm-api` records it r
 - HYPOTHESIS: items (b) to (g) of deliverable 5 — read by the analysing agent at `c7d9dcb8`, not re-read by the orchestrator (verify-at-outline)
 - Verify-first clause: before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted finding re-scopes the deliverable and is reported, never silently worked around.
 
+- Sequencing (2026-11-04): PLAN-97 (staged) folds or removes the top-level verbs `start`, `onboard`, `abort` and `unenrol` and rewrites the drain and accept-edit handlers; it starts after this plan lands. Do not add work to a handler that PLAN-97 removes without saying so.
+
 ## Expected Surface
 
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/overview/OverviewFullScreenApp.java` — present at HEAD 94bbefe1
