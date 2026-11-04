@@ -200,6 +200,15 @@
     inline-size: calc(44px + var(--space-2) * 2);
   }
 
+  /* From the tablet width up the control draws the word that names it beside the glyph, so the
+     column is as wide as that control: 8rem holds "Row menu" and "Zeilenmenü" inside the cell. */
+  @media (min-width: 768px) {
+    .data-table__menu-col,
+    .data-table__menu-head {
+      inline-size: 8rem;
+    }
+  }
+
   .data-table tbody td.data-table__menu {
     padding-inline: var(--space-2);
     /* The control, not the cell's padding, decides the row: 28 px of control inside 40 px of row. */
