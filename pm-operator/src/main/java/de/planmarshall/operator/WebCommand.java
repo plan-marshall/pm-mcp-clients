@@ -649,7 +649,11 @@ public final class WebCommand implements Callable<Integer> {
                 var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
                 var answer = reader.readLine(MessageCatalogue.format(context.clientEnvironment().locale(),
                                     "operator.devices.revoke_prompt", Map.of()));
-                return answer == null || (!"b".equalsIgnoreCase(answer.trim()) && !"back".equalsIgnoreCase(answer.trim()));
+                // An end of input and a "b" both leave; only a stated answer confirms the DELETE.
+                // Leaving is the dialogue rule's 0, the same code "b" leaves with.
+                return answer != null
+                                    && !"b".equalsIgnoreCase(answer.trim())
+                                    && !"back".equalsIgnoreCase(answer.trim());
             }
             catch (UserInterruptException interrupt) {
                 // The interrupt must not confirm the destructive revoke.
@@ -657,7 +661,8 @@ public final class WebCommand implements Callable<Integer> {
             }
             // cui-rewrite:disable InvalidExceptionUsageRecipe
             catch (IOException | RuntimeException _) {
-                return true;
+                // A read that failed cannot confirm; it leaves the way "b" does, with 0.
+                return false;
             }
         }
     }

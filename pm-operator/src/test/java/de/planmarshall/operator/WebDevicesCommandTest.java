@@ -29,6 +29,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -40,7 +41,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.MethodSource;
 
 import picocli.CommandLine;
 
@@ -247,8 +247,8 @@ class WebDevicesCommandTest {
     void interactiveRevokeFlow() throws Exception {
         seedRuntimeRoutes(true);
 
-        // Input sequence: "3" -> "x"
-        var context = createContext("3\nx\n");
+        // Input sequence: "3" -> "x" -> Enter confirms the prompt
+        var context = createContext("3\nx\n\n");
 
         var writer = new StringWriter();
         var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
@@ -269,7 +269,7 @@ class WebDevicesCommandTest {
     void interactiveRevokeOthersFlow() throws Exception {
         seedRuntimeRoutes(true);
 
-        var context = createContext("o\n");
+        var context = createContext("o\n\n");
 
         var writer = new StringWriter();
         var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
@@ -388,6 +388,39 @@ class WebDevicesCommandTest {
      * @throws Exception if the fixture cannot serve
      */
     @Test
+    @DisplayName("an end of input at the revoke prompt sends no DELETE")
+    void endOfInputAtTheRevokePromptSendsNoDelete() throws Exception {
+        var deletes = new AtomicInteger();
+        PmOperatorTest.writeLiveRecord(fixture);
+        var deviceId = Generators.letterStrings(4, 8).next();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
+                                    """);
+            } else if ("DELETE".equals(request.method())) {
+                deletes.incrementAndGet();
+                response.json(200, "{\"status\":\"revoked\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        // No input at all: the confirmation prompt reads an end of input.
+        var context = createContext("");
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("revoke", deviceId, "-i");
+
+        assertAll(
+                            () -> assertEquals(0, code, "leaving the prompt is the dialogue rule's 0"),
+                            () -> assertEquals(0, deletes.get(), "an unread prompt never confirms the DELETE")
+        );
+    }
+
+    @Test
     @DisplayName("a refused act in the interactive list leaves with 1 and the refusal")
     void aRefusedInteractiveActLeavesWithOne() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
@@ -424,56 +457,47 @@ class WebDevicesCommandTest {
         );
     }
 
+    /**
+     * Serves the three routes these commands write as refused, so that every act is answered with
+     * HTTP 400 and nothing is changed.
+     *
+     * @throws Exception if the fixture cannot serve
+     */
     private void seedRefusedRoutes() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        var reason = Generators.letterStrings(6, 16).next();
         fixture.start((request, response) -> {
             if ("/api/v1/status".equals(request.target())) {
                 response.json(200, """
                                     {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
                                     """);
             } else {
-                response.json(400, "{\"error\":\"refused\",\"reason\":\"" + reason + "\"}");
+                response.json(400, "{\"error\":\"refused\"}");
             }
         });
     }
 
-    /**
-     * The refused acts, with the device ids generated: a device id is command input, while the
-     * refusal line it prints is the contract and stays literal.
-     *
-     * @return the refused acts
-     */
-    static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> refusedActs() {        var renameDevice = Generators.letterStrings(4, 8).next();
-        var revokeDevice = Generators.letterStrings(4, 8).next();
-        return java.util.stream.Stream.of(
-                            org.junit.jupiter.params.provider.Arguments.of("rename", renameDevice,
-                                                "Failed to rename device: HTTP 400"),
-                            org.junit.jupiter.params.provider.Arguments.of("revoke", revokeDevice,
-                                                "Failed to revoke: HTTP 400"),
-                            org.junit.jupiter.params.provider.Arguments.of("listener-off", "",
-                                                "Failed to turn listener off: HTTP 400"));
-    }
-
     @ParameterizedTest
-    @MethodSource("refusedActs")
+    @CsvSource({
+                        "rename, Failed to rename device: HTTP 400",
+                        "revoke, Failed to revoke: HTTP 400",
+                        "listener-off, Failed to turn listener off: HTTP 400"
+    })
     @DisplayName("a refused act on a device names the refusal and leaves with 1")
-    void aRefusedActLeavesWithOne(String action, String argument, String expectedOutput) throws Exception {
+    void aRefusedActLeavesWithOne(String action, String expectedOutput) throws Exception {
         seedRefusedRoutes();
+        var deviceId = Generators.letterStrings(4, 8).next();
+        var newLabel = Generators.letterStrings(4, 8).next();
 
         var context = createContext("");
         var writer = new StringWriter();
         var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
         cmd.setOut(new PrintWriter(writer));
 
-        int code;
-        if ("rename".equals(action)) {
-            code = cmd.execute(action, argument, "iPad Oliver");
-        } else if ("revoke".equals(action)) {
-            code = cmd.execute(action, argument);
-        } else {
-            code = cmd.execute(action);
-        }
+        var code = switch (action) {
+            case "rename" -> cmd.execute(action, deviceId, newLabel);
+            case "revoke" -> cmd.execute(action, deviceId);
+            default -> cmd.execute(action);
+        };
 
         var output = writer.toString();
         assertAll(

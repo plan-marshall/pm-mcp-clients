@@ -65,7 +65,14 @@ class ReadVerbExitCodesTest {
         }
     }
 
-    /** Every read verb, against each status the runtime may refuse the read with. */
+    /**
+     * Every read verb, against each status the runtime may refuse the read with.
+     *
+     * <p>The list is written by hand, and the reason is the registry: {@code @OperatorVerb} marks
+     * every verb alike and says nothing about whether it reads or acts, so no reflection over the
+     * command tree can produce the read population. What the hand list must not do is miss a read:
+     * {@code project <id>} was the one it missed (CodeRabbit, PR 92), and it is here now.
+     */
     static Stream<Arguments> refusedReads() {
         var reads = List.of(
                             Arguments.of("status", new String[]{"status"}),
@@ -73,6 +80,7 @@ class ReadVerbExitCodesTest {
                             Arguments.of("system", new String[]{"system"}),
                             Arguments.of("reports", new String[]{"reports"}),
                             Arguments.of("projects", new String[]{"projects"}),
+                            Arguments.of("project", new String[]{"project", PLAN_ID}),
                             Arguments.of("questions", new String[]{"questions"}),
                             Arguments.of("roles list", new String[]{"roles", "list"}),
                             Arguments.of("roles show", new String[]{"roles", "show", "planner"}),

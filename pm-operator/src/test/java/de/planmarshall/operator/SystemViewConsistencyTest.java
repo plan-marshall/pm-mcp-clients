@@ -223,16 +223,33 @@ class SystemViewConsistencyTest {
     void bothViewsShowTheSameTokenUnits() {
         var snapshot = sampleSnapshot();
         for (var lang : List.of("en", "de")) {
-            var first = split(lang, totalTokens, inputTokens, outputTokens);
-            var second = split(lang, secondTotalTokens, secondInputTokens, secondOutputTokens);
-            for (var expected : List.of(first, second)) {
+            var rows = List.of(
+                                Map.entry(claudeHarness + ":" + firstModel,
+                                                    split(lang, totalTokens, inputTokens, outputTokens)),
+                                Map.entry(claudeHarness + ":" + secondModel,
+                                                    split(lang, secondTotalTokens, secondInputTokens,
+                                                                        secondOutputTokens)));
+            for (var row : rows) {
                 var printedText = printed(snapshot, lang);
-                assertTrue(printedText.contains(expected), lang + " printed: " + printedText);
-                assertTrue(fullScreenLines(snapshot, lang).stream()
-                                                        .anyMatch(line -> line.contains(expected)),
-                                    lang + " full screen: " + fullScreenLines(snapshot, lang));
+                assertTrue(printedText.contains(row.getValue()), lang + " printed: " + printedText);
+                // The tie: the split must sit on the row of its own model, not anywhere in the view.
+                var fullScreenRow = fullScreenLines(snapshot, lang).stream()
+                                    .filter(candidate -> candidate.contains(row.getKey()))
+                                    .findFirst().orElse("");
+                assertTrue(fullScreenRow.contains(row.getValue()),
+                                    lang + " row of " + row.getKey() + ": " + fullScreenRow);
             }
         }
+    }
+
+    @Test
+    @DisplayName("the models summary names the floor it stands on")
+    void theSummaryNamesItsFloor() {
+        var lines = fullScreenLines(sampleSnapshot(), "en");
+
+        // A model whose calls are partly unmeasured makes the summary a floor: it carries "≥".
+        assertTrue(lines.stream().anyMatch(line -> line.contains("\u2265")),
+                            "the summary carries the floor marker: " + lines);
     }
 
     private static String split(String lang, long total, long in, long out) {

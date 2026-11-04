@@ -225,8 +225,9 @@ public final class OperatorContext {
     }
 
     /**
-     * Lends a terminal to the commands dispatched until {@link #clearTerminal()}: the caller keeps
-     * ownership and closes it, the commands only draw on it. The scopes nest, because a view that a
+     * Lends a terminal to the commands dispatched until {@link #clearTerminal(Terminal)}: the caller
+     * keeps ownership and closes it, the commands only draw on it. The scopes nest, because a view
+     * that a
      * console dispatched lends the same terminal to the dialogue it opens.
      *
      * @param terminal the terminal the nested commands use
@@ -239,11 +240,18 @@ public final class OperatorContext {
     }
 
     /**
-     * Withdraws the innermost scoped terminal; {@link #createTerminal()} uses the next one, or the
-     * provider when no scope remains.
+     * Withdraws the innermost scoped terminal, which must be the one the caller lent:
+     * {@link #createTerminal()} uses the next one, or the provider when no scope remains.
+     *
+     * @param terminal the terminal the caller set with {@link #useTerminal(Terminal)}
+     * @throws IllegalStateException when the innermost scope is another terminal: popping it would
+     *                               hand the caller's terminal to whoever comes next
      */
-    public void clearTerminal() {
+    public void clearTerminal(Terminal terminal) {
         synchronized (scopedTerminals) {
+            if (scopedTerminals.peek() != terminal) {
+                throw new IllegalStateException("the terminal to withdraw is not the innermost scope");
+            }
             scopedTerminals.poll();
         }
     }
@@ -302,7 +310,14 @@ public final class OperatorContext {
      * @return {@code true} when the caller owns the terminal and must close it
      */
     public boolean ownsTerminal(@Nullable Terminal terminal) {
-        return terminal != null && terminal != scopedTerminal();
+        if (terminal == null) {
+            return false;
+        }
+        synchronized (scopedTerminals) {
+            // Every scope counts, not only the innermost: a terminal an outer scope lent is
+            // still not this context's to close.
+            return !scopedTerminals.contains(terminal);
+        }
     }
 
     /**

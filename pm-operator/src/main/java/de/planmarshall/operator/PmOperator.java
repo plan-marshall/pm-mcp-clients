@@ -129,7 +129,7 @@ public final class PmOperator implements Callable<Integer> {
             app.run(out);
             return app.interrupted() ? StartPrompt.EXIT_INTERRUPTED : 0;
         } finally {
-            context.clearTerminal();
+            context.clearTerminal(terminal);
             if (context.ownsTerminal(terminal)) {
                 terminal.close();
             }
