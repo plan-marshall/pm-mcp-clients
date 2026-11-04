@@ -705,25 +705,30 @@ function warnMissingKey(key: string): void {
 }
 
 /**
- * Resolves a key through the fallback tiers: the active catalogue, then English, then every
- * message this session has seen, and finally a readable form of the key itself.
+ * Resolves a key through the fallback tiers: the catalogue of the locale asked for, then English,
+ * then every message this session has seen, and finally a readable form of the key itself.
  *
- * @param locale the active locale
+ * The locale is the argument, not the active store: a formatter handed the locale of a value it
+ * renders (a date, a count) reads that locale's words even while the screen shows another one.
+ *
+ * @param locale the locale whose words are wanted
  * @param key the message key
  * @returns the template to format
  */
 function resolveTemplate(locale: Locale, key: string): string {
-  const active = ownMessage(get(messagesStore), key);
+  const active =
+    locale === get(currentLocale) ? ownMessage(get(messagesStore), key) : undefined;
   if (active !== undefined) return active;
+
+  const own = ownMessage(sessionMessages[locale], key);
+  if (own !== undefined) return own;
 
   if (locale !== 'en') {
     const fallback = ownMessage(englishCatalogue(), key);
     if (fallback !== undefined) return fallback;
   }
 
-  const seen =
-    ownMessage(sessionMessages[locale], key) ??
-    (locale === 'en' ? undefined : ownMessage(sessionMessages.en, key));
+  const seen = locale === 'en' ? undefined : ownMessage(sessionMessages.en, key);
   if (seen !== undefined) return seen;
 
   warnMissingKey(key);

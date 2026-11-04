@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { currentLocale, messagesStore } from '../i18n';
+import { get } from 'svelte/store';
+import {
+  currentLocale,
+  messagesStore,
+  persistCatalogue,
+  setCatalogueVersion,
+  setLocale,
+} from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
 import {
   formatBytes,
@@ -338,6 +345,22 @@ describe('the token marks and labels come from the catalogue', () => {
       'AT LEAST 412 k',
       'MINDESTENS 412 Tsd.',
     );
+  });
+});
+
+describe('the locale argument selects the catalogue', () => {
+  it('reads the words of the locale it is given, not those of the active catalogue', async () => {
+    // A language switch loaded both catalogues before, so a formatter handed the other locale
+    // must read that locale's words while the screen stays in the active language.
+    setCatalogueVersion('format-locale-test');
+    persistCatalogue('de', loadMessages('de'));
+    persistCatalogue('en', loadMessages('en'));
+    await setLocale('de');
+    await setLocale('en');
+
+    expect(get(currentLocale)).toBe('en');
+    expect(formatTime(at(10, 7, 12, 0), 'relative', 'de', NOW)).toBe('vor 9 T');
+    expect(formatTime(at(10, 7, 12, 0), 'relative', 'en', NOW)).toBe('9 d ago');
   });
 });
 
