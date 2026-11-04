@@ -56,7 +56,8 @@
   let chatDecisionId = $state<string | null>(null);
   let chat = $state<ChatReadBack | null>(null);
   let chatOpen = $state(false);
-  let chatBusy = $state(false);
+  /** The decision whose chat has a request in flight, so another decision's panel stays usable. */
+  let chatBusyId = $state<string | null>(null);
   let chatNotice = $state('');
 
   let unsubscribeEvents: (() => void) | null = null;
@@ -644,7 +645,7 @@
   async function sendChat(text: string): Promise<void> {
     const decisionId = chatDecisionId;
     if (!decisionId) return;
-    chatBusy = true;
+    chatBusyId = decisionId;
     try {
       const answered = await apiClient.decisionChatTurn(decisionId, text);
       if (chatDecisionId === decisionId) chat = answered;
@@ -653,7 +654,7 @@
         chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
       }
     } finally {
-      chatBusy = false;
+      if (chatBusyId === decisionId) chatBusyId = null;
     }
   }
 
@@ -664,7 +665,7 @@
     // another decision's transcript.
     const decisionId = chatDecisionId;
     const proposal = chat?.proposal;
-    chatBusy = true;
+    chatBusyId = decisionId;
     try {
       const answered = await apiClient.answerDecisionChatProposal(decisionId, accept);
       if (chatDecisionId === decisionId) {
@@ -678,7 +679,7 @@
         chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
       }
     } finally {
-      chatBusy = false;
+      if (chatBusyId === decisionId) chatBusyId = null;
     }
   }
 
@@ -704,17 +705,24 @@
 
   async function endTheChat(): Promise<void> {
     if (!chatDecisionId) return;
-    chatBusy = true;
+    // The panel can be left while the chat is ended, and another decision's chat opened meanwhile:
+    // only the chat this act ended is closed when it answers.
+    const decisionId = chatDecisionId;
+    chatBusyId = decisionId;
     try {
-      await apiClient.endDecisionChat(chatDecisionId);
+      await apiClient.endDecisionChat(decisionId);
     } catch {
       // Closing the panel is the operator's act; a chat the runtime already closed stays closed.
     } finally {
-      chatOpen = false;
-      chat = null;
-      chatNotice = '';
-      chatDecisionId = null;
-      chatBusy = false;
+      if (chatDecisionId === decisionId) {
+        chatOpen = false;
+        chat = null;
+        chatNotice = '';
+        chatDecisionId = null;
+      }
+      if (chatBusyId === decisionId) {
+        chatBusyId = null;
+      }
     }
   }
 
@@ -1146,7 +1154,7 @@
               turns={chat?.turns ?? []}
               proposal={chat?.proposal ?? null}
               available={chat !== null}
-              busy={chatBusy}
+              busy={chatBusyId === dec.id}
               onSend={sendChat}
               onEnd={endTheChat}
               onAccept={() => answerChatProposal(true)}
