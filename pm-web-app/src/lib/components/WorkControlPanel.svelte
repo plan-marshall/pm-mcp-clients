@@ -3,6 +3,7 @@
   import { t } from '../i18n';
   import ActionBar from './ActionBar.svelte';
   import Button from './Button.svelte';
+  import ConfirmDialog from './ConfirmDialog.svelte';
   import HoldResolutionModal from './HoldResolutionModal.svelte';
   import PlanSettingsModal from './PlanSettingsModal.svelte';
   import ChatPanel from './ChatPanel.svelte';
@@ -97,6 +98,17 @@
   let closePullRequest = $state(false);
   let overlapCount = $state(0);
 
+  /** The epic's own cancellation, which asks for the plans and a reason (<<cancel-epic>>). */
+  let epicCancelOpen = $state(false);
+  let cancelWithPlans = $state(true);
+  let cancelReason = $state('');
+
+  /**
+   * The control the focus goes back to once `busy` clears, when the opener was disabled while the
+   * act ran. Without it the focus would drop to the body: a disabled control cannot take it.
+   */
+  let focusAfterBusy = $state<HTMLElement | null>(null);
+
   /** The control that opened the dialog, so the focus goes back to it when the dialog closes. */
   let opener: HTMLElement | null = null;
 
@@ -188,6 +200,15 @@
     return endAction;
   }
 
+  /** @returns how the plan is archived, the word the end dialogue's consequence names */
+  function endOutcome(): 'cancelled' | 'abandoned' | 'aborted' {
+    const act = endAct();
+    if (act === 'cancel') {
+      return 'cancelled';
+    }
+    return act === 'abandon' ? 'abandoned' : 'aborted';
+  }
+
   /**
    * Opens a dialog, remembering the control the focus goes back to when it closes.
    *
@@ -219,7 +240,60 @@
     const fallback = document.querySelector<HTMLButtonElement>(
       '[data-testid="control-actions"] button:not([disabled])',
     );
-    fallback?.focus();
+    if (fallback) {
+      fallback.focus();
+      return;
+    }
+    // The act that closed the dialog disables the whole bar while it runs. Keep the control to
+    // return to, and give it the focus as soon as the bar is enabled again.
+    focusAfterBusy = previous?.isConnected ? previous : null;
+  }
+
+  // The confirmed act disables its opener until the request settles; the focus then returns to it.
+  $effect(() => {
+    if (busy || !focusAfterBusy) {
+      return;
+    }
+    const target = focusAfterBusy;
+    focusAfterBusy = null;
+    if (target.isConnected && !(target as HTMLButtonElement).disabled) {
+      target.focus();
+    }
+  });
+
+  /** @param event the key press inside an open dialog, which Tab must not leave */
+  function trapFocus(event: KeyboardEvent): void {
+    if (event.key !== 'Tab' || !dialogElement) {
+      return;
+    }
+    const items = Array.from(
+      dialogElement.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled]), ' +
+          'textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+      ),
+    );
+    if (items.length === 0) {
+      event.preventDefault();
+      dialogElement.focus();
+      return;
+    }
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement;
+    if (!dialogElement.contains(active)) {
+      event.preventDefault();
+      first.focus();
+      return;
+    }
+    if (event.shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+      return;
+    }
+    if (!event.shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
   }
 
   /** @param event the key press anywhere while a dialog is open */
@@ -278,7 +352,33 @@
       openDialog('archive');
       return;
     }
+    if (id === 'cancel') {
+      cancelWithPlans = true;
+      cancelReason = '';
+      epicCancelOpen = true;
+      return;
+    }
     void handleAction(id);
+  }
+
+  /**
+   * Sends the epic's cancel the dialogue confirmed, with the choice it made for the epic's plans.
+   *
+   * The bar is disabled while the act runs, so the focus returns to it when `busy` clears.
+   */
+  function confirmEpicCancel(): void {
+    const reason = cancelReason.trim();
+    if (!reason) {
+      return;
+    }
+    const from = document.activeElement;
+    epicCancelOpen = false;
+    // The act sets `busy` synchronously before its first await, so the focus target is recorded
+    // after the call: the effect must not run against an enabled bar.
+    void handleAction('cancel', { with_plans: cancelWithPlans, reason });
+    focusAfterBusy =
+      document.querySelector<HTMLElement>('[data-testid="action-bar-overflow"]') ??
+      (from instanceof HTMLElement ? from : null);
   }
 
   function confirmPause(): void {
@@ -655,9 +755,11 @@
       class="control-dialog"
       data-testid={`control-dialog-${dialog}`}
       role="dialog"
+      aria-modal={dialog === 'end' ? 'true' : undefined}
       aria-labelledby={titleId}
       tabindex="-1"
       bind:this={dialogElement}
+      onkeydown={trapFocus}
     >
       {#if dialog === 'pause'}
         <h4 class="control-dialog__title" id={titleId} data-testid="pause-title">
@@ -715,9 +817,9 @@
         {#if !endReason.trim()}
           <p class="control-dialog__hint">{$t('control.end.reason_required')}</p>
         {/if}
-        <p class="control-dialog__line">
-          {$t('control.end.afterwards', { outcome: endAct() })}
-        </p>
+        <ul class="control-dialog__consequences" data-testid="end-consequences">
+          <li>{$t('control.end.afterwards', { outcome: endOutcome() })}</li>
+        </ul>
         <div class="control-dialog__actions">
           <Button variant="secondary" data-testid="end-keep" on:click={closeDialog}>
             {$t('control.end.keep', { action: endAct() })}
@@ -843,6 +945,42 @@
     </div>
   {/if}
 </section>
+
+<ConfirmDialog
+  open={epicCancelOpen}
+  title={$t('control.cancel_epic.title', { epic: subjectId })}
+  consequences={[$t('control.cancel_epic.afterwards')]}
+  actionLabel={$t('control.cancel_epic.action')}
+  cancelLabel={$t('control.cancel_epic.keep')}
+  busy={busy}
+  confirmDisabled={!cancelReason.trim()}
+  onConfirm={confirmEpicCancel}
+  onClose={() => (epicCancelOpen = false)}
+>
+  <p class="control-dialog__line" data-testid="epic-cancel-plans">
+    {$t('control.cancel_epic.plans_line', { count: running })}
+  </p>
+  <fieldset class="control-dialog__choices">
+    <legend class="control-dialog__legend">{$t('control.cancel_epic.label.plans')}</legend>
+    <label class="control-dialog__choice">
+      <input type="radio" name="epic-cancel-plans" bind:group={cancelWithPlans} value={true} />
+      {$t('control.cancel_epic.plans_too')}
+    </label>
+    <label class="control-dialog__choice">
+      <input type="radio" name="epic-cancel-plans" bind:group={cancelWithPlans} value={false} />
+      {$t('control.cancel_epic.plans_on')}
+    </label>
+  </fieldset>
+  <label class="control-dialog__field">
+    {$t('control.end.label.reason')}
+    <input
+      type="text"
+      data-testid="epic-cancel-reason"
+      bind:value={cancelReason}
+      placeholder={$t('control.end.reason_required')}
+    />
+  </label>
+</ConfirmDialog>
 
 <PlanSettingsModal
   planId={subjectId}
@@ -997,6 +1135,14 @@
     margin: 0;
     font-size: var(--text-sm);
     color: var(--color-text-secondary);
+  }
+
+  /* A danger act names what it costs in the danger colour, before the act itself. */
+  .control-dialog__consequences {
+    margin: 0;
+    padding-inline-start: var(--space-5);
+    font-size: var(--text-sm);
+    color: var(--color-danger);
   }
 
   .control-dialog__hint {

@@ -9,6 +9,9 @@
    * The dialog names the consequences in the danger colour before its act can run. Where the act
    * is as wide as a pairing or an enrolment, the operator must type the resource's name first: a
    * click alone is too cheap for what cannot be taken back.
+   *
+   * While the act runs the dialog is a guard: a second confirm is ignored, the cancel is disabled,
+   * and Escape does not close it. The view that owns the request reports it through `busy`.
    */
   export let open = false;
   /** The title, from the view's catalogue key. */
@@ -23,6 +26,10 @@
   export let typedName: string | undefined = undefined;
   /** Whether the act is already running, which holds the dialog open. */
   export let busy = false;
+  /** Whether the act is refused for a reason the dialog's body named, e.g. a missing reason. */
+  export let confirmDisabled = false;
+  /** The test id of the dialog's own box; a composing dialog names itself. */
+  export let testid = 'confirm-dialog';
   /** Reports the confirmed act. */
   export let onConfirm: () => void = () => {};
   /** Reports the close the dialog asks for; the view decides when it is gone. */
@@ -35,9 +42,26 @@
 
   /** A typed name is only a guard where the act asks for one. */
   $: typedMatches = typedName === undefined || (typedName !== '' && typed === typedName);
+
+  /** Confirms once: a second click while the act runs is ignored. */
+  function confirm(): void {
+    if (busy || !typedMatches || confirmDisabled) {
+      return;
+    }
+    onConfirm();
+  }
+
+  /** Closes unless the act is running: Escape and cancel may not abandon it half-sent. */
+  function close(): void {
+    if (!busy) {
+      onClose();
+    }
+  }
 </script>
 
-<Dialog {open} {title} danger {consequences} {onClose} testid="confirm-dialog">
+<Dialog {open} {title} danger {consequences} onClose={close} {testid}>
+  <slot />
+
   {#if typedName !== undefined}
     <label class="confirm-dialog__field">
       {$t('web.confirm.typed_name', { name: typedName })}
@@ -53,15 +77,20 @@
   {/if}
 
   <svelte:fragment slot="footer">
-    <Button variant="secondary" data-testid="confirm-dialog-cancel" on:click={onClose}>
+    <Button
+      variant="secondary"
+      data-testid="confirm-dialog-cancel"
+      disabled={busy}
+      on:click={close}
+    >
       {cancelLabel}
     </Button>
     <Button
       variant="danger"
       data-testid="confirm-dialog-confirm"
-      disabled={!typedMatches}
+      disabled={!typedMatches || confirmDisabled}
       loading={busy}
-      on:click={onConfirm}
+      on:click={confirm}
     >
       {actionLabel}
     </Button>

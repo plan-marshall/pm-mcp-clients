@@ -215,6 +215,88 @@ describe('WorkControlPanel component', () => {
     });
   });
 
+  it('asks before an epic cancel and sends nothing until it is confirmed', async () => {
+    vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue({
+      subject_id: 'relay-hardening',
+      subject_kind: 'epic',
+      state: 'running',
+      overlap_max_files: 0,
+      actions: [
+        { action: 'next', available: true },
+        { action: 'cancel', available: true },
+      ],
+    });
+    const apply = vi.spyOn(apiClient, 'applyEpicAction').mockResolvedValue(running);
+    render(WorkControlPanel, { props: { subjectId: 'relay-hardening', subjectKind: 'epic' } });
+
+    await openOverflow();
+    await fireEvent.click(screen.getByTestId('action-cancel'));
+    expect(await screen.findByTestId('confirm-dialog')).toHaveTextContent(
+      'Cancel relay-hardening?',
+    );
+    expect(apply).not.toHaveBeenCalled();
+
+    await fireEvent.input(screen.getByTestId('epic-cancel-reason'), {
+      target: { value: 'superseded by the next epic' },
+    });
+    await fireEvent.click(screen.getByLabelText('Let them run on without the epic'));
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+
+    await waitFor(() => {
+      expect(apply).toHaveBeenCalledWith('relay-hardening', 'cancel', {
+        with_plans: false,
+        reason: 'superseded by the next epic',
+      });
+    });
+  });
+
+  it('gives the focus back to the opener once the confirmed act settles', async () => {
+    let settle: (actions: WorkActions) => void = () => {};
+    const pending = new Promise<WorkActions>((resolve) => {
+      settle = resolve;
+    });
+    vi.spyOn(apiClient, 'applyPlanAction').mockReturnValue(pending);
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    const pause = await screen.findByTestId('action-pause');
+    await fireEvent.click(pause);
+    await fireEvent.click(screen.getByTestId('pause-confirm'));
+
+    // While the request runs the opener is disabled: it cannot take the focus yet.
+    await waitFor(() => {
+      expect(screen.queryByTestId('control-dialog-pause')).not.toBeInTheDocument();
+    });
+    expect(document.activeElement).not.toBe(pause);
+
+    settle(running);
+
+    await waitFor(() => {
+      expect(document.activeElement).toBe(pause);
+    });
+  });
+
+  it('keeps the focus in the end dialogue and names its consequence', async () => {
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    await openOverflow();
+    await fireEvent.click(screen.getByTestId('action-cancel'));
+    const dialog = await screen.findByTestId('control-dialog-end');
+    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    expect(screen.getByTestId('end-consequences')).toHaveTextContent(
+      'the plan is archived as cancelled',
+    );
+
+    const reason = screen.getByTestId('end-reason');
+    reason.focus();
+    const buttons = Array.from(
+      dialog.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled])'),
+    );
+    const last = buttons[buttons.length - 1];
+    last.focus();
+    await fireEvent.keyDown(last, { key: 'Tab' });
+    expect(dialog.contains(document.activeElement)).toBe(true);
+  });
+
   it('closes a dialogue on Escape and gives the focus back', async () => {
     render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
 

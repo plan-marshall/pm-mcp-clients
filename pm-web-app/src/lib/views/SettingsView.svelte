@@ -26,6 +26,8 @@
   let lanListenerOn = true;
   let lanModalOpen = false;
   let pendingRevokeTarget: PairedDevice | 'others' | null = null;
+  /** Whether the confirmed revoke runs; the dialog stays open and refuses a second confirm. */
+  let revoking = false;
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
@@ -133,8 +135,9 @@
   }
 
   async function confirmRevoke() {
-    if (!pendingRevokeTarget) return;
+    if (!pendingRevokeTarget || revoking) return;
     actionError = '';
+    revoking = true;
 
     if (pendingRevokeTarget === 'others') {
       try {
@@ -143,6 +146,8 @@
         pendingRevokeTarget = null;
       } catch {
         actionError = $t('web.settings.devices.revoke_failed');
+      } finally {
+        revoking = false;
       }
       return;
     }
@@ -170,6 +175,8 @@
       }
     } catch {
       actionError = $t('web.settings.devices.revoke_failed');
+    } finally {
+      revoking = false;
     }
   }
 
@@ -438,6 +445,7 @@
     actionLabel={$t('devices.revoke.action')}
     cancelLabel={$t('devices.revoke.keep')}
     typedName={pendingRevokeTarget === 'others' ? (thisLabel ?? '') : undefined}
+    busy={revoking}
     onConfirm={confirmRevoke}
     onClose={cancelRevoke}
   />
