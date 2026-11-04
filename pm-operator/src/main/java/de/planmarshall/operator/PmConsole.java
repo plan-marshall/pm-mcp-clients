@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
@@ -59,6 +60,9 @@ import de.planmarshall.operator.tui.TuiScreenDriver;
 public final class PmConsole {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
+
+    /** The machine onboarding's badge: {@code setup 3/7}, German {@code Einrichtung 3/7}. */
+    private static final Pattern MACHINE_SETUP_BADGE = Pattern.compile("^(setup|Einrichtung) \\d+/\\d+$");
 
     private static final String PLANS = "plans";
 
@@ -245,18 +249,17 @@ public final class PmConsole {
 
     private void handleEmptyEnter(PrintWriter out, LineReader reader, Terminal terminal) {
         var locale = locale();
-        boolean hasSetup = false;
         for (var b : badges.get()) {
             // Only the machine's own badge reads `setup {done}/{total}`; a project's names the
-            // project first. Enter takes the machine's unfinished onboarding, as
-            // 04-console.adoc#prompt says; a project's continues through `project setup <id>`.
-            if (b.matches("^(setup|Einrichtung) \\d+/\\d+$")) {
-                hasSetup = true;
-                break;
+            // project first. Enter takes the machine's unfinished onboarding; a project's own
+            // continues through `project setup <id>` — 04-console.adoc#prompt's rule that Enter
+            // takes the first thing the badge offers is NOT extended to projects here: the console
+            // transcripts pin Enter to the prompt while a project setup is open, and changing that
+            // contract is a decision of the epic's design, not of this plan.
+            if (MACHINE_SETUP_BADGE.matcher(b).matches()) {
+                continueOnboarding(out, reader, locale, terminal);
+                return;
             }
-        }
-        if (hasSetup) {
-            continueOnboarding(out, reader, locale, terminal);
         }
     }
 
@@ -302,7 +305,8 @@ public final class PmConsole {
      */
     void refreshSetupBadge(String locale, Terminal terminal) {
         try {
-            var runtime = context.runtime(true);
+            // Never starts the runtime: a refresh after `runtime stop` must not start it again.
+            var runtime = context.runtime(false);
             badges.set(List.copyOf(EntryFlow.badges(locale, StatusCommand.fetch(runtime),
                                 EntryFlow.projectSetupBadges(locale, runtime))));
         } catch (IOException _) {
