@@ -128,9 +128,6 @@ public final class PmConsole {
                             .build();
 
         var entryFlow = new EntryFlow(context);
-        // The console lends its terminal for everything it dispatches, the dialogues it opens
-        // included: a dialogue must draw on the console's terminal, never open a second one.
-        context.useTerminal(terminal);
         var entryResult = entryFlow.run(out, reader);
 
         activePairingCode = entryResult.activeCode();
@@ -148,7 +145,6 @@ public final class PmConsole {
             context.setConsoleActive(false);
             stop();
             sseThread.interrupt();
-            context.clearTerminal(terminal);
             out.flush();
         }
 
@@ -251,7 +247,9 @@ public final class PmConsole {
         var locale = locale();
         boolean hasSetup = false;
         for (var b : badges.get()) {
-            if (b.startsWith("setup") || b.startsWith("Einrichtung")) {
+            // Only the machine's own badge is `setup {done}/{total}`; a project's names the project
+            // first, and Enter does not open a project setup (that is `project setup <id>`).
+            if (b.matches("^(setup|Einrichtung) \\d+/\\d+$")) {
                 hasSetup = true;
                 break;
             }

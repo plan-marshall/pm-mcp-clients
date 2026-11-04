@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
+import org.jline.terminal.Terminal;
 
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -561,7 +562,7 @@ class SystemFullScreenTest {
 
             var deadline = System.nanoTime() + 5_000_000_000L;
             while (thread.isAlive() && System.nanoTime() < deadline) {
-                virtual.terminal().raise(org.jline.terminal.Terminal.Signal.INT);
+                virtual.terminal().raise(Terminal.Signal.INT);
                 delay(20L);
             }
             join(thread);
@@ -579,6 +580,8 @@ class SystemFullScreenTest {
     void aFailedSystemReadKeepsTheStatusLine() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
+            // PmOperator.execute(..., "system") is the direct-verb path; the console flag only
+            // makes the verb draw on this test's virtual terminal instead of the provider's.
             context.setConsoleActive(true);
             var out = new StringWriter();
             var thread = new Thread(() -> PmOperator.execute(context, new PrintWriter(out),
@@ -589,9 +592,12 @@ class SystemFullScreenTest {
 
             systemCode.set(500);
             statusBody.set(STATUS_DRAINING_FIVE);
+            var readsBefore = systemTargets.size();
             virtual.type("r");
+            await(() -> systemTargets.size() > readsBefore);
             await(() -> shows(virtual, "draining \u00b7 5 left"));
 
+            assertEquals(500, systemCode.get(), "the view really read the failing snapshot");
             virtual.type("q");
             join(thread);
         }

@@ -205,6 +205,15 @@ public final class StartPrompt {
         }
     }
 
+    /**
+     * The line reader the dialogue draws on. A console or a view lends its terminal, so the reader
+     * is built on it; a direct verb has no scope, and the terminal it opens is the process's own for
+     * the rest of the run — it is not closed here, because the only owner is the process, which
+     * closes it when it exits. (PLAN-94 D5(b): recorded decision — a close would need an ownership
+     * hook the dialogue does not have, and the process is short-lived by construction.)
+     *
+     * @return the reader over the terminal this dialogue draws on
+     */
     public LineReader reader() {
         if (reader == null) {
             try {
