@@ -38,6 +38,7 @@ test.describe('Fully onboarded showroom', () => {
     await expect(
       page.locator('.project-list').getByRole('tab', { name: /pm-mcp-clients/i }),
     ).toBeVisible();
+    // The overview shows the running plans; the test asserts that a card is there, not which plan.
     await expect(page.locator('[data-testid="plan-card"]').first()).toBeVisible();
   });
 

@@ -18,6 +18,7 @@ import {
   formatViolation,
 } from './helpers/textGuard.js';
 import { auditViewA11y, formatViolation as formatA11yViolation } from './helpers/a11y.js';
+import { openAnyPlan } from './helpers/plans.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -255,6 +256,7 @@ const GUARD_JOURNEYS = [
     async walk(page, record) {
       await page.goto('/overview');
       await expect(page.locator('.overview')).toBeVisible();
+      // The overview needs some plan card on screen; which plan it is does not matter.
       await expect(page.locator('[data-testid="plan-card"]').first()).toBeVisible();
       await record('OverviewView');
 
@@ -275,8 +277,8 @@ const GUARD_JOURNEYS = [
     async walk(page, record) {
       await page.goto('/overview');
       await expect(page.locator('.overview')).toBeVisible();
-      await page.locator('[data-testid="plan-card"]').first().click();
-      await expect(page.getByTestId('plan-view')).toBeVisible();
+      // The journey records the plan view itself, so any plan serves it.
+      await openAnyPlan(page);
       await expect(page.getByTestId('plan-loading')).toHaveCount(0, { timeout: 15000 });
       await expect(page.getByTestId('plan-title')).toBeVisible();
       await record('PlanView');
@@ -624,6 +626,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           // 1. Overview page
           await page.goto('/overview');
           await expect(page.locator('.overview')).toBeVisible();
+          // The flow needs some plan card on screen; which plan it is does not matter.
           await expect(page.locator('[data-testid="plan-card"]').first()).toBeVisible();
 
           // 2. Switch to by epic
@@ -721,11 +724,8 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await page.goto('/overview');
           await expect(page.locator('.overview')).toBeVisible();
 
-          const planCard = page.locator('[data-testid="plan-card"]').first();
-          await expect(planCard).toBeVisible();
-          await planCard.click();
-
-          await expect(page.getByTestId('plan-view')).toBeVisible();
+          // The audit is of the plan view itself, so any plan serves it.
+          await openAnyPlan(page);
           await auditView(page, testInfo, { view: 'PlanView', theme, viewport: vp });
         });
 
