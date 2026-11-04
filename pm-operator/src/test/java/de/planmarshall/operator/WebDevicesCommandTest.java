@@ -19,6 +19,7 @@ import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
@@ -70,6 +71,25 @@ class WebDevicesCommandTest {
         var inStream = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
         var outStream = new ByteArrayOutputStream();
         var terminal = new DumbTerminal(inStream, outStream);
+        var clientEnv = ClientEnvironment.capture(fixture.environment());
+        return new OperatorContext(fixture.environment(), tempDir, true, clientEnv, () -> terminal, null);
+    }
+
+    /**
+     * A context whose terminal cannot be read: every read of it fails with an {@link IOException},
+     * which is what a closed or broken terminal does mid-prompt.
+     *
+     * @return the context, its writer discarded
+     * @throws IOException if the terminal cannot be built
+     */
+    private OperatorContext createFailingReadContext() throws IOException {
+        var failing = new InputStream() {
+            @Override
+            public int read() throws IOException {
+                throw new IOException("the terminal read did not complete");
+            }
+        };
+        var terminal = new DumbTerminal(failing, new ByteArrayOutputStream());
         var clientEnv = ClientEnvironment.capture(fixture.environment());
         return new OperatorContext(fixture.environment(), tempDir, true, clientEnv, () -> terminal, null);
     }
@@ -381,12 +401,6 @@ class WebDevicesCommandTest {
                             WebCommand.describe(Map.of("enabled", true, "lan", true, "port", 8080, "open", false)));
     }
 
-    /**
-     * Serves the three routes these commands write as refused, so that every act is answered with
-     * HTTP 400 and nothing is changed.
-     *
-     * @throws Exception if the fixture cannot serve
-     */
     @Test
     @DisplayName("an end of input at the revoke prompt sends no DELETE")
     void endOfInputAtTheRevokePromptSendsNoDelete() throws Exception {
@@ -417,6 +431,78 @@ class WebDevicesCommandTest {
         assertAll(
                             () -> assertEquals(0, code, "leaving the prompt is the dialogue rule's 0"),
                             () -> assertEquals(0, deletes.get(), "an unread prompt never confirms the DELETE")
+        );
+    }
+
+    @Test
+    @DisplayName("a failed read at the revoke prompt sends no DELETE")
+    void aFailedReadAtTheRevokePromptSendsNoDelete() throws Exception {
+        var deletes = new AtomicInteger();
+        PmOperatorTest.writeLiveRecord(fixture);
+        var deviceId = Generators.letterStrings(4, 8).next();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
+                                    """);
+            } else if ("DELETE".equals(request.method())) {
+                deletes.incrementAndGet();
+                response.json(200, "{\"status\":\"revoked\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var context = createFailingReadContext();
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("revoke", deviceId, "-i");
+
+        assertAll(
+                            () -> assertEquals(0, code, "a read that failed leaves as b does: " + writer),
+                            () -> assertEquals(0, deletes.get(), "an unread prompt never confirms the DELETE")
+        );
+    }
+
+    @Test
+    @DisplayName("a failed read in the interactive list leaves with 1 and the refusal")
+    void aFailedReadInTheInteractiveListLeavesWithOne() throws Exception {
+        var deletes = new AtomicInteger();
+        PmOperatorTest.writeLiveRecord(fixture);
+        var deviceId = Generators.letterStrings(4, 8).next();
+        var label = Generators.letterStrings(4, 8).next();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
+                                    """);
+            } else if ("/api/v1/web/devices".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    [{"device_id":"%s","label":"%s"}]
+                                    """.formatted(deviceId, label));
+            } else if ("DELETE".equals(request.method())) {
+                deletes.incrementAndGet();
+                response.json(200, "{\"status\":\"revoked\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var context = createFailingReadContext();
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("-i");
+
+        var output = writer.toString();
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code, output),
+                            () -> assertTrue(output.contains("the terminal read did not complete"),
+                                                "the refusal is printed: " + output),
+                            () -> assertEquals(0, deletes.get(), "nothing was sent")
         );
     }
 

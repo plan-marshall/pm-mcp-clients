@@ -247,8 +247,9 @@ public final class PmConsole {
         var locale = locale();
         boolean hasSetup = false;
         for (var b : badges.get()) {
-            // Only the machine's own badge is `setup {done}/{total}`; a project's names the project
-            // first, and Enter does not open a project setup (that is `project setup <id>`).
+            // Only the machine's own badge reads `setup {done}/{total}`; a project's names the
+            // project first. Enter takes the machine's unfinished onboarding, as
+            // 04-console.adoc#prompt says; a project's continues through `project setup <id>`.
             if (b.matches("^(setup|Einrichtung) \\d+/\\d+$")) {
                 hasSetup = true;
                 break;
@@ -378,6 +379,9 @@ public final class PmConsole {
         var effective = selection.args().toArray(String[]::new);
         if (!isFullScreenVerb(effective)) {
             PmOperator.execute(context, out, out, effective);
+            // A verb can change what waits (a project setup advances, an onboarding completes):
+            // the badge and the title follow what the runtime says after it, not before it.
+            refreshSetupBadge(locale(), terminal);
             return;
         }
         var json = List.of(effective).contains("--json");
@@ -394,6 +398,9 @@ public final class PmConsole {
                 leaveFullScreen(out);
             }
             context.clearTerminal(terminal);
+            // A view's acts can change what waits too: the prompt and the title are rebuilt from
+            // the state the runtime reports once the view is gone.
+            refreshSetupBadge(locale(), terminal);
             out.flush();
         }
     }

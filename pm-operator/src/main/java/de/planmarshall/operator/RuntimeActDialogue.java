@@ -272,17 +272,17 @@ final class RuntimeActDialogue {
     }
 
     /**
-     * @param context the operator context
-     * @return the snapshot the runtime serves, or {@code null} when it serves none
-     * @throws RuntimeUnavailableException when the runtime does not answer at all
-     */
-    /**
      * How long the confirmation waits for the runtime's snapshot. The unix-socket client has no
      * read deadline, so a runtime that accepts and never answers would hold the whole dialogue; the
      * confirmation instead reads under this bound and asks without the counts.
      */
     static final Duration SNAPSHOT_BOUND = Duration.ofSeconds(5);
 
+    /**
+     * @param context the operator context
+     * @return the snapshot the runtime serves, or {@code null} when it serves none
+     * @throws IOException when the runtime does not answer within {@link #SNAPSHOT_BOUND}
+     */
     private static @Nullable SystemSnapshot snapshot(OperatorContext context) throws IOException {
         var runtime = context.runtime(false);
         var read = new AtomicReference<@Nullable SystemSnapshot>();

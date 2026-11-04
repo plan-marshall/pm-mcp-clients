@@ -46,6 +46,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @DisplayName("SystemFullScreenTest (VirtualScreenTerminal)")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -65,10 +67,6 @@ class SystemFullScreenTest {
 
     private static final String STATUS_RUNNING = """
                         {"version":"0.9.1","state":"running"}
-                        """;
-
-    private static final String STATUS_STOPPING = """
-                        {"version":"0.9.1","state":"stopping"}
                         """;
 
     private static final String PROJECTS_JSON = """
@@ -414,9 +412,14 @@ class SystemFullScreenTest {
         }
     }
 
-    @Test
+    @ParameterizedTest(name = "a status that moves to {0} replaces the event's line")
+    @CsvSource(delimiter = '|', value = {
+                        "stopping | {\"version\":\"0.9.1\",\"state\":\"stopping\"}",
+                        "upgrading | {\"version\":\"0.9.1\",\"state\":\"upgrading\",\"upgrade_step\":\"install\"}",
+                        "stopped | {\"version\":\"0.9.1\",\"state\":\"stopped\"}"
+    })
     @DisplayName("a status that moves past draining replaces the event's line")
-    void theDrainingLineGivesWayToTheStatus() throws Exception {
+    void theDrainingLineGivesWayToTheStatus(String expectedState, String status) throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
             var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
@@ -426,9 +429,9 @@ class SystemFullScreenTest {
                                 + "\"withdrawable\":true}");
             await(() -> shows(virtual, "Stopping when what runs is done"));
 
-            statusBody.set(STATUS_STOPPING);
+            statusBody.set(status);
             sendEvent("system.metrics", "{}");
-            await(() -> shows(virtual, "stopping"));
+            await(() -> shows(virtual, expectedState));
 
             assertFalse(shows(virtual, "Stopping when what runs is done"),
                                 virtual.screen().lines().toString());

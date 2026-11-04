@@ -271,7 +271,7 @@ class SystemLevelTest {
         for (var row : rows) {
             var figure = SystemLevel.figureOf(row.id());
             assertNotNull(figure, row.id());
-            assertEquals(row.id(), SystemLevel.rowIdOf(figure), figure.name());
+            assertEquals(row.id(), figure.rowId(), figure.name());
         }
         assertNull(SystemLevel.figureOf("sys:workers:0"));
     }

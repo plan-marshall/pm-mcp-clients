@@ -50,7 +50,7 @@ public final class OnboardCommand implements Callable<Integer> {
     static final String STEP_PATH = OnboardingSource.STEP_PATH;
     static final String AUTO_PATH = "/api/v1/onboarding/auto";
 
-    private static final int EXIT_NEEDS_INPUT = 3;
+    static final int EXIT_NEEDS_INPUT = 3;
     private static final int WRAP_WIDTH = 76;
     private static final long POLL_PAUSE_NANOS = 100_000_000L;
     private static final String ASPECT = "aspect";

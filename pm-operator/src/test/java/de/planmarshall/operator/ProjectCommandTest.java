@@ -106,6 +106,27 @@ class ProjectCommandTest {
     }
 
     @Test
+    @DisplayName("a project setup that ends without its final state leaves with 3, not 0")
+    void projectSetupWithoutItsFinalStateNeedsInput() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
+                // A state with no link and no final state: the run ends where it stood.
+                response.json(200, """
+                                    {"project_id":"cui-parent","state":"project.identity","step":2,
+                                     "total_steps":10,"id":"cui-parent","name":"cui-parent","pilot":false,
+                                     "links":{}}
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = executeWithInput("", "project", "setup", "cui-parent");
+
+        assertEquals(OnboardCommand.EXIT_NEEDS_INPUT, code, out.toString());
+    }
+
+    @Test
     @DisplayName("projects lists enrolled projects with favourite indicators")
     void projectsList() throws Exception {
         fixture.start((request, response) -> {

@@ -272,14 +272,6 @@ public final class SystemLevel {
     }
 
     /**
-     * @param figure the figure
-     * @return the id of the root row the figure draws
-     */
-    public static String rowIdOf(Figure figure) {
-        return figure.rowId();
-    }
-
-    /**
      * @param locale the interface locale
      * @return the header of the level
      */
