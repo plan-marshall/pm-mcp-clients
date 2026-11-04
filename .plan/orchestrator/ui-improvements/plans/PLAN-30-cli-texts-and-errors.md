@@ -73,6 +73,8 @@ Source of this plan (read before scoping):
 - RESCOPE at outline (design audit 2026-11-02): drop the table edits in 09/13 (R4-14: the terminal text tables 09-13 are replaced by links to the implemented .properties packs); move the OnboardCommand strings after D26 (top-level onboard is folded in or removed).
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
+- PLAN-97 (staged 2026-11-04): the `OnboardCommand` strings move after PLAN-97 deliverable 3 (the top-level `onboard` is folded into `pm-operator` without a verb and `config <aspect>`); the drain and accept-edit texts come from PLAN-97 deliverables 1 and 2.
+
 ## Expected Surface
 
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/AnswerCommand.java` — present at HEAD c4dc9bb4
