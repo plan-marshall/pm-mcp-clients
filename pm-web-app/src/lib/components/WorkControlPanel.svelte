@@ -107,7 +107,7 @@
    * The control the focus goes back to once `busy` clears, when the opener was disabled while the
    * act ran. Without it the focus would drop to the body: a disabled control cannot take it.
    */
-  let focusAfterBusy = $state<HTMLElement | null>(null);
+  let focusAfterBusy = $state<HTMLElement | 'bar' | null>(null);
 
   /** The control that opened the dialog, so the focus goes back to it when the dialog closes. */
   let opener: HTMLElement | null = null;
@@ -247,20 +247,25 @@
       return;
     }
     // The act that closed the dialog disables the whole bar while it runs. Keep the control to
-    // return to, and give it the focus as soon as the bar is enabled again.
-    focusAfterBusy = previous?.isConnected ? previous : null;
+    // return to, or the bar when it is gone, and give it the focus as soon as it is enabled again.
+    focusAfterBusy = previous?.isConnected ? previous : 'bar';
   }
 
-  // The confirmed act disables its opener until the request settles; the focus then returns to it.
+  // The confirmed act disables its opener until the request settles; the focus then returns to it,
+  // or to the first control that can run when the act removed the opener (a pause leaves no pause).
   $effect(() => {
     if (busy || !focusAfterBusy) {
       return;
     }
     const target = focusAfterBusy;
     focusAfterBusy = null;
-    if (target.isConnected && !(target as HTMLButtonElement).disabled) {
+    if (target !== 'bar' && target.isConnected && !(target as HTMLButtonElement).disabled) {
       target.focus();
+      return;
     }
+    document
+      .querySelector<HTMLButtonElement>('[data-testid="control-actions"] button:not([disabled])')
+      ?.focus();
   });
 
   /** @param event the key press inside an open dialog, which Tab must not leave */

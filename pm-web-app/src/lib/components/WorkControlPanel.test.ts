@@ -275,6 +275,31 @@ describe('WorkControlPanel component', () => {
     });
   });
 
+  it('moves the focus to the first control that can run when the act removes the opener', async () => {
+    let settle: (actions: WorkActions) => void = () => {};
+    const pending = new Promise<WorkActions>((resolve) => {
+      settle = resolve;
+    });
+    vi.spyOn(apiClient, 'getPlanActions')
+      .mockResolvedValueOnce(running)
+      .mockResolvedValue({
+        ...running,
+        state: 'paused',
+        actions: [{ action: 'start', available: true }],
+      });
+    vi.spyOn(apiClient, 'applyPlanAction').mockReturnValue(pending);
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    await fireEvent.click(await screen.findByTestId('action-pause'));
+    await fireEvent.click(screen.getByTestId('pause-confirm'));
+    settle(running);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('action-pause')).not.toBeInTheDocument();
+      expect(document.activeElement).toBe(screen.getByTestId('action-start'));
+    });
+  });
+
   it('keeps the focus in the end dialogue and names its consequence', async () => {
     render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
 
