@@ -88,7 +88,8 @@ function expectOptionsAndGroupsOnly(box: HTMLElement): void {
     }
     expect(child.matches(focusable)).toBe(false);
     for (const element of Array.from(child.querySelectorAll('*'))) {
-      const insideOption = element.parentElement?.closest('[role="option"]') != null;
+      const optionAncestor = element.parentElement?.closest('[role="option"]') ?? null;
+      const insideOption = optionAncestor !== null;
       const elementRole = element.getAttribute('role');
       if (!insideOption) {
         if (elementRole === null) {
