@@ -399,6 +399,7 @@
   async function retryFailedAction(): Promise<void> {
     const action = retryAction;
     retryAction = null;
+    actionError = '';
     await (action ?? loadReports)();
   }
 
@@ -438,13 +439,15 @@
    * @param retain whether the row stays in the list until the detail closes
    */
   async function markRead(item: ReportItem, retain = false) {
+    const alreadyRead = Boolean(retainedReadIds[item.id]);
     pendingReadIds.add(item.id);
     if (retain) retainedReadIds[item.id] = true;
     try {
       await apiClient.markReportRead(item.id);
       // The read event and this response report the same read. Whichever arrives first counts it,
-      // and the other finds the marker and leaves the unread count alone.
-      if (!countedReadIds.has(item.id)) {
+      // and the other finds the marker and leaves the unread count alone. A row already read beside
+      // its detail was counted when it was read; marking it read again moves no count.
+      if (!alreadyRead && !countedReadIds.has(item.id)) {
         countedReadIds.add(item.id);
         unreadCount = Math.max(0, unreadCount - 1);
       }
@@ -741,7 +744,9 @@
       cards[index - 1]?.querySelector<HTMLElement>('[data-testid="report-row-menu"]');
 
     await closeRowMenu();
-    await markRead(item);
+    // A row already read beside its detail keeps its place and its count when its menu repeats the
+    // read.
+    await markRead(item, Boolean(retainedReadIds[item.id]));
 
     const remaining = Array.from(document.querySelectorAll<HTMLElement>('.report-card'));
     const row = remaining.find((card) => card.dataset.reportId === item.id);
@@ -750,7 +755,12 @@
       row.querySelector<HTMLElement>('[data-testid="report-row-menu"]')?.focus();
       return;
     }
-    (successor ?? document.querySelector<HTMLElement>('.reports-heading'))?.focus();
+    // A read event can remove the successor row while the request settles; a detached control
+    // cannot take the focus, so the heading is the fallback.
+    const target = successor?.isConnected
+      ? successor
+      : document.querySelector<HTMLElement>('.reports-heading');
+    target?.focus();
   }
 
   /** @param event the key press inside an open menu */

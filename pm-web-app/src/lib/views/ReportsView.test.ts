@@ -677,6 +677,31 @@ describe('ReportsView component', () => {
       expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
     });
     expect(read).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('keeps a retained row and its count when its menu reads it again', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
+    await waitFor(() => {
+      expect(document.querySelector('.report-card--active')).not.toBeNull();
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+    });
+
+    const card = document.querySelector('.report-card--active') as HTMLElement;
+    await fireEvent.click(within(card).getByRole('button', { name: /Report actions/i }));
+    await fireEvent.click(await within(card).findByRole('menuitem', { name: /Mark read/i }));
+
+    await waitFor(() => {
+      expect(apiClient.markReportRead).toHaveBeenCalledTimes(2);
+    });
+    expect(screen.getByText(/2 unread/)).toBeInTheDocument();
+    expect(document.querySelector('.report-card--active')).not.toBeNull();
   });
 
   it('keeps the body to one line until its control shows the rest', async () => {
