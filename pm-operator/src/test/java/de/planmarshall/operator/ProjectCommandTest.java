@@ -102,7 +102,7 @@ class ProjectCommandTest {
                             () -> assertEquals(0, code, output),
                             () -> assertTrue(output.contains("Id"), output),
                             () -> assertTrue(output.contains("cui-parent"), output),
-                            () -> assertTrue(output.contains("The project is ready"), output));
+                            () -> assertTrue(output.contains("cui-parent is ready"), output));
     }
 
     @Test

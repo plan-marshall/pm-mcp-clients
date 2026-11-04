@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.StartPrompt;
 
 import org.junit.jupiter.api.DisplayName;
@@ -235,6 +236,22 @@ class StateDialogueTest {
                             () -> assertEquals("Done", dialogue.stepName(new StateDialogue.Frame(
                                                 "project.unknown", "operator_wait", 1, 10, null,
                                                 Map.of(), List.of()))));
+    }
+
+    @Test
+    @DisplayName("every project setup state names a step the catalogue defines")
+    void projectStatesNameCatalogueSteps() {
+        var states = List.of("project.consent", "project.detect", "project.run-consent", "project.probe",
+                            "project.checkout", "project.enrol", "project.enrolment", "project.operator",
+                            "project.own", "project.identity", "project.team", "project.architecture",
+                            "project.landing", "project.roles", "project.descriptions", "project.commit");
+
+        for (var state : states) {
+            var suffix = StateDialogue.projectStepOf(state);
+            assertTrue(MessageCatalogue.hasKey("en", "project.step." + suffix), state + " -> " + suffix);
+        }
+        assertEquals("done", StateDialogue.projectStepOf("project.something-new"));
+        assertEquals("done", StateDialogue.projectStepOf("project.completed"));
     }
 
     @Test

@@ -25,11 +25,13 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
 
+import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -423,6 +425,87 @@ class EntryFlowTest {
                                 () -> assertTrue(text.contains("This machine is set up up to step 2 of 7; it")),
                                 () -> assertTrue(text.contains("stopped at [3/7] Models.")),
                                 () -> assertEquals(List.of("setup 2/7"), result.initialBadges())
+            );
+        }
+
+        @Test
+        @DisplayName("a refresh that cannot be read keeps the entry result the dialogue started with")
+        void aFailedRefreshKeepsTheEntryResult() throws Exception {
+            var statusReads = new AtomicInteger();
+            fixture.start((request, response) -> {
+                if ("/api/v1/status".equals(request.target())) {
+                    if (statusReads.getAndIncrement() == 0) {
+                        response.json(200, """
+                                            {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":0},"web":{"enabled":true,"port":7420}}
+                                            """);
+                    } else {
+                        response.send(500, null, "{}");
+                    }
+                } else if (OnboardCommand.STATE_PATH.equals(request.target())) {
+                    response.json(200, """
+                                        {"state":"onboard.mode","summary":"Set up this machine for plan-marshall",
+                                         "completed_steps":0,
+                                         "links":{"begin":{"href":"/api/v1/onboarding/language","method":"POST","next":"language.choose","preselected":true}}}
+                                        """);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            var context = new OperatorContext(fixture.environment(), tempDir, true);
+            var writer = new StringWriter();
+
+            var result = new EntryFlow(context).run(new PrintWriter(writer), createReader("h\nq\n"));
+
+            assertEquals(List.of("setup 0/7"), result.initialBadges(), writer.toString());
+        }
+
+        @Test
+        @DisplayName("an open project onboarding is a badge of its own")
+        void anOpenProjectOnboardingIsABadge() throws Exception {
+            fixture.start((request, response) -> {
+                if ("/api/v1/project-onboardings".equals(request.target())) {
+                    response.json(200, """
+                                        {"onboardings":[{"checkout_path":"/work/cui-http","current_step":"Identity",
+                                         "step_number":5,"total_steps":10}]}
+                                        """);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var context = new OperatorContext(fixture.environment(), tempDir, true);
+
+            var projectBadges = EntryFlow.projectSetupBadges("en", context.runtime(true));
+
+            assertAll(
+                                () -> assertEquals(List.of("setup cui-http 5/10"), projectBadges),
+                                () -> assertEquals(List.of("setup cui-http 5/10"),
+                                                    EntryFlow.badges("en", Map.of("onboarded", true), projectBadges))
+            );
+        }
+
+        @Test
+        @DisplayName("a machine badge keeps its place in front of the project badges")
+        void theMachineBadgeStaysInFront() {
+            var badges = EntryFlow.badges("en", Map.of("onboard", Map.of("step", 3)),
+                                List.of("setup cui-http 5/10"));
+
+            assertAll(
+                                () -> assertEquals("setup 3/7", badges.getFirst()),
+                                () -> assertEquals("setup cui-http 5/10", badges.get(1))
+            );
+        }
+
+        @Test
+        @DisplayName("the machine badge's total is the number of onboarding aspects")
+        void theBadgeTotalFollowsTheAspects() {
+            var badges = EntryFlow.badges("en", Map.of("onboarded", false));
+
+            assertAll(
+                                () -> assertEquals(EntryFlow.MACHINE_STEPS, OnboardingAspect.values().length),
+                                () -> assertEquals(List.of("setup 0/" + OnboardingAspect.values().length), badges),
+                                () -> assertEquals(7, OnboardingAspect.values().length,
+                                                    "the aspects name the seven steps of the first run")
             );
         }
     }

@@ -109,8 +109,11 @@ public final class OnboardCommand implements Callable<Integer> {
         var dialogue = new StateDialogue(source, out, locale,
                             stateId -> new ChoicePrompt(startPrompt, stateId));
         try {
-            dialogue.run();
-            return 0;
+            var frame = dialogue.run();
+            // A run that ends on a state with no links timed out waiting: the setup did not
+            // complete, so the exit code says so rather than claiming 0. (CodeRabbit marked this
+            // unverified; it is verified here at the dialogue's own return value.)
+            return frame.isFinal() ? 0 : EXIT_NEEDS_INPUT;
         } catch (StartPrompt.InterruptException _) {
             return StartPrompt.EXIT_INTERRUPTED;
         } catch (StartPrompt.StartLeftException _) {

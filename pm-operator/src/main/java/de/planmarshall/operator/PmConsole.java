@@ -39,7 +39,6 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.SseEvent;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
-import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 import de.planmarshall.operator.dialogue.OnboardingSource;
 import de.planmarshall.operator.dialogue.StateDialogue;
@@ -129,6 +128,9 @@ public final class PmConsole {
                             .build();
 
         var entryFlow = new EntryFlow(context);
+        // The console lends its terminal for everything it dispatches, the dialogues it opens
+        // included: a dialogue must draw on the console's terminal, never open a second one.
+        context.useTerminal(terminal);
         var entryResult = entryFlow.run(out, reader);
 
         activePairingCode = entryResult.activeCode();
@@ -138,18 +140,27 @@ public final class PmConsole {
         updateWindowTitle(terminal);
         printFullScreenHint(out, terminal);
 
-        Thread sseThread = startEventListener(reader);
+        Thread sseThread = startEventListener(reader, terminal);
 
         try {
             runRepl(out, reader, terminal);
         } finally {
             context.setConsoleActive(false);
-            running.set(false);
+            stop();
             sseThread.interrupt();
+            context.clearTerminal(terminal);
             out.flush();
         }
 
         return 0;
+    }
+
+    /**
+     * Ends the console's own loops, so the event stream stops reconnecting and the prompt loop
+     * leaves at its next turn. Idempotent.
+     */
+    void stop() {
+        running.set(false);
     }
 
     private void runRepl(PrintWriter out, LineReader reader, Terminal terminal) {
@@ -160,7 +171,7 @@ public final class PmConsole {
                 break;
             }
             if (line.isEmpty()) {
-                handleEmptyEnter(out, reader);
+                handleEmptyEnter(out, reader, terminal);
             } else if ("exit".equalsIgnoreCase(line) || "quit".equalsIgnoreCase(line)) {
                 break;
             } else {
@@ -236,7 +247,7 @@ public final class PmConsole {
         return Integer.parseInt(badge.substring(start, end));
     }
 
-    private void handleEmptyEnter(PrintWriter out, LineReader reader) {
+    private void handleEmptyEnter(PrintWriter out, LineReader reader, Terminal terminal) {
         var locale = locale();
         boolean hasSetup = false;
         for (var b : badges.get()) {
@@ -246,7 +257,7 @@ public final class PmConsole {
             }
         }
         if (hasSetup) {
-            continueOnboarding(out, reader, locale);
+            continueOnboarding(out, reader, locale, terminal);
         }
     }
 
@@ -257,38 +268,49 @@ public final class PmConsole {
      * @param out    the console's writer
      * @param reader the console's line reader
      * @param locale the interface locale
+     * @param terminal the terminal whose window title carries the badges
      */
-    private void continueOnboarding(PrintWriter out, LineReader reader, String locale) {
+    private void continueOnboarding(PrintWriter out, LineReader reader, String locale, Terminal terminal) {
         try {
             var runtime = context.runtime(true);
             var dialogue = new StateDialogue(new OnboardingSource(runtime, context.gate()), out, locale,
                                 stateId -> new ChoicePrompt(reader, out, locale, stateId));
             dialogue.run();
-            refreshSetupBadge(runtime, locale);
         } catch (StartPrompt.StartLeftException | StartPrompt.MissingInputException _) {
-            // leaving the dialogue sends nothing; the runtime keeps the state it reports
+            // leaving the dialogue sends nothing; the runtime keeps the state it reports, and the
+            // badge still follows whatever the dialogue left behind
         } catch (OperatorRefusedException e) {
             out.println(e.getMessage());
             out.flush();
         } catch (IOException _) {
             out.println(MessageCatalogue.format(locale, "onboard.error.no_state", Map.of()));
             out.flush();
+        } finally {
+            // Every way out of the dialogue ends here, `q` included: the badge and the title never
+            // state a step the operator has already left. (PR 275 called this low value; the lane
+            // does it rather than answering it: one refresh closes the window either way.)
+            refreshSetupBadge(locale, terminal);
         }
     }
 
     /**
-     * Replaces the setup badge after the dialogue, so a completed onboarding leaves no badge and a
-     * stopped one names the step it stopped at.
+     * Replaces the setup badge and the window title after the dialogue, so a completed onboarding
+     * leaves no badge, a stopped one names the step it stopped at, and the title never carries a
+     * badge the prompt has already dropped.
      *
-     * @param runtime the runtime client
-     * @param locale  the interface locale
+     * @param locale   the interface locale
+     * @param terminal the terminal whose window title carries the badges
      */
-    private void refreshSetupBadge(RuntimeClient runtime, String locale) {
+    void refreshSetupBadge(String locale, Terminal terminal) {
         try {
-            badges.set(List.copyOf(EntryFlow.badges(locale, StatusCommand.fetch(runtime))));
+            var runtime = context.runtime(true);
+            badges.set(List.copyOf(EntryFlow.badges(locale, StatusCommand.fetch(runtime),
+                                EntryFlow.projectSetupBadges(locale, runtime))));
         } catch (IOException _) {
             // the badge keeps what the entry flow reported
+            return;
         }
+        updateWindowTitle(terminal);
     }
 
     private void dispatchCommand(String line, PrintWriter out, LineReader reader, Terminal terminal) {
@@ -373,7 +395,7 @@ public final class PmConsole {
             if (hold) {
                 leaveFullScreen(out);
             }
-            context.clearTerminal();
+            context.clearTerminal(terminal);
             out.flush();
         }
     }
@@ -449,13 +471,27 @@ public final class PmConsole {
         out.println(MessageCatalogue.format(locale, "operator.console.help.more", Map.of()));
     }
 
-    private Thread startEventListener(LineReader reader) {
+    /**
+     * Starts the event stream the console follows, on a daemon thread.
+     *
+     * @param reader   the console's line reader the events act on
+     * @param terminal the terminal whose window title carries the badges
+     * @return the thread, so the caller can stop and join it
+     */
+    Thread startEventListener(LineReader reader, Terminal terminal) {
         var thread = new Thread(() -> {
+            var firstConnection = new AtomicBoolean(true);
             while (running.get()) {
                 try {
                     var runtime = context.runtime(false);
                     try (var exchange = runtime.open(HttpRequest.get("/api/v1/events"))) {
+                        var reconnected = !firstConnection.getAndSet(false);
                         reconnecting.set(false);
+                        if (reconnected) {
+                            // A stream that comes back may have missed every event it carried:
+                            // read the state the runtime reports now, not the one from before.
+                            refreshBadges(terminal);
+                        }
                         var sseReader = exchange.events();
                         SseEvent event;
                         while (running.get() && (event = sseReader.next()) != null) {
@@ -563,7 +599,9 @@ public final class PmConsole {
     private void refreshBadges(Terminal terminal) {
         List<String> refreshed;
         try {
-            refreshed = EntryFlow.badges(locale(), StatusCommand.fetch(context.runtime(false)));
+            var runtime = context.runtime(false);
+            refreshed = EntryFlow.badges(locale(), StatusCommand.fetch(runtime),
+                                EntryFlow.projectSetupBadges(locale(), runtime));
         } catch (IOException _) {
             // the runtime did not answer this read: keep the badges it last gave us
             return;

@@ -189,8 +189,8 @@ public final class ProjectCommand implements Callable<Integer> {
                     out.flush();
                     return 0;
                 }
-                dialogue.run();
-                return 0;
+                // A project setup that ends without reaching its final state did not complete.
+                return dialogue.run().isFinal() ? 0 : 1;
             } catch (StartPrompt.InterruptException _) {
                 return StartPrompt.EXIT_INTERRUPTED;
             } catch (StartPrompt.StartLeftException _) {
