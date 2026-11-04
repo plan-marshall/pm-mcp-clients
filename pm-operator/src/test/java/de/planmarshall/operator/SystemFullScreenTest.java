@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
+import org.jline.terminal.Terminal;
 
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -531,7 +532,7 @@ class SystemFullScreenTest {
 
             var deadline = System.nanoTime() + 5_000_000_000L;
             while (thread.isAlive() && System.nanoTime() < deadline) {
-                virtual.terminal().raise(org.jline.terminal.Terminal.Signal.INT);
+                virtual.terminal().raise(Terminal.Signal.INT);
                 delay(20L);
             }
             join(thread);
