@@ -263,7 +263,9 @@ describe('the app shell', () => {
         drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
       }),
     );
-    const stopNow = vi.spyOn(apiClient, 'stopRuntime').mockResolvedValue(undefined);
+    const stopNow = vi
+      .spyOn(apiClient, 'stopRuntime')
+      .mockResolvedValue({ lifecycle_state: 'stopping' });
     let refuseWithdraw: (reason: Error) => void = () => {};
     const pending = new Promise<void>((_resolve, reject) => {
       refuseWithdraw = reject;
@@ -310,7 +312,7 @@ describe('the app shell', () => {
       }),
     );
     let refuseStopNow: (reason: Error) => void = () => {};
-    const pending = new Promise<void>((_resolve, reject) => {
+    const pending = new Promise<{ lifecycle_state: string }>((_resolve, reject) => {
       refuseStopNow = reject;
     });
     const stopNow = vi.spyOn(apiClient, 'stopRuntime').mockReturnValue(pending);
