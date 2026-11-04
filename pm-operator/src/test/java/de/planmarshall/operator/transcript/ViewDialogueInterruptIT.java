@@ -35,6 +35,13 @@ import org.junit.jupiter.api.condition.OS;
  * keys where the level has rows, the actions menu opens on {@code a}, and the dialogue is the entry
  * the menu runs. The interrupt is typed as {@code \u0003}, never raised as a signal, so a dialogue
  * that reads a second terminal cannot pass by accident.
+ *
+ * <p>The key is typed once the prompt is on screen. PLAN-94 D5(g) asked for a reader-ready
+ * condition or a reason it cannot race: the prompt a dialogue draws is followed by JLine's own
+ * {@code stty} child that switches the terminal to raw mode, so a key typed in that window kills the
+ * child ({@code java.io.IOError: Error executing '/bin/stty ...'}) rather than reaching the reader.
+ * No output marks the end of that switch, and a probe key would change the dialogue's own state; the
+ * drawn prompt is therefore the last condition the harness can read. Recorded as a decision.
  */
 @DisplayName("Ctrl+C typed into a dialogue a view opened leaves with 130 and sends nothing")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -54,7 +61,7 @@ class ViewDialogueInterruptIT {
             type(session, "a");
             awaitText(session, "Pause\u2026");
             type(session, "p");
-            awaitPrompt(session, "Where does fix-relay hold?");
+            awaitText(session, "Where does fix-relay hold?");
 
             type(session, INTERRUPT);
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
@@ -73,7 +80,7 @@ class ViewDialogueInterruptIT {
             type(session, "a");
             awaitText(session, "Accept the change\u2026");
             type(session, "c");
-            awaitPrompt(session, "y) yes");
+            awaitText(session, "y) yes");
 
             type(session, INTERRUPT);
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
@@ -93,7 +100,7 @@ class ViewDialogueInterruptIT {
             type(session, "a");
             awaitText(session, "Findings review");
             type(session, "f");
-            awaitPrompt(session, "Reconnect loses the last event");
+            awaitText(session, "Reconnect loses the last event");
 
             type(session, INTERRUPT);
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
@@ -114,7 +121,7 @@ class ViewDialogueInterruptIT {
             type(session, "a");
             awaitText(session, "Stop\u2026");
             type(session, "s");
-            awaitPrompt(session, "Stop the runtime?");
+            awaitText(session, "Stop the runtime?");
 
             type(session, INTERRUPT);
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
@@ -137,7 +144,7 @@ class ViewDialogueInterruptIT {
             type(session, "a");
             awaitText(session, "Pause\u2026");
             type(session, "p");
-            awaitPrompt(session, "Where does fix-relay hold?");
+            awaitText(session, "Where does fix-relay hold?");
 
             type(session, INTERRUPT);
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
@@ -154,18 +161,6 @@ class ViewDialogueInterruptIT {
     private static void awaitText(PtySession session, String marker) throws Exception {
         assertTrue(session.awaitText(marker, DialogueHarness.TIMEOUT),
                             marker + " never drawn:\n" + session.screenText());
-    }
-
-    /**
-     * Waits for a dialogue's prompt to be complete: the marker plus the prompt's own terminator,
-     * so the {@code Ctrl+C} is typed into a reader that is already reading.
-     *
-     * @param session the running session
-     * @param marker  the text the prompt carries
-     * @throws Exception when the prompt is not reached
-     */
-    private static void awaitPrompt(PtySession session, String marker) throws Exception {
-        DialogueHarness.awaitPrompt(session, marker);
     }
 
     /**

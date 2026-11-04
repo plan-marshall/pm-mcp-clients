@@ -37,7 +37,7 @@ class DirectDialogueInterruptIT {
     void answerPromptInterrupt() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
              var session = harness.open("answer", "Q-007", "--interactive")) {
-            DialogueHarness.awaitPrompt(session, PROMPT);
+            assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, INTERRUPT);
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
