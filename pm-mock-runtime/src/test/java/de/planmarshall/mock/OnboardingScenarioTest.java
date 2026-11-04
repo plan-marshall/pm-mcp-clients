@@ -365,6 +365,27 @@ class OnboardingScenarioTest {
         }
 
         @Test
+        @DisplayName("records the reminder interval a client sends beside the durations")
+        void shouldApplyCleanupDurationsAsARecord() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+                var record = "{\\\"plans_after_days\\\":45,\\\"epics_after_days\\\":45,"
+                        + "\\\"logs_after_days\\\":45,\\\"reports_after_days\\\":45,"
+                        + "\\\"unenrolled_after_days\\\":45,\\\"remind_after_days\\\":7}";
+
+                assertEquals(200, put(client, auth,
+                        "{\"key\":\"cleanup_durations\",\"value\":\"" + record + "\",\"revision\":4}"));
+
+                var settings = MachineSettingsRecord.fromJson(new String(
+                        client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth)).body(),
+                        StandardCharsets.UTF_8));
+                assertEquals(45, settings.cleanupDurations().plansAfterDays());
+                assertEquals(7, settings.cleanupDurations().remindAfterDays());
+            }
+        }
+
+        @Test
         @DisplayName("applies plan defaults, cleanup durations, rejects an unknown mode, and is idempotent on an unknown consent")
         void shouldApplyTheSettingsKeys() throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {

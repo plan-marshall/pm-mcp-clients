@@ -629,20 +629,29 @@
     chat = null;
     chatNotice = '';
     try {
-      chat = await apiClient.getDecisionChat(dec.id);
+      const loaded = await apiClient.getDecisionChat(dec.id);
+      // The operator may have switched to another decision's chat while this one loaded: the
+      // answer belongs to the panel it was asked for, never to the one now on screen.
+      if (chatDecisionId === dec.id) chat = loaded;
     } catch (err: unknown) {
-      chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
-      chatOpen = false;
+      if (chatDecisionId === dec.id) {
+        chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
+        chatOpen = false;
+      }
     }
   }
 
   async function sendChat(text: string): Promise<void> {
-    if (!chatDecisionId) return;
+    const decisionId = chatDecisionId;
+    if (!decisionId) return;
     chatBusy = true;
     try {
-      chat = await apiClient.decisionChatTurn(chatDecisionId, text);
+      const answered = await apiClient.decisionChatTurn(decisionId, text);
+      if (chatDecisionId === decisionId) chat = answered;
     } catch (err: unknown) {
-      chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
+      if (chatDecisionId === decisionId) {
+        chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
+      }
     } finally {
       chatBusy = false;
     }
@@ -650,18 +659,24 @@
 
   async function answerChatProposal(accept: boolean): Promise<void> {
     if (!chatDecisionId) return;
-    // The panel can be closed while the answer is in flight, so the decision it belongs to is
-    // carried past the await instead of read back from a field the close has cleared.
+    // The panel can be closed, or another decision's panel opened, while the answer is in flight,
+    // so the decision it belongs to is carried past the await: a late answer never replaces
+    // another decision's transcript.
     const decisionId = chatDecisionId;
     const proposal = chat?.proposal;
     chatBusy = true;
     try {
-      chat = await apiClient.answerDecisionChatProposal(decisionId, accept);
+      const answered = await apiClient.answerDecisionChatProposal(decisionId, accept);
+      if (chatDecisionId === decisionId) {
+        chat = answered;
+      }
       if (accept && proposal?.after) {
         takeProposedAnswer(decisionId, proposal.after, proposal.applies ?? '');
       }
     } catch (err: unknown) {
-      chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
+      if (chatDecisionId === decisionId) {
+        chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
+      }
     } finally {
       chatBusy = false;
     }
@@ -680,7 +695,10 @@
     ownWordsTexts[key] = words;
     ownWordsMode[key] = true;
     interpretations[key] = null;
-    chatOpen = false;
+    // Only the chat this answer belongs to closes: a panel the operator opened meanwhile stays.
+    if (chatDecisionId === decisionId) {
+      chatOpen = false;
+    }
     void interpretOwnWords(dec, part, index);
   }
 

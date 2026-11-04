@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { get } from 'svelte/store';
 import ProjectOnboardingView from './ProjectOnboardingView.svelte';
 import { apiClient, type ProjectExplorer, type ProjectOnboardingState } from '../api/client';
+import { currentLocale } from '../i18n';
 
 const RUN: ProjectOnboardingState = {
   project_id: 'pm-mcp-clients',
@@ -66,6 +68,30 @@ describe('ProjectOnboardingView component', () => {
     );
     expect(screen.getByTestId('project-build-environment')).toHaveTextContent('JAVA_HOME');
     expect(screen.getByTestId('project-chat-open')).not.toBeDisabled();
+  });
+
+  it('re-measures the step line when the language switches', async () => {
+    vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue(RUN);
+    // jsdom measures nothing, so the line's widths are stubbed: the German labels overflow the box,
+    // the English ones do not.
+    vi.spyOn(Element.prototype, 'scrollWidth', 'get').mockImplementation(function (this: Element) {
+      if (!(this as HTMLElement).classList?.contains('step-line')) return 0;
+      return get(currentLocale) === 'de' ? 900 : 300;
+    });
+    vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(400);
+    currentLocale.set('en');
+
+    const { container } = render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
+    await waitFor(() => expect(screen.getByTestId('project-onboarding-step')).toBeInTheDocument());
+    const line = container.querySelector('.step-line');
+    expect(line).toHaveAttribute('tabindex', '-1');
+
+    currentLocale.set('de');
+
+    // The line overflows in German now, so it takes the Tab stop without waiting for a resize.
+    await waitFor(() => expect(line).toHaveAttribute('tabindex', '0'));
+
+    currentLocale.set('en');
   });
 
   it('names the command that captures a build environment that was never captured', async () => {

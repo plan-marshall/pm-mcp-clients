@@ -265,6 +265,8 @@ const GUARD_JOURNEYS = [
       await expect(epicCard).toBeVisible();
       await epicCard.click();
       await expect(page.getByTestId('epic-view')).toBeVisible();
+      // A static loading placeholder passes the quiet check and would be recorded as the view.
+      await expect(page.getByTestId('epic-loading')).toHaveCount(0, { timeout: 15000 });
       await record('EpicView');
     },
   },
@@ -337,6 +339,8 @@ const GUARD_JOURNEYS = [
       await expect(review).toBeVisible();
       await review.click();
       await expect(page.getByTestId('cleanup-view')).toBeVisible();
+      // The loading placeholder would be recorded as the view; the cleanup's own content is not.
+      await expect(page.locator('.cleanup-loading')).toHaveCount(0, { timeout: 15000 });
       await record('CleanupView');
     },
   },
@@ -355,6 +359,8 @@ const GUARD_JOURNEYS = [
 
       await page.getByTestId('machine-settings-button').click();
       await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+      // The devices line carries its own loading text; recording it would record a placeholder.
+      await expect(page.locator('.loading-text')).toHaveCount(0, { timeout: 15000 });
       await record('MachineSettingsView');
 
       await page.getByTestId('open-designer-btn').click();

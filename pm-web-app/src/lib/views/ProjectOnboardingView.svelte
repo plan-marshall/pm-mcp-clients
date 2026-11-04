@@ -101,6 +101,15 @@
     stepLineOverflows = stepLine ? stepLine.scrollWidth > stepLine.clientWidth : false;
   }
 
+  // The line's width follows its rows and the words of the language on screen, so both are
+  // measured again — a language switch that makes the labels longer must not leave the line
+  // overflowing without its Tab stop.
+  $effect(() => {
+    void stepRows;
+    void $currentLocale;
+    measureStepLine();
+  });
+
   /**
    * @param value the run, or `null` while none is loaded
    * @returns the step the run waits at, 1 to 10

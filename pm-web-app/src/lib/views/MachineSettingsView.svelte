@@ -84,8 +84,23 @@
     await applySetting('documents_mode', documentsMode);
   }
 
+  /**
+   * Sends the cleanup durations the page shows: how long work is kept, and the reminder interval.
+   *
+   * The setting travels as one value, so both figures go in it: the reminder has no setting of its
+   * own, and a page that showed it while sending only the days would say "saved" for a value the
+   * runtime never received.
+   */
   async function saveCleanup(): Promise<void> {
-    await applySetting('cleanup_durations', String(cleanupDays));
+    const durations = {
+      plans_after_days: cleanupDays,
+      epics_after_days: cleanupDays,
+      logs_after_days: cleanupDays,
+      reports_after_days: cleanupDays,
+      unenrolled_after_days: cleanupDays,
+      remind_after_days: cleanupRemindDays,
+    };
+    await applySetting('cleanup_durations', JSON.stringify(durations));
   }
 
   /** Applies the value this page wanted, on the revision the other client left behind. */
@@ -349,7 +364,7 @@
         </label>
         <label class="choice">
           {$t('web.settings.cleanup.remind')}
-          <input type="number" min="0" bind:value={cleanupRemindDays} />
+          <input type="number" min="0" bind:value={cleanupRemindDays} data-testid="cleanup-remind-days" />
           {$t('web.settings.cleanup.days_after')}
         </label>
         <Button variant="secondary" on:click={saveCleanup} data-testid="save-cleanup">

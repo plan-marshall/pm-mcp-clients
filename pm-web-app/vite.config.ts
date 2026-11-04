@@ -131,6 +131,9 @@ export default defineConfig({
       allow: ['..'],
     },
     port: resolvePorts().webPort,
+    // An assigned port that is in use is a blocker (AGENTS.md § Ports), so a run that was given
+    // one stops instead of silently moving to the next free port.
+    strictPort: (process.env.PM_WEB_PORT ?? '').trim() !== '',
     proxy: {
       '/api': {
         target: resolvePorts().mockTarget,

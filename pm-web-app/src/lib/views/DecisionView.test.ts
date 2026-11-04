@@ -475,6 +475,60 @@ describe('DecisionView component', () => {
     });
   });
 
+  it('does not put a late chat answer into another decision’s panel', async () => {
+    const second: DecisionEnvelope = {
+      ...mockDecision,
+      id: 'dec-202',
+      subject: 'epic relay-hardening',
+      parts: mockDecision.parts.map((part) => ({
+        ...part,
+        question: `Second decision: ${part.question}`,
+      })),
+    };
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([mockDecision, second]);
+    vi.spyOn(apiClient, 'getDecisionChat').mockImplementation(async (decisionId: string) => ({
+      ...decisionChat,
+      chat_id: `C-${decisionId}`,
+      subject_id: decisionId,
+      turns: [
+        {
+          role: 'operator',
+          text: `transcript of ${decisionId}`,
+          at: '2026-10-14T10:00:00Z',
+          untrusted: false,
+        },
+      ],
+    }));
+    let release: ((answer: ChatReadBack) => void) | undefined;
+    vi.spyOn(apiClient, 'answerDecisionChatProposal').mockImplementation(
+      () =>
+        new Promise<ChatReadBack>((resolve) => {
+          release = resolve;
+        }),
+    );
+
+    render(DecisionView);
+
+    const openers = await screen.findAllByText('chat about it first');
+    await fireEvent.click(openers[0]!);
+    expect(await screen.findByTestId('chat-transcript')).toHaveTextContent('transcript of dec-101');
+    // The answer of the first decision is in flight when the operator opens the second one's chat.
+    await fireEvent.click(screen.getByTestId('chat-accept'));
+
+    await fireEvent.click(openers[1]!);
+    await waitFor(() => {
+      expect(screen.getByTestId('chat-transcript')).toHaveTextContent('transcript of dec-202');
+    });
+
+    release?.({ ...decisionChat, chat_id: 'C-dec-101', subject_id: 'dec-101', proposal: undefined });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('chat-transcript')).toHaveTextContent('transcript of dec-202');
+    });
+    expect(screen.getByTestId('chat-transcript')).not.toHaveTextContent('dec-101');
+    expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
+  });
+
   it('asks once for notification permission after a decision arrives', async () => {
     const captured: { handler?: (event: string, data: unknown) => void } = {};
     vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((callback) => {

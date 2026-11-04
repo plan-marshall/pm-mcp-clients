@@ -74,6 +74,26 @@ describe('Tabs', () => {
     expect(onSelect).toHaveBeenLastCalledWith('failed');
   });
 
+  it('moves from the list’s own box to the selected tab, then through the tabs', async () => {
+    const onSelect = vi.fn();
+    render(Tabs, { props: { tabs: TABS, active: 'done', label: LABEL, onSelect } });
+    const tablist = screen.getByRole('tablist', { name: LABEL });
+    const tabs = screen.getAllByRole('tab');
+
+    // A press on the gap between tabs puts the focus on the list, not on a tab: the walk starts at
+    // the tab that is selected.
+    tablist.focus();
+    await fireEvent.keyDown(tablist, { key: 'ArrowRight' });
+
+    expect(document.activeElement).toBe(tabs[2]);
+    expect(onSelect).toHaveBeenLastCalledWith('failed');
+
+    await fireEvent.keyDown(tabs[2], { key: 'ArrowRight' });
+
+    expect(document.activeElement).toBe(tabs[0]);
+    expect(onSelect).toHaveBeenLastCalledWith('open');
+  });
+
   it('jumps to the first and the last tab with Home and End', async () => {
     const onSelect = vi.fn();
     render(Tabs, { props: { tabs: TABS, active: 'done', label: LABEL, onSelect } });

@@ -105,6 +105,39 @@ describe('MachineSettingsView component', () => {
     });
   });
 
+  it('sends the reminder interval beside the days and shows it again after a reload', async () => {
+    const updateSpy = vi.spyOn(apiClient, 'updateMachineSetting').mockResolvedValue({
+      applied: true,
+      conflict: false,
+      revision: 5,
+    });
+    vi.spyOn(apiClient, 'getMachineSettings')
+      .mockResolvedValueOnce(settings)
+      .mockResolvedValueOnce({
+        ...settings,
+        revision: 5,
+        cleanup_durations: { ...settings.cleanup_durations, plans_after_days: 45, remind_after_days: 7 },
+      });
+
+    render(MachineSettingsView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('save-cleanup')).toBeInTheDocument();
+    });
+
+    await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '45' } });
+    await fireEvent.input(screen.getByTestId('cleanup-remind-days'), { target: { value: '7' } });
+    await fireEvent.click(screen.getByTestId('save-cleanup'));
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith('cleanup_durations', expect.any(String), 4);
+    });
+    const sent = JSON.parse(updateSpy.mock.calls[0]?.[1] ?? '{}') as Record<string, number>;
+    expect(sent.plans_after_days).toBe(45);
+    expect(sent.epics_after_days).toBe(45);
+    expect(sent.remind_after_days).toBe(7);
+  });
+
   it('reports a conflict instead of overwriting the current value', async () => {
     vi.spyOn(apiClient, 'updateMachineSetting').mockResolvedValue({
       applied: false,

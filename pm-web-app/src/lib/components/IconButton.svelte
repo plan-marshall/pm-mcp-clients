@@ -13,7 +13,7 @@
    * from the catalogue's `X.title` key (Interactions Affordances).
    */
   export let icon: string;
-  /** The accessible name and the visible label: the glyph alone does not name the act. */
+  /** The accessible name; the word on screen where the view draws no `visibleLabel` of its own. */
   export let label: string;
   /**
    * The word drawn beside the glyph where a table's fixed column cannot hold the whole accessible

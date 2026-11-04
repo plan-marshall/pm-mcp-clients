@@ -340,8 +340,34 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(completed).toHaveTextContent('Deutsch, models English');
     expect(completed).toHaveTextContent('Claude Code 2.4.1 (default), OpenCode 1.9.0');
 
+    // A runtime that sends the card's own title as the summary does not print it twice.
+    expect(screen.getByTestId('completed-summary')).toHaveTextContent(
+      'Machine setup is complete.',
+    );
+    expect(screen.getByTestId('completed-summary')).not.toHaveTextContent(
+      'This machine is ready',
+    );
+
     // A done step opened from the bar is read-only: it shows its summary, never a link to re-run.
     expect(screen.queryByRole('button', { name: /record this choice/i })).not.toBeInTheDocument();
+  });
+
+  it('shows the runtime’s own sentence under the completed title when it differs from it', () => {
+    arrange(
+      onboardingState({
+        state: 'onboard.completed',
+        summary: 'Seven steps taken on this machine',
+        completed_steps: 7,
+        step_summaries: { '1': 'Deutsch, models English' },
+      }),
+      7,
+    );
+
+    render(OnboardingView);
+
+    expect(screen.getByTestId('completed-summary')).toHaveTextContent(
+      'Seven steps taken on this machine',
+    );
   });
 
   it('opens a done step from the step bar as a read-only summary', async () => {

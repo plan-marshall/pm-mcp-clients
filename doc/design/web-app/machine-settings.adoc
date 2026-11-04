@@ -186,6 +186,7 @@ How long ended work is kept before the cleanup offers it, the machine's `cleanup
 ----
 
 * The machine's values, recorded and audited by `settings.record`; with a value changed the button reads _Keep these durations_. A changed duration deletes nothing; it applies at the next check.
+* The reminder interval is saved with the durations: the setting carries one record (`cleanup_durations`, the one `GET /api/v1/machine/settings` returns), so a value the page shows is a value the runtime keeps. A bare number of days is what an older client sends and stays readable.
 * *A project's own value* is listed by its project and changed in that project's setup, under ④ Own settings (link:../shared/project-onboarding.adoc#steps[Project Onboarding, Steps]); never here.
 * The cleanup view's _Durations_ opens the same.
 
