@@ -168,7 +168,7 @@ public final class ConsolePrompt {
         // the prompt and the window title, so it is sanitised like every other runtime text.
         return MessageCatalogue.format(locale, "operator.console.badge.setup_project",
                             Map.of("project", TerminalSanitizer.sanitizeLine(
-                                                Objects.requireNonNull(projectId, "projectId")),
+                                                                    Objects.requireNonNull(projectId, "projectId")),
                                                 "done", currentStep, "total", totalSteps));
     }
 }
