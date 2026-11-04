@@ -84,14 +84,17 @@ describe('ProjectOnboardingView component', () => {
     const { container } = render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
     await waitFor(() => expect(screen.getByTestId('project-onboarding-step')).toBeInTheDocument());
     const line = container.querySelector('.step-line');
-    expect(line).toHaveAttribute('tabindex', '-1');
 
-    currentLocale.set('de');
+    try {
+      expect(line).toHaveAttribute('tabindex', '-1');
 
-    // The line overflows in German now, so it takes the Tab stop without waiting for a resize.
-    await waitFor(() => expect(line).toHaveAttribute('tabindex', '0'));
+      currentLocale.set('de');
 
-    currentLocale.set('en');
+      // The line overflows in German now, so it takes the Tab stop without waiting for a resize.
+      await waitFor(() => expect(line).toHaveAttribute('tabindex', '0'));
+    } finally {
+      currentLocale.set('en');
+    }
   });
 
   it('names the command that captures a build environment that was never captured', async () => {

@@ -59,8 +59,8 @@ function useCatalogue(locale: 'de' | 'en', overrides: Record<string, string> = {
 /**
  * Renders one value in both interface languages, each against its own catalogue.
  *
- * The formatter reads the active catalogue, so a test asks for a locale only after putting that
- * locale's pack in place.
+ * The formatter reads the catalogue of the locale it is given, so the test puts that locale's pack
+ * in place before asking for it.
  *
  * @param render the formatter call, given the locale
  * @param english the text the English pack yields

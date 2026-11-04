@@ -57,11 +57,10 @@ export function clockParts(timestamp: string | null | undefined): ClockParts | n
 }
 
 /**
- * @param locale the interface locale
+ * @param locale the locale whose words are wanted
  * @param key the catalogue key of the word or the unit mark
  * @param params the ICU parameters of the text
- * @returns the text the active catalogue yields for that key; every caller passes the active
- *   locale, so the active catalogue is that locale's pack
+ * @returns the text the catalogue of that locale yields for the key
  */
 function word(
   locale: Locale,

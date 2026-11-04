@@ -324,8 +324,9 @@ export function persistCatalogue(locale: Locale, messages: Record<string, string
  * Every message this session has resolved, per locale.
  *
  * A locale switch replaces the store but not this history, so a label seen before the switch
- * stays readable where the new catalogue has a gap — and the history of another language is read
- * only as the English fallback, so no word of a foreign language reaches an active screen.
+ * stays readable where the new catalogue has a gap. A formatter that renders a value in a locale
+ * other than the active one reads that locale's history, and English is the fallback of both, so no
+ * word of a third language reaches a screen.
  */
 const sessionMessages: Record<Locale, Record<string, string>> = {
   en: Object.create(null),

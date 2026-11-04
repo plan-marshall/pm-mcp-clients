@@ -111,20 +111,14 @@ describe('MachineSettingsView component', () => {
       conflict: false,
       revision: 5,
     });
-    vi.spyOn(apiClient, 'getMachineSettings')
-      .mockResolvedValueOnce(settings)
-      .mockResolvedValueOnce({
-        ...settings,
-        revision: 5,
-        cleanup_durations: { ...settings.cleanup_durations, plans_after_days: 45, remind_after_days: 7 },
-      });
+    let recorded: MachineSettingsRecord = settings;
+    vi.spyOn(apiClient, 'getMachineSettings').mockImplementation(async () => recorded);
 
-    render(MachineSettingsView);
+    const first = render(MachineSettingsView);
 
     await waitFor(() => {
       expect(screen.getByTestId('save-cleanup')).toBeInTheDocument();
     });
-
     await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '45' } });
     await fireEvent.input(screen.getByTestId('cleanup-remind-days'), { target: { value: '7' } });
     await fireEvent.click(screen.getByTestId('save-cleanup'));
@@ -136,6 +130,22 @@ describe('MachineSettingsView component', () => {
     expect(sent.plans_after_days).toBe(45);
     expect(sent.epics_after_days).toBe(45);
     expect(sent.remind_after_days).toBe(7);
+
+    // A reload reads the runtime's record back: the second read answers with the saved value.
+    recorded = {
+      ...settings,
+      revision: 5,
+      cleanup_durations: {
+        ...settings.cleanup_durations,
+        plans_after_days: 45,
+        remind_after_days: 7,
+      },
+    };
+    first.unmount();
+    render(MachineSettingsView);
+    await waitFor(() => {
+      expect(screen.getByTestId('cleanup-remind-days')).toHaveValue(7);
+    });
   });
 
   it('reports a conflict instead of overwriting the current value', async () => {

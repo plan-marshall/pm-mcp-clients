@@ -23,7 +23,7 @@ export function findDevMarkers(files) {
   const found = [];
   for (const [file, content] of Object.entries(files)) {
     for (const marker of DEV_MARKERS) {
-      if (content.includes(marker)) {
+      if (content.includes(marker) || file.includes(marker) || `/${file}`.includes(marker)) {
         found.push(`${file}: ${marker}`);
       }
     }

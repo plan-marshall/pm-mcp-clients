@@ -35,4 +35,11 @@ describe('the build-output check', () => {
 
     expect(findDevMarkers(files)).toHaveLength(DEV_MARKERS.length);
   });
+
+  it('finds a development page emitted as a file of its own', () => {
+    // The route can survive as a file path even when every body is clean.
+    expect(findDevMarkers({ 'dev/components.html': '<!doctype html>' })).toEqual([
+      'dev/components.html: /dev/components',
+    ]);
+  });
 });
