@@ -38,6 +38,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 
@@ -241,6 +242,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /** The prefix that names a fixture member inside the operator facts, for failure messages. */
     private static final String PATH_FACTS = "facts.";
     private static final String KEY_STATUS = "status";
+    /** What a drain still runs, by name, in the status and the live event alike. */
+    private static final String KEY_REMAINING_ITEMS = "remaining_items";
+    /** The number of items a drain still runs, its list's own length. */
+    private static final String KEY_REMAINING_WORK_COUNT = "remaining_work_count";
     private static final String KEY_LOOPBACK = "loopback";
     private static final String KEY_DEVICE_ID = "device_id";
     private static final String KEY_LABEL = "label";
@@ -625,7 +630,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private volatile String drainingBy;
     private volatile boolean canWithdrawStop;
     /** What a drain still runs, by name; the status and the live event carry the same list. */
-    private volatile List<String> drainRemainingItems = List.of();
+    private final AtomicReference<List<String>> drainRemainingItems = new AtomicReference<>(List.of());
     /** The snapshot representation the seeding state shows, or {@code null} for the engine default. */
     private @Nullable Map<String, Object> systemSnapshotFixture;
     private CleanupJob activeCleanupJob;
@@ -5411,8 +5416,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (lifecycleState == RuntimeLifecycleState.DRAINING) {
             // The live form names what it still runs: the count is the list's own length, so the
             // clients never derive a figure the runtime did not send.
-            copy.put("drain_remaining_items", drainRemainingItems);
-            copy.put("drain_remaining_count", drainRemainingItems.size());
+            copy.put("drain_remaining_items", drainRemainingItems.get());
+            copy.put("drain_remaining_count", drainRemainingItems.get().size());
         }
         response.json(route.status(), copy);
     }
@@ -7154,7 +7159,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             lifecycleState = RuntimeLifecycleState.RUNNING;
             drainingBy = null;
             canWithdrawStop = false;
-            drainRemainingItems = List.of();
+            drainRemainingItems.set(List.of());
 
             keptItems.clear();
             keptItems.add(new CleanupKeptItem("token-usage", "plan", "token-usage", "left out of a delete", "13 Oct", "the console"));
@@ -7228,7 +7233,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         lifecycleState = RuntimeLifecycleState.fromValue(JsonTree.string(facts, "lifecycle_state"));
         canWithdrawStop = Boolean.TRUE.equals(JsonTree.bool(facts, "can_withdraw_stop"));
         drainingBy = JsonTree.string(facts, "draining_by");
-        drainRemainingItems = drainItemNames(facts);
+        drainRemainingItems.set(drainItemNames(facts));
         var runtime = JsonTree.object(facts, FIXTURE_RUNTIME);
         systemSnapshotFixture = runtime != null ? JsonTree.asObject(runtime.get(FIXTURE_SNAPSHOT)) : null;
         applyCleanupFacts(facts);
@@ -8297,25 +8302,26 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 lifecycleState = RuntimeLifecycleState.DRAINING;
                 drainingBy = isWeb ? "the web app" : "the console";
                 canWithdrawStop = true;
-                drainRemainingItems = List.of(
+                var drainItems = List.of(
                         "execute task of fix-relay",
                         "build of fix-relay",
                         "task of relay-metrics",
                         "plan relay-auth-v2"
                 );
+                drainRemainingItems.set(drainItems);
                 broadcastEvent("runtime.draining", Map.of(
                         "lifecycle_state", "draining",
                         "draining_by", drainingBy,
-                        "remaining_items", drainRemainingItems,
-                        "remaining_work_count", drainRemainingItems.size(),
+                        KEY_REMAINING_ITEMS, drainItems,
+                        KEY_REMAINING_WORK_COUNT, drainItems.size(),
                         "can_withdraw", true
                 ));
                 response.json(200, Map.of(
                         KEY_STATUS, "draining",
                         KEY_STATE, "draining",
                         "draining_by", drainingBy,
-                        "remaining_items", drainRemainingItems,
-                        "remaining_work_count", drainRemainingItems.size(),
+                        KEY_REMAINING_ITEMS, drainItems,
+                        KEY_REMAINING_WORK_COUNT, drainItems.size(),
                         "can_withdraw", true
                 ));
                 // The work finishes one item at a time: the list and its count shrink as it does.
@@ -8337,17 +8343,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /** Removes the first item the drain still runs and reports the shorter list. */
     private void shrinkDrain() {
         synchronized (systemLock) {
-            if (lifecycleState != RuntimeLifecycleState.DRAINING || drainRemainingItems.isEmpty()) {
+            if (lifecycleState != RuntimeLifecycleState.DRAINING || drainRemainingItems.get().isEmpty()) {
                 return;
             }
-            var next = new ArrayList<>(drainRemainingItems);
+            var next = new ArrayList<>(drainRemainingItems.get());
             next.remove(0);
-            drainRemainingItems = List.copyOf(next);
+            drainRemainingItems.set(List.copyOf(next));
             broadcastEvent("runtime.draining", Map.of(
                     "lifecycle_state", "draining",
                     "draining_by", drainingBy != null ? drainingBy : "the console",
-                    "remaining_items", drainRemainingItems,
-                    "remaining_work_count", drainRemainingItems.size(),
+                    KEY_REMAINING_ITEMS, drainRemainingItems.get(),
+                    KEY_REMAINING_WORK_COUNT, drainRemainingItems.get().size(),
                     "can_withdraw", canWithdrawStop
             ));
         }
@@ -8359,7 +8365,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 lifecycleState = RuntimeLifecycleState.RUNNING;
                 drainingBy = null;
                 canWithdrawStop = false;
-                drainRemainingItems = List.of();
+                drainRemainingItems.set(List.of());
                 broadcastEvent("runtime.drain_withdrawn", Map.of(
                         "lifecycle_state", "running",
                         KEY_STATUS, "drain_withdrawn"
