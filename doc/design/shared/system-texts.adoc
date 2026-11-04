@@ -317,6 +317,10 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |Stopping when what runs is done · {count} left: {what}
 |Stoppt, wenn fertig ist, was läuft · noch {count}: {what}
 
+|`system.stopping.more`
+|+{count} more
+|+{count} weitere
+
 |`system.stopping.since`
 |since {time} · by {who}
 |seit {time} · durch {who}
@@ -341,13 +345,25 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |Withdraw {tasks, plural, one {# task} other {# tasks}} and stop {jobs, plural, one {# job} other {# jobs}} now?
 |{tasks, plural, one {# Task} other {# Tasks}} zurückziehen und {jobs, plural, one {# Job} other {# Jobs}} jetzt stoppen?
 
+|`system.stopping.confirm_now_left`
+|Withdraw what still runs ({count} left) and stop now?
+|Ziehe zurück, was noch läuft ({count} übrig), und stoppe jetzt?
+
 |`system.stopping.withdrawn`
 |The runtime keeps running; the stop was withdrawn.
 |Die Runtime läuft weiter; der Stopp wurde zurückgenommen.
 
+|`system.stopping.withdraw_failed`
+|The stop could not be withdrawn: {reason}.
+|Der Stopp konnte nicht zurückgenommen werden: {reason}.
+
 |`system.stopping.refused`
 |The runtime is stopping; nothing new starts.
 |Die Runtime stoppt; nichts Neues startet.
+
+|`system.stopping.stop_now_failed`
+|The stop now could not be started: {reason}.
+|Der Stopp jetzt konnte nicht gestartet werden: {reason}.
 
 |`system.stopped.title`
 |The runtime is stopped ({who}, {time}).

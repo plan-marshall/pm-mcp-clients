@@ -201,11 +201,11 @@
   }
 
   /* From the tablet width up the control draws the word that names it beside the glyph, so the
-     column is as wide as that control: 8rem holds "Row menu" and "Zeilenmenü" inside the cell. */
+     column is as wide as that control: 9rem holds "Row menu" and "Zeilenmenü" inside the cell. */
   @media (min-width: 768px) {
     .data-table__menu-col,
     .data-table__menu-head {
-      inline-size: 8rem;
+      inline-size: 9rem;
     }
   }
 

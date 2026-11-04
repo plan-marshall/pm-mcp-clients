@@ -28,8 +28,22 @@ export async function expectNothingRedAtRest(page, { timeout = 5000 } = {}) {
     document.body.appendChild(probe);
     const danger = getComputedStyle(probe).backgroundColor;
     probe.remove();
+    // An act can be red as a filled control or as danger-coloured text on an interactive
+    // element; both are the act's colour, not the rest of the page's.
+    const INTERACTIVE = new Set(['button', 'a', 'summary']);
     return Array.from(document.querySelectorAll('*'))
-      .filter((element) => getComputedStyle(element).backgroundColor === danger)
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        if (style.backgroundColor === danger) {
+          return true;
+        }
+        const role = element.getAttribute('role');
+        const interactive =
+          INTERACTIVE.has(element.tagName.toLowerCase()) ||
+          role === 'button' ||
+          role === 'menuitem';
+        return interactive && style.color === danger;
+      })
       .map((element) => `${element.tagName.toLowerCase()}.${String(element.className ?? '')}`)
       .slice(0, 10);
   });

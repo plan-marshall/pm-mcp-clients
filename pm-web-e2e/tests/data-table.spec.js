@@ -32,22 +32,29 @@ test.describe('the row menu of the data table', () => {
     await pair(page, request);
   });
 
-  for (const size of [
-    { width: 1440, height: 900 },
-    { width: 390, height: 844 },
-  ]) {
-    test(`keeps the row-menu button inside its cell at ${size.width}`, async ({ page }) => {
-      await page.setViewportSize(size);
-      await page.goto('/dev/components');
-
-      const overhang = await measured(
+  for (const locale of ['en', 'de']) {
+    for (const size of [
+      { width: 1440, height: 900 },
+      { width: 390, height: 844 },
+    ]) {
+      test(`keeps the row-menu button inside its cell at ${size.width} in ${locale}`, async ({
         page,
-        '[data-testid="data-table"] tbody tr:first-child td.data-table__menu',
-      );
+      }) => {
+        await page.setViewportSize(size);
+        // The visible word beside the glyph is the thing the column must hold: it is longer in
+        // German, so both locales are measured.
+        await page.evaluate((value) => localStorage.setItem('pm_locale', value), locale);
+        await page.goto('/dev/components');
 
-      expect(overhang).not.toBeNull();
-      expect(overhang.left).toBeLessThanOrEqual(0.5);
-      expect(overhang.right).toBeLessThanOrEqual(0.5);
-    });
+        const overhang = await measured(
+          page,
+          '[data-testid="data-table"] tbody tr:first-child td.data-table__menu',
+        );
+
+        expect(overhang).not.toBeNull();
+        expect(overhang.left).toBeLessThanOrEqual(0.5);
+        expect(overhang.right).toBeLessThanOrEqual(0.5);
+      });
+    }
   }
 });

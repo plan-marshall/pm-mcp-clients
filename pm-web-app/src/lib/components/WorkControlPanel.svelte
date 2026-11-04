@@ -35,7 +35,8 @@
     projectId?: string;
     ended?: boolean;
     scope?: number;
-    running?: number;
+    /** How many of the epic's plans run; `null` when the view does not know, and then not shown. */
+    running?: number | null;
     nextPlan?: string;
     pullRequestNumber?: number | null;
     /** Whether an epic starts its plans by itself, as the epic resource reports it. */
@@ -52,7 +53,7 @@
     projectId = '',
     ended = false,
     scope = 0,
-    running = 0,
+    running = null,
     nextPlan = '',
     pullRequestNumber = null,
     autoStart = null,
@@ -362,7 +363,7 @@
   /** @param id the chosen act of an epic */
   function chooseEpic(id: string): void {
     if (id === 'next') {
-      if (scope > 0 && running >= scope) {
+      if (scope > 0 && (running ?? 0) >= scope) {
         openDialog('raise');
         return;
       }
@@ -785,7 +786,7 @@
       aria-labelledby={titleId}
       tabindex="-1"
       bind:this={dialogElement}
-      onkeydown={trapFocus}
+      onkeydown={dialog === 'end' ? trapFocus : undefined}
     >
       {#if dialog === 'pause'}
         <h4 class="control-dialog__title" id={titleId} data-testid="pause-title">
@@ -864,7 +865,7 @@
         <p class="control-dialog__line">
           {$t('control.epic.scope_full', {
             epic: subjectId,
-            running,
+            running: running ?? 0,
             scope,
             plan: nextPlan,
           })}
@@ -983,9 +984,11 @@
   onConfirm={confirmEpicCancel}
   onClose={() => (epicCancelOpen = false)}
 >
-  <p class="control-dialog__line" data-testid="epic-cancel-plans">
-    {$t('control.cancel_epic.plans_line', { count: running })}
-  </p>
+  {#if running !== null}
+    <p class="control-dialog__line" data-testid="epic-cancel-plans">
+      {$t('control.cancel_epic.plans_line', { count: running })}
+    </p>
+  {/if}
   <fieldset class="control-dialog__choices">
     <legend class="control-dialog__legend">{$t('control.cancel_epic.label.plans')}</legend>
     <label class="control-dialog__choice">
@@ -1006,6 +1009,9 @@
       placeholder={$t('control.end.reason_required')}
     />
   </label>
+  {#if !cancelReason.trim()}
+    <p class="control-dialog__hint">{$t('control.end.reason_required')}</p>
+  {/if}
 </ConfirmDialog>
 
 <PlanSettingsModal

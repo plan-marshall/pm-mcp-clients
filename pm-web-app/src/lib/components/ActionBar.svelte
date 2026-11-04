@@ -2,6 +2,7 @@
   import { tick } from 'svelte';
   import Button from './Button.svelte';
   import IconButton from './IconButton.svelte';
+  import { uniqueId } from '../utils/uniqueId';
   import { t } from '../i18n';
 
   /**
@@ -73,12 +74,15 @@
     return Array.from(host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
   }
 
+  /** The prefix of this bar's reason ids, so two bars on one page never share an id. */
+  const reasonPrefix = uniqueId('action-bar-reason');
+
   /**
    * @param id the act's id
    * @returns the id of the element that carries the act's reason
    */
   function reasonIdOf(id: string): string {
-    return `action-bar-reason-${id}`;
+    return `${reasonPrefix}-${id}`;
   }
 
   /** Opens the menu and puts the focus on its first entry that can run. */

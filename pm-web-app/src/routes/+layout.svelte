@@ -49,6 +49,13 @@
   /** Whether "Stop now" asks for its own short confirmation. */
   let stopNowConfirm = $state(false);
 
+  // A drain that ends while the short confirmation is open leaves nothing to confirm.
+  $effect(() => {
+    if (!$runtimeStore.isDraining && stopNowConfirm) {
+      stopNowConfirm = false;
+    }
+  });
+
   /** @param err the refusal a drain act reported @returns its message */
   function refusalOf(err: unknown): string {
     return err instanceof Error ? err.message : String(err);
@@ -240,7 +247,7 @@
           {/if}
           {#if drainItems.length > 0}
             <ul class="draining-list" data-testid="draining-list">
-              {#each drainItems as item (item)}
+              {#each drainItems as item, index (index)}
                 <li>{item}</li>
               {/each}
             </ul>
@@ -290,10 +297,7 @@
 <ConfirmDialog
   open={stopNowConfirm}
   testid="stop-now-confirm"
-  title={$t('system.stopping.confirm_now', {
-    tasks: $runtimeStore.drainInfo?.items?.length ?? $runtimeStore.drainInfo?.count ?? 0,
-    jobs: 0,
-  })}
+  title={$t('system.stopping.confirm_now_left', { count: drainCount })}
   consequences={[$t('system.confirm.now_explain')]}
   actionLabel={$t('system.stopping.stop_now')}
   cancelLabel={$t('system.confirm.keep')}

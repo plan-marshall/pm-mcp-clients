@@ -234,7 +234,7 @@ While the runtime drains, every client shows one line at the top of every view, 
     since 14:02 · by the console                          [Stop now]  [Keep it running]
 ----
 
-* *What is left* by name, at most three, then `+2 more`, each one step to its view; the line shrinks as each ends.
+* *What is left* by name, at most three, then `+2 more`; a name is text rather than a step, because the runtime sends the names of what it still runs (`drain_remaining_items`) and no link to each one's view. The line shrinks as each ends.
 * *Stop now* turns the drain into the stop now, with its own short confirmation (`Withdraw 1 task and stop 1 job now?`).
 * *Keep it running* withdraws the stop: waiting work starts again, and every client drops the line (`The runtime keeps running; the stop was withdrawn.`). It is offered only for a drain the operator asked in a client; a drain of a signal shows `by a signal` and no _Keep it running_. Once the runtime has begun to stop, a withdraw that arrives is answered as too late, and the client says `Too late to keep it running; the runtime is stopping.`
 * *Not done in time*: the drain is bounded by the drain timeout of the machine configuration; at the timeout the runtime stops what still runs, as specified, and it resumes at the next start. A client's own wait ends at the bound defined with the drain timeout; it then says that the runtime is still draining and keeps _Stop now_:

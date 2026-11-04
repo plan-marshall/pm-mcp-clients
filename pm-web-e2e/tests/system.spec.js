@@ -209,7 +209,17 @@ test.describe('System: figures, filters, upgrade, and cleanup preview (UC-SYS-1.
     await expect(banner.getByRole('button', { name: 'Withdraw the stop' })).toBeVisible();
     await expect(banner.getByRole('button', { name: 'Stop now' })).toBeVisible();
 
-    // The runtime reports the work that finished: the line and the list shrink with it.
+    // The runtime reports the work that finished: the line and the list shrink with it. The
+    // state is entered again while the page is open, so the scheduled events reach this stream
+    // rather than a page that was still reloading when they fired.
+    const restart = await request.post(`${MOCK_RUNTIME_URL}/mock/goto/system.running`, {
+      data: {},
+    });
+    expect(restart.ok()).toBeTruthy();
+    const drainAgain = await request.post(`${MOCK_RUNTIME_URL}/mock/goto/system.draining`, {
+      data: {},
+    });
+    expect(drainAgain.ok()).toBeTruthy();
     await expect(banner.getByTestId('draining-text')).toContainText(
       '1 left: execute task of fix-relay',
     );
