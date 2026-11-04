@@ -2,10 +2,10 @@
   "id": "PLAN-47",
   "slug": "web-actions-by-state",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "47-web-actions-by-state",
+  "pr": "311",
+  "landing": "landings/PLAN-47.md",
   "seq": 47
 }
