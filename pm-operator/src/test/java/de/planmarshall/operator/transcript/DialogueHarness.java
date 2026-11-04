@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.locks.LockSupport;
 import org.jline.reader.LineReader;
 import org.jline.terminal.Terminal;
 
@@ -46,6 +47,9 @@ final class DialogueHarness implements AutoCloseable {
 
     /** The wait every dialogue case allows its process to reach the next state. */
     static final Duration TIMEOUT = Duration.ofSeconds(20);
+
+    /** How often an awaited condition is re-read. */
+    private static final Duration POLL = Duration.ofMillis(25);
 
     private static final String SCRIPT = "/usr/bin/script";
 
@@ -178,6 +182,41 @@ final class DialogueHarness implements AutoCloseable {
      */
     static void type(PtySession session, String keys) throws IOException {
         session.send(keys);
+    }
+
+    /**
+     * Waits until the dialogue has drawn its prompt and is waiting for the keys: the marker names
+     * the text the prompt carries, and the condition is the prompt's own terminator {@code ›},
+     * which is the last thing {@code StartPrompt} writes before it calls the line reader. A marker
+     * alone can be on screen while the dialogue is still drawing the rest of its prompt.
+     *
+     * @param session the running session
+     * @param marker  the text the prompt carries
+     * @throws InterruptedException if interrupted while waiting
+     */
+    static void awaitPrompt(PtySession session, String marker) throws InterruptedException {
+        assertTrue(session.awaitText(marker, TIMEOUT),
+                            marker + " never drawn:\n" + session.screenText());
+        var deadline = System.nanoTime() + TIMEOUT.toNanos();
+        while (System.nanoTime() < deadline) {
+            if (promptTerminatorDrawn(session)) {
+                return;
+            }
+            LockSupport.parkNanos(POLL.toNanos());
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
+        }
+        assertTrue(promptTerminatorDrawn(session),
+                            "the prompt after " + marker + " never finished drawing:\n"
+                                                + session.screenText());
+    }
+
+    private static boolean promptTerminatorDrawn(PtySession session) {
+        // StartPrompt writes the question and its terminator in one print, flushes, and only then
+        // calls the line reader: the output ends with the terminator while the reader waits. A
+        // prompt whose question has been drawn but not its terminator is still being built.
+        return session.rawOutput().stripTrailing().endsWith("\u203a");
     }
 
     /**

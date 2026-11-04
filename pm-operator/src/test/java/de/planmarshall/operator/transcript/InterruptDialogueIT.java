@@ -14,8 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
-import java.time.Duration;
-import java.util.concurrent.locks.LockSupport;
 
 import de.planmarshall.mock.StandardScenarios;
 
@@ -41,10 +39,6 @@ class InterruptDialogueIT {
 
     private static final String INTERRUPT = "\u0003";
     private static final int EXIT_INTERRUPTED = 130;
-
-    /** How long the screen must stay unchanged before the prompt is read as ready for keys. */
-    private static final Duration SETTLE = Duration.ofMillis(700);
-    private static final Duration POLL = Duration.ofMillis(25);
 
     private final String reason = Generators.letterStrings(8, 24).next();
 
@@ -143,34 +137,16 @@ class InterruptDialogueIT {
     }
 
     /**
-     * Waits until the dialogue has drawn the marker and then stopped drawing, which is the moment
-     * the line reader holds the terminal and a {@code Ctrl+C} reaches the reader rather than the
-     * terminal driver.
+     * Waits until the dialogue has drawn the marker and its prompt's terminator, which is the
+     * moment the line reader holds the terminal and a {@code Ctrl+C} reaches the reader rather than
+     * the terminal driver. The terminator is the condition {@code StartPrompt} produces; no pause
+     * is timed.
      *
      * @param session the running session
      * @param marker  the text the dialogue draws at its prompt
      * @throws InterruptedException if interrupted while waiting
      */
     private static void awaitPrompt(PtySession session, String marker) throws InterruptedException {
-        assertTrue(session.awaitText(marker, DialogueHarness.TIMEOUT),
-                            marker + " never drawn:\n" + session.rawOutput());
-        var deadline = System.nanoTime() + DialogueHarness.TIMEOUT.toNanos();
-        var lastLength = -1;
-        var quietSince = 0L;
-        while (System.nanoTime() < deadline) {
-            var length = session.rawOutput().length();
-            if (length > 0 && length == lastLength) {
-                if (quietSince == 0L) {
-                    quietSince = System.nanoTime();
-                } else if (System.nanoTime() - quietSince >= SETTLE.toNanos()) {
-                    return;
-                }
-            } else {
-                lastLength = length;
-                quietSince = 0L;
-            }
-            LockSupport.parkNanos(POLL.toNanos());
-        }
-        throw new AssertionError("the prompt did not settle after " + marker + ":\n" + session.rawOutput());
+        DialogueHarness.awaitPrompt(session, marker);
     }
 }

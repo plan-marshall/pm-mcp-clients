@@ -54,7 +54,7 @@ class ViewDialogueInterruptIT {
             type(session, "a");
             awaitText(session, "Pause\u2026");
             type(session, "p");
-            awaitText(session, "Where does fix-relay hold?");
+            awaitPrompt(session, "Where does fix-relay hold?");
 
             type(session, INTERRUPT);
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
@@ -73,7 +73,7 @@ class ViewDialogueInterruptIT {
             type(session, "a");
             awaitText(session, "Accept the change\u2026");
             type(session, "c");
-            awaitText(session, "y) yes");
+            awaitPrompt(session, "y) yes");
 
             type(session, INTERRUPT);
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
@@ -93,7 +93,7 @@ class ViewDialogueInterruptIT {
             type(session, "a");
             awaitText(session, "Findings review");
             type(session, "f");
-            awaitText(session, "Reconnect loses the last event");
+            awaitPrompt(session, "Reconnect loses the last event");
 
             type(session, INTERRUPT);
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
@@ -114,7 +114,30 @@ class ViewDialogueInterruptIT {
             type(session, "a");
             awaitText(session, "Stop\u2026");
             type(session, "s");
-            awaitText(session, "Stop the runtime?");
+            awaitPrompt(session, "Stop the runtime?");
+
+            type(session, INTERRUPT);
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            assertEquals(EXIT_INTERRUPTED, session.exitCode(), session.rawOutput());
+            harness.assertNoAct();
+        }
+    }
+
+    @Test
+    @DisplayName("projects: the pause of a plan opened from the explorer leaves with 130")
+    void projectsExplorerDialogueInterrupt() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
+             var session = harness.open("projects")) {
+            awaitText(session, "All projects");
+            select(session, "pm-mcp-clients");
+            type(session, "r");
+            awaitText(session, "by plan");
+            select(session, "Fix Relay Transport");
+            type(session, "a");
+            awaitText(session, "Pause\u2026");
+            type(session, "p");
+            awaitPrompt(session, "Where does fix-relay hold?");
 
             type(session, INTERRUPT);
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
@@ -131,6 +154,18 @@ class ViewDialogueInterruptIT {
     private static void awaitText(PtySession session, String marker) throws Exception {
         assertTrue(session.awaitText(marker, DialogueHarness.TIMEOUT),
                             marker + " never drawn:\n" + session.screenText());
+    }
+
+    /**
+     * Waits for a dialogue's prompt to be complete: the marker plus the prompt's own terminator,
+     * so the {@code Ctrl+C} is typed into a reader that is already reading.
+     *
+     * @param session the running session
+     * @param marker  the text the prompt carries
+     * @throws Exception when the prompt is not reached
+     */
+    private static void awaitPrompt(PtySession session, String marker) throws Exception {
+        DialogueHarness.awaitPrompt(session, marker);
     }
 
     /**
