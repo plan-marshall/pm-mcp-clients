@@ -29,6 +29,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -39,6 +40,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -407,14 +409,15 @@ class WebDevicesCommandTest {
      *
      * @return the refused acts
      */
-    static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> refusedActs() {        var renameDevice = Generators.letterStrings(4, 8).next();
+    static Stream<Arguments> refusedActs() {
+        var renameDevice = Generators.letterStrings(4, 8).next();
         var revokeDevice = Generators.letterStrings(4, 8).next();
-        return java.util.stream.Stream.of(
-                            org.junit.jupiter.params.provider.Arguments.of("rename", renameDevice,
+        return Stream.of(
+                            Arguments.of("rename", renameDevice,
                                                 "Failed to rename device: HTTP 400"),
-                            org.junit.jupiter.params.provider.Arguments.of("revoke", revokeDevice,
+                            Arguments.of("revoke", revokeDevice,
                                                 "Failed to revoke: HTTP 400"),
-                            org.junit.jupiter.params.provider.Arguments.of("listener-off", "",
+                            Arguments.of("listener-off", "",
                                                 "Failed to turn listener off: HTTP 400"));
     }
 
