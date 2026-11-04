@@ -31,6 +31,8 @@
   let loadError = $state('');
   /** A failed act on an already loaded list (mark read, mark all, older page). */
   let actionError = $state('');
+  /** The act the error line's Retry repeats; `null` means a plain reload of the list. */
+  let retryAction = $state<(() => Promise<void>) | null>(null);
 
   /** The coalesced quiet notice of the reports that arrived while this view was open. */
   let noticeCount = $state(0);
@@ -390,6 +392,16 @@
     }
   }
 
+  /**
+   * Repeats the act the error line reports, or reloads the list where the failure was no act of its
+   * own.
+   */
+  async function retryFailedAction(): Promise<void> {
+    const action = retryAction;
+    retryAction = null;
+    await (action ?? loadReports)();
+  }
+
   async function loadOlder() {
     isLoadingOlder = true;
     try {
@@ -400,6 +412,7 @@
       hasOlder = page.has_older;
       olderCount = page.older_count;
     } catch (err: unknown) {
+      retryAction = loadOlder;
       actionError = (err as Error)?.message || $t('report.list.older_failed');
     } finally {
       isLoadingOlder = false;
@@ -451,6 +464,7 @@
         delete retainedReadIds[item.id];
         retainedReadIds = { ...retainedReadIds };
       }
+      retryAction = () => markRead(item, retain);
       actionError = (err as Error)?.message || $t('report.list.mark_read_failed');
     }
   }
@@ -466,6 +480,7 @@
       unreadCount = 0;
       void refreshReportsCount();
     } catch (err: unknown) {
+      retryAction = markAllShownRead;
       actionError = (err as Error)?.message || $t('report.list.mark_all_failed');
     }
   }
@@ -879,7 +894,7 @@
         {#if actionError}
           <div class="error-line" role="alert">
             <p>{actionError}</p>
-            <Button variant="ghost" size="small" onclick={loadReports}>
+            <Button variant="ghost" size="small" onclick={retryFailedAction}>
               {$t('web.common.retry')}
             </Button>
           </div>

@@ -656,6 +656,29 @@ describe('ReportsView component', () => {
     expect(document.querySelector('[data-report-id="rep-0139"]')).not.toBeNull();
   });
 
+  it('repeats the act the error line reports, not a plain reload', async () => {
+    const read = vi
+      .spyOn(apiClient, 'markReportRead')
+      .mockRejectedValueOnce(new Error('read failed'));
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+    const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+    await fireEvent.click(within(card).getByRole('button', { name: /Report actions/i }));
+    await fireEvent.click(await within(card).findByRole('menuitem', { name: /Mark read/i }));
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('read failed');
+    });
+
+    read.mockResolvedValueOnce(undefined);
+    await fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
+    });
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
   it('keeps the body to one line until its control shows the rest', async () => {
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
