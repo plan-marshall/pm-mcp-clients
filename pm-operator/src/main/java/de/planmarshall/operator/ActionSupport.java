@@ -287,7 +287,7 @@ final class ActionSupport {
                                         new StartAnswers().withDescription(description));
                     // The chat is one of the view's other dialogues: a start it opens leaves back
                     // with it, so its interrupt never ends the console or the view with 130.
-                    return code == StartPrompt.EXIT_INTERRUPTED ? 0 : code;
+                    return leaveBack(code);
                 }
                 return 0;
             }
@@ -295,6 +295,18 @@ final class ActionSupport {
             return 0;
         }
         throw new OperatorRefusedException(kind + " chat", response);
+    }
+
+    /**
+     * Maps the exit code of a dialogue the view opened onto the view's own: an interrupt inside it
+     * is the view's other dialogues' leave-back ({@code q}), never the process's 130
+     * ({@code 04-console.adoc#console-dialogue-handoff}).
+     *
+     * @param code the exit code of the dialogue the view opened
+     * @return {@code 0} for an interrupt, the code itself otherwise
+     */
+    static int leaveBack(int code) {
+        return code == StartPrompt.EXIT_INTERRUPTED ? 0 : code;
     }
 
     /**

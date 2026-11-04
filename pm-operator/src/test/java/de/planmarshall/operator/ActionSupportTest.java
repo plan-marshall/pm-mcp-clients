@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertAll;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -30,10 +31,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+
 import picocli.CommandLine;
 import picocli.CommandLine.Model.CommandSpec;
 
 @DisplayName("ActionSupport")
+@EnableGeneratorController
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class ActionSupportTest {
 
@@ -75,6 +80,19 @@ class ActionSupportTest {
         opts.keepPr = keepPr;
         opts.noInput = noInput;
         return opts;
+    }
+
+    @Test
+    @DisplayName("an interrupt inside a dialogue the view opened leaves back with 0, every other code stands")
+    void theLeaveBackMapping() {
+        var other = Generators.integers(0, 129).next();
+
+        assertAll(
+                            () -> assertEquals(0, ActionSupport.leaveBack(StartPrompt.EXIT_INTERRUPTED),
+                                                "the interrupt is the view's own leave-back"),
+                            () -> assertEquals(other, ActionSupport.leaveBack(other),
+                                                "a code that is not an interrupt is kept")
+        );
     }
 
     @Test
