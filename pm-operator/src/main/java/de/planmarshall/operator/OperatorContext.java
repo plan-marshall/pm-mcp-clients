@@ -14,11 +14,12 @@ import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 import org.jspecify.annotations.Nullable;
@@ -67,7 +68,7 @@ public final class OperatorContext {
     private final BrowserOpener browserOpener;
     private final ConsoleNoticeBuffer noticeBuffer = new ConsoleNoticeBuffer();
     private final AtomicBoolean consoleActive = new AtomicBoolean(false);
-    private final AtomicReference<@Nullable Terminal> scopedTerminal = new AtomicReference<>();
+    private final Deque<Terminal> scopedTerminals = new ArrayDeque<>();
 
     /**
      * Creates an operator context assuming an interactive terminal and capturing client environment.
@@ -209,44 +210,99 @@ public final class OperatorContext {
     /**
      * Creates or returns the JLine terminal.
      *
-     * <p>While a scoped terminal is set, this is that terminal: the console lends its own terminal
-     * to a full-screen verb it dispatches, so the nested verb draws on the terminal that already
-     * owns the process instead of opening a second one (which JLine falls back to a dumb terminal
-     * for). Every direct CLI run has no scope and gets the provider's terminal as before.
+     * <p>While a scoped terminal is set, this is that terminal: the console, and every full-screen
+     * verb, lend their terminal to the commands they dispatch, so a nested verb and the dialogues it
+     * opens draw and read on the terminal that already owns the process instead of opening a second
+     * one (which JLine falls back to a dumb terminal for, and which a typed {@code Ctrl+C} never
+     * reaches). Every direct CLI run has no scope and gets the provider's terminal as before.
      *
      * @return the terminal instance
      * @throws IOException on creation failure
      */
     public Terminal createTerminal() throws IOException {
-        var scoped = scopedTerminal.get();
+        var scoped = scopedTerminal();
         return scoped != null ? scoped : terminalProvider.createTerminal();
     }
 
     /**
      * Lends a terminal to the commands dispatched until {@link #clearTerminal()}: the caller keeps
-     * ownership and closes it, the commands only draw on it.
+     * ownership and closes it, the commands only draw on it. The scopes nest, because a view that a
+     * console dispatched lends the same terminal to the dialogue it opens.
      *
      * @param terminal the terminal the nested commands use
      */
     public void useTerminal(Terminal terminal) {
-        scopedTerminal.set(Objects.requireNonNull(terminal, "terminal"));
+        Objects.requireNonNull(terminal, "terminal");
+        synchronized (scopedTerminals) {
+            scopedTerminals.push(terminal);
+        }
     }
 
-    /** Withdraws the scoped terminal; {@link #createTerminal()} uses the provider again. */
+    /**
+     * Withdraws the innermost scoped terminal; {@link #createTerminal()} uses the next one, or the
+     * provider when no scope remains.
+     */
     public void clearTerminal() {
-        scopedTerminal.set(null);
+        synchronized (scopedTerminals) {
+            scopedTerminals.poll();
+        }
+    }
+
+    /**
+     * A terminal a nested command draws on, closed only when this context owns it. A command inside
+     * a console or a full-screen view gets the lent terminal and leaves it open for the caller that
+     * owns it; a command run on its own gets a terminal of its own, which the lease closes.
+     */
+    public final class TerminalLease implements AutoCloseable {
+
+        private final Terminal leased;
+
+        private TerminalLease(Terminal leased) {
+            this.leased = leased;
+        }
+
+        /** @return the terminal to draw on */
+        public Terminal terminal() {
+            return leased;
+        }
+
+        @Override
+        public void close() throws IOException {
+            if (ownsTerminal(leased)) {
+                leased.close();
+            }
+        }
+    }
+
+    /**
+     * Opens the terminal a nested command reads from, with the ownership guard its closer needs.
+     *
+     * @return the lease, to be closed with the command
+     * @throws IOException on terminal creation failure
+     */
+    public TerminalLease openTerminal() throws IOException {
+        return new TerminalLease(createTerminal());
+    }
+
+    /**
+     * @return the innermost scoped terminal, or {@code null} when no scope is set
+     */
+    private @Nullable Terminal scopedTerminal() {
+        synchronized (scopedTerminals) {
+            return scopedTerminals.peek();
+        }
     }
 
     /**
      * Tells whether this context created the terminal and must close it, as opposed to one lent by
      * {@link #useTerminal(Terminal)}. Every {@code finally} that closes a terminal consults this
-     * predicate, so a nested verb never closes the console's terminal.
+     * predicate, so a nested verb never closes the console's or a view's terminal.
      *
      * @param terminal the terminal a command obtained from {@link #createTerminal()}
      * @return {@code true} when the caller owns the terminal and must close it
      */
     public boolean ownsTerminal(@Nullable Terminal terminal) {
-        return terminal != null && terminal != scopedTerminal.get();
+        return terminal != null && terminal != scopedTerminal();
     }
 
     /**

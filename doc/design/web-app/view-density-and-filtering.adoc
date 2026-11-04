@@ -7,7 +7,7 @@ link:README.adoc[Web App] » View Density and Filtering
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
 
-Status: `FINAL`.
+Status: `AGREED`.
 
 The list views of the web app (`/reports`, `/decisions`, the running and ended work of the overview, and the workstreams of an epic) hold their items client-side already. This design gives each of them one deliberate way to use a wide window — one of the four page templates (<<templates>>) — and one shared way to find an item in the list: a filter-as-you-type control. The three layout modes of <<layouts>> remain only for the views that have not moved onto a template yet.
 

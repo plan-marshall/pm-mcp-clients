@@ -68,12 +68,14 @@ public final class ProjectsCommand implements Callable<Integer> {
         if (!list && (filter == null || filter.isBlank())) {
             var terminal = openTerminal();
             if (terminal != null) {
+                context.useTerminal(terminal);
                 try {
                     var code = openExplorer(terminal);
                     if (code >= 0) {
                         return code;
                     }
                 } finally {
+                    context.clearTerminal();
                     if (context.ownsTerminal(terminal)) {
                         terminal.close();
                     }

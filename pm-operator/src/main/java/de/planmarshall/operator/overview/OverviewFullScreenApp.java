@@ -2870,7 +2870,14 @@ public final class OverviewFullScreenApp {
         }
 
         private void runVerb(String... args) {
-            runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), args));
+            runDialogue(() -> {
+                var code = PmOperator.execute(context, dialogueOut(), dialogueOut(), args);
+                // A start the view hands off is one of the view's other dialogues: its interrupt
+                // leaves back to the view as q does (04-console.adoc#console-dialogue-handoff).
+                var start = args.length > 1 && (("plan".equals(args[0]) || "epic".equals(args[0]))
+                                    && "add".equals(args[1]));
+                return start && code == StartPrompt.EXIT_INTERRUPTED ? 0 : code;
+            });
         }
 
         private void openProjectMenu() {
@@ -3195,6 +3202,8 @@ public final class OverviewFullScreenApp {
                 return answer != null && ("y".equalsIgnoreCase(answer.trim())
                                     || "yes".equalsIgnoreCase(answer.trim()));
             } catch (EndOfFileException | UserInterruptException _) {
+                // The confirmation is one of the view's other dialogues
+                // (04-console.adoc#console-dialogue-handoff): q and Ctrl+C leave it back to the view.
                 return false;
             } finally {
                 if (owned) {

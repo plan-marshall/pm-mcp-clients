@@ -5,6 +5,7 @@ workstream: WS-03
 
 > Staged plan spec — one shippable unit of work, ready for hand-off on the `runbook` lane.
 > This spec is SELF-SUFFICIENT: the emitted command is a one-line pointer and carries no brief.
+> Scope note (cleanup 2026-11-02): 10 deliverables exceed the split guard (about 6). This is a WEAK MERGE of the structure review of 2026-10-30 (the former PLAN-68 and PLAN-69 folded in); the lane is licensed to split it by deliverable at outline (1 to 4, 5 to 7, the rest) and says so in the progress record. Keep each pull request under 100 files.
 
 ## Objective
 
@@ -106,7 +107,8 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/use-cases/plan.adoc (UC-S-04)`, `doc/claude_review/use-cases/proposals.adoc#UC-P-03` — read at `doc/claude_review/use-cases/plan.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main:doc/claude_review/use-cases/plan.adoc:41-45 row UC-S-04 -> UC-P-03 (onboarding frame first); proposals.adoc:47 [#UC-P-03] exists
+  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-mcp-clients main 94bbefe1: doc/claude_review/use-cases/plan.adoc:41-45 row UC-S-04 -> UC-P-03 (frame first, OnboardingView/HarnessChoice/ModelsChoice etc.); proposals.adoc:47-48 [#UC-P-03] The missing variations of the onboarding
+- Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): pm-web-app/src/lib/views/onboarding/ still absent (created by this plan); all listed present files still exist, including LanguageChoice.svelte; onboarding properties, ModelsChoice.svelte, OnboardingView.svelte and +layout.svelte changed since the anchor.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

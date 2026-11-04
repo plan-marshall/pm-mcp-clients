@@ -314,7 +314,7 @@ class ActionsFullScreenTest {
     }
 
     @Test
-    @DisplayName("Ctrl+C at a hold's prompt ends the view with the interrupt status")
+    @DisplayName("an interrupt signal at a hold's prompt ends the view with the interrupt status")
     void shouldEndTheViewOnAnInterruptedDialogue() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(160, 45)) {
             var context = control.context(virtual);
@@ -408,6 +408,40 @@ class ActionsFullScreenTest {
             assertFalse(control.requests().stream().anyMatch(
                                                     request -> request.endsWith("/api/v1/plans/fix-relay/actions/pause")),
                                 control.requests().toString());
+        }
+    }
+
+    @Test
+    @DisplayName("an interrupted plan action ends the bare pm --tui run with 130 and restores the terminal")
+    void pmTuiInterruptEndsTheVerb() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(160, 45)) {
+            var context = control.context(virtual);
+            var out = new StringWriter();
+            var code = new AtomicInteger(-1);
+            var thread = Thread.ofPlatform().start(() -> code.set(PmOperator.execute(context,
+                                new PrintWriter(out), new PrintWriter(new StringWriter()), "--tui")));
+            ControlFixture.await(() -> virtual.alternateScreenActive()
+                                && ControlFixture.shows(virtual, "pm-mcp-clients"));
+            virtual.type("\r");
+            ControlFixture.await(() -> ControlFixture.shows(virtual, "by plan"));
+            select(virtual, "Fix Relay Transport");
+            virtual.type("a");
+            ControlFixture.await(() -> ControlFixture.shows(virtual, "Pause\u2026"));
+            virtual.type("p");
+            ControlFixture.await(() -> ControlFixture.shows(virtual, "Where does fix-relay hold?"));
+
+            var deadline = System.nanoTime() + 5_000_000_000L;
+            while (thread.isAlive() && System.nanoTime() < deadline) {
+                virtual.terminal().raise(org.jline.terminal.Terminal.Signal.INT);
+                ControlFixture.delay(20L);
+            }
+            ControlFixture.join(thread);
+
+            assertEquals(StartPrompt.EXIT_INTERRUPTED, code.get(), out.toString());
+            assertFalse(virtual.alternateScreenActive());
+            assertTrue(virtual.screen().cursorVisible(), "the cursor stays hidden");
+            assertEquals(1, virtual.screen().alternation().exits(),
+                                "exit_ca_mode is sent once, not again by the restore");
         }
     }
 

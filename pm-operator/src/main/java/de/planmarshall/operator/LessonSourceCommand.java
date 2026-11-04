@@ -237,8 +237,8 @@ public final class LessonSourceCommand implements Callable<Integer> {
         out.println("  3) " + MessageCatalogue.get("lesson_source.broken.remove") + " — "
                             + MessageCatalogue.get("lesson_source.broken.remove_hint"));
         out.flush();
-        try (var terminal = context.createTerminal()) {
-            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+        try (var lease = context.openTerminal()) {
+            var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
             var line = reader.readLine("1/2/3 \u203a ");
             var clean = line == null ? "" : line.trim().toLowerCase(Locale.ROOT);
             return switch (clean) {

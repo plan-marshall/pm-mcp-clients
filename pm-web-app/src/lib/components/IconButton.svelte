@@ -15,6 +15,11 @@
   export let icon: string;
   /** The accessible name and the visible label: the glyph alone does not name the act. */
   export let label: string;
+  /**
+   * The word drawn beside the glyph where a table's fixed column cannot hold the whole accessible
+   * name; `label` when the view names none.
+   */
+  export let visibleLabel: string | undefined = undefined;
   /** The hover advisory, from the view's `X.title` catalogue key. */
   export let advisory: string | undefined = undefined;
   export let size: 'sm' | 'md' | 'lg' = 'md';
@@ -30,6 +35,7 @@
   const ICON_SIZES = { sm: 16, md: 20, lg: 20 } as const;
 
   $: reason = disabled && disabledReason ? disabledReason : '';
+  $: shownLabel = visibleLabel ?? label;
   $: tooltip = reason || advisory || $$restProps['title'];
   $: describedBy =
     [reason ? reasonId : null, $$restProps['aria-describedby']].filter(Boolean).join(' ') ||
@@ -49,7 +55,7 @@
   on:click
 >
   <Icon name={icon} size={iconSize} />
-  <span class="icon-btn__label">{label}</span>
+  <span class="icon-btn__label">{shownLabel}</span>
 </button>
 
 {#if reason}

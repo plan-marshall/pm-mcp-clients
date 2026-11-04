@@ -12,7 +12,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:README.adoc#visual-language[Web App, Visual Language] (the tokens, the grid and the type scale every component draws from), link:theme-readability.adoc[Theme Readability] (the contrast every colour pair owes), link:interaction-affordances.adoc[Interaction Affordances] (the advisory of a control), link:brand-mark.adoc[Brand Mark] (the mark an empty state carries), link:workflow-visual-language.adoc[Workflow Visual Language] (the icon contract)_
 
-Status: `FINAL`. This document is the authority for the components of design system v2: the specification of `VD-P-05`, one picture per component, and the surface the implementation delivers. The controls arrived with `PLAN-25`, the containers with `PLAN-31`, and the data components with `PLAN-35`; every component this document describes lives in `pm-web-app/src/lib/components/` with a test beside it and a fixture on the development page `/dev/components` (built only in development).
+Status: `AGREED`. This document is the authority for the components of design system v2: the specification of `VD-P-05`, one picture per component, and the surface the implementation delivers. Every component this document describes lives in `pm-web-app/src/lib/components/` with a test beside it and a fixture on the development page `/dev/components` (built only in development).
 
 The proposal (`doc/claude_review/visual-design/proposals.adoc#VD-P-05`) states what each component is; the sections below repeat that specification and add what the shipped component answers to.
 
@@ -54,9 +54,11 @@ Source and surface: `pm-web-app/src/lib/components/IconButton.svelte`, tests in 
 
 image::../../resources/diagrams/web-component-action-bar.svg[ActionBar with one primary act and the rest in the overflow,360,align=center]
 
-One primary act, up to three secondary acts, and an overflow `IconButton` that opens the menu of the rest. The bar is a style here; which acts a plan or an epic offers by its state arrives with the actions-by-state work.
+One primary act, up to three secondary acts, and an overflow `IconButton` that opens the menu of the rest. The acts a state offers, and their roles, come from `pm-web-app/src/lib/actions/byState.ts`: one table per resource kind (`plan`, `epic`, `project`, `device`, `runtime`). Where the runtime sends the offered acts of a plan or an epic, they decide which acts exist and whether they can run; the table decides their order and their role.
 
-Source and surface: `pm-web-app/src/lib/components/ActionBar.svelte`, tests in `ActionBar.test.ts`; the prop is `acts` (`id`, `label`, `disabled`, `disabledReason`, `advisory`), with `onAct(id)` reporting the chosen one.
+A destructive act (cancel, abandon, release, unenrol, revoke, delete) is never primary and never red at rest: it lives in the overflow and asks through `ConfirmDialog`, which names the consequences in the danger colour.
+
+Source and surface: `pm-web-app/src/lib/components/ActionBar.svelte`, tests in `ActionBar.test.ts`; the props are `acts` (`id`, `label`, `role` (`primary`, `secondary`, `overflow`), `destructive`, `disabled`, `disabledReason`, `advisory`), with `onAct(id)` reporting the chosen one. `pm-web-app/src/lib/components/ConfirmDialog.svelte` draws the confirmation, with `title`, `consequences`, `actionLabel`, `cancelLabel` and an optional `typedName`.
 
 [#status-label]
 === StatusLabel

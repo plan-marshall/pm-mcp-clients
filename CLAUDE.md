@@ -15,7 +15,7 @@ Structure Specification of the product (`doc/specification/module-structure.adoc
 documentation (requirements, specifications, implementation watch, roadmap, concept, developer and user documentation)
 lives there, not in this repository, except the specifications of the engine with their implementation watch, which
 live beside its code in `plan-marshall/pm-mcp-core` (`doc/Specification.adoc`, `doc/specification/`; the store
-schemas, the identifiers, the timeouts, the client profiles and model work among them). The one exception is the
+schemas, the identifiers, the timeouts, the harness profiles and model work among them). The one exception is the
 design of the two clients and of what they share, in `doc/design/` (index `doc/design/README.adoc`): it is the
 specification their implementation follows and lives here, beside the code. The use cases stay there, one set for both
 clients. Every concrete
@@ -116,15 +116,9 @@ add a deployment target, without the user's explicit decision.
 
 ## Work Packages
 
-The work of this repository is planned as work packages in `doc/plans/`, one file per package, with the index
-`doc/plans/README.adoc`, the only place that states the status of a package and what it depends on (also packages
-of the other repositories). A package is ready when it is open and everything it depends on is done; the roadmap milestone it serves says for which exit it
-is needed, not when it may start. The plan files hold the tasks only: requirements, specifications and watch
-items stay in `plan-marshall-documentation` (those of the engine in `pm-mcp-core`) and are linked by relative paths
-that assume the repositories checked out beside each other. A package is worked in the usual plan-marshall flow of the section "Git Workflow" (branch,
-commits, pull request at finalize), and its row in the index is set to `done` within those commits. A plan that
-changes what a specification or requirement states updates the documents concerned there directly, as part of its
-own work.
+The work of this repository is planned as work packages in `doc/plans/` (index `doc/plans/README.adoc`). How work
+packages are planned, when one is ready, what its file holds and what happens when it is done is stated only in
+`../plan-marshall-documentation/doc/developer/project-setup.adoc` (_Planning the Work_).
 
 ## Git Workflow
 

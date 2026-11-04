@@ -1,0 +1,30 @@
+= `pm-operator`: one command tree, the design's
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `operator-command-tree`
+
+[horizontal]
+Serves:: the client-work track (link:epic-clients.adoc[the client work])
+Where:: `pm-operator`
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== Tasks
+
+. The verbs registered by `PmOperator` are those of the design's command tree, with their options; each other top-level verb is folded into its design verb and removed: `start` into `plan add` and `epic add`, `onboard` into `pm-operator` without a verb and `config <aspect>`, `unenrol` into `project unenrol`, `abort` into `plan cancel|abandon` and `epic cancel`.
+  Anchor: link:../design/terminal-client/01-commands.adoc#command-tree[Terminal Client, The Verbs]; link:../design/terminal-client/19-actions.adoc[Terminal Client, Actions on Plans and Epics]; link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI, Coordination & Security § Command Tree].
+  Proof: `PmOperatorTest` asserts the registered top-level verbs against the list of the design, and that each removed verb is a usage error (exit `2`); the tests of the folded verbs (`StartCommandTest`, `OnboardCommandTest`, `AbortCommandTest`, the unenrol cases) run through their design verbs.
+. A registered verb with no counterpart in the design or the specification is reported in the pull request with what it does and kept only by the operator's decision; the design or the specification is changed first where it is kept. Candidates at the time of planning: `enrol` (the specification names it, the design has `project setup <project_id> [<step>]`), `settings`, `lesson`, `git-source`, and `plans`, `questions`, `answer` as shell verbs (the design has them in the console only).
+  Anchor: link:../design/terminal-client/01-commands.adoc#command-tree[Terminal Client, The Verbs]; link:../../../plan-marshall-documentation/doc/specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[CLI, Coordination & Security § Operator Channel Isolation].
+  Proof: the report in the pull request; `PmOperatorTest` follows the decision.
+. `pm-operator --help` and the console's `help` list the design's verbs only.
+  Anchor: link:../design/terminal-client/01-commands.adoc#command-tree[Terminal Client, The Verbs].
+  Proof: the transcript test of `help`.
+
+== Trace
+
+Requirements, specification sections, and watch documents stay in `plan-marshall-documentation` (those of the engine in `pm-mcp-core`) and are only referenced here. They are the starting set; the trace matrix of `traced-implementation` is built from them before code (link:../../../plan-marshall-documentation/doc/developer/project-setup.adoc#_planning_the_work[Project Setup § Planning the Work]).
+
+* Requirement: link:../../../plan-marshall-documentation/doc/requirements/08-security.adoc#PM-SEC-3[PM-SEC-3]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI, Coordination & Security § Command Tree]; link:../../../plan-marshall-documentation/doc/specification/cli-and-security/02-operator-channel.adoc#operator-channel-isolation[§ Operator Channel Isolation]
+* Design: link:../design/terminal-client/01-commands.adoc[Terminal Client, Command Model]

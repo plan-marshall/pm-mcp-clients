@@ -219,13 +219,17 @@ public final class AnswerCommand implements Callable<Integer> {
     private static @Nullable String readLineSafe(LineReader reader, String prompt) {
         try {
             return reader.readLine(prompt);
-        } catch (EndOfFileException | UserInterruptException e) {
+        } catch (UserInterruptException _) {
+            // The interrupt is the exit-code table's 130, never an unanswered question.
+            throw new StartPrompt.InterruptException();
+        } catch (EndOfFileException _) {
             return null;
         }
     }
 
     private int handleInteractive(RuntimeClient runtime, PrintWriter out, DecisionEnvelope envelope) {
-        try (var terminal = context.createTerminal()) {
+        try (var lease = context.openTerminal()) {
+            var terminal = lease.terminal();
             if (System.console() == null && !(terminal instanceof DumbTerminal)) {
                 printDecisionDetail(out, envelope);
                 out.flush();
@@ -236,6 +240,8 @@ public final class AnswerCommand implements Callable<Integer> {
                 return runInteractiveWaiver(runtime, out, reader, envelope);
             }
             return runInteractiveDecision(runtime, out, reader, envelope);
+        } catch (StartPrompt.InterruptException interrupt) {
+            throw interrupt;
         }
         // cui-rewrite:disable InvalidExceptionUsageRecipe
         catch (IOException | RuntimeException e) {

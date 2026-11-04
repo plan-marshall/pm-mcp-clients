@@ -120,7 +120,8 @@ class PmConsoleHandoffTest {
 
             await(() -> virtual.alternateScreenActive() && shows(virtual, "Running work"));
             assertEquals(1, creations.get());
-            assertTrue(context.ownsTerminal(virtual.terminal()));
+            // The view lends its own terminal to the dialogues it opens, so it is scoped while it
+            // runs; the direct run still owns it and closes it when the view leaves.
             assertFalse(virtual.isClosed());
 
             virtual.type("q");

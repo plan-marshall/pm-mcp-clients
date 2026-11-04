@@ -229,3 +229,177 @@ Entries moved verbatim out of `epic.md` on 2026-10-30 (operator confirmed the re
   (merge group run green); the remote branch was deleted by the queue; the local worktree
   `.plan/local/worktrees/22-cli-state-dialogue-followup` and branch were removed after checking the worktree was clean
   and that the only difference to `main` in the touched files was PLAN-14's later gate parameter.
+
+## Landing of PLAN-20 and the running records of PLAN-77, 80, 82 and 86 (2026-10-30)
+
+- 2026-10-30 — PLAN-77, 80, 82 and 86 recorded launched and then running on the operator's word ("all four plans are
+  running"), after the emit below; four running is N=4 and no slot is free. The operator asked to persist, land everything
+  and prepare a restart: the ledger was landed and a restart note heads the resume anchor. PLAN-22's follow-up PR #276 was
+  merged and cleaned up on the operator's word in between (`44803a77`).
+- 2026-10-30 — PLAN-20 landing analysed (PR #273, `a07a09b6`) and drained; row shipped. Nothing runs now: all four slots
+  of N=4 are free and the refactor sprint the operator announced ("drain all current plans, then the refactor sprint") can
+  start. Emitted at the operator's request ("analyze landed and emit"): PLAN-77 (`cui-standards-foundation`), PLAN-80
+  (`web-standards-conformance`), PLAN-82 (`needs-and-find-contract`) and PLAN-86 (`shared-error-texts`). All four are
+  `declarative`, determinate, with no blocking candidate and no overlap prompt (PLAN-77 and PLAN-80 share only
+  `CLAUDE.md`, one file); `corpus verdicts` has `blocking_count: 0` and the four specs carry no stale verdict. PLAN-80 now
+  adds a `## Web Standards` section of its own after § Code Standards, so the two `CLAUDE.md` edits cannot conflict. The
+  choice rests on: the operator's order (the refactor sprint first), and PLAN-82 and PLAN-86 each unblock several staged
+  plans (PLAN-82: 34, 36, 46, 49, 52, 54, 55, 83, 84; PLAN-86: 09, 30, 45). Not emitted, though ready: PLAN-17, 21, 23, 24,
+  37, 85 (PLAN-17, 21, 23 overlap each other by 2 to 4 files, so they run one after the other). PLAN-78, 79 and 87 wait for
+  PLAN-77. Re-grounded notes added to PLAN-21 (the PTY path of `decide`) and PLAN-36 (the `!` key is one rule).
+
+## Landings and running records of PLAN-09 to PLAN-86 (2026-10-31)
+
+- 2026-10-31 — PLAN-78 landing analysed (PR #288, `1651554b`, `landings/PLAN-78.md`) and drained; row shipped. Running after
+  it: PLAN-16, 17 and 87, which is three of N=4, so one slot is free. Earlier the same day PLAN-82 landed (PR #284, `7d7b4d71`,
+  `landings/PLAN-82.md`) and PLAN-87 was emitted and recorded running on the operator's word (its spec re-counted at HEAD
+  `6372185a`: 45 classes, not 43). Emitted PLAN-46 (`web-command-palette`, WS-03, ports 20460/20461) at the operator's request
+  ("analyze landed and emit"): its dependencies PLAN-39, 08, 76 and 82 are shipped, the gate reads it determinate with no
+  overlap against the running PLAN-16, 17 and 87 (`blocking_count: 0`), and PLAN-82's landing unblocked it. Reading its spec
+  against the accepted design found a gap: the texts the designs call for (`web.frame.search.title` and every `overview.find.*`
+  row of the shared design) are in no catalogue at HEAD and in no staged spec. PLAN-46 now owns adding them (en and de, the
+  design's wording) and retiring `web.frame.search.pending`; PLAN-84 reads them at its head or adds the missing ones if it runs
+  first; both declare `overview.{en,de}.properties` and run one after the other. Notes were added to both specs; the
+  assignment is the orchestrator's and open to the operator. Not emitted though ready: PLAN-43 (one shared file with the
+  running PLAN-16) and PLAN-24 (clean); PLAN-79 is held while the terminal PLAN-17 runs. The Watch on the blocked PLAN-78 is
+  closed (see Watches).
+- 2026-10-31 — PLAN-78 revision message analysed (`rb-78-cui-testing-api-002.md`, written 16:03Z): the plan is NOT landed.
+  PR #288 (the replacement of the closed #285, same head `0860ba13`) is open: CI green, full `verify` green, Sonar a
+  confirmed `0`, every comment handled, but the required reviewer CodeRabbit has never reviewed any head of either PR (six
+  triggers incl. one escalation, all "Review rate limited"; its own notice names plan capacity). The standing review
+  authorization does not apply without a qualifying review. The lane is stopped before the merge and waits for the operator:
+  clear the CodeRabbit account, or authorise the merge with the gap named. The row stays `running`, no landing is stamped,
+  the message is archived as the observation. Recorded as a decision for the operator in the Watches. The ledger was
+  landed in between ("land all and prepare to restart").
+- 2026-10-31 — PLAN-16 recorded launched and then running on the operator's word ("#16 is running"): four running (16,
+  17, 78, 82) is N=4 and no slot is free until one lands.
+- 2026-10-31 — PLAN-09 and PLAN-78 messages analysed. PLAN-09 landed (PR #287, `5f9e60da`): row shipped. PLAN-78 did NOT
+  land: its message (13:26) says PR #285 was open and unmerged, the required reviewer CodeRabbit never reviewed it (197
+  files against its limit of 100, then quota refusals), and its policy was to close the PR and open a new one from the same
+  branch; the live state is that #285 is closed and #288 is open on `chore/78-cui-testing-api`. The row stays `running`
+  and no landing is stamped; the message is archived as the observation and the lane's later message carries the landing.
+  Running after this: PLAN-17, 78 and 82, which is three of N=4, so one slot is free. Emitted PLAN-16
+  (`web-time-format-and-locale`, WS-02, ports 20160/20161) at the operator's request ("analyze and emit next"): its
+  dependencies PLAN-06, 09 and 76 are shipped, it has no overlap with any running plan, `blocking_count: 0`, and it is the
+  next link of the web chain (PLAN-16 → 35 → 45). Not emitted though ready: PLAN-37, 87, 24, 79 (clean), PLAN-21, 23, 30 and
+  85 (overlap prompts with running plans). Notes added to PLAN-16, 17 and 45 (PLAN-09's reach) and to PLAN-79 and 87 (keep
+  the pull request under 100 files; restore the formatter's rewrite of main sources).
+- 2026-10-31 — PLAN-09 recorded launched and then running on the operator's word ("#09 is running"): four running (09,
+  17, 78, 82) is N=4 and no slot is free until one lands.
+- 2026-10-31 — PLAN-86 landing analysed (PR #283, `1b6c6ae3`) and drained; row shipped. Running after it: PLAN-17, 78 and
+  82, which is three of N=4, so one slot is free. Emitted PLAN-09 (`web-display-layer`, WS-02, no ports of its own beyond
+  the spec's) at the operator's request ("analyze and emit next"): it is ready (PLAN-06, 01, 76 and now 86 shipped) and is the
+  critical path of the web chain (PLAN-16, 35, 45 and the view plans follow it). The gate asked an overlap prompt: PLAN-09
+  shares 4 catalogue files with the running PLAN-82 (`overview.*`, `plan_view.*`) and 2 with the running PLAN-17
+  (`system.*`); the operator answered "PLAN-09, accept the overlap" (the other options were PLAN-37, PLAN-87 and nothing).
+  `corpus verdicts` has `blocking_count: 0`. The pre-emit checks the epic had set were done: the `phase_state` drift watch is
+  written into the spec (list the values the contract and mock serve, unknown goes through the fallback), the tab-title watch
+  stays open and is not part of this plan, and the PLAN-06 enums are what `enumFields.ts` reads. Spec corrections from the
+  PLAN-86 landing: PLAN-30 now declares `09-texts-common.adoc` and `03-dialogues.adoc` (they still describe a
+  `common.error.<code>` family), PLAN-45 no longer declares a second completeness test. The German glossary question of
+  PLAN-86 (R-02) is recorded as a Watch for the operator.
+- 2026-10-31 — PLAN-78 recorded launched and then running on the operator's word ("#78 is running"): four running (17,
+  78, 82, 86) is N=4 and no slot is free until one lands.
+- 2026-10-31 — PLAN-77 landing analysed (PR #282, `e83a9ee2`) and drained; row shipped. Running after it: PLAN-17, 82 and
+  86, which is three of N=4, so one slot is free. Emitted PLAN-78 (`cui-testing-api`, WS-01, no ports) at the operator's
+  request ("analyze and emit next"): its only dependency PLAN-77 has landed, the spec is declarative and determinate, no
+  blocking candidate, no overlap prompt (one shared file with the running PLAN-86), `blocking_count: 0`. Not PLAN-79: its
+  spec says to emit it when no terminal plan is running and PLAN-17 is, and it rewrites test files that PLAN-21, 23 and the
+  later terminal plans edit, so it is best run in a window without them. Not PLAN-87 (also clean): it can follow at any
+  time. Ready and gate-clean but not emitted: PLAN-37, 87, 24; PLAN-79 (one shared file with PLAN-17); PLAN-21, 23 and 85
+  ask an overlap prompt with a running plan. Notes were added to PLAN-78, 79 and 87 (the pilot's pattern: no `Generators`
+  in field initialisers, input-free classes listed, contract values literal).
+- 2026-10-31 — PLAN-17 recorded launched and then running on the operator's word ("#17 is running"): four running (77,
+  82, 86, 17) is N=4 and no slot is free until one lands.
+- 2026-10-31 — PLAN-80 landing analysed (PR #281, `bf8ddb31`) and drained; row shipped. Running after it: PLAN-77, 82
+  and 86, which is three of N=4, so one slot is free. Emitted PLAN-17 (`cli-runtime-act-confirm`, terminal track, no ports)
+  at the operator's request ("analyze and emit next"): declarative, determinate, no blocking candidate, no overlap prompt,
+  `corpus verdicts` has `blocking_count: 0`; chosen because the terminal track has nothing running, it is the first link of
+  the chain PLAN-17 → 26 → 32 and it feeds PLAN-30. Ready and gate-clean but not emitted: PLAN-21 and PLAN-23 (they overlap
+  PLAN-17 by 2 to 4 files: after it), PLAN-24, PLAN-37; PLAN-85 now asks an overlap prompt (two files shared with the
+  running PLAN-82). A re-grounded note was added to PLAN-17 (PLAN-14 and PLAN-20 changed `RuntimeCommand` and the menus).
+  The PLAN-80 run's residue that the "dark" contrast audit may run under the light theme is recorded as a Watch and as
+  notes in PLAN-70 and PLAN-85. The executor skew the PLAN-80 run met (`0.1.2032` against `0.1.2036`, answered by the
+  operator) may recur in the landings of PLAN-77, 82 and 86.
+
+## Landings and running records of PLAN-16 to PLAN-91 (2026-11-01)
+
+- 2026-11-01 — PLAN-91 recorded running on the operator's word ("#91 is running"): four running (37, 43, 90, 91), N=4, no slot free.
+  Next emit when a slot frees: PLAN-21 or PLAN-84 (terminal), PLAN-89 after PLAN-37.
+- 2026-11-01 — PLAN-35 landing analysed (PR #302, `5650c41e`, `landings/PLAN-35.md`) in the three layers and drained; row shipped. Layer 1/2: the
+  four components and the components document as specified, 7 of 7 declared files present, 24 beyond (17 pictures, 4 tests, a fixture, 2
+  catalogue files), all explained; the pre-commit drift claim verified (the squash holds 31 files, none of the 178; it had landed as #298).
+  Layer 3 (read, not run): sound; the numeric-alignment, density and reduced-motion tests assert markers the component writes, not CSS;
+  three CSS leads not reproduced (collapsed border under a sticky head, `%` widths under `max-content`, the row-menu name composed in the
+  component). Sonar: the lane read `confirmed` 0 at `eecf5a31`, my read after the merge is `undecidable`, recorded as an unverified lead.
+  The merge rested on the operator's selection in the lane, not on the standing authorisation. Emitted PLAN-91 (CLI, free of the running web
+  plans; gate determinate, no prompt, dependencies shipped); three run (37, 43, 90) plus PLAN-91 awaiting its start.
+- 2026-11-01 — PLAN-90 recorded running on the operator's word ("#90 is running"): four running (35, 37, 43, 90), N=4, no slot free.
+  Next emit: PLAN-91 when a slot frees (PLAN-89 after PLAN-37).
+- 2026-11-01 — PLAN-26 landing analysed (PR #299, `be4995e5`, `landings/PLAN-26.md`) in the three layers and drained; row shipped. Layer 1:
+  D1 and D3's exit codes as specified; D2's first line is NOT the specified text (`draining · 2 left` built, `draining · 2 plans finish ·
+  stop in 4 min` and `restarting` specified) and the run rewrote the design (`shared/system.adoc#state-line`) to the built line; the PR
+  body states `2 plans finish`, which the code, catalogue, design and test do not print. The run's reason ("the wire carries no drain
+  deadline") is true of the client record only: the design lists the deadline in the status (`system.adoc:365`). Layer 2: 16 files added
+  beyond a 7-entry declaration (production: a wire-name fix in `RuntimeStatus`, 49 lines of full-screen banner logic, exit 1 in four
+  write paths of `WebCommand`/`ConfigCommand`); the `pm-api` `SystemSnapshot` was used as the model (the spec's new type was refuted
+  correctly). Layer 3 (read, not run): no formatter defect; the full-screen lifecycle logic and the four write-verb refusals have no
+  test; the new tests use literals and two carry an unused `@EnableGeneratorController`. The Sonar claim is `undecidable` after the
+  merge. Lane leads about the web checked by reading: the hardcoded `retry`/`error`/`ok` words and the frozen load-failure string
+  in `SystemView.svelte` are CONFIRMED (now PLAN-90 deliverable 3); `0.12 M` is REFUTED (`format.ts` gives `120 k`); `waiting for_you`
+  not reproduced. Test gaps are PLAN-91 deliverable 3. Three running: PLAN-35, 37, 43; one slot free. Emitted PLAN-90
+  (`web-green-baseline-and-time-residue`, WS-03, ports 20900/20901): gate determinate, 0 overlaps, no dependency open, the first of
+  the staged fix plans; its green e2e baseline is what PLAN-37's third deliverable needs. Not chosen: PLAN-91 (next), PLAN-21, 84, 79,
+  85, 18 (free), PLAN-24 (operator), PLAN-89 (waits for PLAN-37).
+- 2026-11-01 — PLAN-46 follow-up landing analysed (PR #300, `1ce32d80`, section "Follow-up landing" of `landings/PLAN-46.md`) and
+  drained together with `rb-37-web-accessibility-baseline-001.md`. The six CodeRabbit findings of PR #296 are fixed in the merged
+  tree, each with a test of the matching name (read in `git show 1ce32d80:`; the failing-first logs and test counts are the run's
+  account). The PR carried `skip-bot-review` and no review, on the operator's pasted word. The PLAN-46 row stays `shipped` (PR
+  296): the fix is not a queue row. Sonar for PR 300 reads `undecidable` after the merge, an unverified lead. The PLAN-37 message is
+  an observation (`merge_state=open`, PR #297 open, required reviewer refused on quota four times): archived, row stays
+  `running`. No slot was freed by either message, so nothing new was emitted; PLAN-43 stays emitted and awaiting its start.
+- 2026-11-01 — PLAN-46 landing analysed (PR #296, `d7f7ffc8`, `landings/PLAN-46.md`) and drained; row shipped. The reviewer block
+  ended: CodeRabbit accepted a trigger at 11:12Z and reviewed `42aee47d` (the message does not say who triggered it), and the lane merged. The lane's message says that review had "no
+  findings, no threads"; `ci pr comments` shows six inline findings (two Major: no touch close control and the arrow-key selection
+  not exposed to assistive technology; four Minor) with no reply, and the merged `CommandPalette.svelte` is unchanged since that head.
+  Recorded as contradicted, shipped anyway (it is merged), the findings carried as a Watch with no owner. Also landed, at the
+  operator's request through the lane: PR #298 (`f5de8449`), the pre-commit import order of 178 `main` sources, the same 178 paths as
+  the still-open PR #294, which is now redundant. Running after it: PLAN-26, 35, 37 (three of N=4). Emitted PLAN-43
+  (`web-page-templates`, WS-03, ports 20430/20431) into the free slot: it unblocks the most plans (47, 49, 51, 52, 53, 54, 55, 58,
+  59, 60, 88), dependencies PLAN-39 and 76 shipped, determinate gate with 0 overlaps against 26, 35 and 37. A re-grounded note was
+  added to the spec (`SystemView` changed since staging, its own `max-width: 1200px`, the two PLAN-17 web defects are not its content,
+  the e2e baseline). Not chosen: PLAN-21 and 84 (terminal, free), PLAN-23 (now asks an overlap prompt against PLAN-26), PLAN-79,
+  PLAN-85 (re-read list; `routes.ts`, `AppShell` changed by PLAN-46), PLAN-18 (verify lane), PLAN-24 (operator).
+- 2026-11-01 — PLAN-17 landing analysed (PR #292, `66c1495a`, `landings/PLAN-17.md`) and drained; row shipped. Running after it:
+  PLAN-35, 37 and 46 (three of N=4, PLAN-46 blocked on the reviewer, PR #296). Verified against the merge: 16 files, `@Disabled`
+  gone from `RuntimeStopDialogueIT`, `--when-done`/`--now` on all three acts; the surface expanded (9 added: the new
+  `RuntimeActDialogue`, `StartPrompt`, `ChoicePrompt` and two design documents beside the tests; `DrainCommand` and
+  `SystemLevel` declared and untouched); the Sonar claim (0 at `230fe51e`) is `undecidable` after the merge. Emitted PLAN-26
+  (`cli-system-model`, WS-04, ports 20260/20261) into the free slot: its one dependency left, PLAN-17, shipped; determinate gate
+  with 0 overlaps against PLAN-35, 37 and 46. Chosen over PLAN-21/23 because it opens the longest chain (26 → 34 → 36, 44 → 50;
+  PLAN-33). A note was added to the spec: PLAN-17 touched `25-system.adoc` and the `system.*` catalogue the spec declares but not
+  `SystemLevel`, and `SystemSnapshot` already exists in `pm-api` although the spec says it creates one. Not chosen: PLAN-21, 23 (next
+  terminal plans; PLAN-30 waits for both), PLAN-24 (needs the operator), PLAN-79 (no terminal plan runs now, but it rewrites test
+  files PLAN-21/23/26 add to, and is exposed to the 100-file limit), PLAN-43 and 85 (PLAN-16 re-read list), PLAN-18 (verify lane).
+- 2026-11-01 — PLAN-35 recorded running on the operator's word ("#35 is running"): three running (17, 35, 46). The operator then
+  answered the quota question: the CodeRabbit quota does not limit four parallel plans, because they run unattended and a queued
+  or retried review costs them nothing ("So emit the fourth"). This replaces the orchestrator's own reason for holding the fourth
+  slot back (see the entry below). Emitted PLAN-37 (`web-accessibility-baseline`, ports 20370/20371) into it: dependencies PLAN-31
+  and 76 shipped, determinate gate with 0 overlaps against PLAN-17, 35 and 46 (`blocking_count: 0`), not among the specs PLAN-16
+  touched, and its one new dependency (`@axe-core/playwright`) is the operator's decision of 2026-10-25. Not chosen: PLAN-24
+  (needs the operator present), PLAN-79 (held while the terminal PLAN-17 runs), PLAN-43 and 85 (named in the PLAN-16 re-read
+  list), PLAN-18 (a verify plan on the other lane). A re-grounded note was added to the spec (the e2e baseline is not known to be
+  green; the pre-commit drift of PR #294).
+- 2026-11-01 — PLAN-16 and PLAN-87 landings analysed (PR #291 `9890d74b`, PR #293 `418579a0`; `landings/PLAN-16.md`,
+  `landings/PLAN-87.md`) and drained; both rows shipped. PLAN-46's message (`rb-46-web-command-palette-001.md`) is an
+  observation, not a landing: PR #296 is open and blocked on the required reviewer; the message is archived and its row recorded
+  `running` on the evidence of the open PR and the message (the operator had not said so; they are told). Running after it:
+  PLAN-17 and PLAN-46, two of N=4. Emitted PLAN-35 (`web-data-components`, WS-02, ports 20350/20351) at the operator's request
+  ("analyze landed and emit"): its dependencies PLAN-31, 16 and 76 are shipped, the gate reads it determinate with no overlap
+  against the running PLAN-17 and PLAN-46 (`blocking_count: 0`, 0 indeterminate), it is the next link of the web chain
+  (PLAN-16 -> 35 -> 45), and its claims were re-read at `origin/main` (the four components and `components.adoc` absent, the
+  dev page, the README and `display/format.ts` present). A note on the pre-commit drift (PR #294 open) was added to the spec.
+  One slot stays free: with only PLAN-17 and PLAN-46 running, about thirty specs read prompt-free, but the reviewer quota already
+  holds PLAN-46 for hours, so the orchestrator emitted one plan rather than two; PLAN-24 (a security decision record that needs the
+  operator present and a pull request in the sibling repository) and PLAN-79 (held while the terminal PLAN-17 runs) were not
+  emitted. The operator may ask for a second plan.

@@ -296,7 +296,10 @@ public final class ProjectSelector {
             String answer;
             try {
                 answer = reader.readLine(prompt);
-            } catch (EndOfFileException | UserInterruptException _) {
+            } catch (UserInterruptException _) {
+                // The interrupt is the exit-code table's 130; it never reads as "leave".
+                return new Decision(null, false, StartPrompt.EXIT_INTERRUPTED);
+            } catch (EndOfFileException _) {
                 return Decision.left();
             }
             if (answer == null) {

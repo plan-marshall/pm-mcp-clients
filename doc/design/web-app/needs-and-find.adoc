@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../shared/needs-and-find.adoc[What Waits, and Going to Work by Name], link:../shared/plan-overview.adoc[Plan Overview], link:../web-app/view-density-and-filtering.adoc[View Density and Filtering], link:../web-app/interaction-affordances.adoc[Interaction Affordances]_
 
-Status: `AGREED` (accepted by the operator on 2026-10-31, together with the shared design). The web part of the work package link:../../plans/needs-and-find.adoc[`needs-and-find`]: where the two views of link:../shared/needs-and-find.adoc[What Waits, and Going to Work by Name] live in the app, and how they are reached. What each view shows is the shared design's; this document adds only the route, the rail, the search button, and the start page.
+Status: `AGREED`. The web part of the work package link:../../plans/needs-and-find.adoc[`needs-and-find`]: where the two views of link:../shared/needs-and-find.adoc[What Waits, and Going to Work by Name] live in the app, and how they are reached. What each view shows is the shared design's; this document adds only the route, the rail, the search button, and the start page.
 
 [#start-page]
 == The Start Page Is What Waits
@@ -44,11 +44,17 @@ A remembered place still wins, as it does today (link:../shared/plan-overview.ad
 The button of the top bar is the way into going to work by name (link:../shared/needs-and-find.adoc#find[Going to Work by Name]). `PLAN-46` enabled it and retired the pending key that disabled it:
 
 * *The label* is `web.frame.search` with the advisory `web.frame.search.title`; the pending key is retired by the plan that enables the button (PLAN-46).
-* *It opens a panel over the view the operator is on*, never a route: the operator is looking for a place, so the view behind the panel stays where it was and `Esc` returns to it. `Ctrl+K` (and `/` while nothing in a field has the focus) opens the same panel; `Esc` closes it; the field has the focus when the panel opens.
+* *It opens a panel over the view the operator is on*, never a route: the operator is looking for a place, so the view behind the panel stays where it was and returns to it when the panel closes. `Ctrl+K` (and `/` while nothing in a field has the focus) opens the same panel; `Esc` closes it; the field has the focus when the panel opens.
+* *A visible close control at every width*: the panel's header carries the design system's `Close` control, reachable by pointer and by `Tab` at the desktop and the phone width alike, so closing never depends on `Esc` or on a hardware keyboard.
 * *The panel* holds the one field and the matches (link:../shared/needs-and-find.adoc#find[Going to Work by Name]): grouped by kind in the order served, running work first, ended work marked, each match one step. It reads `GET /api/v1/find?q=` when the text pauses, never on every keystroke, and the last answer wins.
-* *An empty field* shows the hint (`overview.find.hint`), never a request; *no match* says so and keeps the text (`overview.find.empty`); *a match* is opened with the keyboard (`↑`, `↓`, `Enter`) or the pointer, and the selection is anchored to the match's kind and id, not to its row.
+* *One combobox over one listbox*: the field is the `combobox`, the results container the `listbox`, and the listbox holds only `option`s and `group`s of options. A group is named once, by the title its `aria-labelledby` points at, never by a repeated `aria-label` beside it; the title is presentational, so it never becomes a non-option child of the listbox. The field's `aria-expanded` is `true` only while the listbox holds at least one option.
+* *The selected option is the active descendant*: the field's `aria-activedescendant` names the option the keyboard acts on, one option id per row key, and never an id that is not in the document after the answer changes; the selected option is scrolled into view when the selection moves.
+* *An empty field* shows the hint (`overview.find.hint`), never a request; *no match* says so (`overview.find.empty`) outside the listbox and keeps the text; *a failed read* offers the design system's `Retry` button outside the listbox; *a match* is opened with the keyboard (`↑`, `↓`, `Enter`) or the pointer, and the selection is anchored to the match's kind and id, not to its row.
+* *Enter opens the first match*: the first row is selected when an answer arrives, so `Enter` on a search that names work opens the first match; the acts follow the matches, so `Enter` on a search that names a project opens that project and never its start act.
+* *Tab walks the panel*: `Close`, the field, and `Retry` where a read failed, wrapping at both ends; the rows are walked with `↑` and `↓`, never with `Tab`, so `Tab` never leaves the panel.
 * *Plain text only*: a title may come from a project or from a report, so the panel renders every title as a text node, never as markup and never as a link the app follows (link:../shared/needs-and-find.adoc#find[Going to Work by Name]).
 * *An act beside the matches*: a project among the matches offers the act that starts a plan there, in the words of the place the act opens (`start.plan.title`), so a search can end in work and not only in a view.
+* *A decision named by the panel is the one the view selects*: opening a decision match clears a local filter of the decisions view that hides it, so the decision is selected and its detail pane shows it rather than the placeholder.
 * *On the phone* the panel covers the view it was opened from, with the keyboard raised once the operator taps the field; the tab title is unchanged and the rail is not reachable while it is open, as with every dialogue of the app.
 
 [#texts]

@@ -1,0 +1,26 @@
+= The relay without the session mode
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `relay-session-mode-removal`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/requirements/13-harness-profiles.adoc#PM-CLIENT-1[PM-CLIENT-1] (a harness is a worker only); the client-work track (link:epic-clients.adoc[the client work])
+Where:: `pm-relay`
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== Tasks
+
+. `pm-mcp serve` has the one form `serve --job`: the option `--client`, the session mode (`RelayMode.session`) and the session headers it sends (`PM-MCP-Client`, `PM-MCP-Host-Marker`) are removed; `serve` without `--job` is a usage error.
+  Anchor: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI, Coordination & Security § Command Tree]; link:../../../plan-marshall-documentation/doc/specification/runtime-model/03-relay.adoc#relay-rules[Runtime Model § Relay Rules].
+  Proof: `ServeCommand` refuses `serve` without `--job` and `serve --client <id>` with exit `2`; `RelayTest`, `PmMcpTest` and `PmMcpProcessIT` cover the job relay only.
+. The harness detection keeps only what the job relay and the bundles use; a member that served only the session mode is removed.
+  Proof: no reference to the session mode remains (`git grep -n "session(" pm-relay/src`).
+
+== Trace
+
+Requirements, specification sections, and watch documents stay in `plan-marshall-documentation` (those of the engine in `pm-mcp-core`) and are only referenced here (link:../../../plan-marshall-documentation/doc/developer/project-setup.adoc#_planning_the_work[Project Setup § Planning the Work]).
+
+* Requirement: link:../../../plan-marshall-documentation/doc/requirements/13-harness-profiles.adoc#PM-CLIENT-1[PM-CLIENT-1]
+* Specification: link:../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#command-tree[CLI, Coordination & Security § Command Tree]
+* Dependent: `plan-marshall-mcp` / `harness-names` removes the server side of the session headers and the round trips through `serve --client` in its end-to-end tests.

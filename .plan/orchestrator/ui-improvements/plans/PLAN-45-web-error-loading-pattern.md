@@ -59,8 +59,9 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-06)`, `doc/claude_review/ux/proposals.adoc#UX-P-08` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/ux/plan.adoc:47-49 UX-S-06 maps to UX-P-08; ux/proposals.adoc:314-315 '== UX-P-08: One Error Pattern, One Loading Pattern' exists
+  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/ux/plan.adoc:47 UX-S-06 -> UX-P-08; ux/proposals.adoc:314-315 UX-P-08 One Error Pattern, One Loading Pattern
 - Re-grounded note at HEAD 5f9e60da (2026-10-31): `web-display-layer` (PLAN-09, shipped, PR #287) landed `displayError(code)` (tested, both languages, the unknown fallback) and the enum guard, and `shared-error-texts` (PLAN-86, shipped) the `error.<code>.*` texts; `displayError` has no production caller yet, so `ErrorState` is its first one. The loading texts (`<area>.loading`) are this plan's, not PLAN-09's. The enum guard fails on a field of `enumFields.ts` printed without `displayState`: an error view must not print a code any other way.
+- Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): ErrorState.svelte and Skeleton.svelte now exist (PLAN-35, #302); ErrorState does not yet call displayError (grep: only lib/display/index.ts and its test), so D1 adapts an existing component and is its first caller. PLAN-90/#291 touched every view and client.ts (time format, e2e baseline): re-read.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

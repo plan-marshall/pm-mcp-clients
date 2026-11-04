@@ -43,6 +43,7 @@ The two other parts of that package were moved by the structure review of 2026-1
 
 - OBSERVED: the web app's plan view has the path to its project and no neighbours — `PlanView.svelte` holds no sibling navigation — stated by the ThinkRail analysis (`doc/articles/thinkrail.adoc`), read 2026-10-30
 - OBSERVED: the split breakpoint is defined at `doc/design/web-app/view-density-and-filtering.adoc#breakpoint` — read at HEAD 07104678
+- RESCOPE at outline (design audit 2026-11-02): Done-when for a package row is 'the row stays done, no link' (Z2).
 - Verify-first clause: before the deliverable, re-read the named files at the current HEAD and confirm or refute every claim above; `PLAN-52`, `PLAN-55` and `PLAN-58` (the running-work, plan and epic pages) edit the same views. A refuted claim re-scopes the deliverable and is reported, never silently worked around.
 
 ## Expected Surface

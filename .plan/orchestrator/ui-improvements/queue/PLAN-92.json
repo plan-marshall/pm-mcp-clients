@@ -1,0 +1,11 @@
+{
+  "id": "PLAN-92",
+  "slug": "cli-interrupt-completion",
+  "workstream": "WS-04",
+  "status": "shipped",
+  "lane": "runbook",
+  "plan_marshall_plan_id": "92-cli-interrupt-completion",
+  "pr": "309",
+  "landing": "landings/PLAN-92.md",
+  "seq": 92
+}

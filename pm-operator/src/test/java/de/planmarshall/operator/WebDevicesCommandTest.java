@@ -40,6 +40,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import picocli.CommandLine;
 
@@ -400,12 +401,25 @@ class WebDevicesCommandTest {
         });
     }
 
+    /**
+     * The refused acts, with the device ids generated: a device id is command input, while the
+     * refusal line it prints is the contract and stays literal.
+     *
+     * @return the refused acts
+     */
+    static java.util.stream.Stream<org.junit.jupiter.params.provider.Arguments> refusedActs() {        var renameDevice = Generators.letterStrings(4, 8).next();
+        var revokeDevice = Generators.letterStrings(4, 8).next();
+        return java.util.stream.Stream.of(
+                            org.junit.jupiter.params.provider.Arguments.of("rename", renameDevice,
+                                                "Failed to rename device: HTTP 400"),
+                            org.junit.jupiter.params.provider.Arguments.of("revoke", revokeDevice,
+                                                "Failed to revoke: HTTP 400"),
+                            org.junit.jupiter.params.provider.Arguments.of("listener-off", "",
+                                                "Failed to turn listener off: HTTP 400"));
+    }
+
     @ParameterizedTest
-    @CsvSource({
-                        "rename, dev-2, Failed to rename device: HTTP 400",
-                        "revoke, dev-3, Failed to revoke: HTTP 400",
-                        "listener-off, '', Failed to turn listener off: HTTP 400"
-    })
+    @MethodSource("refusedActs")
     @DisplayName("a refused act on a device names the refusal and leaves with 1")
     void aRefusedActLeavesWithOne(String action, String argument, String expectedOutput) throws Exception {
         seedRefusedRoutes();

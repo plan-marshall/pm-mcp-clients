@@ -103,8 +103,8 @@ The verdict and its reason belong together. The server refuses a `not_met` or `n
 
 The non-goals are shown as a list, each with its id (`NG-n`) and its sentence. They are not a footnote: every one of them is a claim the plan does not make, and the outline's deliverables are read against them. At least one is required.
 
-[#decisions]
-=== Decisions and Who Took Them
+[#choices]
+=== Choices and Who Made Them
 
 [cols="1,1,3",options="header"]
 |===
@@ -112,13 +112,13 @@ The non-goals are shown as a list, each with its id (`NG-n`) and its sentence. T
 
 |`operator`
 |`you decided`
-|with the answered question (`Q-n`) one step away, in the decision's record
+|with the answered question (`Q-n`) one step away, in the choice's record
 
 |`quorum`
 |`a quorum decided`
-|with the answered question and the vote's support where the decision carries it
+|with the answered question and the vote's support where the choice carries it
 
-|`model`
+|`role`
 |`the model's call`
 |apart from the operator's decisions, never styled like them
 
@@ -127,10 +127,10 @@ The non-goals are shown as a list, each with its id (`NG-n`) and its sentence. T
 |with the evidence the record names (a path or a `pm://` URI)
 |===
 
-The separation is the point of the list. An operator reads first what they or a quorum decided, then what the model chose on its own; the model's calls are not recommendations and carry no vote. A decision with an ADR relation (`follows` or `contradicts`) names the ADR, and a `contradicts` decision is always the operator's.
+The separation is the point of the list. An operator reads first what they or a quorum decided, then what the model chose on its own; the model's calls are not recommendations and carry no vote. A choice with an ADR relation (`follows` or `contradicts`) names the ADR, and a `contradicts` choice is always the operator's.
 
-* *Options weighed*: shown with the decision where the record carries them, in the record's order, never sorted to recommend one.
-* *No question for a model call*: a model or fact decision names none; the server refuses one that does.
+* *Options weighed*: shown with the choice where the record carries them, in the record's order, never sorted to recommend one.
+* *No question for a model call*: a role or fact choice names none; the server refuses one that does.
 
 [#open-deferred]
 === Open Questions and Deferred Items
@@ -153,7 +153,7 @@ Before a deep-lane plan leaves refine, a builder reads the record as someone who
 
 |`minor`
 |`the builder's call`
-|the builder would decide it itself; the server records it as a model decision from the builder check
+|the builder would decide it itself; the server records it as a role's choice from the builder check
 
 |`operator`
 |`needs you`
@@ -268,12 +268,12 @@ Each bucket holds the tasks whose spent tokens fall between two multiples of the
 [#terminal]
 === The Terminal
 
-The terminal shows each record as a section of the plan or epic view, not as a separate dialogue: the head, then the criteria with their verdicts, the non-goals, the decisions grouped by decider, the open questions and deferred items, the builder check, and the outline's deliverables. A deliverable opens its files and criteria in the same frame; a criterion opens its deliverables. The width is the terminal's, so the affected files and the evidence go on their own lines under the row that owns them, and a long sentence wraps without a horizontal scroll.
+The terminal shows each record as a section of the plan or epic view, not as a separate dialogue: the head, then the criteria with their verdicts, the non-goals, the choices grouped by decider, the open questions and deferred items, the builder check, and the outline's deliverables. A deliverable opens its files and criteria in the same frame; a criterion opens its deliverables. The width is the terminal's, so the affected files and the evidence go on their own lines under the row that owns them, and a long sentence wraps without a horizontal scroll.
 
 [#web]
 === The Web App
 
-The web app shows the same order in the plan or epic detail: the intent as a card with the goal and the criterion list, a verdict chip per criterion (`met`, `not met`, `not verified`, `not reviewed yet`) with the reason one expansion away, the decisions grouped by decider with the operator's and the quorum's first, the builder check's open questions beside the outline review, and the outline's deliverables as rows with their files, dependencies, and criteria. The `over_size` distribution is a small bar chart in the role's settings, with the counts and the flagged share in text, so it is readable without colour and at phone width.
+The web app shows the same order in the plan or epic detail: the intent as a card with the goal and the criterion list, a verdict chip per criterion (`met`, `not met`, `not verified`, `not reviewed yet`) with the reason one expansion away, the choices grouped by decider with the operator's and the quorum's first, the builder check's open questions beside the outline review, and the outline's deliverables as rows with their files, dependencies, and criteria. The `over_size` distribution is a small bar chart in the role's settings, with the counts and the flagged share in text, so it is readable without colour and at phone width.
 
 [#live]
 === Live and One Step Away
