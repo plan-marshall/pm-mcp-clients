@@ -1,7 +1,4 @@
-<script lang="ts">
-  import { tick } from 'svelte';
-  import IconButton from './IconButton.svelte';
-
+<script module lang="ts">
   export interface RowMenuItem {
     id: string;
     label: string;
@@ -9,6 +6,11 @@
     disabled?: boolean;
     onclick?: (event: MouseEvent) => void | Promise<void>;
   }
+</script>
+
+<script lang="ts">
+  import { tick } from 'svelte';
+  import IconButton from './IconButton.svelte';
 
   /**
    * RowMenu (VD-P-05): the WAI-ARIA menu button pattern for row actions in card layouts and lists.
