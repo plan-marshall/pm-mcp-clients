@@ -272,7 +272,7 @@ Each line is a check of the runtime (`epic.archive-check`); a failing one leads 
                                                   [Keep it]  [Cancel the epic]
 ----
 
-The dialogue is `epic.confirm-cancel`; confirmed, the epic's tasks are withdrawn, its plans end or run on as chosen, and its ledger is archived as cancelled (`epic.cancel`). An epic held by an integrity hold is cancelled the same way; the cancel is that hold's _Abort_, and the epic ends `cancelled`.
+The dialogue is `epic.confirm-cancel`. It requires a reason, as the plan's end does: cancelling an epic is as wide an act as ending a plan. Confirmed, the epic's tasks are withdrawn, its plans end or run on as chosen, and its ledger is archived as cancelled (`epic.cancel`). An epic held by an integrity hold is cancelled the same way; the cancel is that hold's _Abort_, and the epic ends `cancelled`.
 
 [#holds]
 == What Holds a Plan

@@ -2803,12 +2803,25 @@ export class ApiClient {
     );
   }
 
+  /** How long a revoke may wait for the runtime before the request gives up. */
+  private static readonly REVOKE_TIMEOUT_MS = 15_000;
+
   public async revokeDevice(deviceId: string): Promise<void> {
-    await this.request('DELETE', `/api/v1/web/devices/${encodeURIComponent(deviceId)}`);
+    await this.request(
+      'DELETE',
+      `/api/v1/web/devices/${encodeURIComponent(deviceId)}`,
+      undefined,
+      AbortSignal.timeout(ApiClient.REVOKE_TIMEOUT_MS),
+    );
   }
 
   public async revokeOtherDevices(): Promise<void> {
-    await this.request('DELETE', '/api/v1/web/devices?others');
+    await this.request(
+      'DELETE',
+      '/api/v1/web/devices?others',
+      undefined,
+      AbortSignal.timeout(ApiClient.REVOKE_TIMEOUT_MS),
+    );
   }
 
   public async turnOffLanListener(): Promise<void> {
@@ -2942,6 +2955,7 @@ export class ApiClient {
   public async stopRuntime(
     when: 'drain' | 'now',
     then?: 'restart' | 'upgrade',
+    signal?: AbortSignal,
   ): Promise<{ lifecycle_state: string }> {
     const body: Record<string, unknown> = {
       now: when === 'now',
@@ -2951,7 +2965,7 @@ export class ApiClient {
       // NOSONAR: typescript:S7739 - external wire contract requires 'then' property
       Reflect.set(body, 'then', then);
     }
-    return this.request<{ lifecycle_state: string }>('POST', '/api/v1/runtime/stop', body);
+    return this.request<{ lifecycle_state: string }>('POST', '/api/v1/runtime/stop', body, signal);
   }
 
   public async withdrawStop(): Promise<void> {

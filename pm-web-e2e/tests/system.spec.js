@@ -190,7 +190,10 @@ test.describe('System: figures, filters, upgrade, and cleanup preview (UC-SYS-1.
     await expect(page.getByTestId('upgrade-withdrawn')).toContainText('0.9.1 keeps running');
   });
 
-  test('shows only stop now and withdraw while the runtime drains', async ({ page, request }) => {
+  test('lists what the drain still runs, counts it, and shrinks it as it ends', async ({
+    page,
+    request,
+  }) => {
     const scenario = await request.post(`${MOCK_RUNTIME_URL}/mock/scenario`, {
       data: { scenario: 'reports-and-system' },
     });
@@ -202,13 +205,35 @@ test.describe('System: figures, filters, upgrade, and cleanup preview (UC-SYS-1.
 
     const banner = page.getByTestId('draining-banner');
     await expect(banner).toBeVisible();
-    await expect(banner).toContainText('Stopping when what runs is done');
+    await expect(banner.getByTestId('draining-text')).toContainText(
+      '2 left: execute task of fix-relay, build of fix-relay',
+    );
+    await expect(banner.getByTestId('draining-list').getByRole('listitem')).toHaveCount(2);
     await expect(banner.getByRole('button', { name: 'Withdraw the stop' })).toBeVisible();
     await expect(banner.getByRole('button', { name: 'Stop now' })).toBeVisible();
 
-    // Nothing red at rest, and the draining state carries no upgrade and no running acts.
+    // The runtime reports the work that finished: the line and the list shrink with it. The
+    // state is entered again while the page is open, so the scheduled events reach this stream
+    // rather than a page that was still reloading when they fired.
+    const restart = await request.post(`${MOCK_RUNTIME_URL}/mock/goto/system.running`, {
+      data: {},
+    });
+    expect(restart.ok()).toBeTruthy();
+    const drainAgain = await request.post(`${MOCK_RUNTIME_URL}/mock/goto/system.draining`, {
+      data: {},
+    });
+    expect(drainAgain.ok()).toBeTruthy();
+    await expect(banner.getByTestId('draining-text')).toContainText(
+      '1 left: execute task of fix-relay',
+    );
+    await expect(banner.getByTestId('draining-list').getByRole('listitem')).toHaveCount(1);
+
+    // The drain's acts stand in the banner; the runtime card draws no bar of its own.
+    await expect(banner.getByTestId('action-bar')).toHaveCount(1);
+    await expect(page.getByTestId('system-view').getByTestId('action-bar')).toHaveCount(0);
+
+    // Nothing red at rest, and the draining state carries no upgrade consent.
     await expect(page.getByTestId('upgrade-consent')).toHaveCount(0);
-    await expect(page.getByTestId('system-view').getByTestId('action-bar-overflow')).toHaveCount(0);
     await expectNothingRedAtRest(page);
   });
 

@@ -188,13 +188,6 @@ export const RUNTIME_ACTS: Record<string, ActSpec[]> = {
     { id: 'withdraw_stop', labelKey: 'system.stopping.withdraw', advisoryKey: 'system.stopping.withdraw.title', ...PRIMARY },
     { id: 'stop_now', labelKey: 'system.stopping.stop_now', advisoryKey: 'system.stopping.stop_now.title', ...SECONDARY },
   ],
-  upgrading: [
-    { id: 'withdraw_upgrade', labelKey: 'system.upgrade.withdraw', advisoryKey: 'system.upgrade.withdraw.title', ...PRIMARY },
-    { id: 'stop_now', labelKey: 'system.stopping.stop_now', advisoryKey: 'system.stopping.stop_now.title', ...SECONDARY },
-  ],
-  stopped: [
-    { id: 'start', labelKey: 'system.action.start', advisoryKey: 'system.action.start.title', ...PRIMARY },
-  ],
 };
 
 /** Every table, by resource kind. */

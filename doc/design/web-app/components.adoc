@@ -58,7 +58,9 @@ One primary act, up to three secondary acts, and an overflow `IconButton` that o
 
 A destructive act (cancel, abandon, release, unenrol, revoke, delete) is never primary and never red at rest: it lives in the overflow and asks through `ConfirmDialog`, which names the consequences in the danger colour.
 
-Source and surface: `pm-web-app/src/lib/components/ActionBar.svelte`, tests in `ActionBar.test.ts`; the props are `acts` (`id`, `label`, `role` (`primary`, `secondary`, `overflow`), `destructive`, `disabled`, `disabledReason`, `advisory`), with `onAct(id)` reporting the chosen one. `pm-web-app/src/lib/components/ConfirmDialog.svelte` draws the confirmation, with `title`, `consequences`, `actionLabel`, `cancelLabel` and an optional `typedName`.
+An act that cannot run says why, and the entry stays in the menu: its reason is the entry's described-by text (screen-reader-only), and the arrow keys reach it, because an act whose reason is worth reading must not vanish from the keyboard. The reason is never only the hover advisory. On a phone every entry of the menu takes the 44 px target the rest of the design system takes.
+
+Source and surface: `pm-web-app/src/lib/components/ActionBar.svelte`, tests in `ActionBar.test.ts`; the props are `acts` (`id`, `label`, `role` (`primary`, `secondary`, `overflow`), `destructive`, `disabled`, `disabledReason`, `advisory`), with `onAct(id)` reporting the chosen one. `pm-web-app/src/lib/components/ConfirmDialog.svelte` draws the confirmation, with `title`, `consequences`, `actionLabel`, `cancelLabel`, an optional `typedName`, `busy` (the guard that ignores a second confirm and holds Escape and cancel while the act runs), `confirmDisabled` and `testid`.
 
 [#status-label]
 === StatusLabel
@@ -161,7 +163,7 @@ Source and surface: `pm-web-app/src/lib/components/AttentionStrip.svelte`, tests
 
 image::../../resources/diagrams/web-component-data-table.svg[A table with a sticky head, a number column and a row menu,360,align=center]
 
-Every column takes the fixed width its column spec names, and the table is never wider than the sum of them, so a declared `14rem` is drawn at `14rem`. The wrapper is the table's own scroll area — sideways for a wide table, and vertically up to `70vh` — so the head stays in place while the rows scroll under it, and the page itself never scrolls sideways. A number column is right-aligned in tabular figures. A row is 40 px high, `32 px` in the compact density with the padding that height needs. The row menu stands in the last column, is drawn only when the view names one, and each menu's accessible name carries the row's first cell, so two menus are told apart before either is opened. A table without rows draws the empty slot its view fills — typically an `EmptyState` — across every column.
+Every column takes the fixed width its column spec names, and the table is never wider than the sum of them, so a declared `14rem` is drawn at `14rem`. The wrapper is the table's own scroll area — sideways for a wide table, and vertically up to `70vh` — so the head stays in place while the rows scroll under it, and the page itself never scrolls sideways. A number column is right-aligned in tabular figures. A row is 40 px high, `32 px` in the compact density with the padding that height needs. The row menu stands in the last column, is drawn only when the view names one, and each menu's accessible name carries the row's first cell, so two menus are told apart before either is opened. The menu's column is as wide as the control it holds — the square target on a phone, the icon with the word that names it from the tablet width up — so the control never overhangs its cell. A table without rows draws the empty slot its view fills — typically an `EmptyState` — across every column.
 
 Every cell is a text sink: the view hands in the text it already formatted, so nothing the runtime or a model writes reaches the DOM as markup.
 

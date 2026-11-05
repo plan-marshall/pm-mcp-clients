@@ -7,18 +7,45 @@ import { expect } from '@playwright/test';
  * The check measures the theme's own `--color-danger`, so it holds in the light and the dark theme
  * alike, and it only runs while no dialog is open — an open confirmation is allowed to be red.
  *
+ * A dialog that is mounted is waited for, not skipped: a page that never closes it fails the
+ * check instead of reading as "nothing is red". The wait samples the condition the page produces,
+ * never a fixed duration.
+ *
  * @param page the page to read
+ * @param {{ timeout?: number }} [options] how long the dialog may still be open
  */
-export async function expectNothingRedAtRest(page) {
+export async function expectNothingRedAtRest(page, { timeout = 5000 } = {}) {
+  await expect
+    .poll(() => page.evaluate(() => document.querySelector('[role="dialog"]') !== null), {
+      timeout,
+      message: 'a dialog is still mounted; a red confirmation is not an act at rest',
+    })
+    .toBe(false);
+
   const offenders = await page.evaluate(() => {
-    if (document.querySelector('[role="dialog"]')) return [];
     const probe = document.createElement('div');
     probe.style.backgroundColor = 'var(--color-danger)';
     document.body.appendChild(probe);
     const danger = getComputedStyle(probe).backgroundColor;
     probe.remove();
+    // An act can be red as a filled control or as danger-coloured text on an act of a bar; both
+    // are the act's colour. A danger-coloured status outside a bar (an offline indicator) is not
+    // an act at rest and stays out of this check.
+    const INTERACTIVE = new Set(['button', 'a', 'summary']);
+    const IN_A_BAR = '[data-testid="action-bar"], [data-testid="control-actions"], [role="menu"]';
     return Array.from(document.querySelectorAll('*'))
-      .filter((element) => getComputedStyle(element).backgroundColor === danger)
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        if (style.backgroundColor === danger) {
+          return true;
+        }
+        const role = element.getAttribute('role');
+        const interactive =
+          INTERACTIVE.has(element.tagName.toLowerCase()) ||
+          role === 'button' ||
+          role === 'menuitem';
+        return interactive && style.color === danger && element.closest(IN_A_BAR) !== null;
+      })
       .map((element) => `${element.tagName.toLowerCase()}.${String(element.className ?? '')}`)
       .slice(0, 10);
   });

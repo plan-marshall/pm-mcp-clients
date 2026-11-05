@@ -30,24 +30,101 @@
   import GitSourceIntakeModal from '../lib/components/GitSourceIntakeModal.svelte';
   import AppShell from '../lib/shell/AppShell.svelte';
   import ActionBar from '../lib/components/ActionBar.svelte';
+  import ConfirmDialog from '../lib/components/ConfirmDialog.svelte';
   import { RUNTIME_ACTS } from '../lib/actions/byState';
   import { lessonSourceModalStore, closeLessonSource } from '../lib/stores/lessonSource';
   import { gitSourceModalStore, closeGitSource } from '../lib/stores/gitSource';
 
+  /** What the drain still runs, the count and the line read from the same list. */
+  let drainItems = $derived($runtimeStore.drainInfo?.items ?? []);
+  /** The line names at most three, the rest is counted beside them (<<draining>>). */
+  let drainNames = $derived(drainItems.slice(0, 3).join(', '));
+  let drainMore = $derived(Math.max(0, drainItems.length - 3));
+  let drainCount = $derived(drainItems.length || ($runtimeStore.drainInfo?.count ?? 0));
+
+  /** Whether a drain act runs; both acts refuse a second click while it does. */
+  let drainingBusy = $state(false);
+  /** The refusal of the last drain act, in the banner. */
+  let drainingFailure = $state('');
+  /** Whether "Stop now" asks for its own short confirmation. */
+  let stopNowConfirm = $state(false);
+
+  // A drain that ends leaves nothing to confirm, and its refusal belonged to that drain alone.
+  $effect(() => {
+    if (!$runtimeStore.isDraining) {
+      stopNowConfirm = false;
+      drainingFailure = '';
+    }
+  });
+
+  /** @param err the refusal a drain act reported @returns its message */
+  function refusalOf(err: unknown): string {
+    return err instanceof Error ? err.message : String(err);
+  }
+
   /**
    * Runs the act the drain banner reports (UX-P-04: withdraw the stop, or stop now).
+   *
+   * "Stop now" ends running work, so it asks first (<<draining>>); both acts carry a busy state and
+   * report a refusal instead of dropping it.
    *
    * @param id the chosen act
    */
   function chooseDrainingAct(id: string): void {
+    if (drainingBusy) {
+      return;
+    }
     if (id === 'withdraw_stop') {
-      void apiClient.withdrawStop().then(() => {
-        runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
-      });
+      void withdrawDrain();
       return;
     }
     if (id === 'stop_now') {
-      void apiClient.stopRuntime('now');
+      stopNowConfirm = true;
+    }
+  }
+
+  /** Withdraws the stop, and says so in the banner when the runtime refuses. */
+  async function withdrawDrain(): Promise<void> {
+    if (drainingBusy) {
+      return;
+    }
+    drainingBusy = true;
+    drainingFailure = '';
+    try {
+      await apiClient.withdrawStop();
+      runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
+    } catch (err: unknown) {
+      drainingFailure = $t('system.stopping.withdraw_failed', { reason: refusalOf(err) });
+    } finally {
+      drainingBusy = false;
+    }
+  }
+
+  /** How long the stop-now request may wait for the runtime before the outcome is unknown. */
+  const STOP_NOW_TIMEOUT_MS = 15_000;
+
+  /** Turns the drain into the stop now the confirmation asked for. */
+  async function confirmStopNow(): Promise<void> {
+    if (drainingBusy) {
+      return;
+    }
+    drainingBusy = true;
+    drainingFailure = '';
+    try {
+      await apiClient.stopRuntime('now', undefined, AbortSignal.timeout(STOP_NOW_TIMEOUT_MS));
+      stopNowConfirm = false;
+      // The stop ends the drain; the lifecycle event may be missed on a dropped stream.
+      runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
+    } catch (err: unknown) {
+      // The refusal belongs in the banner; the short confirmation has done its work.
+      stopNowConfirm = false;
+      const name = (err as Error)?.name;
+      const unknownOutcome = name === 'TimeoutError' || name === 'AbortError';
+      drainingFailure = unknownOutcome
+        ? $t('system.stopping.stop_now_unknown')
+        : $t('system.stopping.stop_now_failed', { reason: refusalOf(err) });
+    } finally {
+      drainingBusy = false;
     }
   }
 
@@ -167,15 +244,22 @@
     {#snippet notices()}
       {#if $runtimeStore.isDraining}
         <div class="draining-banner" role="status" data-testid="draining-banner">
-          <span class="draining-text">
+          <span class="draining-text" data-testid="draining-text">
             {$t('system.stopping.line', {
-              count: $runtimeStore.drainInfo?.items?.length ?? $runtimeStore.drainInfo?.count ?? 0,
-              what: $runtimeStore.drainInfo?.what ?? $t('system.stopping.running_work'),
+              count: drainCount,
+              what: drainItems.length > 0
+                ? drainNames
+                : ($runtimeStore.drainInfo?.what ?? $t('system.stopping.running_work')),
             })}
           </span>
-          {#if $runtimeStore.drainInfo?.items?.length}
+          {#if drainMore > 0}
+            <span class="draining-more" data-testid="draining-more">
+              {$t('system.stopping.more', { count: drainMore })}
+            </span>
+          {/if}
+          {#if drainItems.length > 0}
             <ul class="draining-list" data-testid="draining-list">
-              {#each $runtimeStore.drainInfo.items as item (item)}
+              {#each drainItems.slice(0, 3) as item, index (index)}
                 <li>{item}</li>
               {/each}
             </ul>
@@ -188,9 +272,15 @@
                 advisory: act.advisoryKey ? $t(act.advisoryKey) : undefined,
                 role: act.role,
               }))}
+              busy={drainingBusy}
               onAct={chooseDrainingAct}
             />
           </div>
+          {#if drainingFailure}
+            <p class="draining-failure" data-testid="draining-failure" role="alert">
+              {drainingFailure}
+            </p>
+          {/if}
         </div>
       {/if}
     {/snippet}
@@ -215,6 +305,18 @@
     {$runtimeStore.quietDecisionNotice || ''}
   </div>
 {/if}
+
+<ConfirmDialog
+  open={stopNowConfirm}
+  testid="stop-now-confirm"
+  title={$t('system.stopping.confirm_now_left', { count: drainCount })}
+  consequences={[$t('system.confirm.now_explain')]}
+  actionLabel={$t('system.stopping.stop_now')}
+  cancelLabel={$t('system.confirm.keep')}
+  busy={drainingBusy}
+  onConfirm={confirmStopNow}
+  onClose={() => (stopNowConfirm = false)}
+/>
 
 <LessonSourceModal
   open={$lessonSourceModalStore.open}
@@ -270,6 +372,18 @@
     padding-inline-start: var(--space-5);
     font-weight: 400;
     color: var(--color-text-secondary);
+  }
+
+  .draining-more {
+    font-weight: 400;
+    color: var(--color-text-secondary);
+  }
+
+  .draining-failure {
+    flex-basis: 100%;
+    margin: 0;
+    font-weight: 400;
+    color: var(--color-danger);
   }
 
   .sr-only {

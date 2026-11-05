@@ -125,6 +125,37 @@ describe('SettingsView component', () => {
     });
   });
 
+  it('holds the revoke confirmation open and ignores a second confirm while it runs', async () => {
+    let settle: () => void = () => {};
+    const pending = new Promise<void>((resolve) => {
+      settle = resolve;
+    });
+    const revokeSpy = vi.spyOn(apiClient, 'revokeDevice').mockReturnValue(pending);
+
+    render(SettingsView);
+
+    await waitFor(() => {
+      expect(within(deviceRow('dev-2')).getByTestId('action-bar-overflow')).toBeInTheDocument();
+    });
+    await fireEvent.click(within(deviceRow('dev-2')).getByTestId('action-bar-overflow'));
+    await fireEvent.click(await within(deviceRow('dev-2')).findByTestId('action-revoke'));
+
+    const confirm = await screen.findByTestId('confirm-dialog-confirm');
+    await fireEvent.click(confirm);
+    expect(revokeSpy).toHaveBeenCalledOnce();
+
+    await fireEvent.click(confirm);
+    expect(revokeSpy).toHaveBeenCalledOnce();
+    expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument();
+    expect(screen.getByTestId('confirm-dialog-cancel')).toBeDisabled();
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument();
+
+    settle();
+    await waitFor(() => expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument());
+  });
+
   it('asks for the typed name before revoking all other devices', async () => {
     const revokeOthersSpy = vi.spyOn(apiClient, 'revokeOtherDevices').mockResolvedValue();
 

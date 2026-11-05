@@ -117,7 +117,8 @@ describe('ActionBar', () => {
     expect(document.activeElement).toBe(overflow);
   });
 
-  it('skips an entry that cannot run, so the menu stays reachable', async () => {
+  it('names the reason of a disabled entry and keeps it reachable with the arrow keys', async () => {
+    const onAct = vi.fn();
     render(ActionBar, {
       props: {
         acts: [
@@ -128,14 +129,26 @@ describe('ActionBar', () => {
           { id: 'later', label: 'Later', disabled: true, disabledReason: 'Not yet' },
           { id: 'archive', label: 'Archive' },
         ],
+        onAct,
       },
     });
 
     await fireEvent.click(screen.getByTestId('action-bar-overflow'));
 
+    // Opening the menu still starts on the first entry that can run.
     expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Archive' }));
-    await fireEvent.keyDown(screen.getByRole('menu'), { key: 'ArrowDown' });
-    expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Archive' }));
+
+    const later = screen.getByRole('menuitem', { name: 'Later' });
+    expect(later).toHaveAttribute('aria-disabled', 'true');
+    const describedBy = later.getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+    expect(document.getElementById(describedBy as string)).toHaveTextContent('Not yet');
+
+    await fireEvent.keyDown(screen.getByRole('menu'), { key: 'ArrowUp' });
+    expect(document.activeElement).toBe(later);
+
+    await fireEvent.click(later);
+    expect(onAct).not.toHaveBeenCalled();
   });
 
   it('closes on Tab and gives the focus back to the button', async () => {
