@@ -35,7 +35,7 @@
     projectId?: string;
     ended?: boolean;
     scope?: number;
-    /** How many of the epic's plans run; `null` when the view does not know, and then not shown. */
+    /** How many of the epic's plans run; `null` when the view does not know, and then the raise dialogue says the count is unknown. */
     running?: number | null;
     nextPlan?: string;
     pullRequestNumber?: number | null;

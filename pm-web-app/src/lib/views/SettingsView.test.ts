@@ -15,6 +15,17 @@ function deviceRow(id: string): HTMLElement {
   return screen.getByTestId(`device-row-${id}`);
 }
 
+/**
+ * Lets every microtask a read's chain needs run: the promise reactions of `Promise.all`, the
+ * component's continuation, and Svelte's own flush.
+ */
+async function settleMicrotasks(): Promise<void> {
+  for (let step = 0; step < 6; step += 1) {
+    await Promise.resolve();
+  }
+  await tick();
+}
+
 describe('SettingsView component', () => {
   const mockDevices = [
     {
@@ -261,6 +272,7 @@ describe('SettingsView component', () => {
 
   it('ends a devices read that times out in the error state instead of waiting for it', async () => {
     // Arrange: the read is handed a signal, and it answers with the error a real timeout produces.
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
     const signals: (AbortSignal | undefined)[] = [];
     vi.spyOn(apiClient, 'getDevices').mockImplementation((signal?: AbortSignal) => {
       signals.push(signal);
@@ -274,6 +286,7 @@ describe('SettingsView component', () => {
     expect(await screen.findByText('The paired devices could not be loaded.')).toBeInTheDocument();
     expect(signals[0]).toBeInstanceOf(AbortSignal);
     expect(signals[0]?.aborted).toBe(false);
+    expect(timeout).toHaveBeenCalledWith(15_000);
   });
 
   it('keeps the newer list when an older read answers after it', async () => {
@@ -315,9 +328,10 @@ describe('SettingsView component', () => {
     expect(await screen.findByText('Chrome on build-box')).toBeInTheDocument();
     pending[0]([mockDevices[0]]);
 
-    // Assert: the late answer never replaces what the newer read brought. The flush makes the
-    // assertion follow the older read's own update rather than the newer one's.
-    await tick();
+    // Assert: the late answer never replaces what the newer read brought. The older read's chain
+    // runs through promise reactions and Svelte's own microtask flush, so the assertions wait for
+    // that chain to reach its end instead of racing it.
+    await settleMicrotasks();
     expect(screen.queryByText('Safari on iPad')).not.toBeInTheDocument();
     expect(screen.getByText('Chrome on build-box')).toBeInTheDocument();
   });

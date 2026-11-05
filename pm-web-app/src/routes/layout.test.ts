@@ -382,6 +382,7 @@ describe('the app shell', () => {
     const withdraw = vi
       .spyOn(apiClient, 'withdrawStop')
       .mockRejectedValue(new DOMException('The operation timed out.', 'TimeoutError'));
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
 
     render(Layout);
     const banner = await screen.findByTestId('draining-banner');
@@ -392,6 +393,7 @@ describe('the app shell', () => {
 
     // The request carries its own deadline, so a DELETE the runtime never answers ends.
     expect(withdraw).toHaveBeenCalledWith(expect.any(AbortSignal));
+    expect(timeout).toHaveBeenCalledWith(15_000);
     expect(await screen.findByTestId('draining-failure')).toHaveTextContent(
       'The stop could not be withdrawn',
     );
