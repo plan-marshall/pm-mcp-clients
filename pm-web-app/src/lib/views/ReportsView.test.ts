@@ -711,9 +711,9 @@ describe('ReportsView component', () => {
     const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
     expect(card.querySelector('.report-card__body--clamped')).not.toBeNull();
 
-    await fireEvent.click(within(card).getByRole('button', { name: 'Show the text' }));
+    await fireEvent.click(within(card).getByRole('button', { name: /Show the text/i }));
     expect(card.querySelector('.report-card__body--clamped')).toBeNull();
-    expect(within(card).getByRole('button', { name: 'Hide the text' })).toBeInTheDocument();
+    expect(within(card).getByRole('button', { name: /Hide the text/i })).toBeInTheDocument();
   });
 
   it('names the row menu with the report and moves the focus in and back out', async () => {
@@ -1045,5 +1045,118 @@ describe('ReportsView component', () => {
 
     expect((input as HTMLInputElement).value).toBe('');
     expect(screen.getByText('Ended: no change')).toBeInTheDocument();
+  });
+
+  it('marks only the matching reports read and keeps the hidden rows when filter is active', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    await typeFilter('relay-hardening');
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+    expect(screen.queryByText('Onboarded')).toBeNull();
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(['rep-0142']);
+
+    await fireEvent.click(screen.getByTestId('filter-clear'));
+
+    expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
+    expect(screen.getByText('Ended: no change')).toBeInTheDocument();
+    expect(screen.getByText('Onboarded')).toBeInTheDocument();
+  });
+
+  it('adds and removes the show-text control when window resizes', async () => {
+    const bodyReport: ReportItem = {
+      id: 'rep-0999',
+      from: { project: 'pm-mcp-clients', plan: 'fix-relay' },
+      kind: 'plan.ended',
+      subject: 'Long body test',
+      body: 'Line 1\nLine 2\nLine 3',
+      created_at: '2026-10-16T11:20:00Z',
+    };
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: [bodyReport],
+      unread_count: 1,
+      has_older: false,
+      older_count: 0,
+    });
+
+    render(ReportsView);
+    await screen.findByText('Long body test');
+
+    const bodyNode = document.querySelector('.report-card__body') as HTMLElement;
+    expect(bodyNode).not.toBeNull();
+
+    Object.defineProperty(bodyNode, 'scrollHeight', { configurable: true, value: 80 });
+    Object.defineProperty(bodyNode, 'clientHeight', { configurable: true, value: 30 });
+    window.dispatchEvent(new Event('resize'));
+    await tick();
+
+    expect(screen.getByRole('button', { name: /Show the text/i })).toBeInTheDocument();
+
+    Object.defineProperty(bodyNode, 'clientHeight', { configurable: true, value: 80 });
+    window.dispatchEvent(new Event('resize'));
+    await tick();
+
+    expect(screen.queryByRole('button', { name: /Show the text/i })).toBeNull();
+
+    Object.defineProperty(bodyNode, 'clientHeight', { configurable: true, value: 30 });
+    window.dispatchEvent(new Event('resize'));
+    await tick();
+
+    expect(screen.getByRole('button', { name: /Show the text/i })).toBeInTheDocument();
+  });
+
+  it('draws no filter container when there are no reports to filter', async () => {
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: [],
+      unread_count: 0,
+      has_older: false,
+      older_count: 0,
+    });
+
+    render(ReportsView);
+    await waitFor(() => {
+      expect(screen.getByText('Nothing new')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('triage-filters')).toBeNull();
+  });
+
+  it('has only one h1 heading on screen when detail is open beside the list', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const detailBtn = screen.getAllByRole('button', { name: /Show the details/i })[0];
+    await fireEvent.click(detailBtn);
+
+    await waitFor(() => {
+      expect(document.querySelector('.completion-report')).not.toBeNull();
+    });
+
+    const h1Elements = document.querySelectorAll('h1');
+    expect(h1Elements).toHaveLength(1);
+    expect(h1Elements[0]).toHaveClass('reports-heading');
+  });
+
+  it('gives distinct accessible names carrying the row to the show-text control and the row menu', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const menuBtn = screen.getByRole('button', {
+      name: /Report actions: Ended: merged \(#214\)/i,
+    });
+    expect(menuBtn).toBeInTheDocument();
+
+    const toggleBtn = screen.getByRole('button', {
+      name: /Show the text: Ended: merged \(#214\)/i,
+    });
+    expect(toggleBtn).toBeInTheDocument();
+
+    expect(menuBtn.getAttribute('aria-label')).not.toBe(toggleBtn.getAttribute('aria-label'));
   });
 });

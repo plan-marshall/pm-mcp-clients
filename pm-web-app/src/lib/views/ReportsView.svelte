@@ -158,13 +158,7 @@
     return item.from?.project || MACHINE_GROUP_KEY;
   }
 
-  // The body control is offered only where the clamped line actually hides text. The measurement
-  // runs after the list or either pane changes; a layout-less environment (a unit test) reports no
-  // height at all and keeps the control, so the branch stays reachable there.
-  $effect(() => {
-    void items;
-    void query;
-    void activeDetailPlanId;
+  function measureOverflow(): void {
     const overflow = new Set<string>();
     for (const node of document.querySelectorAll<HTMLElement>('.report-card__body')) {
       const id = node.closest<HTMLElement>('.report-card')?.dataset.reportId;
@@ -175,6 +169,16 @@
       }
     }
     overflowingBodies = overflow;
+  }
+
+  // The body control is offered only where the clamped line actually hides text. The measurement
+  // runs after the list or either pane changes; a layout-less environment (a unit test) reports no
+  // height at all and keeps the control, so the branch stays reachable there.
+  $effect(() => {
+    void items;
+    void query;
+    void activeDetailPlanId;
+    measureOverflow();
   });
 
   /**
@@ -494,14 +498,26 @@
   }
 
   async function markAllShownRead() {
-    if (items.length === 0) return;
-    const ids = items.map((i) => i.id);
+    if (matchingItems.length === 0) return;
+    const shownIds = matchingItems.map((i) => i.id);
+    const shownIdSet = new Set(shownIds);
     try {
-      await apiClient.markAllReportsRead(ids);
-      items = [];
-      retainedReadIds = {};
-      countedReadIds.clear();
-      unreadCount = 0;
+      await apiClient.markAllReportsRead(shownIds);
+      const newlyRead = shownIds.filter((id) => !countedReadIds.has(id));
+      for (const id of newlyRead) countedReadIds.add(id);
+      unreadCount = Math.max(0, unreadCount - newlyRead.length);
+
+      for (const item of matchingItems) {
+        const stillSelected = activeDetailPlanId !== null && planIdOf(item) === activeDetailPlanId;
+        if (stillSelected) {
+          retainedReadIds[item.id] = true;
+        } else {
+          delete retainedReadIds[item.id];
+        }
+      }
+      retainedReadIds = { ...retainedReadIds };
+      items = items.filter((i) => !shownIdSet.has(i.id) || Boolean(retainedReadIds[i.id]));
+
       void refreshReportsCount();
     } catch (err: unknown) {
       retryAction = markAllShownRead;
@@ -878,14 +894,19 @@
   function reportDay(item: ReportItem): string {
     return formatDay(item.created_at, $currentLocale);
   }
+  function bodyToggleLabel(report: ReportItem, open: boolean): string {
+    const action = $t(open ? 'report.body.less' : 'report.body.more');
+    const subject = (report.subject ?? '').trim();
+    return subject ? `${action}: ${subject}` : action;
+  }
 </script>
 
-<svelte:window onkeydown={closeOnEscape} onclick={closeOnOutside} />
+<svelte:window onkeydown={closeOnEscape} onclick={closeOnOutside} onresize={measureOverflow} />
 
 <div class="reports-view">
-  <TriagePage selected={activeDetailPlanId !== null}>
-    <div slot="filters">
-      {#if items.length > 0 && !isLoading}
+  {#if items.length > 0 && !isLoading}
+    <TriagePage selected={activeDetailPlanId !== null}>
+      <div slot="filters">
         <FilterInput
           value={query}
           label={$t('report.filter.label')}
@@ -893,172 +914,187 @@
           resultCount={matchingItems.length}
           onchange={(value) => (query = value)}
         />
-      {/if}
-    </div>
+      </div>
+      <div slot="list">
+        {@render listPane()}
+      </div>
+      <div slot="detail">
+        {@render detailPane()}
+      </div>
+    </TriagePage>
+  {:else}
+    <TriagePage selected={activeDetailPlanId !== null}>
+      <div slot="list">
+        {@render listPane()}
+      </div>
+      <div slot="detail">
+        {@render detailPane()}
+      </div>
+    </TriagePage>
+  {/if}
+</div>
 
-    <div slot="list">
-      <div class="reports-container">
-        <!-- Header -->
-        <header class="reports-header">
-          <div class="reports-header__title-row">
-            <h1 class="reports-heading" tabindex="-1">{$t('report.list.title')}</h1>
-            {#if unreadCount > 0}
-              <span class="unread-count" data-testid="unread-count">
-                {$t('report.list.unread', { count: unreadCount })}
-              </span>
-            {/if}
-            <div class="reports-header__actions">
-              {#if items.length > 0}
+{#snippet listPane()}
+  <div class="reports-container">
+    <!-- Header -->
+    <header class="reports-header">
+      <div class="reports-header__title-row">
+        <h1 class="reports-heading" tabindex="-1">{$t('report.list.title')}</h1>
+        {#if unreadCount > 0}
+          <span class="unread-count" data-testid="unread-count">
+            {$t('report.list.unread', { count: unreadCount })}
+          </span>
+        {/if}
+        <div class="reports-header__actions">
+          {#if items.length > 0}
+            <Button
+              variant="secondary"
+              size="small"
+              onclick={markAllShownRead}
+              title={$t('report.action.mark_all_read.title')}
+            >
+              {$t('report.action.mark_all_read')}
+            </Button>
+          {/if}
+        </div>
+      </div>
+    </header>
+
+    {#if actionError}
+      <div class="error-line" role="alert">
+        <p>{actionError}</p>
+        <Button variant="ghost" size="small" onclick={retryFailedAction}>
+          {$t('web.common.retry')}
+        </Button>
+      </div>
+    {/if}
+
+    {#if isLoading}
+      <div class="loading-state">
+        <Skeleton shape="card" rows={3} label={$t('report.list.loading')} />
+      </div>
+    {:else if loadError}
+      <ErrorState
+        title={$t('report.list.load_failed')}
+        message={loadError}
+        actionLabel={$t('web.common.retry')}
+        onAct={loadReports}
+        titleLevel={2}
+      />
+    {:else if items.length === 0}
+      <EmptyState
+        title={$t('report.list.empty.title')}
+        message={$t('report.list.empty.message')}
+        titleLevel={2}
+      />
+    {:else if matchingItems.length === 0}
+      <div class="empty-state" data-testid="report-filter-empty">
+        <p class="empty-title">{$t('report.filter.no_matches')}</p>
+      </div>
+    {:else}
+      <!-- Grouped List -->
+      <div class="reports-tree">
+        {#each groupedReports as pGroup (pGroup.key)}
+          <section class="project-section">
+            <h2 class="project-header">
+              <span class="project-glyph" aria-hidden="true"><Icon name="state.dot" size={16} /></span>
+              {#if pGroup.isMachine}
+                <span class="project-title">{$t('report.list.machine')}</span>
+              {:else}
                 <Button
-                  variant="secondary"
+                  variant="ghost"
                   size="small"
-                  onclick={markAllShownRead}
-                  title={$t('report.action.mark_all_read.title')}
+                  aria-label={$t('report.from.open_project', { project: pGroup.key })}
+                  onclick={() =>
+                    navigateTo('projects', { explorerProjectId: pGroup.key })}
                 >
-                  {$t('report.action.mark_all_read')}
+                  {pGroup.key}
                 </Button>
               {/if}
-            </div>
-          </div>
-        </header>
+            </h2>
 
-        {#if actionError}
-          <div class="error-line" role="alert">
-            <p>{actionError}</p>
-            <Button variant="ghost" size="small" onclick={retryFailedAction}>
-              {$t('web.common.retry')}
-            </Button>
-          </div>
-        {/if}
-
-        {#if isLoading}
-          <div class="loading-state">
-            <Skeleton shape="card" rows={3} label={$t('report.list.loading')} />
-          </div>
-        {:else if loadError}
-          <ErrorState
-            title={$t('report.list.load_failed')}
-            message={loadError}
-            actionLabel={$t('web.common.retry')}
-            onAct={loadReports}
-            titleLevel={2}
-          />
-        {:else if items.length === 0}
-          <EmptyState
-            title={$t('report.list.empty.title')}
-            message={$t('report.list.empty.message')}
-            titleLevel={2}
-          />
-        {:else if matchingItems.length === 0}
-          <div class="empty-state" data-testid="report-filter-empty">
-            <p class="empty-title">{$t('report.filter.no_matches')}</p>
-          </div>
-        {:else}
-          <!-- Grouped List -->
-          <div class="reports-tree">
-            {#each groupedReports as pGroup (pGroup.key)}
-              <section class="project-section">
-                <h2 class="project-header">
-                  <span class="project-glyph" aria-hidden="true"><Icon name="state.dot" size={16} /></span>
-                  {#if pGroup.isMachine}
-                    <span class="project-title">{$t('report.list.machine')}</span>
-                  {:else}
+            <div class="project-content">
+              <!-- Epic groups -->
+              {#each Object.entries(pGroup.epicGroups) as [epicName, epicItems] (epicName)}
+                <div class="epic-section">
+                  <h3 class="epic-header">
+                    <span class="epic-glyph" aria-hidden="true">◇</span>
                     <Button
                       variant="ghost"
                       size="small"
-                      aria-label={$t('report.from.open_project', { project: pGroup.key })}
-                      onclick={() =>
-                        navigateTo('projects', { explorerProjectId: pGroup.key })}
+                      aria-label={$t('report.from.open_epic', { epic: epicName })}
+                      onclick={() => openFromPart('epic', epicItems[0])}
                     >
-                      {pGroup.key}
+                      {epicName}
                     </Button>
-                  {/if}
-                </h2>
-
-                <div class="project-content">
-                  <!-- Epic groups -->
-                  {#each Object.entries(pGroup.epicGroups) as [epicName, epicItems] (epicName)}
-                    <div class="epic-section">
-                      <h3 class="epic-header">
-                        <span class="epic-glyph" aria-hidden="true">◇</span>
-                        <Button
-                          variant="ghost"
-                          size="small"
-                          aria-label={$t('report.from.open_epic', { epic: epicName })}
-                          onclick={() => openFromPart('epic', epicItems[0])}
-                        >
-                          {epicName}
-                        </Button>
-                      </h3>
-                      <div class="items-list">
-                        {#each epicItems as item (item.id)}
-                          {@render reportCard(item)}
-                        {/each}
-                      </div>
-                    </div>
-                  {/each}
-
-                  <!-- Plan items under project without epic -->
-                  {#if pGroup.planItems.length > 0}
-                    <div class="items-list">
-                      {#each pGroup.planItems as item (item.id)}
-                        {@render reportCard(item)}
-                      {/each}
-                    </div>
-                  {/if}
-
-                  <!-- Project-level items -->
-                  {#if pGroup.projectItems.length > 0}
-                    <div class="items-list">
-                      {#each pGroup.projectItems as item (item.id)}
-                        {@render reportCard(item)}
-                      {/each}
-                    </div>
-                  {/if}
+                  </h3>
+                  <div class="items-list">
+                    {#each epicItems as item (item.id)}
+                      {@render reportCard(item)}
+                    {/each}
+                  </div>
                 </div>
-              </section>
-            {/each}
-          </div>
-        {/if}
+              {/each}
 
-        <!-- Pagination -->
-        {#if hasOlder && !isLoading && !loadError && items.length > 0}
-          {#if query.trim().length > 0}
-            <p class="loaded-only-hint" data-testid="loaded-only-hint">
-              {$t('report.filter.loaded_only')}
-            </p>
-          {/if}
-          <div class="pagination-bar">
-            <Button
-              variant="secondary"
-              disabled={isLoadingOlder}
-              onclick={loadOlder}
-              title={$t('report.list.show_older.title')}
-            >
-              {#if isLoadingOlder}
-                {$t('report.list.loading_older')}
-              {:else if olderCount > 0}
-                {$t('report.list.show_older', { count: olderCount })}
-              {:else}
-                {$t('report.list.show_older_plain')}
+              <!-- Plan items under project without epic -->
+              {#if pGroup.planItems.length > 0}
+                <div class="items-list">
+                  {#each pGroup.planItems as item (item.id)}
+                    {@render reportCard(item)}
+                  {/each}
+                </div>
               {/if}
-            </Button>
-          </div>
-        {/if}
-      </div>
-    </div>
 
-    <div slot="detail">
-      {#if activeDetailPlanId}
-        {#key activeDetailPlanId}
-          <CompletionReportView planId={activeDetailPlanId} onClose={closeDetail} />
-        {/key}
-      {:else}
-        <p class="split-placeholder">{$t('report.split.select')}</p>
+              <!-- Project-level items -->
+              {#if pGroup.projectItems.length > 0}
+                <div class="items-list">
+                  {#each pGroup.projectItems as item (item.id)}
+                    {@render reportCard(item)}
+                  {/each}
+                </div>
+              {/if}
+            </div>
+          </section>
+        {/each}
+      </div>
+    {/if}
+
+    <!-- Pagination -->
+    {#if hasOlder && !isLoading && !loadError && items.length > 0}
+      {#if query.trim().length > 0}
+        <p class="loaded-only-hint" data-testid="loaded-only-hint">
+          {$t('report.filter.loaded_only')}
+        </p>
       {/if}
-    </div>
-  </TriagePage>
-</div>
+      <div class="pagination-bar">
+        <Button
+          variant="secondary"
+          disabled={isLoadingOlder}
+          onclick={loadOlder}
+          title={$t('report.list.show_older.title')}
+        >
+          {#if isLoadingOlder}
+            {$t('report.list.loading_older')}
+          {:else if olderCount > 0}
+            {$t('report.list.show_older', { count: olderCount })}
+          {:else}
+            {$t('report.list.show_older_plain')}
+          {/if}
+        </Button>
+      </div>
+    {/if}
+  </div>
+{/snippet}
+
+{#snippet detailPane()}
+  {#if activeDetailPlanId}
+    {#key activeDetailPlanId}
+      <CompletionReportView planId={activeDetailPlanId} onClose={closeDetail} />
+    {/key}
+  {:else}
+    <p class="split-placeholder">{$t('report.split.select')}</p>
+  {/if}
+{/snippet}
 
 {#snippet reportCard(item: ReportItem)}
   {@const isActive = activeDetailPlanId !== null && activeDetailPlanId === planIdOf(item)}
@@ -1139,6 +1175,7 @@
           variant="ghost"
           size="small"
           aria-expanded={bodyOpen}
+          aria-label={bodyToggleLabel(item, bodyOpen)}
           onclick={() => (shownBodies[item.id] = !bodyOpen)}
         >
           {bodyOpen ? $t('report.body.less') : $t('report.body.more')}
@@ -1178,8 +1215,8 @@
           icon="act.more"
           size="sm"
           data-testid="report-row-menu"
-          label={$t('report.list.row_menu')}
-          aria-label={rowMenuLabel(item)}
+          label={rowMenuLabel(item)}
+          visibleLabel={$t('report.list.row_menu')}
           advisory={$t('report.list.row_menu.title')}
           aria-haspopup="menu"
           aria-expanded={openMenuId === item.id}
