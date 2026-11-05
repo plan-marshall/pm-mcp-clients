@@ -548,6 +548,7 @@ class EntryFlowTest {
             var resultIntro = new EntryFlow(context, aspects).run(outIntro, createReader("q\n"));
             var textIntro = writerIntro.toString();
             assertEquals(List.of("setup 0/8"), resultIntro.initialBadges());
+            assertEquals(List.of(ConsoleBadge.machineSetup("setup 0/8")), resultIntro.consoleBadges());
             assertTrue(textIntro.contains("8 steps."),
                                 "intro line must say '8 steps.' when 8 aspects are configured");
             assertFalse(textIntro.contains("Seven steps."),
@@ -575,6 +576,7 @@ class EntryFlowTest {
             var resultResume = new EntryFlow(contextResume, aspects).run(outResume, createReader("q\n"));
             var textResume = writerResume.toString();
             assertEquals(List.of("setup 3/8"), resultResume.initialBadges());
+            assertEquals(List.of(ConsoleBadge.machineSetup("setup 3/8")), resultResume.consoleBadges());
             assertAll(
                                 () -> assertTrue(textResume.contains("step 3 of 8"), "stopped_at must show 3 of 8"),
                                 () -> assertTrue(textResume.contains("[4/8]"), "resume line must show [4/8] next step")

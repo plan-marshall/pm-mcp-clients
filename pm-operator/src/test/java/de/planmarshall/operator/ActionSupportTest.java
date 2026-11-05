@@ -23,6 +23,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -111,16 +112,16 @@ class ActionSupportTest {
     @DisplayName("chat follow-up in console maps interrupt to 0 at its call site")
     void chatFollowUpInterruptLeavesBack() throws Exception {
         var entry = new EntryResource("ent-1", EntryKind.PLAN, "pm-mcp-clients", StartState.SOURCES,
-                null, null, List.of(), List.of(), true, true, null, null, List.of(), null);
+                            null, null, List.of(), List.of(), true, true, null, null, List.of(), null);
         var startState = StartStateResource.of(entry, null, null, null, null, List.of()).toJson();
 
         runtime((request, response) -> {
             if ("/api/v1/plans/p-1/chat".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
-                        {"chat_id":"c-1","subject_id":"p-1","subject_kind":"plan",
-                         "role":"replan","scope":"archive","state":"open","turns":[],
-                         "proposal":{"summary":"Follow-up plan"}}
-                        """);
+                                    {"chat_id":"c-1","subject_id":"p-1","subject_kind":"plan",
+                                     "role":"replan","scope":"archive","state":"open","turns":[],
+                                     "proposal":{"summary":"Follow-up plan"}}
+                                    """);
             } else if ("/api/v1/projects".equals(request.target())) {
                 response.json(200, "{\"projects\":[{\"project_id\":\"pm-mcp-clients\"}]}");
             } else if ("/api/v1/projects/pm-mcp-clients/entries".equals(request.target()) && "POST".equals(request.method())) {
@@ -131,31 +132,43 @@ class ActionSupportTest {
         });
 
         var virtual = VirtualScreenTerminal.create(80, 24);
-        var env = new java.util.HashMap<>(fixture.environment());
+        var env = new HashMap<>(fixture.environment());
         env.put("LANG", "en_US.UTF-8");
         var activeContext = new OperatorContext(env, fixture.base().getParent(), true,
-                ClientEnvironment.capture(env), virtual::terminal, null);
+                            ClientEnvironment.capture(env), virtual::terminal, null);
         activeContext.setConsoleActive(true);
 
         var code = interruptedAt(virtual, "Proposed follow-up", "Sources",
-                () -> ActionSupport.chat(activeContext, spec, "plan", "p-1", null));
+                            () -> ActionSupport.chat(activeContext, spec, "plan", "p-1", null));
         assertEquals(0, code, "the follow-up interrupt leaves back with 0");
+    }
+
+    @Test
+    @DisplayName("leaveBack preserves non-interrupt exit codes and maps interrupted to 0")
+    void leaveBackPreservesNonInterruptExitCodes() {
+        assertAll(
+                            () -> assertEquals(0, ActionSupport.leaveBack(0)),
+                            () -> assertEquals(1, ActionSupport.leaveBack(1)),
+                            () -> assertEquals(2, ActionSupport.leaveBack(2)),
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, ActionSupport.leaveBack(PmOperator.EXIT_FAILURE)),
+                            () -> assertEquals(0, ActionSupport.leaveBack(StartPrompt.EXIT_INTERRUPTED))
+        );
     }
 
     @Test
     @DisplayName("OperatorActions.chatAboutEnded maps interrupt to 0 at its call site")
     void chatAboutEndedInterruptLeavesBack() throws Exception {
         var entry = new EntryResource("ent-1", EntryKind.PLAN, "pm-mcp-clients", StartState.SOURCES,
-                null, null, List.of(), List.of(), true, true, null, null, List.of(), null);
+                            null, null, List.of(), List.of(), true, true, null, null, List.of(), null);
         var startState = StartStateResource.of(entry, null, null, null, null, List.of()).toJson();
 
         runtime((request, response) -> {
             if ("/api/v1/plans/p-1/chat".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
-                        {"chat_id":"c-1","subject_id":"p-1","subject_kind":"plan",
-                         "role":"replan","scope":"archive","state":"open","turns":[],
-                         "proposal":{"summary":"Follow-up plan"}}
-                        """);
+                                    {"chat_id":"c-1","subject_id":"p-1","subject_kind":"plan",
+                                     "role":"replan","scope":"archive","state":"open","turns":[],
+                                     "proposal":{"summary":"Follow-up plan"}}
+                                    """);
             } else if ("/api/v1/projects".equals(request.target())) {
                 response.json(200, "{\"projects\":[{\"project_id\":\"pm-mcp-clients\"}]}");
             } else if ("/api/v1/projects/pm-mcp-clients/entries".equals(request.target()) && "POST".equals(request.method())) {
@@ -166,25 +179,27 @@ class ActionSupportTest {
         });
 
         var virtual = VirtualScreenTerminal.create(80, 24);
-        var env = new java.util.HashMap<>(fixture.environment());
+        var env = new HashMap<>(fixture.environment());
         env.put("LANG", "en_US.UTF-8");
         var activeContext = new OperatorContext(env, fixture.base().getParent(), true,
-                ClientEnvironment.capture(env), virtual::terminal, null);
+                            ClientEnvironment.capture(env), virtual::terminal, null);
 
         var code = interruptedAt(virtual, "Proposed follow-up", "Sources",
-                () -> OperatorActions.chatAboutEnded(activeContext, new PrintWriter(out, true), "plan", "p-1",
-                        "pm-mcp-clients", "en"));
+                            () -> OperatorActions.chatAboutEnded(activeContext, new PrintWriter(out, true), "plan", "p-1",
+                                                "pm-mcp-clients", "en"));
         assertEquals(0, code, "the ended work chat interrupt leaves back with 0");
     }
 
     private int interruptedAt(VirtualScreenTerminal virtual, String proposalMarker,
-                              String interruptMarker, Handler handler) throws Exception {
+                        String interruptMarker, Handler handler) throws Exception {
         var code = new AtomicInteger(-1);
         var failure = new AtomicReference<Throwable>();
         var reader = Thread.ofPlatform().name("handler-under-test").start(() -> {
             try {
                 code.set(handler.run());
-            } catch (Throwable failed) {
+            }
+            /*TODO: Catch specific not Throwable. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            catch (Throwable failed) {
                 failure.set(failed);
             }
         });

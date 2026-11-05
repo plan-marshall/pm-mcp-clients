@@ -38,7 +38,7 @@ class ConsoleSettingsTranscriptTest {
     void machineSettings() throws Exception {
         var dialogue = TranscriptDialogues.consoleSettings(FIXED_CLOCK);
         assertTrue(dialogue.rendered().contains("last used 1 d ago"),
-                () -> "raw output should reflect fixed clock: " + dialogue.rendered());
+                            () -> "raw output should reflect fixed clock: " + dialogue.rendered());
         dialogue.assertRecorded();
     }
 
@@ -47,7 +47,7 @@ class ConsoleSettingsTranscriptTest {
     void machineSettingsClockMovedForward120Days() throws Exception {
         var dialogue = TranscriptDialogues.consoleSettings(FIXED_CLOCK_120_DAYS);
         assertTrue(dialogue.rendered().contains("last used 16 Oct 14:02"),
-                () -> "raw output should reflect absolute date with clock 120 days ahead: " + dialogue.rendered());
+                            () -> "raw output should reflect absolute date with clock 120 days ahead: " + dialogue.rendered());
         dialogue.assertRecorded();
     }
 }

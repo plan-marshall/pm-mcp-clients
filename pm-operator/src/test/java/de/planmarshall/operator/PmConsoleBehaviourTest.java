@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
 
+import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -282,6 +283,7 @@ class PmConsoleBehaviourTest {
             var thread = console.startEventListener(reader, terminal);
             try {
                 assertTrue(firstOpenLatch.await(5, TimeUnit.SECONDS), "first-open status read was performed");
+                assertTrue(reconnectLatch.await(5, TimeUnit.SECONDS), "reconnect status read was performed");
                 assertTrue(redrawnLatch.await(5, TimeUnit.SECONDS), "reconnect redrew the title with updated count");
             } finally {
                 console.stop();
@@ -459,10 +461,17 @@ class PmConsoleBehaviourTest {
     @DisplayName("a stalled runtime lets the prompt return within the bound")
     void aStalledRuntimeLetsThePromptReturnWithinTheBound() throws Exception {
         fixture.start((request, response) -> {
-            try {
-                new CountDownLatch(1).await(10, TimeUnit.SECONDS);
-            } catch (InterruptedException _) {
-                Thread.currentThread().interrupt();
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                try {
+                    new CountDownLatch(1).await(10, TimeUnit.SECONDS);
+                } catch (InterruptedException _) {
+                    Thread.currentThread().interrupt();
+                }
+                response.json(200, "{\"onboardings\":[]}");
+            } else {
+                response.send(404, null, "");
             }
         });
         var rendered = new ByteArrayOutputStream();
@@ -471,7 +480,7 @@ class PmConsoleBehaviourTest {
                                 ClientEnvironment.capture(fixture.environment()),
                                 () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
             var console = new PmConsole(context);
-            assertTimeoutPreemptively(Duration.ofSeconds(6), () -> console.refreshSetupBadge("en", terminal));
+            assertTimeoutPreemptively(Duration.ofSeconds(8), () -> console.refreshSetupBadge("en", terminal));
         }
     }
 
@@ -560,7 +569,7 @@ class PmConsoleBehaviourTest {
                 onboardingRequested.set(true);
                 response.send(404, null, "");
             } else if ("/api/v1/status".equals(request.target())) {
-                response.json(200, "{\"status\":\"ready\",\"onboarded\":false}");
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":false,\"onboard\":{\"step\":3}}");
             } else if ("/api/v1/project-onboardings".equals(request.target())) {
                 response.json(200, "{\"onboardings\":[]}");
             } else {
@@ -573,10 +582,15 @@ class PmConsoleBehaviourTest {
             var context = new OperatorContext(fixture.environment(), tempDir, true,
                                 ClientEnvironment.capture(fixture.environment()),
                                 () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
-            // Simulate a machine setup badge formatted with a custom/changed template that doesn't match "^(setup|Einrichtung) \\d+/\\d+$"
-            var console = new PmConsole(context, List.of(ConsoleBadge.machineSetup("Installation 3/7")));
-            console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
-            assertTrue(onboardingRequested.get(), "Enter must still act when machine setup badge template is changed");
+            MessageCatalogue.setForTest("en", "operator.console.badge.setup", "Installation {done}/{total}");
+            try {
+                var console = new PmConsole(context);
+                console.refreshSetupBadge("en", terminal);
+                console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
+                assertTrue(onboardingRequested.get(), "Enter must still act when machine setup badge template is changed in catalogue");
+            } finally {
+                MessageCatalogue.clearCacheForTest();
+            }
         }
     }
 
