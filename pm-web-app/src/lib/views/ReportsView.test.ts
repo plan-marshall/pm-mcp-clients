@@ -79,6 +79,8 @@ describe('ReportsView component', () => {
     vi.spyOn(apiClient, 'markReportRead').mockResolvedValue(undefined);
     vi.spyOn(apiClient, 'markAllReportsRead').mockResolvedValue({ marked_count: 3 });
     eventHandler = null;
+    window.innerWidth = 1440;
+    window.dispatchEvent(new Event('resize'));
     vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((handler) => {
       eventHandler = handler;
       return () => {};
@@ -140,7 +142,7 @@ describe('ReportsView component', () => {
     render(ReportsView);
 
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
     expect(apiClient.getPlanCompletion).toHaveBeenCalledWith('fix-relay');
 
@@ -165,7 +167,7 @@ describe('ReportsView component', () => {
     const details = await screen.findAllByRole('button', { name: /Show the details/i });
     await fireEvent.click(details[0]);
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
     expect(get(runtimeStore).selectedReportDetailPlanId).toBe('fix-relay');
 
@@ -214,7 +216,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(details[0]);
 
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
     const active = document.querySelector('.report-card--active') as HTMLElement;
     expect(active).toHaveAttribute('data-unread', 'false');
@@ -270,7 +272,7 @@ describe('ReportsView component', () => {
     const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
     await fireEvent.click(markAllBtn);
 
-    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(['rep-0142', 'rep-0139', 'rep-0131']);
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(undefined);
   });
 
   it('renders empty state when there are no unread reports', async () => {
@@ -585,7 +587,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(details[0]);
 
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
     expect(document.querySelector('.reports-tree')).not.toBeNull();
     const active = document.querySelector('.report-card--active');
@@ -602,7 +604,7 @@ describe('ReportsView component', () => {
     await screen.findByText('Ended: merged (#214)');
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
 
     // The runtime announces a report the view cannot place, so it reloads the list; the server no
@@ -768,7 +770,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
 
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
 
     // The runtime answers the request with an event that can overtake the HTTP response.
@@ -823,7 +825,7 @@ describe('ReportsView component', () => {
     await screen.findByText('Ended: merged (#214)');
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
 
     // The operator closes the detail before the read request settles.
@@ -855,7 +857,7 @@ describe('ReportsView component', () => {
     await screen.findByText('Ended: merged (#214)');
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
     await fireEvent.click(screen.getByRole('button', { name: /^Back$/i }));
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
@@ -882,7 +884,7 @@ describe('ReportsView component', () => {
     await screen.findByText('Ended: merged (#214)');
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
 
     // The event overtakes the HTTP response and counts the read.
@@ -914,7 +916,7 @@ describe('ReportsView component', () => {
     await screen.findByText('Ended: merged (#214)');
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
 
     // The response settles first and counts the read.
@@ -973,7 +975,7 @@ describe('ReportsView component', () => {
     await screen.findByText('Ended: merged (#214)');
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
 
     eventHandler?.('report.read', { report_id: 'rep-0142' });
@@ -1135,7 +1137,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(detailBtn);
 
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
 
     const h1Elements = document.querySelectorAll('h1');

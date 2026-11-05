@@ -85,7 +85,8 @@
   }
 
   /** The normalized query tokens, computed once per keystroke rather than once per item. */
-  const queryTokens = $derived(tokenize(query));
+  const queryTokens = $derived(tokenize(query).filter((t) => /\p{L}|\p{N}/u.test(t)));
+  const isFiltered = $derived(queryTokens.length > 0);
 
   /** One normalized haystack per loaded report, rebuilt only when the list or locale changes. */
   const reportHaystacks = $derived.by(() => {
@@ -105,7 +106,7 @@
 
   /** The loaded reports that match the filter, in the served order. */
   const matchingItems = $derived.by(() => {
-    if (queryTokens.length === 0) return items;
+    if (!isFiltered) return items;
     return items.filter((item) => matchesHaystack(queryTokens, reportHaystacks.get(item.id) ?? ''));
   });
 
@@ -163,6 +164,15 @@
       }
     }
     overflowingBodies = overflow;
+  }
+
+  let isNarrow = $state(typeof window !== 'undefined' ? window.innerWidth < 1100 : false);
+
+  function handleWindowResize(): void {
+    if (typeof window !== 'undefined') {
+      isNarrow = window.innerWidth < 1100;
+    }
+    measureOverflow();
   }
 
   // The body control is offered only where the clamped line actually hides text. The measurement
@@ -493,11 +503,12 @@
 
   async function markAllShownRead() {
     if (matchingItems.length === 0) return;
-    const isFiltered = query.trim().length > 0;
+    const isFiltered = queryTokens.length > 0;
     const shownIds = matchingItems.map((i) => i.id);
     const shownIdSet = new Set(shownIds);
+    for (const id of shownIds) pendingReadIds.add(id);
     try {
-      await apiClient.markAllReportsRead(shownIds);
+      await apiClient.markAllReportsRead(isFiltered ? shownIds : undefined);
       if (isFiltered) {
         const newlyRead = shownIds.filter((id) => !countedReadIds.has(id));
         for (const id of newlyRead) countedReadIds.add(id);
@@ -514,8 +525,16 @@
         retainedReadIds = { ...retainedReadIds };
         items = items.filter((i) => !shownIdSet.has(i.id) || Boolean(retainedReadIds[i.id]));
       } else {
-        items = [];
-        retainedReadIds = {};
+        for (const item of items) {
+          const stillSelected = activeDetailPlanId !== null && planIdOf(item) === activeDetailPlanId;
+          if (stillSelected) {
+            retainedReadIds[item.id] = true;
+          } else {
+            delete retainedReadIds[item.id];
+          }
+        }
+        retainedReadIds = { ...retainedReadIds };
+        items = items.filter((i) => Boolean(retainedReadIds[i.id]));
         countedReadIds.clear();
         unreadCount = 0;
       }
@@ -524,6 +543,8 @@
     } catch (err: unknown) {
       retryAction = markAllShownRead;
       actionError = (err as Error)?.message || $t('report.list.mark_all_failed');
+    } finally {
+      for (const id of shownIds) pendingReadIds.delete(id);
     }
   }
 
@@ -800,37 +821,28 @@
   }
 </script>
 
-<svelte:window onresize={measureOverflow} />
+<svelte:window onresize={handleWindowResize} />
 
 <div class="reports-view">
-  {#if items.length > 0 && !isLoading}
-    <TriagePage selected={activeDetailPlanId !== null}>
-      <div slot="filters">
+  <TriagePage selected={activeDetailPlanId !== null} hasFilters={items.length > 0}>
+    <div slot="filters">
+      {#if items.length > 0}
         <FilterInput
           value={query}
           label={$t('report.filter.label')}
           placeholder={$t('report.filter.placeholder')}
-          resultCount={matchingItems.length}
+          resultCount={isFiltered ? matchingItems.length : undefined}
           onchange={(value) => (query = value)}
         />
-      </div>
-      <div slot="list">
-        {@render listPane()}
-      </div>
-      <div slot="detail">
-        {@render detailPane()}
-      </div>
-    </TriagePage>
-  {:else}
-    <TriagePage selected={activeDetailPlanId !== null}>
-      <div slot="list">
-        {@render listPane()}
-      </div>
-      <div slot="detail">
-        {@render detailPane()}
-      </div>
-    </TriagePage>
-  {/if}
+      {/if}
+    </div>
+    <div slot="list">
+      {@render listPane()}
+    </div>
+    <div slot="detail">
+      {@render detailPane()}
+    </div>
+  </TriagePage>
 </div>
 
 {#snippet listPane()}
@@ -838,7 +850,11 @@
     <!-- Header -->
     <header class="reports-header">
       <div class="reports-header__title-row">
-        <h1 class="reports-heading" tabindex="-1">{$t('report.list.title')}</h1>
+        {#if !isNarrow || activeDetailPlanId === null}
+          <h1 class="reports-heading" tabindex="-1">{$t('report.list.title')}</h1>
+        {:else}
+          <h2 class="reports-heading" tabindex="-1">{$t('report.list.title')}</h2>
+        {/if}
         {#if unreadCount > 0}
           <span class="unread-count" data-testid="unread-count">
             {$t('report.list.unread', { count: unreadCount })}
@@ -959,8 +975,8 @@
     {/if}
 
     <!-- Pagination -->
-    {#if hasOlder && !isLoading && !loadError && items.length > 0}
-      {#if query.trim().length > 0}
+    {#if hasOlder && !isLoading && !loadError}
+      {#if isFiltered}
         <p class="loaded-only-hint" data-testid="loaded-only-hint">
           {$t('report.filter.loaded_only')}
         </p>
@@ -988,7 +1004,11 @@
 {#snippet detailPane()}
   {#if activeDetailPlanId}
     {#key activeDetailPlanId}
-      <CompletionReportView planId={activeDetailPlanId} onClose={closeDetail} />
+      <CompletionReportView
+        planId={activeDetailPlanId}
+        titleLevel={isNarrow ? 1 : 2}
+        onClose={closeDetail}
+      />
     {/key}
   {:else}
     <p class="split-placeholder">{$t('report.split.select')}</p>
