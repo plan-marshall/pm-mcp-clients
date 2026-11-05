@@ -122,14 +122,48 @@
   let automatic = $derived(autoValue ?? autoStart ?? actions?.auto_enabled !== false);
   let commonFiles = $derived(actions?.overlap_max_files ?? 0);
 
+  /**
+   * The plan acts the panel handles: the runtime's own acts, and the three it routes itself
+   * (`resolve_hold`, `report`, `follow_up`). `decision` is the plan page's, so it is not here.
+   */
+  const PLAN_ACTS_HANDLED = new Set([
+    'pause',
+    'start',
+    'cancel',
+    'abandon',
+    'chat',
+    'settings',
+    'resolve_hold',
+    'report',
+    'follow_up',
+  ]);
+  /** The epic acts the panel handles. */
+  const EPIC_ACTS_HANDLED = new Set([
+    'next',
+    'findings',
+    'watches',
+    'decompose',
+    'chat',
+    'auto',
+    'common_files',
+    'archive',
+    'cancel',
+  ]);
+
+  /** The acts of the subject's kind the panel runs; anything else a runtime offers is dropped. */
+  let handledActs = $derived(subjectKind === 'epic' ? EPIC_ACTS_HANDLED : PLAN_ACTS_HANDLED);
+
   /** The state the acts of this panel are derived from. */
   let actState = $derived(planState());
   let actSpecs = $derived(
     ended
       ? [{ id: 'chat', labelKey: 'control.plan.chat', advisoryKey: 'control.plan.chat_ended.title', role: 'secondary' as const }]
-      : // The panel posts only the acts it handles itself. `decision` is the plan page's own act
-        // (PLAN-55); leaving it out keeps a primary the panel cannot run off the bar.
-        actsFor(subjectKind, actState, actions?.actions).filter((spec) => spec.id !== 'decision'),
+      : // Only the acts this panel can run reach the bar: an id the runtime offers beyond this set
+        // (the plan page's `decision` among them) would otherwise be posted to a route that does
+        // not take it, or drawn with a label no catalogue carries.
+        actsFor(subjectKind, actState, actions?.actions).filter((spec) =>
+          handledActs.has(spec.id),
+        ),
   );
   let barActs = $derived(actSpecs.map(toBarAct));
 
@@ -353,17 +387,15 @@
       void openChat();
       return;
     }
-    // The plan page owns the decision; the panel never posts it as an act of its own.
-    if (id === 'decision') {
-      return;
-    }
     void handleAction(id);
   }
 
   /** @param id the chosen act of an epic */
   function chooseEpic(id: string): void {
     if (id === 'next') {
-      if (scope > 0 && (running ?? 0) >= scope) {
+      // A count the view does not know cannot be read as "a place is free": ask, and say that the
+      // count is unknown, instead of showing it as none.
+      if (running === null || (scope > 0 && running >= scope)) {
         openDialog('raise');
         return;
       }
@@ -380,6 +412,8 @@
       return;
     }
     if (id === 'cancel') {
+      // The dialogue is new: a refusal of the attempt before it must not stand in it.
+      failure = '';
       cancelWithPlans = true;
       cancelReason = '';
       epicCancelOpen = true;
@@ -754,7 +788,8 @@
 
   /**
    * Opens the hold on a fresh read: an earlier read may have failed, and the dialogue needs the
-   * hold the runtime reports now. A failed read is reported instead of leaving a silent click.
+   * hold the runtime reports now. A failed read is reported instead of opening a dialogue whose
+   * hold nobody confirmed any more.
    */
   async function openHold(): Promise<void> {
     holdOutcome = null;
@@ -763,6 +798,7 @@
         holds = await apiClient.getPlanHolds(subjectId);
       } catch (err: unknown) {
         failure = $t('control.hold.act_failed', { reason: reasonOf(err) });
+        return;
       }
     }
     holdOpen = true;
@@ -889,13 +925,21 @@
         </div>
       {:else if dialog === 'raise'}
         <h4 class="control-dialog__title" id={titleId}>{$t('control.epic.next_any')}</h4>
-        <p class="control-dialog__line">
-          {$t('control.epic.scope_full', {
-            epic: subjectId,
-            running: running ?? 0,
-            scope,
-            plan: nextPlan,
-          })}
+        <p class="control-dialog__line" data-testid="raise-scope">
+          {#if running === null}
+            {$t('control.epic.scope_unknown', {
+              epic: subjectId,
+              scope,
+              plan: nextPlan,
+            })}
+          {:else}
+            {$t('control.epic.scope_full', {
+              epic: subjectId,
+              running,
+              scope,
+              plan: nextPlan,
+            })}
+          {/if}
         </p>
         <div class="control-dialog__actions">
           <Button variant="secondary" data-testid="raise-leave" on:click={closeDialog}>

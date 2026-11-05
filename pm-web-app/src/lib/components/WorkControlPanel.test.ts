@@ -300,6 +300,113 @@ describe('WorkControlPanel component', () => {
     expect(screen.queryByTestId('epic-cancel-plans')).not.toBeInTheDocument();
   });
 
+  it('clears the refusal of the last epic cancel when the dialogue opens again', async () => {
+    vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue({
+      subject_id: 'relay-hardening',
+      subject_kind: 'epic',
+      state: 'running',
+      overlap_max_files: 0,
+      actions: [{ action: 'cancel', available: true }],
+    });
+    vi.spyOn(apiClient, 'applyEpicAction').mockRejectedValue(new Error('the epic is landing'));
+    render(WorkControlPanel, { props: { subjectId: 'relay-hardening', subjectKind: 'epic' } });
+
+    await openOverflow();
+    await fireEvent.click(screen.getByTestId('action-cancel'));
+    await screen.findByTestId('confirm-dialog');
+    await fireEvent.input(screen.getByTestId('epic-cancel-reason'), {
+      target: { value: 'superseded' },
+    });
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+    expect(await screen.findByTestId('epic-cancel-failure')).toHaveTextContent('the epic is landing');
+
+    // The operator keeps the epic and opens the dialogue again: the last refusal belonged to the
+    // attempt before, not to this one.
+    await fireEvent.click(screen.getByTestId('confirm-dialog-cancel'));
+    await openOverflow();
+    await fireEvent.click(screen.getByTestId('action-cancel'));
+
+    expect(await screen.findByTestId('confirm-dialog')).toBeInTheDocument();
+    expect(screen.queryByTestId('epic-cancel-failure')).not.toBeInTheDocument();
+  });
+
+  it('says the running count is unknown in the raise dialogue instead of naming zero', async () => {
+    vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue({
+      subject_id: 'relay-hardening',
+      subject_kind: 'epic',
+      state: 'running',
+      actions: [{ action: 'next', available: true }],
+    });
+    const apply = vi.spyOn(apiClient, 'applyEpicAction').mockResolvedValue(running);
+    render(WorkControlPanel, {
+      props: {
+        subjectId: 'relay-hardening',
+        subjectKind: 'epic',
+        scope: 3,
+        running: null,
+        nextPlan: 'relay-token-rotation',
+      },
+    });
+
+    await fireEvent.click(await screen.findByTestId('action-next'));
+
+    const line = await screen.findByTestId('raise-scope');
+    expect(line).toHaveTextContent('How many plans run is not known');
+    expect(line).not.toHaveTextContent('runs 0 of 3');
+    expect(apply).not.toHaveBeenCalled();
+  });
+
+  it('keeps the hold dialogue shut when the read behind it fails', async () => {
+    const hold = {
+      hold_id: 'H-0001',
+      subject_id: 'fix-relay',
+      subject_kind: 'plan',
+      kind: 'condition',
+      cause: 'the plan reads cui-http, which this project may not read',
+      attempts: 3,
+      acts: ['retry', 'end_plan'],
+    };
+    vi.spyOn(apiClient, 'getPlanActions').mockResolvedValue({
+      ...running,
+      state: 'held',
+      actions: [{ action: 'resolve_hold', available: true }],
+    });
+    vi.spyOn(apiClient, 'getPlanHolds')
+      .mockResolvedValueOnce([hold])
+      .mockRejectedValue(new Error('the ledger is landing'));
+
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    // The load opens the hold once; the operator closes it.
+    await screen.findByTestId('hold-modal');
+    await fireEvent.click(screen.getByTestId('hold-close-button'));
+    await waitFor(() => expect(screen.queryByTestId('hold-modal')).not.toBeInTheDocument());
+
+    // Act: the fresh read fails, so the dialogue would show a hold nobody confirmed any more.
+    await fireEvent.click(await screen.findByTestId('action-resolve_hold'));
+
+    expect(await screen.findByTestId('control-failure')).toHaveTextContent('the ledger is landing');
+    expect(screen.queryByTestId('hold-modal')).not.toBeInTheDocument();
+  });
+
+  it('draws no act the panel cannot run, and posts none', async () => {
+    vi.spyOn(apiClient, 'getPlanActions').mockResolvedValue({
+      ...running,
+      actions: [...running.actions, { action: 'teleport', available: true }],
+    });
+    const apply = vi.spyOn(apiClient, 'applyPlanAction').mockResolvedValue(running);
+
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    expect(await screen.findByTestId('action-pause')).toBeInTheDocument();
+    const menu = await openOverflow();
+
+    // The runtime's own acts still stand, in the bar and in its overflow.
+    expect(within(menu).getByTestId('action-cancel')).toBeInTheDocument();
+    expect(screen.queryByTestId('action-teleport')).not.toBeInTheDocument();
+    expect(apply).not.toHaveBeenCalled();
+  });
+
   it('gives the focus back to the opener once the confirmed act settles', async () => {
     let settle: (actions: WorkActions) => void = () => {};
     const pending = new Promise<WorkActions>((resolve) => {
