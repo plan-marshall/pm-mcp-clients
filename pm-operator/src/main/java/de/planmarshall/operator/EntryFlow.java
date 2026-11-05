@@ -255,12 +255,23 @@ public final class EntryFlow {
         try {
             var refreshed = StatusCommand.fetch(runtime);
             var loc = context.clientEnvironment().locale();
-            var cBadges = consoleBadges(loc, refreshed,
-                                readProjectSetupConsoleBadgesQuiet(loc, runtime));
+            var projectBadges = readProjectBadgesOrFallback(loc, runtime, consoleBadges);
+            var cBadges = consoleBadges(loc, refreshed, projectBadges);
             return new EntryResult(refreshed, cBadges.stream().map(ConsoleBadge::text).toList(),
                                 null, null, cBadges);
         } catch (IOException _) {
             return new EntryResult(status, strBadges, null, null, consoleBadges);
+        }
+    }
+
+    private List<ConsoleBadge> readProjectBadgesOrFallback(String locale, RuntimeClient runtime,
+                                                          List<ConsoleBadge> fallback) {
+        try {
+            return readProjectSetupConsoleBadges(locale, runtime);
+        } catch (IOException _) {
+            return fallback.stream()
+                    .filter(b -> b.kind() == ConsoleBadge.Kind.PROJECT_SETUP)
+                    .toList();
         }
     }
 

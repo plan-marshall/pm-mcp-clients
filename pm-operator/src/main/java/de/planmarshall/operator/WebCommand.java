@@ -667,15 +667,14 @@ public final class WebCommand implements Callable<Integer> {
                         return false;
                     }
                     var trimmed = answer.trim();
+                    if (trimmed.isEmpty()) {
+                        return true;
+                    }
                     if ("b".equalsIgnoreCase(trimmed) || "back".equalsIgnoreCase(trimmed)) {
                         return false;
                     }
-                    if ("?".equals(trimmed)) {
-                        termOut.println(MessageCatalogue.format(locale, "operator.devices.revoke_help", Map.of()));
-                        termOut.flush();
-                        continue;
-                    }
-                    return true;
+                    termOut.println(MessageCatalogue.format(locale, "operator.devices.revoke_help", Map.of()));
+                    termOut.flush();
                 }
             }
             catch (UserInterruptException interrupt) {

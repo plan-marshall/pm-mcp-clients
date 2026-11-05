@@ -696,6 +696,36 @@ class WebDevicesCommandTest {
         );
     }
 
+    @Test
+    @DisplayName("typing unexpected string at revoke prompt shows help and re-prompts before leaving on b")
+    void unexpectedStringAtRevokePromptShowsHelp() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var deviceId = Generators.letterStrings(4, 8).next();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var terminalOut = new ByteArrayOutputStream();
+        var context = createContext("no\nb\n", terminalOut);
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("revoke", deviceId, "-i");
+
+        var termText = terminalOut.toString(StandardCharsets.UTF_8);
+        assertAll(
+                () -> assertEquals(0, code),
+                () -> assertTrue(termText.contains("Enter confirms the revocation. b or back leaves without changes."), termText)
+        );
+    }
+
     /**
      * Serves the three routes these commands write as refused, so that every act is answered with
      * HTTP 400 and nothing is changed.

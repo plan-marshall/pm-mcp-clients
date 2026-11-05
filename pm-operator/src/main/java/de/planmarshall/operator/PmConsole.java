@@ -268,7 +268,16 @@ public final class PmConsole {
     }
 
     private void continueProjectOnboarding(String projectId, PrintWriter out, LineReader reader, Terminal terminal) {
-        runOperatorVerb("project setup " + projectId, out, reader, terminal);
+        context.useTerminal(terminal);
+        try {
+            runOperatorVerb("project setup \"" + projectId.replace("\"", "\\\"") + "\"", out, reader, terminal);
+        } finally {
+            try {
+                context.clearTerminal(terminal);
+            } catch (IllegalStateException _) {
+                // Scope already cleared
+            }
+        }
     }
 
     /**
@@ -647,16 +656,15 @@ public final class PmConsole {
             var status = EntryFlow.bounded(() -> StatusCommand.fetch(runtime), REFRESH_BOUND, "status-read");
             var projectBadges = fetchProjectBadgesSafe(locale(), runtime);
             refreshed = EntryFlow.consoleBadges(locale(), status, projectBadges);
+            if (!refreshed.equals(badges.get())) {
+                badges.set(List.copyOf(refreshed));
+            }
         } catch (IOException _) {
             // the runtime did not answer this read: keep the badges it last gave us
             return;
         } finally {
             badgeRefreshLock.unlock();
         }
-        if (refreshed.equals(badges.get())) {
-            return;
-        }
-        badges.set(List.copyOf(refreshed));
         updateWindowTitle(terminal);
     }
 
