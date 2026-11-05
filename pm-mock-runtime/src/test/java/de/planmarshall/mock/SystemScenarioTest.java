@@ -19,6 +19,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 
 import org.junit.jupiter.api.DisplayName;
@@ -267,11 +269,15 @@ class SystemScenarioTest {
                 var sse = exchange.events();
 
                 var events = new CopyOnWriteArrayList<SseEvent>();
+                var drainLatch = new CountDownLatch(1);
                 var reader = new Thread(() -> {
                     try {
                         SseEvent ev;
                         while ((ev = sse.next()) != null) {
                             events.add(ev);
+                            if ("runtime.draining".equals(ev.event())) {
+                                drainLatch.countDown();
+                            }
                         }
                     } catch (IOException _) {
                         // stream closed
@@ -284,13 +290,9 @@ class SystemScenarioTest {
                 var resWithdraw = client.send(HttpRequest.delete("/api/v1/operator/runtime/stop").withHeader("Authorization", auth));
                 assertEquals(200, resWithdraw.status());
 
-                Thread.sleep(1200);
-
-                var drainingEvents = events.stream()
-                        .filter(e -> "runtime.draining".equals(e.event()))
-                        .toList();
-                assertTrue(drainingEvents.isEmpty(),
-                        "no runtime.draining event must reach client after withdrawal: " + drainingEvents);
+                boolean drainingEventReceived = drainLatch.await(1200, TimeUnit.MILLISECONDS);
+                assertFalse(drainingEventReceived,
+                        "no runtime.draining event must reach client after withdrawal: " + events);
 
                 var resStatus = client.send(HttpRequest.get("/api/v1/status").withHeader("Authorization", auth));
                 var status = JsonTree.asObject(JsonTree.parse(resStatus.bodyText()));
@@ -311,6 +313,7 @@ class SystemScenarioTest {
                 var sse = exchange.events();
 
                 var drainEvents = new CopyOnWriteArrayList<Map<String, Object>>();
+                var drainLatch = new CountDownLatch(5);
                 var reader = new Thread(() -> {
                     try {
                         SseEvent ev;
@@ -319,6 +322,7 @@ class SystemScenarioTest {
                                 var map = JsonTree.asObject(JsonTree.parse(ev.data()));
                                 if (map != null) {
                                     drainEvents.add(map);
+                                    drainLatch.countDown();
                                 }
                             }
                         }
@@ -334,10 +338,7 @@ class SystemScenarioTest {
                         .withHeader("Authorization", auth).withBody(drainBody));
                 assertEquals(200, resDrain.status());
 
-                long deadline = System.currentTimeMillis() + 4500;
-                while (System.currentTimeMillis() < deadline && drainEvents.size() < 5) {
-                    Thread.sleep(100);
-                }
+                assertTrue(drainLatch.await(6, TimeUnit.SECONDS), "initial plus 4 shrink steps expected within 6s: " + drainEvents);
 
                 assertEquals(5, drainEvents.size(), "initial plus 4 shrink steps expected: " + drainEvents);
 
@@ -366,6 +367,7 @@ class SystemScenarioTest {
                 var sse = exchange.events();
 
                 var drainEvents = new CopyOnWriteArrayList<Map<String, Object>>();
+                var drainLatch = new CountDownLatch(3);
                 var reader = new Thread(() -> {
                     try {
                         SseEvent ev;
@@ -374,6 +376,7 @@ class SystemScenarioTest {
                                 var map = JsonTree.asObject(JsonTree.parse(ev.data()));
                                 if (map != null) {
                                     drainEvents.add(map);
+                                    drainLatch.countDown();
                                 }
                             }
                         }
@@ -392,10 +395,7 @@ class SystemScenarioTest {
                         .withHeader("Authorization", auth).withBody(drainBody));
                 assertEquals(200, resDrain.status());
 
-                long deadline = System.currentTimeMillis() + 3500;
-                while (System.currentTimeMillis() < deadline && drainEvents.size() < 3) {
-                    Thread.sleep(100);
-                }
+                assertTrue(drainLatch.await(5, TimeUnit.SECONDS), "initial plus 2 shrink steps expected within 5s: " + drainEvents);
 
                 // Initial event (count 2) + step 1 (count 1, "1 left") + step 2 (count 0, empties) = 3 events
                 assertEquals(3, drainEvents.size(), "initial plus 2 shrink steps expected: " + drainEvents);

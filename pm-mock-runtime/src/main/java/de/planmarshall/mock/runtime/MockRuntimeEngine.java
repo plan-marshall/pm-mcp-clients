@@ -5843,30 +5843,23 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (projectsLock) {
             for (var project : enrolledProjects) {
                 seen.add(project.projectId());
-                if (project.isReleased()) {
-                    continue;
-                }
                 var title = project.displayName();
-                if (!matchesText(text, project.projectId(), title, null)) {
-                    continue;
+                if (!project.isReleased() && matchesText(text, project.projectId(), title, null)) {
+                    matches.add(new FindMatch(FindKind.PROJECT, project.projectId(), title,
+                            location(project.projectId(), title), null, null, false, null));
                 }
-                matches.add(new FindMatch(FindKind.PROJECT, project.projectId(), title,
-                        location(project.projectId(), title), null, null, false, null));
             }
         }
         for (var row : rowsOfRoute("GET", PATH_PROJECTS, CONST_PROJECTS)) {
             var id = JsonTree.string(row, KEY_PROJECT_ID);
-            if (id == null || seen.contains(id)) {
-                continue;
-            }
-            if (Boolean.TRUE.equals(JsonTree.bool(row, "is_released"))
-                    || "released".equals(JsonTree.string(row, "readiness"))) {
-                continue;
-            }
-            var title = JsonTree.string(row, KEY_DISPLAY_NAME);
-            if (matchesText(text, id, title, null)) {
-                matches.add(new FindMatch(FindKind.PROJECT, id, requireText(title, id), location(id, title),
-                        null, null, false, null));
+            var isReleased = Boolean.TRUE.equals(JsonTree.bool(row, "is_released"))
+                    || "released".equals(JsonTree.string(row, "readiness"));
+            if (id != null && !seen.contains(id) && !isReleased) {
+                var title = JsonTree.string(row, KEY_DISPLAY_NAME);
+                if (matchesText(text, id, title, null)) {
+                    matches.add(new FindMatch(FindKind.PROJECT, id, requireText(title, id), location(id, title),
+                            null, null, false, null));
+                }
             }
         }
     }
@@ -6671,7 +6664,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (inner == null) {
             inner = JsonTree.object(payload, "question");
         }
-        var source = inner != null ? new LinkedHashMap<>(inner) : new LinkedHashMap<>(payload);
+        var source = new LinkedHashMap<>(inner != null ? inner : payload);
         var id = JsonTree.string(source, "id");
         if (id == null) {
             id = JsonTree.string(payload, "id");
