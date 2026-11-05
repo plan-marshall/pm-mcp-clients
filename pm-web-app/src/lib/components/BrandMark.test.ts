@@ -6,6 +6,7 @@ import BrandMark from './BrandMark.svelte';
 
 const SOURCE_DIR = path.resolve(__dirname, '../..');
 const MARK_PATH = path.resolve(__dirname, '../icons/brand/plan-marshall-mark.svg');
+const COMPONENT_PATH = path.resolve(__dirname, 'BrandMark.svelte');
 
 /** The sparkle the header used before the project had a mark of its own. */
 const OLD_GLYPH = '\u2726';
@@ -68,10 +69,20 @@ describe('BrandMark component', () => {
     const plate = getByTestId('brand-mark-plate');
     const mark = getByTestId('brand-mark');
 
-    expect(plate.getAttribute('style')).toContain('inline-size: 28px');
-    expect(plate.getAttribute('style')).toContain('block-size: 28px');
+    // The 28 px square comes from the class: a style attribute is blocked by the daemon's CSP.
+    expect(plate).toHaveClass('brand-mark-plate');
+    expect(plate.hasAttribute('style')).toBe(false);
     expect(plate.contains(mark)).toBe(true);
     expect(mark.getAttribute('width')).toBe('24');
+  });
+
+  it('sizes the brand square to 28 px in its class rule', () => {
+    // jsdom computes no layout, so the rule that carries the size is read from the component.
+    const source = fs.readFileSync(COMPONENT_PATH, 'utf-8');
+    const rule = /\.brand-mark-plate\s*\{([^}]*)\}/.exec(source)?.[1] ?? '';
+
+    expect(rule).toMatch(/(^|[;\s])inline-size:\s*28px\s*;/);
+    expect(rule).toMatch(/(^|[;\s])block-size:\s*28px\s*;/);
   });
 
   it('draws no brand square by default', () => {
