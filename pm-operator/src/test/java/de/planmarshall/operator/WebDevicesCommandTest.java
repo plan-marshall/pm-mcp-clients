@@ -24,9 +24,11 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Map;
@@ -68,9 +70,12 @@ class WebDevicesCommandTest {
     }
 
     private OperatorContext createContext(String input) throws IOException {
+        return createContext(input, new ByteArrayOutputStream());
+    }
+
+    private OperatorContext createContext(String input, ByteArrayOutputStream terminalOut) throws IOException {
         var inStream = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
-        var outStream = new ByteArrayOutputStream();
-        var terminal = new DumbTerminal(inStream, outStream);
+        var terminal = new DumbTerminal(inStream, terminalOut);
         var clientEnv = ClientEnvironment.capture(fixture.environment());
         return new OperatorContext(fixture.environment(), tempDir, true, clientEnv, () -> terminal, null);
     }
@@ -83,13 +88,17 @@ class WebDevicesCommandTest {
      * @throws IOException if the terminal cannot be built
      */
     private OperatorContext createFailingReadContext() throws IOException {
+        return createFailingReadContext(new ByteArrayOutputStream());
+    }
+
+    private OperatorContext createFailingReadContext(ByteArrayOutputStream terminalOut) throws IOException {
         var failing = new InputStream() {
             @Override
             public int read() throws IOException {
                 throw new IOException("the terminal read did not complete");
             }
         };
-        var terminal = new DumbTerminal(failing, new ByteArrayOutputStream());
+        var terminal = new DumbTerminal(failing, terminalOut);
         var clientEnv = ClientEnvironment.capture(fixture.environment());
         return new OperatorContext(fixture.environment(), tempDir, true, clientEnv, () -> terminal, null);
     }
@@ -421,7 +430,8 @@ class WebDevicesCommandTest {
         });
 
         // No input at all: the confirmation prompt reads an end of input.
-        var context = createContext("");
+        var terminalOut = new ByteArrayOutputStream();
+        var context = createContext("", terminalOut);
         var writer = new StringWriter();
         var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
         cmd.setOut(new PrintWriter(writer));
@@ -430,7 +440,9 @@ class WebDevicesCommandTest {
 
         assertAll(
                             () -> assertEquals(0, code, "leaving the prompt is the dialogue rule's 0"),
-                            () -> assertEquals(0, deletes.get(), "an unread prompt never confirms the DELETE")
+                            () -> assertEquals(0, deletes.get(), "an unread prompt never confirms the DELETE"),
+                            () -> assertTrue(terminalOut.toString(StandardCharsets.UTF_8).contains("Revoke?"),
+                                                "revoke prompt must be reached")
         );
     }
 
@@ -453,7 +465,8 @@ class WebDevicesCommandTest {
             }
         });
 
-        var context = createFailingReadContext();
+        var terminalOut = new ByteArrayOutputStream();
+        var context = createFailingReadContext(terminalOut);
         var writer = new StringWriter();
         var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
         cmd.setOut(new PrintWriter(writer));
@@ -462,7 +475,9 @@ class WebDevicesCommandTest {
 
         assertAll(
                             () -> assertEquals(0, code, "a read that failed leaves as b does: " + writer),
-                            () -> assertEquals(0, deletes.get(), "an unread prompt never confirms the DELETE")
+                            () -> assertEquals(0, deletes.get(), "an unread prompt never confirms the DELETE"),
+                            () -> assertTrue(terminalOut.toString(StandardCharsets.UTF_8).contains("Revoke?"),
+                                                "revoke prompt must be reached")
         );
     }
 
@@ -543,6 +558,174 @@ class WebDevicesCommandTest {
         );
     }
 
+    @Test
+    @DisplayName("a refused rename in the interactive list leaves with 1 and the refusal")
+    void aRefusedInteractiveRenameLeavesWithOne() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var deviceId = Generators.letterStrings(4, 8).next();
+        var label = Generators.letterStrings(4, 8).next();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
+                                    """);
+            } else if ("/api/v1/web/devices".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    [{"device_id":"%s","label":"%s"}]
+                                    """.formatted(deviceId, label));
+            } else if ("PUT".equals(request.method())) {
+                response.json(400, "{\"error\":\"refused\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        // Choose device 1, rename 'r', enter new label
+        var context = createContext("1\nr\nrenamed-device\n");
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("-i");
+
+        var output = writer.toString();
+        assertAll(
+                () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                () -> assertTrue(output.contains("Failed to rename device: HTTP 400"), output)
+        );
+    }
+
+    @Test
+    @DisplayName("a refused listener-off in the interactive list leaves with 1 and the refusal")
+    void aRefusedInteractiveListenerOffLeavesWithOne() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var deviceId = Generators.letterStrings(4, 8).next();
+        var label = Generators.letterStrings(4, 8).next();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
+                                    """);
+            } else if ("/api/v1/web/devices".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    [{"device_id":"%s","label":"%s"}]
+                                    """.formatted(deviceId, label));
+            } else if ("POST".equals(request.method()) || "PUT".equals(request.method())) {
+                response.json(400, "{\"error\":\"refused\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        // Choose listener-off 'n'
+        var context = createContext("n\n");
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("-i");
+
+        var output = writer.toString();
+        assertAll(
+                () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                () -> assertTrue(output.contains("Failed to turn listener off: HTTP 400"), output)
+        );
+    }
+
+    @Test
+    @DisplayName("an interactive action failure catches IOException, reports act_failed and leaves with 1")
+    void anInteractiveActionFailureReportsActFailed() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var deviceId = Generators.letterStrings(4, 8).next();
+        var label = Generators.letterStrings(4, 8).next();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
+                                    """);
+            } else if ("/api/v1/web/devices".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    [{"device_id":"%s","label":"%s"}]
+                                    """.formatted(deviceId, label));
+            } else {
+                response.raw("NOT_HTTP\r\n\r\n");
+            }
+        });
+
+        var context = createContext("n\n");
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("-i");
+
+        var output = writer.toString();
+        assertAll(
+                () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                () -> assertTrue(output.contains("Failed to act on the device: the action did not complete."), output)
+        );
+    }
+
+    @Test
+    @DisplayName("typing ? at revoke prompt shows help and re-prompts before leaving on b")
+    void questionMarkAtRevokePromptShowsHelp() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var deviceId = Generators.letterStrings(4, 8).next();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var terminalOut = new ByteArrayOutputStream();
+        var context = createContext("?\nb\n", terminalOut);
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("revoke", deviceId, "-i");
+
+        var termText = terminalOut.toString(StandardCharsets.UTF_8);
+        assertAll(
+                () -> assertEquals(0, code),
+                () -> assertTrue(termText.contains("Enter confirms the revocation. b or back leaves without changes."), termText)
+        );
+    }
+
+    @Test
+    @DisplayName("typing unexpected string at revoke prompt shows help and re-prompts before leaving on b")
+    void unexpectedStringAtRevokePromptShowsHelp() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var deviceId = Generators.letterStrings(4, 8).next();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"lan":true,"port":7420}}
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var terminalOut = new ByteArrayOutputStream();
+        var context = createContext("no\nb\n", terminalOut);
+        var writer = new StringWriter();
+        var cmd = new CommandLine(new WebCommand.DevicesCommand(context));
+        cmd.setOut(new PrintWriter(writer));
+
+        int code = cmd.execute("revoke", deviceId, "-i");
+
+        var termText = terminalOut.toString(StandardCharsets.UTF_8);
+        assertAll(
+                () -> assertEquals(0, code),
+                () -> assertTrue(termText.contains("Enter confirms the revocation. b or back leaves without changes."), termText)
+        );
+    }
+
     /**
      * Serves the three routes these commands write as refused, so that every act is answered with
      * HTTP 400 and nothing is changed.
@@ -590,6 +773,23 @@ class WebDevicesCommandTest {
                             () -> assertEquals(1, code),
                             () -> assertTrue(output.contains(expectedOutput), output),
                             () -> assertFalse(output.contains("\u2713"), output)
+        );
+    }
+
+    @Test
+    @DisplayName("formatLastUsed with a fixed clock formats 7 weeks 6 days, exactly 8 weeks, and 20 weeks")
+    void formatLastUsedWithFixedClock() {
+        var fixedNow = Instant.parse("2026-06-01T12:00:00Z");
+        var clock = Clock.fixed(fixedNow, ZoneOffset.UTC);
+
+        var sevenWeeksSixDaysAgo = fixedNow.minus(Duration.ofDays(55));
+        var eightWeeksAgo = fixedNow.minus(Duration.ofDays(56));
+        var twentyWeeksAgo = fixedNow.minus(Duration.ofDays(140));
+
+        assertAll(
+                            () -> assertEquals("7 weeks ago", WebCommand.DevicesCommand.formatLastUsed(sevenWeeksSixDaysAgo.toString(), clock)),
+                            () -> assertEquals("6 Apr 12:00", WebCommand.DevicesCommand.formatLastUsed(eightWeeksAgo.toString(), clock)),
+                            () -> assertEquals("12 Jan 12:00", WebCommand.DevicesCommand.formatLastUsed(twentyWeeksAgo.toString(), clock))
         );
     }
 }

@@ -235,25 +235,25 @@ final class StartRegistry {
         private EntryKind kind;
         private String projectId;
         private String state;
-        private String title;
-        private String planId;
-        private String objective;
-        private String recipeKey;
-        private RecipeRef recipe;
+        private @Nullable String title;
+        private @Nullable String planId;
+        private @Nullable String objective;
+        private @Nullable String recipeKey;
+        private @Nullable RecipeRef recipe;
         private List<RecipeParameter> parameters = List.of();
         private final List<SourceResource> sources = new ArrayList<>();
         private final List<SourceKindOffer> offers = new ArrayList<>();
         private boolean documentsModeAsked;
         private boolean canContinue;
         private boolean chatAvailable;
-        private String chatDisabledReason;
-        private StartChat chat;
-        private StartRefusal refusal;
-        private AdoptionFailure adoptionFailure;
-        private AdoptionFailure pendingAdoptionFailure;
+        private @Nullable String chatDisabledReason;
+        private @Nullable StartChat chat;
+        private @Nullable StartRefusal refusal;
+        private @Nullable AdoptionFailure adoptionFailure;
+        private @Nullable AdoptionFailure pendingAdoptionFailure;
         private List<AdoptableEpic> adoptable = List.of();
         private List<RecipeRef> recipes = List.of();
-        private String landing;
+        private @Nullable String landing;
         private boolean lessonsAvailable;
         private boolean localChanges;
         private final Map<SourceKind, Map<String, Object>> addOutcomes = new LinkedHashMap<>();
@@ -275,9 +275,9 @@ final class StartRegistry {
         private ChatRole role;
         private ChatState state = ChatState.TURN;
         private final List<ChatTurnResource> turns = new ArrayList<>();
-        private ChatProposalResource proposal;
+        private @Nullable ChatProposalResource proposal;
         private StartTranscriptState transcript = StartTranscriptState.WITH_ENTRY;
-        private String transcriptPath;
+        private @Nullable String transcriptPath;
 
         StartChat(String chatId, ChatRole role) {
             this.chatId = chatId;
@@ -532,7 +532,7 @@ final class StartRegistry {
         var role = ChatRole.fromValue(JsonTree.string(chat, KEY_ROLE));
         var chatState = new StartChat(CHAT_PREFIX + entry.entryId, defaultRole(entry, role));
         chatState.transcriptPath = PENDING_DIRECTORY + entry.entryId + PATH_SEPARATOR + CHAT_DIRECTORY;
-        var turns = objects(chat == null ? null : chat.get(KEY_TURNS));
+        var turns = objects(chat.get(KEY_TURNS));
         chatState.turns.addAll(turns.stream()
                 .filter(object -> JsonTree.string(object, KEY_ROLE) != null
                         && JsonTree.string(object, KEY_TEXT) != null)
@@ -778,7 +778,7 @@ final class StartRegistry {
      * @return the listing, or {@code null} for an unknown project
      * @throws ActRefused if the root is loopback-only and the request arrived on the network
      */
-    synchronized @Nullable ConfinedFileListResource listFiles(String projectId, ConfinedRoot root, String path,
+    synchronized @Nullable ConfinedFileListResource listFiles(String projectId, ConfinedRoot root, @Nullable String path,
             boolean isWeb) throws ActRefused {
         if (!projectLandings.containsKey(projectId)) {
             return null;
@@ -838,7 +838,7 @@ final class StartRegistry {
      * @param projectId the project
      * @param recipes   the recipes it offers
      */
-    synchronized void setRecipes(String projectId, List<RecipeRef> recipes) {
+    synchronized void setRecipes(String projectId, @Nullable List<RecipeRef> recipes) {
         projectRecipes.put(projectId, recipes == null ? List.of() : List.copyOf(recipes));
     }
 
@@ -892,7 +892,7 @@ final class StartRegistry {
         storeDescription(entry, text);
     }
 
-    private void storeDescription(StartEntry entry, String text) {
+    private void storeDescription(StartEntry entry, @Nullable String text) {
         if (text == null) {
             return;
         }
@@ -1104,7 +1104,7 @@ final class StartRegistry {
                 entry.projectId, KEY_TITLE, name)));
     }
 
-    private String createdId(StartEntry entry, @Nullable String requestedPlanId) {
+    private @Nullable String createdId(StartEntry entry, @Nullable String requestedPlanId) {
         if (entry.recipe != null) {
             return planIdOf(entry);
         }

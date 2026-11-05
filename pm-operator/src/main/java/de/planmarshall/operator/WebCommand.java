@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
@@ -443,7 +444,7 @@ public final class WebCommand implements Callable<Integer> {
                 }
             }
 
-            renderDevices(response.body(), out, locale, lanOn);
+            renderDevices(response.body(), out, locale, lanOn, context.clock());
             if (interactive && context.isInteractiveTerminal()) {
                 var parsed = JsonTree.parse(response.body());
                 if (parsed instanceof List<?> list && !list.isEmpty()) {
@@ -562,7 +563,7 @@ public final class WebCommand implements Callable<Integer> {
             return new DeviceInfo(id, label);
         }
 
-        private static void renderDevices(byte[] body, PrintWriter out, String locale, boolean lanOn) throws IOException {
+        private static void renderDevices(byte[] body, PrintWriter out, String locale, boolean lanOn, Clock clock) throws IOException {
             var parsed = JsonTree.parse(body);
             if (parsed instanceof List<?> list && !list.isEmpty()) {
                 out.println(MessageCatalogue.format(locale, "devices.list.title", Map.of())
@@ -570,7 +571,7 @@ public final class WebCommand implements Callable<Integer> {
                                     + MessageCatalogue.format(locale, "devices.list.subtitle", Map.of()));
                 int idx = 1;
                 for (var item : list) {
-                    printDevice(out, idx++, item, locale);
+                    printDevice(out, idx++, item, locale, clock);
                 }
                 out.println();
                 out.println(MessageCatalogue.format(locale, "operator.devices.console_not_listed",
@@ -580,7 +581,7 @@ public final class WebCommand implements Callable<Integer> {
             }
         }
 
-        private static void printDevice(PrintWriter out, int idx, Object item, String locale) {
+        private static void printDevice(PrintWriter out, int idx, Object item, String locale, Clock clock) {
             if (item instanceof Map<?, ?> dev) {
                 var rawLabel = dev.get(LABEL);
                 var labelVal = rawLabel != null ? TerminalSanitizer.sanitizeLine(rawLabel.toString()) : "browser";
@@ -592,7 +593,7 @@ public final class WebCommand implements Callable<Integer> {
                     fromStr = TerminalSanitizer.sanitizeLine(pairedFrom.toString());
                 }
                 var pairedDate = formatPairedDate(dev.get("created_at"));
-                var lastUsed = formatLastUsed(dev.get("last_used_at"));
+                var lastUsed = formatLastUsed(dev.get("last_used_at"), clock);
 
                 out.println(MessageCatalogue.format(locale, "operator.devices.row",
                                     Map.of(INDEX, idx, LABEL, labelVal, "date", pairedDate,
@@ -618,14 +619,18 @@ public final class WebCommand implements Callable<Integer> {
             }
         }
 
-        private static String formatLastUsed(@Nullable Object raw) {
+        static String formatLastUsed(@Nullable Object raw) {
+            return formatLastUsed(raw, Clock.systemUTC());
+        }
+
+        static String formatLastUsed(@Nullable Object raw, Clock clock) {
             if (raw == null) {
                 return "just now";
             }
             var s = raw.toString();
             try {
                 var instant = Instant.parse(s);
-                var now = Instant.now();
+                var now = Instant.now(clock);
                 var diff = Duration.between(instant, now);
                 var days = diff.toDays();
                 var hours = diff.toHours();
@@ -652,15 +657,25 @@ public final class WebCommand implements Callable<Integer> {
 
         private boolean confirm() {
             try (var lease = context.openTerminal()) {
+                var termOut = lease.terminal().writer();
                 var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
-                var answer = reader.readLine(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                    "operator.devices.revoke_prompt", Map.of()));
-                // An end of input, a "b" and the prompt's own "?" leave; only a stated answer
-                // confirms the DELETE. Leaving is the dialogue rule's 0, as "b" leaves with.
-                return answer != null
-                                    && !"b".equalsIgnoreCase(answer.trim())
-                                    && !"back".equalsIgnoreCase(answer.trim())
-                                    && !"?".equals(answer.trim());
+                var locale = context.clientEnvironment().locale();
+                var prompt = MessageCatalogue.format(locale, "operator.devices.revoke_prompt", Map.of());
+                while (true) {
+                    var answer = reader.readLine(prompt);
+                    if (answer == null) {
+                        return false;
+                    }
+                    var trimmed = answer.trim();
+                    if (trimmed.isEmpty()) {
+                        return true;
+                    }
+                    if ("b".equalsIgnoreCase(trimmed) || "back".equalsIgnoreCase(trimmed)) {
+                        return false;
+                    }
+                    termOut.println(MessageCatalogue.format(locale, "operator.devices.revoke_help", Map.of()));
+                    termOut.flush();
+                }
             }
             catch (UserInterruptException interrupt) {
                 // The interrupt must not confirm the destructive revoke.

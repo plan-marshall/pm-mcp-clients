@@ -94,32 +94,36 @@ public final class SystemView {
     /**
      * One figure of the view: its label, its line, and the detail lines printed below it.
      *
+     * @param id              the row id of the figure (e.g. {@link SystemLevel#ROW_RUNTIME})
      * @param label           the localized label of the figure
      * @param line            the figure's line, without the label
      * @param details         the detail lines, in the order the design lists them
      * @param printedHeadline what only the printed view states before the line, or {@code null}
      */
-    public record Figure(String label, String line, List<String> details,
+    public record Figure(String id, String label, String line, List<String> details,
     @Nullable String printedHeadline) {
 
         /**
+         * @param id      the row id of the figure
          * @param label   the localized label of the figure
          * @param line    the figure's line
          * @param details the detail lines
          */
         public Figure {
+            Objects.requireNonNull(id, "id");
             Objects.requireNonNull(label, "label");
             Objects.requireNonNull(line, "line");
             details = details == null ? List.of() : List.copyOf(details);
         }
 
         /**
+         * @param id      the row id of the figure
          * @param label   the localized label of the figure
          * @param line    the figure's line
          * @param details the detail lines
          */
-        public Figure(String label, String line, List<String> details) {
-            this(label, line, details, null);
+        public Figure(String id, String label, String line, List<String> details) {
+            this(id, label, line, details, null);
         }
     }
 
@@ -237,7 +241,7 @@ public final class SystemView {
         }
         var headline = MessageCatalogue.format(locale, "system.runtime.version_build",
                             Map.of(PARAM_VERSION, clean(runtime.version()), "build", clean(runtime.build())));
-        return new Figure(MessageCatalogue.format(locale, "system.runtime.title", Map.of()), content, details,
+        return new Figure(SystemLevel.ROW_RUNTIME, MessageCatalogue.format(locale, "system.runtime.title", Map.of()), content, details,
                             headline);
     }
 
@@ -276,7 +280,7 @@ public final class SystemView {
         details.add(MessageCatalogue.format(locale, "system.work.tasks_console",
                             Map.of(PARAM_RUNNING, work.tasksRunning(), PARAM_QUEUED, work.tasksQueued())));
         details.add(projectsLine(locale, work));
-        return new Figure(MessageCatalogue.format(locale, "system.work.title", Map.of()), plans, details);
+        return new Figure(SystemLevel.ROW_WORK, MessageCatalogue.format(locale, "system.work.title", Map.of()), plans, details);
     }
 
     private static String projectsLine(String locale, WorkMetrics work) {
@@ -330,7 +334,7 @@ public final class SystemView {
         long idle = workers.stream().filter(worker -> worker.state() == WorkerState.IDLE).count();
         var summary = MessageCatalogue.format(locale, "system.workers.count",
                             Map.of(PARAM_COUNT, workers.size(), "busy", busy, "idle", idle));
-        return new Figure(MessageCatalogue.format(locale, "system.workers.title", Map.of()), summary,
+        return new Figure(SystemLevel.ROW_WORKERS, MessageCatalogue.format(locale, "system.workers.title", Map.of()), summary,
                             workerLines(locale, workers));
     }
 
@@ -370,7 +374,7 @@ public final class SystemView {
      * @return the jobs figure
      */
     public static Figure jobs(Map<String, Object> jobs, String locale) {
-        return new Figure(MessageCatalogue.format(locale, "system.jobs.title", Map.of()),
+        return new Figure(SystemLevel.ROW_JOBS, MessageCatalogue.format(locale, "system.jobs.title", Map.of()),
                             locksLine(locale, jobs), jobKindLines(locale, jobs));
     }
 
@@ -437,7 +441,7 @@ public final class SystemView {
                         @Nullable String groupBy) {
         var summary = modelsSummary(models, locale, window, groupBy);
         var details = models.isEmpty() ? List.<String>of() : modelLines(locale, models, groupBy);
-        return new Figure(MessageCatalogue.format(locale, "system.models.title", Map.of()), summary, details);
+        return new Figure(SystemLevel.ROW_MODELS, MessageCatalogue.format(locale, "system.models.title", Map.of()), summary, details);
     }
 
     /**
@@ -589,7 +593,7 @@ public final class SystemView {
      * @return the cleanup figure
      */
     public static Figure cleanup(CleanupSummary cleanup, String locale) {
-        return new Figure(MessageCatalogue.format(locale, "system.cleanup.title", Map.of()),
+        return new Figure(SystemLevel.ROW_CLEANUP, MessageCatalogue.format(locale, "system.cleanup.title", Map.of()),
                             cleanupLine(locale, cleanup), cleanupDetails(locale, cleanup));
     }
 

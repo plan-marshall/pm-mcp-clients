@@ -59,7 +59,7 @@ Map<String, StateDefinition> states) {
      * @param stateId the state identifier
      * @return the state definition
      */
-    public StateDefinition state(String stateId) {
+    public @Nullable StateDefinition state(String stateId) {
         return states.get(stateId);
     }
 

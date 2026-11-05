@@ -245,11 +245,15 @@ class SystemViewConsistencyTest {
     @Test
     @DisplayName("the models summary names the floor it stands on")
     void theSummaryNamesItsFloor() {
-        var lines = fullScreenLines(sampleSnapshot(), "en");
+        var rows = SystemLevel.root(sampleSnapshot(), SystemWindow.HOUR, "model", null).rows("en");
+        var modelsRow = rows.stream()
+                .filter(row -> SystemLevel.ROW_MODELS.equals(row.id()))
+                .findFirst()
+                .orElseThrow();
 
         // A model whose calls are partly unmeasured makes the summary a floor: it carries "≥".
-        assertTrue(lines.stream().anyMatch(line -> line.contains("\u2265")),
-                            "the summary carries the floor marker: " + lines);
+        assertTrue(modelsRow.line().contains("\u2265"),
+                "the models summary line carries the floor marker: " + modelsRow.line());
     }
 
     private static String split(String lang, long total, long in, long out) {

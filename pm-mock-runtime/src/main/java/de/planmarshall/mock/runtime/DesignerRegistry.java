@@ -104,7 +104,7 @@ final class DesignerRegistry {
      *
      * @param scenario the active scenario
      */
-    synchronized void init(Scenario scenario) {
+    synchronized void init(@Nullable Scenario scenario) {
         clear();
         if (scenario == null) {
             return;
@@ -291,7 +291,7 @@ final class DesignerRegistry {
         return Set.copyOf(enrolledProjects);
     }
 
-    synchronized WorkflowUnit findUnit(String target, String name) {
+    synchronized @Nullable WorkflowUnit findUnit(String target, String name) {
         var list = MACHINE.equals(target) ? machineUnits : projectUnits.get(target);
         if (list == null) {
             return null;
@@ -434,7 +434,7 @@ final class DesignerRegistry {
         return stages;
     }
 
-    private static String nameFrom(String header, String fallback) {
+    private static String nameFrom(String header, @Nullable String fallback) {
         var parts = header.split("\\s+");
         if (parts.length >= 2 && !parts[1].isBlank()) {
             return parts[1];
@@ -515,7 +515,7 @@ final class DesignerRegistry {
         return new WorkflowValidationResult.StructureState(id, "state", outcomes, calls);
     }
 
-    private static WorkflowUnit.Frontmatter parseFrontmatter(String text) {
+    private static WorkflowUnit.@Nullable Frontmatter parseFrontmatter(String text) {
         var frontmatter = parseFrontmatterBlock(text);
         if (!frontmatter.present()) {
             return null;
@@ -564,7 +564,7 @@ final class DesignerRegistry {
         return parts.length > 1 ? parts[1].strip() : "";
     }
 
-    private static ProcessTree compose(String project) {
+    private static ProcessTree compose(@Nullable String project) {
         var projectId = project != null ? project : MACHINE;
         var nodes = COMPOSED_PHASES.stream()
                 .map(phase -> new ProcessNode(phase, phase, "phase", "planned", 1, 1, 0L, null,

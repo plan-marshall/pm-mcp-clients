@@ -227,6 +227,7 @@ public final class PlanCommand implements Callable<Integer> {
         } catch (IOException _) {
             return null;
         }
+        var ownsTerminal = context.ownsTerminal(terminal);
         context.useTerminal(terminal);
         try {
             var availability = TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS);
@@ -245,9 +246,17 @@ public final class PlanCommand implements Callable<Integer> {
             }
             return app.interrupted() ? StartPrompt.EXIT_INTERRUPTED : 0;
         } finally {
-            context.clearTerminal(terminal);
-            if (context.ownsTerminal(terminal)) {
-                terminal.close();
+            try {
+                context.clearTerminal(terminal);
+            } catch (IllegalStateException _) {
+                // Scope already cleared
+            }
+            if (ownsTerminal) {
+                try {
+                    terminal.close();
+                } catch (IOException _) {
+                    // Terminal close failure ignored
+                }
             }
         }
     }

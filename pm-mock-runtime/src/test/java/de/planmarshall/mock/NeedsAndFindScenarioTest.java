@@ -201,6 +201,16 @@ class NeedsAndFindScenarioTest {
                 var ended = matches.stream().filter(match -> Boolean.TRUE.equals(match.get("ended"))).toList();
                 assertEquals("fix-relay-v1", JsonTree.string(ended.getFirst(), "id"));
                 assertEquals("merged", ended.getFirst().get("outcome"));
+
+                boolean seenEnded = false;
+                for (var match : matches) {
+                    var isEnded = Boolean.TRUE.equals(match.get("ended"));
+                    if (isEnded) {
+                        seenEnded = true;
+                    } else {
+                        assertFalse(seenEnded, "running work must stand before ended work");
+                    }
+                }
             }
         }
 
@@ -217,6 +227,86 @@ class NeedsAndFindScenarioTest {
                 assertEquals("fix-relay", JsonTree.string(matches.getFirst(), "id"));
                 assertEquals(Boolean.FALSE, matches.getFirst().get("ended"));
                 assertEquals("plan", JsonTree.string(matches.getFirst(), "kind"));
+
+                var ended = matches.stream().filter(match -> Boolean.TRUE.equals(match.get("ended"))).toList();
+                assertFalse(ended.isEmpty());
+                assertEquals("fix-relay-v1", JsonTree.string(ended.getFirst(), "id"));
+                assertEquals(Boolean.TRUE, ended.getFirst().get("ended"));
+                assertEquals("plan", JsonTree.string(ended.getFirst(), "kind"));
+                assertEquals("merged", ended.getFirst().get("outcome"));
+
+                boolean seenEnded = false;
+                for (var match : matches) {
+                    var isEnded = Boolean.TRUE.equals(match.get("ended"));
+                    if (isEnded) {
+                        seenEnded = true;
+                    } else {
+                        assertFalse(seenEnded, "running work must stand before ended work");
+                    }
+                }
+            }
+        }
+
+        @Test
+        @DisplayName("a decision found by find carries the plan id as its location")
+        void decisionFoundByFindCarriesPlanIdAsLocation() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                var matches = matches(client, auth, "Q-007");
+                var decision = matches.stream()
+                        .filter(m -> "decision".equals(JsonTree.string(m, "kind")))
+                        .findFirst()
+                        .orElseThrow();
+
+                assertEquals("Q-007", JsonTree.string(decision, "id"));
+                var plan = JsonTree.asObject(decision.get("plan"));
+                assertNotNull(plan, "decision must carry a plan location");
+                assertEquals("fix-relay", JsonTree.string(plan, "id"));
+            }
+        }
+
+        @Test
+        @DisplayName("an unenrolled project is not found")
+        void unenrolledProjectIsNotFound() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.PROJECTS_AND_START + "#projects.unenrolled")) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                var matches = matches(client, auth, "legacy-portal");
+                var runningProject = matches.stream()
+                        .filter(m -> "project".equals(JsonTree.string(m, "kind")) && Boolean.FALSE.equals(m.get("ended")))
+                        .findAny();
+
+                assertTrue(runningProject.isEmpty(), "an unenrolled project must not be found as running project");
+            }
+        }
+
+        @Test
+        @DisplayName("a started epic is found")
+        void startedEpicIsFound() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                var startRes = client.send(HttpRequest.json("POST", "/api/v1/projects/pm-mcp-clients/epics/start",
+                        "{\"title\":\"Relay Metrics V2\",\"objective\":\"Collect v2 metrics\"}")
+                        .withHeader(AUTH_HEADER, auth));
+                assertEquals(201, startRes.status());
+                var startBody = JsonTree.asObject(JsonTree.parse(startRes.bodyText()));
+                assertNotNull(startBody);
+                var epicId = JsonTree.string(startBody, "id");
+                assertNotNull(epicId);
+
+                var matches = matches(client, auth, "Relay Metrics V2");
+                var epicMatch = matches.stream()
+                        .filter(m -> "epic".equals(JsonTree.string(m, "kind")) && Boolean.FALSE.equals(m.get("ended")))
+                        .findFirst()
+                        .orElseThrow();
+
+                assertEquals(epicId, JsonTree.string(epicMatch, "id"));
+                assertEquals("Relay Metrics V2", JsonTree.string(epicMatch, "title"));
             }
         }
 

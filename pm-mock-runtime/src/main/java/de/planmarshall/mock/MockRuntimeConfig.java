@@ -15,6 +15,7 @@ import java.util.UUID;
 
 import lombok.Builder;
 import lombok.Value;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.mock.scenario.Scenario;
 import de.planmarshall.mock.scenario.ScenarioRegistry;
@@ -27,6 +28,7 @@ import de.planmarshall.mock.scenario.ScenarioRegistry;
 public class MockRuntimeConfig {
 
     /** The machine root directory {@code <PM_MCP_BASE>}, or {@code null} to create a temporary directory. */
+    @Nullable
     Path base;
 
     /** The initial scenario name (e.g. {@code status-only}) or file path. */
@@ -41,18 +43,23 @@ public class MockRuntimeConfig {
     int webPort = -1;
 
     /** The accepted runtime token for Unix socket auth, or {@code null} to generate one. */
+    @Nullable
     String runtimeToken;
 
     /** The accepted device secret for web auth, or {@code null} to generate one. */
+    @Nullable
     String deviceSecret;
 
     /** Whether to recursively delete the base directory on {@link MockRuntime#close()}. */
+    @Nullable
     Boolean cleanupBaseOnClose;
 
     /** An optional preconfigured scenario registry. If {@code null}, a new registry is instantiated. */
+    @Nullable
     ScenarioRegistry registry;
 
     /** An optional preloaded scenario instance. If specified, takes precedence as the initial scenario. */
+    @Nullable
     Scenario initialScenario;
 
     /**

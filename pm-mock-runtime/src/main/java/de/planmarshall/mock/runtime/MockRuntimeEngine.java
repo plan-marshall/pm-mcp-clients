@@ -598,6 +598,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private record StartedPlan(String title, String projectId) {
     }
 
+    /**
+     * An epic a start flow created in this run, so find matches and views see it.
+     *
+     * @param title     the epic's title
+     * @param projectId the project the start named, if any
+     */
+    private record StartedEpic(String title, @Nullable String projectId) {
+    }
+
     private final AtomicReference<Scenario> currentScenario = new AtomicReference<>();
     private final AtomicReference<String> currentStateId = new AtomicReference<>();
     /**
@@ -630,7 +639,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Map<String, DecisionEnvelope> openDecisions = new LinkedHashMap<>();
     private final Object systemLock = new Object();
     private volatile RuntimeLifecycleState lifecycleState = RuntimeLifecycleState.RUNNING;
-    private volatile String drainingBy;
+    private volatile @Nullable String drainingBy;
     private volatile boolean canWithdrawStop;
     /** What a drain still runs, by name; the status and the live event carry the same list. */
     private final AtomicReference<List<String>> drainRemainingItems = new AtomicReference<>(List.of());
@@ -638,9 +647,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final AtomicLong drainGeneration = new AtomicLong();
     /** The snapshot representation the seeding state shows, or {@code null} for the engine default. */
     private @Nullable Map<String, Object> systemSnapshotFixture;
-    private CleanupJob activeCleanupJob;
+    private @Nullable CleanupJob activeCleanupJob;
     private final List<CleanupKeptItem> keptItems = new ArrayList<>();
-    private CleanupDurations cleanupDurations;
+    private CleanupDurations cleanupDurations = new CleanupDurations(30, 30, 30, 30, 30, 3);
     private final List<CleanupResidue> cleanupResidues = new ArrayList<>();
     private final Object projectsLock = new Object();
     private final List<EnrolledProject> enrolledProjects = new ArrayList<>();
@@ -654,6 +663,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Set<String> startedPlanIds = new LinkedHashSet<>();
     private final Map<String, StartedPlan> startedPlans = new ConcurrentHashMap<>();
     private final Set<String> startedEpicIds = new LinkedHashSet<>();
+    private final Map<String, StartedEpic> startedEpics = new ConcurrentHashMap<>();
     private int intakeDraftCounter;
     private final Object lessonSourceLock = new Object();
     private final Map<String, List<LessonSeed>> lessonSourceSeeds = new LinkedHashMap<>();
@@ -663,7 +673,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private volatile boolean lanListenerOn = true;
     private volatile int lanListenerPort = DEFAULT_LAN_PORT;
     private volatile int webPort = 7420;
-    private volatile String currentPairingCode;
+    private volatile @Nullable String currentPairingCode;
     private long pairingCounter;
     private volatile boolean closed;
 
@@ -710,7 +720,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
         this.runtimeToken = Objects.requireNonNull(runtimeToken, "runtimeToken");
         this.deviceSecret = Objects.requireNonNull(deviceSecret, "deviceSecret");
         this.scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().name("mock-engine-scheduler").factory());
-        this.startRegistry = new StartRegistry(event -> broadcastEvent(event.name(), event.data()));
+        this.startRegistry = new StartRegistry(event -> {
+            recordStartEvent(event);
+            broadcastEvent(event.name(), event.data());
+        });
         setScenario(scenario);
     }
 
@@ -730,6 +743,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         // Validate the candidate's fixtures before anything is cleared, so a failed switch leaves
         // the active scenario and every stateful fixture untouched.
         validateRuntimeFixture(scenario);
+        validateStateFacts(scenario, scenario.start());
         this.currentScenario.set(scenario);
         this.currentStateId.set(scenario.start());
         this.fixtureStateId.set(scenario.start());
@@ -1204,6 +1218,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             throw failure;
         }
         transitionTo(stateId);
+        // Do NOT call broadcastReset() here: broadcastReset clears every ring buffer and sends a
+        // reset to every open stream, and exists for a scenario switch where the previous scenario's
+        // envelopes must not be replayed into the new one; a jump stays inside one scenario, and
+        // transitionTo schedules the new state's own events (afterMs), which a client that reconnects
+        // with a Last-Event-ID must still be able to replay in order (pinned per operator decision 2026-11-05).
     }
 
     /**
@@ -1222,11 +1241,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (facts == null) {
             return;
         }
-        var job = JsonTree.object(facts, FIXTURE_JOB);
+        var job = fixtureObject(facts, FIXTURE_JOB, PATH_FACTS + FIXTURE_JOB);
         if (job != null) {
             readFixture(() -> CleanupJob.fromMap(job), PATH_FACTS + FIXTURE_JOB);
         }
-        var durations = JsonTree.object(facts, FIXTURE_DURATIONS);
+        var durations = fixtureObject(facts, FIXTURE_DURATIONS, PATH_FACTS + FIXTURE_DURATIONS);
         if (durations != null) {
             readFixture(() -> CleanupDurations.fromMap(durations), PATH_FACTS + FIXTURE_DURATIONS);
         }
@@ -1254,8 +1273,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         // Schedule auto transition
-        if (stateDef.auto() != null) {
-            var auto = stateDef.auto();
+        var auto = stateDef.auto();
+        if (auto != null) {
             var task = scheduler.schedule(() -> {
                 synchronized (this) {
                     if (Objects.equals(this.currentStateId.get(), nextStateId)) {
@@ -1327,6 +1346,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param data  the event payload
      */
     private void broadcastEvent(String event, Object data) {
+        if (EVENT_RUNTIME_DRAINING.equals(event) && lifecycleState != RuntimeLifecycleState.DRAINING) {
+            return;
+        }
         syncDrainItems(event, data);
         var payload = payloadOf(data);
         var scope = scopeOf(event, payload);
@@ -1440,7 +1462,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return new EventScope(EventScopeKind.RUNTIME, null, null);
     }
 
-    private static String stringMember(Map<String, Object> payload, String key) {
+    private static @Nullable String stringMember(Map<String, Object> payload, String key) {
         var value = payload.get(key);
         if (value instanceof String text && !text.isBlank()) {
             return text;
@@ -1767,7 +1789,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         if (linkDef.status() >= 400) {
             var errorPayload = Map.of(
-                    KEY_ERROR, linkDef.error() != null ? linkDef.error() : "rejected",
+                    KEY_ERROR, Objects.requireNonNullElse(linkDef.error(), "rejected"),
                     KEY_STATE, activeStateId,
                     "link", linkName
             );
@@ -1842,7 +1864,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         response.json(404, errorBody);
     }
 
-    private Map.Entry<String, LinkDefinition> findMatchingLink(MockHttpRequest request, StateDefinition state) {
+    private Map.@Nullable Entry<String, LinkDefinition> findMatchingLink(MockHttpRequest request, StateDefinition state) {
         var method = request.method();
         var path = request.path();
 
@@ -1861,7 +1883,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private boolean matchesLinkTarget(LinkDefinition linkDef, String linkName, String path, StateDefinition state) {
-        if (linkDef.href() != null && linkDef.href().equals(path)) {
+        if (path.equals(linkDef.href())) {
             return true;
         }
         // The operator link convention puts the id below /links/; a deeper domain path that merely
@@ -1893,7 +1915,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return path.equals(String.valueOf(targetObj));
     }
 
-    private static String extractPairingCode(MockHttpRequest request) {
+    private static @Nullable String extractPairingCode(MockHttpRequest request) {
         if (request.body().length > 0) {
             try {
                 var parsed = JsonTree.asObject(JsonTree.parse(request.body()));
@@ -1908,8 +1930,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 // Ignore parse errors from invalid body
             }
         }
-        if (request.query() != null) {
-            for (var part : request.query().split("&")) {
+        var queryString = request.query();
+        if (queryString != null) {
+            for (var part : queryString.split("&")) {
                 if (part.startsWith("code=")) {
                     return part.substring(5);
                 }
@@ -2067,7 +2090,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleRevokeAllDevices(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
-        var query = request.query() != null ? request.query().toLowerCase() : "";
+        var query = Objects.requireNonNullElse(request.query(), "").toLowerCase();
         boolean isOthers = query.contains("others");
 
         var removedList = new ArrayList<PairedDevice>();
@@ -2151,7 +2174,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var resp = new LinkedHashMap<String, Object>();
         resp.put(FIELD_ENABLED, true);
         resp.put(FIELD_LAN, lanListenerOn);
-        resp.put("port", webPort > 0 ? webPort : 7420);
+        resp.put("port", effectiveWebPort());
         resp.put("open", true);
         response.json(200, resp);
     }
@@ -2179,7 +2202,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private List<Map<String, Object>> listenerMaps() {
-        var port = webPort > 0 ? webPort : 7420;
+        var port = effectiveWebPort();
         var loopback = new ListenerResource(ListenerKind.LOOPBACK, ListenerState.OPEN, port,
                 loopbackUrl(), null);
         var lan = new ListenerResource(
@@ -2193,7 +2216,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleOpenLanListener(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var requestedPort = extractLanPort(request);
-        var liveLoopbackPort = webPort > 0 ? webPort : 7420;
+        var liveLoopbackPort = effectiveWebPort();
         if (requestedPort == liveLoopbackPort) {
             broadcastListenerChanged(ListenerState.PORT_OCCUPIED, requestedPort);
             response.json(409, Map.of(
@@ -2244,9 +2267,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
         broadcastEvent(EVENT_LISTENER_CHANGED, event.toMap());
     }
 
+    private int effectiveWebPort() {
+        return webPort > 0 ? webPort : 7420;
+    }
+
     private String loopbackUrl() {
-        var port = webPort > 0 ? webPort : 7420;
-        return "http://127.0.0.1:" + port;
+        return "http://127.0.0.1:" + effectiveWebPort();
     }
 
     private String lanListenerUrl() {
@@ -2301,7 +2327,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var resp = new LinkedHashMap<String, Object>();
             resp.put(FIELD_ENABLED, true);
             resp.put(FIELD_LAN, lanListenerOn);
-            resp.put("port", webPort > 0 ? webPort : 7420);
+            resp.put("port", effectiveWebPort());
             resp.put("open", true);
             response.json(200, resp);
             return true;
@@ -2426,7 +2452,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private boolean dispatchDesignerSub(MockHttpRequest request, MockHttpResponse response, String sub,
-            String projectId, boolean isWeb) throws IOException {
+            @Nullable String projectId, boolean isWeb) throws IOException {
         var method = request.method();
         if (sub.isEmpty()) {
             return serveDesignerUnits(response, method, projectId);
@@ -2447,7 +2473,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return dispatchDesignerUnit(request, response, sub.substring(1), projectId, method, isWeb);
     }
 
-    private boolean serveDesignerUnits(MockHttpResponse response, String method, String projectId)
+    private boolean serveDesignerUnits(MockHttpResponse response, String method, @Nullable String projectId)
             throws IOException {
         if (!"GET".equals(method)) {
             return false;
@@ -2457,7 +2483,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return true;
     }
 
-    private boolean serveDesignerCatalogue(MockHttpResponse response, String method, String projectId)
+    private boolean serveDesignerCatalogue(MockHttpResponse response, String method,
+            @Nullable String projectId)
             throws IOException {
         if (!"GET".equals(method)) {
             return false;
@@ -2468,7 +2495,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private boolean dispatchDesignerUnit(MockHttpRequest request, MockHttpResponse response, String unit,
-            String projectId, String method, boolean isWeb) throws IOException {
+            @Nullable String projectId, String method, boolean isWeb) throws IOException {
         if (unit.isEmpty() || unit.contains("/")) {
             response.json(400, unitNameInvalid(unit));
             return true;
@@ -2489,7 +2516,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return unit != null && UNIT_NAME.matcher(unit).matches() && !unit.contains("..");
     }
 
-    private static Map<String, Object> unitNameInvalid(String unit) {
+    private static Map<String, Object> unitNameInvalid(@Nullable String unit) {
         return Map.of(KEY_ERROR, ERR_UNIT_NAME_INVALID, KEY_MESSAGE,
                 "The name is not a unit name in the canonical grammar", FIELD_UNIT, unit == null ? "" : unit);
     }
@@ -2833,10 +2860,39 @@ public final class MockRuntimeEngine implements AutoCloseable {
         T get() throws IOException;
     }
 
+    private void recordStartEvent(StartRegistry.StartEvent event) {
+        if (EVENT_PLAN_STARTED.equals(event.name())) {
+            var planId = JsonTree.string(event.data(), KEY_PLAN_ID);
+            var projectId = JsonTree.string(event.data(), KEY_PROJECT_ID);
+            var title = JsonTree.string(event.data(), KEY_TITLE);
+            if (planId != null && projectId != null) {
+                startedPlans.put(planId, new StartedPlan(title != null ? title : planId, projectId));
+                synchronized (startLock) {
+                    startedPlanIds.add(planId);
+                }
+            }
+        } else if (EVENT_EPIC_STARTED.equals(event.name())) {
+            var epicId = JsonTree.string(event.data(), KEY_EPIC_ID);
+            var projectId = JsonTree.string(event.data(), KEY_PROJECT_ID);
+            var title = JsonTree.string(event.data(), KEY_LABEL);
+            if (title == null) {
+                title = JsonTree.string(event.data(), KEY_TITLE);
+            }
+            if (epicId != null) {
+                startedEpics.put(epicId, new StartedEpic(title != null ? title : epicId, projectId));
+                synchronized (startLock) {
+                    startedEpicIds.add(epicId);
+                }
+            }
+        }
+    }
+
     private void initDefaultStart() {
         synchronized (startLock) {
             startedPlanIds.clear();
+            startedPlans.clear();
             startedEpicIds.clear();
+            startedEpics.clear();
             intakeDraftCounter = 0;
             gitSourceCounter = 0;
             localChangePreviews.clear();
@@ -3056,7 +3112,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return bodyMap;
     }
 
-    private LessonSeed findLesson(String projectId, String lessonId) {
+    private @Nullable LessonSeed findLesson(String projectId, String lessonId) {
         synchronized (lessonSourceLock) {
             var seeds = lessonSourceSeeds.get(projectId);
             var index = indexOfLesson(seeds, lessonId);
@@ -3064,7 +3120,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
-    private static int indexOfLesson(List<LessonSeed> seeds, String lessonId) {
+    private static int indexOfLesson(@Nullable List<LessonSeed> seeds, String lessonId) {
         if (seeds == null) {
             return -1;
         }
@@ -3338,7 +3394,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 StagedPlanRecord.STATUS_CHANGED);
     }
 
-    private static List<String> surfaceHint(String instruction, String planId) {
+    private static List<String> surfaceHint(@Nullable String instruction, String planId) {
         if (instruction == null) {
             return List.of();
         }
@@ -3365,7 +3421,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return candidate;
     }
 
-    private static String firstOpenPlanId(EpicDecomposition current) {
+    private static @Nullable String firstOpenPlanId(EpicDecomposition current) {
         for (var workstream : current.workstreams()) {
             for (var plan : workstream.stagedPlans()) {
                 if (!plan.isDropped() && !plan.isLocked()) {
@@ -3839,6 +3895,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         var title = deriveTitle(parsed.title(), parsed.objective(), null, List.of());
         var id = uniqueEpicId(slug(title));
+        startedEpics.put(id, new StartedEpic(title, projectId));
         var body = new LinkedHashMap<String, Object>(new PlanStartResult(id, PlanStartResult.KIND_EPIC,
                 title, PlanStartResult.STATE_STARTED, PATH_EPICS_PREFIX + id).toMap());
         body.put(KEY_PROJECT_ID, projectId);
@@ -4712,10 +4769,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private String currentValue(String planId, String aspect) {
         var values = controlSettings.get(planId);
-        if (values != null && values.get(aspect) != null && values.get(aspect).value() != null) {
-            return values.get(aspect).value();
-        }
-        return "";
+        var setting = values != null ? values.get(aspect) : null;
+        var value = setting != null ? setting.value() : null;
+        return value != null ? value : "";
     }
 
     private void handleGetEpicResource(MockHttpResponse response, String epicId) throws IOException {
@@ -4870,7 +4926,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
-    private static String queryValue(MockHttpRequest request, String name) {
+    private static @Nullable String queryValue(MockHttpRequest request, String name) {
         var query = request.query();
         if (query == null) {
             return null;
@@ -5235,7 +5291,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleListReports(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        var query = request.query() != null ? request.query() : "";
+        var query = Objects.requireNonNullElse(request.query(), "");
         boolean older = query.contains("older=true");
         String projectFilter = null;
         for (var part : query.split("&")) {
@@ -5652,7 +5708,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var route = activeRoute("GET", path);
             if (route != null) {
                 if (path.endsWith("/ended")) {
-                    handleEndedPageQuery(route, request.query() != null ? request.query() : "page=1", response);
+                    handleEndedPageQuery(route, Objects.requireNonNullElse(request.query(), "page=1"), response);
                     return true;
                 }
                 return false;
@@ -5785,35 +5841,49 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void collectRunningProjects(String text, List<FindMatch> matches) {
         var seen = new HashSet<String>();
-        for (var project : enrolledProjects) {
-            var title = project.displayName();
-            if (!matchesText(text, project.projectId(), title, null)) {
-                continue;
+        synchronized (projectsLock) {
+            for (var project : enrolledProjects) {
+                seen.add(project.projectId());
+                var title = project.displayName();
+                if (!project.isReleased() && matchesText(text, project.projectId(), title, null)) {
+                    matches.add(new FindMatch(FindKind.PROJECT, project.projectId(), title,
+                            location(project.projectId(), title), null, null, false, null));
+                }
             }
-            seen.add(project.projectId());
-            matches.add(new FindMatch(FindKind.PROJECT, project.projectId(), title,
-                    location(project.projectId(), title), null, null, false, null));
         }
         for (var row : rowsOfRoute("GET", PATH_PROJECTS, CONST_PROJECTS)) {
             var id = JsonTree.string(row, KEY_PROJECT_ID);
-            if (id == null || seen.contains(id)) {
-                continue;
-            }
-            var title = JsonTree.string(row, KEY_DISPLAY_NAME);
-            if (matchesText(text, id, title, null)) {
-                matches.add(new FindMatch(FindKind.PROJECT, id, requireText(title, id), location(id, title),
-                        null, null, false, null));
+            var isReleased = Boolean.TRUE.equals(JsonTree.bool(row, "is_released"))
+                    || "released".equals(JsonTree.string(row, "readiness"));
+            if (id != null && !seen.contains(id) && !isReleased) {
+                var title = JsonTree.string(row, KEY_DISPLAY_NAME);
+                if (matchesText(text, id, title, null)) {
+                    matches.add(new FindMatch(FindKind.PROJECT, id, requireText(title, id), location(id, title),
+                            null, null, false, null));
+                }
             }
         }
     }
 
     private void collectRunningEpics(String text, List<FindMatch> matches) {
+        var seen = new HashSet<String>();
+        for (var entry : startedEpics.entrySet()) {
+            var id = entry.getKey();
+            var epic = entry.getValue();
+            if (matchesText(text, id, epic.title(), null)) {
+                seen.add(id);
+                matches.add(new FindMatch(FindKind.EPIC, id, requireText(epic.title(), id),
+                        location(epic.projectId(), null), location(id, epic.title()), null, false, null));
+            }
+        }
         for (var row : rowsOfRoute("GET", PATH_EPICS, KEY_EPICS)) {
             var id = JsonTree.string(row, KEY_ID);
-            var title = JsonTree.string(row, KEY_TITLE);
-            if (id != null && matchesText(text, id, title, null)) {
-                matches.add(new FindMatch(FindKind.EPIC, id, requireText(title, id),
-                        location(JsonTree.string(row, KEY_PROJECT), null), location(id, title), null, false, null));
+            if (id != null && !seen.contains(id)) {
+                var title = JsonTree.string(row, KEY_TITLE);
+                if (matchesText(text, id, title, null)) {
+                    matches.add(new FindMatch(FindKind.EPIC, id, requireText(title, id),
+                            location(JsonTree.string(row, KEY_PROJECT), null), location(id, title), null, false, null));
+                }
             }
         }
     }
@@ -5862,25 +5932,30 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void collectOpenDecisions(String text, List<FindMatch> matches) {
-        for (var decision : openDecisions.values()) {
-            if (!matchesText(text, decision.id(), decision.title(), null)) {
-                continue;
+        synchronized (decisionsLock) {
+            for (var decision : openDecisions.values()) {
+                if (!matchesText(text, decision.id(), decision.title(), null)) {
+                    continue;
+                }
+                var planId = extractPlan(decision);
+                matches.add(new FindMatch(FindKind.DECISION, decision.id(), decision.title(), null, null,
+                        location(planId != null ? planId : decision.subject(), null), false, null));
             }
-            matches.add(new FindMatch(FindKind.DECISION, decision.id(), decision.title(), null, null,
-                    location(decision.subject(), null), false, null));
         }
     }
 
     private void collectReports(String text, List<FindMatch> matches) {
-        for (var report : mockReports) {
-            if (!matchesText(text, report.id(), report.subject(), null)) {
-                continue;
+        synchronized (reportsLock) {
+            for (var report : mockReports) {
+                if (!matchesText(text, report.id(), report.subject(), null)) {
+                    continue;
+                }
+                var from = report.from();
+                matches.add(new FindMatch(FindKind.REPORT, report.id(), report.subject(),
+                        location(from.projectId(), from.projectTitle()),
+                        location(from.epicId(), from.epicTitle()),
+                        location(from.planId(), from.planTitle()), false, null));
             }
-            var from = report.from();
-            matches.add(new FindMatch(FindKind.REPORT, report.id(), report.subject(),
-                    location(from.projectId(), from.projectTitle()),
-                    location(from.epicId(), from.epicTitle()),
-                    location(from.planId(), from.planTitle()), false, null));
         }
     }
 
@@ -6158,7 +6233,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return body;
     }
 
-    private static String protocolVersionOf(Map<String, Object> params) {
+    private static String protocolVersionOf(@Nullable Map<String, Object> params) {
         var version = params == null ? null : JsonTree.string(params, "protocolVersion");
         return version == null || version.isBlank() ? "2025-11-25" : version;
     }
@@ -6236,7 +6311,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * Computes the replay a stream owes. Must be called under {@link #eventLock}, in the same section
      * that registers the stream.
      */
-    private ReplayPlan replayPlanFor(String scope, Long lastEventId) {
+    private ReplayPlan replayPlanFor(String scope, @Nullable Long lastEventId) {
         if (lastEventId == null) {
             return new ReplayPlan(List.of(), false);
         }
@@ -6254,7 +6329,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return new ReplayPlan(List.copyOf(replay), false);
     }
 
-    private static Long parseLastEventId(String header) {
+    private static @Nullable Long parseLastEventId(@Nullable String header) {
         if (header == null || header.isBlank()) {
             return null;
         }
@@ -6381,7 +6456,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param path the request path
      * @return the scope key, or {@code null} when the path is not an event stream
      */
-    private static String streamScopeOf(String path) {
+    private static @Nullable String streamScopeOf(String path) {
         if ("/api/v1/events".equals(path) || "/api/v1/machine/events".equals(path)) {
             return STREAM_MACHINE;
         }
@@ -6503,12 +6578,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     KEY_STATE, currentStateId.get()
             ));
             // cui-rewrite:disable InvalidExceptionUsageRecipe
-        } catch (RuntimeException e) {
+        } catch (IllegalArgumentException e) {
             response.json(404, Map.of(KEY_ERROR, "scenario_not_found", KEY_MESSAGE, e.getMessage()));
+        } catch (IllegalStateException e) {
+            response.json(500, Map.of(KEY_ERROR, "scenario_fixture_invalid", KEY_MESSAGE, e.getMessage()));
         }
     }
 
-    private String extractScenarioName(MockHttpRequest request) {
+    private @Nullable String extractScenarioName(MockHttpRequest request) {
         String scenarioName = null;
         if (request.body().length > 0) {
             try {
@@ -6521,8 +6598,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 // Ignore parse errors when extracting scenario name from body
             }
         }
-        if (scenarioName == null && request.query() != null) {
-            for (var part : request.query().split("&")) {
+        var queryString = request.query();
+        if (scenarioName == null && queryString != null) {
+            for (var part : queryString.split("&")) {
                 if (part.startsWith("name=") || part.startsWith("scenario=")) {
                     scenarioName = part.substring(part.indexOf('=') + 1);
                     break;
@@ -6584,9 +6662,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (payload == null) {
             return;
         }
-        var decision = JsonTree.object(payload, "decision");
-        var source = decision != null ? decision : payload;
+        var inner = JsonTree.object(payload, "decision");
+        if (inner == null) {
+            inner = JsonTree.object(payload, "question");
+        }
+        var source = new LinkedHashMap<>(inner != null ? inner : payload);
         var id = JsonTree.string(source, "id");
+        if (id == null) {
+            id = JsonTree.string(payload, "id");
+            if (id != null) {
+                source.put("id", id);
+            }
+        }
         if (id == null) {
             return;
         }
@@ -6798,7 +6885,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         for (var entry : state.links().entrySet()) {
             var link = entry.getValue();
             var target = new LinkedHashMap<String, Object>();
-            target.put(KEY_HREF, link.href() != null ? link.href() : "/api/v1/onboarding/step");
+            target.put(KEY_HREF, Objects.requireNonNullElse(link.href(), "/api/v1/onboarding/step"));
             target.put(KEY_METHOD, link.method());
             target.put("next", link.next());
             links.put(entry.getKey(), target);
@@ -6878,7 +6965,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var link = chosen.getValue();
         if (link.status() >= 400) {
             response.json(link.status(), Map.of(KEY_ERROR,
-                    link.error() != null ? link.error() : "rejected", KEY_STATE, previousState));
+                    Objects.requireNonNullElse(link.error(), "rejected"), KEY_STATE, previousState));
             return;
         }
         if (previousState != null && previousState.startsWith("language.")) {
@@ -7199,7 +7286,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @return the pairing code the web listener accepts right now, or {@code null} after it was
      *         consumed and until a fresh one is issued
      */
-    public String pairingCode() {
+    public @Nullable String pairingCode() {
         return currentPairingCode;
     }
 
@@ -7327,10 +7414,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param data  the event payload
      */
     private void syncDrainItems(String event, Object data) {
-        if (!EVENT_RUNTIME_DRAINING.equals(event)) {
+        if (!EVENT_RUNTIME_DRAINING.equals(event) || lifecycleState != RuntimeLifecycleState.DRAINING) {
             return;
         }
         var payload = JsonTree.asObject(data);
+        var gen = payload != null ? JsonTree.integer(payload, "drain_generation") : null;
+        if (gen != null && gen.longValue() != drainGeneration.get()) {
+            return;
+        }
         var items = payload != null ? JsonTree.asArray(payload.get(KEY_REMAINING_ITEMS)) : null;
         if (items == null) {
             return;
@@ -7432,6 +7523,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             enrolledProjects.clear();
             favouriteProjectIds.clear();
             beingAddedProjects.clear();
+            projectSetupStates.clear();
 
             var fixture = startRuntimeFixture();
             var fixtureProjects = fixtureObjects(fixture, FIXTURE_PROJECTS);
@@ -7746,7 +7838,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private boolean handleProjectExplorerGet(MockHttpRequest request, MockHttpResponse response, String path) throws IOException {
         if ("/api/v1/explorer".equals(path)
                 || (PATH_PROJECTS.equals(path)
-                && ((request.query() != null && request.query().contains("all"))
+                && (Objects.requireNonNullElse(request.query(), "").contains("all")
                 || declaresProjects()))) {
             handleGetProjectsExplorer(response);
             return true;
@@ -8126,8 +8218,34 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var body = readBodyMap(request);
         var linkName = JsonTree.string(body, "link");
         var current = projectSetupStates.getOrDefault(projectId, PROJECT_SETUP_IDENTITY);
-        if (linkName != null && PROJECT_SETUP_IDENTITY.equals(current)) {
+        if ("set".equals(linkName) && PROJECT_SETUP_IDENTITY.equals(current)) {
             current = PROJECT_SETUP_COMPLETED;
+            synchronized (projectsLock) {
+                var updatedList = new ArrayList<EnrolledProject>();
+                for (var p : enrolledProjects) {
+                    if (p.projectId().equals(projectId)) {
+                        updatedList.add(new EnrolledProject(
+                                p.projectId(),
+                                p.displayName(),
+                                p.remoteUrl(),
+                                ProjectReadiness.READY,
+                                null,
+                                Math.max(0, p.needsOperatorCount() - 1),
+                                p.activePlansCount(),
+                                p.activeEpicsCount(),
+                                p.lastActive(),
+                                p.isFavourite(),
+                                p.isReleased()
+                        ));
+                    } else {
+                        updatedList.add(p);
+                    }
+                }
+                enrolledProjects.clear();
+                enrolledProjects.addAll(updatedList);
+            }
+            broadcastEvent(ProjectChangedEvent.EVENT_NAME,
+                    new ProjectChangedEvent(projectId, ProjectReadiness.READY, Instant.now()).toMap());
         }
         projectSetupStates.put(projectId, current);
         response.json(200, projectSetupState(projectId, current));
@@ -8229,13 +8347,20 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleGetSystem(MockHttpRequest request, MockHttpResponse response) throws IOException {
-        var query = request.query() != null ? request.query() : "";
+        var query = Objects.requireNonNullElse(request.query(), "");
         Map<String, Object> snapshotFixture;
+        CleanupSummary cleanupSummary;
         synchronized (systemLock) {
             snapshotFixture = systemSnapshotFixture;
+            var hasOpenJob = activeCleanupJob != null && activeCleanupJob.isOpen();
+            cleanupSummary = hasOpenJob
+                    ? activeCleanupJob.summary()
+                    : new CleanupSummary(0, 0, 0, 0, 0, 0L, keptItems.size(), SWEEP_TODAY, SWEEP_TOMORROW);
         }
         if (snapshotFixture != null && query.isBlank()) {
-            response.json(200, snapshotFixture);
+            var copy = new LinkedHashMap<>(snapshotFixture);
+            copy.put("cleanup", cleanupSummary.toMap());
+            response.json(200, copy);
             return;
         }
         SystemWindow window = SystemWindow.HOUR;
@@ -8264,7 +8389,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 40802189312L,
                 "13:40",
                 true,
-                "127.0.0.1:" + (webPort > 0 ? webPort : 7420),
+                "127.0.0.1:" + effectiveWebPort(),
                 lanListenerOn ? "192.168.1.20:7421" : "off",
                 2,
                 0,
@@ -8330,23 +8455,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
             );
         }
 
-        boolean hasOpenJob;
-        CleanupSummary cleanupSummary;
-        synchronized (systemLock) {
-            hasOpenJob = activeCleanupJob != null && activeCleanupJob.isOpen();
-            cleanupSummary = hasOpenJob
-                    ? activeCleanupJob.summary()
-                    : new CleanupSummary(0, 0, 0, 0, 0, 0L, keptItems.size(), SWEEP_TODAY, SWEEP_TOMORROW);
-        }
-
         var snapshot = new SystemSnapshot(runtimeMetrics, workMetrics, workers, jobs, models, cleanupSummary, window, projectFilter);
         response.json(200, snapshot.toMap());
     }
 
     private void handleGetReleaseNotes(MockHttpRequest request, MockHttpResponse response) throws IOException {
         String version = "0.10.0";
-        if (request.query() != null) {
-            for (var part : request.query().split("&")) {
+        var queryString = request.query();
+        if (queryString != null) {
+            for (var part : queryString.split("&")) {
                 if (part.startsWith("version=")) {
                     version = part.substring("version=".length());
                 }
@@ -8405,6 +8522,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 ));
             } else {
                 lifecycleState = RuntimeLifecycleState.DRAINING;
+                cancelPendingTasks();
                 drainingBy = isWeb ? "the web app" : "the console";
                 canWithdrawStop = true;
                 drainGeneration.incrementAndGet();
@@ -8437,7 +8555,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         "can_withdraw", true
                 ));
                 // The work finishes one item at a time: the list and its count shrink as it does.
-                scheduleDrainShrink();
+                scheduleDrainShrink(drainItems.size());
             }
         }
     }
@@ -8446,10 +8564,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * Lets the work of a drain finish one item at a time: each step re-emits the shorter list, as
      * the runtime does when a running task or a job ends.
      */
-    private void scheduleDrainShrink() {
+    private void scheduleDrainShrink(int items) {
         var generation = drainGeneration.get();
-        for (var seconds = 1; seconds <= 3; seconds++) {
-            scheduler.schedule(() -> shrinkDrain(generation), seconds, TimeUnit.SECONDS);
+        for (var seconds = 1; seconds <= items; seconds++) {
+            var task = scheduler.schedule(() -> shrinkDrain(generation), seconds, TimeUnit.SECONDS);
+            synchronized (this) {
+                pendingTasks.add(task);
+            }
         }
     }
 
@@ -8490,6 +8611,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (systemLock) {
             if (lifecycleState == RuntimeLifecycleState.DRAINING) {
                 lifecycleState = RuntimeLifecycleState.RUNNING;
+                cancelPendingTasks();
                 drainingBy = null;
                 canWithdrawStop = false;
                 drainGeneration.incrementAndGet();
@@ -8633,15 +8755,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 }
             }
 
-            activeCleanupJob = new CleanupJob(
-                    activeCleanupJob.jobId(),
-                    CleanupJobState.DONE,
-                    activeCleanupJob.dueSince(),
-                    activeCleanupJob.summary(),
-                    activeCleanupJob.projectItems(),
-                    activeCleanupJob.links()
-            );
-
             var decided = activeCleanupJob.summary();
             var freedBytes = decided.freedBytes();
             var deletedPlans = decided.plansCount();
@@ -8661,6 +8774,27 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     }
                 }
             }
+
+            var adjustedSummary = new CleanupSummary(
+                    deletedPlans,
+                    deletedEpics,
+                    deletedLogs,
+                    decided.reportsCount(),
+                    decided.projectsCount(),
+                    freedBytes,
+                    decided.keptForGoodCount(),
+                    decided.lastSweepAt(),
+                    decided.nextCheckAt()
+            );
+
+            activeCleanupJob = new CleanupJob(
+                    activeCleanupJob.jobId(),
+                    CleanupJobState.DONE,
+                    activeCleanupJob.dueSince(),
+                    adjustedSummary,
+                    activeCleanupJob.projectItems(),
+                    activeCleanupJob.links()
+            );
 
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
@@ -8699,7 +8833,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         KEY_STATUS, "postponed",
                         "job_id", jobId,
                         CONST_DECISION, "remind",
-                        "remind_after_days", machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS),
+                        KEY_REMIND_AFTER_DAYS, machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS),
                         "remind_at", "2026-10-19T03:00:00Z"
                 ));
                 return;
@@ -8719,14 +8853,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     CONST_DECISION, "remind",
                     "by", "operator",
                     "channel", isWeb ? "web" : "cli",
-                    "remind_after_days", machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS)
+                    KEY_REMIND_AFTER_DAYS, machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS)
             ));
 
             response.json(200, Map.of(
                     KEY_STATUS, "postponed",
                     "job_id", jobId,
                     CONST_DECISION, "remind",
-                    "remind_after_days", machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS),
+                    KEY_REMIND_AFTER_DAYS, machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS),
                     "remind_at", "2026-10-19T03:00:00Z"
             ));
         }
@@ -8838,7 +8972,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     /** @return active cleanup job or null */
-    public CleanupJob activeCleanupJob() {
+    public @Nullable CleanupJob activeCleanupJob() {
         synchronized (systemLock) {
             return activeCleanupJob;
         }
@@ -8982,7 +9116,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleListDecisions(MockHttpRequest request, MockHttpResponse response, @Nullable String planFromPath) throws IOException {
-        var query = request.query() != null ? request.query() : "";
+        var query = Objects.requireNonNullElse(request.query(), "");
         String planFilter = planFromPath;
         String projectFilter = null;
         for (var part : query.split("&")) {
