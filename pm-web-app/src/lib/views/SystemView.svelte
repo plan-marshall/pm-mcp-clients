@@ -364,18 +364,6 @@
     actionError = '';
   }
 
-  /** Keeps the runtime running after a stop was asked; the drain banner's act. */
-  async function withdrawStop(): Promise<void> {
-    actionError = '';
-    try {
-      await apiClient.withdrawStop();
-      runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
-      actionSuccess = $t('system.stopping.withdrawn');
-    } catch (err: unknown) {
-      actionError = (err as Error)?.message || $t('system.action.failed');
-    }
-  }
-
   /** The runtime's lifecycle state, which selects its acts (UC-P-02). */
   let runtimeState = $derived(
     $runtimeStore.isDraining
@@ -414,15 +402,6 @@
         return;
       case 'upgrade':
         openUpgradeConsent();
-        return;
-      case 'withdraw_stop':
-        void withdrawStop();
-        return;
-      case 'stop_now':
-        void apiClient.stopRuntime('now');
-        return;
-      case 'start':
-        void loadSnapshot(true);
         return;
       default:
         return;

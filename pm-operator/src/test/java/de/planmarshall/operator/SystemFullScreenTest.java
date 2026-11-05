@@ -46,6 +46,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @DisplayName("SystemFullScreenTest (VirtualScreenTerminal)")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -378,6 +380,8 @@ class SystemFullScreenTest {
             virtual.type("\r");
             await(() -> shows(virtual, "\u00b7 Jobs"));
             await(() -> shows(virtual, "locks  3 held"));
+            await(() -> shows(virtual, "build  1 of 2 slots \u00b7 1 queued"));
+            await(() -> shows(virtual, "test  0 of 1 slot"));
 
             virtual.type("jj");
             await(() -> selectedRow(virtual).contains("locks"));
@@ -402,6 +406,35 @@ class SystemFullScreenTest {
 
             await(() -> shows(virtual, "Stopping when what runs is done"));
             await(() -> shows(virtual, "2 left: build of fix-relay, task of relay-docs"));
+
+            virtual.type("q");
+            join(thread);
+        }
+    }
+
+    @ParameterizedTest(name = "a status that moves to {0} replaces the event's line")
+    @CsvSource(delimiter = '|', value = {
+                        "stopping | {\"version\":\"0.9.1\",\"state\":\"stopping\"}",
+                        "upgrading | {\"version\":\"0.9.1\",\"state\":\"upgrading\",\"upgrade_step\":\"install\"}",
+                        "stopped | {\"version\":\"0.9.1\",\"state\":\"stopped\"}"
+    })
+    @DisplayName("a status that moves past draining replaces the event's line")
+    void theDrainingLineGivesWayToTheStatus(String expectedState, String status) throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var context = createContext(virtual);
+            var thread = startAndOpenSystem(virtual, context, createApp(context, virtual));
+
+            sendEvent("runtime.draining", "{\"who\":\"you\",\"remaining_count\":2,"
+                                + "\"remaining_items\":[\"build of fix-relay\",\"task of relay-docs\"],"
+                                + "\"withdrawable\":true}");
+            await(() -> shows(virtual, "Stopping when what runs is done"));
+
+            statusBody.set(status);
+            sendEvent("system.metrics", "{}");
+            await(() -> shows(virtual, expectedState));
+
+            assertFalse(shows(virtual, "Stopping when what runs is done"),
+                                virtual.screen().lines().toString());
 
             virtual.type("q");
             join(thread);
@@ -550,6 +583,8 @@ class SystemFullScreenTest {
     void aFailedSystemReadKeepsTheStatusLine() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
             var context = createContext(virtual);
+            // PmOperator.execute(..., "system") is the direct-verb path; the console flag only
+            // makes the verb draw on this test's virtual terminal instead of the provider's.
             context.setConsoleActive(true);
             var out = new StringWriter();
             var thread = new Thread(() -> PmOperator.execute(context, new PrintWriter(out),
@@ -560,9 +595,12 @@ class SystemFullScreenTest {
 
             systemCode.set(500);
             statusBody.set(STATUS_DRAINING_FIVE);
+            var readsBefore = systemTargets.size();
             virtual.type("r");
+            await(() -> systemTargets.size() > readsBefore);
             await(() -> shows(virtual, "draining \u00b7 5 left"));
 
+            assertEquals(500, systemCode.get(), "the view really read the failing snapshot");
             virtual.type("q");
             join(thread);
         }

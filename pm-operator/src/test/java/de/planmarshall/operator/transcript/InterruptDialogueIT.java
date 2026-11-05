@@ -42,7 +42,17 @@ class InterruptDialogueIT {
     private static final String INTERRUPT = "\u0003";
     private static final int EXIT_INTERRUPTED = 130;
 
-    /** How long the screen must stay unchanged before the prompt is read as ready for keys. */
+    /**
+     * How long the screen must stay unchanged before the prompt is read as ready for keys.
+     *
+     * <p>PLAN-94 D5(e) asked for a condition instead of this pause. The condition a reader needs is
+     * that JLine holds the terminal in raw mode, and no code-produced mark says so: {@code
+     * StartPrompt} draws the prompt first and calls {@code readLine} afterwards, which enters the raw
+     * mode through an {@code stty} child. A key typed in that window kills that child
+     * ({@code java.io.IOError: Error executing '/bin/stty ...'}), so the drawn prompt alone is not
+     * the condition — the quiet window is what says the switch is through. Recorded as a decision
+     * with this reason, not silently kept.
+     */
     private static final Duration SETTLE = Duration.ofMillis(700);
     private static final Duration POLL = Duration.ofMillis(25);
 

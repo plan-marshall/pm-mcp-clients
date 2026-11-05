@@ -975,6 +975,8 @@ export interface PlanCompletionReport {
   replanning_records: ReplanningRecord[];
   decision_records: DecisionRecord[];
   own_calls?: OwnCallRecord[];
+  /** The size of the plan's change at its last capture; a plan with none carries no field. */
+  change?: ChangeSizeRecord | null;
   change_map?: ChangeMapRecord;
   token_usage?: TokenUsageRecord;
   ended?: string;
@@ -994,6 +996,14 @@ export interface ChangeMapRecord {
   diagram: string;
   state: string;
   cause?: string;
+}
+
+/** The size of a plan's change at its last capture (`plan.change.size`). */
+export interface ChangeSizeRecord {
+  files: number;
+  insertions: number;
+  deletions: number;
+  unplanned?: number;
 }
 
 export interface QuorumVote {
@@ -2793,12 +2803,25 @@ export class ApiClient {
     );
   }
 
+  /** How long a revoke may wait for the runtime before the request gives up. */
+  private static readonly REVOKE_TIMEOUT_MS = 15_000;
+
   public async revokeDevice(deviceId: string): Promise<void> {
-    await this.request('DELETE', `/api/v1/web/devices/${encodeURIComponent(deviceId)}`);
+    await this.request(
+      'DELETE',
+      `/api/v1/web/devices/${encodeURIComponent(deviceId)}`,
+      undefined,
+      AbortSignal.timeout(ApiClient.REVOKE_TIMEOUT_MS),
+    );
   }
 
   public async revokeOtherDevices(): Promise<void> {
-    await this.request('DELETE', '/api/v1/web/devices?others');
+    await this.request(
+      'DELETE',
+      '/api/v1/web/devices?others',
+      undefined,
+      AbortSignal.timeout(ApiClient.REVOKE_TIMEOUT_MS),
+    );
   }
 
   public async turnOffLanListener(): Promise<void> {
@@ -2932,6 +2955,7 @@ export class ApiClient {
   public async stopRuntime(
     when: 'drain' | 'now',
     then?: 'restart' | 'upgrade',
+    signal?: AbortSignal,
   ): Promise<{ lifecycle_state: string }> {
     const body: Record<string, unknown> = {
       now: when === 'now',
@@ -2941,7 +2965,7 @@ export class ApiClient {
       // NOSONAR: typescript:S7739 - external wire contract requires 'then' property
       Reflect.set(body, 'then', then);
     }
-    return this.request<{ lifecycle_state: string }>('POST', '/api/v1/runtime/stop', body);
+    return this.request<{ lifecycle_state: string }>('POST', '/api/v1/runtime/stop', body, signal);
   }
 
   public async withdrawStop(): Promise<void> {

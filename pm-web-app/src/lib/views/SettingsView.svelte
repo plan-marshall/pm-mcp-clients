@@ -26,6 +26,8 @@
   let lanListenerOn = true;
   let lanModalOpen = false;
   let pendingRevokeTarget: PairedDevice | 'others' | null = null;
+  /** Whether the confirmed revoke runs; the dialog stays open and refuses a second confirm. */
+  let revoking = false;
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
@@ -132,17 +134,31 @@
     pendingRevokeTarget = null;
   }
 
+  /**
+   * @param err the failure a revoke reported
+   * @returns `true` when the request gave up on its deadline, so the runtime may still have acted
+   */
+  function revokeTimedOut(err: unknown): boolean {
+    const name = (err as Error)?.name;
+    return name === 'TimeoutError' || name === 'AbortError';
+  }
+
   async function confirmRevoke() {
-    if (!pendingRevokeTarget) return;
+    if (!pendingRevokeTarget || revoking) return;
     actionError = '';
+    revoking = true;
 
     if (pendingRevokeTarget === 'others') {
       try {
         await apiClient.revokeOtherDevices();
         devices = devices.filter((d) => isThisBrowser(d));
         pendingRevokeTarget = null;
-      } catch {
+      } catch (err: unknown) {
         actionError = $t('web.settings.devices.revoke_failed');
+        // The runtime may have applied the revoke before the deadline: read the list again.
+        if (revokeTimedOut(err)) void loadData();
+      } finally {
+        revoking = false;
       }
       return;
     }
@@ -168,8 +184,11 @@
           currentRoute: 'revoked',
         }));
       }
-    } catch {
+    } catch (err: unknown) {
       actionError = $t('web.settings.devices.revoke_failed');
+      if (revokeTimedOut(err)) void loadData();
+    } finally {
+      revoking = false;
     }
   }
 
@@ -438,6 +457,7 @@
     actionLabel={$t('devices.revoke.action')}
     cancelLabel={$t('devices.revoke.keep')}
     typedName={pendingRevokeTarget === 'others' ? (thisLabel ?? '') : undefined}
+    busy={revoking}
     onConfirm={confirmRevoke}
     onClose={cancelRevoke}
   />

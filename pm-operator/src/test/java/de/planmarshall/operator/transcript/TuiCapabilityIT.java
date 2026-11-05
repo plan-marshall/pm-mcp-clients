@@ -107,6 +107,11 @@ class TuiCapabilityIT {
 
             assertTrue(session.alternateScreenActive(), session.screenText());
             assertEquals(1, session.alternateScreenEntries(), session.rawOutput());
+            // Beside the alternate screen and the cursor, the attributes: the selection is drawn in
+            // reverse video (an attribute, not only a position), so a view that drops its styles
+            // fails here even though the two assertions above still hold.
+            assertFalse(session.screen().invertedRows().isEmpty(),
+                                "the selected row is drawn in reverse: " + session.screenText());
 
             session.send("q");
             assertTrue(session.awaitExit(TIMEOUT), session.rawOutput());

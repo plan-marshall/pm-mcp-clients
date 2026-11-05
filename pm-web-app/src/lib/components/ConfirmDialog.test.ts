@@ -115,6 +115,36 @@ describe('ConfirmDialog', () => {
     expect(screen.getByTestId('confirm-dialog-confirm')).toBeEnabled();
   });
 
+  it('ignores a double confirm and keeps Escape and cancel inert while the act runs', async () => {
+    const onConfirm = vi.fn();
+    const onClose = vi.fn();
+    render(ConfirmDialog, {
+      props: {
+        open: true,
+        title: 'Stop now?',
+        consequences: CONSEQUENCES,
+        actionLabel: 'Stop now',
+        cancelLabel: 'Keep it',
+        busy: true,
+        onConfirm,
+        onClose,
+      },
+    });
+
+    const confirm = screen.getByTestId('confirm-dialog-confirm');
+    await fireEvent.click(confirm);
+    await fireEvent.click(confirm);
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    const cancel = screen.getByTestId('confirm-dialog-cancel');
+    expect(cancel).toBeDisabled();
+    await fireEvent.click(cancel);
+    expect(onClose).not.toHaveBeenCalled();
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it('draws nothing while it is closed', () => {
     render(ConfirmDialog, {
       props: {

@@ -81,7 +81,13 @@ class OnboardingDialogueIT {
             DialogueHarness.type(session, "zzz\nq\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
-            assertTrue(DialogueHarness.times(session.rawOutput(), PROMPT) >= 2, session.screenText());
+            // The re-ask is the dialogue's answer to the input it did not offer, drawn once. A
+            // title redraw can repeat the frame title; only a re-ask says the input was rejected.
+            assertEquals(1, DialogueHarness.times(session.rawOutput(), "zzz is not offered here"),
+                                session.rawOutput());
+            // The rejection is followed by the next prompt, not by a leave: the dialogue kept
+            // asking, and the `q` is what ended it.
+            assertTrue(session.screenText().contains("Nothing was sent."), session.screenText());
             harness.assertNoAct();
         }
     }

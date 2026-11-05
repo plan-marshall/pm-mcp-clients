@@ -1,0 +1,20 @@
+# Screen captures for PLAN-94: The CodeRabbit findings nobody handled (deliverable 2)
+# name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys
+#
+# The console prompt with an open project onboarding: `fully-onboarded` carries an open
+# project setup at step 2 of 10, so the prompt badge `setup cui-parent 2/10` is what the
+# machine's own badge is not. The process leaves with `exit`.
+#
+# The last frame of a project setup: the mock's setup run answers the identity prompt and
+# advances to its completed state, so the `before-keys` Enter draws that frame and the capture
+# reads it; `q` then leaves the dialogue.
+
+console-prompt-project-onboarding-120x30-en | fully-onboarded | - |  | exit\n | 120x30 | en_US.UTF-8 | - | -
+console-prompt-project-onboarding-80x24-en | fully-onboarded | - |  | exit\n | 80x24 | en_US.UTF-8 | - | -
+console-prompt-project-onboarding-120x30-de | fully-onboarded | - |  | exit\n | 120x30 | de_DE.UTF-8 | - | -
+console-prompt-project-onboarding-80x24-de | fully-onboarded | - |  | exit\n | 80x24 | de_DE.UTF-8 | - | -
+
+project-setup-completed-120x30-en | projects-and-start | projects.being-added | project setup cui-parent | - | 120x30 | en_US.UTF-8 | - | \n
+project-setup-completed-80x24-en | projects-and-start | projects.being-added | project setup cui-parent | - | 80x24 | en_US.UTF-8 | - | \n
+project-setup-completed-120x30-de | projects-and-start | projects.being-added | project setup cui-parent | - | 120x30 | de_DE.UTF-8 | - | \n
+project-setup-completed-80x24-de | projects-and-start | projects.being-added | project setup cui-parent | - | 80x24 | de_DE.UTF-8 | - | \n

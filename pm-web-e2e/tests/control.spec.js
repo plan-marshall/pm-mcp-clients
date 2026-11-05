@@ -244,6 +244,56 @@ test.describe('Controlling work (UC-CTL-1..5)', () => {
     await expect(menu.getByTestId('action-archive')).toBeVisible();
   });
 
+  test('does not read a mounted dialog as an act at rest', async ({ page, request }) => {
+    await pairBrowser(page, request);
+    await page.goto('/plans/fix-relay');
+
+    // The pause dialogue has no danger act, so only the mounted-dialog guard can refuse it.
+    await page.getByTestId('action-pause').click();
+    await expect(page.getByTestId('control-dialog-pause')).toBeVisible();
+
+    const refused = await expectNothingRedAtRest(page, { timeout: 500 }).then(
+      () => false,
+      () => true,
+    );
+    expect(refused).toBe(true);
+  });
+
+  test('reaches a disabled overflow act with the keyboard and names its reason', async ({
+    page,
+    request,
+  }) => {
+    await pairBrowser(page, request);
+    await page.goto('/epics/relay-docs-epic');
+
+    const menu = await openOverflow(page.getByTestId('control-actions'));
+    const archive = menu.getByTestId('action-archive');
+    await expect(archive).toHaveAttribute('aria-disabled', 'true');
+    await expect(archive).toHaveAttribute('title', 'the ledger is landing');
+
+    const describedBy = await archive.getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+    await expect(page.locator(`#${describedBy}`)).toHaveText('the ledger is landing');
+
+    // The entry a disabled act hides behind is still reachable with the arrow keys.
+    await page.keyboard.press('Home');
+    await expect(archive).toBeFocused();
+  });
+
+  test('gives an overflow entry a 44 px target on a phone', async ({ page, request }) => {
+    await pairBrowser(page, request);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/plans/fix-relay');
+
+    const menu = await openOverflow(page.getByTestId('control-actions'));
+    const entry = menu.getByTestId('action-cancel');
+    await expect(entry).toBeVisible();
+
+    const box = await entry.boundingBox();
+    expect(box).not.toBeNull();
+    expect(box.height).toBeGreaterThanOrEqual(44);
+  });
+
   test('toggles an epic’s automatic mode with the value it sets', async ({ page, request }) => {
     await pairBrowser(page, request);
     await page.goto('/epics/relay-hardening');

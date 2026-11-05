@@ -198,6 +198,70 @@ class PmConsoleBehaviourTest {
     }
 
     @Test
+    @DisplayName("the window title follows the badge the dialogue left behind")
+    void theTitleFollowsTheSetupBadge() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, """
+                                    {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":3}}
+                                    """);
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            new PmConsole(context).refreshSetupBadge("en", terminal);
+        }
+        assertTrue(rendered.toString(StandardCharsets.UTF_8).contains("pm-operator [setup 3/7]"),
+                            rendered.toString(StandardCharsets.UTF_8));
+    }
+
+    @Test
+    @DisplayName("a reconnect reads the runtime state again and redraws the title")
+    void aReconnectReadsTheState() throws Exception {
+        var statusReads = new AtomicInteger();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                var count = statusReads.getAndIncrement() == 0 ? 3 : 2;
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true,"
+                                    + "\"needs_operator\":{\"question\":" + count + "}}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[]}");
+            } else if ("/api/v1/events".equals(request.target())) {
+                response.events(200).close();
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        var console = new PmConsole(new OperatorContext(fixture.environment(), tempDir, true,
+                            ClientEnvironment.capture(fixture.environment()),
+                            () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null));
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var thread = console.startEventListener(reader, terminal);
+            try {
+                var deadline = System.nanoTime() + 5_000_000_000L;
+                while (System.nanoTime() < deadline
+                                    && !rendered.toString(StandardCharsets.UTF_8).contains("pm-operator [2 questions]")) {
+                    Thread.onSpinWait();
+                }
+            } finally {
+                console.stop();
+                thread.interrupt();
+            }
+        }
+        assertTrue(rendered.toString(StandardCharsets.UTF_8).contains("pm-operator [2 questions]"),
+                            rendered.toString(StandardCharsets.UTF_8));
+    }
+
+    @Test
     @DisplayName("the notification payload names the scope and the kind, never the question text")
     void notificationPayload() throws Exception {
         var rendered = new ByteArrayOutputStream();

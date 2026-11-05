@@ -50,7 +50,7 @@ public final class OnboardCommand implements Callable<Integer> {
     static final String STEP_PATH = OnboardingSource.STEP_PATH;
     static final String AUTO_PATH = "/api/v1/onboarding/auto";
 
-    private static final int EXIT_NEEDS_INPUT = 3;
+    static final int EXIT_NEEDS_INPUT = 3;
     private static final int WRAP_WIDTH = 76;
     private static final long POLL_PAUSE_NANOS = 100_000_000L;
     private static final String ASPECT = "aspect";
@@ -109,8 +109,11 @@ public final class OnboardCommand implements Callable<Integer> {
         var dialogue = new StateDialogue(source, out, locale,
                             stateId -> new ChoicePrompt(startPrompt, stateId));
         try {
-            dialogue.run();
-            return 0;
+            var frame = dialogue.run();
+            // A run that ends on a state with no links timed out waiting: the setup did not
+            // complete, so the exit code says so rather than claiming 0. (CodeRabbit marked this
+            // unverified; it is verified here at the dialogue's own return value.)
+            return frame.isFinal() ? 0 : EXIT_NEEDS_INPUT;
         } catch (StartPrompt.InterruptException _) {
             return StartPrompt.EXIT_INTERRUPTED;
         } catch (StartPrompt.StartLeftException _) {
@@ -154,7 +157,9 @@ public final class OnboardCommand implements Callable<Integer> {
             printResults(out, locale, frame);
         }
         out.flush();
-        return 0;
+        // A run that timed out is neither final nor at its result: the exit-code table's 3, so a
+        // script does not read an unfinished setup as done.
+        return frame.isFinal() || AUTO_RESULT.equals(frame.stateId()) ? 0 : EXIT_NEEDS_INPUT;
     }
 
     /**

@@ -318,6 +318,10 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Let them run on without the epic
 |Lass sie ohne das Epic weiterlaufen
 
+|`control.cancel_epic.plans_line`
+|{count, plural, =0 {no plan runs} one {# plan runs} other {# plans run}}
+|{count, plural, =0 {kein Plan läuft} one {# Plan läuft} other {# Pläne laufen}}
+
 |`control.cancel_epic.afterwards`
 |the epic is archived as cancelled
 |das Epic wird als abgebrochen archiviert

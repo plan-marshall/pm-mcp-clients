@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -22,6 +23,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.system.CleanupSummary;
@@ -116,6 +120,60 @@ class RuntimeActDialogueTest {
                             () -> assertTrue(screen.contains("2) Stop now"), screen),
                             () -> assertTrue(screen.contains("k) keep it running"), screen)
         );
+    }
+
+    @Test
+    @DisplayName("a runtime that accepts and never answers leaves stop with a refusal within the bound")
+    void aSilentRuntimeDoesNotHangTheStop() throws Exception {
+        var release = new CountDownLatch(1);
+        var stream = new AtomicReference<FakeRuntimeServer.EventStream>();
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/system".equals(request.target())) {
+                try {
+                    // The head is written and the body never starts: the client waits for a chunk.
+                    stream.set(response.events(200));
+                    release.await(30, TimeUnit.SECONDS);
+                } catch (IOException | InterruptedException _) {
+                    Thread.currentThread().interrupt();
+                }
+            } else {
+                response.send(202, null, "");
+            }
+        });
+
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var answer = new AtomicReference<RuntimeActDialogue.Answer>();
+            var thread = new Thread(() -> {
+                try {
+                    answer.set(RuntimeActDialogue.confirm(context(virtual, ENGLISH), new PrintWriter(out),
+                                        Act.STOP, null, false, null));
+                } catch (IOException e) {
+                    throw new IllegalStateException(e);
+                }
+            }, "stop-on-a-silent-runtime");
+            thread.start();
+            thread.join(15_000L);
+            var hung = thread.isAlive();
+            release.countDown();
+            var open = stream.get();
+            if (open != null) {
+                try {
+                    open.close();
+                } catch (IOException _) {
+                    // the client already closed its side after the bound expired
+                }
+            }
+            thread.join(5_000L);
+
+            assertAll(
+                                () -> assertFalse(hung, "stop hung on a runtime that never answers"),
+                                () -> assertEquals(1, answer.get() != null ? answer.get().exitCode() : Integer.MIN_VALUE,
+                                                    out.toString()),
+                                () -> assertTrue(out.toString().contains("The runtime is not answering"),
+                                                    out.toString())
+            );
+        }
     }
 
     @Test

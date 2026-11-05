@@ -495,6 +495,14 @@ public final class StateDialogue {
      *         labelled fallback where the state has no text at all
      */
     public static String titleOf(String locale, Frame frame) {
+        if ("project.completed".equals(frame.stateId())) {
+            var project = projectNameOf(frame.facts());
+            if (project != null) {
+                // The last frame says which project is ready, not just that one is.
+                return TerminalSanitizer.sanitizeLine(MessageCatalogue.format(locale,
+                                    "project.ready.title", Map.of("project", project)));
+            }
+        }
         var key = prefix(frame.stateId()) + normalise(frame.stateId()) + ".title";
         if (MessageCatalogue.hasKey(locale, key)) {
             var rendered = MessageCatalogue.format(locale, key, frame.facts());
@@ -524,6 +532,20 @@ public final class StateDialogue {
     public static boolean hasTitleOf(String locale, Frame frame) {
         return MessageCatalogue.hasKey(locale,
                             prefix(frame.stateId()) + normalise(frame.stateId()) + ".title");
+    }
+
+    /**
+     * @param facts the state's facts
+     * @return the project the state names, or {@code null} when it names none
+     */
+    private static @Nullable String projectNameOf(Map<String, Object> facts) {
+        for (var key : List.of("name", "project_id", "project", "id")) {
+            var value = facts.get(key);
+            if (value instanceof String text && !text.isBlank()) {
+                return text;
+            }
+        }
+        return null;
     }
 
     private @Nullable String factLabel(String stateId, String field) {

@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Path;
@@ -53,7 +54,7 @@ class OperatorContextTerminalTest {
             assertSame(borrowed.terminal(), context.createTerminal());
             assertEquals(1, creations.get(), "the provider is not asked while a scope is set");
 
-            context.clearTerminal();
+            context.clearTerminal(borrowed.terminal());
             assertSame(provided.terminal(), context.createTerminal());
             assertEquals(2, creations.get());
         }
@@ -72,7 +73,7 @@ class OperatorContextTerminalTest {
             assertTrue(context.ownsTerminal(provided.terminal()));
             assertFalse(context.ownsTerminal(null));
 
-            context.clearTerminal();
+            context.clearTerminal(borrowed.terminal());
             assertTrue(context.ownsTerminal(provided.terminal()));
         }
     }
@@ -81,21 +82,42 @@ class OperatorContextTerminalTest {
     @DisplayName("scopes nest, and clearing one returns the view's terminal to its outer scope")
     void scopesNest() throws Exception {
         try (var view = VirtualScreenTerminal.create(80, 24);
+             var nested = VirtualScreenTerminal.create(80, 24);
+             var provided = VirtualScreenTerminal.create(80, 24)) {
+            var context = new OperatorContext(Map.of(), tempDir, true,
+                                ClientEnvironment.capture(Map.of()), provided::terminal, null);
+
+            context.useTerminal(view.terminal());
+            context.useTerminal(nested.terminal());
+            assertSame(nested.terminal(), context.createTerminal());
+            assertFalse(context.ownsTerminal(view.terminal()),
+                                "the outer scope's terminal is lent, not owned");
+
+            context.clearTerminal(nested.terminal());
+            assertSame(view.terminal(), context.createTerminal(),
+                                "the view's scope is still set after the nested one is cleared");
+
+            context.clearTerminal(view.terminal());
+            assertSame(provided.terminal(), context.createTerminal(),
+                                "the provider supplies the terminal again once every scope is cleared");
+        }
+    }
+
+    @Test
+    @DisplayName("clearing a terminal that is not the innermost scope is refused")
+    void refusesToClearTheWrongScope() throws Exception {
+        try (var view = VirtualScreenTerminal.create(80, 24);
              var nested = VirtualScreenTerminal.create(80, 24)) {
             var context = new OperatorContext(Map.of(), tempDir, true,
                                 ClientEnvironment.capture(Map.of()), view::terminal, null);
 
             context.useTerminal(view.terminal());
             context.useTerminal(nested.terminal());
-            assertSame(nested.terminal(), context.createTerminal());
+            var outer = view.terminal();
 
-            context.clearTerminal();
-            assertSame(view.terminal(), context.createTerminal(),
-                                "the view's scope is still set after the nested one is cleared");
-
-            context.clearTerminal();
-            assertSame(view.terminal(), context.createTerminal(),
-                                "the provider supplies the terminal again once every scope is cleared");
+            assertThrows(IllegalStateException.class, () -> context.clearTerminal(outer),
+                                "popping the outer scope would hand the nested one away");
+            assertSame(nested.terminal(), context.createTerminal(), "the scopes are untouched");
         }
     }
 
@@ -113,7 +135,7 @@ class OperatorContextTerminalTest {
             }
             assertFalse(borrowed.isClosed(), "a borrowed terminal is not the lease's to close");
 
-            context.clearTerminal();
+            context.clearTerminal(borrowed.terminal());
             try (var lease = context.openTerminal()) {
                 assertSame(provided.terminal(), lease.terminal());
             }

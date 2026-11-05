@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -35,6 +36,7 @@ import de.planmarshall.api.system.WorkerMetric;
 import de.planmarshall.api.system.WorkerState;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.system.SystemLevel;
+import de.planmarshall.operator.system.SystemView;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -192,6 +194,18 @@ class SystemViewConsistencyTest {
     }
 
     @Test
+    @DisplayName("a state key with a control sequence reaches the work line clean")
+    void stateKeysPrintClean() {
+        var escapedKey = "run\u001b[31mning";
+        var work = new WorkMetrics(Map.of(escapedKey, 3), Map.of(), 1, 0, 1, List.of());
+
+        var line = SystemView.work(work, "en").line();
+
+        assertFalse(line.contains("\u001b"), line);
+        assertTrue(line.contains("running"), line);
+    }
+
+    @Test
     @DisplayName("both views show the runtime's listeners as the catalogue states them")
     void bothViewsShowTheSameListeners() {
         var snapshot = sampleSnapshot();
@@ -209,16 +223,33 @@ class SystemViewConsistencyTest {
     void bothViewsShowTheSameTokenUnits() {
         var snapshot = sampleSnapshot();
         for (var lang : List.of("en", "de")) {
-            var first = split(lang, totalTokens, inputTokens, outputTokens);
-            var second = split(lang, secondTotalTokens, secondInputTokens, secondOutputTokens);
-            for (var expected : List.of(first, second)) {
+            var rows = List.of(
+                                Map.entry(claudeHarness + ":" + firstModel,
+                                                    split(lang, totalTokens, inputTokens, outputTokens)),
+                                Map.entry(claudeHarness + ":" + secondModel,
+                                                    split(lang, secondTotalTokens, secondInputTokens,
+                                                                        secondOutputTokens)));
+            for (var row : rows) {
                 var printedText = printed(snapshot, lang);
-                assertTrue(printedText.contains(expected), lang + " printed: " + printedText);
-                assertTrue(fullScreenLines(snapshot, lang).stream()
-                                                        .anyMatch(line -> line.contains(expected)),
-                                    lang + " full screen: " + fullScreenLines(snapshot, lang));
+                assertTrue(printedText.contains(row.getValue()), lang + " printed: " + printedText);
+                // The tie: the split must sit on the row of its own model, not anywhere in the view.
+                var fullScreenRow = fullScreenLines(snapshot, lang).stream()
+                                    .filter(candidate -> candidate.contains(row.getKey()))
+                                    .findFirst().orElse("");
+                assertTrue(fullScreenRow.contains(row.getValue()),
+                                    lang + " row of " + row.getKey() + ": " + fullScreenRow);
             }
         }
+    }
+
+    @Test
+    @DisplayName("the models summary names the floor it stands on")
+    void theSummaryNamesItsFloor() {
+        var lines = fullScreenLines(sampleSnapshot(), "en");
+
+        // A model whose calls are partly unmeasured makes the summary a floor: it carries "≥".
+        assertTrue(lines.stream().anyMatch(line -> line.contains("\u2265")),
+                            "the summary carries the floor marker: " + lines);
     }
 
     private static String split(String lang, long total, long in, long out) {

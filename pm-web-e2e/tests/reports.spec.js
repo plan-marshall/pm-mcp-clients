@@ -1,6 +1,18 @@
 import { test, expect } from '@playwright/test';
 import { MOCK_RUNTIME_URL } from './helpers/ports.js';
 
+/**
+ * The number the heading names as unread. The scenario also announces a read of a report outside
+ * the loaded page, so only a comparison before and after is stable.
+ *
+ * @param {import('@playwright/test').Page} page the reports page
+ * @returns {Promise<number>} the unread count, or `NaN` when the heading names none
+ */
+async function unreadCount(page) {
+  const text = (await page.getByTestId('unread-count').textContent()) ?? '';
+  return Number(text.match(/\d+/)?.[0] ?? Number.NaN);
+}
+
 test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
   test.beforeEach(async ({ page, request }) => {
     // Switch mock runtime to reports scenario
@@ -31,7 +43,7 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await expect(page.getByText('Ended: merged (#214)')).toBeVisible();
   });
 
-  test('marks a single report read and removes it from view', async ({ page }) => {
+  test('marks a single report read from its row menu and removes it from view', async ({ page }) => {
     // Navigate to reports view
     await page
       .locator('.nav-rail')
@@ -40,18 +52,57 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await expect(page.locator('.reports-view')).toBeVisible();
 
     // Look for Ended: no change (rep-0139)
-    await expect(page.getByText('Ended: no change')).toBeVisible();
+    const row = page.locator('.report-card', { hasText: 'Ended: no change' });
+    await expect(row).toBeVisible();
 
-    // Click Mark read for rep-0139
-    const markReadButtons = page.locator('.action-btn--read');
-    const initialCount = await markReadButtons.count();
+    // Open this row's menu and mark the one report read
+    const rows = page.locator('.report-card');
+    const initialCount = await rows.count();
     expect(initialCount).toBeGreaterThan(0);
 
-    // Click the first Mark read button
-    await markReadButtons.first().click();
+    await row.getByRole('button', { name: /Report actions/i }).click();
+    await row.getByRole('menuitem', { name: /Mark read/i }).click();
 
-    // Item count should decrease
-    await expect(page.locator('.action-btn--read')).toHaveCount(initialCount - 1);
+    // The read report leaves the list; waiting on the count waits on the view's own condition.
+    await expect(rows).toHaveCount(initialCount - 1);
+  });
+
+  test('sets unread rows apart with a dot and a bold subject, and opening reads them', async ({
+    page,
+  }) => {
+    await page
+      .locator('.nav-rail')
+      .getByRole('button', { name: /Reports/i })
+      .click();
+    await expect(page.locator('.reports-view')).toBeVisible();
+
+    const row = page.locator('.report-card', { hasText: 'Ended: merged (#214)' });
+
+    await expect(row).toHaveAttribute('data-unread', 'true');
+    await expect(row.locator('.report-card__unread-dot')).toBeVisible();
+    const subject = row.locator('.report-card__subject');
+    await expect(subject).toHaveClass(/report-card__subject--unread/);
+    expect(
+      await subject.evaluate((element) => getComputedStyle(element).fontWeight),
+    ).toBe('600');
+
+    const before = await unreadCount(page);
+
+    // Opening the report reads it, in the same act.
+    await row.getByRole('button', { name: /Show the details/i }).click();
+    await expect(page.locator('.completion-report')).toBeVisible();
+    await expect.poll(() => unreadCount(page)).toBeLessThan(before);
+
+    // While the detail is open the row stays beside it, read: no dot, the normal weight.
+    const active = page.locator('.report-card--active');
+    await expect(active).toHaveCount(1);
+    await expect(active).toHaveAttribute('data-unread', 'false');
+    await expect(active.locator('.report-card__unread-dot')).toHaveCount(0);
+    await expect(active.getByTestId('report-read-state')).toContainText('read');
+
+    // Back on the list the report the view read is gone from the unread reports.
+    await page.getByRole('button', { name: /^Back$/ }).click();
+    await expect(row).toHaveCount(0);
   });
 
   test('opens completion report from report detail', async ({ page }) => {
@@ -93,15 +144,22 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
       .click();
     await expect(page.locator('.reports-view')).toBeVisible();
 
+    // The scenario announces a report and its read a moment after the list was drawn. Waiting for
+    // the count those two events produce is the page's own condition, and it keeps the empty state
+    // that follows stable.
+    await expect(page.getByTestId('unread-count')).toContainText('6 unread reports');
+
     const markAllBtn = page.getByRole('button', { name: /Mark all shown read/i });
     await expect(markAllBtn).toBeVisible();
     await markAllBtn.click();
 
     // Should transition to empty state
     await expect(page.locator('.empty-state')).toBeVisible();
-    await expect(
-      page.getByText('Nothing new. Reports you have read are not shown any more.'),
-    ).toBeVisible();
+    await expect(page.locator('.empty-state')).toContainText('Nothing new');
+    await expect(page.locator('.empty-state')).toContainText(
+      'Reports you have read are not shown any more.',
+    );
+    await expect(page.getByTestId('unread-count')).toHaveCount(0);
   });
 });
 
@@ -195,23 +253,21 @@ test.describe('Reports: paths, details, and the quiet notice (UC-PLN-6)', () => 
     await expect(page.getByTestId('loaded-only-hint')).toBeVisible();
   });
 
-  test('keeps the list beside the detail in split mode and remembers the layout', async ({
-    page,
-  }) => {
-    await page.getByTestId('layout-split').click();
-    await expect(page.locator('.reports-view')).toHaveAttribute('data-layout', 'split');
-    await expect(page.locator('.unread-pill')).toContainText('7 unread reports');
+  test('keeps the list beside the detail while the detail is open', async ({ page }) => {
+    const before = await unreadCount(page);
+    expect(before).toBeGreaterThan(0);
 
     const card = page.locator('.report-card', { hasText: 'Ended: merged (#214)' });
     await card.getByRole('button', { name: /Show the details/i }).click();
 
     await expect(page.locator('.completion-report')).toBeVisible();
     await expect(page.locator('.reports-tree')).toBeVisible();
-    await expect(page.locator('.report-card--active')).toBeVisible();
-    // One read decrements the pill once, whichever of the event and the response arrives first.
-    await expect(page.locator('.unread-pill')).toContainText('6 unread reports');
+    await expect(page.locator('.report-card--active')).toHaveCount(1);
+    // One read moves the count; the scenario's own announce of another read may move it once more.
+    await expect.poll(() => unreadCount(page)).toBeLessThan(before);
 
     await page.reload();
-    await expect(page.locator('.reports-view')).toHaveAttribute('data-layout', 'split');
+    await expect(page.locator('.reports-tree')).toBeVisible();
+    await expect(page.getByTestId('layout-split')).toHaveCount(0);
   });
 });

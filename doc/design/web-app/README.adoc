@@ -99,7 +99,7 @@ How the app is organised and how one moves from one part to another and back. Un
 |link:../shared/work-actions.adoc[Actions on Plans and Epics] (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2]), by the state of the plan or the epic, with a plan's settings (link:../shared/work-actions.adoc#settings[A Plan's Settings], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5]), how a plan ends (link:../shared/work-actions.adoc#outcomes[How a Plan Ends]), what holds a plan (link:../shared/work-actions.adoc#holds[What Holds a Plan], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]) and the reviews of findings and watches (link:../shared/work-actions.adoc#review[Reviewing Findings or Watches], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3]); the chat with the planning role as a panel beside its view (link:../shared/work-actions.adoc#chat[Chatting with the Planning Role], link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[State Catalogue, `chat`])
 
 |Reports
-|link:../shared/reports.adoc[Reports] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6]) and link:../shared/completion-report.adoc[Completion Report]. Where they live: an entry _Reports_ in the frame of the app, beside the way to the open decisions, with the count of unread reports while there are any, opening the list as a route of its own (`/reports`); on opening the app or after pairing, with unread reports, the line `5 unread reports since …` with _Show them_ at the top of the view it opens to; a new report as a quiet notice in the frame (a polite live region, no sound, never a browser notification, the tab title unchanged); a report's detail opens in place of the list, and the browser's back returns to it. Laid out with the rest of the frame in the visual language below; built by `web-reports`
+|link:../shared/reports.adoc[Reports] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6]) and link:../shared/completion-report.adoc[Completion Report]. Where they live: an entry _Reports_ in the frame of the app, beside the way to the open decisions, with the count of unread reports while there are any, opening the list as a route of its own (`/reports`); on opening the app or after pairing, with unread reports, the line `5 unread reports since …` with _Show them_ at the top of the view it opens to; a new report as a quiet notice in the frame (a polite live region, no sound, never a browser notification, the tab title unchanged); a report's detail opens in the triage view's right pane beside the list, and the browser's back returns to it. Laid out with the rest of the frame in the visual language below; built by `web-reports`
 
 |System
 |link:../shared/system.adoc[System] (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1]). Where it lives: an entry _System_ in the frame of the app beside the machine settings, opening the view as a route of its own (`/system`), its figures as links to what they count; the acts _Stop…_, _Restart…_, _Upgrade…_ as buttons of the view, each confirmation a dialogue over it; the progress line of a drain or an upgrade in the frame, above every view, on every paired device; the page of a stopped runtime in place of the view, which connects again by itself; a newer version shown on the entry while one is known; loading again after an upgrade; the cleanup (link:../shared/cleanup.adoc[Cleanup], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]) as a route below it (`/system/cleanup`), reached from the view's line and from the report's detail, its confirmation a dialogue over it, its durations also in the machine settings. Laid out with the rest of the frame in the visual language below; built by `web-system`
@@ -212,8 +212,8 @@ The content column is centred and bounded by the page template a view sits on
 (link:view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates Replace the Layout Modes]): the
 triage template at the full width of the window, the object and dashboard templates at `1440px`, and the wizard template
 at `720px`. Every template pads the page by `--space-6` and by `--space-3` on the phone (below `480px`). A view that has
-not moved yet picks its earlier bound — a reading view at `480px`, a table or a card grid at `1000px`, the explorer and
-the reports list at `1200px` — and never sets an arbitrary width.
+not moved yet picks its earlier bound — a reading view at `480px`, a table or a card grid at `1000px`, the explorer at
+`1200px` — and never sets an arbitrary width.
 
 Two-column views (a list beside a detail, the process tree beside the inspector, the sources beside the chat) split at
 `2fr 1fr` on the desktop. The triage template splits its list and detail `2fr 3fr` (40 / 60) and replaces the list with
@@ -396,26 +396,27 @@ The theme is a choice this browser remembers: light, dark, or system, offered to
 [#reports-layout]
 === Reports View (`/reports`)
 
-The list and, in place of the list, a report's detail, with the browser's back returning to the list. It is a reading view: one column, the machine's reports grouped by project, epic, and plan.
+The page sits on the `TriagePage` template (link:view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates Replace the Layout Modes]): the list on the left, the report's detail on the right, the detail replacing the list below 1100 px. It sets no page width of its own and keeps no layout mode.
 
 ----
-header
+filters   [Filter reports]
+header    Reports · 5 unread reports                          [Mark all shown read]
 ──────────────────────────────────────────────────────────────────────────
-context   Reports                                              [Mark all shown read]
-──────────────────────────────────────────────────────────────────────────
-body      relay-hardening
-            fix-relay ended: merged (#214)           2 h ago    [Show details]
-            relay-docs landed                         4 h ago    [Show details]
-          pm-mcp-clients
-            pm-mcp-clients is onboarded              yesterday  [Show details]
+body      pm-mcp-clients
+            ◇ relay-hardening
+              • fix-relay   fix-relay ended: merged (#214)  17 d ago  [Show the details] [⋯ Report actions]
+              • docs-typo   docs-typo ended: no change      17 d ago  [Show the details] [⋯ Report actions]
+          This machine
+            • machine       Cleanup is due: 12 candidates from 3 projects
 ──────────────────────────────────────────────────────────────────────────
           [Show 12 older]
 ----
 
-* The subject is the report's own text from the catalogue with its parameters; the relative time is the only figure the client adds, and `--font-mono` is used only inside the subject (a plan id, a pull request number).
-* The detail replaces the list in the same body: its head names the report and carries _Back_; its body is the completion report or the view the report leads to (link:../shared/completion-report.adoc[Completion Report]). The route stays `/reports`; the browser's back returns to the list without a reload.
-* The unread state is a left rule and the word _new_, never only a background tint. _Show the details_ opens the detail and marks the report read; _Mark all shown read_ acts on the list as shown.
-* Width: `1200px` on the desktop, one column on the tablet and the phone. An empty list says that nothing is new and that read reports are not shown again (link:../shared/reports.adoc#read[Reports, Reading a Report]).
+* The subject is the report's own text from the catalogue with its parameters; the relative time is the only figure the client adds, and `--font-mono` is used only for the identifiers of the path.
+* An unread row leads with a dot and sets its subject in the semibold weight; a row read by opening its detail stays beside the detail until the detail closes, without the dot and in the normal weight, and names its state _read_ in words.
+* The row menu stands at the end of the row: the word _Report actions_ beside the glyph from the tablet width up, its accessible name carrying the row's subject. It holds _Mark read_ for that one report; _Show the details_ opens the detail and marks the report read; _Mark all shown read_ acts on the list as shown.
+* A report of the machine (`system.*`) stands in the group _This machine_ of its own, whatever project the wire also names (link:../shared/reports.adoc#list[Reports, The List]).
+* An empty list says that nothing is new and that read reports are not shown again (link:../shared/reports.adoc#read[Reports, Reading a Report]).
 
 [#system-layout]
 === System View (`/system`)

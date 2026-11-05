@@ -153,6 +153,26 @@ describe('actsFor', () => {
     expect(acts.find((act) => act.id === 'unknown_first')?.role).toBe('overflow');
   });
 
+  it('never marks an unknown offered act destructive by mistake', () => {
+    const acts = actsFor('plan', 'running', [{ action: 'archive', available: true }]);
+
+    const unknown = acts.find((act) => act.id === 'archive');
+    expect(unknown?.role).toBe('overflow');
+    expect(unknown?.destructive).toBeUndefined();
+  });
+
+  it('keeps a destructive offered act in the overflow and out of the primary place', () => {
+    const acts = actsFor('plan', 'paused', [
+      { action: 'cancel', available: true },
+      { action: 'start', available: true },
+    ]);
+
+    const cancel = acts.find((act) => act.id === 'cancel');
+    expect(cancel?.destructive).toBe(true);
+    expect(cancel?.role).toBe('overflow');
+    expect(primaries(acts).map((act) => act.id)).toEqual(['start']);
+  });
+
   it('falls back to the table of a state it does not know as an empty list', () => {
     expect(actsFor('project', 'unheard_of')).toEqual([]);
   });

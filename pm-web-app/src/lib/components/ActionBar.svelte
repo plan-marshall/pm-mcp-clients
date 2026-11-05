@@ -2,6 +2,7 @@
   import { tick } from 'svelte';
   import Button from './Button.svelte';
   import IconButton from './IconButton.svelte';
+  import { uniqueId } from '../utils/uniqueId';
   import { t } from '../i18n';
 
   /**
@@ -63,22 +64,33 @@
   }
 
   /**
-   * @returns the entries a person can focus: a disabled act stays visible but cannot be reached
+   * @returns every entry of the menu, the ones that cannot run included: an act whose reason is
+   *   worth reading stays reachable with the arrow keys
    */
   function menuItems(): HTMLButtonElement[] {
     if (!host) {
       return [];
     }
-    return Array.from(host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).filter(
-      (item) => !item.disabled,
-    );
+    return Array.from(host.querySelectorAll<HTMLButtonElement>('[role="menuitem"]'));
   }
 
-  /** Opens the menu and puts the focus on its first entry. */
+  /** The prefix of this bar's reason ids, so two bars on one page never share an id. */
+  const reasonPrefix = uniqueId('action-bar-reason');
+
+  /**
+   * @param id the act's id
+   * @returns the id of the element that carries the act's reason
+   */
+  function reasonIdOf(id: string): string {
+    return `${reasonPrefix}-${id}`;
+  }
+
+  /** Opens the menu and puts the focus on its first entry that can run. */
   async function openMenu(): Promise<void> {
     open = true;
     await tick();
-    menuItems()[0]?.focus();
+    const items = menuItems();
+    (items.find((item) => item.getAttribute('aria-disabled') !== 'true') ?? items[0])?.focus();
   }
 
   /**
@@ -216,12 +228,22 @@
               tabindex="-1"
               class="action-bar__item"
               data-testid={`action-${act.id}`}
-              disabled={busy || act.disabled}
+              aria-disabled={busy || act.disabled ? 'true' : undefined}
+              aria-describedby={!busy && act.disabled && act.disabledReason
+                ? reasonIdOf(act.id)
+                : undefined}
               title={act.disabled ? (act.disabledReason ?? act.advisory) : act.advisory}
-              on:click={() => choose(act.id, true)}
+              on:click={() => {
+                if (!busy && !act.disabled) {
+                  void choose(act.id, true);
+                }
+              }}
             >
               {act.label}
             </button>
+            {#if act.disabled && act.disabledReason}
+              <span class="sr-only" id={reasonIdOf(act.id)}>{act.disabledReason}</span>
+            {/if}
           {/each}
         </div>
       {/if}
@@ -272,9 +294,16 @@
     background-color: var(--color-bg-subtle);
   }
 
-  .action-bar__item:disabled {
+  .action-bar__item[aria-disabled='true'] {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  /* A phone gets the 44 px target on every entry, as the rest of the design system does. */
+  @media (max-width: 767px) {
+    .action-bar__item {
+      min-block-size: 44px;
+    }
   }
 
   /* A phone stacks the bar, so no act is squeezed out of reach. */

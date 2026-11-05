@@ -147,7 +147,7 @@ test.describe('Fully onboarded showroom', () => {
 
     const ended = page.locator('.report-card', { hasText: 'fix-relay ended: merged (#214)' });
     await expect(ended).toBeVisible();
-    await ended.locator('.action-btn--detail').click();
+    await ended.getByRole('button', { name: /Show the details/i }).click();
 
     await expect(page.locator('.completion-report')).toBeVisible();
     await expect(page.getByText('the pull request #214 was merged into main')).toBeVisible();

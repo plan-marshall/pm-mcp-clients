@@ -54,11 +54,13 @@ class ConsoleNoticeIT {
     private static final Duration TIMEOUT = Duration.ofSeconds(20);
     private static final String SCRIPT = "/usr/bin/script";
 
-    /** The badge of the showroom: three decisions, one integrity pause, one held epic wait. */
-    private static final String BADGE = "pm [3 questions · 1 integrity pause · 1 held] \u203a";
+    /** The badge of the showroom: the open project setup, then three decisions and one pause. */
+    private static final String BADGE =
+                        "pm [setup cui-parent 2/10 · 3 questions · 1 integrity pause · +1] \u203a";
 
     /** The same badge after the web app answered one question. */
-    private static final String BADGE_AFTER_ONE_ANSWER = "pm [2 questions · 1 integrity pause · 1 held] \u203a";
+    private static final String BADGE_AFTER_ONE_ANSWER =
+                        "pm [setup cui-parent 2/10 · 2 questions · 1 integrity pause · +1] \u203a";
 
     private static final String DECISION_OPENED = """
                         {"event":"decision.opened","data":{"decision":{"id":"Q-042","subject":"plan fix-relay",\
@@ -89,7 +91,8 @@ class ConsoleNoticeIT {
             assertEquals(1, DialogueHarness.times(session.rawOutput(), "◆ Question Q-042"),
                                 "the notice is printed once, not once per redraw");
             session.send("\n");
-            assertTrue(session.awaitText("pm [4 questions", TIMEOUT), session.screenText());
+            assertTrue(session.awaitText("pm [setup cui-parent 2/10 · 4 questions", TIMEOUT),
+                                session.screenText());
             leave(session);
         }
     }
