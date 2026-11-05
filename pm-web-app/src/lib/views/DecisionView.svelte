@@ -59,6 +59,17 @@
   /** The decision whose chat has a request in flight, so another decision's panel stays usable. */
   let chatBusyId = $state<string | null>(null);
   let chatNotice = $state('');
+  /**
+   * Counts the panel's opens: reopening the same decision makes its id equal again, so the id alone
+   * cannot tell a stale load from the one the panel now shows. Every continuation checks the
+   * generation it started with, and closing the panel invalidates it.
+   */
+  let chatGeneration = $state(0);
+
+  /** Invalidates every chat continuation still in flight, as closing the panel does. */
+  function invalidateChat(): void {
+    chatGeneration += 1;
+  }
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
@@ -356,6 +367,7 @@
         notices = [{ id: `${id}-answered`, text }, ...notices];
         if (chatDecisionId === id) {
           chatOpen = false;
+          invalidateChat();
           chatNotice = $t('decision.chat.closed_elsewhere', {
             id,
             channel:
@@ -375,6 +387,7 @@
         decisions = decisions.filter((d) => d.id !== id);
         if (chatDecisionId === id) {
           chatOpen = false;
+          invalidateChat();
           chatNotice = $t('decision.chat.withdrawn', {
             id,
             reason: closeData.reason || $t('decision.outcome.withdrawn'),
@@ -611,8 +624,17 @@
     if (chatDecisionId === id) {
       chatOpen = false;
       chat = null;
+      invalidateChat();
     }
     void refreshDecisionsCount();
+  }
+
+  /** Closes the chat panel; a load or answer still in flight must not reopen it. */
+  function closeChatPanel(): void {
+    chatDecisionId = null;
+    chatOpen = false;
+    chat = null;
+    invalidateChat();
   }
 
   function handleLater(id: string) {
@@ -625,17 +647,19 @@
   }
 
   async function openChat(dec: DecisionEnvelope): Promise<void> {
+    invalidateChat();
+    const generation = chatGeneration;
     chatDecisionId = dec.id;
     chatOpen = true;
     chat = null;
     chatNotice = '';
     try {
       const loaded = await apiClient.getDecisionChat(dec.id);
-      // The operator may have switched to another decision's chat while this one loaded: the
-      // answer belongs to the panel it was asked for, never to the one now on screen.
-      if (chatDecisionId === dec.id) chat = loaded;
+      // The operator may have switched to another decision's chat, or reopened this one, while
+      // this load ran: the answer belongs to the panel it was asked for, never to a newer one.
+      if (chatGeneration === generation) chat = loaded;
     } catch (err: unknown) {
-      if (chatDecisionId === dec.id) {
+      if (chatGeneration === generation) {
         chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
         chatOpen = false;
       }
@@ -645,12 +669,13 @@
   async function sendChat(text: string): Promise<void> {
     const decisionId = chatDecisionId;
     if (!decisionId) return;
+    const generation = chatGeneration;
     chatBusyId = decisionId;
     try {
       const answered = await apiClient.decisionChatTurn(decisionId, text);
-      if (chatDecisionId === decisionId) chat = answered;
+      if (chatGeneration === generation) chat = answered;
     } catch (err: unknown) {
-      if (chatDecisionId === decisionId) {
+      if (chatGeneration === generation) {
         chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
       }
     } finally {
@@ -661,21 +686,22 @@
   async function answerChatProposal(accept: boolean): Promise<void> {
     if (!chatDecisionId) return;
     // The panel can be closed, or another decision's panel opened, while the answer is in flight,
-    // so the decision it belongs to is carried past the await: a late answer never replaces
-    // another decision's transcript.
+    // so the decision and the generation it belongs to are carried past the await: a late answer
+    // never replaces another panel's transcript.
     const decisionId = chatDecisionId;
+    const generation = chatGeneration;
     const proposal = chat?.proposal;
     chatBusyId = decisionId;
     try {
       const answered = await apiClient.answerDecisionChatProposal(decisionId, accept);
-      if (chatDecisionId === decisionId) {
+      if (chatGeneration === generation) {
         chat = answered;
       }
       if (accept && proposal?.after) {
         takeProposedAnswer(decisionId, proposal.after, proposal.applies ?? '');
       }
     } catch (err: unknown) {
-      if (chatDecisionId === decisionId) {
+      if (chatGeneration === generation) {
         chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
       }
     } finally {
@@ -699,6 +725,7 @@
     // Only the chat this answer belongs to closes: a panel the operator opened meanwhile stays.
     if (chatDecisionId === decisionId) {
       chatOpen = false;
+      invalidateChat();
     }
     void interpretOwnWords(dec, part, index);
   }
@@ -719,6 +746,7 @@
         chat = null;
         chatNotice = '';
         chatDecisionId = null;
+        invalidateChat();
       }
       if (chatBusyId === decisionId) {
         chatBusyId = null;
@@ -1160,7 +1188,7 @@
               onAccept={() => answerChatProposal(true)}
               onReject={() => answerChatProposal(false)}
               onToggle={() => openChat(dec)}
-              onClose={() => (chatDecisionId = null)}
+              onClose={closeChatPanel}
               acceptLabel={$t('decision.chat.answer_proposed')}
             />
             <p class="decision-chat__open" role="status">
