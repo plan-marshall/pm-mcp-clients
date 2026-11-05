@@ -87,7 +87,8 @@ class ProjectSetupDialogueIT {
             DialogueHarness.type(session, "\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
-            assertTrue(session.screenText().contains("The project is ready"), session.screenText());
+            assertTrue(session.screenText().contains("cui-parent is ready"),
+                                "the last frame names the project: " + session.screenText());
             harness.assertAct("POST", "/api/v1/projects/cui-parent/setup");
         }
     }

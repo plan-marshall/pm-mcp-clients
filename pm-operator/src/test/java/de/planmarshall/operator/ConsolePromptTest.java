@@ -11,7 +11,9 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Collections;
 import java.util.List;
@@ -154,6 +156,17 @@ class ConsolePromptTest {
         @DisplayName("formats project setup badge")
         void projectSetupBadge() {
             assertEquals("setup pm-mcp-clients 5/9", ConsolePrompt.formatProjectSetupBadge("pm-mcp-clients", 5, 9));
+        }
+
+        @Test
+        @DisplayName("a project name's control sequence never reaches the prompt")
+        void projectSetupBadgeIsClean() {
+            var badge = ConsolePrompt.formatProjectSetupBadge("cui\u001b[31mparent", 2, 10);
+
+            assertAll(
+                                () -> assertFalse(badge.contains("\u001b"), badge),
+                                () -> assertTrue(badge.contains("parent"), badge)
+            );
         }
     }
 }

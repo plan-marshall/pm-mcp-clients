@@ -48,8 +48,8 @@ class PmConsoleHandoffTest {
 
     private static final long AWAIT_MILLIS = 15_000L;
 
-    /** The showroom's prompt: three decisions, one integrity pause, one held epic wait. */
-    private static final String PROMPT = "pm [3 questions · 1 integrity pause · 1 held] \u203a";
+    /** The showroom's prompt: the open project setup, three decisions, one pause, one held wait. */
+    private static final String PROMPT = "pm [setup cui-parent 2/10 · 3 questions · 1 integrity pause · +1] \u203a";
 
     private MockRuntime runtime;
 

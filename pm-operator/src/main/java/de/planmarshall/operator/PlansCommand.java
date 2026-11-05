@@ -106,7 +106,7 @@ public final class PlansCommand implements Callable<Integer> {
             return delegateToStatus();
         } finally {
             if (lendsTerminal) {
-                context.clearTerminal();
+                context.clearTerminal(terminal);
             }
             if (context.ownsTerminal(terminal)) {
                 terminal.close();

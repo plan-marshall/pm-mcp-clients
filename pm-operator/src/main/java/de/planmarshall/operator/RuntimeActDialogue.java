@@ -11,14 +11,16 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.runtime.RuntimeRecord;
-import de.planmarshall.api.runtime.RuntimeUnavailableException;
 import de.planmarshall.api.system.SystemSnapshot;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 import de.planmarshall.operator.system.SystemView;
@@ -270,12 +272,50 @@ final class RuntimeActDialogue {
     }
 
     /**
+     * How long the confirmation waits for the runtime's snapshot. The unix-socket client has no
+     * read deadline, so a runtime that accepts and never answers would hold the whole dialogue; the
+     * confirmation instead reads under this bound and asks without the counts.
+     */
+    static final Duration SNAPSHOT_BOUND = Duration.ofSeconds(5);
+
+    /**
      * @param context the operator context
      * @return the snapshot the runtime serves, or {@code null} when it serves none
-     * @throws RuntimeUnavailableException when the runtime does not answer at all
+     * @throws IOException when the runtime does not answer within {@link #SNAPSHOT_BOUND}
      */
     private static @Nullable SystemSnapshot snapshot(OperatorContext context) throws IOException {
-        var response = context.runtime(false).send(HttpRequest.get("/api/v1/system"));
+        var runtime = context.runtime(false);
+        var read = new AtomicReference<@Nullable SystemSnapshot>();
+        var failure = new AtomicReference<IOException>();
+        var reader = new Thread(() -> {
+            try {
+                read.set(fetchSnapshot(runtime));
+            } catch (IOException e) {
+                failure.set(e);
+            }
+        }, "runtime-snapshot-read");
+        reader.setDaemon(true);
+        reader.start();
+        try {
+            reader.join(SNAPSHOT_BOUND.toMillis());
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+            throw new IOException("interrupted while reading the runtime");
+        }
+        if (reader.isAlive()) {
+            // A runtime that accepts and never answers is not answered: closing the read ends it.
+            reader.interrupt();
+            throw new IOException("the runtime did not answer within " + SNAPSHOT_BOUND.toMillis() + " ms");
+        }
+        var error = failure.get();
+        if (error != null) {
+            throw error;
+        }
+        return read.get();
+    }
+
+    private static @Nullable SystemSnapshot fetchSnapshot(RuntimeClient runtime) throws IOException {
+        var response = runtime.send(HttpRequest.get("/api/v1/system"));
         if (response.status() != 200) {
             return null;
         }

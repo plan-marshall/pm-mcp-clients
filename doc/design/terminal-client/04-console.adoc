@@ -145,7 +145,7 @@ An answer over the console channel (`cli`) prints no such line: a console cannot
 
 * The console reconnects to the event stream with `Last-Event-ID` and the delay the runtime names (`retry:`), backing off with jitter after repeated failures; it starts the runtime on demand like every verb.
 * While the runtime cannot be reached, the prompt shows `(reconnecting)` and one line says why; the typed text stays.
-* After a reconnect it always reads the state again (the open questions, a running dialogue's state), because a restarted runtime holds no events to replay, and prints one line: `✓ Reconnected: pm-mcpd 0.9.1, restarted at 14:41. 1 question open, 2 plans running.`
+* After a reconnect it always reads the state again (the open questions, a running dialogue's state), because a restarted runtime holds no events to replay, and prints one line: `✓ Reconnected: pm-mcpd 0.9.1, restarted at 14:41. 1 question open, 2 plans running.` The badge set and the window title are rebuilt from that read, so a question answered while the stream was down leaves the badge at the first prompt after the reconnect.
 * While a full-screen view is open, the same state is shown in its header instead of at the prompt: `● connected` while the stream is open and `○ reconnecting` (the text `operator.console.badge.reconnecting`) while it is not; on reconnect the view reads its whole snapshot again and redraws, as xref:15-overview.adoc#full-screen-connection[The Overview, The Header's Connection State] says.
 
 [#full-screen-handoff]

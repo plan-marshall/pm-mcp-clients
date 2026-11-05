@@ -75,7 +75,7 @@ public final class ProjectsCommand implements Callable<Integer> {
                         return code;
                     }
                 } finally {
-                    context.clearTerminal();
+                    context.clearTerminal(terminal);
                     if (context.ownsTerminal(terminal)) {
                         terminal.close();
                     }

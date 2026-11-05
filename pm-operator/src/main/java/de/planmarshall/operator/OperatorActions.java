@@ -106,6 +106,6 @@ public final class OperatorActions {
         var code = StartDialogue.run(context, out, EntryKind.PLAN, answers);
         // The follow-up start is one of the view's other dialogues: its interrupt leaves back to the
         // view as q does (04-console.adoc#console-dialogue-handoff), never ending it with 130.
-        return code == StartPrompt.EXIT_INTERRUPTED ? 0 : code;
+        return ActionSupport.leaveBack(code);
     }
 }

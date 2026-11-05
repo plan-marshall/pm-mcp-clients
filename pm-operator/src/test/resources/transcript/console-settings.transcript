@@ -32,14 +32,14 @@ Set up this machine for plan-marshall
   2) Begin with step 1 ←
   › q
 Left Set up this machine for plan-marshall. Nothing was sent.
-pm [setup 0/7] › web devices
+pm [setup 0/7 · setup cui-parent 2/10] › web devices
 Paired devices · The browsers that can act on this machine
     1) Firefox on mbp-oliver   paired 12 May from loopback   last used <ago>
     2) Safari on iPad   paired 20 May from network   last used <ago>
     3) Chrome on build-box   paired 2 Jun from loopback   last used 8 Sep <time>
 
   The console needs no pairing and is not listed. Network listener: on.
-pm [setup 0/7] › config consents
+pm [setup 0/7 · setup cui-parent 2/10] › config consents
 The consents you said not to ask again
     1) look for harnesses    scan_harnesses
          <timestamp> · terminal
@@ -48,4 +48,4 @@ The consents you said not to ask again
 
 A withdrawn consent is asked again the next time its action runs.
 Withdraw: 1-2   q) leave   ?   › exit
-pm [setup 0/7] ›
+pm [setup 0/7 · setup cui-parent 2/10] ›

@@ -245,7 +245,7 @@ public final class PlanCommand implements Callable<Integer> {
             }
             return app.interrupted() ? StartPrompt.EXIT_INTERRUPTED : 0;
         } finally {
-            context.clearTerminal();
+            context.clearTerminal(terminal);
             if (context.ownsTerminal(terminal)) {
                 terminal.close();
             }

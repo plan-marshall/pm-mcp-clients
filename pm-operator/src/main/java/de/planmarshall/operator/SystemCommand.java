@@ -157,7 +157,7 @@ public final class SystemCommand implements Callable<Integer> {
         } catch (IOException _) {
             return null;
         } finally {
-            context.clearTerminal();
+            context.clearTerminal(terminal);
             if (context.ownsTerminal(terminal)) {
                 try {
                     terminal.close();

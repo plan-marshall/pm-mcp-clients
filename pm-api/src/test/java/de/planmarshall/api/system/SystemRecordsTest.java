@@ -380,6 +380,24 @@ class SystemRecordsTest {
     }
 
     @Test
+    void runtimeStatusResolvesBothWireNamesWhenTheMapCarriesBoth() throws Exception {
+        // Both names of the state are present and disagree; "state" is the one the client states.
+        var status = RuntimeStatus.fromMap(Map.of("version", "0.9.1",
+                "state", "running", "lifecycle_state", "draining",
+                "drain_withdrawable", false, "can_withdraw", true));
+
+        assertEquals(RuntimeLifecycleState.RUNNING, status.state());
+        assertTrue(status.drainWithdrawable());
+
+        // The withdraw flag is the OR of both names; both false is the only "no".
+        var withdrawn = RuntimeStatus.fromMap(Map.of("version", "0.9.1",
+                "state", "draining", "drain_withdrawable", false, "can_withdraw", false));
+
+        assertEquals(RuntimeLifecycleState.DRAINING, withdrawn.state());
+        assertFalse(withdrawn.drainWithdrawable());
+    }
+
+    @Test
     void cleanupKeptItemRoundTripAndValidation() throws Exception {
         var item = new CleanupKeptItem("token-usage", "plan", "pm-mcp-core › token-usage", "exclude", "13 Oct", "the console");
         var json = item.toJson();

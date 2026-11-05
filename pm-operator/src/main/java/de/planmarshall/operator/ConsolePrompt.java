@@ -164,8 +164,11 @@ public final class ConsolePrompt {
      * @return formatted project setup badge e.g. "setup pm-mcp-clients 5/9"
      */
     public static String formatProjectSetupBadge(String locale, String projectId, int currentStep, int totalSteps) {
+        // A project's name comes from its checkout's directory: it is untrusted text and reaches
+        // the prompt and the window title, so it is sanitised like every other runtime text.
         return MessageCatalogue.format(locale, "operator.console.badge.setup_project",
-                            Map.of("project", Objects.requireNonNull(projectId, "projectId"),
+                            Map.of("project", TerminalSanitizer.sanitizeLine(
+                                                                    Objects.requireNonNull(projectId, "projectId")),
                                                 "done", currentStep, "total", totalSteps));
     }
 }
