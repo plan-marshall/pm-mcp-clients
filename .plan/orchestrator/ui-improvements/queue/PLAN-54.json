@@ -2,10 +2,10 @@
   "id": "PLAN-54",
   "slug": "web-reports-and-designer",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "54-web-reports-and-designer",
+  "pr": "313",
+  "landing": "landings/PLAN-54.md",
   "seq": 54
 }
