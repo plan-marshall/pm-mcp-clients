@@ -30,8 +30,18 @@ const APP_SHELL = join(projectRoot, 'src/app.html');
  */
 const STATIC_STYLE_ATTRIBUTE = /\sstyle\s*=\s*(?:"[^"{]*"|'[^'{]*'|[^\s"'`{>=]+)/i;
 
-/** An import that asks Vite for an inlined asset, which `assetsInlineLimit` does not govern. */
-const INLINE_ASSET_IMPORT = /['"][^'"\n]*[?&]inline(?:[&'"])/;
+/**
+ * Any `style` attribute of the page shell. Svelte does not compile `src/app.html`, so a `{` in its
+ * value is literal text, not an expression, and every such attribute is static.
+ */
+const SHELL_STYLE_ATTRIBUTE = /\sstyle\s*=/i;
+
+/**
+ * An import that asks Vite for an inlined asset, which `assetsInlineLimit` does not govern. Vite
+ * honours the query in any form (`?inline`, `&inline`, `?inline=true`), so the word boundary is
+ * the whole predicate, as in Vite's own check.
+ */
+const INLINE_ASSET_IMPORT = /['"][^'"\n]*[?&]inline\b/;
 
 /**
  * @param directory the directory to walk
@@ -90,17 +100,24 @@ describe('the app under the daemon CSP', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('carries no static style attribute in its markup or page shell', () => {
-    const files = [...sourceFiles((name) => name.endsWith('.svelte')), APP_SHELL].filter((file) =>
-      existsSync(file),
-    );
-    expect(files).toContain(APP_SHELL);
-
-    const offenders = files
+  it('carries no static style attribute in its markup', () => {
+    const offenders = sourceFiles((name) => name.endsWith('.svelte'))
       .filter((file) => STATIC_STYLE_ATTRIBUTE.test(markupOf(readFileSync(file, 'utf8'))))
       .map((file) => relative(projectRoot, file));
 
     expect(offenders).toEqual([]);
+  });
+
+  it('carries no style attribute in its page shell', () => {
+    expect(existsSync(APP_SHELL)).toBe(true);
+    expect(SHELL_STYLE_ATTRIBUTE.test(markupOf(readFileSync(APP_SHELL, 'utf8')))).toBe(false);
+  });
+
+  it('treats a brace in the page shell as literal text', () => {
+    const shell = `<body style="--label: '{'; color: red"></body>`;
+
+    expect(STATIC_STYLE_ATTRIBUTE.test(shell)).toBe(false);
+    expect(SHELL_STYLE_ATTRIBUTE.test(shell)).toBe(true);
   });
 
   it.each([
@@ -125,6 +142,7 @@ describe('the app under the daemon CSP', () => {
   it.each([
     ["import icon from './icon.svg?inline';", true],
     ["import icon from './icon.svg?url&inline';", true],
+    ["import icon from './icon.svg?inline=true';", true],
     ["import icon from './icon.svg?url';", false],
     ["import { inline } from './layout';", false],
   ])('recognises an inline asset import: %s', (line, expected) => {
