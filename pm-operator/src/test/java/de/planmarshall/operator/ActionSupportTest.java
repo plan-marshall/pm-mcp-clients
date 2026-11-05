@@ -197,9 +197,7 @@ class ActionSupportTest {
         var reader = Thread.ofPlatform().name("handler-under-test").start(() -> {
             try {
                 code.set(handler.run());
-            }
-            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-            catch (Exception failed) {
+            } catch (Exception failed) {
                 failure.set(failed);
             }
         });
