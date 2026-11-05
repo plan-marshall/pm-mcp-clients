@@ -285,7 +285,6 @@ describe('SettingsView component', () => {
     // Assert: the bound is carried into the read, and its timeout ends in the error state.
     expect(await screen.findByText('The paired devices could not be loaded.')).toBeInTheDocument();
     expect(signals[0]).toBeInstanceOf(AbortSignal);
-    expect(signals[0]?.aborted).toBe(false);
     expect(timeout).toHaveBeenCalledWith(15_000);
   });
 
@@ -361,6 +360,21 @@ describe('SettingsView component', () => {
     expect(await screen.findByText('The paired devices could not be loaded.')).toBeInTheDocument();
     expect(signals).toHaveLength(2);
     expect(signals[1]).toBeInstanceOf(AbortSignal);
+  });
+
+  it('shows an unknown listener state when the status read fails', async () => {
+    // Arrange: the devices answer, the status does not — so nothing says how the listener stands.
+    vi.spyOn(apiClient, 'getStatus').mockRejectedValue(
+      new DOMException('The operation timed out.', 'TimeoutError'),
+    );
+
+    // Act
+    render(SettingsView);
+
+    // Assert: an unknown state, never "on", and no act that would act on the guess.
+    expect(await screen.findByText('Firefox on mbp-oliver')).toBeInTheDocument();
+    expect(screen.getByTestId('listener-status')).toHaveTextContent('Network listener: unknown.');
+    expect(screen.queryByTestId('listener-off-button')).not.toBeInTheDocument();
   });
 
   it('returns to the route the caller came from on Back', async () => {

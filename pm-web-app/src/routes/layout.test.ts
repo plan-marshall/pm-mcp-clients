@@ -361,7 +361,7 @@ describe('the app shell', () => {
 
   it('lets go of a hung withdrawal, saying so and re-enabling both drain acts', async () => {
     localStorage.setItem('pm_device_secret', 'pmw_valid');
-    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+    const status = vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
       ...STATUS,
       lifecycle_state: 'draining',
       draining_by: 'the console',
@@ -401,6 +401,10 @@ describe('the app shell', () => {
       expect(withdrawAct).toBeEnabled();
       expect(stopAct).toBeEnabled();
     });
+    // The withdrawal may have arrived: what the runtime does is read again, within its own bound.
+    await waitFor(() =>
+      expect(status.mock.calls.some((call) => call[0] instanceof AbortSignal)).toBe(true),
+    );
   });
 
   it('treats a lost stop-now response as an unknown outcome and reads the state again', async () => {
@@ -553,6 +557,93 @@ describe('the app shell', () => {
       );
     });
     expect(within(screen.getByTestId('draining-list')).getAllByRole('listitem')).toHaveLength(2);
+  });
+
+  it('applies what the refresh read, including the daemon’s own state key', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    // The mount's reads carry no signal; the refresh does, and it reports the stop.
+    vi.spyOn(apiClient, 'getStatus').mockImplementation((signal?: AbortSignal) =>
+      Promise.resolve(
+        signal
+          ? ({ ...STATUS, state: 'stopped' } as never)
+          : ({ ...STATUS, lifecycle_state: 'draining' } as never),
+      ),
+    );
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isDraining: true,
+        drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
+      }),
+    );
+    vi.spyOn(apiClient, 'stopRuntime').mockRejectedValue(new Error('network_offline'));
+
+    render(Layout);
+    const banner = await screen.findByTestId('draining-banner');
+    // The shell is initialized before the act: its own mount read must not land afterwards.
+    await screen.findByTestId('header-machine');
+    await fireEvent.click(within(banner).getByRole('button', { name: 'Stop now' }));
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+
+    await waitFor(() => expect(get(runtimeStore).isStopped).toBe(true));
+    expect(get(runtimeStore)).toMatchObject({ isDraining: false, isStopped: true });
+    expect(screen.queryByTestId('draining-banner')).not.toBeInTheDocument();
+  });
+
+  it('lets a lifecycle event that arrives during the refresh win over the older answer', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    let settleRead: (status: unknown) => void = () => {};
+    const pendingRead = new Promise<never>((resolve) => {
+      settleRead = resolve as (status: unknown) => void;
+    });
+    vi.spyOn(apiClient, 'getStatus').mockImplementation((signal?: AbortSignal) =>
+      signal
+        ? (pendingRead as never)
+        : Promise.resolve({ ...STATUS, lifecycle_state: 'draining' } as never),
+    );
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isDraining: true,
+        drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
+      }),
+    );
+    vi.spyOn(apiClient, 'stopRuntime').mockRejectedValue(new Error('network_offline'));
+
+    render(Layout);
+    const banner = await screen.findByTestId('draining-banner');
+    await screen.findByTestId('header-machine');
+    await fireEvent.click(within(banner).getByRole('button', { name: 'Stop now' }));
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+    await screen.findByTestId('draining-failure');
+
+    // The runtime withdraws the drain while the refresh is in flight, then the older answer lands.
+    handleRuntimeEvent('runtime.drain_withdrawn', {});
+    settleRead({ ...STATUS, lifecycle_state: 'draining' });
+    await waitFor(() => expect(get(runtimeStore).isDraining).toBe(false));
+  });
+
+  it('keeps the count the runtime reports when it names no items', async () => {
+    runtimeStore.set(makeRuntimeState({ isDraining: false }));
+
+    handleRuntimeEvent('runtime.draining', {
+      draining_by: 'the console',
+      remaining_items: [],
+      count: 2,
+    });
+
+    // An empty list says nothing: the count the runtime reported beside it stands.
+    expect(get(runtimeStore).drainInfo?.count).toBe(2);
   });
 
   it('probes the connection again after 30 seconds and reports the machine online again', async () => {

@@ -24,6 +24,8 @@
   let renamingId: string | null = null;
   let renameValue = '';
   let lanListenerOn = true;
+  /** Whether the status read said how the listener stands; a failed read leaves it unknown. */
+  let listenerKnown = false;
   let lanModalOpen = false;
   let pendingRevokeTarget: PairedDevice | 'others' | null = null;
   /** Whether the confirmed revoke runs; the dialog stays open and refuses a second confirm. */
@@ -91,6 +93,7 @@
    * cannot replace a newer list. The read it supersedes is aborted on the way.
    */
   async function loadData() {
+    if (!isMounted) return;
     const sequence = ++loadSequence;
     loadController?.abort();
     const controller = new AbortController();
@@ -105,10 +108,13 @@
       ]);
       if (!isMounted || sequence !== loadSequence) return;
       devices = Array.isArray(devList) ? devList : [];
-      if (status?.web && typeof status.web.lan === 'boolean') {
-        lanListenerOn = status.web.lan;
+      listenerKnown = Boolean(status?.web && typeof status.web.lan === 'boolean');
+      if (listenerKnown) {
+        lanListenerOn = status?.web?.lan === true;
       }
     } catch {
+      // The status read behind this one has nothing left to say: end it here.
+      controller.abort();
       if (!isMounted || sequence !== loadSequence) return;
       loadError = true;
       devices = [];
@@ -438,7 +444,9 @@
 
     <div class="listener-bar" data-testid="listener-bar">
       <span class="listener-status" data-testid="listener-status">
-        {$t('devices.list.listener', { state: lanListenerOn ? 'on' : 'off' })}.
+        {$t(listenerKnown ? 'devices.list.listener' : 'devices.list.listener_unknown', {
+          state: lanListenerOn ? 'on' : 'off',
+        })}.
       </span>
       <div class="listener-actions">
         <Button
@@ -448,7 +456,7 @@
         >
           {$t('entry.lan.title')}
         </Button>
-        {#if lanListenerOn}
+        {#if listenerKnown && lanListenerOn}
           <Button variant="secondary" on:click={turnListenerOff} data-testid="listener-off-button">
             {$t('devices.act.listener_off')}
           </Button>

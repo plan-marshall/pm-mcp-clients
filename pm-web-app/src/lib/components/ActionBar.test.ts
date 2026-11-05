@@ -173,6 +173,8 @@ describe('ActionBar', () => {
     const describedBy = later.getAttribute('aria-describedby');
     expect(describedBy).toBeTruthy();
     expect(document.getElementById(describedBy as string)).toHaveTextContent('Not yet');
+    // The described element sits outside the menu, whatever element carries it.
+    expect(menu.contains(document.getElementById(describedBy as string))).toBe(false);
   });
 
   it('closes on Tab and gives the focus back to the button', async () => {

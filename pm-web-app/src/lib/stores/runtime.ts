@@ -389,17 +389,35 @@ export function lifecycleFieldsOf(status: StatusResponse): Pick<
   RuntimeState,
   'isDraining' | 'drainInfo' | 'isStopped'
 > {
-  const draining = status.lifecycle_state === 'draining';
+  // The daemon's own status resource writes the lifecycle under `state`; the mock and the tests
+  // use `lifecycle_state`. Both are read, the daemon's first.
+  const lifecycle = status.state ?? status.lifecycle_state;
+  const draining = lifecycle === 'draining';
   return {
     isDraining: draining,
     drainInfo: draining
-      ? {
-          who: status.draining_by,
-          items: status.drain_remaining_items,
-          count: status.drain_remaining_items?.length ?? status.drain_remaining_count,
-        }
+      ? drainInfoOf(status.drain_remaining_items, status.drain_remaining_count, status.draining_by)
       : null,
-    isStopped: status.lifecycle_state === 'stopped',
+    isStopped: lifecycle === 'stopped',
+  };
+}
+
+/**
+ * @param items the names of what still runs, where the runtime sends them
+ * @param count the count the runtime reports beside them
+ * @param who who asked for the drain
+ * @returns what the drain still holds; a named list is its own count, and an empty list says
+ *   nothing about the count the runtime reported beside it
+ */
+function drainInfoOf(
+  items: string[] | undefined,
+  count: number | undefined,
+  who: string | undefined,
+): NonNullable<RuntimeState['drainInfo']> {
+  return {
+    who,
+    items,
+    count: items && items.length > 0 ? items.length : count,
   };
 }
 
@@ -641,8 +659,21 @@ function handleDecisionEvent(event: string, data: unknown): void {
   }
 }
 
+/**
+ * How many lifecycle changes the store has seen. A snapshot of the status is only applied while
+ * this is the value it was read at, so a lifecycle event that arrives during the read wins over
+ * the older answer.
+ */
+let lifecycleEpoch = 0;
+
+/** @returns the number of lifecycle changes the store has seen so far */
+export function lifecycleEpochOf(): number {
+  return lifecycleEpoch;
+}
+
 /** The runtime's lifecycle: a drain, a withdrawn drain, or a stop. */
 function handleLifecycleEvent(event: string, data: unknown): void {
+  lifecycleEpoch += 1;
   if (event === 'runtime.draining') {
     const payload = (data || {}) as {
       who?: string;
@@ -658,12 +689,11 @@ function handleLifecycleEvent(event: string, data: unknown): void {
       ...s,
       isDraining: true,
       isStopped: false,
-      drainInfo: {
-        who: payload.who ?? payload.draining_by,
-        // The items are the list itself; where the runtime names them, their length is the count.
+      drainInfo: drainInfoOf(
         items,
-        count: items?.length ?? payload.count ?? payload.remaining_count ?? payload.remaining_work_count,
-      },
+        payload.count ?? payload.remaining_count ?? payload.remaining_work_count,
+        payload.who ?? payload.draining_by,
+      ),
     }));
   } else if (event === 'runtime.drain_withdrawn') {
     runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
@@ -744,6 +774,8 @@ export async function pairBrowser(code: string): Promise<void> {
     selectedEpicId: requested?.epicId ?? null,
     startProjectId: requested?.projectId ?? null,
     startEntryId: requested?.entryId ?? null,
+    // A browser that pairs during a drain shows the banner at once, not after the next event.
+    ...lifecycleFieldsOf(status),
     isOffline: false,
   }));
   subscribeToEvents();

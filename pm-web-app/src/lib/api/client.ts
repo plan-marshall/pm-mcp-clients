@@ -43,6 +43,9 @@ export interface StatusResponse {
   version?: string;
   listener?: string;
   onboarded?: boolean;
+  /** The lifecycle, as the daemon's own status resource writes it. */
+  state?: string;
+  /** The lifecycle, as the mock and the tests write it. */
   lifecycle_state?: string;
   draining_by?: string;
   drain_remaining_count?: number;

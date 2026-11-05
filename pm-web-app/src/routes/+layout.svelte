@@ -7,6 +7,7 @@
     runtimeStore,
     initRuntime,
     adoptRouteFromLocation,
+    lifecycleEpochOf,
     lifecycleFieldsOf,
     routeParamsOf,
     syncUrl,
@@ -77,10 +78,17 @@
   /** How long the read after an unknown outcome may wait for the runtime. */
   const STATE_REFRESH_TIMEOUT_MS = 5_000;
 
-  /** Reads the lifecycle again, so the banner follows what the machine really does. */
+  /**
+   * Reads the lifecycle again, so the banner follows what the machine really does.
+   *
+   * A lifecycle event that arrives while the read is in flight is newer than the answer: the
+   * snapshot is dropped then, rather than overwriting what the event said.
+   */
   async function refreshLifecycle(): Promise<void> {
+    const epoch = lifecycleEpochOf();
     try {
       const status = await apiClient.getStatus(AbortSignal.timeout(STATE_REFRESH_TIMEOUT_MS));
+      if (epoch !== lifecycleEpochOf()) return;
       runtimeStore.update((s) => ({ ...s, ...lifecycleFieldsOf(status) }));
     } catch {
       // The outcome stays unknown; the banner keeps saying so until the next event.
@@ -124,6 +132,8 @@
       runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
     } catch (err: unknown) {
       drainingFailure = $t('system.stopping.withdraw_failed', { reason: refusalOf(err) });
+      // A response that never arrived may still be a withdrawal: read what the runtime does.
+      if (outcomeUnknown(err)) void refreshLifecycle();
     } finally {
       drainingBusy = false;
     }

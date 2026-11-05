@@ -99,6 +99,13 @@ test.describe('the row menu of a product view', () => {
         await page.evaluate((value) => localStorage.setItem('pm_locale', value), locale);
         await page.goto('/settings');
         await expect(page.locator('.devices-table')).toBeVisible();
+        // A hidden control would measure zero on both sides: it must be visible before it is
+        // measured, or the check would pass on nothing.
+        await expect(
+          page.locator(
+            '.devices-table tbody tr:first-child td:last-child [data-testid="action-bar-overflow"]',
+          ),
+        ).toBeVisible();
 
         const overhang = await overhangOf(
           page,
