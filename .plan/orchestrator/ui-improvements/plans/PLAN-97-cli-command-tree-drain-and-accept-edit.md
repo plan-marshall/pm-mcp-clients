@@ -47,6 +47,13 @@ Bring `pm-operator` to the command tree of the design (`doc/design/terminal-clie
      - Tests that fail before: a stop racing a reset does not deadlock (bounded wait); a stale `runtime.draining` is rejected by its generation; a state's own scheduled event survives a drain start; a four-item drain ends as (d) decides; a malformed `facts.kept` leaves the previous scenario untouched (evidence order: `test-first`)
      - The thread replies and the issues of (i) are listed in the pull request (evidence order: `none`)
 
+5. **The generic catches of `EpicCommand` and `PlanCommand`** (PLAN-103 residue, `landings/PLAN-103.md`)
+   - What: `catch (Exception` at `EpicCommand.java:108` and `PlanCommand.java:146`, `:178`, and the `/*TODO: Catch specific not Exception …*/` markers of the rewrite recipe on them, become the exceptions the code can throw (CLAUDE.md). This plan rewrites these two files for the command tree; the catches go with it.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-java:java-core, pm-dev-java:java-null-safety, pm-dev-java:junit-core
+   - Done when:
+     - `git grep -n "catch (Exception\|TODO: Catch specific" -- pm-operator/src/main/java/de/planmarshall/operator/EpicCommand.java pm-operator/src/main/java/de/planmarshall/operator/PlanCommand.java` names none, and a test per changed catch fails when the catch is reverted to a generic one that swallows its path (evidence order: `mutation-after`)
+
 ## Standing Constraints
 
 - Build and test through Maven only (CLAUDE.md): `./mvnw -pl pm-operator -am verify -Pintegration-tests` passes at the head (`-am` is needed or the module resolves a stale `pm-api` snapshot).
@@ -101,7 +108,7 @@ Bring `pm-operator` to the command tree of the design (`doc/design/terminal-clie
 
 ## Dependencies and Sequencing
 
-- Depends on: the packages `cli-system`, `command-tree` and `operator-enrolment-verbs` (all `done` in `doc/plans/README.adoc`); `PLAN-91` and `PLAN-92` (shipped); `PLAN-95`, `PLAN-96`, `PLAN-98` (shipped 2026-11-05: deliverable 4 is PLAN-95's residue; read `landings/PLAN-95.md` and `landings/PLAN-98.md`). Overlaps NEW: `PLAN-103` (staged 2026-11-05; `console-settings.transcript`, the `settings` verb: start this plan after PLAN-103 lands or rebase)
+- Depends on: the packages `cli-system`, `command-tree` and `operator-enrolment-verbs` (all `done` in `doc/plans/README.adoc`); `PLAN-91` and `PLAN-92` (shipped); `PLAN-95`, `PLAN-96`, `PLAN-98` (shipped 2026-11-05: deliverable 4 is PLAN-95's residue; read `landings/PLAN-95.md` and `landings/PLAN-98.md`). `PLAN-103` shipped 2026-11-05 (read `landings/PLAN-103.md`); NEW overlap `PLAN-104` (staged 2026-11-05; `console-settings.transcript` and the console files: whichever starts second reads the other's landing and rebases; `EpicCommand`/`PlanCommand` belong to this plan alone)
 - Overlaps with: `PLAN-98` (staged 2026-11-05; the console badges, `WebCommand`, `PmConsole`, `EntryFlow` and the `console-settings.transcript` golden: deliverable 3 here may rewrite that golden when `settings` is removed; whichever plan starts second reads the other's landing and rebases), `PLAN-94` (shipped 2026-11-05 as PR #321, read `landings/PLAN-94.md`; `OnboardCommand`, `WebCommand`, the console flow and the handler tests — start this plan after PLAN-94 lands and read its landing first), `PLAN-95` (`MockRuntimeEngine.java`; deliverable 2's mock edit: sequence one after the other), `PLAN-96` (running; `MockRuntimeEngine.java` for the drain list — emit this plan after PLAN-96 lands), `PLAN-21`, `PLAN-23`, `PLAN-30`, `PLAN-36`, `PLAN-42`, `PLAN-84` (name `StartCommand`, `OnboardCommand`, `PlanCommand`, `PmConsole` or the operator catalogue pair)
 - Unblocks: `PLAN-42` (help lists every verb: waits for deliverable 3), `PLAN-79` (the `pm-operator` tests: rewrites the tests of Drain, AcceptEdit, Start, Onboard and Enrol after this plan), `PLAN-30` (drops its table edits and moves the `OnboardCommand` strings after deliverable 3)
 

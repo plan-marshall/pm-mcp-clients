@@ -44,6 +44,17 @@ Source of this plan (read before scoping):
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `fully-onboarded` → `/settings` (every tab) and `/settings/machine` (redirect); baseline and after snapshots plus screenshots recorded (evidence order: `none`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
+4. **The cleanup record's conflict, save and texts** (PLAN-101 residue, `landings/PLAN-101.md`)
+   - What: (a) `applyConflictAgain` (`MachineSettingsView.svelte` ~238-246) falls back to `{}` when the conflict's `current_value` is not a record, so the resend carries the operator's changed categories over the defaults 30/3: it merges over the stored record (`$runtimeStore.machineSettings.cleanup_durations`) or refuses the resend with a stated reason. (b) The conflict dialog's "Yours" line prints the page's old full record (`conflict.wantedValue`, ~210) while "Apply yours again" sends the other client's values for the untouched categories: the line shows what will be sent. (c) A server refusal (`invalid_value`, 400) names the minimum like the client pre-check does, or `machine-settings.adoc` states that only the client pre-check names it (`updateMachineSetting` in `stores/runtime.ts` 1086-1099 returns `null` on a throw today). (d) `saveCleanup` (~216-224) builds the saved record from the stored record (spread), not from a five-key list; the design decides whether `CLEANUP_CATEGORY_ORDER` counts as a mirror of `CleanupDurations.java` (CodeRabbit asked for a derived list; the dialog is derived, the order is not). (e) The changed set is computed against the record the page last read, not against a store that a settings event refreshed without `cleanupRemindDays`. (f) Doc leftovers of the "tokens" change: `texts-and-languages.adoc:224` shows `≥ 1.24 M tokens · 3 of 41 tasks`; `doc/claude_review/cli/resources/screens/system-view.{txt,svg}` and `system-printed.txt` show `2.02 M tokens (…)`; a German literal test for `common.tokens.total`.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security, pm-documents:ref-asciidoc
+   - Done when:
+     - Tests that fail before: a conflict whose `current_value` is not a record keeps the stored categories; the dialog's "Yours" line shows what the resend sends; a server refusal shows the minimum; a settings event that refreshes the store does not turn a stale reminder into the operator's change; an added key of the record survives `saveCleanup` (evidence order: `test-first`)
+     - The design states the wire form of a 409's `current_value` and which refusals name the minimum, and the daemon item (`plan-marshall/plan-marshall-mcp` accepts the `cleanup_durations` record: checked or still open with its owner) (evidence order: `none`)
+     - The stale captures and the `texts-and-languages.adoc` example carry the new wording (evidence order: `none`)
+     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+     - The landing message states `unresolved_review_threads=N` (read through GraphQL `reviewThreads` at the merge head, path:line of each open thread) and `sonar_open_new_issues=N` as lines of its facts block (evidence order: `none`)
+
 ## Standing Constraints
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20600 PM_WEB_PORT=20601 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
@@ -84,7 +95,7 @@ Source of this plan (read before scoping):
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-43` (`web-page-templates`), `PLAN-47` (`web-actions-by-state`), `PLAN-76` (`shared-port-assignment`)
-- Overlaps with: none known at staging
+- Overlaps with: `PLAN-100` (`SettingsView.svelte`, `SettingsView.test.ts`: the settings reads); `PLAN-101` landed (`MachineSettingsView.svelte`: the cleanup record) and its residue is deliverable 4; lands after `PLAN-100`
 - Adjacent to: none
 
 ## Hand-Off Command
