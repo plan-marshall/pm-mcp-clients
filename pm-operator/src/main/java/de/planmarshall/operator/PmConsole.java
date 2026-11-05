@@ -63,9 +63,6 @@ public final class PmConsole {
 
     private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm");
 
-    /** The machine onboarding's badge: {@code setup 3/7}, German {@code Einrichtung 3/7}. */
-    private static final Pattern MACHINE_SETUP_BADGE = Pattern.compile("^(setup|Einrichtung) \\d+/\\d+$");
-
     private static final String PLANS = "plans";
 
     /** The verbs that draw their full-screen view on the terminal the console already owns. */
@@ -253,20 +250,25 @@ public final class PmConsole {
         return total;
     }
 
-    private void handleEmptyEnter(PrintWriter out, LineReader reader, Terminal terminal) {
+    void handleEmptyEnter(PrintWriter out, LineReader reader, Terminal terminal) {
         var locale = locale();
         for (var b : badges.get()) {
-            // Only the machine's own badge reads `setup {done}/{total}`; a project's names the
-            // project first. Enter takes the machine's unfinished onboarding; a project's own
-            // continues through `project setup <id>` — 04-console.adoc#prompt's rule that Enter
-            // takes the first thing the badge offers is NOT extended to projects here: the console
-            // transcripts pin Enter to the prompt while a project setup is open, and changing that
-            // contract is a decision of the epic's design, not of this plan.
-            if (b.kind() == ConsoleBadge.Kind.MACHINE_SETUP || MACHINE_SETUP_BADGE.matcher(b.text()).matches()) {
+            // Enter on the empty prompt takes what the badge offers first (04-console.adoc#prompt):
+            // an unfinished onboarding continues where it stopped, the machine's first while it is
+            // not complete, then an open project's.
+            if (b.kind() == ConsoleBadge.Kind.MACHINE_SETUP) {
                 continueOnboarding(out, reader, locale, terminal);
                 return;
             }
+            if (b.kind() == ConsoleBadge.Kind.PROJECT_SETUP && b.projectId() != null && !b.projectId().isEmpty()) {
+                continueProjectOnboarding(b.projectId(), out, reader, terminal);
+                return;
+            }
         }
+    }
+
+    private void continueProjectOnboarding(String projectId, PrintWriter out, LineReader reader, Terminal terminal) {
+        runOperatorVerb("project setup " + projectId, out, reader, terminal);
     }
 
     /**
@@ -876,5 +878,9 @@ public final class PmConsole {
 
     List<String> currentBadges() {
         return badges.get().stream().map(ConsoleBadge::text).toList();
+    }
+
+    void setBadgesForTest(List<ConsoleBadge> testBadges) {
+        badges.set(List.copyOf(testBadges));
     }
 }

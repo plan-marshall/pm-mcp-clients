@@ -22,6 +22,7 @@ import java.io.StringWriter;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -520,14 +521,58 @@ class EntryFlowTest {
 
         @Test
         @DisplayName("the machine badge's total is the number of onboarding aspects")
-        void theBadgeTotalFollowsTheAspects() {
-            var badges = EntryFlow.badges("en", Map.of("onboarded", false));
+        void theBadgeTotalFollowsTheAspects() throws Exception {
+            var aspects = new ArrayList<>(List.of(OnboardingAspect.values()));
+            aspects.add(OnboardingAspect.LANGUAGE);
+            assertEquals(8, aspects.size());
 
+            var badges = EntryFlow.badges("en", Map.of("onboarded", false), aspects.size());
+            assertEquals(List.of("setup 0/8"), badges);
+
+            fixture.start((request, response) -> {
+                if ("/api/v1/status".equals(request.target())) {
+                    response.json(200, """
+                            {"status":"ready","onboarded":false,"version":"0.9.0"}
+                            """);
+                } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                    response.json(200, "{\"onboardings\":[]}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            PmOperatorTest.writeLiveRecord(fixture);
+
+            var context = new OperatorContext(fixture.environment(), tempDir, true);
+
+            var writerIntro = new StringWriter();
+            var outIntro = new PrintWriter(writerIntro);
+            new EntryFlow(context, aspects).run(outIntro, createReader("q\n"));
+            var textIntro = writerIntro.toString();
+            assertTrue(textIntro.contains("8") && textIntro.contains("Language"),
+                    "intro line must list all 8 steps when an aspect is added");
+
+            fixture.close();
+            fixture = RuntimeFixture.create();
+            fixture.start((request, response) -> {
+                if ("/api/v1/status".equals(request.target())) {
+                    response.json(200, """
+                            {"status":"ready","onboarded":false,"onboard":{"step":3},"version":"0.9.0"}
+                            """);
+                } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                    response.json(200, "{\"onboardings\":[]}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            PmOperatorTest.writeLiveRecord(fixture);
+            var contextResume = new OperatorContext(fixture.environment(), tempDir, true);
+            var writerResume = new StringWriter();
+            var outResume = new PrintWriter(writerResume);
+            new EntryFlow(contextResume, aspects).run(outResume, createReader("q\n"));
+            var textResume = writerResume.toString();
             assertAll(
-                                () -> assertEquals(EntryFlow.MACHINE_STEPS, OnboardingAspect.values().length),
-                                () -> assertEquals(List.of("setup 0/" + OnboardingAspect.values().length), badges),
-                                () -> assertEquals(7, OnboardingAspect.values().length,
-                                                    "the aspects name the seven steps of the first run")
+                    () -> assertTrue(textResume.contains("step 3 of 8"), "stopped_at must show 3 of 8"),
+                    () -> assertTrue(textResume.contains("[4/8]"), "resume line must show [4/8] next step")
             );
         }
     }

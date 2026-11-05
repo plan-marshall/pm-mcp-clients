@@ -20,6 +20,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -58,25 +59,38 @@ public final class EntryFlow {
     private static final String VERSION = "version";
     private static final String PAIR_CODE = "/pair#code=";
 
-    private static final List<String> STEP_KEYS = List.of(
-                        "onboard.step.language", "onboard.step.harnesses", "onboard.step.models",
-                        "onboard.step.roles", "onboard.step.credentials", "onboard.step.providers",
-                        "onboard.step.plans");
+    static final List<String> STEP_KEYS = Arrays.stream(OnboardingAspect.values())
+            .map(OnboardingAspect::stepNameKey)
+            .toList();
     /** The machine onboarding's step count, owned by {@link OnboardingAspect}. */
     static final int MACHINE_STEPS = OnboardingAspect.values().length;
-    private static final List<String> STEP_WHAT_KEYS = List.of(
-                        "operator.entry.step.what.language", "operator.entry.step.what.harnesses",
-                        "operator.entry.step.what.models", "operator.entry.step.what.roles",
-                        "operator.entry.step.what.credentials", "operator.entry.step.what.providers",
-                        "operator.entry.step.what.plans");
+    static final List<String> STEP_WHAT_KEYS = Arrays.stream(OnboardingAspect.values())
+            .map(a -> "operator.entry.step.what." + a.name().toLowerCase(Locale.ROOT))
+            .toList();
 
     private final OperatorContext context;
+    private final List<OnboardingAspect> aspects;
+    private final List<String> stepKeys;
+    private final List<String> stepWhatKeys;
 
     /**
      * @param context the operator context
      */
     public EntryFlow(OperatorContext context) {
+        this(context, List.of(OnboardingAspect.values()));
+    }
+
+    /**
+     * @param context the operator context
+     * @param aspects the machine onboarding aspects
+     */
+    public EntryFlow(OperatorContext context, List<OnboardingAspect> aspects) {
         this.context = Objects.requireNonNull(context, "context");
+        this.aspects = List.copyOf(Objects.requireNonNull(aspects, "aspects"));
+        this.stepKeys = this.aspects.stream().map(OnboardingAspect::stepNameKey).toList();
+        this.stepWhatKeys = this.aspects.stream()
+                .map(a -> "operator.entry.step.what." + a.name().toLowerCase(Locale.ROOT))
+                .toList();
     }
 
     /**
@@ -145,25 +159,26 @@ public final class EntryFlow {
                         PrintWriter out, LineReader reader, boolean isSsh, int webPort) throws IOException {
         int completedStep = getCompletedOnboardStep(status);
         var locale = context.clientEnvironment().locale();
+        int totalSteps = aspects.size();
         out.println();
         if (completedStep == 0) {
             out.println(MessageCatalogue.format(locale, "operator.entry.unonboarded.title", Map.of()));
             out.println();
             out.println(MessageCatalogue.format(locale, "operator.entry.unonboarded.intro", Map.of()));
             out.println();
-            for (int step = 1; step <= STEP_KEYS.size(); step++) {
-                var name = MessageCatalogue.format(locale, STEP_KEYS.get(step - 1), Map.of());
+            for (int step = 1; step <= totalSteps; step++) {
+                var name = MessageCatalogue.format(locale, stepKeys.get(step - 1), Map.of());
                 out.println(MessageCatalogue.format(locale, "operator.entry.step_line", Map.of(
                                     "number", step,
                                     "name", name + " ".repeat(Math.max(1, 13 - name.length())),
-                                    "what", MessageCatalogue.format(locale, STEP_WHAT_KEYS.get(step - 1), Map.of()))));
+                                    "what", MessageCatalogue.format(locale, stepWhatKeys.get(step - 1), Map.of()))));
             }
             out.println();
         } else {
-            int nextStep = Math.min(completedStep + 1, 7);
+            int nextStep = Math.min(completedStep + 1, totalSteps);
             out.println(MessageCatalogue.format(locale, "operator.entry.stopped_at", Map.of(
-                                "done", completedStep, "total", 7,
-                                "step", "[" + nextStep + "/7] " + getStepName(nextStep))));
+                                "done", completedStep, "total", totalSteps,
+                                "step", "[" + nextStep + "/" + totalSteps + "] " + stepName(locale, nextStep))));
             out.println();
         }
         out.flush();
@@ -183,7 +198,7 @@ public final class EntryFlow {
             // Leaving the entry prompt keeps the block list and takes every badge the runtime
             // offers, the open project setups included.
             var cBadges = consoleBadges(locale, status,
-                                readProjectSetupConsoleBadgesQuiet(locale, runtime));
+                                readProjectSetupConsoleBadgesQuiet(locale, runtime), totalSteps);
             var strBadges = cBadges.stream().map(ConsoleBadge::text).toList();
             return new EntryResult(status, strBadges, null, null, cBadges);
         }
@@ -194,7 +209,7 @@ public final class EntryFlow {
         }
 
         var cBadges = new ArrayList<ConsoleBadge>();
-        cBadges.add(ConsoleBadge.machineSetup(ConsolePrompt.formatMachineSetupBadge(locale, completedStep, MACHINE_STEPS)));
+        cBadges.add(ConsoleBadge.machineSetup(ConsolePrompt.formatMachineSetupBadge(locale, completedStep, totalSteps)));
         cBadges.addAll(readProjectSetupConsoleBadgesQuiet(locale, runtime));
         var badges = cBadges.stream().map(ConsoleBadge::text).toList();
 
@@ -504,6 +519,13 @@ public final class EntryFlow {
         return 0;
     }
 
+    String stepName(String locale, int step) {
+        if (step >= 1 && step <= stepKeys.size()) {
+            return MessageCatalogue.format(locale, stepKeys.get(step - 1), Map.of());
+        }
+        return MessageCatalogue.format(locale, "operator.entry.step_unknown", Map.of("step", step));
+    }
+
     static String getStepName(int step) {
         return getStepName("en", step);
     }
@@ -581,7 +603,11 @@ public final class EntryFlow {
      * @return the badges, in the order the prompt shows them
      */
     static List<String> badges(String locale, Map<String, Object> status) {
-        return badges(locale, status, List.of());
+        return badges(locale, status, List.of(), MACHINE_STEPS);
+    }
+
+    static List<String> badges(String locale, Map<String, Object> status, int machineSteps) {
+        return badges(locale, status, List.of(), machineSteps);
     }
 
     /**
@@ -595,10 +621,15 @@ public final class EntryFlow {
      * @return the badges, in the order the prompt shows them
      */
     static List<String> badges(String locale, Map<String, Object> status, List<String> projectBadges) {
+        return badges(locale, status, projectBadges, MACHINE_STEPS);
+    }
+
+    static List<String> badges(String locale, Map<String, Object> status, List<String> projectBadges,
+            int machineSteps) {
         var pBadges = projectBadges.stream()
                 .map(p -> ConsoleBadge.projectSetup("", p))
                 .toList();
-        return consoleBadges(locale, status, pBadges).stream()
+        return consoleBadges(locale, status, pBadges, machineSteps).stream()
                 .map(ConsoleBadge::text)
                 .toList();
     }
@@ -613,10 +644,15 @@ public final class EntryFlow {
      */
     static List<ConsoleBadge> consoleBadges(String locale, Map<String, Object> status,
             List<ConsoleBadge> projectBadges) {
+        return consoleBadges(locale, status, projectBadges, MACHINE_STEPS);
+    }
+
+    static List<ConsoleBadge> consoleBadges(String locale, Map<String, Object> status,
+            List<ConsoleBadge> projectBadges, int machineSteps) {
         var badges = new ArrayList<ConsoleBadge>();
         if (!isMachineOnboarded(status)) {
             var text = ConsolePrompt.formatMachineSetupBadge(locale, getCompletedOnboardStep(status),
-                                MACHINE_STEPS);
+                                machineSteps);
             badges.add(ConsoleBadge.machineSetup(text));
         }
         badges.addAll(projectBadges);

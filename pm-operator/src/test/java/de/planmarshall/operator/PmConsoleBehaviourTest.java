@@ -420,4 +420,63 @@ class PmConsoleBehaviourTest {
                                 "questionCount must be 0 for project setups");
         }
     }
+
+    @Test
+    @DisplayName("a test changes the badge template in the catalogue and Enter still acts")
+    void aTestChangesTheBadgeTemplateInTheCatalogueAndEnterStillActs() throws Exception {
+        var onboardingRequested = new AtomicBoolean(false);
+        fixture.start((request, response) -> {
+            if (request.target().startsWith("/api/v1/onboarding")) {
+                onboardingRequested.set(true);
+                response.send(404, null, "");
+            } else if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":false}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            // Simulate a machine setup badge formatted with a custom/changed template that doesn't match "^(setup|Einrichtung) \\d+/\\d+$"
+            console.setBadgesForTest(List.of(ConsoleBadge.machineSetup("Installation 3/7")));
+            console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
+            assertTrue(onboardingRequested.get(), "Enter must still act when machine setup badge template is changed");
+        }
+    }
+
+    @Test
+    @DisplayName("Enter on a project badge continues project onboarding")
+    void enterOnAProjectBadgeContinuesProjectOnboarding() throws Exception {
+        var projectSetupRequested = new AtomicBoolean(false);
+        fixture.start((request, response) -> {
+            if (request.target().contains("cui-http")) {
+                projectSetupRequested.set(true);
+                response.send(404, null, "");
+            } else if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            console.setBadgesForTest(List.of(ConsoleBadge.projectSetup("cui-http", "setup cui-http 5/10")));
+            console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
+            assertTrue(projectSetupRequested.get(), "Enter on project badge must continue project onboarding");
+        }
+    }
 }
