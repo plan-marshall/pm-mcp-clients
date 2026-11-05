@@ -20,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 
 import org.junit.jupiter.api.DisplayName;
@@ -27,6 +28,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -389,26 +392,10 @@ class OnboardingScenarioTest {
             }
         }
 
-        @Test
-        @DisplayName("refuses a cleanup duration below the contract minimum")
-        void shouldRefuseACleanupDurationBelowTheMinimum() throws Exception {
-            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
-                var client = new UnixSocketHttpClient(runtime.socketPath());
-                var auth = "Bearer " + runtime.token();
-                var record = "{\\\"plans_after_days\\\":3,\\\"epics_after_days\\\":45,"
-                        + "\\\"logs_after_days\\\":45,\\\"reports_after_days\\\":45,"
-                        + "\\\"unenrolled_after_days\\\":45,\\\"remind_after_days\\\":7}";
-
-                var refused = put(client, auth,
-                        "{\"key\":\"cleanup_durations\",\"value\":\"" + record + "\",\"revision\":4}");
-
-                assertEquals(400, refused);
-            }
-        }
-
-        @Test
-        @DisplayName("refuses a cleanup record it cannot read and keeps the revision")
-        void shouldRefuseAnUnreadableCleanupRecord() throws Exception {
+        @ParameterizedTest
+        @MethodSource("refusedCleanupRecords")
+        @DisplayName("refuses a cleanup record the contract does not allow and keeps the revision")
+        void shouldRefuseACleanupRecord(String record) throws Exception {
             try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
@@ -417,7 +404,7 @@ class OnboardingScenarioTest {
                         StandardCharsets.UTF_8));
 
                 var refused = put(client, auth,
-                        "{\"key\":\"cleanup_durations\",\"value\":\"{\\\"plans_after_days\\\":\",\"revision\":"
+                        "{\"key\":\"cleanup_durations\",\"value\":\"" + record + "\",\"revision\":"
                                 + before.revision() + "}");
 
                 assertEquals(400, refused);
@@ -427,6 +414,20 @@ class OnboardingScenarioTest {
                 assertEquals(before.revision(), after.revision());
                 assertEquals(before.cleanupDurations().plansAfterDays(), after.cleanupDurations().plansAfterDays());
             }
+        }
+
+        /**
+         * The records the mock refuses: one it cannot read at all, and one whose plans duration is
+         * below the minimum the design names.
+         *
+         * @return the refused records
+         */
+        static Stream<String> refusedCleanupRecords() {
+            return Stream.of(
+                    "{\\\"plans_after_days\\\":",
+                    "{\\\"plans_after_days\\\":3,\\\"epics_after_days\\\":45,"
+                            + "\\\"logs_after_days\\\":45,\\\"reports_after_days\\\":45,"
+                            + "\\\"unenrolled_after_days\\\":45,\\\"remind_after_days\\\":7}");
         }
 
         @Test
