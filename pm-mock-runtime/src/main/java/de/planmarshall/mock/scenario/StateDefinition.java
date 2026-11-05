@@ -13,6 +13,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+
+import org.jspecify.annotations.Nullable;
+
 /**
  * Definition of a single hypermedia state in a scenario.
  *
@@ -25,7 +28,7 @@ public record StateDefinition(
 Object representation,
 Map<String, LinkDefinition> links,
 List<EventDefinition> events,
-AutoTransitionDefinition auto) {
+@Nullable AutoTransitionDefinition auto) {
 
     /**
      * Compact constructor copying collections and ensuring non-null defaults.

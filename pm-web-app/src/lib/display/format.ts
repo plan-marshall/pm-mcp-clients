@@ -374,7 +374,7 @@ function renderTokens(
  * @param output the output and reasoning tokens
  * @param floor whether the figures are floors
  * @param locale the interface locale
- * @returns `412 k tokens (380 k in · 32 k out)`, `412 Tsd. Tokens (380 Tsd. rein · 32 Tsd. raus)`
+ * @returns `412 k (380 k in · 32 k out)`, `412 Tsd. (380 Tsd. rein · 32 Tsd. raus)`
  */
 export function formatSplit(
   total: number,

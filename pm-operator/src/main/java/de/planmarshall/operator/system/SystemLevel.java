@@ -140,7 +140,7 @@ public final class SystemLevel {
      * @param groupBy   {@code model} or {@code role}
      * @param projectId the project the view shows, or {@code null} for all projects
      */
-    public SystemLevel(@Nullable SystemSnapshot snapshot, SystemWindow window, @Nullable String groupBy,
+    public SystemLevel(@Nullable SystemSnapshot snapshot, @Nullable SystemWindow window, @Nullable String groupBy,
                         @Nullable String projectId) {
         this.snapshot = snapshot;
         this.window = window != null ? window : SystemWindow.HOUR;
@@ -356,13 +356,10 @@ public final class SystemLevel {
 
     private List<TuiRow> rootRows(String locale) {
         var figures = SystemView.root(snapshot, locale, window, groupBy);
-        // Figure's declaration order is the order SystemView.root draws the six figures in.
-        var rootFigures = Figure.values();
         var rows = new ArrayList<TuiRow>(figures.size());
-        for (int index = 0; index < figures.size(); index++) {
-            var figure = rootFigures[index];
-            rows.add(new TuiRow(figure.rowId(), SystemView.rowLine(figures.get(index)),
-                                SystemView.rowDetails(figures.get(index)), false, true));
+        for (var figure : figures) {
+            rows.add(new TuiRow(figure.id(), SystemView.rowLine(figure),
+                                SystemView.rowDetails(figure), false, true));
         }
         return rows;
     }

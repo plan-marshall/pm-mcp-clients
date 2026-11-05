@@ -117,6 +117,12 @@ export default defineConfig({
       preprocess: vitePreprocess(),
     }),
   ],
+  build: {
+    // Every asset is emitted as a file of the app's own origin. The daemon's CSP admits
+    // `img-src 'self' blob:` only, so a `data:` URL that Vite would inline for a small asset (the
+    // UI icons imported with `?url`) is blocked in the browser.
+    assetsInlineLimit: 0,
+  },
   resolve: {
     conditions: ['browser'],
   },

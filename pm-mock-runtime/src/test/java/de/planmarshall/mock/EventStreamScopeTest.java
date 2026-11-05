@@ -10,6 +10,7 @@
 package de.planmarshall.mock;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -140,6 +141,35 @@ class EventStreamScopeTest {
                          .withHeader("Authorization", auth)
                          .withHeader("Last-Event-ID", lastId))) {
                 assertEquals("reset", resumed.events().next().event());
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("a state jump emits no reset and preserves event replay order")
+    void jumpEmitsNoResetAndPreservesEventOrder() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            String lastId;
+            try (var first = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", auth))) {
+                var events = first.events();
+                runtime.engine().broadcast("check.result", Map.of("check_id", "v1", "result", "pass"));
+                lastId = events.next().id();
+            }
+
+            runtime.engine().goToState("overview.running");
+
+            runtime.engine().broadcast("check.result", Map.of("check_id", "v2", "result", "pass"));
+
+            try (var resumed = client.open(HttpRequest.get("/api/v1/events")
+                         .withHeader("Authorization", auth)
+                         .withHeader("Last-Event-ID", lastId))) {
+                var event = resumed.events().next();
+                assertNotEquals("reset", event.event(), "goToState must not emit reset");
+                assertEquals("check.result", event.event());
+                assertEquals("v2", JsonTree.string(JsonTree.asObject(JsonTree.parse(event.data())), "check_id"));
             }
         }
     }

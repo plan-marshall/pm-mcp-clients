@@ -11,6 +11,8 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -20,11 +22,22 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
+import org.jline.terminal.Terminal;
 
+import de.planmarshall.api.start.EntryKind;
+import de.planmarshall.api.start.EntryResource;
+import de.planmarshall.api.start.StartState;
+import de.planmarshall.api.start.StartStateResource;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -92,6 +105,121 @@ class ActionSupportTest {
                             () -> assertEquals(other, ActionSupport.leaveBack(other),
                                                 "a code that is not an interrupt is kept")
         );
+    }
+
+    @Test
+    @DisplayName("chat follow-up in console maps interrupt to 0 at its call site")
+    void chatFollowUpInterruptLeavesBack() throws Exception {
+        var entry = new EntryResource("ent-1", EntryKind.PLAN, "pm-mcp-clients", StartState.SOURCES,
+                null, null, List.of(), List.of(), true, true, null, null, List.of(), null);
+        var startState = StartStateResource.of(entry, null, null, null, null, List.of()).toJson();
+
+        runtime((request, response) -> {
+            if ("/api/v1/plans/p-1/chat".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                        {"chat_id":"c-1","subject_id":"p-1","subject_kind":"plan",
+                         "role":"replan","scope":"archive","state":"open","turns":[],
+                         "proposal":{"summary":"Follow-up plan"}}
+                        """);
+            } else if ("/api/v1/projects".equals(request.target())) {
+                response.json(200, "{\"projects\":[{\"project_id\":\"pm-mcp-clients\"}]}");
+            } else if ("/api/v1/projects/pm-mcp-clients/entries".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, startState);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var virtual = VirtualScreenTerminal.create(80, 24);
+        var env = new java.util.HashMap<>(fixture.environment());
+        env.put("LANG", "en_US.UTF-8");
+        var activeContext = new OperatorContext(env, fixture.base().getParent(), true,
+                ClientEnvironment.capture(env), virtual::terminal, null);
+        activeContext.setConsoleActive(true);
+
+        var code = interruptedAt(virtual, "Proposed follow-up", "Sources",
+                () -> ActionSupport.chat(activeContext, spec, "plan", "p-1", null));
+        assertEquals(0, code, "the follow-up interrupt leaves back with 0");
+    }
+
+    @Test
+    @DisplayName("OperatorActions.chatAboutEnded maps interrupt to 0 at its call site")
+    void chatAboutEndedInterruptLeavesBack() throws Exception {
+        var entry = new EntryResource("ent-1", EntryKind.PLAN, "pm-mcp-clients", StartState.SOURCES,
+                null, null, List.of(), List.of(), true, true, null, null, List.of(), null);
+        var startState = StartStateResource.of(entry, null, null, null, null, List.of()).toJson();
+
+        runtime((request, response) -> {
+            if ("/api/v1/plans/p-1/chat".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                        {"chat_id":"c-1","subject_id":"p-1","subject_kind":"plan",
+                         "role":"replan","scope":"archive","state":"open","turns":[],
+                         "proposal":{"summary":"Follow-up plan"}}
+                        """);
+            } else if ("/api/v1/projects".equals(request.target())) {
+                response.json(200, "{\"projects\":[{\"project_id\":\"pm-mcp-clients\"}]}");
+            } else if ("/api/v1/projects/pm-mcp-clients/entries".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, startState);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var virtual = VirtualScreenTerminal.create(80, 24);
+        var env = new java.util.HashMap<>(fixture.environment());
+        env.put("LANG", "en_US.UTF-8");
+        var activeContext = new OperatorContext(env, fixture.base().getParent(), true,
+                ClientEnvironment.capture(env), virtual::terminal, null);
+
+        var code = interruptedAt(virtual, "Proposed follow-up", "Sources",
+                () -> OperatorActions.chatAboutEnded(activeContext, new PrintWriter(out, true), "plan", "p-1",
+                        "pm-mcp-clients", "en"));
+        assertEquals(0, code, "the ended work chat interrupt leaves back with 0");
+    }
+
+    private int interruptedAt(VirtualScreenTerminal virtual, String proposalMarker,
+                              String interruptMarker, Handler handler) throws Exception {
+        var code = new AtomicInteger(-1);
+        var failure = new AtomicReference<Throwable>();
+        var reader = Thread.ofPlatform().name("handler-under-test").start(() -> {
+            try {
+                code.set(handler.run());
+            } catch (Throwable failed) {
+                failure.set(failed);
+            }
+        });
+        try {
+            var deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos();
+            var proposalAccepted = false;
+            var interrupted = false;
+            while (reader.isAlive() && System.nanoTime() < deadline) {
+                var screen = String.join("\n", virtual.screen().lines());
+                var text = out.toString() + "\n" + screen;
+                if (!proposalAccepted && text.contains(proposalMarker)) {
+                    virtual.type("\n");
+                    proposalAccepted = true;
+                }
+                if (proposalAccepted && !interrupted && text.contains(interruptMarker)) {
+                    interrupted = true;
+                    virtual.terminal().raise(Terminal.Signal.INT);
+                    virtual.type("\u0003");
+                }
+                LockSupport.parkNanos(Duration.ofMillis(20).toNanos());
+            }
+            reader.join(TimeUnit.SECONDS.toMillis(5));
+            assertFalse(reader.isAlive(), "the dialogue did not leave after the interrupt: " + out);
+            assertNull(failure.get(), "the dialogue failed: " + failure.get());
+            assertTrue(interrupted, interruptMarker + " was never reached: " + out);
+            return code.get();
+        } finally {
+            virtual.close();
+            reader.interrupt();
+        }
+    }
+
+    @FunctionalInterface
+    private interface Handler {
+        int run() throws Exception;
     }
 
     @Test

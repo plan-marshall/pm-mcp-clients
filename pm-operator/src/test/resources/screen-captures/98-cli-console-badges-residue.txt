@@ -1,0 +1,7 @@
+# Screen captures for PLAN-98: Terminal: What the CodeRabbit-Residue Plan Left Open
+# name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys
+
+console-failing-runtime-120x30-en | fully-onboarded | - |  | exit\n | 120x30 | en_US.UTF-8 | - | runtime stop --now\n
+console-failing-runtime-80x24-en | fully-onboarded | - |  | exit\n | 80x24 | en_US.UTF-8 | - | runtime stop --now\n
+console-failing-runtime-120x30-de | fully-onboarded | - |  | exit\n | 120x30 | de_DE.UTF-8 | - | runtime stop --now\n
+console-failing-runtime-80x24-de | fully-onboarded | - |  | exit\n | 80x24 | de_DE.UTF-8 | - | runtime stop --now\n

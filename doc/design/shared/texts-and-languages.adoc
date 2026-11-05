@@ -111,7 +111,7 @@ A word not in the glossary is translated. A new domain word is added here before
 * *Files*: `messages/<area>.<locale>.properties`, UTF-8, ICU message syntax (arguments, `plural` with `one`, `other`, exact `=n` cases and `#`, `select` with `other`), which `pm-api` evaluates itself; no formatting library is used. English (`en`) is complete and the base; German (`de`) ships from the start.
 * *One word per value*: where an area pack still carries its own word for a value the shared `state.*` family names, the shared key is the authority. The area key stays only until the view that reads it moves to the shared key, and is removed then — except a variant that gives the state a point the chip cannot carry (`overview.state.pausing` names the task or the phase it stops after); that one stays an area key beside the shared word.
 * *Build checks*: a pack that lacks a key of the English pack fails the build, as does a key that exists in a pack but not in English, an argument that differs from the English one, and a glossary term translated in a German text (checked against the glossary above).
-* *Delivery*: the command-line binaries carry the packs as resources of `pm-api`; the runtime serves `GET /api/v1/messages/{locale}/{area}` with an entity tag, so a browser keeps a loaded pack until the release changes it, and `GET /api/v1/messages` with the locales that have a pack and their areas; both without a device secret, so the pairing page has its texts. The pack shown is that of the machine's interface language; the locale the client sends counts only while none is set.
+* *Delivery*: the command-line binaries carry the packs as resources of `pm-api`; the runtime serves `GET /api/v1/messages/{locale}/{area}` with an entity tag, so a browser keeps a loaded pack until the release changes it, and `GET /api/v1/messages` with the locales that have a pack and their areas; both without a device secret, so the pairing page has its texts. The pack shown is that of the machine's interface language; the locale the client sends counts only while none is set. *Retention*: once the runtime version is known, a browser keeps one catalogue per locale, keyed by that version (`pm_i18n_messages_<locale>@<version>`), and a pack of another version is dropped rather than rendered. Before the version is known — the offline first paint — the newest cached pack of the locale is rendered, and the first write after the version is known replaces it. A pack that is missing is fetched from the runtime; no older catalogue is kept as a rollback copy — that is the operator's decision of 2026-11-05, because a read costs a request and no staleness.
 
 [#titles]
 == Titles and Ids
@@ -220,7 +220,7 @@ Every count of tokens is shown in one format, defined here and nowhere else: the
 |===
 
 * *Rounding*: an exact count is rounded half up; a total is rounded from its exact count, never summed from rounded parts. A floor is rounded down at the precision shown, so that it is never overstated: 412 680 measured tokens are `≥ 412 k`, not `≥ 413 k`.
-* *The split* takes the unit of its total, so that the parts read against it: `1.24 M tokens (1.10 M in · 0.14 M out)`, `830 k tokens (790 k in · 40 k out)`. _in_ is input, cache-read, and cache-write tokens; _out_ is output and reasoning tokens; the total is their unweighted sum.
+* *The split* takes the unit of its total, so that the parts read against it: `1.24 M (1.10 M in · 0.14 M out)`, `830 k (790 k in · 40 k out)`. _in_ is input, cache-read, and cache-write tokens; _out_ is output and reasoning tokens; the total is their unweighted sum. The split carries no noun: the label beside it says what the figure counts (_tokens so far_, _Tokens_, _Tokens (in · out)_), and the split never repeats that word. Where no label stands beside the figure — the terminal's system view names the calls before it — `common.tokens.total` puts the word in front of the split.
 * *A floor*: a figure over records of which some were measured and some not is shown with `≥`, rounded down, and the coverage beside it (`≥ 1.24 M tokens · 3 of 41 tasks not measured`), never as exact; a figure over records of which none was measured is `not measured` with the coverage, never `0` and never a `≥`.
 * *Never money*: no price, cost, or currency is shown beside a count of tokens, in any language.
 
@@ -237,8 +237,12 @@ Every count of tokens is shown in one format, defined here and nowhere else: the
 |{value} Mio.
 
 |`common.tokens.split`
-|{total} tokens ({in} in · {out} out)
-|{total} Tokens ({in} rein · {out} raus)
+|{total} ({in} in · {out} out)
+|{total} ({in} rein · {out} raus)
+
+|`common.tokens.total`
+|tokens {figure}
+|Tokens {figure}
 
 |`common.tokens.at_least`
 |≥ {value}

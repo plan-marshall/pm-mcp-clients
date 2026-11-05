@@ -71,7 +71,7 @@ class ReadVerbExitCodesTest {
      * <p>The list is written by hand, and the reason is the registry: {@code @OperatorVerb} marks
      * every verb alike and says nothing about whether it reads or acts, so no reflection over the
      * command tree can produce the read population. What the hand list must not do is miss a read:
-     * {@code project <id>} was the one it missed (CodeRabbit, PR 92), and it is here now.
+     * {@code project <id>} was the one it missed (CodeRabbit, PLAN-92), and it is here now.
      */
     static Stream<Arguments> refusedReads() {
         var reads = List.of(

@@ -13,6 +13,9 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
+
+import org.jspecify.annotations.Nullable;
+
 import de.planmarshall.api.json.JsonTree;
 
 /**
@@ -73,7 +76,7 @@ public final class MockEventStream implements AutoCloseable {
      * @param data  the event payload text
      * @throws IOException on connection error
      */
-    public synchronized void send(String event, long id, String data) throws IOException {
+    public synchronized void send(@Nullable String event, long id, @Nullable String data) throws IOException {
         if (closed) {
             throw new IOException("Event stream is closed");
         }

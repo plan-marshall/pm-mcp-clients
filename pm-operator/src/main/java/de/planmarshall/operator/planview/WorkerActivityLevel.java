@@ -47,7 +47,7 @@ public final class WorkerActivityLevel {
      * @param nodeId   the leaf's node id
      * @param activity the task's activity
      */
-    public WorkerActivityLevel(String planId, String nodeId, TaskActivity activity) {
+    public WorkerActivityLevel(String planId, @Nullable String nodeId, TaskActivity activity) {
         this.planId = Objects.requireNonNull(planId, "planId");
         this.nodeId = nodeId != null ? nodeId : "";
         this.activity = Objects.requireNonNull(activity, "activity");

@@ -43,7 +43,9 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await expect(page.getByText('Ended: merged (#214)')).toBeVisible();
   });
 
-  test('marks a single report read from its row menu and removes it from view', async ({ page }) => {
+  test('marks a single report read from its row menu and removes it from view', async ({
+    page,
+  }) => {
     // Navigate to reports view
     await page
       .locator('.nav-rail')
@@ -55,6 +57,9 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     const row = page.locator('.report-card', { hasText: 'Ended: no change' });
     await expect(row).toBeVisible();
 
+    // Sibling pattern: wait for the initial unread count before reading rows
+    await expect(page.getByTestId('unread-count')).toContainText('6 unread reports');
+
     // Open this row's menu and mark the one report read
     const rows = page.locator('.report-card');
     const initialCount = await rows.count();
@@ -65,6 +70,41 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
 
     // The read report leaves the list; waiting on the count waits on the view's own condition.
     await expect(rows).toHaveCount(initialCount - 1);
+  });
+
+  test('renders short body fitting on one line and long body with clamp control (D2a)', async ({
+    page,
+  }) => {
+    await page
+      .locator('.nav-rail')
+      .getByRole('button', { name: /Reports/i })
+      .click();
+    await expect(page.locator('.reports-view')).toBeVisible();
+
+    // rep-0142 has a short body that fits on one line without overflow
+    const shortCard = page.locator('.report-card', { hasText: 'Ended: merged (#214)' });
+    await expect(shortCard).toBeVisible();
+    await expect(shortCard.locator('.report-card__body')).toHaveText('Brief note.');
+    // Short body does not overflow, so no clamp control is rendered
+    await expect(shortCard.getByRole('button', { name: /Show the text/i })).toHaveCount(0);
+
+    // rep-0143 has a long body that wraps across lines
+    const longCard = page.locator('.report-card', { hasText: 'relay-token-store started' });
+    await expect(longCard).toBeVisible();
+    const showBtn = longCard.getByRole('button', { name: /Show the text/i });
+    await expect(showBtn).toBeVisible();
+
+    // Check heights: when clamped, the body is 1 line. When expanded, height increases.
+    const initialBox = await longCard.locator('.report-card__body').boundingBox();
+    expect(initialBox).not.toBeNull();
+
+    await showBtn.click();
+    const hideBtn = longCard.getByRole('button', { name: /Hide the text/i });
+    await expect(hideBtn).toBeVisible();
+
+    const expandedBox = await longCard.locator('.report-card__body').boundingBox();
+    expect(expandedBox).not.toBeNull();
+    expect(expandedBox.height).toBeGreaterThan(initialBox.height);
   });
 
   test('sets unread rows apart with a dot and a bold subject, and opening reads them', async ({
@@ -82,9 +122,7 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await expect(row.locator('.report-card__unread-dot')).toBeVisible();
     const subject = row.locator('.report-card__subject');
     await expect(subject).toHaveClass(/report-card__subject--unread/);
-    expect(
-      await subject.evaluate((element) => getComputedStyle(element).fontWeight),
-    ).toBe('600');
+    expect(await subject.evaluate((element) => getComputedStyle(element).fontWeight)).toBe('600');
 
     const before = await unreadCount(page);
 

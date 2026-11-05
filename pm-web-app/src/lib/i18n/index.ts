@@ -13,7 +13,9 @@ const CATALOGUE_STORAGE_PREFIX = 'pm_i18n_messages_';
  *
  * The pack a runtime serves changes only when the runtime changes, so the version is what makes a
  * cached catalogue current or stale: the cache key carries it, and a new runtime never serves the
- * catalogue of the old one (CC-P-05).
+ * catalogue of the old one. Keeping one catalogue per locale is the operator's decision
+ * (2026-11-05): a dropped entry costs one read from the runtime, which serves it again, so no
+ * rollback copy is retained beside it.
  */
 let catalogueVersion: string | null = null;
 
@@ -487,7 +489,9 @@ function baseFor(locale: Locale): Record<string, string> {
  *
  * The new catalogue is loaded FIRST and the switch happens only once it is in hand: the screen
  * never shows the words of the old language under the new one, and a catalogue that cannot be
- * loaded at all leaves the language as it was instead of mixing the two (CC-F-10, CC-P-05).
+ * loaded at all leaves the language as it was instead of mixing the two. The catalogue is kept per
+ * locale on the operator's decision; a missing one is fetched from the runtime, not restored from
+ * an older copy (2026-11-05).
  *
  * @param locale the locale to switch to
  */
@@ -641,11 +645,20 @@ export async function initI18n(): Promise<void> {
 
   await readCatalogueVersion();
   // With the version known, only its own cache may be shown: a pack of an older runtime is dropped
-  // rather than rendered, so a new runtime never serves a stale catalogue (CC-P-05).
+  // rather than rendered, so a new runtime never serves a stale catalogue. The operator keeps one
+  // catalogue per locale on purpose: a dropped pack is read from the runtime again, not restored
+  // from a rollback copy (2026-11-05).
   if (hydratedBefore && !hydrateFromCache(browserLocale)) {
     messagesStore.set({});
     englishMessages = null;
     englishLookupAttempted = false;
+    // The session history is a pack of the same pre-version paint: a template it kept must not
+    // outlive the version the cache was just reset for.
+    for (const locale of ['en', 'de'] as const) {
+      for (const key of Object.keys(sessionMessages[locale])) {
+        delete sessionMessages[locale][key];
+      }
+    }
   }
   // The English fallback is the gap-filler of every other locale; an English pack stored by an
   // older runtime must not keep filling gaps after the runtime changed.

@@ -15,15 +15,19 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.UserInterruptException;
@@ -55,25 +59,38 @@ public final class EntryFlow {
     private static final String VERSION = "version";
     private static final String PAIR_CODE = "/pair#code=";
 
-    private static final List<String> STEP_KEYS = List.of(
-                        "onboard.step.language", "onboard.step.harnesses", "onboard.step.models",
-                        "onboard.step.roles", "onboard.step.credentials", "onboard.step.providers",
-                        "onboard.step.plans");
+    static final List<String> STEP_KEYS = Arrays.stream(OnboardingAspect.values())
+            .map(OnboardingAspect::stepNameKey)
+            .toList();
     /** The machine onboarding's step count, owned by {@link OnboardingAspect}. */
     static final int MACHINE_STEPS = OnboardingAspect.values().length;
-    private static final List<String> STEP_WHAT_KEYS = List.of(
-                        "operator.entry.step.what.language", "operator.entry.step.what.harnesses",
-                        "operator.entry.step.what.models", "operator.entry.step.what.roles",
-                        "operator.entry.step.what.credentials", "operator.entry.step.what.providers",
-                        "operator.entry.step.what.plans");
+    static final List<String> STEP_WHAT_KEYS = Arrays.stream(OnboardingAspect.values())
+            .map(a -> "operator.entry.step.what." + a.name().toLowerCase(Locale.ROOT))
+            .toList();
 
     private final OperatorContext context;
+    private final List<OnboardingAspect> aspects;
+    private final List<String> stepKeys;
+    private final List<String> stepWhatKeys;
 
     /**
      * @param context the operator context
      */
     public EntryFlow(OperatorContext context) {
+        this(context, List.of(OnboardingAspect.values()));
+    }
+
+    /**
+     * @param context the operator context
+     * @param aspects the machine onboarding aspects
+     */
+    public EntryFlow(OperatorContext context, List<OnboardingAspect> aspects) {
         this.context = Objects.requireNonNull(context, "context");
+        this.aspects = List.copyOf(Objects.requireNonNull(aspects, "aspects"));
+        this.stepKeys = this.aspects.stream().map(OnboardingAspect::stepNameKey).toList();
+        this.stepWhatKeys = this.aspects.stream()
+                .map(a -> "operator.entry.step.what." + a.name().toLowerCase(Locale.ROOT))
+                .toList();
     }
 
     /**
@@ -83,9 +100,15 @@ public final class EntryFlow {
      * @param initialBadges  initial prompt badges
      * @param activeCode     active pairing code, if one was issued
      * @param activeUrl      active web or pairing URL
+     * @param consoleBadges  structured prompt badges
      */
     public record EntryResult(Map<String, Object> status, List<String> initialBadges,
-    @Nullable String activeCode, @Nullable String activeUrl) {
+    @Nullable String activeCode, @Nullable String activeUrl, List<ConsoleBadge> consoleBadges) {
+
+        public EntryResult(Map<String, Object> status, List<String> initialBadges,
+                           @Nullable String activeCode, @Nullable String activeUrl) {
+            this(status, initialBadges, activeCode, activeUrl, List.of());
+        }
     }
 
     /**
@@ -136,25 +159,26 @@ public final class EntryFlow {
                         PrintWriter out, LineReader reader, boolean isSsh, int webPort) throws IOException {
         int completedStep = getCompletedOnboardStep(status);
         var locale = context.clientEnvironment().locale();
+        int totalSteps = aspects.size();
         out.println();
         if (completedStep == 0) {
             out.println(MessageCatalogue.format(locale, "operator.entry.unonboarded.title", Map.of()));
             out.println();
             out.println(MessageCatalogue.format(locale, "operator.entry.unonboarded.intro", Map.of()));
             out.println();
-            for (int step = 1; step <= STEP_KEYS.size(); step++) {
-                var name = MessageCatalogue.format(locale, STEP_KEYS.get(step - 1), Map.of());
+            for (int step = 1; step <= totalSteps; step++) {
+                var name = MessageCatalogue.format(locale, stepKeys.get(step - 1), Map.of());
                 out.println(MessageCatalogue.format(locale, "operator.entry.step_line", Map.of(
                                     "number", step,
                                     "name", name + " ".repeat(Math.max(1, 13 - name.length())),
-                                    "what", MessageCatalogue.format(locale, STEP_WHAT_KEYS.get(step - 1), Map.of()))));
+                                    "what", MessageCatalogue.format(locale, stepWhatKeys.get(step - 1), Map.of()))));
             }
             out.println();
         } else {
-            int nextStep = Math.min(completedStep + 1, 7);
+            int nextStep = Math.min(completedStep + 1, totalSteps);
             out.println(MessageCatalogue.format(locale, "operator.entry.stopped_at", Map.of(
-                                "done", completedStep, "total", 7,
-                                "step", "[" + nextStep + "/7] " + getStepName(nextStep))));
+                                "done", completedStep, "total", totalSteps,
+                                "step", "[" + nextStep + "/" + totalSteps + "] " + stepName(locale, nextStep))));
             out.println();
         }
         out.flush();
@@ -173,8 +197,10 @@ public final class EntryFlow {
         } catch (EndOfFileException | UserInterruptException _) {
             // Leaving the entry prompt keeps the block list and takes every badge the runtime
             // offers, the open project setups included.
-            return new EntryResult(status, badges(locale, status,
-                                projectSetupBadges(locale, runtime)), null, null);
+            var cBadges = consoleBadges(locale, status,
+                                readProjectSetupConsoleBadgesQuiet(locale, runtime), totalSteps);
+            var strBadges = cBadges.stream().map(ConsoleBadge::text).toList();
+            return new EntryResult(status, strBadges, null, null, cBadges);
         }
         if (choice == null || choice.isBlank()) {
             choice = isSsh ? "h" : "w";
@@ -182,9 +208,10 @@ public final class EntryFlow {
             choice = choice.trim().toLowerCase(Locale.ROOT);
         }
 
-        var badges = new ArrayList<String>();
-        badges.add(ConsolePrompt.formatMachineSetupBadge(locale, completedStep, MACHINE_STEPS));
-        badges.addAll(projectSetupBadges(locale, runtime));
+        var cBadges = new ArrayList<ConsoleBadge>();
+        cBadges.add(ConsoleBadge.machineSetup(ConsolePrompt.formatMachineSetupBadge(locale, completedStep, totalSteps)));
+        cBadges.addAll(readProjectSetupConsoleBadgesQuiet(locale, runtime));
+        var badges = cBadges.stream().map(ConsoleBadge::text).toList();
 
         if (choice.startsWith("w") && context.gate().permits()) {
             ensureLoopbackListener(runtime, webPort);
@@ -196,7 +223,7 @@ public final class EntryFlow {
             }
             out.println(MessageCatalogue.format(locale, "operator.entry.web_opens_setup", Map.of()));
             out.flush();
-            return new EntryResult(status, badges, pairing.code(), pairing.url());
+            return new EntryResult(status, badges, pairing.code(), pairing.url(), cBadges);
         }
         if (choice.startsWith("w")) {
             // The web app is offered by opening the listener and issuing a pairing code, both acts:
@@ -208,7 +235,7 @@ public final class EntryFlow {
         }
         out.flush();
         runOnboardingDialogue(runtime, out, reader, locale);
-        return refreshedAfterDialogue(runtime, status, badges);
+        return refreshedAfterDialogue(runtime, status, cBadges);
     }
 
     /**
@@ -217,21 +244,34 @@ public final class EntryFlow {
      * A refresh that cannot be read keeps what the entry flow already had: the dialogue does not
      * make the entry result worse, so the console still opens with a status and badges.
      *
-     * @param runtime the runtime client
-     * @param status  the status the entry flow read before the dialogue
-     * @param badges  the badges the entry flow built before the dialogue
+     * @param runtime       the runtime client
+     * @param status        the status the entry flow read before the dialogue
+     * @param consoleBadges the badges the entry flow built before the dialogue
      * @return the entry result with the refreshed status and badges, or the pre-dialogue ones
      */
     private EntryResult refreshedAfterDialogue(RuntimeClient runtime, Map<String, Object> status,
-                        List<String> badges) {
+                        List<ConsoleBadge> consoleBadges) {
+        var strBadges = consoleBadges.stream().map(ConsoleBadge::text).toList();
         try {
             var refreshed = StatusCommand.fetch(runtime);
-            return new EntryResult(refreshed,
-                                badges(context.clientEnvironment().locale(), refreshed,
-                                                    projectSetupBadges(context.clientEnvironment().locale(), runtime)),
-                                null, null);
+            var loc = context.clientEnvironment().locale();
+            var projectBadges = readProjectBadgesOrFallback(loc, runtime, consoleBadges);
+            var cBadges = consoleBadges(loc, refreshed, projectBadges);
+            return new EntryResult(refreshed, cBadges.stream().map(ConsoleBadge::text).toList(),
+                                null, null, cBadges);
         } catch (IOException _) {
-            return new EntryResult(status, badges, null, null);
+            return new EntryResult(status, strBadges, null, null, consoleBadges);
+        }
+    }
+
+    private List<ConsoleBadge> readProjectBadgesOrFallback(String locale, RuntimeClient runtime,
+                                                          List<ConsoleBadge> fallback) {
+        try {
+            return readProjectSetupConsoleBadges(locale, runtime);
+        } catch (IOException _) {
+            return fallback.stream()
+                    .filter(b -> b.kind() == ConsoleBadge.Kind.PROJECT_SETUP)
+                    .toList();
         }
     }
 
@@ -263,11 +303,13 @@ public final class EntryFlow {
 
     private EntryResult runOnboarded(RuntimeClient runtime, Map<String, Object> status,
                         PrintWriter out, boolean isSsh, int webPort) throws IOException {
-        var badges = badges(context.clientEnvironment().locale(), status,
-                            projectSetupBadges(context.clientEnvironment().locale(), runtime));
+        var loc = context.clientEnvironment().locale();
+        var cBadges = consoleBadges(loc, status,
+                            readProjectSetupConsoleBadgesQuiet(loc, runtime));
+        var badges = cBadges.stream().map(ConsoleBadge::text).toList();
         var result = context.gate().permits()
-                            ? openWebAccess(runtime, status, out, isSsh, webPort, badges)
-                            : new EntryResult(status, badges, null, null);
+                            ? openWebAccess(runtime, status, out, isSsh, webPort, badges, cBadges)
+                            : new EntryResult(status, badges, null, null, cBadges);
         printReportsArrivalNotice(runtime, out);
         out.flush();
         return result;
@@ -278,17 +320,19 @@ public final class EntryFlow {
      * acts, so the entry flow offers them only where the operator gate would let an act run. A
      * refused act leaves the console a read-only view, and the refusal appears when one is typed.
      *
-     * @param runtime the runtime client
-     * @param status  the status the entry flow read
-     * @param out     the console's writer
-     * @param isSsh   whether this is an SSH session
-     * @param webPort the web port
-     * @param badges  the prompt badges
+     * @param runtime       the runtime client
+     * @param status        the status the entry flow read
+     * @param out           the console's writer
+     * @param isSsh         whether this is an SSH session
+     * @param webPort       the web port
+     * @param badges        the prompt badges
+     * @param consoleBadges the structured prompt badges
      * @return the entry result carrying the pairing code
      * @throws IOException on transport failure
      */
     private EntryResult openWebAccess(RuntimeClient runtime, Map<String, Object> status, PrintWriter out,
-                        boolean isSsh, int webPort, List<String> badges) throws IOException {
+                        boolean isSsh, int webPort, List<String> badges,
+                        List<ConsoleBadge> consoleBadges) throws IOException {
         ensureLoopbackListener(runtime, webPort);
 
         EntryResult result;
@@ -298,20 +342,20 @@ public final class EntryFlow {
                                 Map.of("url", LOOPBACK_URL_PREFIX + webPort)));
             var pairing = issuePairingCode(runtime, webPort);
             printSshWaysIn(out, webPort, pairing.code());
-            result = new EntryResult(status, badges, pairing.code(), pairing.url());
+            result = new EntryResult(status, badges, pairing.code(), pairing.url(), consoleBadges);
         } else {
             var pairedDevice = findPairedBrowser(runtime);
             if (pairedDevice != null) {
                 out.println(MessageCatalogue.format(locale, "operator.entry.web_app_paired",
                                     Map.of("url", LOOPBACK_URL_PREFIX + webPort,
                                                         "label", TerminalSanitizer.sanitizeLine(pairedDevice))));
-                result = new EntryResult(status, badges, null, LOOPBACK_URL_PREFIX + webPort);
+                result = new EntryResult(status, badges, null, LOOPBACK_URL_PREFIX + webPort, consoleBadges);
             } else {
                 out.println(MessageCatalogue.format(locale, "operator.entry.web_access",
                                     Map.of("url", LOOPBACK_URL_PREFIX + webPort)));
                 var pairing = issuePairingCode(runtime, webPort);
                 tryOpenBrowser(out, pairing.url(), pairing.code(), webPort);
-                result = new EntryResult(status, badges, pairing.code(), pairing.url());
+                result = new EntryResult(status, badges, pairing.code(), pairing.url(), consoleBadges);
             }
         }
         return result;
@@ -489,6 +533,13 @@ public final class EntryFlow {
         return 0;
     }
 
+    String stepName(String locale, int step) {
+        if (step >= 1 && step <= stepKeys.size()) {
+            return MessageCatalogue.format(locale, stepKeys.get(step - 1), Map.of());
+        }
+        return MessageCatalogue.format(locale, "operator.entry.step_unknown", Map.of("step", step));
+    }
+
     static String getStepName(int step) {
         return getStepName("en", step);
     }
@@ -520,6 +571,44 @@ public final class EntryFlow {
         return DEFAULT_WEB_PORT;
     }
 
+    static final Duration PROJECT_BADGES_BOUND = Duration.ofSeconds(5);
+
+    static <T> T bounded(Callable<T> task, Duration bound, String threadName) throws IOException {
+        var result = new AtomicReference<T>();
+        var failure = new AtomicReference<Exception>();
+        var thread = new Thread(() -> {
+            try {
+                result.set(task.call());
+            } catch (Exception e) {
+                failure.set(e);
+            }
+        }, threadName);
+        thread.setDaemon(true);
+        thread.start();
+        try {
+            thread.join(bound.toMillis());
+        } catch (InterruptedException _) {
+            // Interrupted while waiting for worker thread
+            Thread.currentThread().interrupt();
+            throw new IOException("interrupted while waiting for " + threadName);
+        }
+        if (thread.isAlive()) {
+            thread.interrupt();
+            throw new IOException("the runtime did not answer within " + bound.toMillis() + " ms");
+        }
+        var error = failure.get();
+        if (error != null) {
+            if (error instanceof IOException io) {
+                throw io;
+            }
+            if (error instanceof RuntimeException re) {
+                throw re;
+            }
+            throw new IOException(error);
+        }
+        return result.get();
+    }
+
     /**
      * The prompt badges of a status (04-console.adoc#prompt): one per {@code needs_operator} kind
      * that is not zero, and the machine's onboarding badge while the machine is not onboarded.
@@ -529,7 +618,11 @@ public final class EntryFlow {
      * @return the badges, in the order the prompt shows them
      */
     static List<String> badges(String locale, Map<String, Object> status) {
-        return badges(locale, status, List.of());
+        return badges(locale, status, List.of(), MACHINE_STEPS);
+    }
+
+    static List<String> badges(String locale, Map<String, Object> status, int machineSteps) {
+        return badges(locale, status, List.of(), machineSteps);
     }
 
     /**
@@ -543,13 +636,42 @@ public final class EntryFlow {
      * @return the badges, in the order the prompt shows them
      */
     static List<String> badges(String locale, Map<String, Object> status, List<String> projectBadges) {
-        var badges = new ArrayList<String>();
+        return badges(locale, status, projectBadges, MACHINE_STEPS);
+    }
+
+    static List<String> badges(String locale, Map<String, Object> status, List<String> projectBadges,
+            int machineSteps) {
+        var pBadges = projectBadges.stream()
+                .map(p -> ConsoleBadge.projectSetup("", p))
+                .toList();
+        return consoleBadges(locale, status, pBadges, machineSteps).stream()
+                .map(ConsoleBadge::text)
+                .toList();
+    }
+
+    /**
+     * Builds structured prompt badges for console consumption.
+     *
+     * @param locale        the interface locale
+     * @param status        the runtime's status
+     * @param projectBadges the structured project setup badges
+     * @return structured badges
+     */
+    static List<ConsoleBadge> consoleBadges(String locale, Map<String, Object> status,
+            List<ConsoleBadge> projectBadges) {
+        return consoleBadges(locale, status, projectBadges, MACHINE_STEPS);
+    }
+
+    static List<ConsoleBadge> consoleBadges(String locale, Map<String, Object> status,
+            List<ConsoleBadge> projectBadges, int machineSteps) {
+        var badges = new ArrayList<ConsoleBadge>();
         if (!isMachineOnboarded(status)) {
-            badges.add(ConsolePrompt.formatMachineSetupBadge(locale, getCompletedOnboardStep(status),
-                                MACHINE_STEPS));
+            var text = ConsolePrompt.formatMachineSetupBadge(locale, getCompletedOnboardStep(status),
+                                machineSteps);
+            badges.add(ConsoleBadge.machineSetup(text));
         }
         badges.addAll(projectBadges);
-        badges.addAll(extractWaitingBadges(locale, status));
+        badges.addAll(extractWaitingConsoleBadges(locale, status));
         return badges;
     }
 
@@ -565,43 +687,64 @@ public final class EntryFlow {
      */
     static List<String> projectSetupBadges(String locale, RuntimeClient runtime) {
         try {
-            var response = runtime.send(HttpRequest.get("/api/v1/project-onboardings"));
-            if (response.status() != 200) {
-                return List.of();
-            }
-            var body = JsonTree.asObject(JsonTree.parse(response.body()));
-            if (body == null || !(body.get("onboardings") instanceof List<?> items)) {
-                return List.of();
-            }
-            var badges = new ArrayList<String>();
-            for (var item : items) {
-                var badge = projectBadge(locale, item);
-                if (badge != null) {
-                    badges.add(badge);
-                }
-            }
-            return badges;
+            return readProjectSetupBadges(locale, runtime);
         } catch (IOException _) {
             return List.of();
         }
     }
 
-    /**
-     * @param locale the interface locale
-     * @param item   one entry of the runtime's open-onboardings list
-     * @return its badge, or {@code null} when the entry names no checkout to badge
-     * @throws IOException when the entry cannot be read
-     */
-    private static @Nullable String projectBadge(String locale, Object item) throws IOException {
+    static List<String> readProjectSetupBadges(String locale, RuntimeClient runtime) throws IOException {
+        return readProjectSetupConsoleBadges(locale, runtime).stream()
+                .map(ConsoleBadge::text)
+                .toList();
+    }
+
+    static List<ConsoleBadge> readProjectSetupConsoleBadges(String locale, RuntimeClient runtime) throws IOException {
+        return bounded(() -> {
+            var response = runtime.send(HttpRequest.get("/api/v1/project-onboardings"));
+            if (response.status() != 200) {
+                throw new IOException("HTTP " + response.status() + " from /api/v1/project-onboardings");
+            }
+            var body = JsonTree.asObject(JsonTree.parse(response.body()));
+            if (body == null || !(body.get("onboardings") instanceof List<?> items)) {
+                return List.of();
+            }
+            var badges = new ArrayList<ConsoleBadge>();
+            for (var item : items) {
+                var badge = parseProjectOnboardingItem(item, locale);
+                if (badge != null) {
+                    badges.add(badge);
+                }
+            }
+            return List.copyOf(badges);
+        }, PROJECT_BADGES_BOUND, "project-onboardings-read");
+    }
+
+    private static @Nullable ConsoleBadge parseProjectOnboardingItem(Object item, String locale) {
         var map = JsonTree.asObject(item);
         if (map == null) {
             return null;
         }
-        var being = BeingAddedProject.fromMap(map);
-        var name = checkoutDirectoryName(being.checkoutPath());
-        return name == null ? null
-                            : ConsolePrompt.formatProjectSetupBadge(locale, name, being.stepNumber(),
-                            being.totalSteps());
+        try {
+            var being = BeingAddedProject.fromMap(map);
+            var name = checkoutDirectoryName(being.checkoutPath());
+            if (name != null) {
+                var text = ConsolePrompt.formatProjectSetupBadge(locale, name,
+                                    being.stepNumber(), being.totalSteps());
+                return ConsoleBadge.projectSetup(name, text);
+            }
+        } catch (IOException | RuntimeException _) {
+            // skip malformed entries
+        }
+        return null;
+    }
+
+    static List<ConsoleBadge> readProjectSetupConsoleBadgesQuiet(String locale, RuntimeClient runtime) {
+        try {
+            return readProjectSetupConsoleBadges(locale, runtime);
+        } catch (IOException _) {
+            return List.of();
+        }
     }
 
     private static @Nullable String checkoutDirectoryName(String checkoutPath) {
@@ -620,27 +763,26 @@ public final class EntryFlow {
         return extractWaitingBadges("en", status);
     }
 
-    /**
-     * The badges of what waits for the operator, in the machine's language: one per
-     * {@code needs_operator} kind whose count is not zero (04-console.adoc#prompt).
-     *
-     * @param locale the interface locale
-     * @param status the runtime's status
-     * @return the badges, in the order the status names the kinds
-     */
     static List<String> extractWaitingBadges(String locale, Map<String, Object> status) {
+        return extractWaitingConsoleBadges(locale, status).stream()
+                .map(ConsoleBadge::text)
+                .toList();
+    }
+
+    static List<ConsoleBadge> extractWaitingConsoleBadges(String locale, Map<String, Object> status) {
         if (!(status.get("needs_operator") instanceof Map<?, ?> needs)) {
             return List.of();
         }
-        var badges = new ArrayList<String>();
+        var badges = new ArrayList<ConsoleBadge>();
         for (var entry : needs.entrySet()) {
             var count = countOf(entry.getValue());
             if (count < 0) {
                 continue;
             }
-            var badge = ConsolePrompt.formatBadge(locale, String.valueOf(entry.getKey()), count);
-            if (badge != null) {
-                badges.add(badge);
+            var kind = String.valueOf(entry.getKey());
+            var badgeText = ConsolePrompt.formatBadge(locale, kind, count);
+            if (badgeText != null) {
+                badges.add(ConsoleBadge.waiting(kind, count, badgeText));
             }
         }
         return badges;

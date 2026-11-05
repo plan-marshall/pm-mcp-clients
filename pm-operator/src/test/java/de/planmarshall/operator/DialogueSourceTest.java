@@ -93,7 +93,7 @@ class DialogueSourceTest {
     void readsAndSendsTheProjectSetup() throws Exception {
         fixture.start((request, response) -> {
             if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
-                if (request.bodyText().contains("\"link\"")) {
+                if (request.bodyText().contains("\"link\":\"set\"")) {
                     response.json(200, """
                                         {"project_id":"cui-parent","state":"project.completed",
                                          "step":10,"total_steps":10,"summary":"cui-parent is ready","links":{}}

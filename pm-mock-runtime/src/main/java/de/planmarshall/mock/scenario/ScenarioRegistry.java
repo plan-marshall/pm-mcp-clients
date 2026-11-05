@@ -15,6 +15,9 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
+
+import org.jspecify.annotations.Nullable;
+
 /**
  * Registry and cache for mock runtime scenarios.
  * <p>
@@ -79,7 +82,7 @@ public final class ScenarioRegistry {
      * @param legacyName a fine-grained scenario name
      * @return the composite target this name migrates to, or {@code null}
      */
-    public String legacyAlias(String legacyName) {
+    public @Nullable String legacyAlias(@Nullable String legacyName) {
         return legacyName == null ? null : legacyAliases.get(legacyName);
     }
 
@@ -147,7 +150,7 @@ public final class ScenarioRegistry {
      * @param name the scenario name
      * @return optional containing the scenario
      */
-    public Optional<Scenario> find(String name) {
+    public Optional<Scenario> find(@Nullable String name) {
         if (name == null) {
             return Optional.empty();
         }
@@ -199,7 +202,7 @@ public final class ScenarioRegistry {
      * @param reference a {@code name} or {@code name#state} reference
      * @return the requested state, or {@code null} when none was named
      */
-    public static String stateNameOf(String reference) {
+    public static @Nullable String stateNameOf(String reference) {
         Objects.requireNonNull(reference, "reference");
         var separator = reference.lastIndexOf(STATE_SEPARATOR);
         return separator > 0 && separator < reference.length() - 1

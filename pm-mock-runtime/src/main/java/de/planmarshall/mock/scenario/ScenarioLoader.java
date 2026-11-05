@@ -227,8 +227,9 @@ public class ScenarioLoader {
                 }
             }
 
-            if (stateDef.auto() != null) {
-                var autoNext = stateDef.auto().next();
+            var autoDef = stateDef.auto();
+            if (autoDef != null) {
+                var autoNext = autoDef.next();
                 if (!states.containsKey(autoNext)) {
                     throw new ScenarioValidationException(identifier, stateId, "auto.next",
                             "dangling next: target state '" + autoNext + "' does not exist");
@@ -474,7 +475,7 @@ public class ScenarioLoader {
         return events;
     }
 
-    private static AutoTransitionDefinition parseAuto(Object autoObj, String scenario, String stateId) {
+    private static @Nullable AutoTransitionDefinition parseAuto(@Nullable Object autoObj, String scenario, String stateId) {
         if (autoObj == null) {
             return null;
         }
