@@ -156,6 +156,33 @@ describe('SettingsView component', () => {
     await waitFor(() => expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument());
   });
 
+  it('refuses a confirm that reaches the revoke handler past the busy button', async () => {
+    // Arrange: the revoke runs, so the confirm button is disabled while the guard is what refuses.
+    let settle: () => void = () => {};
+    const pending = new Promise<void>((resolve) => {
+      settle = resolve;
+    });
+    const revokeSpy = vi.spyOn(apiClient, 'revokeDevice').mockReturnValue(pending);
+
+    render(SettingsView);
+    await waitFor(() => {
+      expect(within(deviceRow('dev-2')).getByTestId('action-bar-overflow')).toBeInTheDocument();
+    });
+    await fireEvent.click(within(deviceRow('dev-2')).getByTestId('action-bar-overflow'));
+    await fireEvent.click(await within(deviceRow('dev-2')).findByTestId('action-revoke'));
+
+    const confirm = await screen.findByTestId('confirm-dialog-confirm');
+    await fireEvent.click(confirm);
+    expect(revokeSpy).toHaveBeenCalledOnce();
+
+    // Act: a click dispatched on the disabled button still reaches the view's handler.
+    confirm.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+    // Assert: `revoking` is what holds the second request back.
+    expect(revokeSpy).toHaveBeenCalledOnce();
+    settle();
+  });
+
   it('asks for the typed name before revoking all other devices', async () => {
     const revokeOthersSpy = vi.spyOn(apiClient, 'revokeOtherDevices').mockResolvedValue();
 

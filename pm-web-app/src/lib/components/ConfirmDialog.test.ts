@@ -145,6 +145,32 @@ describe('ConfirmDialog', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it('ignores a confirm that reaches the handler past the disabled button', async () => {
+    // Arrange: the act runs, so the button is disabled — and the handler is still reached by a
+    // click dispatched on it, which the browser's own disabled handling does not stop.
+    const onConfirm = vi.fn();
+    render(ConfirmDialog, {
+      props: {
+        open: true,
+        title: 'Stop now?',
+        consequences: CONSEQUENCES,
+        actionLabel: 'Stop now',
+        cancelLabel: 'Keep it',
+        busy: true,
+        onConfirm,
+      },
+    });
+    const confirm = screen.getByTestId('confirm-dialog-confirm');
+    expect(confirm).toBeDisabled();
+
+    // Act: two clicks reach `confirm()` without the button's disabled state in the way.
+    confirm.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+    confirm.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+    // Assert: the busy guard is what refuses them.
+    expect(onConfirm).not.toHaveBeenCalled();
+  });
+
   it('draws nothing while it is closed', () => {
     render(ConfirmDialog, {
       props: {

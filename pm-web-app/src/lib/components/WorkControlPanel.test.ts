@@ -374,6 +374,33 @@ describe('WorkControlPanel component', () => {
     expect(document.activeElement).toBe(buttons[0]);
   });
 
+  it('moves the focus from the dialog box to its last control on Shift+Tab', async () => {
+    render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+    await openOverflow();
+    await fireEvent.click(screen.getByTestId('action-cancel'));
+    const dialog = await screen.findByTestId('control-dialog-end');
+
+    // The box itself takes the focus when the dialogue opens: it is the trap's own starting point.
+    await waitFor(() => expect(document.activeElement).toBe(dialog));
+
+    const controls = Array.from(
+      dialog.querySelectorAll<HTMLElement>('button:not([disabled]), input:not([disabled])'),
+    );
+    const last = controls[controls.length - 1];
+    const shiftTab = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+
+    dialog.dispatchEvent(shiftTab);
+
+    expect(shiftTab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(last);
+  });
+
   it('closes a dialogue on Escape and gives the focus back', async () => {
     render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
 

@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/sve
 import { get } from 'svelte/store';
 import Layout from './+layout.svelte';
 import { apiClient, type ReportsPage, type StatusResponse } from '../lib/api/client';
-import { runtimeStore } from '../lib/stores/runtime';
+import { runtimeStore, handleRuntimeEvent } from '../lib/stores/runtime';
 import { makeRuntimeState } from '../lib/test/runtimeState';
 import { loadMessages } from '../test/catalogue-fixture';
 
@@ -474,6 +474,82 @@ describe('the app shell', () => {
     expect(await screen.findByTestId('draining-failure')).toHaveTextContent(
       'The stop now was sent but not confirmed; check the runtime state.',
     );
+  });
+
+  it('refuses a stop-now confirm that reaches the handler past the busy button', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...STATUS,
+      lifecycle_state: 'draining',
+      draining_by: 'the console',
+      drain_remaining_items: ['build of fix-relay'],
+    });
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isDraining: true,
+        drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
+      }),
+    );
+    const stopNow = vi
+      .spyOn(apiClient, 'stopRuntime')
+      .mockReturnValue(new Promise<{ lifecycle_state: string }>(() => {}));
+
+    render(Layout);
+    const banner = await screen.findByTestId('draining-banner');
+    await fireEvent.click(within(banner).getByRole('button', { name: 'Stop now' }));
+    const confirm = screen.getByTestId('confirm-dialog-confirm');
+    await fireEvent.click(confirm);
+    expect(stopNow).toHaveBeenCalledOnce();
+
+    // A click dispatched on the disabled button still reaches the view's handler.
+    confirm.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+    // `drainingBusy` is what holds the second request back.
+    expect(stopNow).toHaveBeenCalledOnce();
+  });
+
+  it('shrinks the drain list when the runtime reports one item less', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue(STATUS);
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isDraining: true,
+        drainInfo: {
+          who: 'the console',
+          count: 3,
+          items: ['execute task of fix-relay', 'build of fix-relay', 'release of fix-relay'],
+        },
+      }),
+    );
+
+    render(Layout);
+    const banner = await screen.findByTestId('draining-banner');
+    expect(banner).toHaveTextContent('3 left: execute task of fix-relay, build of fix-relay');
+
+    // The runtime reports the work that ended, through the event the shell listens to.
+    handleRuntimeEvent('runtime.draining', {
+      draining_by: 'the console',
+      remaining_items: ['execute task of fix-relay', 'build of fix-relay'],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('draining-banner')).toHaveTextContent(
+        '2 left: execute task of fix-relay, build of fix-relay',
+      );
+    });
+    expect(within(screen.getByTestId('draining-list')).getAllByRole('listitem')).toHaveLength(2);
   });
 
   it('probes the connection again after 30 seconds and reports the machine online again', async () => {
