@@ -143,7 +143,7 @@ test.describe('Overview View (UC-PLN-4)', () => {
     await expect(backBtn).toBeVisible();
     await backBtn.click();
 
-    // Verify back on main running work view
+    // Verify back on main running work view: some plan card is there, whichever the runtime serves.
     await expect(page.locator('.plan-card').first()).toBeVisible();
   });
 

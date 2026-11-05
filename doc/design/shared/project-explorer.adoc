@@ -137,6 +137,10 @@ The project's setup offers, after its aspects, _Release the project…_ and _Une
 
 Keys of the area `project`, shared by both clients.
 
+The last-active cell shows a duration through the display layer's `relative` style
+(link:texts-and-languages.adoc#time[Texts and Languages, Time and Duration]), so it
+reads the `common.time.*` keys and needs none of its own.
+
 [cols="3,3,3",options="header"]
 |===
 |Key |English |German
@@ -176,10 +180,6 @@ Keys of the area `project`, shared by both clients.
 |`project.explorer.empty`
 |No project is enrolled yet.
 |Noch ist kein Projekt registriert.
-
-|`project.explorer.last_active`
-|{duration} ago
-|vor {duration}
 
 |`project.adding.title`
 |Being added

@@ -45,7 +45,7 @@ export default async function globalSetup() {
 
   const isUp = await isPortReachable(MOCK_WEB_PORT);
   if (isUp) {
-    if (process.env.PM_MOCK_WEB_PORT) {
+    if ((process.env.PM_MOCK_WEB_PORT ?? '').trim() !== '') {
       throw new Error(`Port ${MOCK_WEB_PORT} is already in use by another process. Assigned ports cannot reuse an existing server.`);
     }
     console.log(`[pm-web-e2e] Mock runtime is already running on default port ${MOCK_WEB_PORT}`);

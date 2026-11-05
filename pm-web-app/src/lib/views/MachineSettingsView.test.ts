@@ -105,6 +105,104 @@ describe('MachineSettingsView component', () => {
     });
   });
 
+  it('sends the reminder interval beside the days and shows it again after a reload', async () => {
+    let recorded: MachineSettingsRecord = settings;
+    const updateSpy = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockImplementation(async (key: string, value: string | null) => {
+        // The runtime keeps what it was sent, so the reload reads it back from the update itself.
+        if (key === 'cleanup_durations' && value) {
+          recorded = {
+            ...recorded,
+            revision: recorded.revision + 1,
+            cleanup_durations: {
+              ...recorded.cleanup_durations,
+              ...(JSON.parse(value) as Record<string, number>),
+            },
+          };
+        }
+        return { applied: true, conflict: false, revision: recorded.revision };
+      });
+    vi.spyOn(apiClient, 'getMachineSettings').mockImplementation(async () => recorded);
+
+    const first = render(MachineSettingsView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('save-cleanup')).toBeInTheDocument();
+    });
+    await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '45' } });
+    await fireEvent.input(screen.getByTestId('cleanup-remind-days'), { target: { value: '7' } });
+    await fireEvent.click(screen.getByTestId('save-cleanup'));
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledWith('cleanup_durations', expect.any(String), 4);
+    });
+    const sent = JSON.parse(updateSpy.mock.calls[0]?.[1] ?? '{}') as Record<string, number>;
+    expect(sent.plans_after_days).toBe(45);
+    expect(sent.remind_after_days).toBe(7);
+    // A category the page does not show keeps the value the runtime holds.
+    expect(sent.epics_after_days).toBe(settings.cleanup_durations.epics_after_days);
+
+    // A reload reads the runtime's record back: the saved value is shown again.
+    first.unmount();
+    render(MachineSettingsView);
+    await waitFor(() => {
+      expect(screen.getByTestId('cleanup-remind-days')).toHaveValue(7);
+    });
+  });
+
+  it('keeps the other categories when one of them has its own retention', async () => {
+    vi.spyOn(apiClient, 'getMachineSettings').mockResolvedValue({
+      ...settings,
+      cleanup_durations: { ...settings.cleanup_durations, epics_after_days: 90 },
+    });
+    const updateSpy = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockResolvedValue({ applied: true, conflict: false, revision: 5 });
+
+    render(MachineSettingsView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('save-cleanup')).toBeInTheDocument();
+    });
+    await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '45' } });
+    await fireEvent.click(screen.getByTestId('save-cleanup'));
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalled();
+    });
+    const sent = JSON.parse(updateSpy.mock.calls[0]?.[1] ?? '{}') as Record<string, number>;
+    expect(sent.plans_after_days).toBe(45);
+    expect(sent.epics_after_days).toBe(90);
+  });
+
+  it.each([
+    ['cleanup-days', ''],
+    ['cleanup-days', '2.5'],
+    ['cleanup-days', '3'],
+    ['cleanup-remind-days', ''],
+    ['cleanup-remind-days', '2.5'],
+  ])('writes nothing when %s holds "%s"', async (testId, value) => {
+    const updateSpy = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockResolvedValue({ applied: true, conflict: false, revision: 5 });
+
+    render(MachineSettingsView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('save-cleanup')).toBeInTheDocument();
+    });
+    await fireEvent.input(screen.getByTestId(testId), { target: { value } });
+    await fireEvent.click(screen.getByTestId('save-cleanup'));
+
+    // Each of these would reach the runtime as a value the contract refuses, or as a missing field
+    // the runtime fills with a default.
+    await waitFor(() => {
+      expect(screen.getByText('The change was not saved.')).toBeInTheDocument();
+    });
+    expect(updateSpy).not.toHaveBeenCalled();
+  });
+
   it('reports a conflict instead of overwriting the current value', async () => {
     vi.spyOn(apiClient, 'updateMachineSetting').mockResolvedValue({
       applied: false,

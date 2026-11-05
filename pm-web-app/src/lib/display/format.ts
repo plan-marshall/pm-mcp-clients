@@ -20,14 +20,47 @@ export type TimeStyle = 'relative' | 'short' | 'clock';
  *
  * The activity stream may carry a clock alone, and a clock is the day it was read.
  */
-const CLOCK_ONLY = /^\d{1,2}:\d{2}(:\d{2})?$/;
+const CLOCK_ONLY = /^(\d{1,2}):(\d{2})(?::(\d{2}))?$/;
+
+/** The shape of a value that claims to be a clock, whether or not the clock can exist. */
+const CLOCK_SHAPED = /^\d{1,2}:\d{2}/;
+
+/** The parts of a bare clock. */
+export interface ClockParts {
+  /** The hour of the day, 0 to 23. */
+  hours: number;
+  /** The minute of the hour, 0 to 59. */
+  minutes: number;
+  /** The second of the minute, 0 to 59; `:00` when the clock carries none. */
+  seconds: number;
+}
 
 /**
- * @param locale the interface locale
+ * Reads a bare clock a row carries instead of an instant.
+ *
+ * A clock that cannot exist (`25:99`) is not a clock: nothing is built from it, so no constructed
+ * instant reaches a screen.
+ *
+ * @param timestamp the value a row carries
+ * @returns the clock's parts, or `null` when the value is not a clock the runtime could have sent
+ */
+export function clockParts(timestamp: string | null | undefined): ClockParts | null {
+  const match = CLOCK_ONLY.exec((timestamp ?? '').trim());
+  if (!match) return null;
+  const parts = {
+    hours: Number(match[1]),
+    minutes: Number(match[2]),
+    seconds: Number(match[3] ?? '0'),
+  };
+  if (parts.hours > 23 || parts.minutes > 59 || parts.seconds > 59) return null;
+  return parts;
+}
+
+/**
+ * @param locale the locale whose words are wanted
  * @param key the catalogue key of the word or the unit mark
  * @param params the ICU parameters of the text
- * @returns the text the active catalogue yields for that key; every caller passes the active
- *   locale, so the active catalogue is that locale's pack
+ * @returns the text the catalogue of that locale yields for the key
  */
 function word(
   locale: Locale,
@@ -40,11 +73,6 @@ function word(
 /** The language tag `Intl` formats with; day-first for English, as the design's examples are. */
 function languageTag(locale: string): string {
   return locale.startsWith('de') ? 'de-DE' : 'en-GB';
-}
-
-/** @param locale the interface locale @returns whether it is German */
-function isGerman(locale: string): boolean {
-  return locale.startsWith('de');
 }
 
 /**
@@ -111,6 +139,29 @@ function ageText(ms: number, locale: Locale): string {
   const relative = new Intl.RelativeTimeFormat(languageTag(locale), { numeric: 'auto' });
   if (days < 365) return relative.format(-Math.floor(days / 30), 'month');
   return relative.format(-Math.floor(days / 365), 'year');
+}
+
+/**
+ * Dates a row the runtime sends with a clock only.
+ *
+ * The wire may carry `14:02:11` instead of an instant; such a row belongs to the day it was read,
+ * so the row takes that day with the clock it sent. The day is thus fixed when the row arrives,
+ * and a page left open over midnight keeps its rows where they belong.
+ *
+ * @param timestamp the instant or the bare clock the runtime sends
+ * @param readAt the moment the row was read
+ * @returns the timestamp with a date, the value unchanged when it already carries one, and an
+ *   empty string for a value shaped like a clock that cannot exist — no constructed instant ever
+ *   reaches a row
+ */
+export function dateOnRead(timestamp: string, readAt: Date): string {
+  const clock = clockParts(timestamp);
+  if (!clock) {
+    return CLOCK_SHAPED.test((timestamp ?? '').trim()) ? '' : timestamp;
+  }
+  const pad = (value: number): string => String(value).padStart(2, '0');
+  const day = `${readAt.getFullYear()}-${pad(readAt.getMonth() + 1)}-${pad(readAt.getDate())}`;
+  return `${day}T${pad(clock.hours)}:${pad(clock.minutes)}:${pad(clock.seconds)}`;
 }
 
 /**
@@ -182,7 +233,7 @@ export function dayOf(
   timestamp: string | null | undefined,
   now: Date = new Date(),
 ): Date | null {
-  const moment = parseInstant(timestamp) ?? (CLOCK_ONLY.test((timestamp ?? '').trim()) ? now : null);
+  const moment = parseInstant(timestamp) ?? (clockParts(timestamp) ? now : null);
   return moment === null ? null : startOfDay(moment);
 }
 
@@ -261,33 +312,31 @@ function decimalText(value: number, digits: number, locale: string): string {
  * @returns `412`, `4.2 k`, `830 k`, `1.24 M`, or the floor form `≥ 412 k`
  */
 export function formatTokens(count: number, floor = false, locale: Locale = 'en'): string {
-  if (count <= 0) return '0';
-  return renderTokens(count, tokenUnit(count, locale), floor, locale);
+  return renderTokens(count, tokenUnit(count), floor, locale);
 }
 
 /** The unit a count of tokens is shown in, or `null` for a count below a thousand. */
 interface TokenUnit {
   /** The divisor from a token count to the shown figure. */
   factor: number;
-  /** The unit mark the packs fix. */
-  suffix: string;
+  /** The catalogue key that fixes the unit mark, with `{value}` for the figure. */
+  key: string;
   /** The decimals the unit shows. */
   digits: number;
 }
 
 /**
- * @param count the exact count @param locale the interface locale @returns the unit it is shown in
+ * @param count the exact count @returns the unit it is shown in
  */
-function tokenUnit(count: number, locale: string): TokenUnit | null {
+function tokenUnit(count: number): TokenUnit | null {
   if (count < 1000) return null;
-  const german = isGerman(locale);
   if (count < 10_000) {
-    return { factor: 1000, suffix: german ? 'Tsd.' : 'k', digits: 1 };
+    return { factor: 1000, key: 'common.tokens.thousands', digits: 1 };
   }
   if (count < 1_000_000) {
-    return { factor: 1000, suffix: german ? 'Tsd.' : 'k', digits: 0 };
+    return { factor: 1000, key: 'common.tokens.thousands', digits: 0 };
   }
-  return { factor: 1_000_000, suffix: german ? 'Mio.' : 'M', digits: 2 };
+  return { factor: 1_000_000, key: 'common.tokens.millions', digits: 2 };
 }
 
 /**
@@ -298,17 +347,20 @@ function renderTokens(
   count: number,
   unit: TokenUnit | null,
   floor: boolean,
-  locale: string,
+  locale: Locale,
 ): string {
-  if (!unit) {
-    const plain = String(Math.max(0, count));
-    return floor ? `≥ ${plain}` : plain;
-  }
-  const step = 10 ** unit.digits;
-  const scaled = count / unit.factor;
-  const rounded = floor ? Math.floor(scaled * step) / step : Math.round(scaled * step) / step;
-  const text = `${decimalText(rounded, unit.digits, locale)} ${unit.suffix}`;
-  return floor ? `≥ ${text}` : text;
+  const figure = unit
+    ? word(locale, unit.key, {
+        value: decimalText(
+          floor
+            ? Math.floor((count / unit.factor) * 10 ** unit.digits) / 10 ** unit.digits
+            : Math.round((count / unit.factor) * 10 ** unit.digits) / 10 ** unit.digits,
+          unit.digits,
+          locale,
+        ),
+      })
+    : String(Math.max(0, count));
+  return floor ? word(locale, 'common.tokens.at_least', { value: figure }) : figure;
 }
 
 /**
@@ -322,7 +374,7 @@ function renderTokens(
  * @param output the output and reasoning tokens
  * @param floor whether the figures are floors
  * @param locale the interface locale
- * @returns `412 k (380 k in · 32 k out)`, `412 Tsd. (380 Tsd. rein · 32 Tsd. raus)`
+ * @returns `412 k tokens (380 k in · 32 k out)`, `412 Tsd. Tokens (380 Tsd. rein · 32 Tsd. raus)`
  */
 export function formatSplit(
   total: number,
@@ -331,11 +383,12 @@ export function formatSplit(
   floor = false,
   locale: Locale = 'en',
 ): string {
-  const german = isGerman(locale);
-  const unit = tokenUnit(total, locale);
-  const inLabel = german ? 'rein' : 'in';
-  const outLabel = german ? 'raus' : 'out';
-  return `${renderTokens(total, unit, floor, locale)} (${renderTokens(input, unit, floor, locale)} ${inLabel} · ${renderTokens(output, unit, floor, locale)} ${outLabel})`;
+  const unit = tokenUnit(total);
+  return word(locale, 'common.tokens.split', {
+    total: renderTokens(total, unit, floor, locale),
+    in: renderTokens(input, unit, floor, locale),
+    out: renderTokens(output, unit, floor, locale),
+  });
 }
 
 /**

@@ -18,6 +18,7 @@ import {
   formatViolation,
 } from './helpers/textGuard.js';
 import { auditViewA11y, formatViolation as formatA11yViolation } from './helpers/a11y.js';
+import { openAnyPlan } from './helpers/plans.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -255,6 +256,7 @@ const GUARD_JOURNEYS = [
     async walk(page, record) {
       await page.goto('/overview');
       await expect(page.locator('.overview')).toBeVisible();
+      // The overview needs some plan card on screen; which plan it is does not matter.
       await expect(page.locator('[data-testid="plan-card"]').first()).toBeVisible();
       await record('OverviewView');
 
@@ -263,6 +265,8 @@ const GUARD_JOURNEYS = [
       await expect(epicCard).toBeVisible();
       await epicCard.click();
       await expect(page.getByTestId('epic-view')).toBeVisible();
+      // A static loading placeholder passes the quiet check and would be recorded as the view.
+      await expect(page.getByTestId('epic-loading')).toHaveCount(0, { timeout: 15000 });
       await record('EpicView');
     },
   },
@@ -275,8 +279,8 @@ const GUARD_JOURNEYS = [
     async walk(page, record) {
       await page.goto('/overview');
       await expect(page.locator('.overview')).toBeVisible();
-      await page.locator('[data-testid="plan-card"]').first().click();
-      await expect(page.getByTestId('plan-view')).toBeVisible();
+      // The journey records the plan view itself, so any plan serves it.
+      await openAnyPlan(page);
       await expect(page.getByTestId('plan-loading')).toHaveCount(0, { timeout: 15000 });
       await expect(page.getByTestId('plan-title')).toBeVisible();
       await record('PlanView');
@@ -335,6 +339,8 @@ const GUARD_JOURNEYS = [
       await expect(review).toBeVisible();
       await review.click();
       await expect(page.getByTestId('cleanup-view')).toBeVisible();
+      // The loading placeholder would be recorded as the view; the cleanup's own content is not.
+      await expect(page.locator('.cleanup-loading')).toHaveCount(0, { timeout: 15000 });
       await record('CleanupView');
     },
   },
@@ -353,6 +359,8 @@ const GUARD_JOURNEYS = [
 
       await page.getByTestId('machine-settings-button').click();
       await expect(page.getByTestId('machine-settings-view')).toBeVisible();
+      // The devices line carries its own loading text; recording it would record a placeholder.
+      await expect(page.locator('.loading-text')).toHaveCount(0, { timeout: 15000 });
       await record('MachineSettingsView');
 
       await page.getByTestId('open-designer-btn').click();
@@ -624,6 +632,7 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           // 1. Overview page
           await page.goto('/overview');
           await expect(page.locator('.overview')).toBeVisible();
+          // The flow needs some plan card on screen; which plan it is does not matter.
           await expect(page.locator('[data-testid="plan-card"]').first()).toBeVisible();
 
           // 2. Switch to by epic
@@ -721,11 +730,8 @@ test.describe('Theme Readability and Contrast Audit Matrix', () => {
           await page.goto('/overview');
           await expect(page.locator('.overview')).toBeVisible();
 
-          const planCard = page.locator('[data-testid="plan-card"]').first();
-          await expect(planCard).toBeVisible();
-          await planCard.click();
-
-          await expect(page.getByTestId('plan-view')).toBeVisible();
+          // The audit is of the plan view itself, so any plan serves it.
+          await openAnyPlan(page);
           await auditView(page, testInfo, { view: 'PlanView', theme, viewport: vp });
         });
 

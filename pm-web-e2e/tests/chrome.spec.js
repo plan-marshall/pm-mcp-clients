@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { pair, switchScenario } from './helpers/pairing.js';
+import { openAnyPlan, openPlan } from './helpers/plans.js';
 import {
   startMockRuntime,
   stopMockRuntime,
@@ -82,8 +83,8 @@ test.describe('Web chrome, navigation and action advisories', () => {
 
   test('gives the plan actions an advisory that differs from their label', async ({ page }) => {
     await page.goto('/overview');
-    await page.locator('[data-testid="plan-card"]').first().click();
-    await expect(page.getByTestId('plan-view')).toBeVisible();
+    // The advisories are the plan view's own, so any plan serves this test.
+    await openAnyPlan(page);
 
     const jump = page.getByTestId('jump-btn');
     await expect(jump).toHaveAttribute('title', /position that runs now/);
@@ -143,8 +144,8 @@ test.describe('Web chrome, navigation and action advisories', () => {
     await expect(page).toHaveURL(/\/designer$/);
 
     await page.goto('/overview');
-    await page.locator('[data-testid="plan-card"]').first().click();
-    await expect(page.getByTestId('plan-view')).toBeVisible();
+    // The designer keeps the project of the plan it was opened from, so the test names it.
+    await openPlan(page, 'Fix Relay Transport');
 
     await page.getByTestId('design-process-btn').click();
     await expect(page).toHaveURL(/\/designer\?project=pm-mcp-clients$/);

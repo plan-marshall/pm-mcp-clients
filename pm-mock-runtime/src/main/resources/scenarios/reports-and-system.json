@@ -51,6 +51,7 @@
             },
             "created_at": "2026-10-16T11:20:00Z",
             "sent_at": "2026-10-16T11:20:00Z",
+            "body": "Brief note.",
             "detail_link": "/api/v1/plans/fix-relay/completion"
           },
           {
@@ -71,6 +72,7 @@
             },
             "created_at": "2026-10-16T11:21:00Z",
             "sent_at": "2026-10-16T11:21:00Z",
+            "body": "This is a longer body text that wraps across multiple lines in the report card body preview, demonstrating that overflowing body text is clamped to one line until the operator toggles the body display control.",
             "detail_link": "/api/v1/plans/relay-token-store"
           },
           {
@@ -834,6 +836,7 @@
                 },
                 "created_at": "2026-10-16T11:20:00Z",
                 "sent_at": "2026-10-16T11:20:00Z",
+                "body": "Brief note.",
                 "detail_link": "/api/v1/plans/fix-relay/completion"
               },
               {
@@ -854,6 +857,7 @@
                 },
                 "created_at": "2026-10-16T11:21:00Z",
                 "sent_at": "2026-10-16T11:21:00Z",
+                "body": "This is a longer body text that wraps across multiple lines in the report card body preview, demonstrating that overflowing body text is clamped to one line until the operator toggles the body display control.",
                 "detail_link": "/api/v1/plans/relay-token-store"
               },
               {
