@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.StartPrompt;
@@ -242,23 +243,25 @@ class StateDialogueTest {
     @DisplayName("every project setup state names a step the catalogue defines and maps to its defined step")
     void projectStatesNameCatalogueSteps() {
         var setupStates = Map.ofEntries(
-                Map.entry("project.consent", "checkout"),
-                Map.entry("project.detect", "checkout"),
-                Map.entry("project.run-consent", "checkout"),
-                Map.entry("project.probe", "checkout"),
-                Map.entry("project.checkout", "checkout"),
-                Map.entry("project.enrol", "enrolment"),
-                Map.entry("project.enrolment", "enrolment"),
-                Map.entry("project.operator", "own"),
-                Map.entry("project.own", "own"),
-                Map.entry("project.identity", "identity"),
-                Map.entry("project.team", "team"),
-                Map.entry("project.architecture", "architecture"),
-                Map.entry("project.landing", "landing"),
-                Map.entry("project.roles", "roles"),
-                Map.entry("project.descriptions", "descriptions"),
-                Map.entry("project.commit", "commit")
+                            Map.entry("project.consent", "checkout"),
+                            Map.entry("project.detect", "checkout"),
+                            Map.entry("project.run-consent", "checkout"),
+                            Map.entry("project.probe", "checkout"),
+                            Map.entry("project.checkout", "checkout"),
+                            Map.entry("project.enrol", "enrolment"),
+                            Map.entry("project.enrolment", "enrolment"),
+                            Map.entry("project.operator", "own"),
+                            Map.entry("project.own", "own"),
+                            Map.entry("project.identity", "identity"),
+                            Map.entry("project.team", "team"),
+                            Map.entry("project.architecture", "architecture"),
+                            Map.entry("project.landing", "landing"),
+                            Map.entry("project.roles", "roles"),
+                            Map.entry("project.descriptions", "descriptions"),
+                            Map.entry("project.commit", "commit")
         );
+
+        assertEquals(Set.copyOf(StateDialogue.PROJECT_STATES), setupStates.keySet());
 
         for (var entry : setupStates.entrySet()) {
             var suffix = StateDialogue.projectStepOf(entry.getKey());
