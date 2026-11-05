@@ -510,7 +510,8 @@ describe('the app shell', () => {
     // A click dispatched on the disabled button still reaches the view's handler.
     confirm.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
 
-    // `drainingBusy` is what holds the second request back.
+    // The stop is sent once: the dialog's busy prop and the view's own guard both stand against a
+    // second send, and either alone must keep the request single.
     expect(stopNow).toHaveBeenCalledOnce();
   });
 

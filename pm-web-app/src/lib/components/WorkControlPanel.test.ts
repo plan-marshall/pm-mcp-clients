@@ -356,6 +356,26 @@ describe('WorkControlPanel component', () => {
     expect(apply).not.toHaveBeenCalled();
   });
 
+  it('starts the next plan at once where the view knows no scope', async () => {
+    vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue({
+      subject_id: 'relay-hardening',
+      subject_kind: 'epic',
+      state: 'running',
+      actions: [{ action: 'next', available: true }],
+    });
+    const apply = vi.spyOn(apiClient, 'applyEpicAction').mockResolvedValue(running);
+    render(WorkControlPanel, { props: { subjectId: 'relay-hardening', subjectKind: 'epic' } });
+
+    await fireEvent.click(await screen.findByTestId('action-next'));
+
+    // A row of Running Work knows neither the scope nor the count: nothing is weighed, so the act
+    // starts the plan instead of asking about a scope it cannot name.
+    await waitFor(() => {
+      expect(apply).toHaveBeenCalledWith('relay-hardening', 'next', { raise_scope: false });
+    });
+    expect(screen.queryByTestId('raise-confirm')).not.toBeInTheDocument();
+  });
+
   it('keeps the hold dialogue shut when the read behind it fails', async () => {
     const hold = {
       hold_id: 'H-0001',

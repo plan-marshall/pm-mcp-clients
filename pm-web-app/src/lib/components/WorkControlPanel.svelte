@@ -393,9 +393,10 @@
   /** @param id the chosen act of an epic */
   function chooseEpic(id: string): void {
     if (id === 'next') {
-      // A count the view does not know cannot be read as "a place is free": ask, and say that the
-      // count is unknown, instead of showing it as none.
-      if (running === null || (scope > 0 && running >= scope)) {
+      // A count the view does not know cannot be read as "a place is free": where the epic's
+      // scope is known, ask and say that the count is unknown instead of showing it as none.
+      // Without a scope (a row of Running Work) there is nothing to weigh, so the act starts.
+      if (scope > 0 && (running === null || running >= scope)) {
         openDialog('raise');
         return;
       }

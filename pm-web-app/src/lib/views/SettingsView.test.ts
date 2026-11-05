@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { tick } from 'svelte';
 import { get } from 'svelte/store';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import SettingsView from './SettingsView.svelte';
@@ -175,10 +176,11 @@ describe('SettingsView component', () => {
     await fireEvent.click(confirm);
     expect(revokeSpy).toHaveBeenCalledOnce();
 
-    // Act: a click dispatched on the disabled button still reaches the view's handler.
+    // A click dispatched on the disabled button still reaches the view's handler.
     confirm.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
 
-    // Assert: `revoking` is what holds the second request back.
+    // The revoke is sent once: the dialog's busy prop and the view's own guard both stand against
+    // a second send, and either alone must keep the request single.
     expect(revokeSpy).toHaveBeenCalledOnce();
     settle();
   });
@@ -313,8 +315,10 @@ describe('SettingsView component', () => {
     expect(await screen.findByText('Chrome on build-box')).toBeInTheDocument();
     pending[0]([mockDevices[0]]);
 
-    // Assert: the late answer never replaces what the newer read brought.
-    await waitFor(() => expect(screen.queryByText('Safari on iPad')).not.toBeInTheDocument());
+    // Assert: the late answer never replaces what the newer read brought. The flush makes the
+    // assertion follow the older read's own update rather than the newer one's.
+    await tick();
+    expect(screen.queryByText('Safari on iPad')).not.toBeInTheDocument();
     expect(screen.getByText('Chrome on build-box')).toBeInTheDocument();
   });
 
