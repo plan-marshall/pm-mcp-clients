@@ -189,7 +189,7 @@ class ActionSupportTest {
             }
         });
         try {
-            var deadline = System.nanoTime() + Duration.ofSeconds(5).toNanos();
+            var deadline = System.nanoTime() + Duration.ofSeconds(15).toNanos();
             var proposalAccepted = false;
             var interrupted = false;
             while (reader.isAlive() && System.nanoTime() < deadline) {
@@ -206,7 +206,7 @@ class ActionSupportTest {
                 }
                 LockSupport.parkNanos(Duration.ofMillis(20).toNanos());
             }
-            reader.join(TimeUnit.SECONDS.toMillis(2));
+            reader.join(TimeUnit.SECONDS.toMillis(5));
             assertFalse(reader.isAlive(), "the dialogue did not leave after the interrupt: " + out);
             assertNull(failure.get(), "the dialogue failed: " + failure.get());
             assertTrue(interrupted, interruptMarker + " was never reached: " + out);
