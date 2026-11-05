@@ -221,6 +221,8 @@
         }
         return;
       case 'decision':
+        // The decision id is its scope and its first question (`doc/design/shared/decisions.adoc`),
+        // so the id alone addresses the decision from any plan; the plan adds nothing to the route.
         pushRoute('decisions', { decisionId: match.id });
         return;
       case 'report':

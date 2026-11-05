@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { resolvePorts } from './ports';
+import { resolvePorts, holdsAssignedPort } from './ports';
 
 describe('resolvePorts', () => {
   it('returns default ports 5173 and 7420 when environment variables are unset', () => {
@@ -30,5 +30,17 @@ describe('resolvePorts', () => {
     expect(() => resolvePorts({ PM_MOCK_WEB_PORT: 'invalid' })).toThrow(/Invalid PM_MOCK_WEB_PORT/);
     expect(() => resolvePorts({ PM_MOCK_WEB_PORT: '-1' })).toThrow(/Invalid PM_MOCK_WEB_PORT/);
     expect(() => resolvePorts({ PM_MOCK_WEB_PORT: '99999' })).toThrow(/Invalid PM_MOCK_WEB_PORT/);
+  });
+});
+
+describe('holdsAssignedPort', () => {
+  it('holds a port the environment assigned', () => {
+    expect(holdsAssignedPort({ PM_WEB_PORT: '20931' })).toBe(true);
+  });
+
+  it('lets the port move when none was assigned', () => {
+    expect(holdsAssignedPort({})).toBe(false);
+    expect(holdsAssignedPort({ PM_WEB_PORT: '' })).toBe(false);
+    expect(holdsAssignedPort({ PM_WEB_PORT: '   ' })).toBe(false);
   });
 });

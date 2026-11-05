@@ -80,6 +80,7 @@ test.describe('Mobile viewports (WEB-1)', () => {
       await overviewNav.click();
 
       await expect(page.locator('.overview')).toBeVisible();
+      // The layout test needs some plan card at phone width; which plan it is does not matter.
       await expect(page.locator('.plan-card').first()).toBeVisible();
       await expect(page.locator('.badge--attention').first()).toBeVisible();
       await expectNoHorizontalOverflow(page);

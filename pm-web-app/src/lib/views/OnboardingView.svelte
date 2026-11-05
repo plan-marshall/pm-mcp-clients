@@ -280,7 +280,7 @@
             <div class="state-card__header">
               <span class="badge-success" aria-hidden="true"><Icon name="state.check" size={16} /></span>
               <h1 class="state-card__title">{$t('onboard.completed.title')}</h1>
-              <p class="state-card__summary">
+              <p class="state-card__summary" data-testid="completed-summary">
                 {completedSummary()}
               </p>
             </div>

@@ -3,7 +3,7 @@ import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import { defineConfig } from 'vitest/config';
-import { resolvePorts } from './src/lib/ports.ts';
+import { resolvePorts, holdsAssignedPort } from './src/lib/ports.ts';
 import { devRouteExclusion } from './src/lib/dev/devRouteExclusion.ts';
 
 /** The addresses a request from this machine itself carries. */
@@ -117,6 +117,12 @@ export default defineConfig({
       preprocess: vitePreprocess(),
     }),
   ],
+  build: {
+    // Every asset is emitted as a file of the app's own origin. The daemon's CSP admits
+    // `img-src 'self' blob:` only, so a `data:` URL that Vite would inline for a small asset (the
+    // UI icons imported with `?url`) is blocked in the browser.
+    assetsInlineLimit: 0,
+  },
   resolve: {
     conditions: ['browser'],
   },
@@ -131,6 +137,7 @@ export default defineConfig({
       allow: ['..'],
     },
     port: resolvePorts().webPort,
+    strictPort: holdsAssignedPort(),
     proxy: {
       '/api': {
         target: resolvePorts().mockTarget,

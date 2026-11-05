@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import ProjectOnboardingView from './ProjectOnboardingView.svelte';
 import { apiClient, type ProjectExplorer, type ProjectOnboardingState } from '../api/client';
+import { currentLocale, messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
 
 const RUN: ProjectOnboardingState = {
   project_id: 'pm-mcp-clients',
@@ -66,6 +68,46 @@ describe('ProjectOnboardingView component', () => {
     );
     expect(screen.getByTestId('project-build-environment')).toHaveTextContent('JAVA_HOME');
     expect(screen.getByTestId('project-chat-open')).not.toBeDisabled();
+  });
+
+  it('re-measures the step line when the language switches', async () => {
+    vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue(RUN);
+    messagesStore.set(loadMessages('de'));
+    currentLocale.set('de');
+    // jsdom measures nothing, so the line's width is derived from the labels actually rendered: a
+    // measurement that ran before the translated labels reached the DOM reads the wrong width.
+    let box = 0;
+    vi.spyOn(Element.prototype, 'scrollWidth', 'get').mockImplementation(function (this: Element) {
+      if (!(this as HTMLElement).classList?.contains('step-line')) return 0;
+      const labels = Array.from(this.querySelectorAll('.step-line__label'));
+      return labels.reduce((sum, label) => sum + (label.textContent?.length ?? 0), 0) * 10;
+    });
+    vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(box);
+
+    const { container } = render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
+    await waitFor(() => expect(screen.getByTestId('project-onboarding-step')).toBeInTheDocument());
+    const line = container.querySelector('.step-line') as HTMLElement;
+    // The German words are on screen before the first measurement, and they fit.
+    expect(line.textContent).toContain('Identität');
+    box = line.scrollWidth + 100;
+
+    try {
+      // A language whose step names are longer than the ones on screen: the line must be measured
+      // again, not only when the window is resized.
+      const longerEnglish = Object.fromEntries(
+        Object.entries(loadMessages('en')).map(([key, text]) => [
+          key,
+          key.startsWith('onboard.step.') ? `${text} and more of it` : text,
+        ]),
+      );
+      currentLocale.set('en');
+      messagesStore.set(longerEnglish);
+
+      await waitFor(() => expect(line).toHaveAttribute('tabindex', '0'));
+    } finally {
+      currentLocale.set('en');
+      messagesStore.set(loadMessages('en'));
+    }
   });
 
   it('names the command that captures a build environment that was never captured', async () => {

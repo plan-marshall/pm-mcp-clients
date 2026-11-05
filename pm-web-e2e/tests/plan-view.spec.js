@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { MOCK_RUNTIME_URL } from './helpers/ports.js';
+import { openPlan } from './helpers/plans.js';
 
 test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
   test.beforeEach(async ({ page, request }) => {
@@ -23,22 +24,6 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
     // Ensure overview container is mounted
     await expect(page.locator('.overview')).toBeVisible();
   });
-
-  /**
-   * Opens a plan from the overview by its title.
-   *
-   * The runtime serves the plans that need the operator first, so a card's position is not the
-   * plan's identity: the test names the plan it means.
-   *
-   * @param page the Playwright page
-   * @param title the plan's title in its card
-   */
-  async function openPlan(page, title) {
-    const planCard = page.locator('[data-testid="plan-card"]').filter({ hasText: title });
-    await expect(planCard).toBeVisible();
-    await planCard.click();
-    await expect(page.locator('[data-testid="plan-view"]')).toBeVisible();
-  }
 
   test.afterAll(async ({ request }) => {
     // Reset back to web-pairing scenario for other test suites
@@ -218,9 +203,8 @@ test.describe('Plan and Epic Views (UC-PLN-1, UC-PLN-5)', () => {
   });
 
   test('opens the project in the explorer in one step', async ({ page }) => {
-    const planCard = page.locator('[data-testid="plan-card"]').first();
-    await planCard.click();
-    await expect(page.locator('[data-testid="plan-view"]')).toBeVisible();
+    // The assertion below names the project, so the test names the plan it opens.
+    await openPlan(page, 'Fix Relay Transport');
 
     await page.locator('[data-testid="breadcrumb-project"]').click();
 
