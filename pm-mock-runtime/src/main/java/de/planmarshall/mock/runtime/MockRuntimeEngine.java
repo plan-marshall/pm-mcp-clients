@@ -6661,9 +6661,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (payload == null) {
             return;
         }
-        var decision = JsonTree.object(payload, "decision");
-        var source = decision != null ? decision : payload;
+        var inner = JsonTree.object(payload, "decision");
+        if (inner == null) {
+            inner = JsonTree.object(payload, "question");
+        }
+        var source = inner != null ? new LinkedHashMap<>(inner) : new LinkedHashMap<>(payload);
         var id = JsonTree.string(source, "id");
+        if (id == null) {
+            id = JsonTree.string(payload, "id");
+            if (id != null) {
+                source.put("id", id);
+            }
+        }
         if (id == null) {
             return;
         }
@@ -8135,8 +8144,34 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var body = readBodyMap(request);
         var linkName = JsonTree.string(body, "link");
         var current = projectSetupStates.getOrDefault(projectId, PROJECT_SETUP_IDENTITY);
-        if (linkName != null && PROJECT_SETUP_IDENTITY.equals(current)) {
+        if ("set".equals(linkName) && PROJECT_SETUP_IDENTITY.equals(current)) {
             current = PROJECT_SETUP_COMPLETED;
+            synchronized (projectsLock) {
+                var updatedList = new ArrayList<EnrolledProject>();
+                for (var p : enrolledProjects) {
+                    if (p.projectId().equals(projectId)) {
+                        updatedList.add(new EnrolledProject(
+                                p.projectId(),
+                                p.displayName(),
+                                p.remoteUrl(),
+                                ProjectReadiness.READY,
+                                null,
+                                Math.max(0, p.needsOperatorCount() - 1),
+                                p.activePlansCount(),
+                                p.activeEpicsCount(),
+                                p.lastActive(),
+                                p.isFavourite(),
+                                p.isReleased()
+                        ));
+                    } else {
+                        updatedList.add(p);
+                    }
+                }
+                enrolledProjects.clear();
+                enrolledProjects.addAll(updatedList);
+            }
+            broadcastEvent(ProjectChangedEvent.EVENT_NAME,
+                    new ProjectChangedEvent(projectId, ProjectReadiness.READY, Instant.now()).toMap());
         }
         projectSetupStates.put(projectId, current);
         response.json(200, projectSetupState(projectId, current));

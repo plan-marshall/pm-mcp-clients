@@ -1156,4 +1156,92 @@ class MockRuntimeEngineTest {
 
         assertTrue(errors.isEmpty(), "find must not throw concurrently: " + errors);
     }
+
+    @Test
+    @DisplayName("completing project setup makes the enrolled project ready in the explorer read")
+    void completingProjectSetupMakesEnrolledProjectReady() throws Exception {
+        engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
+
+        var explorerBefore = send("GET", "/api/v1/explorer", auth, new byte[0], false);
+        assertEquals(200, explorerBefore.status());
+        var allBefore = JsonTree.asArray(explorerBefore.json().get("all_projects"));
+        assertNotNull(allBefore);
+        var targetBefore = allBefore.stream()
+                .map(JsonTree::asObject)
+                .filter(p -> "plan-marshall".equals(JsonTree.string(p, "project_id")))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("setup_needs", JsonTree.string(targetBefore, "readiness"));
+
+        var advanced = send("POST", "/api/v1/projects/plan-marshall/setup", auth,
+                "{\"link\":\"set\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, advanced.status());
+        assertEquals("project.completed", JsonTree.string(advanced.json(), "state"));
+
+        var explorerAfter = send("GET", "/api/v1/explorer", auth, new byte[0], false);
+        assertEquals(200, explorerAfter.status());
+        var allAfter = JsonTree.asArray(explorerAfter.json().get("all_projects"));
+        assertNotNull(allAfter);
+        var targetAfter = allAfter.stream()
+                .map(JsonTree::asObject)
+                .filter(p -> "plan-marshall".equals(JsonTree.string(p, "project_id")))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("ready", JsonTree.string(targetAfter, "readiness"));
+    }
+
+    @Test
+    @DisplayName("a link other than set does not complete the identity step")
+    void linkOtherThanSetDoesNotCompleteSetup() throws Exception {
+        engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
+
+        var nonSetLink = send("POST", "/api/v1/projects/cui-parent/setup", auth,
+                "{\"link\":\"other\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, nonSetLink.status());
+        assertEquals("project.identity", JsonTree.string(nonSetLink.json(), "state"));
+    }
+
+    @Test
+    @DisplayName("a state effect that carries a question member and an outer id is applied")
+    void stateEffectWithQuestionMemberAndOuterIdIsApplied() throws Exception {
+        engine.switchScenario(StandardScenarios.RUNNING_WORK);
+
+        var broadcastPayload = """
+                {
+                  "event": "decision.opened",
+                  "data": {
+                    "id": "Q-999",
+                    "question": {
+                      "revision": 1,
+                      "title": "Custom Question Title",
+                      "header": "Custom Header",
+                      "subject": "plan custom-plan",
+                      "scope": "plan",
+                      "asking_phase": "execute",
+                      "asking_role": "implement",
+                      "blocks": "plan",
+                      "reversibility": "reversible",
+                      "description": "Custom question description.",
+                      "parts": []
+                    }
+                  }
+                }
+                """;
+        var broadcastRes = send("POST", "/mock/broadcast", Map.of(),
+                broadcastPayload.getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, broadcastRes.status());
+
+        var getRes = send("GET", "/api/v1/decisions", auth, new byte[0], false);
+        assertEquals(200, getRes.status());
+        var list = JsonTree.asArray(JsonTree.parse(getRes.body()));
+        assertNotNull(list);
+        var dec = list.stream()
+                .map(JsonTree::asObject)
+                .filter(d -> "Q-999".equals(JsonTree.string(d, "id")))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("Custom Question Title", JsonTree.string(dec, "title"));
+        assertEquals("plan custom-plan", JsonTree.string(dec, "subject"));
+        assertEquals("Custom question description.", JsonTree.string(dec, "description"));
+    }
 }
