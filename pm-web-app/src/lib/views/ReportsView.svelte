@@ -499,24 +499,32 @@
 
   async function markAllShownRead() {
     if (matchingItems.length === 0) return;
+    const isFiltered = query.trim().length > 0;
     const shownIds = matchingItems.map((i) => i.id);
     const shownIdSet = new Set(shownIds);
     try {
       await apiClient.markAllReportsRead(shownIds);
-      const newlyRead = shownIds.filter((id) => !countedReadIds.has(id));
-      for (const id of newlyRead) countedReadIds.add(id);
-      unreadCount = Math.max(0, unreadCount - newlyRead.length);
+      if (isFiltered) {
+        const newlyRead = shownIds.filter((id) => !countedReadIds.has(id));
+        for (const id of newlyRead) countedReadIds.add(id);
+        unreadCount = Math.max(0, unreadCount - newlyRead.length);
 
-      for (const item of matchingItems) {
-        const stillSelected = activeDetailPlanId !== null && planIdOf(item) === activeDetailPlanId;
-        if (stillSelected) {
-          retainedReadIds[item.id] = true;
-        } else {
-          delete retainedReadIds[item.id];
+        for (const item of matchingItems) {
+          const stillSelected = activeDetailPlanId !== null && planIdOf(item) === activeDetailPlanId;
+          if (stillSelected) {
+            retainedReadIds[item.id] = true;
+          } else {
+            delete retainedReadIds[item.id];
+          }
         }
+        retainedReadIds = { ...retainedReadIds };
+        items = items.filter((i) => !shownIdSet.has(i.id) || Boolean(retainedReadIds[i.id]));
+      } else {
+        items = [];
+        retainedReadIds = {};
+        countedReadIds.clear();
+        unreadCount = 0;
       }
-      retainedReadIds = { ...retainedReadIds };
-      items = items.filter((i) => !shownIdSet.has(i.id) || Boolean(retainedReadIds[i.id]));
 
       void refreshReportsCount();
     } catch (err: unknown) {

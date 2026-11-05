@@ -1159,4 +1159,138 @@ describe('ReportsView component', () => {
 
     expect(menuBtn.getAttribute('aria-label')).not.toBe(toggleBtn.getAttribute('aria-label'));
   });
+
+  it('moves focus to the next report when one is marked read (D2b)', async () => {
+    vi.spyOn(apiClient, 'markReportRead').mockResolvedValue(undefined);
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const firstCard = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+    const secondCard = screen.getByText('Ended: no change').closest('.report-card') as HTMLElement;
+    const secondCardTrigger = within(secondCard).getByRole('button', { name: /Report actions/i });
+
+    const firstCardTrigger = within(firstCard).getByRole('button', { name: /Report actions/i });
+    await fireEvent.click(firstCardTrigger);
+    const markReadItem = await within(firstCard).findByRole('menuitem', { name: /Mark read/i });
+    await fireEvent.click(markReadItem);
+
+    await waitFor(() => {
+      expect(secondCardTrigger).toHaveFocus();
+    });
+  });
+
+  it('moves focus to heading when the only report is marked read (D2b)', async () => {
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: [
+        {
+          id: 'rep-only',
+          from: { project: 'pm-mcp-clients' },
+          kind: 'project.onboarded',
+          subject: 'Only report',
+          created_at: '2026-10-16T11:20:00Z',
+        },
+      ],
+      unread_count: 1,
+      has_older: false,
+      older_count: 0,
+    });
+    vi.spyOn(apiClient, 'markReportRead').mockResolvedValue(undefined);
+
+    render(ReportsView);
+    await screen.findByText('Only report');
+
+    const card = screen.getByText('Only report').closest('.report-card') as HTMLElement;
+    await fireEvent.click(within(card).getByRole('button', { name: /Report actions/i }));
+    await fireEvent.click(await within(card).findByRole('menuitem', { name: /Mark read/i }));
+
+    await waitFor(() => {
+      expect(document.querySelector('.reports-heading')).toHaveFocus();
+    });
+  });
+
+  it('falls back to heading when successor row becomes disconnected before focus moves (D2b)', async () => {
+    const r1: ReportItem = {
+      id: 'rep-01',
+      from: { project: 'pm-mcp-clients' },
+      kind: 'project.onboarded',
+      subject: 'Report 1',
+      created_at: '2026-10-16T11:20:00Z',
+    };
+    const r2: ReportItem = {
+      id: 'rep-02',
+      from: { project: 'pm-mcp-clients' },
+      kind: 'project.onboarded',
+      subject: 'Report 2',
+      created_at: '2026-10-16T11:21:00Z',
+    };
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: [r1, r2],
+      unread_count: 2,
+      has_older: false,
+      older_count: 0,
+    });
+    vi.spyOn(apiClient, 'markReportRead').mockImplementation(async () => {
+      const card2 = document.querySelector('[data-report-id="rep-02"]');
+      card2?.remove();
+    });
+
+    render(ReportsView);
+    await screen.findByText('Report 1');
+
+    const card1 = screen.getByText('Report 1').closest('.report-card') as HTMLElement;
+    await fireEvent.click(within(card1).getByRole('button', { name: /Report actions/i }));
+    await fireEvent.click(await within(card1).findByRole('menuitem', { name: /Mark read/i }));
+
+    await waitFor(() => {
+      expect(document.querySelector('.reports-heading')).toHaveFocus();
+    });
+  });
+
+  it('groups reports with machine sentinel correctly without colliding with __machine__ project or system.* kind (D2c)', async () => {
+    const realMachineProjectReport: ReportItem = {
+      id: 'rep-m1',
+      from: { project: '__machine__' },
+      kind: 'project.onboarded',
+      subject: 'Real project named __machine__ is onboarded',
+      created_at: '2026-10-16T10:00:00Z',
+    };
+    const systemKindWithProjectReport: ReportItem = {
+      id: 'rep-m2',
+      from: { project: '__machine__' },
+      kind: 'system.cleanup_due',
+      subject: 'System cleanup due on machine',
+      created_at: '2026-10-16T11:00:00Z',
+    };
+    const normalProjectSystemReport: ReportItem = {
+      id: 'rep-m3',
+      from: { project: 'my-project' },
+      kind: 'system.drain_started',
+      subject: 'Drain started',
+      created_at: '2026-10-16T12:00:00Z',
+    };
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: [realMachineProjectReport, systemKindWithProjectReport, normalProjectSystemReport],
+      unread_count: 3,
+      has_older: false,
+      older_count: 0,
+    });
+
+    render(ReportsView);
+    await screen.findByText('Real project named __machine__ is onboarded');
+
+    const projectBtns = screen.getAllByRole('button', { name: /Open the project __machine__/i });
+    expect(projectBtns.length).toBeGreaterThan(0);
+    const projectBtn = projectBtns[0];
+    expect(projectBtn).toBeInTheDocument();
+
+    expect(screen.getByText('This machine')).toBeInTheDocument();
+
+    const machineSection = screen.getByText('This machine').closest('.project-section') as HTMLElement;
+    expect(within(machineSection).getByText('System cleanup due on machine')).toBeInTheDocument();
+    expect(within(machineSection).getByText('Drain started')).toBeInTheDocument();
+    expect(within(machineSection).queryByText('Real project named __machine__ is onboarded')).toBeNull();
+
+    const realProjectSection = projectBtn.closest('.project-section') as HTMLElement;
+    expect(within(realProjectSection).getByText('Real project named __machine__ is onboarded')).toBeInTheDocument();
+  });
 });
