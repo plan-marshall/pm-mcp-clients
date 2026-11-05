@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -88,13 +89,26 @@ public final class PmConsole {
     private volatile @Nullable String activePairingUrl;
     private volatile int webPort = EntryFlow.DEFAULT_WEB_PORT;
     private volatile boolean notify = true;
+    private final int machineSteps;
 
     /**
      * @param context the operator context
      */
     public PmConsole(OperatorContext context) {
+        this(context, List.of(), new EntryFlow(context).aspects().size());
+    }
+
+    PmConsole(OperatorContext context, List<ConsoleBadge> initialBadges) {
+        this(context, initialBadges, new EntryFlow(context).aspects().size());
+    }
+
+    PmConsole(OperatorContext context, List<ConsoleBadge> initialBadges, int machineSteps) {
         this.context = Objects.requireNonNull(context, "context");
         this.noticeBuffer = context.noticeBuffer();
+        this.machineSteps = machineSteps;
+        if (!initialBadges.isEmpty()) {
+            this.badges.set(List.copyOf(initialBadges));
+        }
     }
 
     private String locale() {
@@ -220,7 +234,8 @@ public final class PmConsole {
         return null;
     }
 
-    @Nullable String handleControlD(PrintWriter out) {
+    @Nullable
+    String handleControlD(PrintWriter out) {
         if (!hasOpenQuestions() || controlDCounter.getAndIncrement() > 0) {
             return null;
         }
@@ -321,13 +336,30 @@ public final class PmConsole {
      * @param terminal the terminal whose window title carries the badges
      */
     void refreshSetupBadge(String locale, Terminal terminal) {
-        badgeRefreshLock.lock();
+        long startNanos = System.nanoTime();
         try {
+            if (!badgeRefreshLock.tryLock(REFRESH_BOUND.toNanos(), TimeUnit.NANOSECONDS)) {
+                return;
+            }
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+            return;
+        }
+        try {
+            long remainingNanos = REFRESH_BOUND.toNanos() - (System.nanoTime() - startNanos);
+            if (remainingNanos <= 0) {
+                return;
+            }
+            var bound = Duration.ofNanos(remainingNanos);
             // Never starts the runtime: a refresh after `runtime stop` must not start it again.
             var runtime = context.runtime(false);
-            var status = EntryFlow.bounded(() -> StatusCommand.fetch(runtime), REFRESH_BOUND, "status-read");
-            var projectBadges = fetchProjectBadgesSafe(locale, runtime);
-            badges.set(List.copyOf(EntryFlow.consoleBadges(locale, status, projectBadges)));
+            var status = EntryFlow.bounded(() -> StatusCommand.fetch(runtime), bound, "status-read");
+
+            remainingNanos = REFRESH_BOUND.toNanos() - (System.nanoTime() - startNanos);
+            List<ConsoleBadge> projectBadges = remainingNanos > 0
+                                ? fetchProjectBadgesSafe(locale, runtime, Duration.ofNanos(remainingNanos))
+                                : previousProjectBadges();
+            badges.set(List.copyOf(EntryFlow.consoleBadges(locale, status, projectBadges, machineSteps)));
         } catch (IOException _) {
             // the badge keeps what the entry flow reported
             return;
@@ -649,13 +681,30 @@ public final class PmConsole {
      * @param terminal the terminal whose window title carries the badges
      */
     void refreshBadges(Terminal terminal) {
-        badgeRefreshLock.lock();
+        long startNanos = System.nanoTime();
+        try {
+            if (!badgeRefreshLock.tryLock(REFRESH_BOUND.toNanos(), TimeUnit.NANOSECONDS)) {
+                return;
+            }
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+            return;
+        }
         List<ConsoleBadge> refreshed;
         try {
+            long remainingNanos = REFRESH_BOUND.toNanos() - (System.nanoTime() - startNanos);
+            if (remainingNanos <= 0) {
+                return;
+            }
+            var bound = Duration.ofNanos(remainingNanos);
             var runtime = context.runtime(false);
-            var status = EntryFlow.bounded(() -> StatusCommand.fetch(runtime), REFRESH_BOUND, "status-read");
-            var projectBadges = fetchProjectBadgesSafe(locale(), runtime);
-            refreshed = EntryFlow.consoleBadges(locale(), status, projectBadges);
+            var status = EntryFlow.bounded(() -> StatusCommand.fetch(runtime), bound, "status-read");
+
+            remainingNanos = REFRESH_BOUND.toNanos() - (System.nanoTime() - startNanos);
+            List<ConsoleBadge> projectBadges = remainingNanos > 0
+                                ? fetchProjectBadgesSafe(locale(), runtime, Duration.ofNanos(remainingNanos))
+                                : previousProjectBadges();
+            refreshed = EntryFlow.consoleBadges(locale(), status, projectBadges, machineSteps);
             if (!refreshed.equals(badges.get())) {
                 badges.set(List.copyOf(refreshed));
             }
@@ -668,9 +717,9 @@ public final class PmConsole {
         updateWindowTitle(terminal);
     }
 
-    private List<ConsoleBadge> fetchProjectBadgesSafe(String locale, RuntimeClient runtime) {
+    private List<ConsoleBadge> fetchProjectBadgesSafe(String locale, RuntimeClient runtime, Duration bound) {
         try {
-            return EntryFlow.readProjectSetupConsoleBadges(locale, runtime);
+            return EntryFlow.readProjectSetupConsoleBadges(locale, runtime, bound);
         } catch (IOException _) {
             return previousProjectBadges();
         }
@@ -816,8 +865,8 @@ public final class PmConsole {
         var title = new StringBuilder("pm-operator");
         if (!badges.get().isEmpty()) {
             title.append(" [")
-                    .append(String.join(" \u00b7 ", badges.get().stream().map(ConsoleBadge::text).toList()))
-                    .append(']');
+                                .append(String.join(" \u00b7 ", badges.get().stream().map(ConsoleBadge::text).toList()))
+                                .append(']');
         }
         TerminalTitle.set(terminal, title.toString());
     }
@@ -888,9 +937,5 @@ public final class PmConsole {
 
     List<String> currentBadges() {
         return badges.get().stream().map(ConsoleBadge::text).toList();
-    }
-
-    void setBadgesForTest(List<ConsoleBadge> testBadges) {
-        badges.set(List.copyOf(testBadges));
     }
 }

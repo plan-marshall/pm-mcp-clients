@@ -220,15 +220,6 @@ public final class OperatorContext {
     }
 
     /**
-     * @param newClock the clock to use
-     * @return a new context with the given clock
-     */
-    public OperatorContext withClock(Clock newClock) {
-        return new OperatorContext(environment, userHome, interactiveTerminal, clientEnvironment,
-                            terminalProvider, browserOpener, newClock);
-    }
-
-    /**
      * @param startOnDemand {@code true} to start the runtime when none answers
      * @return the runtime client of this command
      * @throws IOException if the client cannot be set up

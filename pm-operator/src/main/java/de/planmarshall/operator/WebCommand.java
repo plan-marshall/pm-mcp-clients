@@ -619,10 +619,6 @@ public final class WebCommand implements Callable<Integer> {
             }
         }
 
-        static String formatLastUsed(@Nullable Object raw) {
-            return formatLastUsed(raw, Clock.systemUTC());
-        }
-
         static String formatLastUsed(@Nullable Object raw, Clock clock) {
             if (raw == null) {
                 return "just now";

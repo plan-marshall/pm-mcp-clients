@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.UnknownHostException;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -20,13 +21,11 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicReference;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
@@ -59,19 +58,9 @@ public final class EntryFlow {
     private static final String VERSION = "version";
     private static final String PAIR_CODE = "/pair#code=";
 
-    static final List<String> STEP_KEYS = Arrays.stream(OnboardingAspect.values())
-            .map(OnboardingAspect::stepNameKey)
-            .toList();
-    /** The machine onboarding's step count, owned by {@link OnboardingAspect}. */
-    static final int MACHINE_STEPS = OnboardingAspect.values().length;
-    static final List<String> STEP_WHAT_KEYS = Arrays.stream(OnboardingAspect.values())
-            .map(a -> "operator.entry.step.what." + a.name().toLowerCase(Locale.ROOT))
-            .toList();
-
     private final OperatorContext context;
     private final List<OnboardingAspect> aspects;
     private final List<String> stepKeys;
-    private final List<String> stepWhatKeys;
 
     /**
      * @param context the operator context
@@ -88,9 +77,13 @@ public final class EntryFlow {
         this.context = Objects.requireNonNull(context, "context");
         this.aspects = List.copyOf(Objects.requireNonNull(aspects, "aspects"));
         this.stepKeys = this.aspects.stream().map(OnboardingAspect::stepNameKey).toList();
-        this.stepWhatKeys = this.aspects.stream()
-                .map(a -> "operator.entry.step.what." + a.name().toLowerCase(Locale.ROOT))
-                .toList();
+    }
+
+    /**
+     * @return the machine onboarding aspects
+     */
+    public List<OnboardingAspect> aspects() {
+        return aspects;
     }
 
     /**
@@ -106,7 +99,7 @@ public final class EntryFlow {
     @Nullable String activeCode, @Nullable String activeUrl, List<ConsoleBadge> consoleBadges) {
 
         public EntryResult(Map<String, Object> status, List<String> initialBadges,
-                           @Nullable String activeCode, @Nullable String activeUrl) {
+                            @Nullable String activeCode, @Nullable String activeUrl) {
             this(status, initialBadges, activeCode, activeUrl, List.of());
         }
     }
@@ -164,14 +157,15 @@ public final class EntryFlow {
         if (completedStep == 0) {
             out.println(MessageCatalogue.format(locale, "operator.entry.unonboarded.title", Map.of()));
             out.println();
-            out.println(MessageCatalogue.format(locale, "operator.entry.unonboarded.intro", Map.of()));
+            out.println(MessageCatalogue.format(locale, "operator.entry.unonboarded.intro", Map.of("total", totalSteps)));
             out.println();
             for (int step = 1; step <= totalSteps; step++) {
                 var name = MessageCatalogue.format(locale, stepKeys.get(step - 1), Map.of());
+                var whatKey = "operator.entry.step.what." + aspects.get(step - 1).name().toLowerCase(Locale.ROOT);
                 out.println(MessageCatalogue.format(locale, "operator.entry.step_line", Map.of(
                                     "number", step,
                                     "name", name + " ".repeat(Math.max(1, 13 - name.length())),
-                                    "what", MessageCatalogue.format(locale, stepWhatKeys.get(step - 1), Map.of()))));
+                                    "what", MessageCatalogue.format(locale, whatKey, Map.of()))));
             }
             out.println();
         } else {
@@ -256,7 +250,7 @@ public final class EntryFlow {
             var refreshed = StatusCommand.fetch(runtime);
             var loc = context.clientEnvironment().locale();
             var projectBadges = readProjectBadgesOrFallback(loc, runtime, consoleBadges);
-            var cBadges = consoleBadges(loc, refreshed, projectBadges);
+            var cBadges = consoleBadges(loc, refreshed, projectBadges, aspects.size());
             return new EntryResult(refreshed, cBadges.stream().map(ConsoleBadge::text).toList(),
                                 null, null, cBadges);
         } catch (IOException _) {
@@ -265,13 +259,13 @@ public final class EntryFlow {
     }
 
     private List<ConsoleBadge> readProjectBadgesOrFallback(String locale, RuntimeClient runtime,
-                                                          List<ConsoleBadge> fallback) {
+                        List<ConsoleBadge> fallback) {
         try {
             return readProjectSetupConsoleBadges(locale, runtime);
         } catch (IOException _) {
             return fallback.stream()
-                    .filter(b -> b.kind() == ConsoleBadge.Kind.PROJECT_SETUP)
-                    .toList();
+                                .filter(b -> b.kind() == ConsoleBadge.Kind.PROJECT_SETUP)
+                                .toList();
         }
     }
 
@@ -305,7 +299,7 @@ public final class EntryFlow {
                         PrintWriter out, boolean isSsh, int webPort) throws IOException {
         var loc = context.clientEnvironment().locale();
         var cBadges = consoleBadges(loc, status,
-                            readProjectSetupConsoleBadgesQuiet(loc, runtime));
+                            readProjectSetupConsoleBadgesQuiet(loc, runtime), aspects.size());
         var badges = cBadges.stream().map(ConsoleBadge::text).toList();
         var result = context.gate().permits()
                             ? openWebAccess(runtime, status, out, isSsh, webPort, badges, cBadges)
@@ -389,9 +383,7 @@ public final class EntryFlow {
             out.println(MessageCatalogue.format(locale, "operator.entry.browser_url", Map.of("url", url)));
             out.println(MessageCatalogue.format(locale, "operator.entry.browser_code",
                                 Map.of("code", code, "time", validUntil)));
-        }
-        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception e) {
+        } catch (IOException e) {
             out.println(MessageCatalogue.format(locale, "operator.entry.no_browser",
                                 Map.of("reason", TerminalSanitizer.sanitizeLine(e.getMessage() != null
                                                     ? e.getMessage() : e.getClass().getSimpleName()))));
@@ -545,8 +537,9 @@ public final class EntryFlow {
     }
 
     static String getStepName(String locale, int step) {
-        if (step >= 1 && step <= STEP_KEYS.size()) {
-            return MessageCatalogue.format(locale, STEP_KEYS.get(step - 1), Map.of());
+        var aspects = OnboardingAspect.values();
+        if (step >= 1 && step <= aspects.length) {
+            return MessageCatalogue.format(locale, aspects[step - 1].stepNameKey(), Map.of());
         }
         return MessageCatalogue.format(locale, "operator.entry.step_unknown", Map.of("step", step));
     }
@@ -573,14 +566,24 @@ public final class EntryFlow {
 
     static final Duration PROJECT_BADGES_BOUND = Duration.ofSeconds(5);
 
-    static <T> T bounded(Callable<T> task, Duration bound, String threadName) throws IOException {
+    @FunctionalInterface
+    interface IoCallable<T> {
+        T call() throws IOException;
+    }
+
+    static <T> T bounded(IoCallable<T> task, Duration bound, String threadName) throws IOException {
         var result = new AtomicReference<T>();
-        var failure = new AtomicReference<Exception>();
+        var failure = new AtomicReference<IOException>();
+        var runtimeFailure = new AtomicReference<RuntimeException>();
         var thread = new Thread(() -> {
             try {
                 result.set(task.call());
-            } catch (Exception e) {
+            } catch (IOException e) {
                 failure.set(e);
+            }
+            /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            catch (RuntimeException e) {
+                runtimeFailure.set(e);
             }
         }, threadName);
         thread.setDaemon(true);
@@ -596,15 +599,11 @@ public final class EntryFlow {
             thread.interrupt();
             throw new IOException("the runtime did not answer within " + bound.toMillis() + " ms");
         }
-        var error = failure.get();
-        if (error != null) {
-            if (error instanceof IOException io) {
-                throw io;
-            }
-            if (error instanceof RuntimeException re) {
-                throw re;
-            }
-            throw new IOException(error);
+        if (runtimeFailure.get() != null) {
+            throw runtimeFailure.get();
+        }
+        if (failure.get() != null) {
+            throw failure.get();
         }
         return result.get();
     }
@@ -617,53 +616,17 @@ public final class EntryFlow {
      * @param status the runtime's status
      * @return the badges, in the order the prompt shows them
      */
-    static List<String> badges(String locale, Map<String, Object> status) {
-        return badges(locale, status, List.of(), MACHINE_STEPS);
-    }
-
-    static List<String> badges(String locale, Map<String, Object> status, int machineSteps) {
-        return badges(locale, status, List.of(), machineSteps);
-    }
-
-    /**
-     * The prompt badges of a status and the open project onboardings (04-console.adoc#prompt): the
-     * machine's onboarding badge while the machine is not onboarded, one badge per project whose
-     * setup has not completed, and one per {@code needs_operator} kind that is not zero.
-     *
-     * @param locale        the interface locale
-     * @param status        the runtime's status
-     * @param projectBadges the badges of the open project onboardings, in the runtime's order
-     * @return the badges, in the order the prompt shows them
-     */
-    static List<String> badges(String locale, Map<String, Object> status, List<String> projectBadges) {
-        return badges(locale, status, projectBadges, MACHINE_STEPS);
-    }
-
-    static List<String> badges(String locale, Map<String, Object> status, List<String> projectBadges,
-            int machineSteps) {
-        var pBadges = projectBadges.stream()
-                .map(p -> ConsoleBadge.projectSetup("", p))
-                .toList();
-        return consoleBadges(locale, status, pBadges, machineSteps).stream()
-                .map(ConsoleBadge::text)
-                .toList();
-    }
-
     /**
      * Builds structured prompt badges for console consumption.
      *
      * @param locale        the interface locale
      * @param status        the runtime's status
      * @param projectBadges the structured project setup badges
+     * @param machineSteps  total machine onboarding steps
      * @return structured badges
      */
     static List<ConsoleBadge> consoleBadges(String locale, Map<String, Object> status,
-            List<ConsoleBadge> projectBadges) {
-        return consoleBadges(locale, status, projectBadges, MACHINE_STEPS);
-    }
-
-    static List<ConsoleBadge> consoleBadges(String locale, Map<String, Object> status,
-            List<ConsoleBadge> projectBadges, int machineSteps) {
+                        List<ConsoleBadge> projectBadges, int machineSteps) {
         var badges = new ArrayList<ConsoleBadge>();
         if (!isMachineOnboarded(status)) {
             var text = ConsolePrompt.formatMachineSetupBadge(locale, getCompletedOnboardStep(status),
@@ -675,31 +638,11 @@ public final class EntryFlow {
         return badges;
     }
 
-    /**
-     * Reads the open project onboarding runs and words them as the prompt's project setup badges
-     * ({@code operator.console.badge.setup_project}). Before a project's enrolment its checkout
-     * directory stands for its id, so a badge always names something the operator can open.
-     *
-     * @param locale  the interface locale
-     * @param runtime the runtime client
-     * @return one badge per open project onboarding, in the runtime's order; empty when the read
-     *         fails, because a badge is a courtesy and never a reason to keep the console shut
-     */
-    static List<String> projectSetupBadges(String locale, RuntimeClient runtime) {
-        try {
-            return readProjectSetupBadges(locale, runtime);
-        } catch (IOException _) {
-            return List.of();
-        }
-    }
-
-    static List<String> readProjectSetupBadges(String locale, RuntimeClient runtime) throws IOException {
-        return readProjectSetupConsoleBadges(locale, runtime).stream()
-                .map(ConsoleBadge::text)
-                .toList();
-    }
-
     static List<ConsoleBadge> readProjectSetupConsoleBadges(String locale, RuntimeClient runtime) throws IOException {
+        return readProjectSetupConsoleBadges(locale, runtime, PROJECT_BADGES_BOUND);
+    }
+
+    static List<ConsoleBadge> readProjectSetupConsoleBadges(String locale, RuntimeClient runtime, Duration bound) throws IOException {
         return bounded(() -> {
             var response = runtime.send(HttpRequest.get("/api/v1/project-onboardings"));
             if (response.status() != 200) {
@@ -707,7 +650,7 @@ public final class EntryFlow {
             }
             var body = JsonTree.asObject(JsonTree.parse(response.body()));
             if (body == null || !(body.get("onboardings") instanceof List<?> items)) {
-                return List.of();
+                throw new IOException("Missing onboardings in /api/v1/project-onboardings response");
             }
             var badges = new ArrayList<ConsoleBadge>();
             for (var item : items) {
@@ -717,7 +660,7 @@ public final class EntryFlow {
                 }
             }
             return List.copyOf(badges);
-        }, PROJECT_BADGES_BOUND, "project-onboardings-read");
+        }, bound, "project-onboardings-read");
     }
 
     private static @Nullable ConsoleBadge parseProjectOnboardingItem(Object item, String locale) {
@@ -727,13 +670,16 @@ public final class EntryFlow {
         }
         try {
             var being = BeingAddedProject.fromMap(map);
-            var name = checkoutDirectoryName(being.checkoutPath());
-            if (name != null) {
-                var text = ConsolePrompt.formatProjectSetupBadge(locale, name,
+            var daemonProjectId = JsonTree.string(map, "project_id");
+            var targetId = daemonProjectId != null && !daemonProjectId.isBlank()
+                                ? daemonProjectId
+                                : checkoutDirectoryName(being.checkoutPath());
+            if (targetId != null) {
+                var text = ConsolePrompt.formatProjectSetupBadge(locale, targetId,
                                     being.stepNumber(), being.totalSteps());
-                return ConsoleBadge.projectSetup(name, text);
+                return ConsoleBadge.projectSetup(targetId, text);
             }
-        } catch (IOException | RuntimeException _) {
+        } catch (IOException _) {
             // skip malformed entries
         }
         return null;
@@ -765,8 +711,8 @@ public final class EntryFlow {
 
     static List<String> extractWaitingBadges(String locale, Map<String, Object> status) {
         return extractWaitingConsoleBadges(locale, status).stream()
-                .map(ConsoleBadge::text)
-                .toList();
+                            .map(ConsoleBadge::text)
+                            .toList();
     }
 
     static List<ConsoleBadge> extractWaitingConsoleBadges(String locale, Map<String, Object> status) {
@@ -814,9 +760,7 @@ public final class EntryFlow {
         }
         try {
             return InetAddress.getLocalHost().getHostName();
-        }
-        /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (Exception _) {
+        } catch (UnknownHostException _) {
             return "localhost";
         }
     }

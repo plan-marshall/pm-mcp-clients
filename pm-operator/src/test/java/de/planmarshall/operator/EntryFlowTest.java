@@ -33,6 +33,7 @@ import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.onboarding.OnboardingAspect;
+import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -125,8 +126,8 @@ class EntryFlowTest {
                                 "needs_operator", Map.of("decision", 1));
 
             assertAll(
-                                () -> assertEquals(List.of("setup 2/7", "1 question"), EntryFlow.badges("en", notOnboarded)),
-                                () -> assertEquals(List.of("1 question"), EntryFlow.badges("en", onboarded))
+                                () -> assertEquals(List.of("setup 2/7", "1 question"), badges("en", notOnboarded)),
+                                () -> assertEquals(List.of("1 question"), badges("en", onboarded))
             );
         }
 
@@ -359,7 +360,7 @@ class EntryFlowTest {
 
             var text = writer.toString();
             assertAll(
-                                () -> assertTrue(text.contains("Seven steps.")),
+                                () -> assertTrue(text.contains("7 steps.")),
                                 () -> assertTrue(text.contains("The web app opens at the setup of this machine.")),
                                 () -> assertEquals(List.of("setup 0/7"), result.initialBadges()),
                                 () -> assertEquals("ONB-CODE1", result.activeCode())
@@ -477,12 +478,12 @@ class EntryFlowTest {
             });
             var context = new OperatorContext(fixture.environment(), tempDir, true);
 
-            var projectBadges = EntryFlow.projectSetupBadges("en", context.runtime(true));
+            var projectBadges = projectSetupBadges("en", context.runtime(true));
 
             assertAll(
                                 () -> assertEquals(List.of("setup cui-http 5/10"), projectBadges),
                                 () -> assertEquals(List.of("setup cui-http 5/10"),
-                                                    EntryFlow.badges("en", Map.of("onboarded", true), projectBadges))
+                                                    badges("en", Map.of("onboarded", true), projectBadges))
             );
         }
 
@@ -503,7 +504,7 @@ class EntryFlowTest {
                 }
             });
             var context = new OperatorContext(fixture.environment(), tempDir, true);
-            var projectBadges = EntryFlow.projectSetupBadges("en", context.runtime(true));
+            var projectBadges = projectSetupBadges("en", context.runtime(true));
 
             assertEquals(List.of("setup alpha 1/5", "setup beta 2/5"), projectBadges);
         }
@@ -511,7 +512,7 @@ class EntryFlowTest {
         @Test
         @DisplayName("a machine badge keeps its place in front of the project badges")
         void theMachineBadgeStaysInFront() {
-            var badges = EntryFlow.badges("en", Map.of("onboard", Map.of("step", 3)),
+            var badges = badges("en", Map.of("onboard", Map.of("step", 3)),
                                 List.of("setup cui-http 5/10"));
 
             assertAll(
@@ -527,14 +528,11 @@ class EntryFlowTest {
             aspects.add(OnboardingAspect.LANGUAGE);
             assertEquals(8, aspects.size());
 
-            var badges = EntryFlow.badges("en", Map.of("onboarded", false), aspects.size());
-            assertEquals(List.of("setup 0/8"), badges);
-
             fixture.start((request, response) -> {
                 if ("/api/v1/status".equals(request.target())) {
                     response.json(200, """
-                            {"status":"ready","onboarded":false,"version":"0.9.0"}
-                            """);
+                                        {"status":"ready","onboarded":false,"version":"0.9.0"}
+                                        """);
                 } else if ("/api/v1/project-onboardings".equals(request.target())) {
                     response.json(200, "{\"onboardings\":[]}");
                 } else {
@@ -547,18 +545,23 @@ class EntryFlowTest {
 
             var writerIntro = new StringWriter();
             var outIntro = new PrintWriter(writerIntro);
-            new EntryFlow(context, aspects).run(outIntro, createReader("q\n"));
+            var resultIntro = new EntryFlow(context, aspects).run(outIntro, createReader("q\n"));
             var textIntro = writerIntro.toString();
+            assertEquals(List.of("setup 0/8"), resultIntro.initialBadges());
+            assertTrue(textIntro.contains("8 steps."),
+                                "intro line must say '8 steps.' when 8 aspects are configured");
+            assertFalse(textIntro.contains("Seven steps."),
+                                "intro line must not contain 'Seven steps.' when 8 aspects are configured");
             assertTrue(textIntro.contains("8") && textIntro.contains("Language"),
-                    "intro line must list all 8 steps when an aspect is added");
+                                "intro line must list all 8 steps when an aspect is added");
 
             fixture.close();
             fixture = RuntimeFixture.create();
             fixture.start((request, response) -> {
                 if ("/api/v1/status".equals(request.target())) {
                     response.json(200, """
-                            {"status":"ready","onboarded":false,"onboard":{"step":3},"version":"0.9.0"}
-                            """);
+                                        {"status":"ready","onboarded":false,"onboard":{"step":3},"version":"0.9.0"}
+                                        """);
                 } else if ("/api/v1/project-onboardings".equals(request.target())) {
                     response.json(200, "{\"onboardings\":[]}");
                 } else {
@@ -569,12 +572,44 @@ class EntryFlowTest {
             var contextResume = new OperatorContext(fixture.environment(), tempDir, true);
             var writerResume = new StringWriter();
             var outResume = new PrintWriter(writerResume);
-            new EntryFlow(contextResume, aspects).run(outResume, createReader("q\n"));
+            var resultResume = new EntryFlow(contextResume, aspects).run(outResume, createReader("q\n"));
             var textResume = writerResume.toString();
+            assertEquals(List.of("setup 3/8"), resultResume.initialBadges());
             assertAll(
-                    () -> assertTrue(textResume.contains("step 3 of 8"), "stopped_at must show 3 of 8"),
-                    () -> assertTrue(textResume.contains("[4/8]"), "resume line must show [4/8] next step")
+                                () -> assertTrue(textResume.contains("step 3 of 8"), "stopped_at must show 3 of 8"),
+                                () -> assertTrue(textResume.contains("[4/8]"), "resume line must show [4/8] next step")
             );
+        }
+    }
+
+    static List<String> badges(String locale, Map<String, Object> status) {
+        return badges(locale, status, List.of(), OnboardingAspect.values().length);
+    }
+
+    static List<String> badges(String locale, Map<String, Object> status, int machineSteps) {
+        return badges(locale, status, List.of(), machineSteps);
+    }
+
+    static List<String> badges(String locale, Map<String, Object> status, List<String> projectBadges) {
+        return badges(locale, status, projectBadges, OnboardingAspect.values().length);
+    }
+
+    static List<String> badges(String locale, Map<String, Object> status, List<String> projectBadges, int machineSteps) {
+        var pBadges = projectBadges.stream()
+                            .map(p -> ConsoleBadge.projectSetup("", p))
+                            .toList();
+        return EntryFlow.consoleBadges(locale, status, pBadges, machineSteps).stream()
+                            .map(ConsoleBadge::text)
+                            .toList();
+    }
+
+    static List<String> projectSetupBadges(String locale, RuntimeClient runtime) {
+        try {
+            return EntryFlow.readProjectSetupConsoleBadges(locale, runtime).stream()
+                                .map(ConsoleBadge::text)
+                                .toList();
+        } catch (IOException _) {
+            return List.of();
         }
     }
 
