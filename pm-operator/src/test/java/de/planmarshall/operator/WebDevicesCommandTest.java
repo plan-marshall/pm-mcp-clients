@@ -590,8 +590,8 @@ class WebDevicesCommandTest {
 
         var output = writer.toString();
         assertAll(
-                () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                () -> assertTrue(output.contains("Failed to rename device: HTTP 400"), output)
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(output.contains("Failed to rename device: HTTP 400"), output)
         );
     }
 
@@ -627,8 +627,8 @@ class WebDevicesCommandTest {
 
         var output = writer.toString();
         assertAll(
-                () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                () -> assertTrue(output.contains("Failed to turn listener off: HTTP 400"), output)
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(output.contains("Failed to turn listener off: HTTP 400"), output)
         );
     }
 
@@ -661,8 +661,8 @@ class WebDevicesCommandTest {
 
         var output = writer.toString();
         assertAll(
-                () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                () -> assertTrue(output.contains("Failed to act on the device: the action did not complete."), output)
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(output.contains("Failed to act on the device: the action did not complete."), output)
         );
     }
 
@@ -690,9 +690,12 @@ class WebDevicesCommandTest {
         int code = cmd.execute("revoke", deviceId, "-i");
 
         var termText = terminalOut.toString(StandardCharsets.UTF_8);
+        int p1 = termText.indexOf("Revoke?");
+        int p2 = termText.indexOf("Revoke?", p1 + 1);
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(termText.contains("Enter confirms the revocation. b or back leaves without changes."), termText)
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(p1 >= 0 && p2 > p1, "prompt must appear twice (initial and re-prompt after help)"),
+                            () -> assertTrue(termText.contains("Enter confirms the revocation. b or back leaves without changes."), termText)
         );
     }
 
@@ -720,9 +723,12 @@ class WebDevicesCommandTest {
         int code = cmd.execute("revoke", deviceId, "-i");
 
         var termText = terminalOut.toString(StandardCharsets.UTF_8);
+        int p3 = termText.indexOf("Revoke?");
+        int p4 = termText.indexOf("Revoke?", p3 + 1);
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(termText.contains("Enter confirms the revocation. b or back leaves without changes."), termText)
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(p3 >= 0 && p4 > p3, "prompt must appear twice (initial and re-prompt after help)"),
+                            () -> assertTrue(termText.contains("Enter confirms the revocation. b or back leaves without changes."), termText)
         );
     }
 
