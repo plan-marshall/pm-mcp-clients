@@ -141,6 +141,7 @@ public final class SystemCommand implements Callable<Integer> {
         } catch (IOException _) {
             return null;
         }
+        var ownsTerminal = context.ownsTerminal(terminal);
         context.useTerminal(terminal);
         try {
             var availability = TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS);
@@ -157,16 +158,16 @@ public final class SystemCommand implements Callable<Integer> {
         } catch (IOException _) {
             return null;
         } finally {
-            if (context.ownsTerminal(terminal)) {
+            try {
+                context.clearTerminal(terminal);
+            } catch (IllegalStateException _) {
+            }
+            if (ownsTerminal) {
                 try {
                     terminal.close();
                 } catch (IOException _) {
                     // The terminal is gone; the snapshot is printed all the same.
                 }
-            }
-            try {
-                context.clearTerminal(terminal);
-            } catch (IllegalStateException _) {
             }
         }
     }

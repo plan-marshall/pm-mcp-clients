@@ -68,6 +68,7 @@ public final class ProjectsCommand implements Callable<Integer> {
         if (!list && (filter == null || filter.isBlank())) {
             var terminal = openTerminal();
             if (terminal != null) {
+                var ownsTerminal = context.ownsTerminal(terminal);
                 context.useTerminal(terminal);
                 try {
                     var code = openExplorer(terminal);
@@ -75,15 +76,15 @@ public final class ProjectsCommand implements Callable<Integer> {
                         return code;
                     }
                 } finally {
-                    if (context.ownsTerminal(terminal)) {
+                    try {
+                        context.clearTerminal(terminal);
+                    } catch (IllegalStateException _) {
+                    }
+                    if (ownsTerminal) {
                         try {
                             terminal.close();
                         } catch (IOException _) {
                         }
-                    }
-                    try {
-                        context.clearTerminal(terminal);
-                    } catch (IllegalStateException _) {
                     }
                 }
             }
