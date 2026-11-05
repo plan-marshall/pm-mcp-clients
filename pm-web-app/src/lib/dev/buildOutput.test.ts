@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import {
   findDevMarkers,
   DEV_MARKERS,
+  deriveDevMarkers,
   checkBuildOutput,
 } from '../../../scripts/check-build-output.mjs';
 
@@ -52,6 +53,27 @@ describe('the build-output check', () => {
     // The route path the manifest wrote, the chunk name the route compiles to, and the node's
     // import path: the three places the page can survive a build.
     expect(DEV_MARKERS).toEqual(['/dev/components', 'dev-components', 'routes/dev']);
+  });
+
+  it('derives the markers from the route source, not from a list beside it', () => {
+    // A fixture whose route and prefix differ from this checkout's: a hand-written list cannot
+    // answer for it, so replacing the derivation with one makes this test fail.
+    const root = mkdtempSync(join(tmpdir(), 'pm-dev-route-'));
+    try {
+      const page = join(root, 'routes', 'devx', 'components');
+      mkdirSync(page, { recursive: true });
+      writeFileSync(join(page, '+page.svelte'), '<!-- the page -->');
+      const plugin = join(root, 'devRouteExclusion.ts');
+      writeFileSync(plugin, "export const DEV_ROUTE_PREFIX = '/devx';\n");
+
+      expect(deriveDevMarkers(join(root, 'routes'), plugin)).toEqual([
+        '/devx/components',
+        'devx-components',
+        'routes/devx',
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 
   it('finds a development page emitted as a file of its own', () => {

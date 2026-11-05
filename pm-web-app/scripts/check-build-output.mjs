@@ -18,34 +18,36 @@ const routesDir = path.join(appDir, 'src', 'routes');
 const pluginFile = path.join(appDir, 'src', 'lib', 'dev', 'devRouteExclusion.ts');
 
 /**
- * @returns the route prefix the plugin excludes, read from the plugin that defines it
+ * @param pluginPath the plugin file that defines the route prefix
+ * @returns the route prefix the plugin excludes
  */
-function devRoutePrefix() {
-  const source = fs.readFileSync(pluginFile, 'utf-8');
+function devRoutePrefix(pluginPath) {
+  const source = fs.readFileSync(pluginPath, 'utf-8');
   const match = /export const DEV_ROUTE_PREFIX\s*=\s*['"]([^'"]+)['"]/.exec(source);
   if (!match) {
-    throw new Error(`${pluginFile} no longer exports DEV_ROUTE_PREFIX`);
+    throw new Error(`${pluginPath} no longer exports DEV_ROUTE_PREFIX`);
   }
   return match[1].replace(/^\/+|\/+$/g, '');
 }
 
 /**
- * @param dir a directory below `src/routes`
+ * @param dir a directory below the route root
+ * @param routePrefix the route prefix the plugin excludes
  * @param prefix its path from that root
  * @returns the route directory of the development page, or null
  */
-function devPageRoute(dir, prefix) {
-  const wanted = `${devRoutePrefix()}/`;
+function devPageRoute(dir, routePrefix, prefix) {
+  const wanted = `${routePrefix}/`;
   const entries = fs
     .readdirSync(dir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .sort((left, right) => left.name.localeCompare(right.name));
   for (const entry of entries) {
     const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
-    if (relative !== devRoutePrefix() && !relative.startsWith(wanted)) continue;
+    if (relative !== routePrefix && !relative.startsWith(wanted)) continue;
     const full = path.join(dir, entry.name);
     if (fs.existsSync(path.join(full, '+page.svelte'))) return relative;
-    const nested = devPageRoute(full, relative);
+    const nested = devPageRoute(full, routePrefix, relative);
     if (nested !== null) return nested;
   }
   return null;
@@ -55,14 +57,21 @@ function devPageRoute(dir, prefix) {
  * The strings the development page leaves in a build that still carries it, derived from the route
  * the plugin excludes: the route path, the chunk name the route compiles to, and the node's import
  * path. A hand-written list went stale in silence when the page moved.
+ *
+ * @param routesRoot the route source root
+ * @param pluginPath the plugin file that names the excluded prefix
+ * @returns the markers the emitted files are searched for
  */
-export const DEV_MARKERS = (() => {
-  const route = devPageRoute(routesDir, '');
+export function deriveDevMarkers(routesRoot, pluginPath) {
+  const route = devPageRoute(routesRoot, devRoutePrefix(pluginPath), '');
   if (route === null) {
-    throw new Error('the development page is not below src/routes: this check guards nothing');
+    throw new Error('the development page is not below the route root: this check guards nothing');
   }
   return [`/${route}`, route.replaceAll('/', '-'), `routes/${route.split('/')[0]}`];
-})();
+}
+
+/** The markers of this checkout's development page. */
+export const DEV_MARKERS = deriveDevMarkers(routesDir, pluginFile);
 
 /**
  * @param files the emitted files, by path

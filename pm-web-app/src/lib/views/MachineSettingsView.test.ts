@@ -203,6 +203,69 @@ describe('MachineSettingsView component', () => {
     expect(updateSpy).not.toHaveBeenCalled();
   });
 
+  it('keeps the operator’s categories over a second conflict', async () => {
+    const updateSpy = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockResolvedValueOnce({
+        applied: false,
+        conflict: true,
+        revision: 9,
+        current_value: JSON.stringify({
+          plans_after_days: 35,
+          epics_after_days: 90,
+          logs_after_days: 90,
+          reports_after_days: 30,
+          unenrolled_after_days: 30,
+          remind_after_days: 4,
+        }),
+      })
+      .mockResolvedValueOnce({
+        applied: false,
+        conflict: true,
+        revision: 10,
+        current_value: JSON.stringify({
+          plans_after_days: 40,
+          epics_after_days: 95,
+          logs_after_days: 95,
+          reports_after_days: 31,
+          unenrolled_after_days: 31,
+          remind_after_days: 5,
+        }),
+      })
+      .mockResolvedValue({ applied: true, conflict: false, revision: 11 });
+
+    render(MachineSettingsView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('save-cleanup')).toBeInTheDocument();
+    });
+    await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '45' } });
+    await fireEvent.input(screen.getByTestId('cleanup-remind-days'), { target: { value: '7' } });
+    await fireEvent.click(screen.getByTestId('save-cleanup'));
+    await waitFor(() => {
+      expect(screen.getByTestId('conflict-apply')).toBeInTheDocument();
+    });
+
+    // The other client changes again between the two answers: the second resend must still apply
+    // the operator's categories over the newer record, not the one the first resend was built for.
+    await fireEvent.click(screen.getByTestId('conflict-apply'));
+    await waitFor(() => {
+      expect(screen.getByTestId('conflict-apply')).toBeInTheDocument();
+    });
+    await fireEvent.click(screen.getByTestId('conflict-apply'));
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledTimes(3);
+    });
+    const sent = JSON.parse(updateSpy.mock.calls[2]?.[1] ?? '{}') as Record<string, number>;
+    expect(sent.plans_after_days).toBe(45);
+    expect(sent.remind_after_days).toBe(7);
+    expect(sent.epics_after_days).toBe(95);
+    expect(sent.logs_after_days).toBe(95);
+    expect(sent.reports_after_days).toBe(31);
+    expect(sent.unenrolled_after_days).toBe(31);
+  });
+
   it('saves the reminder while plans are never offered', async () => {
     const updateSpy = vi
       .spyOn(apiClient, 'updateMachineSetting')

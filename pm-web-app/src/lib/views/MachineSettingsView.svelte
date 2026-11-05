@@ -225,14 +225,16 @@
   async function applyConflictAgain(): Promise<void> {
     if (!conflict) return;
     const key = conflict.key;
-    let wanted = conflict.wantedValue;
     const changed = conflict.changedFields;
+    let wanted = conflict.wantedValue;
     if (key === 'cleanup_durations' && changed) {
       const current = parseCleanupRecord(conflict.currentValue) ?? {};
       wanted = JSON.stringify({ ...current, ...changed });
     }
     conflict = null;
-    await applySetting(key, wanted);
+    // A second conflict keeps the changed set: the categories the operator did not touch must
+    // follow the record the other client left again, not the one this resend was built from.
+    await applySetting(key, wanted, changed);
   }
 
   /** Keeps the other client's value and closes the dialogue, without writing anything. */
@@ -478,7 +480,6 @@
           {$t('web.settings.cleanup.keep')}
           <input
             type="number"
-            min="7"
             bind:value={cleanupDays}
             data-testid="cleanup-days"
             aria-label={$t('web.settings.cleanup.title')}

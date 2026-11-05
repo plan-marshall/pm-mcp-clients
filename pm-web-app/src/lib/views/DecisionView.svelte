@@ -698,7 +698,7 @@
         chat = answered;
       }
       if (accept && proposal?.after) {
-        takeProposedAnswer(decisionId, proposal.after, proposal.applies ?? '');
+        takeProposedAnswer(decisionId, proposal.after, proposal.applies ?? '', generation);
       }
     } catch (err: unknown) {
       if (chatGeneration === generation) {
@@ -710,7 +710,12 @@
   }
 
   /** Takes a proposed answer as the operator's own words and reads it back. */
-  function takeProposedAnswer(decisionId: string, words: string, applies: string): void {
+  function takeProposedAnswer(
+    decisionId: string,
+    words: string,
+    applies: string,
+    generation: number,
+  ): void {
     const dec = decisions.find((entry) => entry.id === decisionId);
     if (!dec || dec.parts.length === 0) return;
     const match = /part\s+(\d+)/i.exec(applies);
@@ -723,7 +728,7 @@
     ownWordsMode[key] = true;
     interpretations[key] = null;
     // Only the chat this answer belongs to closes: a panel the operator opened meanwhile stays.
-    if (chatDecisionId === decisionId) {
+    if (chatGeneration === generation && chatDecisionId === decisionId) {
       chatOpen = false;
       invalidateChat();
     }
@@ -733,15 +738,16 @@
   async function endTheChat(): Promise<void> {
     if (!chatDecisionId) return;
     // The panel can be left while the chat is ended, and another decision's chat opened meanwhile:
-    // only the chat this act ended is closed when it answers.
+    // only the chat this act ended is closed when it answers, and only the open it belonged to.
     const decisionId = chatDecisionId;
+    const generation = chatGeneration;
     chatBusyId = decisionId;
     try {
       await apiClient.endDecisionChat(decisionId);
     } catch {
       // Closing the panel is the operator's act; a chat the runtime already closed stays closed.
     } finally {
-      if (chatDecisionId === decisionId) {
+      if (chatGeneration === generation && chatDecisionId === decisionId) {
         chatOpen = false;
         chat = null;
         chatNotice = '';
