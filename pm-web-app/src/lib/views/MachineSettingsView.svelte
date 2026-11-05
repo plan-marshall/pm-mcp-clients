@@ -23,7 +23,22 @@
     key: string;
     currentValue: string;
     wantedValue: string;
+    /** The cleanup categories the operator changed, which applying again sends over the current record. */
+    changedFields?: CleanupDurationsRecord;
   }
+
+  /** The cleanup durations as one record of days, `-1` for a category that is never offered. */
+  type CleanupDurationsRecord = Record<string, number>;
+
+  /** The record's keys with the catalogue's word for their category, in the design's order. */
+  const CLEANUP_CATEGORIES: ReadonlyArray<{ key: string; kind: string }> = [
+    { key: 'plans_after_days', kind: 'plans' },
+    { key: 'epics_after_days', kind: 'epics' },
+    { key: 'logs_after_days', kind: 'logs' },
+    { key: 'reports_after_days', kind: 'reports' },
+    { key: 'unenrolled_after_days', kind: 'unenrolled' },
+    { key: 'remind_after_days', kind: 'remind' },
+  ];
 
   let isLoading = false;
   let notice = '';
@@ -32,6 +47,8 @@
   const MINIMUM_RETENTION_DAYS = 7;
   /** The reminder minimum of the same contract. */
   const MINIMUM_REMIND_DAYS = 1;
+  /** The value a retention category carries when its items are never offered. */
+  const NEVER = -1;
   let documentsMode = 'ask';
   let cleanupDays = 30;
   let cleanupRemindDays = 3;
@@ -61,10 +78,79 @@
   }
 
   /**
+   * Reads the cleanup durations a setting value carries.
+   *
+   * The setting travels as one record of days; an older client sends a bare number of days, which
+   * is not a record and is shown as the value it is.
+   *
+   * @param value the setting value
+   * @returns the record, or null for a value that is not one
+   */
+  function parseCleanupRecord(value: string): CleanupDurationsRecord | null {
+    try {
+      const parsed: unknown = JSON.parse(value);
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+      const record: CleanupDurationsRecord = {};
+      for (const [key, days] of Object.entries(parsed)) {
+        if (typeof days === 'number' && Number.isFinite(days)) record[key] = days;
+      }
+      return record;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Renders a cleanup record in the catalogue's words, one category each.
+   *
+   * A conflict compares two records; printing them as JSON shows the operator braces and keys
+   * instead of the categories and days they chose.
+   *
+   * @param value the setting value
+   * @returns the categories in words, or the value itself when it is not a record
+   */
+  function cleanupWords(value: string): string {
+    const record = parseCleanupRecord(value);
+    if (!record) return value;
+    const words: string[] = [];
+    for (const category of CLEANUP_CATEGORIES) {
+      const days = record[category.key];
+      if (days === undefined) continue;
+      const kind = $t('system.cleanup.durations.kind', { kind: category.kind });
+      const amount = $t('system.cleanup.durations.value', {
+        never: days === NEVER ? 'true' : 'false',
+        days,
+      });
+      words.push(`${kind}: ${amount}`);
+    }
+    return words.length > 0 ? words.join(' · ') : value;
+  }
+
+  /** @param value a cleanup record @returns the categories whose value differs from another record */
+  function changedCleanupFields(
+    value: CleanupDurationsRecord,
+    shown: CleanupDurationsRecord | undefined,
+  ): CleanupDurationsRecord {
+    const changed: CleanupDurationsRecord = {};
+    for (const [key, days] of Object.entries(value)) {
+      if (shown?.[key] !== days) changed[key] = days;
+    }
+    return changed;
+  }
+
+  /**
    * Applies one setting, and opens the conflict dialogue instead of overwriting a value that
    * changed in another client.
+   *
+   * @param key the setting
+   * @param value its new value, or null for a withdrawal
+   * @param changedFields the cleanup categories the operator changed, if the value is a record
    */
-  async function applySetting(key: string, value: string | null): Promise<void> {
+  async function applySetting(
+    key: string,
+    value: string | null,
+    changedFields?: CleanupDurationsRecord,
+  ): Promise<void> {
     error = '';
     notice = '';
     conflict = null;
@@ -74,6 +160,7 @@
         key,
         currentValue: result.current_value ?? '',
         wantedValue: value ?? '',
+        changedFields,
       };
       return;
     }
@@ -99,13 +186,20 @@
   async function saveCleanup(): Promise<void> {
     const days = Number(cleanupDays);
     const remind = Number(cleanupRemindDays);
-    if (
-      !Number.isInteger(days) ||
-      days < MINIMUM_RETENTION_DAYS ||
-      !Number.isInteger(remind) ||
-      remind < MINIMUM_REMIND_DAYS
-    ) {
-      error = $t('web.settings.update_failed');
+    if (!Number.isInteger(days) || (days !== NEVER && days < MINIMUM_RETENTION_DAYS)) {
+      // The contract's own sentence, with its minimum: a generic failure hides what to change.
+      error = $t('system.cleanup.durations.minimum', {
+        min: MINIMUM_RETENTION_DAYS,
+        kind: 'plans',
+      });
+      notice = '';
+      return;
+    }
+    if (!Number.isInteger(remind) || remind < MINIMUM_REMIND_DAYS) {
+      error = $t('system.cleanup.durations.minimum', {
+        min: MINIMUM_REMIND_DAYS,
+        kind: 'remind',
+      });
       notice = '';
       return;
     }
@@ -118,14 +212,25 @@
       unenrolled_after_days: recorded?.unenrolled_after_days ?? days,
       remind_after_days: remind,
     };
-    await applySetting('cleanup_durations', JSON.stringify(durations));
+    // Only what the operator changed travels again after a conflict; the other categories keep
+    // the value the other client recorded.
+    await applySetting(
+      'cleanup_durations',
+      JSON.stringify(durations),
+      changedCleanupFields(durations, recorded),
+    );
   }
 
   /** Applies the value this page wanted, on the revision the other client left behind. */
   async function applyConflictAgain(): Promise<void> {
     if (!conflict) return;
-    const wanted = conflict.wantedValue;
     const key = conflict.key;
+    let wanted = conflict.wantedValue;
+    const changed = conflict.changedFields;
+    if (key === 'cleanup_durations' && changed) {
+      const current = parseCleanupRecord(conflict.currentValue) ?? {};
+      wanted = JSON.stringify({ ...current, ...changed });
+    }
     conflict = null;
     await applySetting(key, wanted);
   }
@@ -278,10 +383,10 @@
       <div class="conflict" role="alert" data-testid="conflict-dialog">
         <h2 class="conflict__title">{$t('web.settings.conflict.title')}</h2>
         <p class="conflict__line">
-          {$t('web.settings.conflict.current', { value: conflict.currentValue })}
+          {$t('web.settings.conflict.current', { value: cleanupWords(conflict.currentValue) })}
         </p>
         <p class="conflict__line">
-          {$t('web.settings.conflict.yours', { value: conflict.wantedValue })}
+          {$t('web.settings.conflict.yours', { value: cleanupWords(conflict.wantedValue) })}
         </p>
         <div class="conflict__actions">
           <Button variant="ghost" on:click={keepCurrentValue} data-testid="conflict-keep">
