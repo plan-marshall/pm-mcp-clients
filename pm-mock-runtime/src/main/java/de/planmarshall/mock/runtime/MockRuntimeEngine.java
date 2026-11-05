@@ -640,7 +640,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private @Nullable Map<String, Object> systemSnapshotFixture;
     private @Nullable CleanupJob activeCleanupJob;
     private final List<CleanupKeptItem> keptItems = new ArrayList<>();
-    private CleanupDurations cleanupDurations;
+    private CleanupDurations cleanupDurations = new CleanupDurations(30, 30, 30, 30, 30, 3);
     private final List<CleanupResidue> cleanupResidues = new ArrayList<>();
     private final Object projectsLock = new Object();
     private final List<EnrolledProject> enrolledProjects = new ArrayList<>();
@@ -2448,7 +2448,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return dispatchDesignerUnit(request, response, sub.substring(1), projectId, method, isWeb);
     }
 
-    private boolean serveDesignerUnits(MockHttpResponse response, String method, String projectId)
+    private boolean serveDesignerUnits(MockHttpResponse response, String method, @Nullable String projectId)
             throws IOException {
         if (!"GET".equals(method)) {
             return false;
@@ -2458,7 +2458,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         return true;
     }
 
-    private boolean serveDesignerCatalogue(MockHttpResponse response, String method, String projectId)
+    private boolean serveDesignerCatalogue(MockHttpResponse response, String method,
+            @Nullable String projectId)
             throws IOException {
         if (!"GET".equals(method)) {
             return false;
@@ -2469,7 +2470,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private boolean dispatchDesignerUnit(MockHttpRequest request, MockHttpResponse response, String unit,
-            String projectId, String method, boolean isWeb) throws IOException {
+            @Nullable String projectId, String method, boolean isWeb) throws IOException {
         if (unit.isEmpty() || unit.contains("/")) {
             response.json(400, unitNameInvalid(unit));
             return true;

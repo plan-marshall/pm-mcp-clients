@@ -237,23 +237,23 @@ final class StartRegistry {
         private String state;
         private @Nullable String title;
         private @Nullable String planId;
-        private String objective;
-        private String recipeKey;
-        private RecipeRef recipe;
+        private @Nullable String objective;
+        private @Nullable String recipeKey;
+        private @Nullable RecipeRef recipe;
         private List<RecipeParameter> parameters = List.of();
         private final List<SourceResource> sources = new ArrayList<>();
         private final List<SourceKindOffer> offers = new ArrayList<>();
         private boolean documentsModeAsked;
         private boolean canContinue;
         private boolean chatAvailable;
-        private String chatDisabledReason;
-        private StartChat chat;
-        private StartRefusal refusal;
-        private AdoptionFailure adoptionFailure;
-        private AdoptionFailure pendingAdoptionFailure;
+        private @Nullable String chatDisabledReason;
+        private @Nullable StartChat chat;
+        private @Nullable StartRefusal refusal;
+        private @Nullable AdoptionFailure adoptionFailure;
+        private @Nullable AdoptionFailure pendingAdoptionFailure;
         private List<AdoptableEpic> adoptable = List.of();
         private List<RecipeRef> recipes = List.of();
-        private String landing;
+        private @Nullable String landing;
         private boolean lessonsAvailable;
         private boolean localChanges;
         private final Map<SourceKind, Map<String, Object>> addOutcomes = new LinkedHashMap<>();
@@ -277,7 +277,7 @@ final class StartRegistry {
         private final List<ChatTurnResource> turns = new ArrayList<>();
         private @Nullable ChatProposalResource proposal;
         private StartTranscriptState transcript = StartTranscriptState.WITH_ENTRY;
-        private String transcriptPath;
+        private @Nullable String transcriptPath;
 
         StartChat(String chatId, ChatRole role) {
             this.chatId = chatId;
