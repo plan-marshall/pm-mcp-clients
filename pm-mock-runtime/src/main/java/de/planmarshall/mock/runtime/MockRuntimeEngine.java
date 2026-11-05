@@ -8830,7 +8830,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         KEY_STATUS, "postponed",
                         "job_id", jobId,
                         CONST_DECISION, "remind",
-                        "remind_after_days", machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS),
+                        KEY_REMIND_AFTER_DAYS, machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS),
                         "remind_at", "2026-10-19T03:00:00Z"
                 ));
                 return;
@@ -8850,14 +8850,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     CONST_DECISION, "remind",
                     "by", "operator",
                     "channel", isWeb ? "web" : "cli",
-                    "remind_after_days", machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS)
+                    KEY_REMIND_AFTER_DAYS, machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS)
             ));
 
             response.json(200, Map.of(
                     KEY_STATUS, "postponed",
                     "job_id", jobId,
                     CONST_DECISION, "remind",
-                    "remind_after_days", machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS),
+                    KEY_REMIND_AFTER_DAYS, machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS),
                     "remind_at", "2026-10-19T03:00:00Z"
             ));
         }

@@ -370,12 +370,12 @@ class OnboardingScenarioTest {
             try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
-                var record = "{\\\"plans_after_days\\\":45,\\\"epics_after_days\\\":46,"
+                var durationsJson = "{\\\"plans_after_days\\\":45,\\\"epics_after_days\\\":46,"
                         + "\\\"logs_after_days\\\":47,\\\"reports_after_days\\\":48,"
                         + "\\\"unenrolled_after_days\\\":49,\\\"remind_after_days\\\":7}";
 
                 assertEquals(200, put(client, auth,
-                        "{\"key\":\"cleanup_durations\",\"value\":\"" + record + "\",\"revision\":4}"));
+                        "{\"key\":\"cleanup_durations\",\"value\":\"" + durationsJson + "\",\"revision\":4}"));
 
                 var settings = MachineSettingsRecord.fromJson(new String(
                         client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth)).body(),
@@ -395,12 +395,12 @@ class OnboardingScenarioTest {
             try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
-                var record = "{\\\"plans_after_days\\\":3,\\\"epics_after_days\\\":45,"
+                var durationsJson = "{\\\"plans_after_days\\\":3,\\\"epics_after_days\\\":45,"
                         + "\\\"logs_after_days\\\":45,\\\"reports_after_days\\\":45,"
                         + "\\\"unenrolled_after_days\\\":45,\\\"remind_after_days\\\":7}";
 
                 var refused = put(client, auth,
-                        "{\"key\":\"cleanup_durations\",\"value\":\"" + record + "\",\"revision\":4}");
+                        "{\"key\":\"cleanup_durations\",\"value\":\"" + durationsJson + "\",\"revision\":4}");
 
                 assertEquals(400, refused);
             }
