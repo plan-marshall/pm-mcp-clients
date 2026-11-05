@@ -161,6 +161,7 @@ public final class SystemCommand implements Callable<Integer> {
             try {
                 context.clearTerminal(terminal);
             } catch (IllegalStateException _) {
+                // Scope already cleared
             }
             if (ownsTerminal) {
                 try {

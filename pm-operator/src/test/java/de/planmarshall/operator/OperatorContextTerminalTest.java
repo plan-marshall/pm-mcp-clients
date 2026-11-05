@@ -146,6 +146,7 @@ class OperatorContextTerminalTest {
 
     @Test
     @DisplayName("an exception in try is not masked by clearTerminal and owned terminal is closed")
+    @SuppressWarnings({"java:S5778", "java:S108"})
     void clearTerminalFailureDoesNotMaskTryExceptionAndClosesOwnedTerminal() throws Exception {
         try (var outer = VirtualScreenTerminal.create(80, 24);
              var owned = VirtualScreenTerminal.create(80, 24)) {
@@ -169,11 +170,13 @@ class OperatorContextTerminalTest {
                     try {
                         context.clearTerminal(terminal);
                     } catch (IllegalStateException _) {
+                        // Scope already cleared
                     }
                     if (ownsTerminal) {
                         try {
                             terminal.close();
                         } catch (IOException _) {
+                            // Terminal close failure ignored
                         }
                     }
                 }
@@ -186,6 +189,7 @@ class OperatorContextTerminalTest {
 
     @Test
     @DisplayName("a command that lends its owned terminal to nested commands closes it in finally")
+    @SuppressWarnings("java:S108")
     void commandLendingOwnedTerminalClosesIt() throws Exception {
         try (var owned = VirtualScreenTerminal.create(80, 24)) {
             var context = new OperatorContext(Map.of(), tempDir, true,
@@ -205,6 +209,7 @@ class OperatorContextTerminalTest {
                 try {
                     context.clearTerminal(terminal);
                 } catch (IllegalStateException _) {
+                    // Scope already cleared
                 }
                 if (ownsTerminal) {
                     terminal.close();

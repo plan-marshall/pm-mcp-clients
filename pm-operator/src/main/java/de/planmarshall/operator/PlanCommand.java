@@ -249,11 +249,13 @@ public final class PlanCommand implements Callable<Integer> {
             try {
                 context.clearTerminal(terminal);
             } catch (IllegalStateException _) {
+                // Scope already cleared
             }
             if (ownsTerminal) {
                 try {
                     terminal.close();
                 } catch (IOException _) {
+                    // Terminal close failure ignored
                 }
             }
         }

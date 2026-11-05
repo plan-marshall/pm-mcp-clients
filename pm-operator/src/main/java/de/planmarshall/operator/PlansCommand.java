@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.jline.terminal.Terminal;
@@ -83,22 +84,7 @@ public final class PlansCommand implements Callable<Integer> {
             boolean canOpen = !json && availability != null && availability.available();
 
             if (canOpen) {
-                String effectiveBy = by;
-                if (byEpic) {
-                    effectiveBy = "epic";
-                }
-                var app = new OverviewFullScreenApp(context, terminal, project, effectiveBy, ended);
-                var result = app.run(out);
-                if (app.interrupted()) {
-                    return StartPrompt.EXIT_INTERRUPTED;
-                }
-                if (result != TuiScreenDriver.Result.TOO_NARROW) {
-                    return 0;
-                }
-
-                // Below 60 columns: result == TOO_NARROW.
-                // app.run(out) wrote operator.overview.too_narrow to terminal.writer().
-                return runStatusFallback(terminal);
+                return runFullScreenApp(out, terminal);
             }
 
             if (!json && availability != null) {
@@ -110,15 +96,33 @@ public final class PlansCommand implements Callable<Integer> {
                 try {
                     context.clearTerminal(terminal);
                 } catch (IllegalStateException _) {
+                    // Scope already cleared
                 }
             }
             if (ownsTerminal) {
                 try {
                     terminal.close();
                 } catch (IOException _) {
+                    // Terminal close failure ignored
                 }
             }
         }
+    }
+
+    private int runFullScreenApp(PrintWriter out, Terminal terminal) throws IOException {
+        String effectiveBy = byEpic ? "epic" : by;
+        var app = new OverviewFullScreenApp(context, terminal, project, effectiveBy, ended);
+        var result = app.run(out);
+        if (app.interrupted()) {
+            return StartPrompt.EXIT_INTERRUPTED;
+        }
+        if (result != TuiScreenDriver.Result.TOO_NARROW) {
+            return 0;
+        }
+
+        // Below 60 columns: result == TOO_NARROW.
+        // app.run(out) wrote operator.overview.too_narrow to terminal.writer().
+        return runStatusFallback(terminal);
     }
 
     private int runStatusFallback(Terminal terminal) throws IOException {

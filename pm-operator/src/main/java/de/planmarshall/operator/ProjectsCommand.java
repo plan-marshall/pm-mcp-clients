@@ -66,30 +66,38 @@ public final class ProjectsCommand implements Callable<Integer> {
     @Override
     public Integer call() throws IOException {
         if (!list && (filter == null || filter.isBlank())) {
-            var terminal = openTerminal();
-            if (terminal != null) {
-                var ownsTerminal = context.ownsTerminal(terminal);
-                context.useTerminal(terminal);
-                try {
-                    var code = openExplorer(terminal);
-                    if (code >= 0) {
-                        return code;
-                    }
-                } finally {
-                    try {
-                        context.clearTerminal(terminal);
-                    } catch (IllegalStateException _) {
-                    }
-                    if (ownsTerminal) {
-                        try {
-                            terminal.close();
-                        } catch (IOException _) {
-                        }
-                    }
-                }
+            var code = runInteractiveExplorer();
+            if (code != null) {
+                return code;
             }
         }
         return printList();
+    }
+
+    private @Nullable Integer runInteractiveExplorer() throws IOException {
+        var terminal = openTerminal();
+        if (terminal == null) {
+            return null;
+        }
+        var ownsTerminal = context.ownsTerminal(terminal);
+        context.useTerminal(terminal);
+        try {
+            var code = openExplorer(terminal);
+            return code >= 0 ? code : null;
+        } finally {
+            try {
+                context.clearTerminal(terminal);
+            } catch (IllegalStateException _) {
+                // Scope already cleared
+            }
+            if (ownsTerminal) {
+                try {
+                    terminal.close();
+                } catch (IOException _) {
+                    // Terminal close failure ignored
+                }
+            }
+        }
     }
 
     private @Nullable Terminal openTerminal() {

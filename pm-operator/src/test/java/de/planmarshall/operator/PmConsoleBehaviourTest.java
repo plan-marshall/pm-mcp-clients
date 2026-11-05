@@ -355,7 +355,7 @@ class PmConsoleBehaviourTest {
     void aStalledRuntimeLetsThePromptReturnWithinTheBound() throws Exception {
         fixture.start((request, response) -> {
             try {
-                Thread.sleep(10_000);
+                new CountDownLatch(1).await(10, TimeUnit.SECONDS);
             } catch (InterruptedException _) {
                 Thread.currentThread().interrupt();
             }
@@ -379,7 +379,7 @@ class PmConsoleBehaviourTest {
             var current = inFlight.incrementAndGet();
             maxConcurrent.accumulateAndGet(current, Math::max);
             try {
-                Thread.sleep(100);
+                new CountDownLatch(1).await(100, TimeUnit.MILLISECONDS);
             } catch (InterruptedException _) {
                 Thread.currentThread().interrupt();
             } finally {

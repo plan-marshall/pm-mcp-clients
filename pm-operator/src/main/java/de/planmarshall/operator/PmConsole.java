@@ -21,7 +21,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -29,7 +28,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.regex.Pattern;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
@@ -42,6 +40,7 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.http.SseEvent;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 import de.planmarshall.operator.dialogue.OnboardingSource;
 import de.planmarshall.operator.dialogue.StateDialogue;
@@ -260,8 +259,9 @@ public final class PmConsole {
                 continueOnboarding(out, reader, locale, terminal);
                 return;
             }
-            if (b.kind() == ConsoleBadge.Kind.PROJECT_SETUP && b.projectId() != null && !b.projectId().isEmpty()) {
-                continueProjectOnboarding(b.projectId(), out, reader, terminal);
+            var pid = b.projectId();
+            if (b.kind() == ConsoleBadge.Kind.PROJECT_SETUP && pid != null && !pid.isEmpty()) {
+                continueProjectOnboarding(pid, out, reader, terminal);
                 return;
             }
         }
@@ -317,12 +317,7 @@ public final class PmConsole {
             // Never starts the runtime: a refresh after `runtime stop` must not start it again.
             var runtime = context.runtime(false);
             var status = EntryFlow.bounded(() -> StatusCommand.fetch(runtime), REFRESH_BOUND, "status-read");
-            List<ConsoleBadge> projectBadges;
-            try {
-                projectBadges = EntryFlow.readProjectSetupConsoleBadges(locale, runtime);
-            } catch (IOException _) {
-                projectBadges = previousProjectBadges();
-            }
+            var projectBadges = fetchProjectBadgesSafe(locale, runtime);
             badges.set(List.copyOf(EntryFlow.consoleBadges(locale, status, projectBadges)));
         } catch (IOException _) {
             // the badge keeps what the entry flow reported
@@ -421,6 +416,7 @@ public final class PmConsole {
             try {
                 context.clearTerminal(terminal);
             } catch (IllegalStateException _) {
+                // Scope already cleared
             }
             // A view's acts can change what waits too: the prompt and the title are rebuilt from
             // the state the runtime reports once the view is gone.
@@ -649,12 +645,7 @@ public final class PmConsole {
         try {
             var runtime = context.runtime(false);
             var status = EntryFlow.bounded(() -> StatusCommand.fetch(runtime), REFRESH_BOUND, "status-read");
-            List<ConsoleBadge> projectBadges;
-            try {
-                projectBadges = EntryFlow.readProjectSetupConsoleBadges(locale(), runtime);
-            } catch (IOException _) {
-                projectBadges = previousProjectBadges();
-            }
+            var projectBadges = fetchProjectBadgesSafe(locale(), runtime);
             refreshed = EntryFlow.consoleBadges(locale(), status, projectBadges);
         } catch (IOException _) {
             // the runtime did not answer this read: keep the badges it last gave us
@@ -667,6 +658,14 @@ public final class PmConsole {
         }
         badges.set(List.copyOf(refreshed));
         updateWindowTitle(terminal);
+    }
+
+    private List<ConsoleBadge> fetchProjectBadgesSafe(String locale, RuntimeClient runtime) {
+        try {
+            return EntryFlow.readProjectSetupConsoleBadges(locale, runtime);
+        } catch (IOException _) {
+            return previousProjectBadges();
+        }
     }
 
     private List<ConsoleBadge> previousProjectBadges() {

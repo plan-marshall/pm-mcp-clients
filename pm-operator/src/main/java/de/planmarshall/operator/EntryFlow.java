@@ -564,12 +564,12 @@ public final class EntryFlow {
 
     static <T> T bounded(Callable<T> task, Duration bound, String threadName) throws IOException {
         var result = new AtomicReference<T>();
-        var failure = new AtomicReference<Throwable>();
+        var failure = new AtomicReference<Exception>();
         var thread = new Thread(() -> {
             try {
                 result.set(task.call());
-            } catch (Throwable t) {
-                failure.set(t);
+            } catch (Exception e) {
+                failure.set(e);
             }
         }, threadName);
         thread.setDaemon(true);
@@ -577,6 +577,7 @@ public final class EntryFlow {
         try {
             thread.join(bound.toMillis());
         } catch (InterruptedException _) {
+            // Interrupted while waiting for worker thread
             Thread.currentThread().interrupt();
             throw new IOException("interrupted while waiting for " + threadName);
         }
@@ -695,29 +696,36 @@ public final class EntryFlow {
             }
             var body = JsonTree.asObject(JsonTree.parse(response.body()));
             if (body == null || !(body.get("onboardings") instanceof List<?> items)) {
-                return List.<ConsoleBadge>of();
+                return List.of();
             }
             var badges = new ArrayList<ConsoleBadge>();
             for (var item : items) {
-                try {
-                    var map = JsonTree.asObject(item);
-                    if (map == null) {
-                        continue;
-                    }
-                    var being = BeingAddedProject.fromMap(map);
-                    var name = checkoutDirectoryName(being.checkoutPath());
-                    if (name != null) {
-                        var text = ConsolePrompt.formatProjectSetupBadge(locale, name,
-                                            being.stepNumber(), being.totalSteps());
-                        badges.add(ConsoleBadge.projectSetup(name, text));
-                    }
-                } catch (IOException | RuntimeException _) {
-                    // skip malformed entries
-                    continue;
+                var badge = parseProjectOnboardingItem(item, locale);
+                if (badge != null) {
+                    badges.add(badge);
                 }
             }
-            return (List<ConsoleBadge>) List.copyOf(badges);
+            return List.copyOf(badges);
         }, PROJECT_BADGES_BOUND, "project-onboardings-read");
+    }
+
+    private static @Nullable ConsoleBadge parseProjectOnboardingItem(Object item, String locale) {
+        var map = JsonTree.asObject(item);
+        if (map == null) {
+            return null;
+        }
+        try {
+            var being = BeingAddedProject.fromMap(map);
+            var name = checkoutDirectoryName(being.checkoutPath());
+            if (name != null) {
+                var text = ConsolePrompt.formatProjectSetupBadge(locale, name,
+                                    being.stepNumber(), being.totalSteps());
+                return ConsoleBadge.projectSetup(name, text);
+            }
+        } catch (IOException | RuntimeException _) {
+            // skip malformed entries
+        }
+        return null;
     }
 
     static List<ConsoleBadge> readProjectSetupConsoleBadgesQuiet(String locale, RuntimeClient runtime) {
