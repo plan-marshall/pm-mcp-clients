@@ -134,6 +134,15 @@
     pendingRevokeTarget = null;
   }
 
+  /**
+   * @param err the failure a revoke reported
+   * @returns `true` when the request gave up on its deadline, so the runtime may still have acted
+   */
+  function revokeTimedOut(err: unknown): boolean {
+    const name = (err as Error)?.name;
+    return name === 'TimeoutError' || name === 'AbortError';
+  }
+
   async function confirmRevoke() {
     if (!pendingRevokeTarget || revoking) return;
     actionError = '';
@@ -144,8 +153,10 @@
         await apiClient.revokeOtherDevices();
         devices = devices.filter((d) => isThisBrowser(d));
         pendingRevokeTarget = null;
-      } catch {
+      } catch (err: unknown) {
         actionError = $t('web.settings.devices.revoke_failed');
+        // The runtime may have applied the revoke before the deadline: read the list again.
+        if (revokeTimedOut(err)) void loadData();
       } finally {
         revoking = false;
       }
@@ -173,8 +184,9 @@
           currentRoute: 'revoked',
         }));
       }
-    } catch {
+    } catch (err: unknown) {
       actionError = $t('web.settings.devices.revoke_failed');
+      if (revokeTimedOut(err)) void loadData();
     } finally {
       revoking = false;
     }

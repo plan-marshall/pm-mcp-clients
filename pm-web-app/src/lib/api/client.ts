@@ -2793,12 +2793,25 @@ export class ApiClient {
     );
   }
 
+  /** How long a revoke may wait for the runtime before the request gives up. */
+  private static readonly REVOKE_TIMEOUT_MS = 15_000;
+
   public async revokeDevice(deviceId: string): Promise<void> {
-    await this.request('DELETE', `/api/v1/web/devices/${encodeURIComponent(deviceId)}`);
+    await this.request(
+      'DELETE',
+      `/api/v1/web/devices/${encodeURIComponent(deviceId)}`,
+      undefined,
+      AbortSignal.timeout(ApiClient.REVOKE_TIMEOUT_MS),
+    );
   }
 
   public async revokeOtherDevices(): Promise<void> {
-    await this.request('DELETE', '/api/v1/web/devices?others');
+    await this.request(
+      'DELETE',
+      '/api/v1/web/devices?others',
+      undefined,
+      AbortSignal.timeout(ApiClient.REVOKE_TIMEOUT_MS),
+    );
   }
 
   public async turnOffLanListener(): Promise<void> {
