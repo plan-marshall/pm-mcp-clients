@@ -383,7 +383,7 @@ public final class EntryFlow {
             out.println(MessageCatalogue.format(locale, "operator.entry.browser_url", Map.of("url", url)));
             out.println(MessageCatalogue.format(locale, "operator.entry.browser_code",
                                 Map.of("code", code, "time", validUntil)));
-        } catch (IOException e) {
+        } catch (IOException | IllegalArgumentException e) {
             out.println(MessageCatalogue.format(locale, "operator.entry.no_browser",
                                 Map.of("reason", TerminalSanitizer.sanitizeLine(e.getMessage() != null
                                                     ? e.getMessage() : e.getClass().getSimpleName()))));
@@ -584,7 +584,7 @@ public final class EntryFlow {
         thread.setDaemon(true);
         thread.start();
         try {
-            thread.join(bound.toMillis());
+            thread.join(Math.max(1L, bound.toMillis()));
         } catch (InterruptedException _) {
             // Interrupted while waiting for worker thread
             Thread.currentThread().interrupt();

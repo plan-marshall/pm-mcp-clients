@@ -239,7 +239,7 @@ with the cursor hidden, or in keypad application mode.
 [#console-raw-mode-decision]
 === Decision: Terminal Raw-Mode Switch and Reader-Ready Condition
 
-The prompt a dialogue draws is followed by JLine's own `stty` child that switches the terminal to raw mode, so a key typed in that window kills the child (`java.io.IOError: Error executing '/bin/stty ...'`) rather than reaching the reader. No output marks the end of that switch, and a probe key would change the dialogue's own state; the drawn prompt is therefore the last condition the harness can read.
+Where JLine falls back to the `exec` provider, the prompt a dialogue draws is followed by JLine's `stty` child that switches the terminal to raw mode. Ctrl+C typed in that window can kill the child (`java.io.IOError: Error executing '/bin/stty ...'`) rather than reaching the reader. No output marks the end of that switch, and a probe key would change the dialogue's own state; the drawn prompt is therefore the last condition the harness can read.
 
 [#notifications]
 === Notifications

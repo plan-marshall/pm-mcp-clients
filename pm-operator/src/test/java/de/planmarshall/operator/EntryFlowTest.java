@@ -298,6 +298,40 @@ class EntryFlowTest {
         }
 
         @Test
+        @DisplayName("desktop onboarded when pairing url is invalid shows forwarding directions")
+        void desktopOnboardedInvalidPairingUrlFailsGracefully() throws Exception {
+            fixture.start((request, response) -> {
+                if ("/api/v1/status".equals(request.target())) {
+                    response.json(200, """
+                                        {"status":"ready","onboarded":true,"version":"0.9.0","web":{"enabled":true,"port":7420}}
+                                        """);
+                } else if ("/api/v1/web/devices".equals(request.target())) {
+                    response.json(200, "[]");
+                } else if ("/api/v1/web/pairings".equals(request.target())) {
+                    response.json(201, "{\"code\":\"KXQB-MRTN\",\"url\":\"http://127.0.0.1:7420/pair?invalid=^code\"}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()), null, null);
+
+            var writer = new StringWriter();
+            var out = new PrintWriter(writer);
+            var reader = createReader("");
+
+            new EntryFlow(context).run(out, reader);
+
+            var text = writer.toString();
+            assertAll(
+                                () -> assertTrue(text.contains("– No browser opened:"), text),
+                                () -> assertTrue(text.contains("Ways in, from your own computer"), text),
+                                () -> assertTrue(text.contains("ssh -L 7420:127.0.0.1:7420"), text)
+            );
+        }
+
+        @Test
         @DisplayName("SSH session onboarded shows SSH forwarding instructions")
         void sshOnboardedForwarding() throws Exception {
             var env = new HashMap<>(fixture.environment());
