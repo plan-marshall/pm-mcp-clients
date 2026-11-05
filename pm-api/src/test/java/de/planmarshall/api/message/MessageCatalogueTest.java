@@ -91,4 +91,17 @@ class MessageCatalogueTest {
         var result = MessageCatalogue.getMessages("en", "invalid_area_attack");
         assertTrue(result.isEmpty());
     }
+
+    @Test
+    void shouldAllowOverridingAndClearingTemplateForTest() {
+        var original = MessageCatalogue.get("operator.console.badge.setup");
+        try {
+            MessageCatalogue.setForTest("en", "operator.console.badge.setup", "Custom Setup {done}/{total}");
+            assertEquals("Custom Setup 1/2", MessageCatalogue.format("en", "operator.console.badge.setup",
+                    Map.of("done", 1, "total", 2)));
+        } finally {
+            MessageCatalogue.clearCacheForTest();
+        }
+        assertEquals(original, MessageCatalogue.get("operator.console.badge.setup"));
+    }
 }

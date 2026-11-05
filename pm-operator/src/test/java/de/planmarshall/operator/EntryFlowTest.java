@@ -510,6 +510,39 @@ class EntryFlowTest {
         }
 
         @Test
+        @DisplayName("EntryFlow exposes its aspects and prefers daemon project_id in project badges")
+        void entryFlowAspectsAndDaemonProjectId() throws Exception {
+            var context = new OperatorContext(fixture.environment(), tempDir, true);
+            var flow = new EntryFlow(context);
+            assertEquals(List.of(OnboardingAspect.values()), flow.aspects());
+
+            fixture.start((request, response) -> {
+                if ("/api/v1/project-onboardings".equals(request.target())) {
+                    response.json(200, """
+                                        {"onboardings":[
+                                          {"project_id":"daemon-id","checkout_path":"/tmp/alpha","current_step":"build","step_number":1,"total_steps":5},
+                                          {"checkout_path":"/tmp/beta","current_step":"test","step_number":2,"total_steps":5}
+                                        ]}
+                                        """);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+
+            var badges = EntryFlow.readProjectSetupConsoleBadges("en", context.runtime(true));
+            assertEquals(2, badges.size());
+            assertEquals("daemon-id", badges.get(0).projectId());
+            assertEquals("setup daemon-id 1/5", badges.get(0).text());
+            assertEquals("beta", badges.get(1).projectId());
+            assertEquals("setup beta 2/5", badges.get(1).text());
+
+            var status = Map.<String, Object>of(
+                                "needs_operator", Map.of("questions", 2, "decisions", 1));
+            var waitingBadges = EntryFlow.extractWaitingBadges("en", status);
+            assertEquals(2, waitingBadges.size());
+        }
+
+        @Test
         @DisplayName("a machine badge keeps its place in front of the project badges")
         void theMachineBadgeStaysInFront() {
             var badges = badges("en", Map.of("onboard", Map.of("step", 3)),

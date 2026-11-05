@@ -525,6 +525,31 @@ class PmConsoleBehaviourTest {
     }
 
     @Test
+    @DisplayName("refreshBadges updates the console badges and window title")
+    void refreshBadgesUpdatesBadgesAndWindowTitle() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true,\"needs_operator\":{}}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, """
+                                    {"onboardings":[{"checkout_path":"/tmp/demo-proj","current_step":"build","step_number":1,"total_steps":4}]}
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            console.refreshBadges(terminal);
+            assertEquals(List.of("setup demo-proj 1/4"), console.currentBadges());
+        }
+    }
+
+    @Test
     @DisplayName("a project named question-fix or with 40 digits raises no warning and no exception")
     void aProjectNamedQuestionFixOrWith40DigitsRaisesNoWarningAndNoException() throws Exception {
         fixture.start((request, response) -> {

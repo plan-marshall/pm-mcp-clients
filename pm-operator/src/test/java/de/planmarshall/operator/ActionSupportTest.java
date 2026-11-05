@@ -193,11 +193,11 @@ class ActionSupportTest {
     private int interruptedAt(VirtualScreenTerminal virtual, String proposalMarker,
                         String interruptMarker, Handler handler) throws Exception {
         var code = new AtomicInteger(-1);
-        var failure = new AtomicReference<Exception>();
+        var failure = new AtomicReference<IOException>();
         var reader = Thread.ofPlatform().name("handler-under-test").start(() -> {
             try {
                 code.set(handler.run());
-            } catch (Exception failed) {
+            } catch (IOException failed) {
                 failure.set(failed);
             }
         });
@@ -232,7 +232,7 @@ class ActionSupportTest {
 
     @FunctionalInterface
     private interface Handler {
-        int run() throws Exception;
+        int run() throws IOException;
     }
 
     @Test
