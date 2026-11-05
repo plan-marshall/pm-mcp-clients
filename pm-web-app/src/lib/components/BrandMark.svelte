@@ -41,12 +41,9 @@
 {/snippet}
 
 {#if plate}
-  <!-- The rail head's square is part of the mark's delivery: 24 px of drawing in 28 px of colour. -->
-  <span
-    class="brand-mark-plate"
-    data-testid="brand-mark-plate"
-    style="inline-size: 28px; block-size: 28px;"
-  >
+  <!-- The rail head's square is part of the mark's delivery: 24 px of drawing in 28 px of colour.
+       Its size lives in the class, never in a style attribute, which the daemon's CSP blocks. -->
+  <span class="brand-mark-plate" data-testid="brand-mark-plate">
     {@render glyph()}
   </span>
 {:else}
@@ -64,6 +61,8 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    inline-size: 28px;
+    block-size: 28px;
     flex: 0 0 auto;
     background-color: var(--color-brand);
     color: var(--color-on-brand);

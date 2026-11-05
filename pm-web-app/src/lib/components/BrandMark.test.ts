@@ -68,8 +68,9 @@ describe('BrandMark component', () => {
     const plate = getByTestId('brand-mark-plate');
     const mark = getByTestId('brand-mark');
 
-    expect(plate.getAttribute('style')).toContain('inline-size: 28px');
-    expect(plate.getAttribute('style')).toContain('block-size: 28px');
+    // The 28 px square comes from the class: a style attribute is blocked by the daemon's CSP.
+    expect(plate).toHaveClass('brand-mark-plate');
+    expect(plate.hasAttribute('style')).toBe(false);
     expect(plate.contains(mark)).toBe(true);
     expect(mark.getAttribute('width')).toBe('24');
   });
