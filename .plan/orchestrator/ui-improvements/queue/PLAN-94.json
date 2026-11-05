@@ -2,10 +2,10 @@
   "id": "PLAN-94",
   "slug": "cli-coderabbit-residue",
   "workstream": "WS-04",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "94-cli-coderabbit-residue",
+  "pr": "321",
+  "landing": "landings/PLAN-94.md",
   "seq": 94
 }
