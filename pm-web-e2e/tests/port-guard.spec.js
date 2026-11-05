@@ -36,6 +36,11 @@ test.describe('Port Isolation & Parameterization Guard', () => {
   }
 
   test('holds the assigned web port instead of moving to another one', () => {
+    // The wiring is read from `vite.config.ts` as text, not imported: the file is TypeScript that
+    // Vite loads with its own config loader, and importing it here would need that loader and a
+    // build context. What `holdsAssignedPort()` does has its own unit test in pm-web-app; this
+    // guard watches only that the config still applies it to `strictPort`, which a text read can
+    // see and which stops being true when the line is removed or renamed.
     expect(strictPortIsBound()).toBe(true);
   });
 });

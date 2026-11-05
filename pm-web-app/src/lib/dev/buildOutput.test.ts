@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import fs from 'node:fs';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -47,6 +48,12 @@ describe('the build-output check', () => {
     expect(findDevMarkers(files)).toHaveLength(DEV_MARKERS.length);
   });
 
+  it('derives its markers from the route the exclusion plugin guards', () => {
+    // The route path the manifest wrote, the chunk name the route compiles to, and the node's
+    // import path: the three places the page can survive a build.
+    expect(DEV_MARKERS).toEqual(['/dev/components', 'dev-components', 'routes/dev']);
+  });
+
   it('finds a development page emitted as a file of its own', () => {
     // The route can survive as a file path even when every body is clean.
     expect(findDevMarkers({ 'dev/components.html': '<!doctype html>' })).toEqual([
@@ -72,6 +79,30 @@ describe('the build-output check', () => {
       expect(() => checkBuildOutput(build)).toThrow('exit 1');
       expect(exit).toHaveBeenCalledWith(1);
     } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it('stops the build when an emitted file cannot be read', () => {
+    const root = mkdtempSync(join(tmpdir(), 'pm-build-output-'));
+    const build = join(root, 'build');
+    mkdirSync(build, { recursive: true });
+    writeFileSync(join(build, 'index.html'), '<!doctype html>');
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const exit = vi.spyOn(process, 'exit').mockImplementation((code) => {
+      throw new Error(`exit ${String(code)}`);
+    });
+    // An unreadable file could be the one carrying a marker; a check that skips it fails open.
+    vi.spyOn(fs, 'readFileSync').mockImplementation(() => {
+      throw new Error('permission denied');
+    });
+
+    try {
+      expect(() => checkBuildOutput(build)).toThrow('exit 1');
+      expect(exit).toHaveBeenCalledWith(1);
+      expect(errors).toHaveBeenCalledWith(expect.stringContaining('cannot be read'));
+    } finally {
+      vi.restoreAllMocks();
       rmSync(root, { recursive: true, force: true });
     }
   });

@@ -12,8 +12,57 @@ import { fileURLToPath } from 'node:url';
  * marker of the page is still there.
  */
 
-/** The strings the development page leaves in a build that still carries it. */
-export const DEV_MARKERS = ['/dev/components', 'dev-components', 'routes/dev'];
+const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+const appDir = path.resolve(scriptDir, '..');
+const routesDir = path.join(appDir, 'src', 'routes');
+const pluginFile = path.join(appDir, 'src', 'lib', 'dev', 'devRouteExclusion.ts');
+
+/**
+ * @returns the route prefix the plugin excludes, read from the plugin that defines it
+ */
+function devRoutePrefix() {
+  const source = fs.readFileSync(pluginFile, 'utf-8');
+  const match = /export const DEV_ROUTE_PREFIX\s*=\s*['"]([^'"]+)['"]/.exec(source);
+  if (!match) {
+    throw new Error(`${pluginFile} no longer exports DEV_ROUTE_PREFIX`);
+  }
+  return match[1].replace(/^\/+|\/+$/g, '');
+}
+
+/**
+ * @param dir a directory below `src/routes`
+ * @param prefix its path from that root
+ * @returns the route directory of the development page, or null
+ */
+function devPageRoute(dir, prefix) {
+  const wanted = `${devRoutePrefix()}/`;
+  const entries = fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .sort((left, right) => left.name.localeCompare(right.name));
+  for (const entry of entries) {
+    const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+    if (relative !== devRoutePrefix() && !relative.startsWith(wanted)) continue;
+    const full = path.join(dir, entry.name);
+    if (fs.existsSync(path.join(full, '+page.svelte'))) return relative;
+    const nested = devPageRoute(full, relative);
+    if (nested !== null) return nested;
+  }
+  return null;
+}
+
+/**
+ * The strings the development page leaves in a build that still carries it, derived from the route
+ * the plugin excludes: the route path, the chunk name the route compiles to, and the node's import
+ * path. A hand-written list went stale in silence when the page moved.
+ */
+export const DEV_MARKERS = (() => {
+  const route = devPageRoute(routesDir, '');
+  if (route === null) {
+    throw new Error('the development page is not below src/routes: this check guards nothing');
+  }
+  return [`/${route}`, route.replaceAll('/', '-'), `routes/${route.split('/')[0]}`];
+})();
 
 /**
  * @param files the emitted files, by path
@@ -34,15 +83,12 @@ export function findDevMarkers(files) {
 /**
  * @param file the file an emitted path names
  * @returns its text, or an empty string for a file that is not text
+ * @throws when the file cannot be read: a check that cannot read its input must fail, never pass
  */
 function readText(file) {
-  try {
-    const content = fs.readFileSync(file, 'utf-8');
-    // A null byte is how a binary file announces itself; the markers are text.
-    return content.includes('\u0000') ? '' : content;
-  } catch {
-    return '';
-  }
+  const content = fs.readFileSync(file, 'utf-8');
+  // A null byte is how a binary file announces itself; the markers are text.
+  return content.includes('\u0000') ? '' : content;
 }
 
 /**
@@ -74,7 +120,17 @@ export function checkBuildOutput(buildDir = path.resolve('build')) {
   }
   const files = {};
   for (const file of filesOf(buildDir)) {
-    files[path.relative(buildDir, file)] = readText(file);
+    const name = path.relative(buildDir, file);
+    try {
+      files[name] = readText(file);
+    } catch (error) {
+      // An unreadable emitted file hides whatever marker it carries; the check fails rather than
+      // passing on the files it could read.
+      console.error(
+        `check-build-output: ${name} cannot be read: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      process.exit(1);
+    }
   }
   const found = findDevMarkers(files);
   if (found.length > 0) {

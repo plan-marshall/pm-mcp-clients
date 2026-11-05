@@ -74,7 +74,7 @@ function childrenOf(box: HTMLElement): HTMLElement[] {
  */
 function expectOptionsAndGroupsOnly(box: HTMLElement): void {
   const focusable =
-    'button, a[href], input, select, textarea, [contenteditable]:not([contenteditable="false"]), [tabindex]:not([tabindex="-1"])';
+    'button, a[href], input, select, textarea, iframe, object, summary, [contenteditable]:not([contenteditable="false"]), [tabindex]:not([tabindex="-1"])';
   for (const child of childrenOf(box)) {
     const role = child.getAttribute('role');
     expect(['option', 'group']).toContain(role);
@@ -134,6 +134,21 @@ describe('the command palette listbox', () => {
     expect(childrenOf(box).length).toBeGreaterThan(0);
     expectOptionsAndGroupsOnly(box);
     expect(screen.getByTestId('command-palette-field')).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('rejects a focusable element inside an option, so an embedded frame or disclosure cannot take the keyboard into the listbox', () => {
+    // The palette itself never renders these; the case exists so the assertion above keeps
+    // catching one if a future match renders richer content inside an option.
+    for (const tag of ['iframe', 'object', 'summary']) {
+      const box = document.createElement('div');
+      box.setAttribute('role', 'listbox');
+      const option = document.createElement('div');
+      option.setAttribute('role', 'option');
+      option.appendChild(document.createElement(tag));
+      box.appendChild(option);
+
+      expect(() => expectOptionsAndGroupsOnly(box)).toThrow();
+    }
   });
 
   it('names a group once, through the heading its aria-labelledby points at', () => {
