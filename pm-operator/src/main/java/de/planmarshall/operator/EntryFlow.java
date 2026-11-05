@@ -601,7 +601,7 @@ public final class EntryFlow {
         var name = checkoutDirectoryName(being.checkoutPath());
         return name == null ? null
                             : ConsolePrompt.formatProjectSetupBadge(locale, name, being.stepNumber(),
-                                                being.totalSteps());
+                            being.totalSteps());
     }
 
     private static @Nullable String checkoutDirectoryName(String checkoutPath) {
