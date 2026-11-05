@@ -36,7 +36,7 @@ pm [setup 0/7 · setup cui-parent 2/10] › web devices
 Paired devices · The browsers that can act on this machine
     1) Firefox on mbp-oliver   paired 12 May from loopback   last used <ago>
     2) Safari on iPad   paired 20 May from network   last used <ago>
-    3) Chrome on build-box   paired 2 Jun from loopback   last used 8 Sep <time>
+    3) Chrome on build-box   paired 2 Jun from loopback   last used <ago>
 
   The console needs no pairing and is not listed. Network listener: on.
 pm [setup 0/7 · setup cui-parent 2/10] › config consents

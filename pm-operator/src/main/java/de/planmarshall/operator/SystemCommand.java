@@ -141,6 +141,7 @@ public final class SystemCommand implements Callable<Integer> {
         } catch (IOException _) {
             return null;
         }
+        var ownsTerminal = context.ownsTerminal(terminal);
         context.useTerminal(terminal);
         try {
             var availability = TuiScreenDriver.availability(context, terminal, TuiLayout.MIN_COLUMNS);
@@ -157,8 +158,12 @@ public final class SystemCommand implements Callable<Integer> {
         } catch (IOException _) {
             return null;
         } finally {
-            context.clearTerminal(terminal);
-            if (context.ownsTerminal(terminal)) {
+            try {
+                context.clearTerminal(terminal);
+            } catch (IllegalStateException _) {
+                // Scope already cleared
+            }
+            if (ownsTerminal) {
                 try {
                     terminal.close();
                 } catch (IOException _) {

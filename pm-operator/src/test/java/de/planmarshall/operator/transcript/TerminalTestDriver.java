@@ -15,6 +15,7 @@ import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.Map;
 import org.jline.terminal.Terminal;
 
@@ -98,8 +99,20 @@ public final class TerminalTestDriver implements AutoCloseable {
      * @return this driver
      */
     public TerminalTestDriver project(Map<String, String> environment, Path userHome) {
+        return project(environment, userHome, Clock.systemUTC());
+    }
+
+    /**
+     * Binds the driver to an operator context with explicit clock injection.
+     *
+     * @param environment the process environment
+     * @param userHome    the user's home directory
+     * @param clock       the clock to inject
+     * @return this driver
+     */
+    public TerminalTestDriver project(Map<String, String> environment, Path userHome, Clock clock) {
         this.context = new OperatorContext(environment, userHome, true,
-                            ClientEnvironment.capture(environment), this::sharedTerminal, NO_BROWSER);
+                            ClientEnvironment.capture(environment), this::sharedTerminal, NO_BROWSER, clock);
         return this;
     }
 

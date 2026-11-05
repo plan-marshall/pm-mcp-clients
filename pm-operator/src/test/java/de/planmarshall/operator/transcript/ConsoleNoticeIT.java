@@ -90,7 +90,10 @@ class ConsoleNoticeIT {
             assertTrue(aboveThePrompt(session.screenText(), "◆ Question Q-042"), session.screenText());
             assertEquals(1, DialogueHarness.times(session.rawOutput(), "◆ Question Q-042"),
                                 "the notice is printed once, not once per redraw");
+            // Enter takes the open project onboarding first; leaving it with q returns to the console
+            // prompt with the newly redrawn badges.
             session.send("\n");
+            session.send("q\n");
             assertTrue(session.awaitText("pm [setup cui-parent 2/10 · 4 questions", TIMEOUT),
                                 session.screenText());
             leave(session);
@@ -111,9 +114,10 @@ class ConsoleNoticeIT {
             assertTrue(aboveThePrompt(session.screenText(), "– Q-007 was answered"), session.screenText());
             assertEquals(1, DialogueHarness.times(session.rawOutput(), "– Q-007 was answered"),
                                 "the notice is printed once, not once per redraw");
-            // The console rebuilds the badge on the event; JLine draws the prompt of a line already
-            // being read with the badges it had, so an empty Enter is what shows the new ones.
+            // Enter takes the open project onboarding first; leaving it with q returns to the console
+            // prompt with the newly redrawn badges.
             session.send("\n");
+            session.send("q\n");
             assertTrue(session.awaitText(BADGE_AFTER_ONE_ANSWER, TIMEOUT), session.rawOutput());
             leave(session);
         }
