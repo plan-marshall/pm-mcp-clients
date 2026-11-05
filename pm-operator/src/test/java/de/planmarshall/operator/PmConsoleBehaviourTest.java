@@ -10,8 +10,10 @@
 package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -20,7 +22,10 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
@@ -281,5 +286,138 @@ class PmConsoleBehaviourTest {
         assertTrue(notification.contains("decision"), notification);
         assertFalse(notification.contains("a secret summary"), notification);
         assertFalse(notification.contains("the text of the question"), notification);
+    }
+
+    @Test
+    @DisplayName("a failed read keeps the previous badges")
+    void aFailedReadKeepsThePreviousBadges() throws Exception {
+        var onboardingsFail = new AtomicBoolean(false);
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                if (onboardingsFail.get()) {
+                    response.send(500, null, "{\"error\":\"runtime error\"}");
+                } else {
+                    response.json(200, """
+                                        {"onboardings":[{"checkout_path":"/tmp/cui-http",
+                                                         "current_step":"build",
+                                                         "step_number":5,"total_steps":10}]}
+                                        """);
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            console.refreshSetupBadge("en", terminal);
+            assertEquals(List.of("setup cui-http 5/10"), console.currentBadges());
+
+            onboardingsFail.set(true);
+            console.refreshSetupBadge("en", terminal);
+            assertEquals(List.of("setup cui-http 5/10"), console.currentBadges(),
+                                "a failed read must keep the previous badges");
+        }
+    }
+
+    @Test
+    @DisplayName("a stalled runtime lets the prompt return within the bound")
+    void aStalledRuntimeLetsThePromptReturnWithinTheBound() throws Exception {
+        fixture.start((request, response) -> {
+            try {
+                Thread.sleep(10_000);
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            assertTimeoutPreemptively(Duration.ofSeconds(6), () -> console.refreshSetupBadge("en", terminal));
+        }
+    }
+
+    @Test
+    @DisplayName("two concurrent refreshes never interleave")
+    void twoConcurrentRefreshesNeverInterleave() throws Exception {
+        var inFlight = new AtomicInteger();
+        var maxConcurrent = new AtomicInteger();
+        fixture.start((request, response) -> {
+            var current = inFlight.incrementAndGet();
+            maxConcurrent.accumulateAndGet(current, Math::max);
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+            } finally {
+                inFlight.decrementAndGet();
+            }
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            var t1 = new Thread(() -> console.refreshSetupBadge("en", terminal));
+            var t2 = new Thread(() -> console.refreshBadges(terminal));
+            t1.start();
+            t2.start();
+            t1.join();
+            t2.join();
+        }
+        assertEquals(1, maxConcurrent.get(),
+                            "refreshSetupBadge and refreshBadges must be serialized by badgeRefreshLock");
+    }
+
+    @Test
+    @DisplayName("a project named question-fix or with 40 digits raises no warning and no exception")
+    void aProjectNamedQuestionFixOrWith40DigitsRaisesNoWarningAndNoException() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true,\"needs_operator\":{}}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, """
+                                    {"onboardings":[
+                                      {"checkout_path":"/tmp/question-fix",
+                                       "current_step":"build","step_number":1,"total_steps":5},
+                                      {"checkout_path":"/tmp/project-1234567890123456789012345678901234567890",
+                                       "current_step":"build","step_number":1,"total_steps":5}
+                                    ]}
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            console.refreshSetupBadge("en", terminal);
+
+            var out = new PrintWriter(new StringWriter());
+            assertDoesNotThrow(() -> console.handleControlD(out));
+            assertFalse(console.hasOpenQuestions(),
+                                "project named question-fix must not be classified as open question");
+            assertEquals(0, console.questionCount(),
+                                "questionCount must be 0 for project setups");
+        }
     }
 }

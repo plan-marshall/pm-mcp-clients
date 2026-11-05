@@ -15,6 +15,7 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -24,6 +25,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicReference;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.UserInterruptException;
@@ -83,9 +86,15 @@ public final class EntryFlow {
      * @param initialBadges  initial prompt badges
      * @param activeCode     active pairing code, if one was issued
      * @param activeUrl      active web or pairing URL
+     * @param consoleBadges  structured prompt badges
      */
     public record EntryResult(Map<String, Object> status, List<String> initialBadges,
-    @Nullable String activeCode, @Nullable String activeUrl) {
+    @Nullable String activeCode, @Nullable String activeUrl, List<ConsoleBadge> consoleBadges) {
+
+        public EntryResult(Map<String, Object> status, List<String> initialBadges,
+                           @Nullable String activeCode, @Nullable String activeUrl) {
+            this(status, initialBadges, activeCode, activeUrl, List.of());
+        }
     }
 
     /**
@@ -173,8 +182,10 @@ public final class EntryFlow {
         } catch (EndOfFileException | UserInterruptException _) {
             // Leaving the entry prompt keeps the block list and takes every badge the runtime
             // offers, the open project setups included.
-            return new EntryResult(status, badges(locale, status,
-                                projectSetupBadges(locale, runtime)), null, null);
+            var cBadges = consoleBadges(locale, status,
+                                readProjectSetupConsoleBadgesQuiet(locale, runtime));
+            var strBadges = cBadges.stream().map(ConsoleBadge::text).toList();
+            return new EntryResult(status, strBadges, null, null, cBadges);
         }
         if (choice == null || choice.isBlank()) {
             choice = isSsh ? "h" : "w";
@@ -182,9 +193,10 @@ public final class EntryFlow {
             choice = choice.trim().toLowerCase(Locale.ROOT);
         }
 
-        var badges = new ArrayList<String>();
-        badges.add(ConsolePrompt.formatMachineSetupBadge(locale, completedStep, MACHINE_STEPS));
-        badges.addAll(projectSetupBadges(locale, runtime));
+        var cBadges = new ArrayList<ConsoleBadge>();
+        cBadges.add(ConsoleBadge.machineSetup(ConsolePrompt.formatMachineSetupBadge(locale, completedStep, MACHINE_STEPS)));
+        cBadges.addAll(readProjectSetupConsoleBadgesQuiet(locale, runtime));
+        var badges = cBadges.stream().map(ConsoleBadge::text).toList();
 
         if (choice.startsWith("w") && context.gate().permits()) {
             ensureLoopbackListener(runtime, webPort);
@@ -196,7 +208,7 @@ public final class EntryFlow {
             }
             out.println(MessageCatalogue.format(locale, "operator.entry.web_opens_setup", Map.of()));
             out.flush();
-            return new EntryResult(status, badges, pairing.code(), pairing.url());
+            return new EntryResult(status, badges, pairing.code(), pairing.url(), cBadges);
         }
         if (choice.startsWith("w")) {
             // The web app is offered by opening the listener and issuing a pairing code, both acts:
@@ -226,10 +238,11 @@ public final class EntryFlow {
                         List<String> badges) {
         try {
             var refreshed = StatusCommand.fetch(runtime);
-            return new EntryResult(refreshed,
-                                badges(context.clientEnvironment().locale(), refreshed,
-                                                    projectSetupBadges(context.clientEnvironment().locale(), runtime)),
-                                null, null);
+            var loc = context.clientEnvironment().locale();
+            var cBadges = consoleBadges(loc, refreshed,
+                                readProjectSetupConsoleBadgesQuiet(loc, runtime));
+            return new EntryResult(refreshed, cBadges.stream().map(ConsoleBadge::text).toList(),
+                                null, null, cBadges);
         } catch (IOException _) {
             return new EntryResult(status, badges, null, null);
         }
@@ -263,11 +276,13 @@ public final class EntryFlow {
 
     private EntryResult runOnboarded(RuntimeClient runtime, Map<String, Object> status,
                         PrintWriter out, boolean isSsh, int webPort) throws IOException {
-        var badges = badges(context.clientEnvironment().locale(), status,
-                            projectSetupBadges(context.clientEnvironment().locale(), runtime));
+        var loc = context.clientEnvironment().locale();
+        var cBadges = consoleBadges(loc, status,
+                            readProjectSetupConsoleBadgesQuiet(loc, runtime));
+        var badges = cBadges.stream().map(ConsoleBadge::text).toList();
         var result = context.gate().permits()
                             ? openWebAccess(runtime, status, out, isSsh, webPort, badges)
-                            : new EntryResult(status, badges, null, null);
+                            : new EntryResult(status, badges, null, null, cBadges);
         printReportsArrivalNotice(runtime, out);
         out.flush();
         return result;
@@ -520,6 +535,43 @@ public final class EntryFlow {
         return DEFAULT_WEB_PORT;
     }
 
+    static final Duration PROJECT_BADGES_BOUND = Duration.ofSeconds(5);
+
+    static <T> T bounded(Callable<T> task, Duration bound, String threadName) throws IOException {
+        var result = new AtomicReference<T>();
+        var failure = new AtomicReference<Throwable>();
+        var thread = new Thread(() -> {
+            try {
+                result.set(task.call());
+            } catch (Throwable t) {
+                failure.set(t);
+            }
+        }, threadName);
+        thread.setDaemon(true);
+        thread.start();
+        try {
+            thread.join(bound.toMillis());
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+            throw new IOException("interrupted while waiting for " + threadName);
+        }
+        if (thread.isAlive()) {
+            thread.interrupt();
+            throw new IOException("the runtime did not answer within " + bound.toMillis() + " ms");
+        }
+        var error = failure.get();
+        if (error != null) {
+            if (error instanceof IOException io) {
+                throw io;
+            }
+            if (error instanceof RuntimeException re) {
+                throw re;
+            }
+            throw new IOException(error);
+        }
+        return result.get();
+    }
+
     /**
      * The prompt badges of a status (04-console.adoc#prompt): one per {@code needs_operator} kind
      * that is not zero, and the machine's onboarding badge while the machine is not onboarded.
@@ -543,13 +595,32 @@ public final class EntryFlow {
      * @return the badges, in the order the prompt shows them
      */
     static List<String> badges(String locale, Map<String, Object> status, List<String> projectBadges) {
-        var badges = new ArrayList<String>();
+        var pBadges = projectBadges.stream()
+                .map(p -> ConsoleBadge.projectSetup("", p))
+                .toList();
+        return consoleBadges(locale, status, pBadges).stream()
+                .map(ConsoleBadge::text)
+                .toList();
+    }
+
+    /**
+     * Builds structured prompt badges for console consumption.
+     *
+     * @param locale        the interface locale
+     * @param status        the runtime's status
+     * @param projectBadges the structured project setup badges
+     * @return structured badges
+     */
+    static List<ConsoleBadge> consoleBadges(String locale, Map<String, Object> status,
+            List<ConsoleBadge> projectBadges) {
+        var badges = new ArrayList<ConsoleBadge>();
         if (!isMachineOnboarded(status)) {
-            badges.add(ConsolePrompt.formatMachineSetupBadge(locale, getCompletedOnboardStep(status),
-                                MACHINE_STEPS));
+            var text = ConsolePrompt.formatMachineSetupBadge(locale, getCompletedOnboardStep(status),
+                                MACHINE_STEPS);
+            badges.add(ConsoleBadge.machineSetup(text));
         }
         badges.addAll(projectBadges);
-        badges.addAll(extractWaitingBadges(locale, status));
+        badges.addAll(extractWaitingConsoleBadges(locale, status));
         return badges;
     }
 
@@ -565,43 +636,57 @@ public final class EntryFlow {
      */
     static List<String> projectSetupBadges(String locale, RuntimeClient runtime) {
         try {
-            var response = runtime.send(HttpRequest.get("/api/v1/project-onboardings"));
-            if (response.status() != 200) {
-                return List.of();
-            }
-            var body = JsonTree.asObject(JsonTree.parse(response.body()));
-            if (body == null || !(body.get("onboardings") instanceof List<?> items)) {
-                return List.of();
-            }
-            var badges = new ArrayList<String>();
-            for (var item : items) {
-                var badge = projectBadge(locale, item);
-                if (badge != null) {
-                    badges.add(badge);
-                }
-            }
-            return badges;
+            return readProjectSetupBadges(locale, runtime);
         } catch (IOException _) {
             return List.of();
         }
     }
 
-    /**
-     * @param locale the interface locale
-     * @param item   one entry of the runtime's open-onboardings list
-     * @return its badge, or {@code null} when the entry names no checkout to badge
-     * @throws IOException when the entry cannot be read
-     */
-    private static @Nullable String projectBadge(String locale, Object item) throws IOException {
-        var map = JsonTree.asObject(item);
-        if (map == null) {
-            return null;
+    static List<String> readProjectSetupBadges(String locale, RuntimeClient runtime) throws IOException {
+        return readProjectSetupConsoleBadges(locale, runtime).stream()
+                .map(ConsoleBadge::text)
+                .toList();
+    }
+
+    static List<ConsoleBadge> readProjectSetupConsoleBadges(String locale, RuntimeClient runtime) throws IOException {
+        return bounded(() -> {
+            var response = runtime.send(HttpRequest.get("/api/v1/project-onboardings"));
+            if (response.status() != 200) {
+                throw new IOException("HTTP " + response.status() + " from /api/v1/project-onboardings");
+            }
+            var body = JsonTree.asObject(JsonTree.parse(response.body()));
+            if (body == null || !(body.get("onboardings") instanceof List<?> items)) {
+                return List.<ConsoleBadge>of();
+            }
+            var badges = new ArrayList<ConsoleBadge>();
+            for (var item : items) {
+                try {
+                    var map = JsonTree.asObject(item);
+                    if (map == null) {
+                        continue;
+                    }
+                    var being = BeingAddedProject.fromMap(map);
+                    var name = checkoutDirectoryName(being.checkoutPath());
+                    if (name != null) {
+                        var text = ConsolePrompt.formatProjectSetupBadge(locale, name,
+                                            being.stepNumber(), being.totalSteps());
+                        badges.add(ConsoleBadge.projectSetup(name, text));
+                    }
+                } catch (IOException | RuntimeException _) {
+                    // skip malformed entries
+                    continue;
+                }
+            }
+            return (List<ConsoleBadge>) List.copyOf(badges);
+        }, PROJECT_BADGES_BOUND, "project-onboardings-read");
+    }
+
+    static List<ConsoleBadge> readProjectSetupConsoleBadgesQuiet(String locale, RuntimeClient runtime) {
+        try {
+            return readProjectSetupConsoleBadges(locale, runtime);
+        } catch (IOException _) {
+            return List.of();
         }
-        var being = BeingAddedProject.fromMap(map);
-        var name = checkoutDirectoryName(being.checkoutPath());
-        return name == null ? null
-                            : ConsolePrompt.formatProjectSetupBadge(locale, name, being.stepNumber(),
-                            being.totalSteps());
     }
 
     private static @Nullable String checkoutDirectoryName(String checkoutPath) {
@@ -620,27 +705,26 @@ public final class EntryFlow {
         return extractWaitingBadges("en", status);
     }
 
-    /**
-     * The badges of what waits for the operator, in the machine's language: one per
-     * {@code needs_operator} kind whose count is not zero (04-console.adoc#prompt).
-     *
-     * @param locale the interface locale
-     * @param status the runtime's status
-     * @return the badges, in the order the status names the kinds
-     */
     static List<String> extractWaitingBadges(String locale, Map<String, Object> status) {
+        return extractWaitingConsoleBadges(locale, status).stream()
+                .map(ConsoleBadge::text)
+                .toList();
+    }
+
+    static List<ConsoleBadge> extractWaitingConsoleBadges(String locale, Map<String, Object> status) {
         if (!(status.get("needs_operator") instanceof Map<?, ?> needs)) {
             return List.of();
         }
-        var badges = new ArrayList<String>();
+        var badges = new ArrayList<ConsoleBadge>();
         for (var entry : needs.entrySet()) {
             var count = countOf(entry.getValue());
             if (count < 0) {
                 continue;
             }
-            var badge = ConsolePrompt.formatBadge(locale, String.valueOf(entry.getKey()), count);
-            if (badge != null) {
-                badges.add(badge);
+            var kind = String.valueOf(entry.getKey());
+            var badgeText = ConsolePrompt.formatBadge(locale, kind, count);
+            if (badgeText != null) {
+                badges.add(ConsoleBadge.waiting(kind, count, badgeText));
             }
         }
         return badges;

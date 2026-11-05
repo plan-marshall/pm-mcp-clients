@@ -14,6 +14,7 @@ import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -27,6 +28,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
@@ -77,11 +79,13 @@ public final class PmConsole {
                         "fresh_code");
 
     private final OperatorContext context;
+    static final Duration REFRESH_BOUND = Duration.ofSeconds(5);
+    private final ReentrantLock badgeRefreshLock = new ReentrantLock();
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
     private final AtomicInteger controlDCounter = new AtomicInteger();
     /** The prompt's badges, replaced as a whole so a draw never sees a half-updated set. */
-    private final AtomicReference<List<String>> badges = new AtomicReference<>(List.of());
+    private final AtomicReference<List<ConsoleBadge>> badges = new AtomicReference<>(List.of());
     private final ConsoleNoticeBuffer noticeBuffer;
 
     private volatile @Nullable String activePairingCode;
@@ -137,7 +141,13 @@ public final class PmConsole {
         activePairingCode = entryResult.activeCode();
         activePairingUrl = entryResult.activeUrl();
         webPort = EntryFlow.getWebPort(entryResult.status());
-        badges.set(List.copyOf(entryResult.initialBadges()));
+        List<ConsoleBadge> initialBadges = entryResult.consoleBadges();
+        if (initialBadges.isEmpty() && !entryResult.initialBadges().isEmpty()) {
+            initialBadges = entryResult.initialBadges().stream()
+                                .map(t -> ConsoleBadge.waiting("unknown", 0, t))
+                                .toList();
+        }
+        badges.set(List.copyOf(initialBadges));
         updateWindowTitle(terminal);
         printFullScreenHint(out, terminal);
 
@@ -194,6 +204,7 @@ public final class PmConsole {
                 // the badges are escaped here, where the prompt is built, and never in the badge
                 // itself — the window title carries the unescaped text.
                 var promptBadges = badges.get().stream()
+                                    .map(ConsoleBadge::text)
                                     .map(badge -> badge.replace("%", "%%"))
                                     .toList();
                 var line = reader.readLine(ConsolePrompt.format(locale, promptBadges, reconnecting.get()));
@@ -203,55 +214,43 @@ public final class PmConsole {
                     out.println(MessageCatalogue.format(locale, "operator.console.ctrl_c_hint", Map.of()));
                     out.flush();
                 }
-            } catch (EndOfFileException e) {
-                if (!hasOpenQuestions() || controlDCounter.getAndIncrement() > 0) {
+            } catch (EndOfFileException _) {
+                var handled = handleControlD(out);
+                if (handled == null) {
                     return null;
                 }
-                out.println(MessageCatalogue.format(locale, "operator.console.exit_open",
-                                    Map.of("count", questionCount())));
-                out.flush();
             }
         }
         return null;
     }
 
-    private boolean hasOpenQuestions() {
+    @Nullable String handleControlD(PrintWriter out) {
+        if (!hasOpenQuestions() || controlDCounter.getAndIncrement() > 0) {
+            return null;
+        }
+        out.println(MessageCatalogue.format(locale(), "operator.console.exit_open",
+                            Map.of("count", questionCount())));
+        out.flush();
+        return "";
+    }
+
+    boolean hasOpenQuestions() {
         for (var badge : badges.get()) {
-            var lower = badge.toLowerCase(Locale.ROOT);
-            if (lower.contains(KIND_QUESTION) || lower.contains("frage") || lower.contains("waiver")) {
+            if (badge.isQuestion()) {
                 return true;
             }
         }
         return false;
     }
 
-    private int questionCount() {
+    int questionCount() {
         int total = 0;
         for (var badge : badges.get()) {
-            var lower = badge.toLowerCase(Locale.ROOT);
-            if (lower.contains(KIND_QUESTION) || lower.contains("frage") || lower.contains("waiver")) {
-                total += leadingCount(badge);
+            if (badge.isQuestion()) {
+                total += badge.count();
             }
         }
         return total;
-    }
-
-    private static int leadingCount(String badge) {
-        int start = -1;
-        for (int i = 0; i < badge.length(); i++) {
-            if (Character.isDigit(badge.charAt(i))) {
-                start = i;
-                break;
-            }
-        }
-        if (start < 0) {
-            return 1;
-        }
-        int end = start;
-        while (end < badge.length() && Character.isDigit(badge.charAt(end))) {
-            end++;
-        }
-        return Integer.parseInt(badge.substring(start, end));
     }
 
     private void handleEmptyEnter(PrintWriter out, LineReader reader, Terminal terminal) {
@@ -263,7 +262,7 @@ public final class PmConsole {
             // takes the first thing the badge offers is NOT extended to projects here: the console
             // transcripts pin Enter to the prompt while a project setup is open, and changing that
             // contract is a decision of the epic's design, not of this plan.
-            if (MACHINE_SETUP_BADGE.matcher(b).matches()) {
+            if (b.kind() == ConsoleBadge.Kind.MACHINE_SETUP || MACHINE_SETUP_BADGE.matcher(b.text()).matches()) {
                 continueOnboarding(out, reader, locale, terminal);
                 return;
             }
@@ -311,14 +310,23 @@ public final class PmConsole {
      * @param terminal the terminal whose window title carries the badges
      */
     void refreshSetupBadge(String locale, Terminal terminal) {
+        badgeRefreshLock.lock();
         try {
             // Never starts the runtime: a refresh after `runtime stop` must not start it again.
             var runtime = context.runtime(false);
-            badges.set(List.copyOf(EntryFlow.badges(locale, StatusCommand.fetch(runtime),
-                                EntryFlow.projectSetupBadges(locale, runtime))));
+            var status = EntryFlow.bounded(() -> StatusCommand.fetch(runtime), REFRESH_BOUND, "status-read");
+            List<ConsoleBadge> projectBadges;
+            try {
+                projectBadges = EntryFlow.readProjectSetupConsoleBadges(locale, runtime);
+            } catch (IOException _) {
+                projectBadges = previousProjectBadges();
+            }
+            badges.set(List.copyOf(EntryFlow.consoleBadges(locale, status, projectBadges)));
         } catch (IOException _) {
             // the badge keeps what the entry flow reported
             return;
+        } finally {
+            badgeRefreshLock.unlock();
         }
         updateWindowTitle(terminal);
     }
@@ -630,21 +638,36 @@ public final class PmConsole {
      *
      * @param terminal the terminal whose window title carries the badges
      */
-    private void refreshBadges(Terminal terminal) {
-        List<String> refreshed;
+    void refreshBadges(Terminal terminal) {
+        badgeRefreshLock.lock();
+        List<ConsoleBadge> refreshed;
         try {
             var runtime = context.runtime(false);
-            refreshed = EntryFlow.badges(locale(), StatusCommand.fetch(runtime),
-                                EntryFlow.projectSetupBadges(locale(), runtime));
+            var status = EntryFlow.bounded(() -> StatusCommand.fetch(runtime), REFRESH_BOUND, "status-read");
+            List<ConsoleBadge> projectBadges;
+            try {
+                projectBadges = EntryFlow.readProjectSetupConsoleBadges(locale(), runtime);
+            } catch (IOException _) {
+                projectBadges = previousProjectBadges();
+            }
+            refreshed = EntryFlow.consoleBadges(locale(), status, projectBadges);
         } catch (IOException _) {
             // the runtime did not answer this read: keep the badges it last gave us
             return;
+        } finally {
+            badgeRefreshLock.unlock();
         }
         if (refreshed.equals(badges.get())) {
             return;
         }
         badges.set(List.copyOf(refreshed));
         updateWindowTitle(terminal);
+    }
+
+    private List<ConsoleBadge> previousProjectBadges() {
+        return badges.get().stream()
+                            .filter(b -> b.kind() == ConsoleBadge.Kind.PROJECT_SETUP)
+                            .toList();
     }
 
     /**
@@ -780,7 +803,9 @@ public final class PmConsole {
     private void updateWindowTitle(Terminal terminal) {
         var title = new StringBuilder("pm-operator");
         if (!badges.get().isEmpty()) {
-            title.append(" [").append(String.join(" \u00b7 ", badges.get())).append(']');
+            title.append(" [")
+                    .append(String.join(" \u00b7 ", badges.get().stream().map(ConsoleBadge::text).toList()))
+                    .append(']');
         }
         TerminalTitle.set(terminal, title.toString());
     }
@@ -847,5 +872,9 @@ public final class PmConsole {
         catch (UnknownHostException _) {
             return "localhost";
         }
+    }
+
+    List<String> currentBadges() {
+        return badges.get().stream().map(ConsoleBadge::text).toList();
     }
 }

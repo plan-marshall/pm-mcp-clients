@@ -485,6 +485,28 @@ class EntryFlowTest {
         }
 
         @Test
+        @DisplayName("a malformed entry leaves the others")
+        void aMalformedEntryLeavesTheOthers() throws Exception {
+            fixture.start((request, response) -> {
+                if ("/api/v1/project-onboardings".equals(request.target())) {
+                    response.json(200, """
+                                        {"onboardings":[
+                                          {"checkout_path":"/tmp/alpha","current_step":"build","step_number":1,"total_steps":5},
+                                          {"broken":"missing checkout path"},
+                                          {"checkout_path":"/tmp/beta","current_step":"test","step_number":2,"total_steps":5}
+                                        ]}
+                                        """);
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            var context = new OperatorContext(fixture.environment(), tempDir, true);
+            var projectBadges = EntryFlow.projectSetupBadges("en", context.runtime(true));
+
+            assertEquals(List.of("setup alpha 1/5", "setup beta 2/5"), projectBadges);
+        }
+
+        @Test
         @DisplayName("a machine badge keeps its place in front of the project badges")
         void theMachineBadgeStaysInFront() {
             var badges = EntryFlow.badges("en", Map.of("onboard", Map.of("step", 3)),
