@@ -533,8 +533,8 @@ class EntryFlowTest {
             fixture.start((request, response) -> {
                 if ("/api/v1/status".equals(request.target())) {
                     response.json(200, """
-                            {"status":"ready","onboarded":false,"version":"0.9.0"}
-                            """);
+                                        {"status":"ready","onboarded":false,"version":"0.9.0"}
+                                        """);
                 } else if ("/api/v1/project-onboardings".equals(request.target())) {
                     response.json(200, "{\"onboardings\":[]}");
                 } else {
@@ -550,15 +550,15 @@ class EntryFlowTest {
             new EntryFlow(context, aspects).run(outIntro, createReader("q\n"));
             var textIntro = writerIntro.toString();
             assertTrue(textIntro.contains("8") && textIntro.contains("Language"),
-                    "intro line must list all 8 steps when an aspect is added");
+                                "intro line must list all 8 steps when an aspect is added");
 
             fixture.close();
             fixture = RuntimeFixture.create();
             fixture.start((request, response) -> {
                 if ("/api/v1/status".equals(request.target())) {
                     response.json(200, """
-                            {"status":"ready","onboarded":false,"onboard":{"step":3},"version":"0.9.0"}
-                            """);
+                                        {"status":"ready","onboarded":false,"onboard":{"step":3},"version":"0.9.0"}
+                                        """);
                 } else if ("/api/v1/project-onboardings".equals(request.target())) {
                     response.json(200, "{\"onboardings\":[]}");
                 } else {
@@ -572,8 +572,8 @@ class EntryFlowTest {
             new EntryFlow(contextResume, aspects).run(outResume, createReader("q\n"));
             var textResume = writerResume.toString();
             assertAll(
-                    () -> assertTrue(textResume.contains("step 3 of 8"), "stopped_at must show 3 of 8"),
-                    () -> assertTrue(textResume.contains("[4/8]"), "resume line must show [4/8] next step")
+                                () -> assertTrue(textResume.contains("step 3 of 8"), "stopped_at must show 3 of 8"),
+                                () -> assertTrue(textResume.contains("[4/8]"), "resume line must show [4/8] next step")
             );
         }
     }

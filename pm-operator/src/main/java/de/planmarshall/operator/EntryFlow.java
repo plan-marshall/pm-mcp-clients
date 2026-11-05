@@ -60,13 +60,13 @@ public final class EntryFlow {
     private static final String PAIR_CODE = "/pair#code=";
 
     static final List<String> STEP_KEYS = Arrays.stream(OnboardingAspect.values())
-            .map(OnboardingAspect::stepNameKey)
-            .toList();
+                        .map(OnboardingAspect::stepNameKey)
+                        .toList();
     /** The machine onboarding's step count, owned by {@link OnboardingAspect}. */
     static final int MACHINE_STEPS = OnboardingAspect.values().length;
     static final List<String> STEP_WHAT_KEYS = Arrays.stream(OnboardingAspect.values())
-            .map(a -> "operator.entry.step.what." + a.name().toLowerCase(Locale.ROOT))
-            .toList();
+                        .map(a -> "operator.entry.step.what." + a.name().toLowerCase(Locale.ROOT))
+                        .toList();
 
     private final OperatorContext context;
     private final List<OnboardingAspect> aspects;
@@ -89,8 +89,8 @@ public final class EntryFlow {
         this.aspects = List.copyOf(Objects.requireNonNull(aspects, "aspects"));
         this.stepKeys = this.aspects.stream().map(OnboardingAspect::stepNameKey).toList();
         this.stepWhatKeys = this.aspects.stream()
-                .map(a -> "operator.entry.step.what." + a.name().toLowerCase(Locale.ROOT))
-                .toList();
+                            .map(a -> "operator.entry.step.what." + a.name().toLowerCase(Locale.ROOT))
+                            .toList();
     }
 
     /**
@@ -106,7 +106,7 @@ public final class EntryFlow {
     @Nullable String activeCode, @Nullable String activeUrl, List<ConsoleBadge> consoleBadges) {
 
         public EntryResult(Map<String, Object> status, List<String> initialBadges,
-                           @Nullable String activeCode, @Nullable String activeUrl) {
+                            @Nullable String activeCode, @Nullable String activeUrl) {
             this(status, initialBadges, activeCode, activeUrl, List.of());
         }
     }
@@ -265,13 +265,13 @@ public final class EntryFlow {
     }
 
     private List<ConsoleBadge> readProjectBadgesOrFallback(String locale, RuntimeClient runtime,
-                                                          List<ConsoleBadge> fallback) {
+                        List<ConsoleBadge> fallback) {
         try {
             return readProjectSetupConsoleBadges(locale, runtime);
         } catch (IOException _) {
             return fallback.stream()
-                    .filter(b -> b.kind() == ConsoleBadge.Kind.PROJECT_SETUP)
-                    .toList();
+                                .filter(b -> b.kind() == ConsoleBadge.Kind.PROJECT_SETUP)
+                                .toList();
         }
     }
 
@@ -579,7 +579,9 @@ public final class EntryFlow {
         var thread = new Thread(() -> {
             try {
                 result.set(task.call());
-            } catch (Exception e) {
+            }
+            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            catch (Exception e) {
                 failure.set(e);
             }
         }, threadName);
@@ -640,13 +642,13 @@ public final class EntryFlow {
     }
 
     static List<String> badges(String locale, Map<String, Object> status, List<String> projectBadges,
-            int machineSteps) {
+                        int machineSteps) {
         var pBadges = projectBadges.stream()
-                .map(p -> ConsoleBadge.projectSetup("", p))
-                .toList();
+                            .map(p -> ConsoleBadge.projectSetup("", p))
+                            .toList();
         return consoleBadges(locale, status, pBadges, machineSteps).stream()
-                .map(ConsoleBadge::text)
-                .toList();
+                            .map(ConsoleBadge::text)
+                            .toList();
     }
 
     /**
@@ -658,12 +660,12 @@ public final class EntryFlow {
      * @return structured badges
      */
     static List<ConsoleBadge> consoleBadges(String locale, Map<String, Object> status,
-            List<ConsoleBadge> projectBadges) {
+                        List<ConsoleBadge> projectBadges) {
         return consoleBadges(locale, status, projectBadges, MACHINE_STEPS);
     }
 
     static List<ConsoleBadge> consoleBadges(String locale, Map<String, Object> status,
-            List<ConsoleBadge> projectBadges, int machineSteps) {
+                        List<ConsoleBadge> projectBadges, int machineSteps) {
         var badges = new ArrayList<ConsoleBadge>();
         if (!isMachineOnboarded(status)) {
             var text = ConsolePrompt.formatMachineSetupBadge(locale, getCompletedOnboardStep(status),
@@ -695,8 +697,8 @@ public final class EntryFlow {
 
     static List<String> readProjectSetupBadges(String locale, RuntimeClient runtime) throws IOException {
         return readProjectSetupConsoleBadges(locale, runtime).stream()
-                .map(ConsoleBadge::text)
-                .toList();
+                            .map(ConsoleBadge::text)
+                            .toList();
     }
 
     static List<ConsoleBadge> readProjectSetupConsoleBadges(String locale, RuntimeClient runtime) throws IOException {
@@ -733,7 +735,9 @@ public final class EntryFlow {
                                     being.stepNumber(), being.totalSteps());
                 return ConsoleBadge.projectSetup(name, text);
             }
-        } catch (IOException | RuntimeException _) {
+        }
+        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+        catch (IOException | RuntimeException _) {
             // skip malformed entries
         }
         return null;
@@ -765,8 +769,8 @@ public final class EntryFlow {
 
     static List<String> extractWaitingBadges(String locale, Map<String, Object> status) {
         return extractWaitingConsoleBadges(locale, status).stream()
-                .map(ConsoleBadge::text)
-                .toList();
+                            .map(ConsoleBadge::text)
+                            .toList();
     }
 
     static List<ConsoleBadge> extractWaitingConsoleBadges(String locale, Map<String, Object> status) {

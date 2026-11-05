@@ -220,7 +220,8 @@ public final class PmConsole {
         return null;
     }
 
-    @Nullable String handleControlD(PrintWriter out) {
+    @Nullable
+    String handleControlD(PrintWriter out) {
         if (!hasOpenQuestions() || controlDCounter.getAndIncrement() > 0) {
             return null;
         }
@@ -816,8 +817,8 @@ public final class PmConsole {
         var title = new StringBuilder("pm-operator");
         if (!badges.get().isEmpty()) {
             title.append(" [")
-                    .append(String.join(" \u00b7 ", badges.get().stream().map(ConsoleBadge::text).toList()))
-                    .append(']');
+                                .append(String.join(" \u00b7 ", badges.get().stream().map(ConsoleBadge::text).toList()))
+                                .append(']');
         }
         TerminalTitle.set(terminal, title.toString());
     }

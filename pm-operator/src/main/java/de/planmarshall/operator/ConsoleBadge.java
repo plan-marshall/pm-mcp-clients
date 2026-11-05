@@ -25,11 +25,11 @@ import org.jspecify.annotations.Nullable;
  * @param projectId the project name or directory (for {@link Kind#PROJECT_SETUP})
  */
 public record ConsoleBadge(
-        Kind kind,
-        String text,
-        @Nullable String itemKind,
-        int count,
-        @Nullable String projectId) {
+Kind kind,
+String text,
+@Nullable String itemKind,
+int count,
+@Nullable String projectId) {
 
     public enum Kind {
         MACHINE_SETUP,
@@ -59,7 +59,7 @@ public record ConsoleBadge(
      */
     public boolean isQuestion() {
         return kind == Kind.WAITING && ("question".equals(itemKind)
-                || "decision".equals(itemKind)
-                || "waiver_request".equals(itemKind));
+                            || "decision".equals(itemKind)
+                            || "waiver_request".equals(itemKind));
     }
 }

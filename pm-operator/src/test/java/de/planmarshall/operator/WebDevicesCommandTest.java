@@ -590,8 +590,8 @@ class WebDevicesCommandTest {
 
         var output = writer.toString();
         assertAll(
-                () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                () -> assertTrue(output.contains("Failed to rename device: HTTP 400"), output)
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(output.contains("Failed to rename device: HTTP 400"), output)
         );
     }
 
@@ -627,8 +627,8 @@ class WebDevicesCommandTest {
 
         var output = writer.toString();
         assertAll(
-                () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                () -> assertTrue(output.contains("Failed to turn listener off: HTTP 400"), output)
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(output.contains("Failed to turn listener off: HTTP 400"), output)
         );
     }
 
@@ -661,8 +661,8 @@ class WebDevicesCommandTest {
 
         var output = writer.toString();
         assertAll(
-                () -> assertEquals(PmOperator.EXIT_FAILURE, code),
-                () -> assertTrue(output.contains("Failed to act on the device: the action did not complete."), output)
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(output.contains("Failed to act on the device: the action did not complete."), output)
         );
     }
 
@@ -691,8 +691,8 @@ class WebDevicesCommandTest {
 
         var termText = terminalOut.toString(StandardCharsets.UTF_8);
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(termText.contains("Enter confirms the revocation. b or back leaves without changes."), termText)
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(termText.contains("Enter confirms the revocation. b or back leaves without changes."), termText)
         );
     }
 
@@ -721,8 +721,8 @@ class WebDevicesCommandTest {
 
         var termText = terminalOut.toString(StandardCharsets.UTF_8);
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(termText.contains("Enter confirms the revocation. b or back leaves without changes."), termText)
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(termText.contains("Enter confirms the revocation. b or back leaves without changes."), termText)
         );
     }
 
