@@ -364,9 +364,11 @@ describe('SettingsView component', () => {
 
   it('shows an unknown listener state when the status read fails', async () => {
     // Arrange: the devices answer, the status does not — so nothing says how the listener stands.
-    vi.spyOn(apiClient, 'getStatus').mockRejectedValue(
-      new DOMException('The operation timed out.', 'TimeoutError'),
-    );
+    const reads: (AbortSignal | undefined)[] = [];
+    vi.spyOn(apiClient, 'getStatus').mockImplementation((signal?: AbortSignal) => {
+      reads.push(signal);
+      return Promise.reject(new DOMException('The operation timed out.', 'TimeoutError'));
+    });
 
     // Act
     render(SettingsView);
@@ -375,6 +377,8 @@ describe('SettingsView component', () => {
     expect(await screen.findByText('Firefox on mbp-oliver')).toBeInTheDocument();
     expect(screen.getByTestId('listener-status')).toHaveTextContent('Network listener: unknown.');
     expect(screen.queryByTestId('listener-off-button')).not.toBeInTheDocument();
+    // The status read is bounded like the devices read beside it.
+    expect(reads[0]).toBeInstanceOf(AbortSignal);
   });
 
   it('returns to the route the caller came from on Back', async () => {
