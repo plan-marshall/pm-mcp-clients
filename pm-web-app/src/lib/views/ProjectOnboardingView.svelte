@@ -107,6 +107,8 @@
   $effect(() => {
     void stepRows;
     void $currentLocale;
+    // The labels themselves are catalogue texts: a loaded catalogue can change the line's width.
+    void $t;
     measureStepLine();
   });
 

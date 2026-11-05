@@ -176,7 +176,13 @@ describe('MachineSettingsView component', () => {
     expect(sent.epics_after_days).toBe(90);
   });
 
-  it('writes nothing when a duration the page would send is empty', async () => {
+  it.each([
+    ['cleanup-days', ''],
+    ['cleanup-days', '2.5'],
+    ['cleanup-days', '3'],
+    ['cleanup-remind-days', ''],
+    ['cleanup-remind-days', '2.5'],
+  ])('writes nothing when %s holds "%s"', async (testId, value) => {
     const updateSpy = vi
       .spyOn(apiClient, 'updateMachineSetting')
       .mockResolvedValue({ applied: true, conflict: false, revision: 5 });
@@ -186,10 +192,11 @@ describe('MachineSettingsView component', () => {
     await waitFor(() => {
       expect(screen.getByTestId('save-cleanup')).toBeInTheDocument();
     });
-    await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '' } });
+    await fireEvent.input(screen.getByTestId(testId), { target: { value } });
     await fireEvent.click(screen.getByTestId('save-cleanup'));
 
-    // An empty number would reach the runtime as a missing field and be filled with the defaults.
+    // Each of these would reach the runtime as a value the contract refuses, or as a missing field
+    // the runtime fills with a default.
     await waitFor(() => {
       expect(screen.getByText('The change was not saved.')).toBeInTheDocument();
     });

@@ -3,7 +3,7 @@ import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import { defineConfig } from 'vitest/config';
-import { resolvePorts } from './src/lib/ports.ts';
+import { resolvePorts, holdsAssignedPort } from './src/lib/ports.ts';
 import { devRouteExclusion } from './src/lib/dev/devRouteExclusion.ts';
 
 /** The addresses a request from this machine itself carries. */
@@ -131,9 +131,7 @@ export default defineConfig({
       allow: ['..'],
     },
     port: resolvePorts().webPort,
-    // An assigned port that is in use is a blocker (AGENTS.md § Ports), so a run that was given
-    // one stops instead of silently moving to the next free port.
-    strictPort: (process.env.PM_WEB_PORT ?? '').trim() !== '',
+    strictPort: holdsAssignedPort(),
     proxy: {
       '/api': {
         target: resolvePorts().mockTarget,

@@ -25,6 +25,16 @@ test.describe('Port Isolation & Parameterization Guard', () => {
     expect(result.stderr).toContain('Invalid PM_WEB_PORT');
   });
 
+  for (const value of ['0', '-1', '65536']) {
+    test(`a PM_WEB_PORT of ${value} stops the run`, () => {
+      const result = malformedPortRun(value);
+
+      // The range check is what this covers: the value is a number, and still no port.
+      expect(result.status).not.toBe(0);
+      expect(result.stderr).toContain('Invalid PM_WEB_PORT');
+    });
+  }
+
   test('holds the assigned web port instead of moving to another one', () => {
     expect(strictPortIsBound()).toBe(true);
   });

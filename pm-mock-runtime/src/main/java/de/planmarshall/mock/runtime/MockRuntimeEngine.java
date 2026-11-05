@@ -7068,12 +7068,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
             // The clients send the whole record, so the reminder interval travels with the days.
             try {
                 var durations = CleanupDurations.fromJson(trimmed);
-                machineCleanupDurations.put(KEY_PLANS_AFTER_DAYS, durations.plansAfterDays());
-                machineCleanupDurations.put(KEY_EPICS_AFTER_DAYS, durations.epicsAfterDays());
-                machineCleanupDurations.put(KEY_LOGS_AFTER_DAYS, durations.logsAfterDays());
-                machineCleanupDurations.put(KEY_REPORTS_AFTER_DAYS, durations.reportsAfterDays());
-                machineCleanupDurations.put(KEY_UNENROLLED_AFTER_DAYS, durations.unenrolledAfterDays());
-                machineCleanupDurations.put(KEY_REMIND_AFTER_DAYS, durations.remindAfterDays());
+                if (!hasContractDurations(durations)) {
+                    return false;
+                }
+                // One entry per field of the record: a field added there is stored here too.
+                for (var entry : durations.toMap().entrySet()) {
+                    machineCleanupDurations.put(entry.getKey(), entry.getValue());
+                }
                 return true;
             } catch (IOException _) {
                 return false;
@@ -7081,6 +7082,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         try {
             int days = Integer.parseInt(trimmed);
+            if (!hasContractDays(days)) {
+                return false;
+            }
             for (var field : CLEANUP_DAY_KEYS) {
                 machineCleanupDurations.put(field, days);
             }
@@ -7088,6 +7092,35 @@ public final class MockRuntimeEngine implements AutoCloseable {
         } catch (NumberFormatException _) {
             return false;
         }
+    }
+
+    /** The value a retention duration carries when nothing is ever removed. */
+    private static final int NEVER = -1;
+
+    /**
+     * @param durations the record a client sent
+     * @return whether every duration is one the contract allows, so a value below the minimum is
+     *     refused instead of stored
+     */
+    private static boolean hasContractDurations(CleanupDurations durations) {
+        return CLEANUP_DAY_KEYS.stream()
+                .map(key -> switch (key) {
+                    case KEY_PLANS_AFTER_DAYS -> durations.plansAfterDays();
+                    case KEY_EPICS_AFTER_DAYS -> durations.epicsAfterDays();
+                    case KEY_LOGS_AFTER_DAYS -> durations.logsAfterDays();
+                    case KEY_REPORTS_AFTER_DAYS -> durations.reportsAfterDays();
+                    default -> durations.unenrolledAfterDays();
+                })
+                .allMatch(MockRuntimeEngine::hasContractDays)
+                && durations.remindAfterDays() >= CleanupDurations.MINIMUM_REMIND_DAYS;
+    }
+
+    /**
+     * @param days a retention duration
+     * @return whether it is the never marker or at least the minimum the design names
+     */
+    private static boolean hasContractDays(int days) {
+        return days == NEVER || days >= CleanupDurations.MINIMUM_RETENTION_DAYS;
     }
 
     private void applyPlanDefaults(String value) {
@@ -7117,7 +7150,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return String.valueOf(machinePlanDefaults.get(KEY_LANDING));
         }
         if (KEY_CLEANUP_DURATIONS.equals(key)) {
-            return String.valueOf(machineCleanupDurations.get(KEY_PLANS_AFTER_DAYS));
+            // The record the clients send back, so a conflict names a value they can compare.
+            return JsonTree.write(machineCleanupDurations);
         }
         if (key.startsWith(CREDENTIAL_PREFIX)) {
             return currentCredentialKind(key.substring(CREDENTIAL_PREFIX.length()));
@@ -8531,7 +8565,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         KEY_STATUS, "postponed",
                         "job_id", jobId,
                         CONST_DECISION, "remind",
-                        "remind_after_days", 3,
+                        "remind_after_days", machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS),
                         "remind_at", "2026-10-19T03:00:00Z"
                 ));
                 return;
@@ -8551,14 +8585,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     CONST_DECISION, "remind",
                     "by", "operator",
                     "channel", isWeb ? "web" : "cli",
-                    "remind_after_days", 3
+                    "remind_after_days", machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS)
             ));
 
             response.json(200, Map.of(
                     KEY_STATUS, "postponed",
                     "job_id", jobId,
                     CONST_DECISION, "remind",
-                    "remind_after_days", 3,
+                    "remind_after_days", machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS),
                     "remind_at", "2026-10-19T03:00:00Z"
             ));
         }

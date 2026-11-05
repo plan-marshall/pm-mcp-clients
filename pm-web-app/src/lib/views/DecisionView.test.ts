@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
+import { tick } from 'svelte';
 import DecisionView from './DecisionView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
@@ -522,9 +523,11 @@ describe('DecisionView component', () => {
 
     release?.({ ...decisionChat, chat_id: 'C-dec-101', subject_id: 'dec-101', proposal: undefined });
 
-    await waitFor(() => {
-      expect(screen.getByTestId('chat-transcript')).toHaveTextContent('transcript of dec-202');
-    });
+    // The released answer has to be applied before the transcript is read, or the assertion below
+    // would pass on the transcript that was already on screen.
+    await tick();
+
+    expect(screen.getByTestId('chat-transcript')).toHaveTextContent('transcript of dec-202');
     expect(screen.getByTestId('chat-transcript')).not.toHaveTextContent('dec-101');
     expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
   });

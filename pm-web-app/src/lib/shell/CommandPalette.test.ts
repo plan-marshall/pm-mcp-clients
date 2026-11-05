@@ -211,7 +211,11 @@ describe('the command palette listbox', () => {
       const active = field.getAttribute('aria-activedescendant');
       expect(active).toBeTruthy();
       expect(active).not.toBe(first);
-      expect(document.getElementById(active ?? '')?.getAttribute('role')).toBe('option');
+      const option = document.getElementById(active ?? '');
+      expect(option?.getAttribute('role')).toBe('option');
+      // The next row is the epic, not any other option the field happens to name.
+      expect(option?.textContent).toContain('Relay Hardening');
+      expect(option?.textContent).not.toContain('Fix Relay Transport');
     });
   });
 

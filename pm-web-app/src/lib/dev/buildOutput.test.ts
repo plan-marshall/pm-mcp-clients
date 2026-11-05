@@ -1,5 +1,12 @@
-import { describe, it, expect } from 'vitest';
-import { findDevMarkers, DEV_MARKERS } from '../../../scripts/check-build-output.mjs';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import {
+  findDevMarkers,
+  DEV_MARKERS,
+  checkBuildOutput,
+} from '../../../scripts/check-build-output.mjs';
 
 /**
  * The build-output check (PR 260's second ask): `devRouteExclusion` proves its transformations over
@@ -8,6 +15,10 @@ import { findDevMarkers, DEV_MARKERS } from '../../../scripts/check-build-output
  */
 
 describe('the build-output check', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('passes a build without the development page', () => {
     expect(
       findDevMarkers({
@@ -41,5 +52,27 @@ describe('the build-output check', () => {
     expect(findDevMarkers({ 'dev/components.html': '<!doctype html>' })).toEqual([
       'dev/components.html: /dev/components',
     ]);
+  });
+
+  it('reads a build directory and stops the build on a marker', () => {
+    const root = mkdtempSync(join(tmpdir(), 'pm-build-output-'));
+    const build = join(root, 'build');
+    mkdirSync(join(build, '_app', 'immutable', 'entry'), { recursive: true });
+    writeFileSync(join(build, 'index.html'), '<!doctype html>');
+    writeFileSync(
+      join(build, '_app', 'immutable', 'entry', 'app.js'),
+      'const routes={"/dev/components":[1]};',
+    );
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const exit = vi.spyOn(process, 'exit').mockImplementation((code) => {
+      throw new Error(`exit ${String(code)}`);
+    });
+
+    try {
+      expect(() => checkBuildOutput(build)).toThrow('exit 1');
+      expect(exit).toHaveBeenCalledWith(1);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

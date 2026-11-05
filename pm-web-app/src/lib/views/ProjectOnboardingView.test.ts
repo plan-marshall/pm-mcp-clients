@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
-import { get } from 'svelte/store';
 import ProjectOnboardingView from './ProjectOnboardingView.svelte';
 import { apiClient, type ProjectExplorer, type ProjectOnboardingState } from '../api/client';
-import { currentLocale } from '../i18n';
+import { currentLocale, messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
 
 const RUN: ProjectOnboardingState = {
   project_id: 'pm-mcp-clients',
@@ -72,28 +72,41 @@ describe('ProjectOnboardingView component', () => {
 
   it('re-measures the step line when the language switches', async () => {
     vi.spyOn(apiClient, 'getProjectOnboarding').mockResolvedValue(RUN);
-    // jsdom measures nothing, so the line's widths are stubbed: the German labels overflow the box,
-    // the English ones do not.
+    messagesStore.set(loadMessages('de'));
+    currentLocale.set('de');
+    // jsdom measures nothing, so the line's width is derived from the labels actually rendered: a
+    // measurement that ran before the translated labels reached the DOM reads the wrong width.
+    let box = 0;
     vi.spyOn(Element.prototype, 'scrollWidth', 'get').mockImplementation(function (this: Element) {
       if (!(this as HTMLElement).classList?.contains('step-line')) return 0;
-      return get(currentLocale) === 'de' ? 900 : 300;
+      const labels = Array.from(this.querySelectorAll('.step-line__label'));
+      return labels.reduce((sum, label) => sum + (label.textContent?.length ?? 0), 0) * 10;
     });
-    vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(400);
-    currentLocale.set('en');
+    vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(box);
 
     const { container } = render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
     await waitFor(() => expect(screen.getByTestId('project-onboarding-step')).toBeInTheDocument());
-    const line = container.querySelector('.step-line');
+    const line = container.querySelector('.step-line') as HTMLElement;
+    // The German words are on screen before the first measurement, and they fit.
+    expect(line.textContent).toContain('Identität');
+    box = line.scrollWidth + 100;
 
     try {
-      expect(line).toHaveAttribute('tabindex', '-1');
+      // A language whose step names are longer than the ones on screen: the line must be measured
+      // again, not only when the window is resized.
+      const longerEnglish = Object.fromEntries(
+        Object.entries(loadMessages('en')).map(([key, text]) => [
+          key,
+          key.startsWith('onboard.step.') ? `${text} and more of it` : text,
+        ]),
+      );
+      currentLocale.set('en');
+      messagesStore.set(longerEnglish);
 
-      currentLocale.set('de');
-
-      // The line overflows in German now, so it takes the Tab stop without waiting for a resize.
       await waitFor(() => expect(line).toHaveAttribute('tabindex', '0'));
     } finally {
       currentLocale.set('en');
+      messagesStore.set(loadMessages('en'));
     }
   });
 

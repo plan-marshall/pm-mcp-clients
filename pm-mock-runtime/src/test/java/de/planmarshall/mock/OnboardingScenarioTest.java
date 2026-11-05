@@ -370,9 +370,9 @@ class OnboardingScenarioTest {
             try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
                 var client = new UnixSocketHttpClient(runtime.socketPath());
                 var auth = "Bearer " + runtime.token();
-                var record = "{\\\"plans_after_days\\\":45,\\\"epics_after_days\\\":45,"
-                        + "\\\"logs_after_days\\\":45,\\\"reports_after_days\\\":45,"
-                        + "\\\"unenrolled_after_days\\\":45,\\\"remind_after_days\\\":7}";
+                var record = "{\\\"plans_after_days\\\":45,\\\"epics_after_days\\\":46,"
+                        + "\\\"logs_after_days\\\":47,\\\"reports_after_days\\\":48,"
+                        + "\\\"unenrolled_after_days\\\":49,\\\"remind_after_days\\\":7}";
 
                 assertEquals(200, put(client, auth,
                         "{\"key\":\"cleanup_durations\",\"value\":\"" + record + "\",\"revision\":4}"));
@@ -381,7 +381,28 @@ class OnboardingScenarioTest {
                         client.send(HttpRequest.get("/api/v1/machine/settings").withHeader("Authorization", auth)).body(),
                         StandardCharsets.UTF_8));
                 assertEquals(45, settings.cleanupDurations().plansAfterDays());
+                assertEquals(46, settings.cleanupDurations().epicsAfterDays());
+                assertEquals(47, settings.cleanupDurations().logsAfterDays());
+                assertEquals(48, settings.cleanupDurations().reportsAfterDays());
+                assertEquals(49, settings.cleanupDurations().unenrolledAfterDays());
                 assertEquals(7, settings.cleanupDurations().remindAfterDays());
+            }
+        }
+
+        @Test
+        @DisplayName("refuses a cleanup duration below the contract minimum")
+        void shouldRefuseACleanupDurationBelowTheMinimum() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.ONBOARDING)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+                var record = "{\\\"plans_after_days\\\":3,\\\"epics_after_days\\\":45,"
+                        + "\\\"logs_after_days\\\":45,\\\"reports_after_days\\\":45,"
+                        + "\\\"unenrolled_after_days\\\":45,\\\"remind_after_days\\\":7}";
+
+                var refused = put(client, auth,
+                        "{\"key\":\"cleanup_durations\",\"value\":\"" + record + "\",\"revision\":4}");
+
+                assertEquals(400, refused);
             }
         }
 

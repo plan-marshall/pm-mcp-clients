@@ -28,6 +28,10 @@
   let isLoading = false;
   let notice = '';
   let error = '';
+  /** The retention minimum of `doc/design/shared/cleanup.adoc`, refused before it is sent. */
+  const MINIMUM_RETENTION_DAYS = 7;
+  /** The reminder minimum of the same contract. */
+  const MINIMUM_REMIND_DAYS = 1;
   let documentsMode = 'ask';
   let cleanupDays = 30;
   let cleanupRemindDays = 3;
@@ -88,13 +92,19 @@
    * Sends the cleanup durations the page shows: how long work is kept, and the reminder interval.
    *
    * The setting travels as one record, so both figures go in it; the categories the page does not
-   * show keep the values the runtime holds, so saving the visible ones never resets them. An empty
-   * or fractional input writes nothing: the record would otherwise fall back to the defaults.
+   * show keep the values the runtime holds, so saving the visible ones never resets them. A value
+   * outside the contract (`doc/design/shared/cleanup.adoc`: at least seven days, a reminder of at
+   * least one) writes nothing rather than a default the runtime would fill in.
    */
   async function saveCleanup(): Promise<void> {
     const days = Number(cleanupDays);
     const remind = Number(cleanupRemindDays);
-    if (!Number.isInteger(days) || days < 1 || !Number.isInteger(remind) || remind < 1) {
+    if (
+      !Number.isInteger(days) ||
+      days < MINIMUM_RETENTION_DAYS ||
+      !Number.isInteger(remind) ||
+      remind < MINIMUM_REMIND_DAYS
+    ) {
       error = $t('web.settings.update_failed');
       notice = '';
       return;
@@ -363,7 +373,7 @@
           {$t('web.settings.cleanup.keep')}
           <input
             type="number"
-            min="0"
+            min="7"
             bind:value={cleanupDays}
             data-testid="cleanup-days"
             aria-label={$t('web.settings.cleanup.title')}
@@ -372,7 +382,7 @@
         </label>
         <label class="choice">
           {$t('web.settings.cleanup.remind')}
-          <input type="number" min="0" bind:value={cleanupRemindDays} data-testid="cleanup-remind-days" />
+          <input type="number" min="1" bind:value={cleanupRemindDays} data-testid="cleanup-remind-days" />
           {$t('web.settings.cleanup.days_after')}
         </label>
         <Button variant="secondary" on:click={saveCleanup} data-testid="save-cleanup">

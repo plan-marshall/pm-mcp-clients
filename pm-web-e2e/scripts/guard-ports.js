@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { DEFAULT_WEB_PORT, DEFAULT_MOCK_WEB_PORT } from '../tests/helpers/ports.js';
 
 /**
  * The port guard of pm-web-e2e: no test file names a port of its own, a port that is not a number
@@ -19,8 +20,11 @@ const testsDir = path.resolve(moduleDir, 'tests');
 /** The files allowed to name a port: the resolver and this guard's own spec. */
 export const ALLOWED_FILES = new Set(['ports.js', 'port-guard.spec.js']);
 
-/** The default ports no other file may write. */
-export const FORBIDDEN_PORTS = [/\b7420\b/, /\b5173\b/];
+/** The default ports no other file may write, derived from the resolver's own defaults. */
+export const FORBIDDEN_PORTS = [
+  new RegExp(`\\b${DEFAULT_WEB_PORT}\\b`),
+  new RegExp(`\\b${DEFAULT_MOCK_WEB_PORT}\\b`),
+];
 
 /**
  * @param fullPath a file
@@ -68,13 +72,14 @@ export function findPortViolations() {
 /**
  * Runs the resolver in a child process with a value that is not a port.
  *
+ * @param value the PM_WEB_PORT value to try
  * @returns the process result: a non-zero status and the message on stderr are the loud failure
  */
-export function malformedPortRun() {
+export function malformedPortRun(value = 'abc') {
   const helper = pathToFileURL(path.join(testsDir, 'helpers', 'ports.js')).href;
   return spawnSync(process.execPath, ['--input-type=module', '-e', `import('${helper}')`], {
     cwd: moduleDir,
-    env: { ...process.env, PM_WEB_PORT: 'abc' },
+    env: { ...process.env, PM_WEB_PORT: value },
     encoding: 'utf8',
   });
 }
@@ -84,9 +89,9 @@ export function malformedPortRun() {
  */
 export function strictPortIsBound() {
   const config = fs.readFileSync(path.join(moduleDir, '..', 'pm-web-app', 'vite.config.ts'), 'utf8');
-  // Vite increments the port when it is taken unless strictPort is set; AGENTS.md makes an assigned
-  // port that is in use a blocker, not a reason to take another one.
-  return /strictPort:\s*\(process\.env\.PM_WEB_PORT/.test(config);
+  // The behaviour is `holdsAssignedPort()` in pm-web-app/src/lib/ports.ts, covered by its own unit
+  // test; this checks the wiring, so a config that stops binding it fails here.
+  return /^\s*strictPort:\s*holdsAssignedPort\(\),\s*$/m.test(config);
 }
 
 /**

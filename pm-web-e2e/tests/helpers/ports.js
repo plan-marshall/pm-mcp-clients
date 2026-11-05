@@ -30,8 +30,17 @@ function parsePort(name, raw, fallback) {
   return port;
 }
 
-export const WEB_PORT = parsePort('PM_WEB_PORT', process.env.PM_WEB_PORT, 5173);
-export const MOCK_WEB_PORT = parsePort('PM_MOCK_WEB_PORT', process.env.PM_MOCK_WEB_PORT, 7420);
+/** The port the app serves when PM_WEB_PORT is not assigned. */
+export const DEFAULT_WEB_PORT = 5173;
+/** The port the mock runtime listens on when PM_MOCK_WEB_PORT is not assigned. */
+export const DEFAULT_MOCK_WEB_PORT = 7420;
+
+export const WEB_PORT = parsePort('PM_WEB_PORT', process.env.PM_WEB_PORT, DEFAULT_WEB_PORT);
+export const MOCK_WEB_PORT = parsePort(
+  'PM_MOCK_WEB_PORT',
+  process.env.PM_MOCK_WEB_PORT,
+  DEFAULT_MOCK_WEB_PORT,
+);
 export const BASE_URL = `http://localhost:${WEB_PORT}`;
 export const APP_URL = BASE_URL;
 export const MOCK_RUNTIME_URL = `http://127.0.0.1:${MOCK_WEB_PORT}`;

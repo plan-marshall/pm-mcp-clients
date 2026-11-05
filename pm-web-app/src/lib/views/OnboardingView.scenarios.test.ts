@@ -4,6 +4,8 @@ import OnboardingView from './OnboardingView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
 import { apiClient, type OnboardingState } from '../api/client';
+import { currentLocale, messagesStore } from '../i18n';
+import { loadMessages } from '../../test/catalogue-fixture';
 
 /**
  * The onboarding as a view test against the states `pm-mock-runtime` reports.
@@ -368,6 +370,35 @@ describe('OnboardingView against the mock runtime states', () => {
     expect(screen.getByTestId('completed-summary')).toHaveTextContent(
       'Seven steps taken on this machine',
     );
+  });
+
+  it('compares the completed summary with the title of the active language', () => {
+    messagesStore.set(loadMessages('de'));
+    currentLocale.set('de');
+    arrange(
+      onboardingState({
+        state: 'onboard.completed',
+        summary: 'Diese Maschine ist bereit',
+        completed_steps: 7,
+        step_summaries: { '1': 'Deutsch, Modelle Deutsch' },
+      }),
+      7,
+    );
+
+    try {
+      render(OnboardingView);
+
+      // The German title sent back as the summary is not printed twice either.
+      expect(screen.getByTestId('completed-summary')).toHaveTextContent(
+        'Die Einrichtung der Maschine ist abgeschlossen.',
+      );
+      expect(screen.getByTestId('completed-summary')).not.toHaveTextContent(
+        'Diese Maschine ist bereit',
+      );
+    } finally {
+      messagesStore.set(loadMessages('en'));
+      currentLocale.set('en');
+    }
   });
 
   it('opens a done step from the step bar as a read-only summary', async () => {
