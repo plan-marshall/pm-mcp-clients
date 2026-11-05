@@ -4,8 +4,8 @@
   "workstream": "WS-03",
   "status": "running",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "89-web-palette-hardening",
+  "pr": "305",
+  "landing": "landings/PLAN-89.md",
   "seq": 89
 }

@@ -11,7 +11,7 @@ workstream: WS-04
 
 ## Objective
 
-Close the findings of CodeRabbit on `pm-operator` (and the `pm-api` records it reads) that were never fixed and never answered with a reason: the system view of PLAN-26, the console and onboarding flow of PLAN-13 and PLAN-22, and the runtime acts of PLAN-17. They were found by reading review BODIES and unresolved threads. The Ctrl+C work of PLAN-91 is not here: it is `PLAN-92` (running). One pull request.
+Close the findings of CodeRabbit on `pm-operator` (and the `pm-api` records it reads) that were never fixed and never answered with a reason: the system view of PLAN-26, the console and onboarding flow of PLAN-13 and PLAN-22, and the runtime acts of PLAN-17. They were found by reading review BODIES and unresolved threads. The Ctrl+C work of PLAN-91 was `PLAN-92` (shipped 2026-11-02, `c7d9dcb8`); its open clauses are deliverable 5. One pull request.
 
 ## Deliverables
 
@@ -43,6 +43,13 @@ Close the findings of CodeRabbit on `pm-operator` (and the `pm-api` records it r
    - Done when:
      - The re-ask assertion counts a prompt event (the question text the dialogue draws on a re-ask), not a title; it fails when the dialogue stops re-asking (evidence order: `mutation-after`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is fixed or dismissed with a stated reason (evidence order: `none`)
+5. **What PLAN-92 left open (`landings/PLAN-92.md`)**
+   - What: (a) FUNCTIONAL, first: `WebCommand.confirm()` (~642-657, existed before PLAN-92) returns `true` for a null answer and for `IOException | RuntimeException`, so an end of input (Ctrl+D) or a read failure at the revoke prompt CONFIRMS the destructive DELETE; only the interrupt was carved out. A null or failed read must not confirm (treat it as leaving, like `b`; decide the exit code from the dialogue rules and say which). (b) `StartPrompt.reader()` (~211) opens a provider terminal that is never closed on a direct verb without a terminal scope. (c) `ownsTerminal` compares only the innermost scope and `clearTerminal()` pops without checking which terminal it pops (harmless while every scope pushes the same terminal): make it check, and `OperatorContextTerminalTest.scopesNest` (its final `assertSame` cannot fail because the provider is `view::terminal`) must be able to fail. (d) The `web devices` action-prompt rethrow (`WebCommand` ~473) has no test (only revoke is tested); the ended-chat leave-back mapping to 0 (`OperatorActions` ~108, `ActionSupport` ~288, lane finding F15) has no test; `SystemFullScreenTest.aFailedSystemReadKeepsTheStatusLine` does not assert that the 500 read happened and both new System tests set the console active (they are not direct-verb runs). (e) PLAN-92's deliverable 3 clauses that stayed open: a `projects` verb test for Ctrl+C (`ProjectsFullScreenTest` has none; its view fixture reconnects before the menu opens); an assertion on the terminal attributes beside alternate screen and cursor; `InterruptDialogueIT` waits 700 ms of quiet (`SETTLE`, ~46, ~154-169): wait on a condition; `ReadVerbExitCodesTest` `refusedReads()` is a hand list (the `project <id>` gap CodeRabbit named): derive it from the registered read verbs, or answer it with the reason the registry cannot give one; the token-row tie and the summary assertion of `SystemViewConsistencyTest` (CodeRabbit, PR 303; the lane's attempt was reverted because the rendered summary carries a floor marker: assert the marker). (f) `WebDevicesCommandTest` ~410: malformed formatting with fully qualified types, `Generators` called in a static `@MethodSource` outside the controller's seed, and the literal input `"iPad Oliver"`. (g) The keystroke of `ViewDialogueInterruptIT` and `DirectDialogueInterruptIT` is typed right after `awaitText` with no reader-ready condition (flake risk, inferred): add the condition or show it cannot race.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-java:java-core, pm-dev-java:junit-core, pm-dev-java:junit-integration, pm-dev-java-cui:cui-testing
+   - Done when:
+     - A test for (a) fails before: an end of input and a failed read at the revoke prompt send no DELETE (evidence order: `test-first`)
+     - Items (b) to (g) each have a test that fails when the code it covers is reverted, or a recorded decision with the reason (evidence order: `mutation-after`)
 
 ## Standing Constraints
 
@@ -65,7 +72,11 @@ Close the findings of CodeRabbit on `pm-operator` (and the `pm-api` records it r
 - HYPOTHESIS: a linkless non-final frame lets `onboard` exit 0 (unverified by CodeRabbit and by the auditing agent)
 - HYPOTHESIS: `OnboardingDialogueIT` is still `@Disabled` — confirm at the file
 - Source: `landings/coderabbit-audit/` (PRs 232, 270, 275, 292, 299), the review bodies of `coderabbitai`.
+- OBSERVED: `WebCommand.confirm()` returns `true` for a null answer and for `IOException | RuntimeException` — read by the orchestrator at `c7d9dcb8` (landings/PLAN-92.md lead 1)
+- HYPOTHESIS: items (b) to (g) of deliverable 5 — read by the analysing agent at `c7d9dcb8`, not re-read by the orchestrator (verify-at-outline)
 - Verify-first clause: before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted finding re-scopes the deliverable and is reported, never silently worked around.
+
+- Sequencing (2026-11-04): PLAN-97 (staged) folds or removes the top-level verbs `start`, `onboard`, `abort` and `unenrol` and rewrites the drain and accept-edit handlers; it starts after this plan lands. Do not add work to a handler that PLAN-97 removes without saying so.
 
 ## Expected Surface
 
@@ -84,11 +95,25 @@ Close the findings of CodeRabbit on `pm-operator` (and the `pm-api` records it r
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/OnboardingDialogueIT.java` — present at HEAD 94bbefe1
 - OBSERVED: `pm-api/src/main/resources/messages/projects.en.properties` and `projects.de.properties` — present at HEAD 94bbefe1
 - OBSERVED: `doc/design/terminal-client/04-console.adoc` — present at HEAD 94bbefe1
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WebCommand.java` — present at HEAD c7d9dcb8 (deliverable 5)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/StartPrompt.java` — present at HEAD c7d9dcb8 (deliverable 5)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/OperatorContext.java` — present at HEAD c7d9dcb8 (deliverable 5)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/OperatorActions.java` — present at HEAD c7d9dcb8 (deliverable 5)
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ActionSupport.java` — present at HEAD c7d9dcb8 (deliverable 5)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/OperatorContextTerminalTest.java` — present at HEAD c7d9dcb8 (deliverable 5)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ProjectsFullScreenTest.java` — present at HEAD c7d9dcb8 (deliverable 5)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/ReadVerbExitCodesTest.java` — present at HEAD c7d9dcb8 (deliverable 5)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/SystemFullScreenTest.java` — present at HEAD c7d9dcb8 (deliverable 5)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/SystemViewConsistencyTest.java` — present at HEAD c7d9dcb8 (deliverable 5)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/WebDevicesCommandTest.java` — present at HEAD c7d9dcb8 (deliverable 5)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/DirectDialogueInterruptIT.java` — present at HEAD c7d9dcb8 (deliverable 5)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/InterruptDialogueIT.java` — present at HEAD c7d9dcb8 (deliverable 5)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/ViewDialogueInterruptIT.java` — present at HEAD c7d9dcb8 (deliverable 5)
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-26` (shipped), `PLAN-17` (shipped), `PLAN-91` (shipped)
-- Overlaps with: `PLAN-92` (running; `OnboardCommand`, the handlers and `PmOperator` — emit this plan after PLAN-92 lands, and re-read both landings first), `PLAN-95` (`DialogueSourceTest` stays there), `PLAN-21`, `PLAN-23`, `PLAN-30`, `PLAN-36`, `PLAN-42` (name `PmConsole`, `EntryFlow` or the operator catalogue pair), `PLAN-79`
+- Depends on: `PLAN-26` (shipped), `PLAN-17` (shipped), `PLAN-91` (shipped), `PLAN-92` (shipped 2026-11-02, `c7d9dcb8`: read `landings/PLAN-92.md`)
+- Overlaps with: `PLAN-95` (`DialogueSourceTest` stays there), `PLAN-21`, `PLAN-23`, `PLAN-30`, `PLAN-36`, `PLAN-42` (name `PmConsole`, `EntryFlow` or the operator catalogue pair), `PLAN-79`
 - Adjacent to: the D26 clients package (removes top-level verbs)
 
 ## Hand-Off Command
