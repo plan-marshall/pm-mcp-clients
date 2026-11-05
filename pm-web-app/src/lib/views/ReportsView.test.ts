@@ -1177,6 +1177,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(markReadItem);
 
     await waitFor(() => {
+      expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
       expect(secondCardTrigger).toHaveFocus();
     });
   });
@@ -1206,6 +1207,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(await within(card).findByRole('menuitem', { name: /Mark read/i }));
 
     await waitFor(() => {
+      expect(screen.queryByText('Only report')).toBeNull();
       expect(document.querySelector('.reports-heading')).toHaveFocus();
     });
   });
@@ -1244,6 +1246,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(await within(card1).findByRole('menuitem', { name: /Mark read/i }));
 
     await waitFor(() => {
+      expect(screen.queryByText('Only report')).toBeNull();
       expect(document.querySelector('.reports-heading')).toHaveFocus();
     });
   });
@@ -1372,5 +1375,63 @@ describe('ReportsView component', () => {
     const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
     await fireEvent.click(markAllBtn);
     expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(undefined);
+  });
+
+  it('tracks unreadCount accurately and prevents double decrements on duplicate events (D3e)', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    expect(screen.getByTestId('unread-count')).toHaveTextContent('3 unread reports');
+
+    // Mark one report read via API
+    const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+    await fireEvent.click(within(card).getByRole('button', { name: /Report actions/i }));
+    await fireEvent.click(await within(card).findByRole('menuitem', { name: /Mark read/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+    });
+
+    // Duplicate event arriving for same report does not double decrement
+    eventHandler?.('report.read', { id: 'rep-0142' });
+    await tick();
+
+    expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+  });
+
+  it('retains the open report beside the detail during a filtered mark-all and drops it when detail closes (D3e)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    // Filter to relay items
+    await typeFilter('relay');
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+
+    // Open detail for fix-relay
+    const detailBtn = screen.getAllByRole('button', { name: /Show the details/i })[0];
+    await fireEvent.click(detailBtn);
+    await waitFor(() => {
+      expect(document.querySelector('.report-title')).not.toBeNull();
+    });
+
+    // Mark all matching read
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+
+    // Filtered mark-all called with matching IDs
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(['rep-0142']);
+
+    // The selected report stays retained in list beside open detail
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+
+    // Close detail
+    const backBtn = screen.getByRole('button', { name: /^Back$/i });
+    await fireEvent.click(backBtn);
+
+    // Retained row is now flushed from list
+    await waitFor(() => {
+      expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
+    });
   });
 });
