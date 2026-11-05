@@ -241,9 +241,10 @@ describe('the app shell', () => {
     render(Layout);
 
     expect(await screen.findByTestId('draining-more')).toHaveTextContent('+2 more');
+    expect(within(screen.getByTestId('draining-list')).getAllByRole('listitem')).toHaveLength(3);
   });
 
-  it('asks before Stop now and shows the refusal of a withdraw', async () => {
+  it('asks before Stop now and clears the drain when the runtime takes it', async () => {
     localStorage.setItem('pm_device_secret', 'pmw_valid');
     vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
       ...STATUS,
@@ -266,11 +267,6 @@ describe('the app shell', () => {
     const stopNow = vi
       .spyOn(apiClient, 'stopRuntime')
       .mockResolvedValue({ lifecycle_state: 'stopping' });
-    let refuseWithdraw: (reason: Error) => void = () => {};
-    const pending = new Promise<void>((_resolve, reject) => {
-      refuseWithdraw = reject;
-    });
-    const withdraw = vi.spyOn(apiClient, 'withdrawStop').mockReturnValue(pending);
 
     render(Layout);
     const banner = await screen.findByTestId('draining-banner');
@@ -281,8 +277,42 @@ describe('the app shell', () => {
     );
     expect(stopNow).not.toHaveBeenCalled();
     await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
-    expect(stopNow).toHaveBeenCalledWith('now');
+    expect(stopNow).toHaveBeenCalledWith('now', undefined, expect.anything());
 
+    // The accepted stop ends the drain at once, even before a lifecycle event arrives.
+    await waitFor(() => {
+      expect(screen.queryByTestId('draining-banner')).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows the refusal of a withdraw and ignores a second click', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...STATUS,
+      lifecycle_state: 'draining',
+      draining_by: 'the console',
+      drain_remaining_items: ['build of fix-relay'],
+    });
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isDraining: true,
+        drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
+      }),
+    );
+    let refuseWithdraw: (reason: Error) => void = () => {};
+    const pending = new Promise<void>((_resolve, reject) => {
+      refuseWithdraw = reject;
+    });
+    const withdraw = vi.spyOn(apiClient, 'withdrawStop').mockReturnValue(pending);
+
+    render(Layout);
+    const banner = await screen.findByTestId('draining-banner');
     await fireEvent.click(within(banner).getByRole('button', { name: 'Withdraw the stop' }));
     await fireEvent.click(within(banner).getByRole('button', { name: 'Withdraw the stop' }));
     expect(withdraw).toHaveBeenCalledOnce();

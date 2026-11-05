@@ -361,6 +361,10 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 |The stop now could not be started: {reason}.
 |Der Stopp jetzt konnte nicht gestartet werden: {reason}.
 
+|`system.stopping.stop_now_unknown`
+|The stop now was sent but not confirmed; check the runtime state.
+|Der Stopp jetzt wurde gesendet, aber nicht bestätigt; prüfe den Zustand der Runtime.
+
 |`system.stopped.title`
 |The runtime is stopped ({who}, {time}).
 |Die Runtime ist gestoppt ({who}, {time}).

@@ -293,7 +293,7 @@
       first.focus();
       return;
     }
-    if (event.shiftKey && active === first) {
+    if (event.shiftKey && (active === first || active === dialogElement)) {
       event.preventDefault();
       last.focus();
       return;
@@ -342,7 +342,7 @@
       return;
     }
     if (id === 'resolve_hold') {
-      openHold();
+      void openHold();
       return;
     }
     if (id === 'report') {
@@ -393,16 +393,19 @@
    *
    * The bar is disabled while the act runs, so the focus returns to it when `busy` clears.
    */
-  function confirmEpicCancel(): void {
+  async function confirmEpicCancel(): Promise<void> {
     const reason = cancelReason.trim();
-    if (!reason) {
+    if (!reason || busy) {
       return;
     }
     const from = document.activeElement;
+    // The dialog stays open while the act runs: its busy guard ignores a second confirm, and a
+    // refusal leaves the dialogue in place so the reason can be corrected and sent again.
+    const accepted = await handleAction('cancel', { with_plans: cancelWithPlans, reason });
+    if (!accepted) {
+      return;
+    }
     epicCancelOpen = false;
-    // The act sets `busy` synchronously before its first await, so the focus target is recorded
-    // after the call: the effect must not run against an enabled bar.
-    void handleAction('cancel', { with_plans: cancelWithPlans, reason });
     focusAfterBusy =
       document.querySelector<HTMLElement>('[data-testid="action-bar-overflow"]') ??
       (from instanceof HTMLElement ? from : null);
@@ -451,6 +454,9 @@
     chat = null;
     endedProposal = null;
     dialog = null;
+    epicCancelOpen = false;
+    cancelWithPlans = true;
+    cancelReason = '';
     void load();
   });
 
@@ -482,27 +488,35 @@
     return err instanceof Error ? err.message : String(err);
   }
 
+  /**
+   * Applies an act and says whether the runtime accepted it, so a dialog can stay open on a
+   * refusal instead of closing over the reason the operator has to correct.
+   *
+   * @param action the act's id
+   * @param payload the act's named parameters
+   * @returns `true` when the act went through
+   */
   async function handleAction(
     action: string,
     payload: Record<string, unknown> = {},
-  ): Promise<void> {
+  ): Promise<boolean> {
     notice = '';
     failure = '';
     if (action === 'settings') {
       await openSettings();
-      return;
+      return true;
     }
     if (action === 'chat') {
       await openChat();
-      return;
+      return true;
     }
     if (subjectKind === 'epic' && (action === 'findings' || action === 'watches')) {
       onReview(action === 'findings' ? 'findings' : 'watches');
-      return;
+      return true;
     }
     if (subjectKind === 'epic' && action === 'decompose') {
       onDecompose();
-      return;
+      return true;
     }
     busy = true;
     const previousAuto = actions?.auto_enabled;
@@ -519,8 +533,10 @@
       notice = noticeFor(action, wanted, previousAuto, response);
       await load();
       onChanged();
+      return true;
     } catch (err: unknown) {
       failure = $t('control.action.failed', { reason: reasonOf(err) });
+      return false;
     } finally {
       busy = false;
     }
@@ -736,8 +752,19 @@
     holdOutcome = null;
   }
 
-  function openHold(): void {
+  /**
+   * Opens the hold on a fresh read: an earlier read may have failed, and the dialogue needs the
+   * hold the runtime reports now. A failed read is reported instead of leaving a silent click.
+   */
+  async function openHold(): Promise<void> {
     holdOutcome = null;
+    if (subjectKind === 'plan') {
+      try {
+        holds = await apiClient.getPlanHolds(subjectId);
+      } catch (err: unknown) {
+        failure = $t('control.hold.act_failed', { reason: reasonOf(err) });
+      }
+    }
     holdOpen = true;
   }
 </script>
@@ -1006,6 +1033,9 @@
   </label>
   {#if !cancelReason.trim()}
     <p class="control-dialog__hint">{$t('control.end.reason_required')}</p>
+  {/if}
+  {#if failure}
+    <p class="control-dialog__hint" role="alert" data-testid="epic-cancel-failure">{failure}</p>
   {/if}
 </ConfirmDialog>
 

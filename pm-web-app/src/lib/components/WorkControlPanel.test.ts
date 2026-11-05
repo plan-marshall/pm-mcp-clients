@@ -253,6 +253,36 @@ describe('WorkControlPanel component', () => {
     });
   });
 
+  it('keeps the epic cancel dialogue open when the runtime refuses it, and clears it with the subject', async () => {
+    vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue({
+      subject_id: 'relay-hardening',
+      subject_kind: 'epic',
+      state: 'running',
+      overlap_max_files: 0,
+      actions: [{ action: 'cancel', available: true }],
+    });
+    vi.spyOn(apiClient, 'applyEpicAction').mockRejectedValue(new Error('the epic is landing'));
+    const { rerender } = render(WorkControlPanel, {
+      props: { subjectId: 'relay-hardening', subjectKind: 'epic' },
+    });
+
+    await openOverflow();
+    await fireEvent.click(screen.getByTestId('action-cancel'));
+    await screen.findByTestId('confirm-dialog');
+    await fireEvent.input(screen.getByTestId('epic-cancel-reason'), {
+      target: { value: 'superseded' },
+    });
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+
+    expect(await screen.findByTestId('epic-cancel-failure')).toHaveTextContent('the epic is landing');
+    expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument();
+
+    await rerender({ subjectId: 'relay-docs', subjectKind: 'epic' });
+    await waitFor(() => {
+      expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument();
+    });
+  });
+
   it('names no plan count when the view does not know how many run', async () => {
     vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue({
       subject_id: 'relay-hardening',
@@ -338,8 +368,10 @@ describe('WorkControlPanel component', () => {
     );
     const last = buttons[buttons.length - 1];
     last.focus();
-    await fireEvent.keyDown(last, { key: 'Tab' });
-    expect(dialog.contains(document.activeElement)).toBe(true);
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    last.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(true);
+    expect(document.activeElement).toBe(buttons[0]);
   });
 
   it('closes a dialogue on Escape and gives the focus back', async () => {
@@ -387,6 +419,7 @@ describe('WorkControlPanel component', () => {
     await fireEvent.click(screen.getByTestId('action-report'));
 
     await waitFor(() => expect(window.location.pathname).toBe('/reports'));
+    expect(window.location.search).toContain('plan=fix-relay');
     expect(apply).not.toHaveBeenCalled();
   });
 
@@ -409,9 +442,13 @@ describe('WorkControlPanel component', () => {
     const apply = vi.spyOn(apiClient, 'applyPlanAction').mockResolvedValue(running);
     render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
 
+    // The modal opens with the load; close it so only the act can open it again.
+    await fireEvent.click(await screen.findByTestId('hold-close-button'));
+    await waitFor(() => expect(screen.queryByTestId('hold-modal')).not.toBeInTheDocument());
+
     await fireEvent.click(await screen.findByTestId('action-resolve_hold'));
 
-    expect(screen.getByTestId('hold-modal')).toBeInTheDocument();
+    expect(await screen.findByTestId('hold-modal')).toBeInTheDocument();
     expect(apply).not.toHaveBeenCalledWith('fix-relay', 'resolve_hold', expect.anything());
   });
 

@@ -2932,6 +2932,7 @@ export class ApiClient {
   public async stopRuntime(
     when: 'drain' | 'now',
     then?: 'restart' | 'upgrade',
+    signal?: AbortSignal,
   ): Promise<{ lifecycle_state: string }> {
     const body: Record<string, unknown> = {
       now: when === 'now',
@@ -2941,7 +2942,7 @@ export class ApiClient {
       // NOSONAR: typescript:S7739 - external wire contract requires 'then' property
       Reflect.set(body, 'then', then);
     }
-    return this.request<{ lifecycle_state: string }>('POST', '/api/v1/runtime/stop', body);
+    return this.request<{ lifecycle_state: string }>('POST', '/api/v1/runtime/stop', body, signal);
   }
 
   public async withdrawStop(): Promise<void> {

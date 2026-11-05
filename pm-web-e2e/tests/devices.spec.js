@@ -113,19 +113,6 @@ test.describe('Paired Devices Flow (UC-ENT-2)', () => {
     await expect(page.getByTestId('revoked-view')).toBeVisible();
   });
 
-  test('does not read a mounted dialog as an act at rest', async ({ page }) => {
-    const row = page.getByTestId('device-row-dev-3');
-    await openOverflow(row);
-    await row.getByTestId('action-revoke').click();
-    await expect(page.getByTestId('confirm-dialog')).toBeVisible();
-
-    const refused = await expectNothingRedAtRest(page, { timeout: 500 }).then(
-      () => false,
-      () => true,
-    );
-    expect(refused).toBe(true);
-  });
-
   test('asks for the typed name before revoking all others', async ({ page }) => {
     const section = page.getByTestId('devices-section-acts');
     await section.getByTestId('action-bar-overflow').click();

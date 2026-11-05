@@ -244,6 +244,21 @@ test.describe('Controlling work (UC-CTL-1..5)', () => {
     await expect(menu.getByTestId('action-archive')).toBeVisible();
   });
 
+  test('does not read a mounted dialog as an act at rest', async ({ page, request }) => {
+    await pairBrowser(page, request);
+    await page.goto('/plans/fix-relay');
+
+    // The pause dialogue has no danger act, so only the mounted-dialog guard can refuse it.
+    await page.getByTestId('action-pause').click();
+    await expect(page.getByTestId('control-dialog-pause')).toBeVisible();
+
+    const refused = await expectNothingRedAtRest(page, { timeout: 500 }).then(
+      () => false,
+      () => true,
+    );
+    expect(refused).toBe(true);
+  });
+
   test('reaches a disabled overflow act with the keyboard and names its reason', async ({
     page,
     request,

@@ -49,10 +49,11 @@
   /** Whether "Stop now" asks for its own short confirmation. */
   let stopNowConfirm = $state(false);
 
-  // A drain that ends while the short confirmation is open leaves nothing to confirm.
+  // A drain that ends leaves nothing to confirm, and its refusal belonged to that drain alone.
   $effect(() => {
-    if (!$runtimeStore.isDraining && stopNowConfirm) {
+    if (!$runtimeStore.isDraining) {
       stopNowConfirm = false;
+      drainingFailure = '';
     }
   });
 
@@ -99,6 +100,9 @@
     }
   }
 
+  /** How long the stop-now request may wait for the runtime before the outcome is unknown. */
+  const STOP_NOW_TIMEOUT_MS = 15_000;
+
   /** Turns the drain into the stop now the confirmation asked for. */
   async function confirmStopNow(): Promise<void> {
     if (drainingBusy) {
@@ -107,12 +111,18 @@
     drainingBusy = true;
     drainingFailure = '';
     try {
-      await apiClient.stopRuntime('now');
+      await apiClient.stopRuntime('now', undefined, AbortSignal.timeout(STOP_NOW_TIMEOUT_MS));
       stopNowConfirm = false;
+      // The stop ends the drain; the lifecycle event may be missed on a dropped stream.
+      runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
     } catch (err: unknown) {
       // The refusal belongs in the banner; the short confirmation has done its work.
       stopNowConfirm = false;
-      drainingFailure = $t('system.stopping.stop_now_failed', { reason: refusalOf(err) });
+      const name = (err as Error)?.name;
+      const unknownOutcome = name === 'TimeoutError' || name === 'AbortError';
+      drainingFailure = unknownOutcome
+        ? $t('system.stopping.stop_now_unknown')
+        : $t('system.stopping.stop_now_failed', { reason: refusalOf(err) });
     } finally {
       drainingBusy = false;
     }
@@ -249,7 +259,7 @@
           {/if}
           {#if drainItems.length > 0}
             <ul class="draining-list" data-testid="draining-list">
-              {#each drainItems as item, index (index)}
+              {#each drainItems.slice(0, 3) as item, index (index)}
                 <li>{item}</li>
               {/each}
             </ul>
