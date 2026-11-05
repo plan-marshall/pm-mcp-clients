@@ -49,6 +49,21 @@ Square and ghost: one glyph, no visible label, the hover advisory from the view'
 
 Source and surface: `pm-web-app/src/lib/components/IconButton.svelte`, tests in `Button.test.ts`; the props are `icon`, `label`, `advisory`, `size` (`sm` 28 px, `md` 34 px, `lg` 40 px), `disabled` and `disabledReason`.
 
+[#row-menu]
+=== RowMenu
+
+The WAI-ARIA menu button pattern for card-based views and lists that do not use `DataTable` (such as `ReportsView`). While `DataTable` provides tabular layouts with a dedicated menu column, card layouts require their own contextual popup menu co-located with each card's actions.
+
+`RowMenu` uses `IconButton` as its trigger (`act.more`), names its row through `label` (and an optional `visibleLabel`), and manages its popup menu with full keyboard navigation:
+* `ArrowDown` and `ArrowUp` move between enabled menu items with wrapping.
+* `Home` and `End` jump to the first and last menu items.
+* `Escape` closes the menu and restores focus to the trigger.
+* `Tab` closes the menu and restores focus to the trigger (preventing focus loss into the document body).
+* Clicking outside the menu closes it.
+* Activating an item closes the menu and executes the item's action.
+
+Source and surface: `pm-web-app/src/lib/components/RowMenu.svelte`, tests in `RowMenu.test.ts`; the props are `items` (`id`, `label`, `title`, `disabled`, `onclick`), `label`, `visibleLabel`, `advisory`, `icon`, `size`, `disabled`, and forwarded button attributes.
+
 [#action-bar]
 === ActionBar
 

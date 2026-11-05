@@ -130,7 +130,7 @@
     <!-- Header bar -->
     <header class="report-header">
       <div class="report-header__headline">
-        <h1 class="report-title">{data.plan_id}</h1>
+        <h2 class="report-title">{data.plan_id}</h2>
         <StatusLabel tone={outcomeTone(data.outcome)} label={$t('overview.ended.outcome', { outcome: data.outcome })} />
         {#if data.pull_request_number}
           <a
