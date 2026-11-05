@@ -57,6 +57,14 @@ Close the findings of CodeRabbit on the mock runtime (`pm-mock-runtime`) that we
      - Tests that fail before: after a withdrawal no `runtime.draining` event reaches a client and `lifecycle_state` stays `running`; a four-item drain emits four shrink steps and ends; a two-item drain shows "1 left" and then empties on its last step (evidence order: `test-first`)
      - The two threads are replied to with the commit and resolved (evidence order: `none`)
 
+7. **The Sonar issues of PLAN-93 (zero-findings policy)** (PLAN-93 residue, `landings/PLAN-93.md`)
+   - What: PR 319 merged with 3 open new-code Sonar issues and a fix on a side branch `fix/93-sonar-residue` (commit `8f3ca37`, not rebased on the squash-merged main: take its two changes, do not merge the branch). (a) `java:S1192` in `MockRuntimeEngine.java` (~8702): the `remind_after_days` literal is replaced by the existing constant `KEY_REMIND_AFTER_DAYS`; check whether two literals at ~8722/8729 stay below the rule's threshold. (b) `java:S6213` is the rule "Restricted Identifiers should not be used as Identifiers", NOT near-identical tests: rename every variable and parameter named `record` in `OnboardingScenarioTest.java` (`var record` at ~373 and ~398 at `4dcf77b1`; the side branch keeps one and adds a parameter named `record`). Merging the two near-identical refusal tests into one `@ParameterizedTest` is welcome but is not the fix. (c) Read the open new-code issues of your own pull request at its head and fix all of them (the zero-findings policy). (d) Lead: the mock keeps the bare-integer path "an older client sends" for `cleanup_durations`; pre-1.0 forbids compatibility shims: remove it unless the design asks for it, and say which.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-java:java-core, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
+   - Done when:
+     - No variable or parameter named `record` remains in the file, the literal is the constant, and the open-issue read at the head is a confirmed `0` (evidence order: `none`)
+     - The bare-integer path is removed with a test that fails before, or kept with the design line that asks for it (evidence order: `test-first`)
+
 ## Standing Constraints
 
 - Build and test through Maven only (CLAUDE.md): `./mvnw -pl pm-mock-runtime -am verify` and `./mvnw -pl pm-operator -am verify` pass at the head (the operator and the web e2e suite run against this mock).
