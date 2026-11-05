@@ -418,7 +418,10 @@ public final class PmConsole {
             if (hold) {
                 leaveFullScreen(out);
             }
-            context.clearTerminal(terminal);
+            try {
+                context.clearTerminal(terminal);
+            } catch (IllegalStateException _) {
+            }
             // A view's acts can change what waits too: the prompt and the title are rebuilt from
             // the state the runtime reports once the view is gone.
             refreshSetupBadge(locale(), terminal);

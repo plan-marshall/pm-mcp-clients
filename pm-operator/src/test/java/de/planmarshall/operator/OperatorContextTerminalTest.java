@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -140,6 +141,42 @@ class OperatorContextTerminalTest {
                 assertSame(provided.terminal(), lease.terminal());
             }
             assertTrue(provided.isClosed(), "a terminal the context created is closed with its lease");
+        }
+    }
+
+    @Test
+    @DisplayName("an exception in try is not masked by clearTerminal and owned terminal is closed")
+    void clearTerminalFailureDoesNotMaskTryExceptionAndClosesOwnedTerminal() throws Exception {
+        try (var outer = VirtualScreenTerminal.create(80, 24);
+             var owned = VirtualScreenTerminal.create(80, 24)) {
+            var context = new OperatorContext(Map.of(), tempDir, true,
+                                ClientEnvironment.capture(Map.of()), owned::terminal, null);
+
+            var terminal = context.createTerminal();
+            assertTrue(context.ownsTerminal(terminal));
+
+            // Set up an invalid innermost scope so clearTerminal(terminal) throws IllegalStateException
+            context.useTerminal(outer.terminal());
+
+            var thrown = assertThrows(IllegalArgumentException.class, () -> {
+                try {
+                    throw new IllegalArgumentException("original error");
+                } finally {
+                    if (context.ownsTerminal(terminal)) {
+                        try {
+                            terminal.close();
+                        } catch (IOException _) {
+                        }
+                    }
+                    try {
+                        context.clearTerminal(terminal);
+                    } catch (IllegalStateException _) {
+                    }
+                }
+            });
+
+            assertEquals("original error", thrown.getMessage());
+            assertTrue(owned.isClosed(), "owned terminal is closed despite clearTerminal throwing");
         }
     }
 }

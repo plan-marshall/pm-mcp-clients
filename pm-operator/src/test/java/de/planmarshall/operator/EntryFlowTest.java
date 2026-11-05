@@ -458,6 +458,7 @@ class EntryFlowTest {
 
             var result = new EntryFlow(context).run(new PrintWriter(writer), createReader("h\nq\n"));
 
+            assertEquals(2, statusReads.get(), "the second status read was attempted");
             assertEquals(List.of("setup 0/7"), result.initialBadges(), writer.toString());
         }
 

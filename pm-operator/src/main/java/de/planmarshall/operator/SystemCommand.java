@@ -157,13 +157,16 @@ public final class SystemCommand implements Callable<Integer> {
         } catch (IOException _) {
             return null;
         } finally {
-            context.clearTerminal(terminal);
             if (context.ownsTerminal(terminal)) {
                 try {
                     terminal.close();
                 } catch (IOException _) {
                     // The terminal is gone; the snapshot is printed all the same.
                 }
+            }
+            try {
+                context.clearTerminal(terminal);
+            } catch (IllegalStateException _) {
             }
         }
     }

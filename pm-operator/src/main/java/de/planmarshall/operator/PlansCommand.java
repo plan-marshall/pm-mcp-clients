@@ -105,11 +105,17 @@ public final class PlansCommand implements Callable<Integer> {
             }
             return delegateToStatus();
         } finally {
-            if (lendsTerminal) {
-                context.clearTerminal(terminal);
-            }
             if (context.ownsTerminal(terminal)) {
-                terminal.close();
+                try {
+                    terminal.close();
+                } catch (IOException _) {
+                }
+            }
+            if (lendsTerminal) {
+                try {
+                    context.clearTerminal(terminal);
+                } catch (IllegalStateException _) {
+                }
             }
         }
     }

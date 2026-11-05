@@ -265,13 +265,19 @@ class SystemLevelTest {
     @Test
     @DisplayName("the root rows and the selection share one figure-to-id mapping")
     void derivesTheRootRowIdsFromTheFigureMapping() {
+        var figures = SystemView.root(sampleSnapshot(), "en", SystemWindow.HOUR, "model");
         var rows = level().rows("en", SystemLevel.Section.ROOT);
 
-        assertEquals(SystemLevel.Figure.values().length, rows.size());
-        for (var row : rows) {
-            var figure = SystemLevel.figureOf(row.id());
-            assertNotNull(figure, row.id());
-            assertEquals(row.id(), figure.rowId(), figure.name());
+        assertEquals(figures.size(), rows.size());
+        for (int i = 0; i < figures.size(); i++) {
+            var figure = figures.get(i);
+            var row = rows.get(i);
+            assertEquals(figure.id(), row.id());
+            assertEquals(SystemView.rowLine(figure), row.line());
+            assertEquals(SystemView.rowDetails(figure), row.details());
+            var levelFigure = SystemLevel.figureOf(row.id());
+            assertNotNull(levelFigure, row.id());
+            assertEquals(row.id(), levelFigure.rowId(), levelFigure.name());
         }
         assertNull(SystemLevel.figureOf("sys:workers:0"));
     }

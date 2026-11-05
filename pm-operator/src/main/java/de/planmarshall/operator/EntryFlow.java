@@ -235,7 +235,7 @@ public final class EntryFlow {
         }
         out.flush();
         runOnboardingDialogue(runtime, out, reader, locale);
-        return refreshedAfterDialogue(runtime, status, badges);
+        return refreshedAfterDialogue(runtime, status, cBadges);
     }
 
     /**
@@ -244,13 +244,14 @@ public final class EntryFlow {
      * A refresh that cannot be read keeps what the entry flow already had: the dialogue does not
      * make the entry result worse, so the console still opens with a status and badges.
      *
-     * @param runtime the runtime client
-     * @param status  the status the entry flow read before the dialogue
-     * @param badges  the badges the entry flow built before the dialogue
+     * @param runtime       the runtime client
+     * @param status        the status the entry flow read before the dialogue
+     * @param consoleBadges the badges the entry flow built before the dialogue
      * @return the entry result with the refreshed status and badges, or the pre-dialogue ones
      */
     private EntryResult refreshedAfterDialogue(RuntimeClient runtime, Map<String, Object> status,
-                        List<String> badges) {
+                        List<ConsoleBadge> consoleBadges) {
+        var strBadges = consoleBadges.stream().map(ConsoleBadge::text).toList();
         try {
             var refreshed = StatusCommand.fetch(runtime);
             var loc = context.clientEnvironment().locale();
@@ -259,7 +260,7 @@ public final class EntryFlow {
             return new EntryResult(refreshed, cBadges.stream().map(ConsoleBadge::text).toList(),
                                 null, null, cBadges);
         } catch (IOException _) {
-            return new EntryResult(status, badges, null, null);
+            return new EntryResult(status, strBadges, null, null, consoleBadges);
         }
     }
 
@@ -296,7 +297,7 @@ public final class EntryFlow {
                             readProjectSetupConsoleBadgesQuiet(loc, runtime));
         var badges = cBadges.stream().map(ConsoleBadge::text).toList();
         var result = context.gate().permits()
-                            ? openWebAccess(runtime, status, out, isSsh, webPort, badges)
+                            ? openWebAccess(runtime, status, out, isSsh, webPort, badges, cBadges)
                             : new EntryResult(status, badges, null, null, cBadges);
         printReportsArrivalNotice(runtime, out);
         out.flush();
@@ -308,17 +309,19 @@ public final class EntryFlow {
      * acts, so the entry flow offers them only where the operator gate would let an act run. A
      * refused act leaves the console a read-only view, and the refusal appears when one is typed.
      *
-     * @param runtime the runtime client
-     * @param status  the status the entry flow read
-     * @param out     the console's writer
-     * @param isSsh   whether this is an SSH session
-     * @param webPort the web port
-     * @param badges  the prompt badges
+     * @param runtime       the runtime client
+     * @param status        the status the entry flow read
+     * @param out           the console's writer
+     * @param isSsh         whether this is an SSH session
+     * @param webPort       the web port
+     * @param badges        the prompt badges
+     * @param consoleBadges the structured prompt badges
      * @return the entry result carrying the pairing code
      * @throws IOException on transport failure
      */
     private EntryResult openWebAccess(RuntimeClient runtime, Map<String, Object> status, PrintWriter out,
-                        boolean isSsh, int webPort, List<String> badges) throws IOException {
+                        boolean isSsh, int webPort, List<String> badges,
+                        List<ConsoleBadge> consoleBadges) throws IOException {
         ensureLoopbackListener(runtime, webPort);
 
         EntryResult result;
@@ -328,20 +331,20 @@ public final class EntryFlow {
                                 Map.of("url", LOOPBACK_URL_PREFIX + webPort)));
             var pairing = issuePairingCode(runtime, webPort);
             printSshWaysIn(out, webPort, pairing.code());
-            result = new EntryResult(status, badges, pairing.code(), pairing.url());
+            result = new EntryResult(status, badges, pairing.code(), pairing.url(), consoleBadges);
         } else {
             var pairedDevice = findPairedBrowser(runtime);
             if (pairedDevice != null) {
                 out.println(MessageCatalogue.format(locale, "operator.entry.web_app_paired",
                                     Map.of("url", LOOPBACK_URL_PREFIX + webPort,
                                                         "label", TerminalSanitizer.sanitizeLine(pairedDevice))));
-                result = new EntryResult(status, badges, null, LOOPBACK_URL_PREFIX + webPort);
+                result = new EntryResult(status, badges, null, LOOPBACK_URL_PREFIX + webPort, consoleBadges);
             } else {
                 out.println(MessageCatalogue.format(locale, "operator.entry.web_access",
                                     Map.of("url", LOOPBACK_URL_PREFIX + webPort)));
                 var pairing = issuePairingCode(runtime, webPort);
                 tryOpenBrowser(out, pairing.url(), pairing.code(), webPort);
-                result = new EntryResult(status, badges, pairing.code(), pairing.url());
+                result = new EntryResult(status, badges, pairing.code(), pairing.url(), consoleBadges);
             }
         }
         return result;

@@ -657,15 +657,26 @@ public final class WebCommand implements Callable<Integer> {
 
         private boolean confirm() {
             try (var lease = context.openTerminal()) {
+                var termOut = lease.terminal().writer();
                 var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
-                var answer = reader.readLine(MessageCatalogue.format(context.clientEnvironment().locale(),
-                                    "operator.devices.revoke_prompt", Map.of()));
-                // An end of input, a "b" and the prompt's own "?" leave; only a stated answer
-                // confirms the DELETE. Leaving is the dialogue rule's 0, as "b" leaves with.
-                return answer != null
-                                    && !"b".equalsIgnoreCase(answer.trim())
-                                    && !"back".equalsIgnoreCase(answer.trim())
-                                    && !"?".equals(answer.trim());
+                var locale = context.clientEnvironment().locale();
+                var prompt = MessageCatalogue.format(locale, "operator.devices.revoke_prompt", Map.of());
+                while (true) {
+                    var answer = reader.readLine(prompt);
+                    if (answer == null) {
+                        return false;
+                    }
+                    var trimmed = answer.trim();
+                    if ("b".equalsIgnoreCase(trimmed) || "back".equalsIgnoreCase(trimmed)) {
+                        return false;
+                    }
+                    if ("?".equals(trimmed)) {
+                        termOut.println(MessageCatalogue.format(locale, "operator.devices.revoke_help", Map.of()));
+                        termOut.flush();
+                        continue;
+                    }
+                    return true;
+                }
             }
             catch (UserInterruptException interrupt) {
                 // The interrupt must not confirm the destructive revoke.

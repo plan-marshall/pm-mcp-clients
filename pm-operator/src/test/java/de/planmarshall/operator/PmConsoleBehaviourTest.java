@@ -25,6 +25,8 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.reader.LineReaderBuilder;
@@ -231,11 +233,20 @@ class PmConsoleBehaviourTest {
     @DisplayName("a reconnect reads the runtime state again and redraws the title")
     void aReconnectReadsTheState() throws Exception {
         var statusReads = new AtomicInteger();
+        var firstOpenLatch = new CountDownLatch(1);
+        var reconnectLatch = new CountDownLatch(1);
         fixture.start((request, response) -> {
             if ("/api/v1/status".equals(request.target())) {
-                var count = statusReads.getAndIncrement() == 0 ? 3 : 2;
-                response.json(200, "{\"status\":\"ready\",\"onboarded\":true,"
-                                    + "\"needs_operator\":{\"question\":" + count + "}}");
+                var read = statusReads.getAndIncrement();
+                if (read == 0) {
+                    firstOpenLatch.countDown();
+                    response.json(200, "{\"status\":\"ready\",\"onboarded\":true,"
+                                        + "\"needs_operator\":{\"question\":3}}");
+                } else {
+                    reconnectLatch.countDown();
+                    response.json(200, "{\"status\":\"ready\",\"onboarded\":true,"
+                                        + "\"needs_operator\":{\"question\":2}}");
+                }
             } else if ("/api/v1/project-onboardings".equals(request.target())) {
                 response.json(200, "{\"onboardings\":[]}");
             } else if ("/api/v1/events".equals(request.target())) {
@@ -244,7 +255,24 @@ class PmConsoleBehaviourTest {
                 response.send(404, null, "");
             }
         });
-        var rendered = new ByteArrayOutputStream();
+        var redrawnLatch = new CountDownLatch(1);
+        var rendered = new ByteArrayOutputStream() {
+            @Override
+            public synchronized void write(byte[] b, int off, int len) {
+                super.write(b, off, len);
+                if (toString(StandardCharsets.UTF_8).contains("pm-operator [2 questions]")) {
+                    redrawnLatch.countDown();
+                }
+            }
+
+            @Override
+            public synchronized void write(int b) {
+                super.write(b);
+                if (toString(StandardCharsets.UTF_8).contains("pm-operator [2 questions]")) {
+                    redrawnLatch.countDown();
+                }
+            }
+        };
         var console = new PmConsole(new OperatorContext(fixture.environment(), tempDir, true,
                             ClientEnvironment.capture(fixture.environment()),
                             () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null));
@@ -252,11 +280,8 @@ class PmConsoleBehaviourTest {
             var reader = LineReaderBuilder.builder().terminal(terminal).build();
             var thread = console.startEventListener(reader, terminal);
             try {
-                var deadline = System.nanoTime() + 5_000_000_000L;
-                while (System.nanoTime() < deadline
-                                    && !rendered.toString(StandardCharsets.UTF_8).contains("pm-operator [2 questions]")) {
-                    Thread.onSpinWait();
-                }
+                assertTrue(firstOpenLatch.await(5, TimeUnit.SECONDS), "first-open status read was performed");
+                assertTrue(redrawnLatch.await(5, TimeUnit.SECONDS), "reconnect redrew the title with updated count");
             } finally {
                 console.stop();
                 thread.interrupt();

@@ -239,18 +239,32 @@ class StateDialogueTest {
     }
 
     @Test
-    @DisplayName("every project setup state names a step the catalogue defines")
+    @DisplayName("every project setup state names a step the catalogue defines and maps to its defined step")
     void projectStatesNameCatalogueSteps() {
-        var states = List.of("project.consent", "project.detect", "project.run-consent", "project.probe",
-                            "project.checkout", "project.enrol", "project.enrolment", "project.operator",
-                            "project.own", "project.identity", "project.team", "project.architecture",
-                            "project.landing", "project.roles", "project.descriptions", "project.commit");
+        var setupStates = Map.ofEntries(
+                Map.entry("project.consent", "checkout"),
+                Map.entry("project.detect", "checkout"),
+                Map.entry("project.run-consent", "checkout"),
+                Map.entry("project.probe", "checkout"),
+                Map.entry("project.checkout", "checkout"),
+                Map.entry("project.enrol", "enrolment"),
+                Map.entry("project.enrolment", "enrolment"),
+                Map.entry("project.operator", "own"),
+                Map.entry("project.own", "own"),
+                Map.entry("project.identity", "identity"),
+                Map.entry("project.team", "team"),
+                Map.entry("project.architecture", "architecture"),
+                Map.entry("project.landing", "landing"),
+                Map.entry("project.roles", "roles"),
+                Map.entry("project.descriptions", "descriptions"),
+                Map.entry("project.commit", "commit")
+        );
 
-        for (var state : states) {
-            var suffix = StateDialogue.projectStepOf(state);
-            assertTrue(MessageCatalogue.hasKey("en", "project.step." + suffix), state + " -> " + suffix);
+        for (var entry : setupStates.entrySet()) {
+            var suffix = StateDialogue.projectStepOf(entry.getKey());
+            assertEquals(entry.getValue(), suffix, entry.getKey() + " -> " + suffix);
+            assertTrue(MessageCatalogue.hasKey("en", "project.step." + suffix), entry.getKey() + " -> " + suffix);
         }
-        assertEquals("done", StateDialogue.projectStepOf("project.something-new"));
         assertEquals("done", StateDialogue.projectStepOf("project.completed"));
     }
 

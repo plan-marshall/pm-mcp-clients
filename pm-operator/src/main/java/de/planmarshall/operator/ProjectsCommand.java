@@ -75,9 +75,15 @@ public final class ProjectsCommand implements Callable<Integer> {
                         return code;
                     }
                 } finally {
-                    context.clearTerminal(terminal);
                     if (context.ownsTerminal(terminal)) {
-                        terminal.close();
+                        try {
+                            terminal.close();
+                        } catch (IOException _) {
+                        }
+                    }
+                    try {
+                        context.clearTerminal(terminal);
+                    } catch (IllegalStateException _) {
                     }
                 }
             }
