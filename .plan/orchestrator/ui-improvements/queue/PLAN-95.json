@@ -2,10 +2,10 @@
   "id": "PLAN-95",
   "slug": "mock-runtime-coderabbit-residue",
   "workstream": "WS-01",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "95-mock-runtime-coderabbit-residue",
+  "pr": "327",
+  "landing": "landings/PLAN-95.md",
   "seq": 95
 }
