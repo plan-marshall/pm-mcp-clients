@@ -49,6 +49,14 @@ Close the findings of CodeRabbit on the mock runtime (`pm-mock-runtime`) that we
      - One named helper holds the fallback; no other site spells it (evidence order: `none`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is fixed or dismissed with a stated reason (evidence order: `none`)
 
+6. **The mock's drain follows its withdrawal and its own list** (PLAN-96 residue, `landings/PLAN-96.md`)
+   - What: (a) A scheduled `runtime.draining` event still fires after a drain is withdrawn: `syncDrainItems` (`MockRuntimeEngine.java` ~7260, called from `broadcastEvent` ~1330) has no lifecycle or generation guard and `handleDeleteStopRuntime` (~8420) does not cancel the scenario's `pendingTasks`; a withdrawn drain must cancel its scheduled drain events, and `syncDrainItems` ignores an event whose drain generation is not the current one (CodeRabbit thread `:1330` of PR 320, unresolved). (b) `scheduleDrainShrink` (~8380-8385) schedules `seconds <= 3`, three steps, while the default drain lists four items: it schedules one step per remaining item (CodeRabbit thread `:8383`, unresolved), so a four-item drain empties and ends `DRAINING`, and a two-blocker drain does not show "0 left: running work" before its last item left.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-java:java-core, pm-dev-java:java-null-safety, pm-dev-java:junit-core, pm-dev-java-cui:cui-testing
+   - Done when:
+     - Tests that fail before: after a withdrawal no `runtime.draining` event reaches a client and `lifecycle_state` stays `running`; a four-item drain emits four shrink steps and ends; a two-item drain shows "1 left" and then empties on its last step (evidence order: `test-first`)
+     - The two threads are replied to with the commit and resolved (evidence order: `none`)
+
 ## Standing Constraints
 
 - Build and test through Maven only (CLAUDE.md): `./mvnw -pl pm-mock-runtime -am verify` and `./mvnw -pl pm-operator -am verify` pass at the head (the operator and the web e2e suite run against this mock).
@@ -76,6 +84,8 @@ Close the findings of CodeRabbit on the mock runtime (`pm-mock-runtime`) that we
 - OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/NeedsAndFindScenarioTest.java` — present at HEAD 94bbefe1
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/DialogueSourceTest.java` — present at HEAD 94bbefe1
 - OBSERVED: `doc/design/shared/needs-and-find.adoc` — present at HEAD 94bbefe1
+- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/SystemScenarioTest.java` — present at HEAD 6cf1aac0
+- OBSERVED: `pm-mock-runtime/src/test/java/de/planmarshall/mock/runtime/ScenarioStateContractTest.java` — present at HEAD 6cf1aac0
 
 ## Dependencies and Sequencing
 
