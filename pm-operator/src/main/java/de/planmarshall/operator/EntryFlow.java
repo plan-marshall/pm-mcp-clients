@@ -171,8 +171,10 @@ public final class EntryFlow {
         try {
             choice = reader.readLine(prompt);
         } catch (EndOfFileException | UserInterruptException _) {
-            return new EntryResult(status, List.of(ConsolePrompt.formatMachineSetupBadge(
-                                context.clientEnvironment().locale(), completedStep, MACHINE_STEPS)), null, null);
+            // Leaving the entry prompt keeps the block list and takes every badge the runtime
+            // offers, the open project setups included.
+            return new EntryResult(status, badges(locale, status,
+                                projectSetupBadges(locale, runtime)), null, null);
         }
         if (choice == null || choice.isBlank()) {
             choice = isSsh ? "h" : "w";
@@ -182,6 +184,7 @@ public final class EntryFlow {
 
         var badges = new ArrayList<String>();
         badges.add(ConsolePrompt.formatMachineSetupBadge(locale, completedStep, MACHINE_STEPS));
+        badges.addAll(projectSetupBadges(locale, runtime));
 
         if (choice.startsWith("w") && context.gate().permits()) {
             ensureLoopbackListener(runtime, webPort);

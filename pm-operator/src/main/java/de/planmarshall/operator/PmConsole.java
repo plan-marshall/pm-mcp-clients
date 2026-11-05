@@ -189,7 +189,14 @@ public final class PmConsole {
     private @Nullable String readCommand(LineReader reader, PrintWriter out, String locale) {
         while (running.get()) {
             try {
-                var line = reader.readLine(ConsolePrompt.format(locale, badges.get(), reconnecting.get()));
+                // JLine reads `%` in a prompt as its own escape introducer (`%{...%}` is zero-width
+                // text): a checkout directory such as `%{repo%}` must reach the screen as typed, so
+                // the badges are escaped here, where the prompt is built, and never in the badge
+                // itself — the window title carries the unescaped text.
+                var promptBadges = badges.get().stream()
+                                    .map(badge -> badge.replace("%", "%%"))
+                                    .toList();
+                var line = reader.readLine(ConsolePrompt.format(locale, promptBadges, reconnecting.get()));
                 return line == null ? null : line.trim();
             } catch (UserInterruptException e) {
                 if (e.getPartialLine() == null || e.getPartialLine().isEmpty()) {
@@ -489,9 +496,8 @@ public final class PmConsole {
      */
     Thread startEventListener(LineReader reader, Terminal terminal) {
         var thread = new Thread(() -> {
-            var firstConnection = new AtomicBoolean(true);
             while (running.get()) {
-                if (!followEventStream(reader, terminal, firstConnection)) {
+                if (!followEventStream(reader, terminal)) {
                     return;
                 }
             }
@@ -506,24 +512,21 @@ public final class PmConsole {
      *
      * @param reader          the console's line reader the events act on
      * @param terminal        the terminal whose window title carries the badges
-     * @param firstConnection whether no stream has been open yet, so a reconnect can be told
      * @return {@code true} when the console may follow the stream again, {@code false} when it
      *         leaves
      */
-    private boolean followEventStream(LineReader reader, Terminal terminal, AtomicBoolean firstConnection) {
+    private boolean followEventStream(LineReader reader, Terminal terminal) {
         try (var exchange = context.runtime(false).open(HttpRequest.get("/api/v1/events"))) {
-            if (!firstConnection.getAndSet(false)) {
-                // A stream that comes back may have missed every event it carried: read the state
-                // the runtime reports now, not the one from before.
-                refreshBadges(terminal);
-            }
+            // A stream may have missed every event held before it opened — including answers given
+            // while it was unreachable, and the first connection's own: read the state now.
+            refreshBadges(terminal);
             reconnecting.set(false);
             var sseReader = exchange.events();
             SseEvent event;
             while (running.get() && (event = sseReader.next()) != null) {
                 handleSseEvent(event, reader);
             }
-            return true;
+            return reconnectDelay();
         } catch (IOException _) {
             return reconnectDelay();
         }

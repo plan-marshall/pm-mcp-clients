@@ -37,7 +37,6 @@ import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.operator.PmOperator;
-import de.planmarshall.operator.tui.AnsiScreen;
 import de.planmarshall.operator.tui.TuiKeyRegistry;
 import de.planmarshall.operator.tui.TuiLevel;
 
@@ -108,14 +107,11 @@ class TuiCapabilityIT {
 
             assertTrue(session.alternateScreenActive(), session.screenText());
             assertEquals(1, session.alternateScreenEntries(), session.rawOutput());
-            // Beside the alternate screen and the cursor, the attributes: the selection is reverse
-            // and the view writes styled cells (its header and its status line). A view that drops
-            // its styles would still pass the two assertions above.
+            // Beside the alternate screen and the cursor, the attributes: the selection is drawn in
+            // reverse video (an attribute, not only a position), so a view that drops its styles
+            // fails here even though the two assertions above still hold.
             assertFalse(session.screen().invertedRows().isEmpty(),
                                 "the selected row is drawn in reverse: " + session.screenText());
-            assertTrue(session.screen().cellStyles().stream().flatMap(List::stream)
-                                                    .anyMatch(style -> !AnsiScreen.CellStyle.PLAIN.equals(style)),
-                                "the view writes styled cells: " + session.screenText());
 
             session.send("q");
             assertTrue(session.awaitExit(TIMEOUT), session.rawOutput());

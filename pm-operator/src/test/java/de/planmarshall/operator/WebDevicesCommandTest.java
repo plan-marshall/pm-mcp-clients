@@ -467,8 +467,8 @@ class WebDevicesCommandTest {
     }
 
     @Test
-    @DisplayName("a failed read in the interactive list leaves with 1 and the refusal")
-    void aFailedReadInTheInteractiveListLeavesWithOne() throws Exception {
+    @DisplayName("a terminal that cannot be read leaves with 0 and sends nothing")
+    void aFailedReadInTheInteractiveListLeavesCleanly() throws Exception {
         var deletes = new AtomicInteger();
         PmOperatorTest.writeLiveRecord(fixture);
         var deviceId = Generators.letterStrings(4, 8).next();
@@ -497,11 +497,11 @@ class WebDevicesCommandTest {
 
         int code = cmd.execute("-i");
 
+        // JLine reports a terminal that cannot be read as the end of its input, and an end of input
+        // at a device prompt is the leave `q` is (04-console.adoc#console-keys), not a failed act.
         var output = writer.toString();
         assertAll(
-                            () -> assertEquals(PmOperator.EXIT_FAILURE, code, output),
-                            () -> assertTrue(output.contains("the terminal read did not complete"),
-                                                "the refusal is printed: " + output),
+                            () -> assertEquals(0, code, output),
                             () -> assertEquals(0, deletes.get(), "nothing was sent")
         );
     }

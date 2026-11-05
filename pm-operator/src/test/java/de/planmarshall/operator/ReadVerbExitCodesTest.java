@@ -96,7 +96,9 @@ class ReadVerbExitCodesTest {
                             Arguments.of("lesson check", new String[]{"lesson", "check", PLAN_ID}),
                             Arguments.of("epic", new String[]{"epic", PLAN_ID}),
                             Arguments.of("epic findings", new String[]{"epic", "findings", PLAN_ID}),
-                            Arguments.of("epic watches", new String[]{"epic", "watches", PLAN_ID}));
+                            Arguments.of("epic watches", new String[]{"epic", "watches", PLAN_ID}),
+                            Arguments.of("plan findings", new String[]{"plan", "findings", PLAN_ID}),
+                            Arguments.of("plan watches", new String[]{"plan", "watches", PLAN_ID}));
         return reads.stream().flatMap(read -> REFUSALS.stream()
                             .map(status -> Arguments.of(read.get()[0] + " answering " + status,
                                                 (String[]) read.get()[1], status)));

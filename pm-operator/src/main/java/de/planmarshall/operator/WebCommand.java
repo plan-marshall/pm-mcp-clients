@@ -24,6 +24,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
@@ -471,6 +472,11 @@ public final class WebCommand implements Callable<Integer> {
                 }
                 return 0;
             }
+            catch (EndOfFileException _) {
+                // Ctrl+D at a device prompt leaves with 0, as `q`/`leave` and the revoke
+                // confirmation already do: an end of input is not a failed act.
+                return 0;
+            }
             catch (UserInterruptException interrupt) {
                 // Ctrl+C at the device prompt is the exit-code table's 130, never a swallowed read.
                 throw interrupt;
@@ -649,11 +655,12 @@ public final class WebCommand implements Callable<Integer> {
                 var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
                 var answer = reader.readLine(MessageCatalogue.format(context.clientEnvironment().locale(),
                                     "operator.devices.revoke_prompt", Map.of()));
-                // An end of input and a "b" both leave; only a stated answer confirms the DELETE.
-                // Leaving is the dialogue rule's 0, the same code "b" leaves with.
+                // An end of input, a "b" and the prompt's own "?" leave; only a stated answer
+                // confirms the DELETE. Leaving is the dialogue rule's 0, as "b" leaves with.
                 return answer != null
                                     && !"b".equalsIgnoreCase(answer.trim())
-                                    && !"back".equalsIgnoreCase(answer.trim());
+                                    && !"back".equalsIgnoreCase(answer.trim())
+                                    && !"?".equals(answer.trim());
             }
             catch (UserInterruptException interrupt) {
                 // The interrupt must not confirm the destructive revoke.

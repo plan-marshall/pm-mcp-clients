@@ -157,7 +157,9 @@ public final class OnboardCommand implements Callable<Integer> {
             printResults(out, locale, frame);
         }
         out.flush();
-        return 0;
+        // A run that timed out is neither final nor at its result: the exit-code table's 3, so a
+        // script does not read an unfinished setup as done.
+        return frame.isFinal() || AUTO_RESULT.equals(frame.stateId()) ? 0 : EXIT_NEEDS_INPUT;
     }
 
     /**
