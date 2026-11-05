@@ -16,6 +16,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
+
+import org.jspecify.annotations.Nullable;
+
 /**
  * An HTTP request received by the mock server.
  *
@@ -59,7 +62,7 @@ long receivedNanos) {
     /**
      * @return the query string, or {@code null} if none
      */
-    public String query() {
+    public @Nullable String query() {
         var q = target.indexOf('?');
         return q >= 0 ? target.substring(q + 1) : null;
     }

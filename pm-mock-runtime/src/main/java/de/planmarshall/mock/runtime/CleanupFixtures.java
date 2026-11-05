@@ -15,6 +15,7 @@ import java.util.Objects;
 
 
 import lombok.experimental.UtilityClass;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.system.CleanupKeptItem;
@@ -63,7 +64,7 @@ final class CleanupFixtures {
                 .toList();
     }
 
-    private static CleanupKeptItem keptItem(Map<String, Object> entry) {
+    private static @Nullable CleanupKeptItem keptItem(Map<String, Object> entry) {
         var id = text(entry, KEY_ITEM_ID);
         var kind = text(entry, KEY_KIND);
         var label = text(entry, KEY_LABEL);
@@ -76,7 +77,7 @@ final class CleanupFixtures {
                 JsonTree.string(entry, KEY_KEPT_BY));
     }
 
-    private static CleanupResidue residue(Map<String, Object> entry) {
+    private static @Nullable CleanupResidue residue(Map<String, Object> entry) {
         var step = text(entry, KEY_STEP);
         if (step.isBlank()) {
             return null;

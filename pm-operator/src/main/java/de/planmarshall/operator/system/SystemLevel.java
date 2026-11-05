@@ -140,7 +140,7 @@ public final class SystemLevel {
      * @param groupBy   {@code model} or {@code role}
      * @param projectId the project the view shows, or {@code null} for all projects
      */
-    public SystemLevel(@Nullable SystemSnapshot snapshot, SystemWindow window, @Nullable String groupBy,
+    public SystemLevel(@Nullable SystemSnapshot snapshot, @Nullable SystemWindow window, @Nullable String groupBy,
                         @Nullable String projectId) {
         this.snapshot = snapshot;
         this.window = window != null ? window : SystemWindow.HOUR;

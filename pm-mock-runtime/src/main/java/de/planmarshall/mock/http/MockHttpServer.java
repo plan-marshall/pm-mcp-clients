@@ -33,6 +33,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+
+import org.jspecify.annotations.Nullable;
+
 /**
  * Minimal HTTP/1.1 and Server-Sent Events server over JDK {@link ServerSocketChannel}. Supports
  * both Unix domain sockets and loopback TCP addresses.
@@ -99,7 +102,7 @@ public final class MockHttpServer implements AutoCloseable {
     /**
      * @return the local socket address
      */
-    public SocketAddress localAddress() {
+    public @Nullable SocketAddress localAddress() {
         try {
             return server.getLocalAddress();
         } catch (IOException _) {
@@ -177,7 +180,7 @@ public final class MockHttpServer implements AutoCloseable {
         }
     }
 
-    private static MockHttpRequest readRequest(InputStream in) throws IOException {
+    private static @Nullable MockHttpRequest readRequest(InputStream in) throws IOException {
         var requestLine = readLine(in);
         if (requestLine == null || requestLine.isBlank()) {
             return null;
@@ -216,7 +219,7 @@ public final class MockHttpServer implements AutoCloseable {
         return new MockHttpRequest(method, target, headers, body, receivedNanos);
     }
 
-    private static String readLine(InputStream in) throws IOException {
+    private static @Nullable String readLine(InputStream in) throws IOException {
         var bytes = new ByteArrayOutputStream();
         int b;
         while ((b = in.read()) >= 0 && b != '\n') {
@@ -229,7 +232,7 @@ public final class MockHttpServer implements AutoCloseable {
         return text.endsWith("\r") ? text.substring(0, text.length() - 1) : text;
     }
 
-    private static String escapeJson(String text) {
+    private static String escapeJson(@Nullable String text) {
         if (text == null) {
             return "";
         }
