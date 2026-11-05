@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import CommandPalette from './CommandPalette.svelte';
+import { apiClient } from '../api/client';
 import {
   commandPaletteOpen,
   searchIndexStore,
@@ -66,11 +67,14 @@ function childrenOf(box: HTMLElement): HTMLElement[] {
 }
 
 /**
- * Asserts that every child of the listbox is an option or a group of options.
+ * Asserts that every child of the listbox is an option or a group of options, and that neither the
+ * children nor their descendants carry focusable or editable content.
  *
  * @param box the listbox
  */
 function expectOptionsAndGroupsOnly(box: HTMLElement): void {
+  const focusable =
+    'button, a[href], input, select, textarea, [contenteditable]:not([contenteditable="false"]), [tabindex]:not([tabindex="-1"])';
   for (const child of childrenOf(box)) {
     const role = child.getAttribute('role');
     expect(['option', 'group']).toContain(role);
@@ -81,6 +85,20 @@ function expectOptionsAndGroupsOnly(box: HTMLElement): void {
       )) {
         expect(heading).toHaveAttribute('role', 'presentation');
       }
+    }
+    expect(child.matches(focusable)).toBe(false);
+    for (const element of Array.from(child.querySelectorAll('*'))) {
+      const optionAncestor = element.parentElement?.closest('[role="option"]') ?? null;
+      const insideOption = optionAncestor !== null;
+      const elementRole = element.getAttribute('role');
+      if (!insideOption) {
+        if (elementRole === null) {
+          expect(['DIV', 'SPAN']).toContain(element.tagName);
+        } else {
+          expect(['presentation', 'option']).toContain(elementRole);
+        }
+      }
+      expect(element.matches(focusable)).toBe(false);
     }
   }
 }
@@ -154,17 +172,31 @@ describe('the command palette listbox', () => {
     expect(screen.getByTestId('command-palette-field')).toHaveAttribute('aria-expanded', 'false');
   });
 
-  it('keeps Retry outside the listbox after a failed read', () => {
+  it('keeps Retry outside the listbox after a failed read and sends the query again', async () => {
+    const findWork = vi
+      .spyOn(apiClient, 'findWork')
+      .mockRejectedValue(new Error('unavailable'));
     openPalette({ text: 'relay', matches: [], status: 'failed' });
 
     render(CommandPalette);
 
     const box = screen.getByRole('listbox');
-    const retry = screen.getByTestId('command-palette-retry');
+    const field = screen.getByTestId('command-palette-field') as HTMLInputElement;
+    expect(box.contains(screen.getByTestId('command-palette-retry'))).toBe(false);
+
+    // The field holds the failed text; the read fails again, and Retry sends the same query.
+    await fireEvent.input(field, { target: { value: 'relay' } });
+    await waitFor(() => expect(findWork).toHaveBeenCalledTimes(1));
+
+    const retry = await screen.findByTestId('command-palette-retry');
     expect(box.contains(retry)).toBe(false);
     expect(retry.tagName).toBe('BUTTON');
     expect(retry).not.toHaveAttribute('tabindex');
-    expect(screen.getByTestId('command-palette-field')).toHaveAttribute('aria-expanded', 'false');
+    expect(field).toHaveAttribute('aria-expanded', 'false');
+
+    await fireEvent.click(retry);
+    await waitFor(() => expect(findWork).toHaveBeenCalledTimes(2));
+    expect(findWork).toHaveBeenLastCalledWith('relay', expect.anything());
   });
 
   it('names an option that is in the document after the answer changes', async () => {
@@ -180,6 +212,12 @@ describe('the command palette listbox', () => {
     const first = field.getAttribute('aria-activedescendant');
     expect(first).toBeTruthy();
     expect(document.getElementById(first ?? '')?.getAttribute('role')).toBe('option');
+    const ids = Array.from(
+      screen.getByRole('listbox').querySelectorAll('[role="option"]'),
+      (option) => option.id,
+    );
+    expect(ids.length).toBeGreaterThan(1);
+    expect(new Set(ids).size).toBe(ids.length);
 
     searchIndexStore.set({ text: 'fix', matches: [PLAN_MATCH], status: 'done' });
 
