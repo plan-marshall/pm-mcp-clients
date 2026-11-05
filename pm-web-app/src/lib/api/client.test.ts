@@ -715,7 +715,9 @@ describe('ApiClient', () => {
     // Arrange
     const onOffline = vi.fn();
     client.setOnOffline(onOffline);
-    globalThis.fetch = vi.fn().mockImplementation(() => {
+    const inits: Array<RequestInit | undefined> = [];
+    globalThis.fetch = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      inits.push(init);
       const aborted = new Error('The operation was aborted');
       aborted.name = 'AbortError';
       return Promise.reject(aborted);
@@ -725,6 +727,8 @@ describe('ApiClient', () => {
 
     // Act & Assert
     await expect(client.findWork('relay', controller.signal)).rejects.toThrow('aborted');
+    // The signal reaches the request, so aborting the search stops the read itself.
+    expect(inits[0]?.signal).toBe(controller.signal);
     expect(onOffline).not.toHaveBeenCalled();
   });
 });

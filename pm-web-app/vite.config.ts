@@ -3,7 +3,7 @@ import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { vitePreprocess } from '@sveltejs/vite-plugin-svelte';
 import { defineConfig } from 'vitest/config';
-import { resolvePorts } from './src/lib/ports.ts';
+import { resolvePorts, holdsAssignedPort } from './src/lib/ports.ts';
 import { devRouteExclusion } from './src/lib/dev/devRouteExclusion.ts';
 
 /** The addresses a request from this machine itself carries. */
@@ -131,6 +131,7 @@ export default defineConfig({
       allow: ['..'],
     },
     port: resolvePorts().webPort,
+    strictPort: holdsAssignedPort(),
     proxy: {
       '/api': {
         target: resolvePorts().mockTarget,

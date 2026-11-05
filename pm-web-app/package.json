@@ -10,7 +10,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/check-build-output.mjs",
     "prepare": "svelte-kit sync",
     "audit:fix": "bash scripts/audit-fix.sh",
     "preview": "vite preview",

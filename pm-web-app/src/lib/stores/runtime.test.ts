@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
 import { apiClient, type ReportsPage, type StatusResponse } from '../api/client';
 import {
+  adoptRouteFromLocation,
   checkUrlHashForCode,
   handleRuntimeEvent,
   initRuntime,
@@ -275,6 +276,20 @@ describe('the runtime store', () => {
     // Assert
     expect(get(runtimeStore).designerProjectId).toBeNull();
     expect(window.location.pathname + window.location.search).toBe('/designer');
+  });
+
+  it('adopts the decision the address names', () => {
+    // Arrange: the palette opens a decision through this route, so a reload or a shared link must
+    // land on the same decision.
+    window.history.replaceState(null, '', '/decisions?decision=dec-101');
+    runtimeStore.set(makeRuntimeState({ currentRoute: 'overview', selectedDecisionId: null }));
+
+    // Act
+    const route = adoptRouteFromLocation();
+
+    // Assert
+    expect(route).toBe('decisions');
+    expect(get(runtimeStore).selectedDecisionId).toBe('dec-101');
   });
 
   it('keeps the onboarding step the address names in the route params', () => {

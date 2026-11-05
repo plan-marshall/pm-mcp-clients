@@ -39,3 +39,18 @@ export function resolvePorts(env: NodeJS.ProcessEnv | Record<string, string | un
     mockTarget: `http://127.0.0.1:${mockWebPort}`,
   };
 }
+
+/**
+ * Whether the dev server must hold an assigned web port instead of moving to the next free one.
+ *
+ * AGENTS.md makes an assigned port that is in use a blocker; a port that was not assigned may move,
+ * because nobody claimed it.
+ *
+ * @param env environment map, defaults to process.env
+ * @returns `true` when PM_WEB_PORT names a port
+ */
+export function holdsAssignedPort(
+  env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env,
+): boolean {
+  return (env.PM_WEB_PORT ?? '').trim() !== '';
+}

@@ -359,6 +359,62 @@ describe('PlanView component', () => {
     expect(days[1]).toHaveTextContent('today');
   });
 
+  it('prints no ISO-like string for a row whose clock the runtime sends malformed', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 15, 12));
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      ...mockActivity,
+      entries: [{ timestamp: '25:99', kind: 'text', content: 'a clock that cannot exist' }],
+    });
+
+    render(PlanView);
+
+    await screen.findByTestId('task-inspector');
+    const rows = await screen.findAllByTestId('activity-entry');
+    expect(rows[0]).toHaveTextContent('a clock that cannot exist');
+    // No constructed instant reaches the row: an impossible clock shows no time at all.
+    expect(rows[0]?.querySelector('.entry-time')?.textContent).toBe('');
+    expect(rows[0]?.textContent).not.toMatch(/T\d{2}:\d{2}/);
+  });
+
+  it('reads a clock without seconds as the start of its minute', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 15, 12));
+    vi.spyOn(apiClient, 'getTaskActivity').mockResolvedValue({
+      ...mockActivity,
+      entries: [{ timestamp: '14:02', kind: 'text', content: 'a clock without seconds' }],
+    });
+
+    render(PlanView);
+
+    await screen.findByTestId('task-inspector');
+    const rows = await screen.findAllByTestId('activity-entry');
+    expect(rows[0]?.querySelector('.entry-time')?.textContent).toBe('14:02:00');
+  });
+
+  it('dates a live row that carries its clock in time rather than timestamp', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date(2026, 9, 15, 12));
+    let onEvent: ((event: string, data: unknown) => void) | undefined;
+    vi.spyOn(apiClient, 'subscribeTaskActivity').mockImplementation(
+      (_planId, _taskId, callback) => {
+        onEvent = callback;
+        return () => {};
+      },
+    );
+
+    render(PlanView);
+    await screen.findByTestId('task-inspector');
+    await waitFor(() => expect(onEvent).toBeDefined());
+
+    onEvent?.('task.activity', { kind: 'text', text: 'Clock in time', time: '13:40:02' });
+
+    await waitFor(() => expect(screen.getAllByTestId('activity-entry')).toHaveLength(5));
+    const rows = screen.getAllByTestId('activity-entry');
+    expect(rows[4]).toHaveTextContent('Clock in time');
+    expect(rows[4]?.querySelector('.entry-time')?.textContent).toBe('13:40:02');
+  });
+
   it('normalizes live activity events and ignores malformed ones', async () => {
     let onEvent: ((event: string, data: unknown) => void) | undefined;
     vi.spyOn(apiClient, 'subscribeTaskActivity').mockImplementation(

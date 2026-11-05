@@ -230,6 +230,57 @@ describe('the command palette listbox', () => {
     });
   });
 
+  it('names the next option in aria-activedescendant when ArrowDown moves the selection', async () => {
+    openPalette({
+      text: 'rel',
+      matches: [PROJECT_MATCH, EPIC_MATCH, PLAN_MATCH],
+      status: 'done',
+    });
+
+    render(CommandPalette);
+
+    const field = screen.getByTestId('command-palette-field');
+    const first = field.getAttribute('aria-activedescendant');
+    expect(first).toBeTruthy();
+
+    await fireEvent.keyDown(field, { key: 'ArrowDown' });
+
+    await waitFor(() => {
+      const active = field.getAttribute('aria-activedescendant');
+      expect(active).toBeTruthy();
+      expect(active).not.toBe(first);
+      const option = document.getElementById(active ?? '');
+      expect(option?.getAttribute('role')).toBe('option');
+      // The next row is the epic, not any other option the field happens to name.
+      expect(option?.textContent).toContain('Relay Hardening');
+      expect(option?.textContent).not.toContain('Fix Relay Transport');
+    });
+  });
+
+  it('walks the panel’s Tab stops through Close, the field and Retry', async () => {
+    openPalette({ text: 'relay', matches: [], status: 'failed' });
+
+    render(CommandPalette);
+
+    const field = screen.getByTestId('command-palette-field');
+    const close = screen.getByTestId('command-palette-close');
+    const retry = screen.getByTestId('command-palette-retry');
+    expect(document.activeElement).toBe(field);
+
+    await fireEvent.keyDown(field, { key: 'Tab' });
+    expect(document.activeElement).toBe(retry);
+
+    await fireEvent.keyDown(retry, { key: 'Tab' });
+    expect(document.activeElement).toBe(close);
+
+    await fireEvent.keyDown(close, { key: 'Tab' });
+    expect(document.activeElement).toBe(field);
+
+    // The walk wraps in both directions.
+    await fireEvent.keyDown(field, { key: 'Tab', shiftKey: true });
+    expect(document.activeElement).toBe(close);
+  });
+
   it('brings the selected option into view when ArrowDown moves the selection', async () => {
     const scrolled: Element[] = [];
     const scroll = vi.fn(function (this: Element) {
