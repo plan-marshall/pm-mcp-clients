@@ -710,7 +710,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
         this.runtimeToken = Objects.requireNonNull(runtimeToken, "runtimeToken");
         this.deviceSecret = Objects.requireNonNull(deviceSecret, "deviceSecret");
         this.scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().name("mock-engine-scheduler").factory());
-        this.startRegistry = new StartRegistry(event -> broadcastEvent(event.name(), event.data()));
+        this.startRegistry = new StartRegistry(event -> {
+            recordStartEvent(event);
+            broadcastEvent(event.name(), event.data());
+        });
         setScenario(scenario);
     }
 
@@ -2833,9 +2836,31 @@ public final class MockRuntimeEngine implements AutoCloseable {
         T get() throws IOException;
     }
 
+    private void recordStartEvent(StartRegistry.StartEvent event) {
+        if (EVENT_PLAN_STARTED.equals(event.name())) {
+            var planId = JsonTree.string(event.data(), KEY_PLAN_ID);
+            var projectId = JsonTree.string(event.data(), KEY_PROJECT_ID);
+            var title = JsonTree.string(event.data(), KEY_TITLE);
+            if (planId != null && projectId != null) {
+                startedPlans.put(planId, new StartedPlan(title != null ? title : planId, projectId));
+                synchronized (startLock) {
+                    startedPlanIds.add(planId);
+                }
+            }
+        } else if (EVENT_EPIC_STARTED.equals(event.name())) {
+            var epicId = JsonTree.string(event.data(), KEY_EPIC_ID);
+            if (epicId != null) {
+                synchronized (startLock) {
+                    startedEpicIds.add(epicId);
+                }
+            }
+        }
+    }
+
     private void initDefaultStart() {
         synchronized (startLock) {
             startedPlanIds.clear();
+            startedPlans.clear();
             startedEpicIds.clear();
             intakeDraftCounter = 0;
             gitSourceCounter = 0;
@@ -7363,6 +7388,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             enrolledProjects.clear();
             favouriteProjectIds.clear();
             beingAddedProjects.clear();
+            projectSetupStates.clear();
 
             var fixture = startRuntimeFixture();
             var fixtureProjects = fixtureObjects(fixture, FIXTURE_PROJECTS);

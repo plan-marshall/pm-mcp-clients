@@ -889,4 +889,95 @@ class MockRuntimeEngineTest {
         assertNotNull(runtime);
         assertEquals("127.0.0.1:" + webPort, JsonTree.string(runtime, "loopback_listener"));
     }
+
+    @Test
+    @DisplayName("after a reset and after a scenario switch the started plans store is cleared")
+    void resetAndScenarioSwitchClearStartedPlans() throws Exception {
+        engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
+        var startRes = send("POST", "/api/v1/projects/pm-mcp-clients/plans/start", auth,
+                "{\"title\":\"Test Plan A\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(201, startRes.status());
+        var planId = JsonTree.string(startRes.json(), "id");
+        assertNotNull(planId);
+
+        var processRes = send("GET", "/api/v1/plans/" + planId + "/process", auth, new byte[0], false);
+        assertEquals(200, processRes.status());
+
+        engine.reset();
+
+        var processAfterReset = send("GET", "/api/v1/plans/" + planId + "/process", auth, new byte[0], false);
+        assertEquals(404, processAfterReset.status());
+
+        var startRes2 = send("POST", "/api/v1/projects/pm-mcp-clients/plans/start", auth,
+                "{\"title\":\"Test Plan B\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(201, startRes2.status());
+        var planId2 = JsonTree.string(startRes2.json(), "id");
+        assertNotNull(planId2);
+
+        var processRes2 = send("GET", "/api/v1/plans/" + planId2 + "/process", auth, new byte[0], false);
+        assertEquals(200, processRes2.status());
+
+        engine.switchScenario(StandardScenarios.STATUS_ONLY);
+        var processAfterSwitch = send("GET", "/api/v1/plans/" + planId2 + "/process", auth, new byte[0], false);
+        assertEquals(404, processAfterSwitch.status());
+    }
+
+    @Test
+    @DisplayName("after a reset and after a scenario switch the project setup states store is cleared")
+    void resetAndScenarioSwitchClearProjectSetupStates() throws Exception {
+        engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
+
+        var advanced = send("POST", "/api/v1/projects/cui-parent/setup", auth,
+                "{\"link\":\"set\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, advanced.status());
+        assertEquals("project.completed", JsonTree.string(advanced.json(), "state"));
+
+        engine.reset();
+
+        var stateAfterReset = send("GET", "/api/v1/projects/cui-parent/setup", auth, new byte[0], false);
+        assertEquals(200, stateAfterReset.status());
+        assertEquals("project.identity", JsonTree.string(stateAfterReset.json(), "state"));
+
+        var advancedAgain = send("POST", "/api/v1/projects/cui-parent/setup", auth,
+                "{\"link\":\"set\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, advancedAgain.status());
+        assertEquals("project.completed", JsonTree.string(advancedAgain.json(), "state"));
+
+        engine.switchScenario(StandardScenarios.STATUS_ONLY);
+        engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
+
+        var stateAfterSwitch = send("GET", "/api/v1/projects/cui-parent/setup", auth, new byte[0], false);
+        assertEquals(200, stateAfterSwitch.status());
+        assertEquals("project.identity", JsonTree.string(stateAfterSwitch.json(), "state"));
+    }
+
+    @Test
+    @DisplayName("a plan made through the create act of a start entry answers /process with 200")
+    void planCreatedThroughStartEntryCreateActAnswersProcess() throws Exception {
+        engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
+
+        var openRes = send("POST", "/api/v1/projects/pm-mcp-clients/entries", auth,
+                "{\"kind\":\"plan\",\"title\":\"Create act test plan\",\"recipe_key\":\"lesson-cleanup\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(201, openRes.status());
+        var openStart = JsonTree.asObject(openRes.json().get("start"));
+        assertNotNull(openStart);
+        var openEntry = JsonTree.asObject(openStart.get("entry"));
+        assertNotNull(openEntry);
+        var entryId = JsonTree.string(openEntry, "entry_id");
+        assertNotNull(entryId);
+
+        var createRes = send("POST", "/api/v1/entries/" + entryId + "/links/create", auth,
+                "{\"title\":\"My Created Plan\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, createRes.status());
+        var startMap = JsonTree.asObject(createRes.json().get("start"));
+        assertNotNull(startMap);
+        var entryMap = JsonTree.asObject(startMap.get("entry"));
+        assertNotNull(entryMap);
+        var planId = JsonTree.string(entryMap, "plan_id");
+        assertNotNull(planId);
+
+        var processRes = send("GET", "/api/v1/plans/" + planId + "/process", auth, new byte[0], false);
+        assertEquals(200, processRes.status());
+        assertEquals(planId, JsonTree.string(processRes.json(), "plan_id"));
+    }
 }
