@@ -2,10 +2,10 @@
   "id": "PLAN-99",
   "slug": "web-reports-residue",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "99-web-reports-residue",
+  "pr": "325",
+  "landing": "landings/PLAN-99.md",
   "seq": 99
 }

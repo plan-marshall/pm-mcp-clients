@@ -83,6 +83,7 @@ PLAN-93 moved the token marks into the catalogue and sent the cleanup durations 
 
 - Depends on: `PLAN-93` (shipped)
 - Overlaps with: `PLAN-95` (deliverable 7 edits the mock for the Sonar fix: disjoint files), `PLAN-98` (running; the CLI console: disjoint), `PLAN-99` and `PLAN-100` (running; other views: disjoint)
+- Should land before: `PLAN-45`, `PLAN-51`, `PLAN-59`, `PLAN-60`, `PLAN-72`, `PLAN-73`, `PLAN-83` (each shares one file with this plan: `corpus cross-check` on 2026-11-05)
 - Adjacent to: none
 
 ## Hand-Off Command
