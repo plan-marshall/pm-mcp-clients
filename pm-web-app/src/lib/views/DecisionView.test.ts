@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
-import { tick } from 'svelte';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/svelte';
 import DecisionView from './DecisionView.svelte';
 import { runtimeStore } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
@@ -521,15 +520,109 @@ describe('DecisionView component', () => {
       expect(screen.getByTestId('chat-transcript')).toHaveTextContent('transcript of dec-202');
     });
 
-    release?.({ ...decisionChat, chat_id: 'C-dec-101', subject_id: 'dec-101', proposal: undefined });
-
-    // The released answer has to be applied before the transcript is read, or the assertion below
-    // would pass on the transcript that was already on screen.
-    await tick();
+    // The released answer has to be applied before the transcript is read: awaiting the answer
+    // flushes what its continuation changed, instead of assuming one tick() covered it.
+    await act(async () => {
+      release?.({ ...decisionChat, chat_id: 'C-dec-101', subject_id: 'dec-101', proposal: undefined });
+    });
 
     expect(screen.getByTestId('chat-transcript')).toHaveTextContent('transcript of dec-202');
     expect(screen.getByTestId('chat-transcript')).not.toHaveTextContent('dec-101');
     expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
+  });
+
+  it('does not let an earlier chat load settle a reopened panel', async () => {
+    const second: DecisionEnvelope = {
+      ...mockDecision,
+      id: 'dec-202',
+      subject: 'epic relay-hardening',
+      parts: mockDecision.parts.map((part) => ({
+        ...part,
+        question: `Second decision: ${part.question}`,
+      })),
+    };
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([mockDecision, second]);
+
+    /** A load the test settles by hand, so the order of the answers is its own. */
+    interface PendingLoad {
+      promise: Promise<ChatReadBack>;
+      resolve: (value: ChatReadBack) => void;
+      reject: (reason: unknown) => void;
+    }
+    const pending = (): PendingLoad => {
+      let resolve!: (value: ChatReadBack) => void;
+      let reject!: (reason: unknown) => void;
+      const promise = new Promise<ChatReadBack>((ok, fail) => {
+        resolve = ok;
+        reject = fail;
+      });
+      return { promise, resolve, reject };
+    };
+    const chatWith = (decisionId: string, text: string): ChatReadBack => ({
+      ...decisionChat,
+      chat_id: `C-${decisionId}`,
+      subject_id: decisionId,
+      turns: [{ role: 'operator', text, at: '2026-10-14T10:00:00Z', untrusted: false }],
+      proposal: undefined,
+    });
+
+    const firstLoad = pending();
+    const staleErrorLoad = pending();
+    const reopenedChat = chatWith('dec-101', 'the reopened chat');
+    const finalChat = chatWith('dec-101', 'the final chat');
+    let calls = 0;
+    vi.spyOn(apiClient, 'getDecisionChat').mockImplementation((decisionId: string) => {
+      calls += 1;
+      if (calls === 1) return firstLoad.promise;
+      if (calls === 3) return Promise.resolve(reopenedChat);
+      if (calls === 5) return staleErrorLoad.promise;
+      return Promise.resolve(
+        decisionId === 'dec-202' ? chatWith(decisionId, 'the second decision’s chat') : finalChat,
+      );
+    });
+
+    render(DecisionView);
+
+    const openers = await screen.findAllByText('chat about it first');
+    // A, B, A: the first A load is still in flight when A is reopened.
+    await fireEvent.click(openers[0]!);
+    await fireEvent.click(openers[1]!);
+    await waitFor(() => {
+      expect(screen.getByTestId('chat-transcript')).toHaveTextContent(
+        'the second decision’s chat',
+      );
+    });
+    await fireEvent.click(openers[0]!);
+    await waitFor(() => {
+      expect(screen.getByTestId('chat-transcript')).toHaveTextContent('the reopened chat');
+    });
+
+    // The load of the first open settles last and must not replace what the panel now shows.
+    await act(async () => {
+      firstLoad.resolve(chatWith('dec-101', 'the stale first load'));
+      await firstLoad.promise;
+    });
+
+    expect(screen.getByTestId('chat-transcript')).toHaveTextContent('the reopened chat');
+    expect(screen.getByTestId('chat-transcript')).not.toHaveTextContent('the stale first load');
+
+    // The same race with an error: the superseded load fails after A was reopened once more.
+    await fireEvent.click(openers[1]!);
+    await fireEvent.click(openers[0]!);
+    await fireEvent.click(openers[1]!);
+    await fireEvent.click(openers[0]!);
+    await waitFor(() => {
+      expect(screen.getByTestId('chat-transcript')).toHaveTextContent('the final chat');
+    });
+
+    await act(async () => {
+      staleErrorLoad.reject(new Error('the earlier load failed'));
+      await staleErrorLoad.promise.catch(() => undefined);
+    });
+
+    expect(screen.getByTestId('chat-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-transcript')).toHaveTextContent('the final chat');
+    expect(screen.queryByTestId('decision-chat-notice')).not.toBeInTheDocument();
   });
 
   it('asks once for notification permission after a decision arrives', async () => {

@@ -82,14 +82,19 @@ describe('ProjectOnboardingView component', () => {
       const labels = Array.from(this.querySelectorAll('.step-line__label'));
       return labels.reduce((sum, label) => sum + (label.textContent?.length ?? 0), 0) * 10;
     });
-    vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(box);
+    vi.spyOn(Element.prototype, 'clientWidth', 'get').mockImplementation(() => box);
 
     const { container } = render(ProjectOnboardingView, { projectId: 'pm-mcp-clients' });
     await waitFor(() => expect(screen.getByTestId('project-onboarding-step')).toBeInTheDocument());
     const line = container.querySelector('.step-line') as HTMLElement;
     // The German words are on screen before the first measurement, and they fit.
     expect(line.textContent).toContain('Identität');
-    box = line.scrollWidth + 100;
+    box = line.scrollWidth + 10;
+
+    // A second measurement reads the width the test just set: the line fits again, and the Tab stop
+    // goes away. A mock that froze the width at mount would keep the line overflowing here.
+    messagesStore.set(loadMessages('de'));
+    await waitFor(() => expect(line).toHaveAttribute('tabindex', '-1'));
 
     try {
       // A language whose step names are longer than the ones on screen: the line must be measured
@@ -97,7 +102,7 @@ describe('ProjectOnboardingView component', () => {
       const longerEnglish = Object.fromEntries(
         Object.entries(loadMessages('en')).map(([key, text]) => [
           key,
-          key.startsWith('onboard.step.') ? `${text} and more of it` : text,
+          key.startsWith('project.step.') ? `${text} and more of it than the German words` : text,
         ]),
       );
       currentLocale.set('en');
