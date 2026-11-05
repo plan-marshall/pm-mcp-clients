@@ -5,6 +5,7 @@
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
   import IconButton from '../components/IconButton.svelte';
+  import RowMenu from '../components/RowMenu.svelte';
   import FilterInput from '../components/FilterInput.svelte';
   import EmptyState from '../components/EmptyState.svelte';
   import ErrorState from '../components/ErrorState.svelte';
@@ -71,13 +72,6 @@
    * event is a no-op for the same reason.
    */
   const countedReadIds = new Set<string>();
-
-  /** The row whose actions menu is open, or `null`. */
-  let openMenuId = $state<string | null>(null);
-  /** The menu the open row drew, for its keys and its focus. */
-  let menuHost: HTMLDivElement | undefined = $state(undefined);
-  /** The control that opened the menu, so closing it puts the focus back there. */
-  let menuTrigger: HTMLElement | undefined;
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
@@ -729,50 +723,6 @@
       : $t('report.list.row_menu');
   }
 
-  /** @returns the entries of the open menu a person can reach */
-  function rowMenuItems(): HTMLButtonElement[] {
-    if (!menuHost) return [];
-    return Array.from(menuHost.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')).filter(
-      (entry) => !entry.disabled,
-    );
-  }
-
-  /**
-   * Opens one row's actions menu and puts the focus on its first entry.
-   *
-   * @param id the report whose menu opens
-   * @param trigger the control that opened it, which the focus returns to
-   */
-  async function openRowMenu(id: string, trigger?: HTMLElement): Promise<void> {
-    openMenuId = id;
-    menuTrigger = trigger;
-    await tick();
-    rowMenuItems()[0]?.focus();
-  }
-
-  /**
-   * @param returnFocus whether the focus goes back to the control that opened the menu
-   */
-  async function closeRowMenu(returnFocus = false): Promise<void> {
-    openMenuId = null;
-    if (returnFocus) {
-      await tick();
-      menuTrigger?.focus();
-    }
-  }
-
-  /**
-   * @param id the report whose menu is asked for
-   * @param trigger the control the click came from
-   */
-  function toggleRowMenu(id: string, trigger?: HTMLElement): void {
-    if (openMenuId === id) {
-      void closeRowMenu();
-    } else {
-      void openRowMenu(id, trigger);
-    }
-  }
-
   /**
    * Chosen from the row menu: mark the report read.
    *
@@ -788,7 +738,6 @@
       cards[index + 1]?.querySelector<HTMLElement>('[data-testid="report-row-menu"]') ??
       cards[index - 1]?.querySelector<HTMLElement>('[data-testid="report-row-menu"]');
 
-    await closeRowMenu();
     // A row already read beside its detail keeps its place and its count when its menu repeats the
     // read.
     await markRead(item, Boolean(retainedReadIds[item.id]));
@@ -806,64 +755,6 @@
       ? successor
       : document.querySelector<HTMLElement>('.reports-heading');
     target?.focus();
-  }
-
-  /** @param event the key press inside an open menu */
-  function onMenuKeydown(event: KeyboardEvent): void {
-    const entries = rowMenuItems();
-    if (event.key === 'Escape') {
-      event.stopPropagation();
-      void closeRowMenu(true);
-      return;
-    }
-    if (event.key === 'Tab') {
-      // The entries are not in the tab sequence, so letting the default run from a node that the
-      // close is about to remove would drop the focus on the body. Put it back on the trigger and
-      // let the next Tab continue from there.
-      event.preventDefault();
-      void closeRowMenu(true);
-      return;
-    }
-    if (event.key === 'Home') {
-      event.preventDefault();
-      entries[0]?.focus();
-      return;
-    }
-    if (event.key === 'End') {
-      event.preventDefault();
-      entries[entries.length - 1]?.focus();
-      return;
-    }
-    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
-      return;
-    }
-    event.preventDefault();
-    if (entries.length === 0) {
-      return;
-    }
-    const current = entries.indexOf(document.activeElement as HTMLButtonElement);
-    const step = event.key === 'ArrowDown' ? 1 : -1;
-    const next = (current + step + entries.length) % entries.length;
-    entries[next]?.focus();
-  }
-
-  /** @param event the key press anywhere, `Escape` closing a menu the focus has left */
-  function closeOnEscape(event: KeyboardEvent): void {
-    if (event.key === 'Escape' && openMenuId !== null) {
-      void closeRowMenu(true);
-    }
-  }
-
-  /** @param event the click, closing a menu the click landed outside of */
-  function closeOnOutside(event: MouseEvent): void {
-    const target = event.target as Node;
-    if (
-      openMenuId !== null &&
-      !menuHost?.contains(target) &&
-      !menuTrigger?.contains(target)
-    ) {
-      void closeRowMenu();
-    }
   }
 
   /**
@@ -909,7 +800,7 @@
   }
 </script>
 
-<svelte:window onkeydown={closeOnEscape} onclick={closeOnOutside} onresize={measureOverflow} />
+<svelte:window onresize={measureOverflow} />
 
 <div class="reports-view">
   {#if items.length > 0 && !isLoading}
@@ -1219,38 +1110,22 @@
         {/if}
       {/if}
       <div class="report-card__menu">
-        <IconButton
+        <RowMenu
           icon="act.more"
           size="sm"
           data-testid="report-row-menu"
           label={rowMenuLabel(item)}
           visibleLabel={$t('report.list.row_menu')}
           advisory={$t('report.list.row_menu.title')}
-          aria-haspopup="menu"
-          aria-expanded={openMenuId === item.id}
-          onclick={(event: MouseEvent) => toggleRowMenu(item.id, event.currentTarget as HTMLElement)}
+          items={[
+            {
+              id: 'mark-read',
+              label: $t('report.action.mark_read'),
+              title: $t('report.action.mark_read.title'),
+              onclick: () => chooseMarkRead(item),
+            },
+          ]}
         />
-        {#if openMenuId === item.id}
-          <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-          <div
-            class="report-card__menu-list"
-            role="menu"
-            tabindex="-1"
-            bind:this={menuHost}
-            onkeydown={onMenuKeydown}
-          >
-            <button
-              type="button"
-              role="menuitem"
-              tabindex="-1"
-              class="report-card__menu-item"
-              title={$t('report.action.mark_read.title')}
-              onclick={() => chooseMarkRead(item)}
-            >
-              {$t('report.action.mark_read')}
-            </button>
-          </div>
-        {/if}
       </div>
     </div>
   </article>
@@ -1531,35 +1406,6 @@
     display: inline-flex;
   }
 
-  .report-card__menu-list {
-    position: absolute;
-    inset-block-start: calc(100% + var(--space-1));
-    inset-inline-end: 0;
-    z-index: 10;
-    display: flex;
-    flex-direction: column;
-    min-inline-size: 180px;
-    padding: var(--space-1);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background-color: var(--color-bg-raised);
-    box-shadow: var(--shadow-2);
-  }
-
-  .report-card__menu-item {
-    padding: var(--space-2) var(--space-3);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: none;
-    color: var(--color-text-primary);
-    font-size: var(--text-sm);
-    text-align: start;
-    cursor: pointer;
-  }
-
-  .report-card__menu-item:hover:not(:disabled) {
-    background-color: var(--color-bg-subtle);
-  }
 
   .pagination-bar {
     display: flex;
