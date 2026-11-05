@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 
 import org.junit.jupiter.api.AfterEach;
@@ -1124,5 +1126,34 @@ class MockRuntimeEngineTest {
         var afterCleanup = JsonTree.asObject(afterDeleteRes.json().get("cleanup"));
         assertNotNull(afterCleanup);
         assertEquals(0, JsonTree.integer(afterCleanup, "plans_count"));
+    }
+
+    @Test
+    @DisplayName("a concurrent find during an enrol does not throw")
+    void concurrentFindDuringEnrolDoesNotThrow() throws Exception {
+        engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
+        var running = new AtomicBoolean(true);
+        var errors = new CopyOnWriteArrayList<Throwable>();
+
+        var findThread = new Thread(() -> {
+            while (running.get()) {
+                try {
+                    send("GET", "/api/v1/find?q=pm", auth, new byte[0], false);
+                } catch (Exception e) {
+                    errors.add(e);
+                    break;
+                }
+            }
+        });
+
+        findThread.start();
+        for (int i = 0; i < 50; i++) {
+            send("POST", "/api/v1/projects/new-project-" + i + "/enrol", auth,
+                    ("{\"path\":\"/path/to/p" + i + "\"}").getBytes(StandardCharsets.UTF_8), false);
+        }
+        running.set(false);
+        findThread.join(5000);
+
+        assertTrue(errors.isEmpty(), "find must not throw concurrently: " + errors);
     }
 }

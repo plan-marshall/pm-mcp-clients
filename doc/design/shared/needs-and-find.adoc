@@ -43,7 +43,7 @@ One list of every item of every `needs_operator` summary: a plan's decision or w
 * *An item resolved elsewhere* leaves the list with a quiet notice once, in a polite live region, never a dialogue and never a sound: `A decision was answered in the web app; it left the list.` The view says it once and never again; the item that remains is the runtime's truth, not a local copy.
 * *Reports are no items.* A report tells what happened and asks nothing (link:reports.adoc[Reports]); a due cleanup is an item because it needs the operator, and the report `system.cleanup_due` merely points at it.
 * *The count* beside the view's own entry in each client is the list's total (`total` of the page), never a count of the rows loaded so far.
-* *Live*: the view follows `needs_operator.changed` on the runtime-wide stream. An item that arrives is added where the runtime puts it, an item resolved elsewhere leaves with the quiet notice, and the selection stays on the item's id, never on its row.
+* *Live*: the view follows `needs_operator.changed` on the runtime-wide stream. An item that arrives is added where the runtime puts it, an item resolved elsewhere leaves with the quiet notice, and the selection stays on the item's link (its own path), and on kind plus the project, epic and plan ids where the link is absent, never on its row.
 * *Paged*: the list is read a page at a time, and the end of the loaded pages is one step (`Show more`), never a silent cut. The count beside the entry says the total, so a partial list never claims to be all of it.
 
 [#blocks]

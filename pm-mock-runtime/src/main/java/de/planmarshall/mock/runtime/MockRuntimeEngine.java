@@ -598,6 +598,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private record StartedPlan(String title, String projectId) {
     }
 
+    /**
+     * An epic a start flow created in this run, so find matches and views see it.
+     *
+     * @param title     the epic's title
+     * @param projectId the project the start named, if any
+     */
+    private record StartedEpic(String title, @Nullable String projectId) {
+    }
+
     private final AtomicReference<Scenario> currentScenario = new AtomicReference<>();
     private final AtomicReference<String> currentStateId = new AtomicReference<>();
     /**
@@ -654,6 +663,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Set<String> startedPlanIds = new LinkedHashSet<>();
     private final Map<String, StartedPlan> startedPlans = new ConcurrentHashMap<>();
     private final Set<String> startedEpicIds = new LinkedHashSet<>();
+    private final Map<String, StartedEpic> startedEpics = new ConcurrentHashMap<>();
     private int intakeDraftCounter;
     private final Object lessonSourceLock = new Object();
     private final Map<String, List<LessonSeed>> lessonSourceSeeds = new LinkedHashMap<>();
@@ -2855,7 +2865,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         } else if (EVENT_EPIC_STARTED.equals(event.name())) {
             var epicId = JsonTree.string(event.data(), KEY_EPIC_ID);
+            var projectId = JsonTree.string(event.data(), KEY_PROJECT_ID);
+            var title = JsonTree.string(event.data(), KEY_LABEL);
+            if (title == null) {
+                title = JsonTree.string(event.data(), KEY_TITLE);
+            }
             if (epicId != null) {
+                startedEpics.put(epicId, new StartedEpic(title != null ? title : epicId, projectId));
                 synchronized (startLock) {
                     startedEpicIds.add(epicId);
                 }
@@ -2868,6 +2884,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             startedPlanIds.clear();
             startedPlans.clear();
             startedEpicIds.clear();
+            startedEpics.clear();
             intakeDraftCounter = 0;
             gitSourceCounter = 0;
             localChangePreviews.clear();
@@ -3870,6 +3887,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         var title = deriveTitle(parsed.title(), parsed.objective(), null, List.of());
         var id = uniqueEpicId(slug(title));
+        startedEpics.put(id, new StartedEpic(title, projectId));
         var body = new LinkedHashMap<String, Object>(new PlanStartResult(id, PlanStartResult.KIND_EPIC,
                 title, PlanStartResult.STATE_STARTED, PATH_EPICS_PREFIX + id).toMap());
         body.put(KEY_PROJECT_ID, projectId);
@@ -5816,18 +5834,27 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void collectRunningProjects(String text, List<FindMatch> matches) {
         var seen = new HashSet<String>();
-        for (var project : enrolledProjects) {
-            var title = project.displayName();
-            if (!matchesText(text, project.projectId(), title, null)) {
-                continue;
+        synchronized (projectsLock) {
+            for (var project : enrolledProjects) {
+                seen.add(project.projectId());
+                if (project.isReleased()) {
+                    continue;
+                }
+                var title = project.displayName();
+                if (!matchesText(text, project.projectId(), title, null)) {
+                    continue;
+                }
+                matches.add(new FindMatch(FindKind.PROJECT, project.projectId(), title,
+                        location(project.projectId(), title), null, null, false, null));
             }
-            seen.add(project.projectId());
-            matches.add(new FindMatch(FindKind.PROJECT, project.projectId(), title,
-                    location(project.projectId(), title), null, null, false, null));
         }
         for (var row : rowsOfRoute("GET", PATH_PROJECTS, CONST_PROJECTS)) {
             var id = JsonTree.string(row, KEY_PROJECT_ID);
             if (id == null || seen.contains(id)) {
+                continue;
+            }
+            if (Boolean.TRUE.equals(JsonTree.bool(row, "is_released"))
+                    || "released".equals(JsonTree.string(row, "readiness"))) {
                 continue;
             }
             var title = JsonTree.string(row, KEY_DISPLAY_NAME);
@@ -5839,12 +5866,24 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void collectRunningEpics(String text, List<FindMatch> matches) {
+        var seen = new HashSet<String>();
+        for (var entry : startedEpics.entrySet()) {
+            var id = entry.getKey();
+            var epic = entry.getValue();
+            if (matchesText(text, id, epic.title(), null)) {
+                seen.add(id);
+                matches.add(new FindMatch(FindKind.EPIC, id, requireText(epic.title(), id),
+                        location(epic.projectId(), null), location(id, epic.title()), null, false, null));
+            }
+        }
         for (var row : rowsOfRoute("GET", PATH_EPICS, KEY_EPICS)) {
             var id = JsonTree.string(row, KEY_ID);
-            var title = JsonTree.string(row, KEY_TITLE);
-            if (id != null && matchesText(text, id, title, null)) {
-                matches.add(new FindMatch(FindKind.EPIC, id, requireText(title, id),
-                        location(JsonTree.string(row, KEY_PROJECT), null), location(id, title), null, false, null));
+            if (id != null && !seen.contains(id)) {
+                var title = JsonTree.string(row, KEY_TITLE);
+                if (matchesText(text, id, title, null)) {
+                    matches.add(new FindMatch(FindKind.EPIC, id, requireText(title, id),
+                            location(JsonTree.string(row, KEY_PROJECT), null), location(id, title), null, false, null));
+                }
             }
         }
     }
@@ -5893,25 +5932,30 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void collectOpenDecisions(String text, List<FindMatch> matches) {
-        for (var decision : openDecisions.values()) {
-            if (!matchesText(text, decision.id(), decision.title(), null)) {
-                continue;
+        synchronized (decisionsLock) {
+            for (var decision : openDecisions.values()) {
+                if (!matchesText(text, decision.id(), decision.title(), null)) {
+                    continue;
+                }
+                var planId = extractPlan(decision);
+                matches.add(new FindMatch(FindKind.DECISION, decision.id(), decision.title(), null, null,
+                        location(planId != null ? planId : decision.subject(), null), false, null));
             }
-            matches.add(new FindMatch(FindKind.DECISION, decision.id(), decision.title(), null, null,
-                    location(decision.subject(), null), false, null));
         }
     }
 
     private void collectReports(String text, List<FindMatch> matches) {
-        for (var report : mockReports) {
-            if (!matchesText(text, report.id(), report.subject(), null)) {
-                continue;
+        synchronized (reportsLock) {
+            for (var report : mockReports) {
+                if (!matchesText(text, report.id(), report.subject(), null)) {
+                    continue;
+                }
+                var from = report.from();
+                matches.add(new FindMatch(FindKind.REPORT, report.id(), report.subject(),
+                        location(from.projectId(), from.projectTitle()),
+                        location(from.epicId(), from.epicTitle()),
+                        location(from.planId(), from.planTitle()), false, null));
             }
-            var from = report.from();
-            matches.add(new FindMatch(FindKind.REPORT, report.id(), report.subject(),
-                    location(from.projectId(), from.projectTitle()),
-                    location(from.epicId(), from.epicTitle()),
-                    location(from.planId(), from.planTitle()), false, null));
         }
     }
 
