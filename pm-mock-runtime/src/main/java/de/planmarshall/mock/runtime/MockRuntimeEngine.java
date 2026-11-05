@@ -8345,11 +8345,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 var declared = facts != null ? drainItemNames(facts) : List.<String>of();
                 var drainItems = declared.isEmpty()
                         ? List.of(
-                                "execute task of fix-relay",
-                                "build of fix-relay",
-                                "task of relay-metrics",
-                                "plan relay-auth-v2"
-                        )
+                        "execute task of fix-relay",
+                        "build of fix-relay",
+                        "task of relay-metrics",
+                        "plan relay-auth-v2"
+                )
                         : declared;
                 drainRemainingItems.set(drainItems);
                 broadcastEvent(EVENT_RUNTIME_DRAINING, Map.of(
