@@ -242,6 +242,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /** The prefix that names a fixture member inside the operator facts, for failure messages. */
     private static final String PATH_FACTS = "facts.";
     private static final String KEY_STATUS = "status";
+    /** The event a drain re-emits as its list shrinks. */
+    private static final String EVENT_RUNTIME_DRAINING = "runtime.draining";
     /** What a drain still runs, by name, in the status and the live event alike. */
     private static final String KEY_REMAINING_ITEMS = "remaining_items";
     /** The number of items a drain still runs, its list's own length. */
@@ -7252,7 +7254,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param data  the event payload
      */
     private void syncDrainItems(String event, Object data) {
-        if (!"runtime.draining".equals(event)) {
+        if (!EVENT_RUNTIME_DRAINING.equals(event)) {
             return;
         }
         var payload = JsonTree.asObject(data);
@@ -8346,7 +8348,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         )
                         : declared;
                 drainRemainingItems.set(drainItems);
-                broadcastEvent("runtime.draining", Map.of(
+                broadcastEvent(EVENT_RUNTIME_DRAINING, Map.of(
                         "lifecycle_state", "draining",
                         "draining_by", drainingBy,
                         KEY_REMAINING_ITEMS, drainItems,
@@ -8401,7 +8403,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var next = new ArrayList<>(drainRemainingItems.get());
             next.remove(0);
             drainRemainingItems.set(List.copyOf(next));
-            broadcastEvent("runtime.draining", Map.of(
+            broadcastEvent(EVENT_RUNTIME_DRAINING, Map.of(
                     "lifecycle_state", "draining",
                     "draining_by", drainingBy != null ? drainingBy : "the console",
                     KEY_REMAINING_ITEMS, drainRemainingItems.get(),
