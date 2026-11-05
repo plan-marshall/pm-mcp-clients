@@ -11,6 +11,9 @@ package de.planmarshall.mock.scenario;
 
 import java.util.Objects;
 
+
+import org.jspecify.annotations.Nullable;
+
 /**
  * Definition of an offered hypermedia link in a scenario state.
  *
@@ -21,7 +24,8 @@ import java.util.Objects;
  * @param status  HTTP status to answer (typically 200, or 409 on domain refusal)
  * @param error   optional error code string for non-2xx responses
  */
-public record LinkDefinition(String next, String method, String href, long delayMs, int status, String error) {
+public record LinkDefinition(String next, String method, @Nullable String href, long delayMs, int status,
+@Nullable String error) {
 
     /** Default status code for a successful link transition. */
     public static final int DEFAULT_STATUS = 200;
