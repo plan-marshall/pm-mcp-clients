@@ -58,6 +58,13 @@ class TranscriptHarnessTest {
         }
 
         @Test
+        @DisplayName("replaces absolute last used date and time with ago placeholder")
+        void replacesAbsoluteLastUsed() {
+            var buffer = "paired 2 Jun from loopback   last used 8 Sep 14:32";
+            assertEquals("paired 2 Jun from loopback   last used <ago>", normalizer.normalize(buffer));
+        }
+
+        @Test
         @DisplayName("normalises line endings and trailing whitespace but keeps the layout")
         void keepsLayout() {
             var buffer = "first  \r\n  second\t\r\n";

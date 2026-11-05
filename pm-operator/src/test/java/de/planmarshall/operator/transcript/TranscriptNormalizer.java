@@ -32,6 +32,7 @@ public final class TranscriptNormalizer {
     private static final Pattern HOURS_MINUTES = Pattern.compile("\\b\\d+ h(?: \\d+ min)?\\b");
     private static final Pattern MINUTES = Pattern.compile("\\b\\d+ min\\b");
     private static final Pattern AGO = Pattern.compile("\\b(?:just now|\\d+ (?:s|min|h|d|day|days|week|weeks|month|months) ago)\\b");
+    private static final Pattern ABSOLUTE_LAST_USED = Pattern.compile("\\b\\d{1,2} [A-Z][a-z]{2} <time>");
     private static final Pattern TRAILING_SPACE = Pattern.compile("(?m)[ \t]+$");
 
     private final Map<String, String> literals = new LinkedHashMap<>();
@@ -75,6 +76,7 @@ public final class TranscriptNormalizer {
         text = HOURS_MINUTES.matcher(text).replaceAll("<duration>");
         text = MINUTES.matcher(text).replaceAll("<duration>");
         text = CLOCK_TIME.matcher(text).replaceAll("<time>");
+        text = ABSOLUTE_LAST_USED.matcher(text).replaceAll("<ago>");
         text = TRAILING_SPACE.matcher(text).replaceAll("");
         return text;
     }

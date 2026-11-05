@@ -24,9 +24,11 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Map;
@@ -590,6 +592,23 @@ class WebDevicesCommandTest {
                             () -> assertEquals(1, code),
                             () -> assertTrue(output.contains(expectedOutput), output),
                             () -> assertFalse(output.contains("\u2713"), output)
+        );
+    }
+
+    @Test
+    @DisplayName("formatLastUsed with a fixed clock formats 7 weeks 6 days, exactly 8 weeks, and 20 weeks")
+    void formatLastUsedWithFixedClock() {
+        var fixedNow = Instant.parse("2026-06-01T12:00:00Z");
+        var clock = Clock.fixed(fixedNow, ZoneOffset.UTC);
+
+        var sevenWeeksSixDaysAgo = fixedNow.minus(Duration.ofDays(55));
+        var eightWeeksAgo = fixedNow.minus(Duration.ofDays(56));
+        var twentyWeeksAgo = fixedNow.minus(Duration.ofDays(140));
+
+        assertAll(
+                            () -> assertEquals("7 weeks ago", WebCommand.DevicesCommand.formatLastUsed(sevenWeeksSixDaysAgo.toString(), clock)),
+                            () -> assertEquals("6 Apr 12:00", WebCommand.DevicesCommand.formatLastUsed(eightWeeksAgo.toString(), clock)),
+                            () -> assertEquals("12 Jan 12:00", WebCommand.DevicesCommand.formatLastUsed(twentyWeeksAgo.toString(), clock))
         );
     }
 }

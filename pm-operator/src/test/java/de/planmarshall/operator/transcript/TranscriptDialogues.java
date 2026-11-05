@@ -10,6 +10,7 @@
 package de.planmarshall.operator.transcript;
 
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -156,11 +157,20 @@ final class TranscriptDialogues {
      * @throws Exception if the runtime or the console fails
      */
     static Dialogue consoleSettings() throws Exception {
+        return consoleSettings(Clock.systemUTC());
+    }
+
+    /**
+     * @param clock the clock to inject into the console context
+     * @return the console with the machine settings and the paired devices typed at its prompt
+     * @throws Exception if the runtime or the console fails
+     */
+    static Dialogue consoleSettings(Clock clock) throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
                                  .scenario(StandardScenarios.ONBOARDING).build());
              var driver = TerminalTestDriver.create()) {
             MockMachine.recordLiveRuntime(runtime);
-            driver.project(environment(runtime), runtime.base().getParent());
+            driver.project(environment(runtime), runtime.base().getParent(), clock);
             driver.typeLine("config");
             driver.typeLine("q");
             driver.typeLine("web devices");

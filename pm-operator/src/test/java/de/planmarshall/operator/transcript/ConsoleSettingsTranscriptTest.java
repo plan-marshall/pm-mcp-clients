@@ -9,6 +9,9 @@
  */
 package de.planmarshall.operator.transcript;
 
+import java.time.Clock;
+import java.time.Duration;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -26,5 +29,12 @@ class ConsoleSettingsTranscriptTest {
     @DisplayName("renders the machine settings, the devices, and the consents as recorded")
     void machineSettings() throws Exception {
         TranscriptDialogues.consoleSettings().assertRecorded();
+    }
+
+    @Test
+    @DisplayName("the transcript test passes with the clock moved forward by 120 days")
+    void machineSettingsClockMovedForward120Days() throws Exception {
+        var clock120Days = Clock.offset(Clock.systemUTC(), Duration.ofDays(120));
+        TranscriptDialogues.consoleSettings(clock120Days).assertRecorded();
     }
 }

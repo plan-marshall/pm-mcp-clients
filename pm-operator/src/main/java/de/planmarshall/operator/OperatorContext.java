@@ -14,6 +14,7 @@ import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Locale;
@@ -66,6 +67,7 @@ public final class OperatorContext {
     private final DirectFileAccess directFiles;
     private final TerminalProvider terminalProvider;
     private final BrowserOpener browserOpener;
+    private final Clock clock;
     private final ConsoleNoticeBuffer noticeBuffer = new ConsoleNoticeBuffer();
     private final AtomicBoolean consoleActive = new AtomicBoolean(false);
     private final Deque<Terminal> scopedTerminals = new ArrayDeque<>();
@@ -116,6 +118,23 @@ public final class OperatorContext {
      */
     public OperatorContext(Map<String, String> environment, Path userHome, boolean interactiveTerminal,
                         ClientEnvironment clientEnvironment, @Nullable TerminalProvider terminalProvider, @Nullable BrowserOpener browserOpener) {
+        this(environment, userHome, interactiveTerminal, clientEnvironment, terminalProvider, browserOpener, Clock.systemUTC());
+    }
+
+    /**
+     * Creates an operator context with full injection including clock.
+     *
+     * @param environment         the process environment
+     * @param userHome            the user's home directory
+     * @param interactiveTerminal {@code true} if attached to an interactive terminal
+     * @param clientEnvironment   the captured client environment
+     * @param terminalProvider    provider for JLine terminal, {@code null} for default
+     * @param browserOpener       browser opener, {@code null} for default
+     * @param clock               the clock to use, {@code null} for {@link Clock#systemUTC()}
+     */
+    public OperatorContext(Map<String, String> environment, Path userHome, boolean interactiveTerminal,
+                        ClientEnvironment clientEnvironment, @Nullable TerminalProvider terminalProvider,
+                        @Nullable BrowserOpener browserOpener, @Nullable Clock clock) {
         this.environment = Map.copyOf(Objects.requireNonNull(environment, "environment"));
         this.userHome = Objects.requireNonNull(userHome, "userHome");
         this.interactiveTerminal = interactiveTerminal;
@@ -126,6 +145,7 @@ public final class OperatorContext {
         this.terminalProvider = terminalProvider != null ? terminalProvider
                             : () -> defaultTerminal(interactiveTerminal);
         this.browserOpener = browserOpener != null ? browserOpener : OperatorContext::defaultBrowserOpen;
+        this.clock = clock != null ? clock : Clock.systemUTC();
     }
 
     /** @return the context of the running process */
@@ -192,6 +212,20 @@ public final class OperatorContext {
     /** @return the machine paths */
     public MachinePaths paths() {
         return MachinePaths.resolve(environment, userHome, MachinePaths.Os.current());
+    }
+
+    /** @return the clock of this context */
+    public Clock clock() {
+        return clock;
+    }
+
+    /**
+     * @param newClock the clock to use
+     * @return a new context with the given clock
+     */
+    public OperatorContext withClock(Clock newClock) {
+        return new OperatorContext(environment, userHome, interactiveTerminal, clientEnvironment,
+                            terminalProvider, browserOpener, newClock);
     }
 
     /**
