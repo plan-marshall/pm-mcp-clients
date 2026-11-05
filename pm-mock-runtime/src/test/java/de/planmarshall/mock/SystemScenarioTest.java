@@ -15,8 +15,10 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 
 import org.junit.jupiter.api.DisplayName;
@@ -27,6 +29,7 @@ import org.junit.jupiter.api.condition.OS;
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.SseEvent;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.system.CleanupJob;
@@ -249,6 +252,166 @@ class SystemScenarioTest {
             client.send(HttpRequest.post("/api/v1/operator/runtime/stop").withHeader("Authorization", auth));
             var resRefused = client.send(HttpRequest.post("/api/v1/system/cleanup/cln-0012/delete").withHeader("Authorization", auth));
             assertEquals(409, resRefused.status());
+        }
+    }
+
+    @Test
+    @DisplayName("after a withdrawal no runtime.draining event reaches a client and lifecycle_state stays running")
+    void afterWithdrawalNoDrainingEventReachesClient() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.SYSTEM)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", auth))) {
+                assertTrue(exchange.isEventStream());
+                var sse = exchange.events();
+
+                var events = new CopyOnWriteArrayList<SseEvent>();
+                var reader = new Thread(() -> {
+                    try {
+                        SseEvent ev;
+                        while ((ev = sse.next()) != null) {
+                            events.add(ev);
+                        }
+                    } catch (IOException _) {
+                        // stream closed
+                    }
+                });
+                reader.setDaemon(true);
+                reader.start();
+
+                runtime.goToState("system.draining");
+                var resWithdraw = client.send(HttpRequest.delete("/api/v1/operator/runtime/stop").withHeader("Authorization", auth));
+                assertEquals(200, resWithdraw.status());
+
+                Thread.sleep(1200);
+
+                var drainingEvents = events.stream()
+                        .filter(e -> "runtime.draining".equals(e.event()))
+                        .toList();
+                assertTrue(drainingEvents.isEmpty(),
+                        "no runtime.draining event must reach client after withdrawal: " + drainingEvents);
+
+                var resStatus = client.send(HttpRequest.get("/api/v1/status").withHeader("Authorization", auth));
+                var status = JsonTree.asObject(JsonTree.parse(resStatus.bodyText()));
+                assertEquals("running", status.get("lifecycle_state"));
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("a four-item drain emits four shrink steps and ends")
+    void fourItemDrainEmitsFourShrinkStepsAndEnds() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.SYSTEM)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", auth))) {
+                assertTrue(exchange.isEventStream());
+                var sse = exchange.events();
+
+                var drainEvents = new CopyOnWriteArrayList<Map<String, Object>>();
+                var reader = new Thread(() -> {
+                    try {
+                        SseEvent ev;
+                        while ((ev = sse.next()) != null) {
+                            if ("runtime.draining".equals(ev.event())) {
+                                var map = JsonTree.asObject(JsonTree.parse(ev.data()));
+                                if (map != null) {
+                                    drainEvents.add(map);
+                                }
+                            }
+                        }
+                    } catch (IOException _) {
+                        // stream closed
+                    }
+                });
+                reader.setDaemon(true);
+                reader.start();
+
+                var drainBody = JsonTree.write(Map.of("when", "drain", "then", "exit"));
+                var resDrain = client.send(HttpRequest.post("/api/v1/operator/runtime/stop")
+                        .withHeader("Authorization", auth).withBody(drainBody));
+                assertEquals(200, resDrain.status());
+
+                long deadline = System.currentTimeMillis() + 4500;
+                while (System.currentTimeMillis() < deadline && drainEvents.size() < 5) {
+                    Thread.sleep(100);
+                }
+
+                assertEquals(5, drainEvents.size(), "initial plus 4 shrink steps expected: " + drainEvents);
+
+                var counts = drainEvents.stream()
+                        .map(m -> JsonTree.integer(m, "remaining_work_count"))
+                        .toList();
+                assertEquals(List.of(4, 3, 2, 1, 0), counts);
+
+                var last = drainEvents.get(drainEvents.size() - 1);
+                var items = JsonTree.asArray(last.get("remaining_items"));
+                assertNotNull(items);
+                assertTrue(items.isEmpty(), "four-item drain must end empty");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("a two-item drain shows 1 left and then empties on its last step")
+    void twoItemDrainShowsOneLeftAndEmptiesOnLastStep() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.SYSTEM)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", auth))) {
+                assertTrue(exchange.isEventStream());
+                var sse = exchange.events();
+
+                var drainEvents = new CopyOnWriteArrayList<Map<String, Object>>();
+                var reader = new Thread(() -> {
+                    try {
+                        SseEvent ev;
+                        while ((ev = sse.next()) != null) {
+                            if ("runtime.draining".equals(ev.event())) {
+                                var map = JsonTree.asObject(JsonTree.parse(ev.data()));
+                                if (map != null) {
+                                    drainEvents.add(map);
+                                }
+                            }
+                        }
+                    } catch (IOException _) {
+                        // stream closed
+                    }
+                });
+                reader.setDaemon(true);
+                reader.start();
+
+                runtime.goToState("system.draining");
+                drainEvents.clear();
+
+                var drainBody = JsonTree.write(Map.of("when", "drain", "then", "exit"));
+                var resDrain = client.send(HttpRequest.post("/api/v1/operator/runtime/stop")
+                        .withHeader("Authorization", auth).withBody(drainBody));
+                assertEquals(200, resDrain.status());
+
+                long deadline = System.currentTimeMillis() + 3500;
+                while (System.currentTimeMillis() < deadline && drainEvents.size() < 3) {
+                    Thread.sleep(100);
+                }
+
+                // Initial event (count 2) + step 1 (count 1, "1 left") + step 2 (count 0, empties) = 3 events
+                assertEquals(3, drainEvents.size(), "initial plus 2 shrink steps expected: " + drainEvents);
+
+                var counts = drainEvents.stream()
+                        .map(m -> JsonTree.integer(m, "remaining_work_count"))
+                        .toList();
+                assertEquals(List.of(2, 1, 0), counts);
+
+                assertEquals(1, JsonTree.integer(drainEvents.get(1), "remaining_work_count"));
+                var last = drainEvents.get(2);
+                assertEquals(0, JsonTree.integer(last, "remaining_work_count"));
+                var items = JsonTree.asArray(last.get("remaining_items"));
+                assertNotNull(items);
+                assertTrue(items.isEmpty(), "two-item drain must empty on last step");
+            }
         }
     }
 }

@@ -1346,6 +1346,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param data  the event payload
      */
     private void broadcastEvent(String event, Object data) {
+        if (EVENT_RUNTIME_DRAINING.equals(event) && lifecycleState != RuntimeLifecycleState.DRAINING) {
+            return;
+        }
         syncDrainItems(event, data);
         var payload = payloadOf(data);
         var scope = scopeOf(event, payload);
@@ -7347,10 +7350,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param data  the event payload
      */
     private void syncDrainItems(String event, Object data) {
-        if (!EVENT_RUNTIME_DRAINING.equals(event)) {
+        if (!EVENT_RUNTIME_DRAINING.equals(event) || lifecycleState != RuntimeLifecycleState.DRAINING) {
             return;
         }
         var payload = JsonTree.asObject(data);
+        var gen = payload != null ? JsonTree.integer(payload, "drain_generation") : null;
+        if (gen != null && gen.longValue() != drainGeneration.get()) {
+            return;
+        }
         var items = payload != null ? JsonTree.asArray(payload.get(KEY_REMAINING_ITEMS)) : null;
         if (items == null) {
             return;
@@ -8450,6 +8457,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 ));
             } else {
                 lifecycleState = RuntimeLifecycleState.DRAINING;
+                cancelPendingTasks();
                 drainingBy = isWeb ? "the web app" : "the console";
                 canWithdrawStop = true;
                 drainGeneration.incrementAndGet();
@@ -8482,7 +8490,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         "can_withdraw", true
                 ));
                 // The work finishes one item at a time: the list and its count shrink as it does.
-                scheduleDrainShrink();
+                scheduleDrainShrink(drainItems.size());
             }
         }
     }
@@ -8491,10 +8499,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * Lets the work of a drain finish one item at a time: each step re-emits the shorter list, as
      * the runtime does when a running task or a job ends.
      */
-    private void scheduleDrainShrink() {
+    private void scheduleDrainShrink(int items) {
         var generation = drainGeneration.get();
-        for (var seconds = 1; seconds <= 3; seconds++) {
-            scheduler.schedule(() -> shrinkDrain(generation), seconds, TimeUnit.SECONDS);
+        for (var seconds = 1; seconds <= items; seconds++) {
+            var task = scheduler.schedule(() -> shrinkDrain(generation), seconds, TimeUnit.SECONDS);
+            synchronized (this) {
+                pendingTasks.add(task);
+            }
         }
     }
 
@@ -8535,6 +8546,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (systemLock) {
             if (lifecycleState == RuntimeLifecycleState.DRAINING) {
                 lifecycleState = RuntimeLifecycleState.RUNNING;
+                cancelPendingTasks();
                 drainingBy = null;
                 canWithdrawStop = false;
                 drainGeneration.incrementAndGet();
