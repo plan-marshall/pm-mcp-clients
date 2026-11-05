@@ -433,6 +433,7 @@
             </h3>
             <div class="command-palette__list">
               {#each group.matches as match (matchKey(match))}
+                <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
                 <div
                   role="option"
                   id={optionIds.get(matchKey(match))}
@@ -464,6 +465,7 @@
         {/each}
 
         {#each acts as act (act.key)}
+          <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
           <div
             role="option"
             id={optionIds.get(act.key)}

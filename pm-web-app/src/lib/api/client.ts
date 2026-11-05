@@ -975,6 +975,8 @@ export interface PlanCompletionReport {
   replanning_records: ReplanningRecord[];
   decision_records: DecisionRecord[];
   own_calls?: OwnCallRecord[];
+  /** The size of the plan's change at its last capture; a plan with none carries no field. */
+  change?: ChangeSizeRecord | null;
   change_map?: ChangeMapRecord;
   token_usage?: TokenUsageRecord;
   ended?: string;
@@ -994,6 +996,14 @@ export interface ChangeMapRecord {
   diagram: string;
   state: string;
   cause?: string;
+}
+
+/** The size of a plan's change at its last capture (`plan.change.size`). */
+export interface ChangeSizeRecord {
+  files: number;
+  insertions: number;
+  deletions: number;
+  unplanned?: number;
 }
 
 export interface QuorumVote {
