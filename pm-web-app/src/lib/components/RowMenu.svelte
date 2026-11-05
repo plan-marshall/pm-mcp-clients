@@ -71,7 +71,7 @@
 
   async function choose(item: RowMenuItem, event: MouseEvent): Promise<void> {
     if (item.disabled) return;
-    await closeMenu();
+    await closeMenu(true);
     if (item.onclick) {
       await item.onclick(event);
     }
@@ -130,6 +130,9 @@
 
   function onWindowKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape' && open) {
+      if (menuHost && menuHost.contains(event.target as Node)) {
+        return;
+      }
       void closeMenu(true);
     }
   }
@@ -156,6 +159,7 @@
       class="row-menu__list"
       role="menu"
       tabindex="-1"
+      aria-label={label}
       bind:this={menuHost}
       onkeydown={onMenuKeydown}
     >
@@ -209,10 +213,27 @@
     cursor: pointer;
   }
 
-  .row-menu__item:hover:not(:disabled),
+  .row-menu__item:hover:not(:disabled) {
+    background-color: var(--color-bg-subtle);
+  }
+
   .row-menu__item:focus:not(:disabled) {
     background-color: var(--color-bg-subtle);
-    outline: none;
+    outline: 2px solid var(--color-brand);
+    outline-offset: -2px;
+  }
+
+  .row-menu__item:focus-visible:not(:disabled) {
+    background-color: var(--color-bg-subtle);
+    outline: 2px solid var(--color-brand);
+    outline-offset: -2px;
+  }
+
+  /* A phone gets the 44 px target on every entry, as the rest of the design system does. */
+  @media (max-width: 767px) {
+    .row-menu__item {
+      min-block-size: 44px;
+    }
   }
 
   .row-menu__item:disabled {

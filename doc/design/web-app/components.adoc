@@ -52,15 +52,19 @@ Source and surface: `pm-web-app/src/lib/components/IconButton.svelte`, tests in 
 [#row-menu]
 === RowMenu
 
-The WAI-ARIA menu button pattern for card-based views and lists that do not use `DataTable` (such as `ReportsView`). While `DataTable` provides tabular layouts with a dedicated menu column, card layouts require their own contextual popup menu co-located with each card's actions.
+image::../../resources/diagrams/web-component-row-menu.svg[RowMenu closed and opened with keyboard navigation,360,align=center]
+
+The WAI-ARIA menu button pattern for card-based views and lists that do not use `DataTable` (such as `ReportsView`). While `DataTable` draws an `IconButton` and reports the click, card layouts require their own contextual popup menu co-located with each card's actions.
+
+`RowMenu` is deliberately separate from `ActionBar`: `RowMenu` is a compact contextual pop-up menu button co-located with individual card or list rows (taking an arbitrary list of actions and an accessible subject label), whereas `ActionBar` manages entity state transitions with horizontal primary/secondary/overflow roles and modal `ConfirmDialog` flows. Unifying them would couple generic row actions to entity-state roles and modal dialogs, and risks cross-plan regressions while PLAN-100 refactors `ActionBar`. Both components consistently enforce the design system's 44 px touch target on phone viewports (`min-block-size: 44px`), and `RowMenu` menu items provide a visible focus ring with at least 3:1 contrast against surface in both light and dark themes.
 
 `RowMenu` uses `IconButton` as its trigger (`act.more`), names its row through `label` (and an optional `visibleLabel`), and manages its popup menu with full keyboard navigation:
-* `ArrowDown` and `ArrowUp` move between enabled menu items with wrapping.
+* `ArrowDown` and `ArrowUp` move between enabled menu items with wrapping (skipping disabled items).
 * `Home` and `End` jump to the first and last menu items.
 * `Escape` closes the menu and restores focus to the trigger.
 * `Tab` closes the menu and restores focus to the trigger (preventing focus loss into the document body).
 * Clicking outside the menu closes it.
-* Activating an item closes the menu and executes the item's action.
+* Activating an item closes the menu and restores focus to the trigger while executing the item's action.
 
 Source and surface: `pm-web-app/src/lib/components/RowMenu.svelte`, tests in `RowMenu.test.ts`; the props are `items` (`id`, `label`, `title`, `disabled`, `onclick`), `label`, `visibleLabel`, `advisory`, `icon`, `size`, `disabled`, and forwarded button attributes.
 

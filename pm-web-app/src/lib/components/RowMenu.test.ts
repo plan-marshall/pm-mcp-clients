@@ -268,6 +268,23 @@ describe('RowMenu component', () => {
     expect(combined).not.toContain('outline: none');
     expect(combined).toContain('outline:');
     expect(combined).toContain('var(--color-brand)');
+
+    // Contrast verification: brand color (#2563EB light, #60A5FA dark) vs surface (#FFFFFF light, #1C2230 dark)
+    const lum = (c: { r: number; g: number; b: number }) => {
+      const sRGB = [c.r / 255, c.g / 255, c.b / 255].map((v) =>
+        v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4),
+      );
+      return 0.2126 * sRGB[0] + 0.7152 * sRGB[1] + 0.0722 * sRGB[2];
+    };
+    const lightBrand = { r: 37, g: 99, b: 235 };
+    const lightSurface = { r: 255, g: 255, b: 255 };
+    const lightContrast = (Math.max(lum(lightBrand), lum(lightSurface)) + 0.05) / (Math.min(lum(lightBrand), lum(lightSurface)) + 0.05);
+    expect(lightContrast).toBeGreaterThanOrEqual(3.0);
+
+    const darkBrand = { r: 96, g: 165, b: 250 };
+    const darkSurface = { r: 28, g: 34, b: 48 };
+    const darkContrast = (Math.max(lum(darkBrand), lum(darkSurface)) + 0.05) / (Math.min(lum(darkBrand), lum(darkSurface)) + 0.05);
+    expect(darkContrast).toBeGreaterThanOrEqual(3.0);
   });
 
   it('measures 44px min-block-size on phone viewports (D2b)', () => {

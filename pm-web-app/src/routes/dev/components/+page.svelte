@@ -1,6 +1,7 @@
 <script lang="ts">
   import { t } from '../../../lib/i18n';
   import ActionBar from '../../../lib/components/ActionBar.svelte';
+  import RowMenu from '../../../lib/components/RowMenu.svelte';
   import Button from '../../../lib/components/Button.svelte';
   import Card from '../../../lib/components/Card.svelte';
   import Chip from '../../../lib/components/Chip.svelte';
@@ -52,6 +53,18 @@
       disabledReason: $t('dev.disabled_reason'),
     },
     { id: 'retry', label: $t('web.common.retry') },
+  ];
+
+  /** The sample actions for the row menu fixture. */
+  $: rowMenuItems = [
+    { id: 'mark-read', label: $t('report.action.mark_read') },
+    { id: 'copy', label: $t('web.common.copy'), onclick: () => {} },
+    {
+      id: 'archive',
+      label: $t('control.epic.archive'),
+      disabled: true,
+      title: $t('dev.disabled_reason'),
+    },
   ];
 
   /** The runtime figures of the card fixture, as a view would read them. */
@@ -206,6 +219,19 @@
 
       <h3 class="dev__section-title">{$t('dev.section.action_bar')}</h3>
       <ActionBar {acts} onAct={() => {}} />
+
+      <h3 class="dev__section-title">{$t('dev.section.row_menu')}</h3>
+      <div class="dev__row">
+        <RowMenu
+          items={rowMenuItems}
+          label={$t('report.list.row_menu')}
+          visibleLabel={$t('web.common.more')}
+        />
+        <RowMenu
+          items={rowMenuItems}
+          label={$t('report.list.row_menu')}
+        />
+      </div>
 
       <h3 class="dev__section-title">{$t('dev.section.cards')}</h3>
       <div class="dev__grid">
