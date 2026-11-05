@@ -572,22 +572,33 @@ public final class EntryFlow {
             }
             var badges = new ArrayList<String>();
             for (var item : items) {
-                var map = JsonTree.asObject(item);
-                if (map == null) {
-                    continue;
+                var badge = projectBadge(locale, item);
+                if (badge != null) {
+                    badges.add(badge);
                 }
-                var being = BeingAddedProject.fromMap(map);
-                var name = checkoutDirectoryName(being.checkoutPath());
-                if (name == null) {
-                    continue;
-                }
-                badges.add(ConsolePrompt.formatProjectSetupBadge(locale, name, being.stepNumber(),
-                                    being.totalSteps()));
             }
             return badges;
         } catch (IOException _) {
             return List.of();
         }
+    }
+
+    /**
+     * @param locale the interface locale
+     * @param item   one entry of the runtime's open-onboardings list
+     * @return its badge, or {@code null} when the entry names no checkout to badge
+     * @throws IOException when the entry cannot be read
+     */
+    private static @Nullable String projectBadge(String locale, Object item) throws IOException {
+        var map = JsonTree.asObject(item);
+        if (map == null) {
+            return null;
+        }
+        var being = BeingAddedProject.fromMap(map);
+        var name = checkoutDirectoryName(being.checkoutPath());
+        return name == null ? null
+                            : ConsolePrompt.formatProjectSetupBadge(locale, name, being.stepNumber(),
+                                                being.totalSteps());
     }
 
     private static @Nullable String checkoutDirectoryName(String checkoutPath) {

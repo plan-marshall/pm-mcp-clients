@@ -113,8 +113,9 @@ class OperatorContextTerminalTest {
 
             context.useTerminal(view.terminal());
             context.useTerminal(nested.terminal());
+            var outer = view.terminal();
 
-            assertThrows(IllegalStateException.class, () -> context.clearTerminal(view.terminal()),
+            assertThrows(IllegalStateException.class, () -> context.clearTerminal(outer),
                                 "popping the outer scope would hand the nested one away");
             assertSame(nested.terminal(), context.createTerminal(), "the scopes are untouched");
         }

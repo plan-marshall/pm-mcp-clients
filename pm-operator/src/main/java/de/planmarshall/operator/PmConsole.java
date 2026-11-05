@@ -491,39 +491,61 @@ public final class PmConsole {
         var thread = new Thread(() -> {
             var firstConnection = new AtomicBoolean(true);
             while (running.get()) {
-                try {
-                    var runtime = context.runtime(false);
-                    try (var exchange = runtime.open(HttpRequest.get("/api/v1/events"))) {
-                        var reconnected = !firstConnection.getAndSet(false);
-                        reconnecting.set(false);
-                        if (reconnected) {
-                            // A stream that comes back may have missed every event it carried:
-                            // read the state the runtime reports now, not the one from before.
-                            refreshBadges(terminal);
-                        }
-                        var sseReader = exchange.events();
-                        SseEvent event;
-                        while (running.get() && (event = sseReader.next()) != null) {
-                            handleSseEvent(event, reader);
-                        }
-                    }
-                } catch (IOException _) {
-                    if (!running.get()) {
-                        break;
-                    }
-                    reconnecting.set(true);
-                    try {
-                        Thread.sleep(1000);
-                    } catch (InterruptedException _) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
+                if (!followEventStream(reader, terminal, firstConnection)) {
+                    return;
                 }
             }
         }, "pm-console-sse");
         thread.setDaemon(true);
         thread.start();
         return thread;
+    }
+
+    /**
+     * Follows the event stream until it ends or the console leaves.
+     *
+     * @param reader          the console's line reader the events act on
+     * @param terminal        the terminal whose window title carries the badges
+     * @param firstConnection whether no stream has been open yet, so a reconnect can be told
+     * @return {@code true} when the console may follow the stream again, {@code false} when it
+     *         leaves
+     */
+    private boolean followEventStream(LineReader reader, Terminal terminal, AtomicBoolean firstConnection) {
+        try (var exchange = context.runtime(false).open(HttpRequest.get("/api/v1/events"))) {
+            if (!firstConnection.getAndSet(false)) {
+                // A stream that comes back may have missed every event it carried: read the state
+                // the runtime reports now, not the one from before.
+                refreshBadges(terminal);
+            }
+            reconnecting.set(false);
+            var sseReader = exchange.events();
+            SseEvent event;
+            while (running.get() && (event = sseReader.next()) != null) {
+                handleSseEvent(event, reader);
+            }
+            return true;
+        } catch (IOException _) {
+            return reconnectDelay();
+        }
+    }
+
+    /**
+     * Waits out the back-off before the next connection.
+     *
+     * @return {@code true} while the console still runs, {@code false} when it leaves
+     */
+    private boolean reconnectDelay() {
+        if (!running.get()) {
+            return false;
+        }
+        reconnecting.set(true);
+        try {
+            Thread.sleep(1000);
+            return true;
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
     }
 
     private void handleSseEvent(SseEvent event, LineReader reader) {
