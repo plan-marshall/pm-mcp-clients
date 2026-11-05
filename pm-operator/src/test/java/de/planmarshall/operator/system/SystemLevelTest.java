@@ -125,7 +125,7 @@ class SystemLevelTest {
         assertEquals(2, rows.get(3).details().split("\n").length, rows.get(3).details());
 
         assertTrue(rows.get(4).line().contains("172 calls"), rows.get(4).line());
-        assertTrue(rows.get(4).line().contains("\u2265 5.63 M tokens"), rows.get(4).line());
+        assertTrue(rows.get(4).line().contains("tokens \u2265 5.63 M"), rows.get(4).line());
         assertTrue(rows.get(4).line().contains("\u2265 5.10 M in"), rows.get(4).line());
 
         assertTrue(rows.get(5).line().contains("due: 12 plans"), rows.get(5).line());

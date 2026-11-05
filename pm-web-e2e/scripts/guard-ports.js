@@ -90,8 +90,10 @@ export function malformedPortRun(value = 'abc') {
 export function strictPortIsBound() {
   const config = fs.readFileSync(path.join(moduleDir, '..', 'pm-web-app', 'vite.config.ts'), 'utf8');
   // The behaviour is `holdsAssignedPort()` in pm-web-app/src/lib/ports.ts, covered by its own unit
-  // test; this checks the wiring, so a config that stops binding it fails here.
-  return /^\s*strictPort:\s*holdsAssignedPort\(\),\s*$/m.test(config);
+  // test; this checks the wiring, so a config that stops binding it fails here. A commented-out
+  // copy must not satisfy it: Vite reads the code, so the check does too.
+  const code = config.replace(/\/\*[\s\S]*?\*\//g, '');
+  return /^\s*strictPort:\s*holdsAssignedPort\(\),\s*$/m.test(code);
 }
 
 /**
