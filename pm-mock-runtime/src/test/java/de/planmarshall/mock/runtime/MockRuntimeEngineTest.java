@@ -980,4 +980,149 @@ class MockRuntimeEngineTest {
         assertEquals(200, processRes.status());
         assertEquals(planId, JsonTree.string(processRes.json(), "plan_id"));
     }
+
+    @Test
+    @DisplayName("a scenario with a malformed start-state fact is refused with the right error and leaves the engine exactly as it was")
+    void scenarioWithMalformedStartStateFactIsRefused() throws Exception {
+        var running = registry.resolve(StandardScenarios.RUNNING_WORK);
+        try (var live = new MockRuntimeEngine(registry, running, runtimeToken, deviceSecret)) {
+            var beforeScenario = live.currentScenario().name();
+            var beforeState = live.currentStateId();
+
+            var brokenJobScenarioJson = """
+                    {
+                      "format_version": 1,
+                      "name": "broken-job-scenario",
+                      "start": "start_broken",
+                      "states": {
+                        "start_broken": {
+                          "representation": {
+                            "scope": { "kind": "machine" },
+                            "state": { "state_id": "start_broken" },
+                            "facts": {
+                              "job": { "invalid": true }
+                            },
+                            "links": []
+                          }
+                        }
+                      }
+                    }
+                    """;
+            registry.register(ScenarioLoader.load(brokenJobScenarioJson, "broken-job-scenario"));
+
+            var failure = assertThrows(IllegalStateException.class,
+                    () -> live.switchScenario("broken-job-scenario"));
+            assertTrue(failure.getMessage().contains("facts.job"), failure.getMessage());
+
+            assertEquals(beforeScenario, live.currentScenario().name());
+            assertEquals(beforeState, live.currentStateId());
+
+            var switchRes = send(live, "POST", "/mock/scenario?name=broken-job-scenario", Map.of(), new byte[0], false);
+            assertEquals(500, switchRes.status());
+            assertEquals("scenario_fixture_invalid", switchRes.json().get("error"));
+        }
+    }
+
+    @Test
+    @DisplayName("a non-object job or durations fact is rejected, not skipped")
+    void nonObjectJobOrDurationsFactIsRejected() throws Exception {
+        var running = registry.resolve(StandardScenarios.RUNNING_WORK);
+        try (var live = new MockRuntimeEngine(registry, running, runtimeToken, deviceSecret)) {
+            var nonObjectFactsScenarioJson = """
+                    {
+                      "format_version": 1,
+                      "name": "non-object-facts-scenario",
+                      "start": "valid_start",
+                      "states": {
+                        "valid_start": {
+                          "representation": {
+                            "scope": { "kind": "machine" },
+                            "state": { "state_id": "valid_start" },
+                            "facts": {},
+                            "links": []
+                          }
+                        },
+                        "state_with_array_job": {
+                          "representation": {
+                            "scope": { "kind": "machine" },
+                            "state": { "state_id": "state_with_array_job" },
+                            "facts": {
+                              "job": []
+                            },
+                            "links": []
+                          }
+                        },
+                        "state_with_array_durations": {
+                          "representation": {
+                            "scope": { "kind": "machine" },
+                            "state": { "state_id": "state_with_array_durations" },
+                            "facts": {
+                              "durations": []
+                            },
+                            "links": []
+                          }
+                        }
+                      }
+                    }
+                    """;
+            registry.register(ScenarioLoader.load(nonObjectFactsScenarioJson, "non-object-facts-scenario"));
+            live.switchScenario("non-object-facts-scenario");
+
+            var failureJob = assertThrows(IllegalStateException.class,
+                    () -> live.goToState("state_with_array_job"));
+            assertTrue(failureJob.getMessage().contains("facts.job must be an object"), failureJob.getMessage());
+
+            var gotoJobRes = send(live, "POST", "/mock/goto/state_with_array_job", Map.of(), new byte[0], false);
+            assertEquals(500, gotoJobRes.status());
+            assertEquals("state_fixture_invalid", gotoJobRes.json().get("error"));
+
+            var failureDurations = assertThrows(IllegalStateException.class,
+                    () -> live.goToState("state_with_array_durations"));
+            assertTrue(failureDurations.getMessage().contains("facts.durations must be an object"), failureDurations.getMessage());
+
+            var gotoDurationsRes = send(live, "POST", "/mock/goto/state_with_array_durations", Map.of(), new byte[0], false);
+            assertEquals(500, gotoDurationsRes.status());
+            assertEquals("state_fixture_invalid", gotoDurationsRes.json().get("error"));
+        }
+    }
+
+    @Test
+    @DisplayName("a repeated cleanup delete returns the adjusted freed_bytes")
+    void repeatedCleanupDeleteReturnsAdjustedFreedBytes() throws Exception {
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        var firstDelete = send("POST", "/api/v1/system/cleanup/cln-0012/delete", auth,
+                "{\"unchecked_ids\":[\"token-usage\"]}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, firstDelete.status());
+        assertEquals("deleted", firstDelete.json().get("status"));
+        assertEquals(1872127584L, JsonTree.number(firstDelete.json(), "freed_bytes").longValue());
+
+        var secondDelete = send("POST", "/api/v1/system/cleanup/cln-0012/delete", auth,
+                new byte[0], false);
+        assertEquals(200, secondDelete.status());
+        assertEquals("deleted", secondDelete.json().get("status"));
+        assertEquals(1872127584L, JsonTree.number(secondDelete.json(), "freed_bytes").longValue());
+    }
+
+    @Test
+    @DisplayName("the system snapshot reflects the live cleanup job after delete")
+    void systemSnapshotReflectsLiveCleanupJob() throws Exception {
+        engine.switchScenario(StandardScenarios.SYSTEM);
+        assertEquals("system.running", engine.currentStateId());
+
+        var beforeRes = send("GET", "/api/v1/system", auth, new byte[0], false);
+        assertEquals(200, beforeRes.status());
+        var beforeCleanup = JsonTree.asObject(beforeRes.json().get("cleanup"));
+        assertNotNull(beforeCleanup);
+        assertEquals(12, JsonTree.integer(beforeCleanup, "plans_count"));
+
+        var deleteRes = send("POST", "/api/v1/system/cleanup/cln-0012/delete", auth,
+                new byte[0], false);
+        assertEquals(200, deleteRes.status());
+
+        var afterDeleteRes = send("GET", "/api/v1/system", auth, new byte[0], false);
+        assertEquals(200, afterDeleteRes.status());
+        var afterCleanup = JsonTree.asObject(afterDeleteRes.json().get("cleanup"));
+        assertNotNull(afterCleanup);
+        assertEquals(0, JsonTree.integer(afterCleanup, "plans_count"));
+    }
 }
