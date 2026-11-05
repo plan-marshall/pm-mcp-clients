@@ -23,6 +23,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+
+import org.jspecify.annotations.Nullable;
+
 import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.runtime.Authenticator;
@@ -159,19 +162,20 @@ public final class MockRuntime implements AutoCloseable {
     public static MockRuntime start(MockRuntimeConfig config) throws IOException {
         Objects.requireNonNull(config, "config");
 
-        var autoCreatedBase = config.getBase() == null;
+        var configuredBase = config.getBase();
+        var autoCreatedBase = configuredBase == null;
         Path baseDir;
         Path cleanupDir;
-        if (autoCreatedBase) {
+        if (configuredBase == null) {
             var parent = createSecureTempDir();
             baseDir = parent.resolve("b");
             cleanupDir = parent;
         } else {
-            baseDir = config.getBase();
+            baseDir = configuredBase;
             cleanupDir = baseDir;
         }
 
-        var cleanup = config.getCleanupBaseOnClose() != null ? config.getCleanupBaseOnClose() : autoCreatedBase;
+        var cleanup = Objects.requireNonNullElse(config.getCleanupBaseOnClose(), autoCreatedBase);
         var os = MachinePaths.Os.current();
         var paths = new MachinePaths(baseDir, os);
 
@@ -190,11 +194,10 @@ public final class MockRuntime implements AutoCloseable {
         var deviceSecret = resolveDeviceSecret(config, paths);
 
         // 2. Load scenario
-        var registry = config.getRegistry() != null ? config.getRegistry() : new ScenarioRegistry();
+        var registry = Objects.requireNonNullElseGet(config.getRegistry(), ScenarioRegistry::new);
         registerLegacyCaseStates(registry);
-        Scenario initialScenario;
-        if (config.getInitialScenario() != null) {
-            initialScenario = config.getInitialScenario();
+        var initialScenario = config.getInitialScenario();
+        if (initialScenario != null) {
             registry.register(initialScenario);
         } else {
             initialScenario = registry.resolve(config.getScenario());
@@ -432,7 +435,7 @@ public final class MockRuntime implements AutoCloseable {
      * @return the pairing code the web listener accepts right now, or {@code null} after it was
      *         consumed and until a fresh one is issued
      */
-    public String pairingCode() {
+    public @Nullable String pairingCode() {
         return engine.pairingCode();
     }
 
@@ -461,7 +464,7 @@ public final class MockRuntime implements AutoCloseable {
      * @param headers additional headers to include on each request
      * @return a runtime client targeting this runtime
      */
-    public RuntimeClient client(Map<String, String> headers) {
+    public RuntimeClient client(@Nullable Map<String, String> headers) {
         var authenticator = new Authenticator() {
             private final Credential cred = new Credential("Authorization", "Bearer " + token);
 

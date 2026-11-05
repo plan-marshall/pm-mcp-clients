@@ -35,7 +35,7 @@ public final class TuiViewStack {
     private static final class Frame {
         private final TuiLevel level;
         private List<TuiRow> rows;
-        private List<TuiRow> visible;
+        private List<TuiRow> visible = List.of();
         private @Nullable String selectedId;
         private String filter = "";
         private boolean help;

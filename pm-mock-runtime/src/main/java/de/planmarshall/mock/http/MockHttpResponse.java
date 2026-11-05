@@ -17,6 +17,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
+
+import org.jspecify.annotations.Nullable;
+
 import de.planmarshall.api.json.JsonTree;
 
 /**
@@ -55,7 +58,7 @@ public final class MockHttpResponse {
      * @param body        response body text
      * @throws IOException on write error
      */
-    public void send(int status, String contentType, String body) throws IOException {
+    public void send(int status, @Nullable String contentType, @Nullable String body) throws IOException {
         var bytes = body == null ? new byte[0] : body.getBytes(StandardCharsets.UTF_8);
         send(status, contentType, bytes);
     }
@@ -68,7 +71,7 @@ public final class MockHttpResponse {
      * @param bytes       response body bytes
      * @throws IOException on write error
      */
-    public void send(int status, String contentType, byte[] bytes) throws IOException {
+    public void send(int status, @Nullable String contentType, byte[] bytes) throws IOException {
         if (committed) {
             throw new IllegalStateException("Response already committed");
         }

@@ -19,6 +19,9 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Map;
 
+
+import org.jspecify.annotations.Nullable;
+
 import de.planmarshall.mock.MockRuntime;
 import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
@@ -53,7 +56,7 @@ public final class MockRuntimeCli {
      * @param exitCode the exit code (0 for success or help, non-zero for error)
      * @param config   the configuration if arguments were valid and help was not requested
      */
-    public record CliParseResult(int exitCode, MockRuntimeConfig config) {
+    public record CliParseResult(int exitCode, @Nullable MockRuntimeConfig config) {
         /** @return {@code true} if configuration was successfully parsed */
         public boolean isSuccess() {
             return exitCode == 0 && config != null;
@@ -82,10 +85,10 @@ public final class MockRuntimeCli {
 
     private static final class CliOptions {
         private String scenario = StandardScenarios.STATUS_ONLY;
-        private Path base;
-        private Integer webPort;
-        private String token;
-        private String deviceSecret;
+        private @Nullable Path base;
+        private @Nullable Integer webPort;
+        private @Nullable String token;
+        private @Nullable String deviceSecret;
     }
 
     /**
@@ -97,7 +100,7 @@ public final class MockRuntimeCli {
      * @param env  environment map for resolving environment variable fallbacks
      * @return parse result
      */
-    public static CliParseResult parse(String[] args, PrintStream out, PrintStream err, Map<String, String> env) {
+    public static CliParseResult parse(String[] args, PrintStream out, PrintStream err, @Nullable Map<String, String> env) {
         var opts = new CliOptions();
         var parseExit = parseArguments(args, opts, out, err);
         if (parseExit != null) {
@@ -125,7 +128,7 @@ public final class MockRuntimeCli {
         return new CliParseResult(0, configBuilder.build());
     }
 
-    private static Integer parseArguments(String[] args, CliOptions opts, PrintStream out, PrintStream err) {
+    private static @Nullable Integer parseArguments(String[] args, CliOptions opts, PrintStream out, PrintStream err) {
         var index = new int[]{0};
         while (index[0] < args.length) {
             var arg = args[index[0]++];
@@ -141,7 +144,7 @@ public final class MockRuntimeCli {
         return null;
     }
 
-    private static Integer parseOption(String arg, String[] args, int[] index, CliOptions opts, PrintStream err) {
+    private static @Nullable Integer parseOption(String arg, String[] args, int[] index, CliOptions opts, PrintStream err) {
         if (index[0] >= args.length && isValuedOption(arg)) {
             err.println(ERR_MISSING_ARG + arg);
             return 2;
@@ -176,13 +179,14 @@ public final class MockRuntimeCli {
      */
     public static int run(String[] args, PrintStream out, PrintStream err) {
         var result = parse(args, out, err);
-        if (!result.isSuccess()) {
+        var config = result.config();
+        if (!result.isSuccess() || config == null) {
             return result.exitCode();
         }
 
         MockRuntime runtime;
         try {
-            runtime = MockRuntime.start(result.config());
+            runtime = MockRuntime.start(config);
             // cui-rewrite:disable InvalidExceptionUsageRecipe
         } catch (IOException | RuntimeException e) {
             err.println("Error starting mock runtime: " + e.getMessage());
@@ -257,7 +261,7 @@ public final class MockRuntimeCli {
         return "localhost";
     }
 
-    private static Integer parsePortArg(String portStr, PrintStream err) {
+    private static @Nullable Integer parsePortArg(String portStr, PrintStream err) {
         try {
             int port = Integer.parseInt(portStr);
             if (port < -1 || port > 65535) {
@@ -271,7 +275,7 @@ public final class MockRuntimeCli {
         }
     }
 
-    private static Integer resolveFallbackWebPort(Map<String, String> env, PrintStream err) {
+    private static @Nullable Integer resolveFallbackWebPort(@Nullable Map<String, String> env, PrintStream err) {
         var envPort = env != null ? env.get("PM_MOCK_WEB_PORT") : null;
         if (envPort == null || envPort.isBlank()) {
             return 7420;
