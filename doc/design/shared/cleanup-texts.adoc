@@ -243,7 +243,11 @@ Keys of the area `system` (link:texts-and-languages.adoc#keys[Keys and Packs]). 
 
 |`system.cleanup.durations.value`
 |{never, select, true {never} other {{days, plural, one {# day} other {# days}}}}
-|{never, select, true {nie} other {{days, plural, one {# Tag} other {# Tagen}}}}
+|{never, select, true {nie} other {{days, plural, one {# Tag} other {# Tage}}}}
+
+|`system.cleanup.durations.remind_at`
+|Ask me again after {days, plural, one {# day} other {# days}}
+|Frag mich wieder nach {days, plural, one {# Tag} other {# Tagen}}
 
 |`system.cleanup.durations.summary`
 |{days, plural, one {# day} other {# days}}, reminder {remind, plural, one {# day} other {# days}}{own, plural, =0 {} one { · # project its own} other { · # projects their own}}

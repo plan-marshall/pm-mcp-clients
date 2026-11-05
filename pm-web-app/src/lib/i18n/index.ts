@@ -652,6 +652,13 @@ export async function initI18n(): Promise<void> {
     messagesStore.set({});
     englishMessages = null;
     englishLookupAttempted = false;
+    // The session history is a pack of the same pre-version paint: a template it kept must not
+    // outlive the version the cache was just reset for.
+    for (const locale of ['en', 'de'] as const) {
+      for (const key of Object.keys(sessionMessages[locale])) {
+        delete sessionMessages[locale][key];
+      }
+    }
   }
   // The English fallback is the gap-filler of every other locale; an English pack stored by an
   // older runtime must not keep filling gaps after the runtime changed.

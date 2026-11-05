@@ -76,6 +76,25 @@ describe('the build-output check', () => {
     }
   });
 
+  it('finds the page below a multi-segment route prefix', () => {
+    const root = mkdtempSync(join(tmpdir(), 'pm-dev-route-'));
+    try {
+      const page = join(root, 'routes', 'internal', 'dev', 'components');
+      mkdirSync(page, { recursive: true });
+      writeFileSync(join(page, '+page.svelte'), '<!-- the page -->');
+      const plugin = join(root, 'devRouteExclusion.ts');
+      writeFileSync(plugin, "export const DEV_ROUTE_PREFIX = '/internal/dev';\n");
+
+      expect(deriveDevMarkers(join(root, 'routes'), plugin)).toEqual([
+        '/internal/dev/components',
+        'internal-dev-components',
+        'routes/internal',
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('finds a development page emitted as a file of its own', () => {
     // The route can survive as a file path even when every body is clean.
     expect(findDevMarkers({ 'dev/components.html': '<!doctype html>' })).toEqual([

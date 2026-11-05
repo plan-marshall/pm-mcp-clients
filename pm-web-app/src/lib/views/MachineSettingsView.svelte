@@ -30,14 +30,14 @@
   /** The cleanup durations as one record of days, `-1` for a category that is never offered. */
   type CleanupDurationsRecord = Record<string, number>;
 
-  /** The record's keys with the catalogue's word for their category, in the design's order. */
-  const CLEANUP_CATEGORIES: ReadonlyArray<{ key: string; kind: string }> = [
-    { key: 'plans_after_days', kind: 'plans' },
-    { key: 'epics_after_days', kind: 'epics' },
-    { key: 'logs_after_days', kind: 'logs' },
-    { key: 'reports_after_days', kind: 'reports' },
-    { key: 'unenrolled_after_days', kind: 'unenrolled' },
-    { key: 'remind_after_days', kind: 'remind' },
+  /** The record's keys in the design's order; the record itself decides which are shown. */
+  const CLEANUP_CATEGORY_ORDER: ReadonlyArray<string> = [
+    'plans_after_days',
+    'epics_after_days',
+    'logs_after_days',
+    'reports_after_days',
+    'unenrolled_after_days',
+    'remind_after_days',
   ];
 
   let isLoading = false;
@@ -104,7 +104,8 @@
    * Renders a cleanup record in the catalogue's words, one category each.
    *
    * A conflict compares two records; printing them as JSON shows the operator braces and keys
-   * instead of the categories and days they chose.
+   * instead of the categories and days they chose. The record itself names the categories, so a
+   * field added to it is shown rather than skipped.
    *
    * @param value the setting value
    * @returns the categories in words, or the value itself when it is not a record
@@ -112,16 +113,27 @@
   function cleanupWords(value: string): string {
     const record = parseCleanupRecord(value);
     if (!record) return value;
+    const known = CLEANUP_CATEGORY_ORDER;
+    const keys = [
+      ...known.filter((key) => record[key] !== undefined),
+      ...Object.keys(record).filter((key) => !known.includes(key)),
+    ];
     const words: string[] = [];
-    for (const category of CLEANUP_CATEGORIES) {
-      const days = record[category.key];
+    for (const key of keys) {
+      const days = record[key];
       if (days === undefined) continue;
-      const kind = $t('system.cleanup.durations.kind', { kind: category.kind });
+      const kind = key.replace(/_after_days$/, '');
+      if (kind === 'remind') {
+        // Its label ends in "after": the sentence carries the case the bare noun would not.
+        words.push($t('system.cleanup.durations.remind_at', { days }));
+        continue;
+      }
+      const label = $t('system.cleanup.durations.kind', { kind });
       const amount = $t('system.cleanup.durations.value', {
         never: days === NEVER ? 'true' : 'false',
         days,
       });
-      words.push(`${kind}: ${amount}`);
+      words.push(`${label}: ${amount}`);
     }
     return words.length > 0 ? words.join(' · ') : value;
   }
@@ -150,7 +162,7 @@
     key: string,
     value: string | null,
     changedFields?: CleanupDurationsRecord,
-  ): Promise<void> {
+  ): Promise<boolean> {
     error = '';
     notice = '';
     conflict = null;
@@ -162,13 +174,14 @@
         wantedValue: value ?? '',
         changedFields,
       };
-      return;
+      return false;
     }
     if (!result) {
       error = $t('web.settings.update_failed');
-      return;
+      return false;
     }
     notice = $t('web.settings.saved');
+    return true;
   }
 
   async function saveDocumentsMode(): Promise<void> {
@@ -234,7 +247,12 @@
     conflict = null;
     // A second conflict keeps the changed set: the categories the operator did not touch must
     // follow the record the other client left again, not the one this resend was built from.
-    await applySetting(key, wanted, changed);
+    const applied = await applySetting(key, wanted, changed);
+    if (applied) {
+      // The fields show the record the runtime now holds, so the next save does not resend a value
+      // this resend deliberately kept from the other client.
+      applyLocal($runtimeStore.machineSettings ?? null);
+    }
   }
 
   /** Keeps the other client's value and closes the dialogue, without writing anything. */

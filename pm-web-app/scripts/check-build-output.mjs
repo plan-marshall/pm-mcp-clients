@@ -44,7 +44,11 @@ function devPageRoute(dir, routePrefix, prefix) {
     .sort((left, right) => left.name.localeCompare(right.name));
   for (const entry of entries) {
     const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
-    if (relative !== routePrefix && !relative.startsWith(wanted)) continue;
+    // A directory is on the way to the prefix when it is the prefix, below it, or an ancestor of
+    // a multi-segment prefix (`internal` on the way to `internal/dev`).
+    const withinPrefix = relative === routePrefix || relative.startsWith(wanted);
+    const ancestorOfPrefix = routePrefix.startsWith(`${relative}/`);
+    if (!withinPrefix && !ancestorOfPrefix) continue;
     const full = path.join(dir, entry.name);
     if (fs.existsSync(path.join(full, '+page.svelte'))) return relative;
     const nested = devPageRoute(full, routePrefix, relative);

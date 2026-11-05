@@ -289,6 +289,58 @@ describe('MachineSettingsView component', () => {
     expect(sent.remind_after_days).toBe(7);
   });
 
+  it('keeps the other client’s reminder when only the plans changed', async () => {
+    const updateSpy = vi
+      .spyOn(apiClient, 'updateMachineSetting')
+      .mockResolvedValueOnce({
+        applied: false,
+        conflict: true,
+        revision: 9,
+        current_value: JSON.stringify({
+          ...settings.cleanup_durations,
+          plans_after_days: 35,
+          remind_after_days: 5,
+        }),
+      })
+      .mockResolvedValue({ applied: true, conflict: false, revision: 10 });
+
+    render(MachineSettingsView);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('save-cleanup')).toBeInTheDocument();
+    });
+    // Only the plans value is the operator's; the reminder is the record's.
+    await fireEvent.input(screen.getByTestId('cleanup-days'), { target: { value: '45' } });
+    await fireEvent.click(screen.getByTestId('save-cleanup'));
+    await waitFor(() => {
+      expect(screen.getByTestId('conflict-apply')).toBeInTheDocument();
+    });
+    // The runtime the retry leaves behind is the one the page reloads: the operator's plans value
+    // over the other client's reminder.
+    vi.spyOn(apiClient, 'getMachineSettings').mockResolvedValue({
+      ...settings,
+      revision: 10,
+      cleanup_durations: {
+        ...settings.cleanup_durations,
+        plans_after_days: 45,
+        remind_after_days: 5,
+      },
+    });
+    await fireEvent.click(screen.getByTestId('conflict-apply'));
+
+    await waitFor(() => {
+      expect(updateSpy).toHaveBeenCalledTimes(2);
+    });
+    const sent = JSON.parse(updateSpy.mock.calls[1]?.[1] ?? '{}') as Record<string, number>;
+    expect(sent.plans_after_days).toBe(45);
+    // The reminder the operator did not touch keeps the other client's value — and the input
+    // follows it, so the next save does not overwrite it with the old one.
+    expect(sent.remind_after_days).toBe(5);
+    await waitFor(() => {
+      expect(screen.getByTestId('cleanup-remind-days')).toHaveValue(5);
+    });
+  });
+
   it('shows a cleanup conflict in the catalogue’s words instead of JSON', async () => {
     vi.spyOn(apiClient, 'updateMachineSetting').mockResolvedValue({
       applied: false,
@@ -319,7 +371,7 @@ describe('MachineSettingsView component', () => {
     expect(dialog).toHaveTextContent('Archived plans: 90 days');
     expect(dialog).toHaveTextContent('Archived epics: 90 days');
     expect(dialog).toHaveTextContent('Logs of ended work: 90 days');
-    expect(dialog).toHaveTextContent('Ask me again after: 5 days');
+    expect(dialog).toHaveTextContent('Ask me again after 5 days');
     expect(dialog).not.toHaveTextContent('{');
   });
 

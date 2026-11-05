@@ -58,6 +58,8 @@
   let chatOpen = $state(false);
   /** The decision whose chat has a request in flight, so another decision's panel stays usable. */
   let chatBusyId = $state<string | null>(null);
+  /** The operation that set `chatBusyId`; a late `finally` clears only its own. */
+  let chatBusyToken = 0;
   let chatNotice = $state('');
   /**
    * Counts the panel's opens: reopening the same decision makes its id equal again, so the id alone
@@ -670,6 +672,7 @@
     const decisionId = chatDecisionId;
     if (!decisionId) return;
     const generation = chatGeneration;
+    const token = ++chatBusyToken;
     chatBusyId = decisionId;
     try {
       const answered = await apiClient.decisionChatTurn(decisionId, text);
@@ -679,18 +682,20 @@
         chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
       }
     } finally {
-      if (chatBusyId === decisionId) chatBusyId = null;
+      if (chatBusyToken === token) chatBusyId = null;
     }
   }
 
   async function answerChatProposal(accept: boolean): Promise<void> {
     if (!chatDecisionId) return;
     // The panel can be closed, or another decision's panel opened, while the answer is in flight,
-    // so the decision and the generation it belongs to are carried past the await: a late answer
-    // never replaces another panel's transcript.
+    // so the decision, its revision and the generation it belongs to are carried past the await:
+    // a late answer never replaces another panel's transcript or a revised decision's answer.
     const decisionId = chatDecisionId;
     const generation = chatGeneration;
+    const revision = decisions.find((entry) => entry.id === decisionId)?.revision ?? 1;
     const proposal = chat?.proposal;
+    const token = ++chatBusyToken;
     chatBusyId = decisionId;
     try {
       const answered = await apiClient.answerDecisionChatProposal(decisionId, accept);
@@ -698,14 +703,20 @@
         chat = answered;
       }
       if (accept && proposal?.after) {
-        takeProposedAnswer(decisionId, proposal.after, proposal.applies ?? '', generation);
+        takeProposedAnswer(
+          decisionId,
+          proposal.after,
+          proposal.applies ?? '',
+          generation,
+          revision,
+        );
       }
     } catch (err: unknown) {
       if (chatGeneration === generation) {
         chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
       }
     } finally {
-      if (chatBusyId === decisionId) chatBusyId = null;
+      if (chatBusyToken === token) chatBusyId = null;
     }
   }
 
@@ -715,9 +726,17 @@
     words: string,
     applies: string,
     generation: number,
+    revision: number,
   ): void {
     const dec = decisions.find((entry) => entry.id === decisionId);
     if (!dec || dec.parts.length === 0) return;
+    // Only the chat this answer belongs to closes: a panel the operator opened meanwhile stays.
+    if (chatGeneration === generation && chatDecisionId === decisionId) {
+      chatOpen = false;
+      invalidateChat();
+    }
+    // An answer to an earlier revision of the decision does not apply to its current revision.
+    if ((dec.revision ?? 1) !== revision) return;
     const match = /part\s+(\d+)/i.exec(applies);
     const index = match
       ? Math.max(0, Math.min(dec.parts.length - 1, Number.parseInt(match[1], 10) - 1))
@@ -727,11 +746,6 @@
     ownWordsTexts[key] = words;
     ownWordsMode[key] = true;
     interpretations[key] = null;
-    // Only the chat this answer belongs to closes: a panel the operator opened meanwhile stays.
-    if (chatGeneration === generation && chatDecisionId === decisionId) {
-      chatOpen = false;
-      invalidateChat();
-    }
     void interpretOwnWords(dec, part, index);
   }
 
@@ -741,6 +755,7 @@
     // only the chat this act ended is closed when it answers, and only the open it belonged to.
     const decisionId = chatDecisionId;
     const generation = chatGeneration;
+    const token = ++chatBusyToken;
     chatBusyId = decisionId;
     try {
       await apiClient.endDecisionChat(decisionId);
@@ -754,7 +769,7 @@
         chatDecisionId = null;
         invalidateChat();
       }
-      if (chatBusyId === decisionId) {
+      if (chatBusyToken === token) {
         chatBusyId = null;
       }
     }
