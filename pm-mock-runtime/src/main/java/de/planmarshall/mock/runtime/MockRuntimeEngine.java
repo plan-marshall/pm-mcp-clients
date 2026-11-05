@@ -598,6 +598,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private record StartedPlan(String title, String projectId) {
     }
 
+    /**
+     * An epic a start flow created in this run, so find matches and views see it.
+     *
+     * @param title     the epic's title
+     * @param projectId the project the start named, if any
+     */
+    private record StartedEpic(String title, @Nullable String projectId) {
+    }
+
     private final AtomicReference<Scenario> currentScenario = new AtomicReference<>();
     private final AtomicReference<String> currentStateId = new AtomicReference<>();
     /**
@@ -654,6 +663,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Set<String> startedPlanIds = new LinkedHashSet<>();
     private final Map<String, StartedPlan> startedPlans = new ConcurrentHashMap<>();
     private final Set<String> startedEpicIds = new LinkedHashSet<>();
+    private final Map<String, StartedEpic> startedEpics = new ConcurrentHashMap<>();
     private int intakeDraftCounter;
     private final Object lessonSourceLock = new Object();
     private final Map<String, List<LessonSeed>> lessonSourceSeeds = new LinkedHashMap<>();
@@ -710,7 +720,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
         this.runtimeToken = Objects.requireNonNull(runtimeToken, "runtimeToken");
         this.deviceSecret = Objects.requireNonNull(deviceSecret, "deviceSecret");
         this.scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().name("mock-engine-scheduler").factory());
-        this.startRegistry = new StartRegistry(event -> broadcastEvent(event.name(), event.data()));
+        this.startRegistry = new StartRegistry(event -> {
+            recordStartEvent(event);
+            broadcastEvent(event.name(), event.data());
+        });
         setScenario(scenario);
     }
 
@@ -730,6 +743,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         // Validate the candidate's fixtures before anything is cleared, so a failed switch leaves
         // the active scenario and every stateful fixture untouched.
         validateRuntimeFixture(scenario);
+        validateStateFacts(scenario, scenario.start());
         this.currentScenario.set(scenario);
         this.currentStateId.set(scenario.start());
         this.fixtureStateId.set(scenario.start());
@@ -1204,6 +1218,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
             throw failure;
         }
         transitionTo(stateId);
+        // Do NOT call broadcastReset() here: broadcastReset clears every ring buffer and sends a
+        // reset to every open stream, and exists for a scenario switch where the previous scenario's
+        // envelopes must not be replayed into the new one; a jump stays inside one scenario, and
+        // transitionTo schedules the new state's own events (afterMs), which a client that reconnects
+        // with a Last-Event-ID must still be able to replay in order (pinned per operator decision 2026-11-05).
     }
 
     /**
@@ -1222,11 +1241,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (facts == null) {
             return;
         }
-        var job = JsonTree.object(facts, FIXTURE_JOB);
+        var job = fixtureObject(facts, FIXTURE_JOB, PATH_FACTS + FIXTURE_JOB);
         if (job != null) {
             readFixture(() -> CleanupJob.fromMap(job), PATH_FACTS + FIXTURE_JOB);
         }
-        var durations = JsonTree.object(facts, FIXTURE_DURATIONS);
+        var durations = fixtureObject(facts, FIXTURE_DURATIONS, PATH_FACTS + FIXTURE_DURATIONS);
         if (durations != null) {
             readFixture(() -> CleanupDurations.fromMap(durations), PATH_FACTS + FIXTURE_DURATIONS);
         }
@@ -1327,6 +1346,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param data  the event payload
      */
     private void broadcastEvent(String event, Object data) {
+        if (EVENT_RUNTIME_DRAINING.equals(event) && lifecycleState != RuntimeLifecycleState.DRAINING) {
+            return;
+        }
         syncDrainItems(event, data);
         var payload = payloadOf(data);
         var scope = scopeOf(event, payload);
@@ -2152,7 +2174,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var resp = new LinkedHashMap<String, Object>();
         resp.put(FIELD_ENABLED, true);
         resp.put(FIELD_LAN, lanListenerOn);
-        resp.put("port", webPort > 0 ? webPort : 7420);
+        resp.put("port", effectiveWebPort());
         resp.put("open", true);
         response.json(200, resp);
     }
@@ -2180,7 +2202,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private List<Map<String, Object>> listenerMaps() {
-        var port = webPort > 0 ? webPort : 7420;
+        var port = effectiveWebPort();
         var loopback = new ListenerResource(ListenerKind.LOOPBACK, ListenerState.OPEN, port,
                 loopbackUrl(), null);
         var lan = new ListenerResource(
@@ -2194,7 +2216,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleOpenLanListener(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var requestedPort = extractLanPort(request);
-        var liveLoopbackPort = webPort > 0 ? webPort : 7420;
+        var liveLoopbackPort = effectiveWebPort();
         if (requestedPort == liveLoopbackPort) {
             broadcastListenerChanged(ListenerState.PORT_OCCUPIED, requestedPort);
             response.json(409, Map.of(
@@ -2245,9 +2267,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
         broadcastEvent(EVENT_LISTENER_CHANGED, event.toMap());
     }
 
+    private int effectiveWebPort() {
+        return webPort > 0 ? webPort : 7420;
+    }
+
     private String loopbackUrl() {
-        var port = webPort > 0 ? webPort : 7420;
-        return "http://127.0.0.1:" + port;
+        return "http://127.0.0.1:" + effectiveWebPort();
     }
 
     private String lanListenerUrl() {
@@ -2302,7 +2327,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var resp = new LinkedHashMap<String, Object>();
             resp.put(FIELD_ENABLED, true);
             resp.put(FIELD_LAN, lanListenerOn);
-            resp.put("port", webPort > 0 ? webPort : 7420);
+            resp.put("port", effectiveWebPort());
             resp.put("open", true);
             response.json(200, resp);
             return true;
@@ -2835,10 +2860,39 @@ public final class MockRuntimeEngine implements AutoCloseable {
         T get() throws IOException;
     }
 
+    private void recordStartEvent(StartRegistry.StartEvent event) {
+        if (EVENT_PLAN_STARTED.equals(event.name())) {
+            var planId = JsonTree.string(event.data(), KEY_PLAN_ID);
+            var projectId = JsonTree.string(event.data(), KEY_PROJECT_ID);
+            var title = JsonTree.string(event.data(), KEY_TITLE);
+            if (planId != null && projectId != null) {
+                startedPlans.put(planId, new StartedPlan(title != null ? title : planId, projectId));
+                synchronized (startLock) {
+                    startedPlanIds.add(planId);
+                }
+            }
+        } else if (EVENT_EPIC_STARTED.equals(event.name())) {
+            var epicId = JsonTree.string(event.data(), KEY_EPIC_ID);
+            var projectId = JsonTree.string(event.data(), KEY_PROJECT_ID);
+            var title = JsonTree.string(event.data(), KEY_LABEL);
+            if (title == null) {
+                title = JsonTree.string(event.data(), KEY_TITLE);
+            }
+            if (epicId != null) {
+                startedEpics.put(epicId, new StartedEpic(title != null ? title : epicId, projectId));
+                synchronized (startLock) {
+                    startedEpicIds.add(epicId);
+                }
+            }
+        }
+    }
+
     private void initDefaultStart() {
         synchronized (startLock) {
             startedPlanIds.clear();
+            startedPlans.clear();
             startedEpicIds.clear();
+            startedEpics.clear();
             intakeDraftCounter = 0;
             gitSourceCounter = 0;
             localChangePreviews.clear();
@@ -3841,6 +3895,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
         var title = deriveTitle(parsed.title(), parsed.objective(), null, List.of());
         var id = uniqueEpicId(slug(title));
+        startedEpics.put(id, new StartedEpic(title, projectId));
         var body = new LinkedHashMap<String, Object>(new PlanStartResult(id, PlanStartResult.KIND_EPIC,
                 title, PlanStartResult.STATE_STARTED, PATH_EPICS_PREFIX + id).toMap());
         body.put(KEY_PROJECT_ID, projectId);
@@ -5786,35 +5841,49 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void collectRunningProjects(String text, List<FindMatch> matches) {
         var seen = new HashSet<String>();
-        for (var project : enrolledProjects) {
-            var title = project.displayName();
-            if (!matchesText(text, project.projectId(), title, null)) {
-                continue;
+        synchronized (projectsLock) {
+            for (var project : enrolledProjects) {
+                seen.add(project.projectId());
+                var title = project.displayName();
+                if (!project.isReleased() && matchesText(text, project.projectId(), title, null)) {
+                    matches.add(new FindMatch(FindKind.PROJECT, project.projectId(), title,
+                            location(project.projectId(), title), null, null, false, null));
+                }
             }
-            seen.add(project.projectId());
-            matches.add(new FindMatch(FindKind.PROJECT, project.projectId(), title,
-                    location(project.projectId(), title), null, null, false, null));
         }
         for (var row : rowsOfRoute("GET", PATH_PROJECTS, CONST_PROJECTS)) {
             var id = JsonTree.string(row, KEY_PROJECT_ID);
-            if (id == null || seen.contains(id)) {
-                continue;
-            }
-            var title = JsonTree.string(row, KEY_DISPLAY_NAME);
-            if (matchesText(text, id, title, null)) {
-                matches.add(new FindMatch(FindKind.PROJECT, id, requireText(title, id), location(id, title),
-                        null, null, false, null));
+            var isReleased = Boolean.TRUE.equals(JsonTree.bool(row, "is_released"))
+                    || "released".equals(JsonTree.string(row, "readiness"));
+            if (id != null && !seen.contains(id) && !isReleased) {
+                var title = JsonTree.string(row, KEY_DISPLAY_NAME);
+                if (matchesText(text, id, title, null)) {
+                    matches.add(new FindMatch(FindKind.PROJECT, id, requireText(title, id), location(id, title),
+                            null, null, false, null));
+                }
             }
         }
     }
 
     private void collectRunningEpics(String text, List<FindMatch> matches) {
+        var seen = new HashSet<String>();
+        for (var entry : startedEpics.entrySet()) {
+            var id = entry.getKey();
+            var epic = entry.getValue();
+            if (matchesText(text, id, epic.title(), null)) {
+                seen.add(id);
+                matches.add(new FindMatch(FindKind.EPIC, id, requireText(epic.title(), id),
+                        location(epic.projectId(), null), location(id, epic.title()), null, false, null));
+            }
+        }
         for (var row : rowsOfRoute("GET", PATH_EPICS, KEY_EPICS)) {
             var id = JsonTree.string(row, KEY_ID);
-            var title = JsonTree.string(row, KEY_TITLE);
-            if (id != null && matchesText(text, id, title, null)) {
-                matches.add(new FindMatch(FindKind.EPIC, id, requireText(title, id),
-                        location(JsonTree.string(row, KEY_PROJECT), null), location(id, title), null, false, null));
+            if (id != null && !seen.contains(id)) {
+                var title = JsonTree.string(row, KEY_TITLE);
+                if (matchesText(text, id, title, null)) {
+                    matches.add(new FindMatch(FindKind.EPIC, id, requireText(title, id),
+                            location(JsonTree.string(row, KEY_PROJECT), null), location(id, title), null, false, null));
+                }
             }
         }
     }
@@ -5863,25 +5932,30 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void collectOpenDecisions(String text, List<FindMatch> matches) {
-        for (var decision : openDecisions.values()) {
-            if (!matchesText(text, decision.id(), decision.title(), null)) {
-                continue;
+        synchronized (decisionsLock) {
+            for (var decision : openDecisions.values()) {
+                if (!matchesText(text, decision.id(), decision.title(), null)) {
+                    continue;
+                }
+                var planId = extractPlan(decision);
+                matches.add(new FindMatch(FindKind.DECISION, decision.id(), decision.title(), null, null,
+                        location(planId != null ? planId : decision.subject(), null), false, null));
             }
-            matches.add(new FindMatch(FindKind.DECISION, decision.id(), decision.title(), null, null,
-                    location(decision.subject(), null), false, null));
         }
     }
 
     private void collectReports(String text, List<FindMatch> matches) {
-        for (var report : mockReports) {
-            if (!matchesText(text, report.id(), report.subject(), null)) {
-                continue;
+        synchronized (reportsLock) {
+            for (var report : mockReports) {
+                if (!matchesText(text, report.id(), report.subject(), null)) {
+                    continue;
+                }
+                var from = report.from();
+                matches.add(new FindMatch(FindKind.REPORT, report.id(), report.subject(),
+                        location(from.projectId(), from.projectTitle()),
+                        location(from.epicId(), from.epicTitle()),
+                        location(from.planId(), from.planTitle()), false, null));
             }
-            var from = report.from();
-            matches.add(new FindMatch(FindKind.REPORT, report.id(), report.subject(),
-                    location(from.projectId(), from.projectTitle()),
-                    location(from.epicId(), from.epicTitle()),
-                    location(from.planId(), from.planTitle()), false, null));
         }
     }
 
@@ -6504,8 +6578,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     KEY_STATE, currentStateId.get()
             ));
             // cui-rewrite:disable InvalidExceptionUsageRecipe
-        } catch (RuntimeException e) {
+        } catch (IllegalArgumentException e) {
             response.json(404, Map.of(KEY_ERROR, "scenario_not_found", KEY_MESSAGE, e.getMessage()));
+        } catch (IllegalStateException e) {
+            response.json(500, Map.of(KEY_ERROR, "scenario_fixture_invalid", KEY_MESSAGE, e.getMessage()));
         }
     }
 
@@ -6586,9 +6662,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (payload == null) {
             return;
         }
-        var decision = JsonTree.object(payload, "decision");
-        var source = decision != null ? decision : payload;
+        var inner = JsonTree.object(payload, "decision");
+        if (inner == null) {
+            inner = JsonTree.object(payload, "question");
+        }
+        var source = new LinkedHashMap<>(inner != null ? inner : payload);
         var id = JsonTree.string(source, "id");
+        if (id == null) {
+            id = JsonTree.string(payload, "id");
+            if (id != null) {
+                source.put("id", id);
+            }
+        }
         if (id == null) {
             return;
         }
@@ -7329,10 +7414,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param data  the event payload
      */
     private void syncDrainItems(String event, Object data) {
-        if (!EVENT_RUNTIME_DRAINING.equals(event)) {
+        if (!EVENT_RUNTIME_DRAINING.equals(event) || lifecycleState != RuntimeLifecycleState.DRAINING) {
             return;
         }
         var payload = JsonTree.asObject(data);
+        var gen = payload != null ? JsonTree.integer(payload, "drain_generation") : null;
+        if (gen != null && gen.longValue() != drainGeneration.get()) {
+            return;
+        }
         var items = payload != null ? JsonTree.asArray(payload.get(KEY_REMAINING_ITEMS)) : null;
         if (items == null) {
             return;
@@ -7434,6 +7523,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             enrolledProjects.clear();
             favouriteProjectIds.clear();
             beingAddedProjects.clear();
+            projectSetupStates.clear();
 
             var fixture = startRuntimeFixture();
             var fixtureProjects = fixtureObjects(fixture, FIXTURE_PROJECTS);
@@ -8128,8 +8218,34 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var body = readBodyMap(request);
         var linkName = JsonTree.string(body, "link");
         var current = projectSetupStates.getOrDefault(projectId, PROJECT_SETUP_IDENTITY);
-        if (linkName != null && PROJECT_SETUP_IDENTITY.equals(current)) {
+        if ("set".equals(linkName) && PROJECT_SETUP_IDENTITY.equals(current)) {
             current = PROJECT_SETUP_COMPLETED;
+            synchronized (projectsLock) {
+                var updatedList = new ArrayList<EnrolledProject>();
+                for (var p : enrolledProjects) {
+                    if (p.projectId().equals(projectId)) {
+                        updatedList.add(new EnrolledProject(
+                                p.projectId(),
+                                p.displayName(),
+                                p.remoteUrl(),
+                                ProjectReadiness.READY,
+                                null,
+                                Math.max(0, p.needsOperatorCount() - 1),
+                                p.activePlansCount(),
+                                p.activeEpicsCount(),
+                                p.lastActive(),
+                                p.isFavourite(),
+                                p.isReleased()
+                        ));
+                    } else {
+                        updatedList.add(p);
+                    }
+                }
+                enrolledProjects.clear();
+                enrolledProjects.addAll(updatedList);
+            }
+            broadcastEvent(ProjectChangedEvent.EVENT_NAME,
+                    new ProjectChangedEvent(projectId, ProjectReadiness.READY, Instant.now()).toMap());
         }
         projectSetupStates.put(projectId, current);
         response.json(200, projectSetupState(projectId, current));
@@ -8233,11 +8349,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void handleGetSystem(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var query = Objects.requireNonNullElse(request.query(), "");
         Map<String, Object> snapshotFixture;
+        CleanupSummary cleanupSummary;
         synchronized (systemLock) {
             snapshotFixture = systemSnapshotFixture;
+            var hasOpenJob = activeCleanupJob != null && activeCleanupJob.isOpen();
+            cleanupSummary = hasOpenJob
+                    ? activeCleanupJob.summary()
+                    : new CleanupSummary(0, 0, 0, 0, 0, 0L, keptItems.size(), SWEEP_TODAY, SWEEP_TOMORROW);
         }
         if (snapshotFixture != null && query.isBlank()) {
-            response.json(200, snapshotFixture);
+            var copy = new LinkedHashMap<>(snapshotFixture);
+            copy.put("cleanup", cleanupSummary.toMap());
+            response.json(200, copy);
             return;
         }
         SystemWindow window = SystemWindow.HOUR;
@@ -8266,7 +8389,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 40802189312L,
                 "13:40",
                 true,
-                "127.0.0.1:" + (webPort > 0 ? webPort : 7420),
+                "127.0.0.1:" + effectiveWebPort(),
                 lanListenerOn ? "192.168.1.20:7421" : "off",
                 2,
                 0,
@@ -8330,15 +8453,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     new ModelMetric("claude:sonnet-4.5", "implementer", 118, 3610000L, 3200000L, 410000L, 0, 0, false, 0),
                     new ModelMetric("codex:gpt-5", "implementer", 12, 0L, 0L, 0L, 1, 0, true, 12)
             );
-        }
-
-        boolean hasOpenJob;
-        CleanupSummary cleanupSummary;
-        synchronized (systemLock) {
-            hasOpenJob = activeCleanupJob != null && activeCleanupJob.isOpen();
-            cleanupSummary = hasOpenJob
-                    ? activeCleanupJob.summary()
-                    : new CleanupSummary(0, 0, 0, 0, 0, 0L, keptItems.size(), SWEEP_TODAY, SWEEP_TOMORROW);
         }
 
         var snapshot = new SystemSnapshot(runtimeMetrics, workMetrics, workers, jobs, models, cleanupSummary, window, projectFilter);
@@ -8408,6 +8522,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 ));
             } else {
                 lifecycleState = RuntimeLifecycleState.DRAINING;
+                cancelPendingTasks();
                 drainingBy = isWeb ? "the web app" : "the console";
                 canWithdrawStop = true;
                 drainGeneration.incrementAndGet();
@@ -8440,7 +8555,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         "can_withdraw", true
                 ));
                 // The work finishes one item at a time: the list and its count shrink as it does.
-                scheduleDrainShrink();
+                scheduleDrainShrink(drainItems.size());
             }
         }
     }
@@ -8449,10 +8564,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * Lets the work of a drain finish one item at a time: each step re-emits the shorter list, as
      * the runtime does when a running task or a job ends.
      */
-    private void scheduleDrainShrink() {
+    private void scheduleDrainShrink(int items) {
         var generation = drainGeneration.get();
-        for (var seconds = 1; seconds <= 3; seconds++) {
-            scheduler.schedule(() -> shrinkDrain(generation), seconds, TimeUnit.SECONDS);
+        for (var seconds = 1; seconds <= items; seconds++) {
+            var task = scheduler.schedule(() -> shrinkDrain(generation), seconds, TimeUnit.SECONDS);
+            synchronized (this) {
+                pendingTasks.add(task);
+            }
         }
     }
 
@@ -8493,6 +8611,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (systemLock) {
             if (lifecycleState == RuntimeLifecycleState.DRAINING) {
                 lifecycleState = RuntimeLifecycleState.RUNNING;
+                cancelPendingTasks();
                 drainingBy = null;
                 canWithdrawStop = false;
                 drainGeneration.incrementAndGet();
@@ -8636,15 +8755,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 }
             }
 
-            activeCleanupJob = new CleanupJob(
-                    activeCleanupJob.jobId(),
-                    CleanupJobState.DONE,
-                    activeCleanupJob.dueSince(),
-                    activeCleanupJob.summary(),
-                    activeCleanupJob.projectItems(),
-                    activeCleanupJob.links()
-            );
-
             var decided = activeCleanupJob.summary();
             var freedBytes = decided.freedBytes();
             var deletedPlans = decided.plansCount();
@@ -8664,6 +8774,27 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     }
                 }
             }
+
+            var adjustedSummary = new CleanupSummary(
+                    deletedPlans,
+                    deletedEpics,
+                    deletedLogs,
+                    decided.reportsCount(),
+                    decided.projectsCount(),
+                    freedBytes,
+                    decided.keptForGoodCount(),
+                    decided.lastSweepAt(),
+                    decided.nextCheckAt()
+            );
+
+            activeCleanupJob = new CleanupJob(
+                    activeCleanupJob.jobId(),
+                    CleanupJobState.DONE,
+                    activeCleanupJob.dueSince(),
+                    adjustedSummary,
+                    activeCleanupJob.projectItems(),
+                    activeCleanupJob.links()
+            );
 
             broadcastEvent("cleanup.decided", Map.of(
                     "job_id", jobId,
@@ -8702,7 +8833,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         KEY_STATUS, "postponed",
                         "job_id", jobId,
                         CONST_DECISION, "remind",
-                        "remind_after_days", machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS),
+                        KEY_REMIND_AFTER_DAYS, machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS),
                         "remind_at", "2026-10-19T03:00:00Z"
                 ));
                 return;
@@ -8722,14 +8853,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     CONST_DECISION, "remind",
                     "by", "operator",
                     "channel", isWeb ? "web" : "cli",
-                    "remind_after_days", machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS)
+                    KEY_REMIND_AFTER_DAYS, machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS)
             ));
 
             response.json(200, Map.of(
                     KEY_STATUS, "postponed",
                     "job_id", jobId,
                     CONST_DECISION, "remind",
-                    "remind_after_days", machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS),
+                    KEY_REMIND_AFTER_DAYS, machineCleanupDurations.get(KEY_REMIND_AFTER_DAYS),
                     "remind_at", "2026-10-19T03:00:00Z"
             ));
         }

@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 
 import org.junit.jupiter.api.AfterEach;
@@ -888,5 +890,358 @@ class MockRuntimeEngineTest {
         var runtime = JsonTree.asObject(sysRes.json().get("runtime"));
         assertNotNull(runtime);
         assertEquals("127.0.0.1:" + webPort, JsonTree.string(runtime, "loopback_listener"));
+    }
+
+    @Test
+    @DisplayName("after a reset and after a scenario switch the started plans store is cleared")
+    void resetAndScenarioSwitchClearStartedPlans() throws Exception {
+        engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
+        var startRes = send("POST", "/api/v1/projects/pm-mcp-clients/plans/start", auth,
+                "{\"title\":\"Test Plan A\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(201, startRes.status());
+        var planId = JsonTree.string(startRes.json(), "id");
+        assertNotNull(planId);
+
+        var processRes = send("GET", "/api/v1/plans/" + planId + "/process", auth, new byte[0], false);
+        assertEquals(200, processRes.status());
+
+        engine.reset();
+
+        var processAfterReset = send("GET", "/api/v1/plans/" + planId + "/process", auth, new byte[0], false);
+        assertEquals(404, processAfterReset.status());
+
+        var startRes2 = send("POST", "/api/v1/projects/pm-mcp-clients/plans/start", auth,
+                "{\"title\":\"Test Plan B\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(201, startRes2.status());
+        var planId2 = JsonTree.string(startRes2.json(), "id");
+        assertNotNull(planId2);
+
+        var processRes2 = send("GET", "/api/v1/plans/" + planId2 + "/process", auth, new byte[0], false);
+        assertEquals(200, processRes2.status());
+
+        engine.switchScenario(StandardScenarios.STATUS_ONLY);
+        var processAfterSwitch = send("GET", "/api/v1/plans/" + planId2 + "/process", auth, new byte[0], false);
+        assertEquals(404, processAfterSwitch.status());
+    }
+
+    @Test
+    @DisplayName("after a reset and after a scenario switch the project setup states store is cleared")
+    void resetAndScenarioSwitchClearProjectSetupStates() throws Exception {
+        engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
+
+        var advanced = send("POST", "/api/v1/projects/cui-parent/setup", auth,
+                "{\"link\":\"set\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, advanced.status());
+        assertEquals("project.completed", JsonTree.string(advanced.json(), "state"));
+
+        engine.reset();
+
+        var stateAfterReset = send("GET", "/api/v1/projects/cui-parent/setup", auth, new byte[0], false);
+        assertEquals(200, stateAfterReset.status());
+        assertEquals("project.identity", JsonTree.string(stateAfterReset.json(), "state"));
+
+        var advancedAgain = send("POST", "/api/v1/projects/cui-parent/setup", auth,
+                "{\"link\":\"set\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, advancedAgain.status());
+        assertEquals("project.completed", JsonTree.string(advancedAgain.json(), "state"));
+
+        engine.switchScenario(StandardScenarios.STATUS_ONLY);
+        engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
+
+        var stateAfterSwitch = send("GET", "/api/v1/projects/cui-parent/setup", auth, new byte[0], false);
+        assertEquals(200, stateAfterSwitch.status());
+        assertEquals("project.identity", JsonTree.string(stateAfterSwitch.json(), "state"));
+    }
+
+    @Test
+    @DisplayName("a plan made through the create act of a start entry answers /process with 200")
+    void planCreatedThroughStartEntryCreateActAnswersProcess() throws Exception {
+        engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
+
+        var openRes = send("POST", "/api/v1/projects/pm-mcp-clients/entries", auth,
+                "{\"kind\":\"plan\",\"title\":\"Create act test plan\",\"recipe_key\":\"lesson-cleanup\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(201, openRes.status());
+        var openStart = JsonTree.asObject(openRes.json().get("start"));
+        assertNotNull(openStart);
+        var openEntry = JsonTree.asObject(openStart.get("entry"));
+        assertNotNull(openEntry);
+        var entryId = JsonTree.string(openEntry, "entry_id");
+        assertNotNull(entryId);
+
+        var createRes = send("POST", "/api/v1/entries/" + entryId + "/links/create", auth,
+                "{\"title\":\"My Created Plan\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, createRes.status());
+        var startMap = JsonTree.asObject(createRes.json().get("start"));
+        assertNotNull(startMap);
+        var entryMap = JsonTree.asObject(startMap.get("entry"));
+        assertNotNull(entryMap);
+        var planId = JsonTree.string(entryMap, "plan_id");
+        assertNotNull(planId);
+
+        var processRes = send("GET", "/api/v1/plans/" + planId + "/process", auth, new byte[0], false);
+        assertEquals(200, processRes.status());
+        assertEquals(planId, JsonTree.string(processRes.json(), "plan_id"));
+    }
+
+    @Test
+    @DisplayName("a scenario with a malformed start-state fact is refused with the right error and leaves the engine exactly as it was")
+    void scenarioWithMalformedStartStateFactIsRefused() throws Exception {
+        var running = registry.resolve(StandardScenarios.RUNNING_WORK);
+        try (var live = new MockRuntimeEngine(registry, running, runtimeToken, deviceSecret)) {
+            var beforeScenario = live.currentScenario().name();
+            var beforeState = live.currentStateId();
+
+            var brokenJobScenarioJson = """
+                    {
+                      "format_version": 1,
+                      "name": "broken-job-scenario",
+                      "start": "start_broken",
+                      "states": {
+                        "start_broken": {
+                          "representation": {
+                            "scope": { "kind": "machine" },
+                            "state": { "state_id": "start_broken" },
+                            "facts": {
+                              "job": { "invalid": true }
+                            },
+                            "links": []
+                          }
+                        }
+                      }
+                    }
+                    """;
+            registry.register(ScenarioLoader.load(brokenJobScenarioJson, "broken-job-scenario"));
+
+            var failure = assertThrows(IllegalStateException.class,
+                    () -> live.switchScenario("broken-job-scenario"));
+            assertTrue(failure.getMessage().contains("facts.job"), failure.getMessage());
+
+            assertEquals(beforeScenario, live.currentScenario().name());
+            assertEquals(beforeState, live.currentStateId());
+
+            var switchRes = send(live, "POST", "/mock/scenario?name=broken-job-scenario", Map.of(), new byte[0], false);
+            assertEquals(500, switchRes.status());
+            assertEquals("scenario_fixture_invalid", switchRes.json().get("error"));
+        }
+    }
+
+    @Test
+    @DisplayName("a non-object job or durations fact is rejected, not skipped")
+    void nonObjectJobOrDurationsFactIsRejected() throws Exception {
+        var running = registry.resolve(StandardScenarios.RUNNING_WORK);
+        try (var live = new MockRuntimeEngine(registry, running, runtimeToken, deviceSecret)) {
+            var nonObjectFactsScenarioJson = """
+                    {
+                      "format_version": 1,
+                      "name": "non-object-facts-scenario",
+                      "start": "valid_start",
+                      "states": {
+                        "valid_start": {
+                          "representation": {
+                            "scope": { "kind": "machine" },
+                            "state": { "state_id": "valid_start" },
+                            "facts": {},
+                            "links": []
+                          }
+                        },
+                        "state_with_array_job": {
+                          "representation": {
+                            "scope": { "kind": "machine" },
+                            "state": { "state_id": "state_with_array_job" },
+                            "facts": {
+                              "job": []
+                            },
+                            "links": []
+                          }
+                        },
+                        "state_with_array_durations": {
+                          "representation": {
+                            "scope": { "kind": "machine" },
+                            "state": { "state_id": "state_with_array_durations" },
+                            "facts": {
+                              "durations": []
+                            },
+                            "links": []
+                          }
+                        }
+                      }
+                    }
+                    """;
+            registry.register(ScenarioLoader.load(nonObjectFactsScenarioJson, "non-object-facts-scenario"));
+            live.switchScenario("non-object-facts-scenario");
+
+            var failureJob = assertThrows(IllegalStateException.class,
+                    () -> live.goToState("state_with_array_job"));
+            assertTrue(failureJob.getMessage().contains("facts.job must be an object"), failureJob.getMessage());
+
+            var gotoJobRes = send(live, "POST", "/mock/goto/state_with_array_job", Map.of(), new byte[0], false);
+            assertEquals(500, gotoJobRes.status());
+            assertEquals("state_fixture_invalid", gotoJobRes.json().get("error"));
+
+            var failureDurations = assertThrows(IllegalStateException.class,
+                    () -> live.goToState("state_with_array_durations"));
+            assertTrue(failureDurations.getMessage().contains("facts.durations must be an object"), failureDurations.getMessage());
+
+            var gotoDurationsRes = send(live, "POST", "/mock/goto/state_with_array_durations", Map.of(), new byte[0], false);
+            assertEquals(500, gotoDurationsRes.status());
+            assertEquals("state_fixture_invalid", gotoDurationsRes.json().get("error"));
+        }
+    }
+
+    @Test
+    @DisplayName("a repeated cleanup delete returns the adjusted freed_bytes")
+    void repeatedCleanupDeleteReturnsAdjustedFreedBytes() throws Exception {
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        var firstDelete = send("POST", "/api/v1/system/cleanup/cln-0012/delete", auth,
+                "{\"unchecked_ids\":[\"token-usage\"]}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, firstDelete.status());
+        assertEquals("deleted", firstDelete.json().get("status"));
+        assertEquals(1872127584L, JsonTree.number(firstDelete.json(), "freed_bytes").longValue());
+
+        var secondDelete = send("POST", "/api/v1/system/cleanup/cln-0012/delete", auth,
+                new byte[0], false);
+        assertEquals(200, secondDelete.status());
+        assertEquals("deleted", secondDelete.json().get("status"));
+        assertEquals(1872127584L, JsonTree.number(secondDelete.json(), "freed_bytes").longValue());
+    }
+
+    @Test
+    @DisplayName("the system snapshot reflects the live cleanup job after delete")
+    void systemSnapshotReflectsLiveCleanupJob() throws Exception {
+        engine.switchScenario(StandardScenarios.SYSTEM);
+        assertEquals("system.running", engine.currentStateId());
+
+        var beforeRes = send("GET", "/api/v1/system", auth, new byte[0], false);
+        assertEquals(200, beforeRes.status());
+        var beforeCleanup = JsonTree.asObject(beforeRes.json().get("cleanup"));
+        assertNotNull(beforeCleanup);
+        assertEquals(12, JsonTree.integer(beforeCleanup, "plans_count"));
+
+        var deleteRes = send("POST", "/api/v1/system/cleanup/cln-0012/delete", auth,
+                new byte[0], false);
+        assertEquals(200, deleteRes.status());
+
+        var afterDeleteRes = send("GET", "/api/v1/system", auth, new byte[0], false);
+        assertEquals(200, afterDeleteRes.status());
+        var afterCleanup = JsonTree.asObject(afterDeleteRes.json().get("cleanup"));
+        assertNotNull(afterCleanup);
+        assertEquals(0, JsonTree.integer(afterCleanup, "plans_count"));
+    }
+
+    @Test
+    @DisplayName("a concurrent find during an enrol does not throw")
+    void concurrentFindDuringEnrolDoesNotThrow() throws Exception {
+        engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
+        var running = new AtomicBoolean(true);
+        var errors = new CopyOnWriteArrayList<Throwable>();
+
+        var findThread = new Thread(() -> {
+            while (running.get()) {
+                try {
+                    send("GET", "/api/v1/find?q=pm", auth, new byte[0], false);
+                } catch (Exception e) {
+                    errors.add(e);
+                    break;
+                }
+            }
+        });
+
+        findThread.start();
+        for (int i = 0; i < 50; i++) {
+            send("POST", "/api/v1/projects/new-project-" + i + "/enrol", auth,
+                    ("{\"path\":\"/path/to/p" + i + "\"}").getBytes(StandardCharsets.UTF_8), false);
+        }
+        running.set(false);
+        findThread.join(5000);
+
+        assertTrue(errors.isEmpty(), "find must not throw concurrently: " + errors);
+    }
+
+    @Test
+    @DisplayName("completing project setup makes the enrolled project ready in the explorer read")
+    void completingProjectSetupMakesEnrolledProjectReady() throws Exception {
+        engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
+
+        var explorerBefore = send("GET", "/api/v1/explorer", auth, new byte[0], false);
+        assertEquals(200, explorerBefore.status());
+        var allBefore = JsonTree.asArray(explorerBefore.json().get("all_projects"));
+        assertNotNull(allBefore);
+        var targetBefore = allBefore.stream()
+                .map(JsonTree::asObject)
+                .filter(p -> "plan-marshall".equals(JsonTree.string(p, "project_id")))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("setup_needs", JsonTree.string(targetBefore, "readiness"));
+
+        var advanced = send("POST", "/api/v1/projects/plan-marshall/setup", auth,
+                "{\"link\":\"set\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, advanced.status());
+        assertEquals("project.completed", JsonTree.string(advanced.json(), "state"));
+
+        var explorerAfter = send("GET", "/api/v1/explorer", auth, new byte[0], false);
+        assertEquals(200, explorerAfter.status());
+        var allAfter = JsonTree.asArray(explorerAfter.json().get("all_projects"));
+        assertNotNull(allAfter);
+        var targetAfter = allAfter.stream()
+                .map(JsonTree::asObject)
+                .filter(p -> "plan-marshall".equals(JsonTree.string(p, "project_id")))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("ready", JsonTree.string(targetAfter, "readiness"));
+    }
+
+    @Test
+    @DisplayName("a link other than set does not complete the identity step")
+    void linkOtherThanSetDoesNotCompleteSetup() throws Exception {
+        engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
+
+        var nonSetLink = send("POST", "/api/v1/projects/cui-parent/setup", auth,
+                "{\"link\":\"other\"}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, nonSetLink.status());
+        assertEquals("project.identity", JsonTree.string(nonSetLink.json(), "state"));
+    }
+
+    @Test
+    @DisplayName("a state effect that carries a question member and an outer id is applied")
+    void stateEffectWithQuestionMemberAndOuterIdIsApplied() throws Exception {
+        engine.switchScenario(StandardScenarios.RUNNING_WORK);
+
+        var broadcastPayload = """
+                {
+                  "event": "decision.opened",
+                  "data": {
+                    "id": "Q-999",
+                    "question": {
+                      "revision": 1,
+                      "title": "Custom Question Title",
+                      "header": "Custom Header",
+                      "subject": "plan custom-plan",
+                      "scope": "plan",
+                      "asking_phase": "execute",
+                      "asking_role": "implement",
+                      "blocks": "plan",
+                      "reversibility": "reversible",
+                      "description": "Custom question description.",
+                      "parts": []
+                    }
+                  }
+                }
+                """;
+        var broadcastRes = send("POST", "/mock/broadcast", Map.of(),
+                broadcastPayload.getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, broadcastRes.status());
+
+        var getRes = send("GET", "/api/v1/decisions", auth, new byte[0], false);
+        assertEquals(200, getRes.status());
+        var list = JsonTree.asArray(JsonTree.parse(getRes.body()));
+        assertNotNull(list);
+        var dec = list.stream()
+                .map(JsonTree::asObject)
+                .filter(d -> "Q-999".equals(JsonTree.string(d, "id")))
+                .findFirst()
+                .orElseThrow();
+        assertEquals("Custom Question Title", JsonTree.string(dec, "title"));
+        assertEquals("plan custom-plan", JsonTree.string(dec, "subject"));
+        assertEquals("Custom question description.", JsonTree.string(dec, "description"));
     }
 }
