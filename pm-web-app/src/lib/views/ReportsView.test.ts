@@ -1293,4 +1293,82 @@ describe('ReportsView component', () => {
     const realProjectSection = projectBtn.closest('.project-section') as HTMLElement;
     expect(within(realProjectSection).getByText('Real project named __machine__ is onboarded')).toBeInTheDocument();
   });
+
+  it('keeps the open report mounted and the filter text across a reload (D1)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const input = await typeFilter('relay');
+    expect((input as HTMLInputElement).value).toBe('relay');
+
+    const detailBtn = screen.getAllByRole('button', { name: /Show the details/i })[0];
+    await fireEvent.click(detailBtn);
+    await waitFor(() => {
+      expect(document.querySelector('.report-title')).not.toBeNull();
+    });
+
+    const reportTitleBefore = document.querySelector('.report-title');
+
+    eventHandler?.('report.sent', {});
+    await tick();
+
+    await waitFor(() => {
+      expect(screen.getByRole('searchbox')).toHaveValue('relay');
+      expect(document.querySelector('.report-title')).not.toBeNull();
+      expect(document.querySelector('.report-title')).toBe(reportTitleBefore);
+    });
+  });
+
+  it('has exactly one h1 heading on screen at 390 px when a report is open (D1)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    window.innerWidth = 390;
+    window.dispatchEvent(new Event('resize'));
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const detailBtn = screen.getAllByRole('button', { name: /Show the details/i })[0];
+    await fireEvent.click(detailBtn);
+
+    await waitFor(() => {
+      expect(document.querySelector('.report-title')).not.toBeNull();
+    });
+
+    const h1Elements = document.querySelectorAll('h1');
+    expect(h1Elements).toHaveLength(1);
+    expect(h1Elements[0]).toHaveClass('report-title');
+  });
+
+  it('leaves no unread report behind on unfiltered mark-all and keeps the load-older control (D1)', async () => {
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: mockReports,
+      unread_count: 3,
+      has_older: true,
+      older_count: 5,
+    });
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(undefined);
+    expect(screen.getByRole('button', { name: /Show.*older/i })).toBeInTheDocument();
+  });
+
+  it('treats a punctuation-only query as unfiltered and shows what the count says (D1)', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    await typeFilter('...');
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+    expect(screen.getByText('Ended: no change')).toBeInTheDocument();
+    expect(screen.getByText('Onboarded')).toBeInTheDocument();
+    expect(screen.queryByTestId('filter-results')).toBeNull();
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(undefined);
+  });
 });
