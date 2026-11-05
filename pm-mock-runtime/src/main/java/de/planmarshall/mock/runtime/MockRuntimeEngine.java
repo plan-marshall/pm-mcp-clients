@@ -118,6 +118,7 @@ import de.planmarshall.api.onboarding.MachineSettingsUpdateResult;
 import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.onboarding.OnboardingStepCompletedEvent;
 import de.planmarshall.api.onboarding.PlanDefaults;
+import de.planmarshall.api.overview.ChangeSize;
 import de.planmarshall.api.overview.FindKind;
 import de.planmarshall.api.overview.FindMatch;
 import de.planmarshall.api.overview.FindPage;
@@ -5044,7 +5045,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 fixRelayDecisions,
                 fixRelayTokens,
                 fixRelayOwnCalls,
-                fixRelayChangeMap
+                fixRelayChangeMap,
+                null,
+                null,
+                new ChangeSize(12, 340, 27, 2)
         ));
 
         completionReports.put(CONST_DOCS_TYPO, new PlanCompletionReport(

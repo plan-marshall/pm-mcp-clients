@@ -23,11 +23,11 @@ How a plan went, on one page: the detail of the report of its end (link:reports.
   Outcome        merged: the pull request #214 was merged into main
   Reason         —
   Ran            2 h 40 min, 08:40 to 11:20 · paused 20 min by you
+  Change         12 files · +340 −27 · 2 unplanned
   Deliverables   3 of 3 done
                    ✓ cursor write order
                    ✓ a test per transport, websocket and SSE
                    ✓ fsync of the cursor file
-  Change         12 files · +340 −27 · 2 unplanned
   Re-planning    1 · after the base moved (09:55): TASK-5 added
   Decisions      2 · Q-003 Rebase onto main (you, web app) · Q-005 (left to the plan)
   Own calls      3 · shortcuts first
@@ -186,6 +186,10 @@ Keys of the area `report`, shared by both clients; the outcome is `overview.ende
 |`report.completion.own_call_conflicts`
 |conflicts with {item}
 |widerspricht {item}
+
+|`report.completion.change`
+|Change
+|Änderung
 
 |`report.completion.change_map`
 |Change map

@@ -4,7 +4,8 @@
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
   import Spinner from '../components/Spinner.svelte';
-  import { apiClient, type PlanCompletionReport } from '../api/client';
+  import StatusLabel from '../components/StatusLabel.svelte';
+  import { apiClient, type ChangeSizeRecord, type PlanCompletionReport } from '../api/client';
   import { formatSplit, formatTokens, formatDuration, formatTime } from '../display/format';
   import { displayState } from '../display';
 
@@ -44,6 +45,17 @@
     return state?.toLowerCase() === 'done' ? 'state.check' : 'state.dot';
   }
 
+  /**
+   * @param outcome the plan's outcome as the runtime names it
+   * @returns the state colour the design system gives that outcome
+   */
+  function outcomeTone(outcome: string): 'success' | 'neutral' | 'attention' | 'danger' {
+    const value = outcome?.toLowerCase();
+    if (value === 'merged' || value === 'completed') return 'success';
+    if (value === 'cancelled' || value === 'failed') return 'danger';
+    return 'neutral';
+  }
+
   function formatDecisionBy(d: { by: string; channel?: string; device?: string }): string {
     if (d.by?.toLowerCase() === 'operator') {
       const parts = [$t('report.completion.by_you')];
@@ -63,18 +75,30 @@
     }
     return call.judgment;
   }
+
+  /**
+   * The size of the plan's change at its last capture, as the plan view states it. The client adds
+   * nothing up and shows no line where the plan has no measured size.
+   *
+   * @param change the size the runtime served
+   * @returns the catalogue's one-line form
+   */
+  function changeText(change: ChangeSizeRecord): string {
+    return $t('plan.change.size', {
+      files: change.files,
+      insertions: change.insertions,
+      deletions: change.deletions,
+      unplanned: change.unplanned ?? 0,
+    });
+  }
 </script>
 
 <div class="completion-report">
   <div class="completion-report__nav">
     {#if onClose}
-      <button
-        class="nav-back-btn"
-        onclick={onClose}
-        aria-label={$t('report.completion.back_to_reports')}
-      >
-        ← {$t('web.common.back')}
-      </button>
+      <Button variant="ghost" size="small" icon="act.back" onclick={onClose}>
+        {$t('web.common.back')}
+      </Button>
     {/if}
   </div>
 
@@ -107,9 +131,7 @@
     <header class="report-header">
       <div class="report-header__headline">
         <h1 class="report-title">{data.plan_id}</h1>
-        <span class="report-badge report-badge--{data.outcome.toLowerCase()}">
-          {$t('overview.ended.outcome', { outcome: data.outcome })}
-        </span>
+        <StatusLabel tone={outcomeTone(data.outcome)} label={$t('overview.ended.outcome', { outcome: data.outcome })} />
         {#if data.pull_request_number}
           <a
             class="pr-link mono"
@@ -161,6 +183,13 @@
               >{data.ran ||
                 formatDuration(data.duration_seconds * 1000, $currentLocale)}</span
             >
+          </div>
+        {/if}
+
+        {#if data.change}
+          <div class="summary-row" data-testid="completion-change">
+            <span class="summary-label">{$t('report.completion.change')}</span>
+            <span class="summary-value">{changeText(data.change)}</span>
           </div>
         {/if}
       </section>
@@ -302,13 +331,14 @@
         <section class="report-section tokens-section">
           <div class="tokens-header">
             <h2 class="section-title">{$t('report.completion.tokens')}</h2>
-            <button
-              class="components-toggle-btn"
+            <Button
+              variant="secondary"
+              size="small"
               onclick={() => (showRawComponents = !showRawComponents)}
               aria-expanded={showRawComponents}
             >
               {$t(showRawComponents ? 'report.completion.raw_hide' : 'report.completion.raw_show')}
-            </button>
+            </Button>
           </div>
 
           <!-- Total & Coverage -->
@@ -532,27 +562,8 @@
 
 <style>
   .completion-report {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: var(--space-6) var(--space-4);
-  }
-
-  .nav-back-btn {
-    background: none;
-    border: none;
-    color: var(--color-primary);
-    font-size: var(--text-sm);
-    font-weight: 500;
-    cursor: pointer;
-    padding: var(--space-2) 0;
-    margin-bottom: var(--space-4);
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-  }
-
-  .nav-back-btn:hover {
-    text-decoration: underline;
+    inline-size: 100%;
+    min-inline-size: 0;
   }
 
   .completion-report__loading {
@@ -593,28 +604,6 @@
     font-weight: 700;
     color: var(--color-text-primary);
     margin: 0;
-  }
-
-  .report-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: var(--space-1) var(--space-3);
-    border-radius: var(--radius-full);
-    font-size: var(--text-xs);
-    font-weight: 600;
-  }
-
-  .report-badge--merged {
-    background: var(--color-success-subtle);
-    color: var(--color-success-text);
-    border: 1px solid var(--color-success-border);
-  }
-
-  .report-badge--no_change,
-  .report-badge--completed {
-    background: var(--color-bg-subtle);
-    color: var(--color-text-secondary);
-    border: 1px solid var(--color-border);
   }
 
   .pr-link {
@@ -815,20 +804,6 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: var(--space-4);
-  }
-
-  .components-toggle-btn {
-    background: none;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    padding: var(--space-1) var(--space-3);
-    font-size: var(--text-xs);
-    color: var(--color-text-secondary);
-    cursor: pointer;
-  }
-
-  .components-toggle-btn:hover {
-    background: var(--color-bg-subtle);
   }
 
   .tokens-total-card {
