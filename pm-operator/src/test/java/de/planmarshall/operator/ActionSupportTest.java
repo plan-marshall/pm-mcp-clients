@@ -193,13 +193,13 @@ class ActionSupportTest {
     private int interruptedAt(VirtualScreenTerminal virtual, String proposalMarker,
                         String interruptMarker, Handler handler) throws Exception {
         var code = new AtomicInteger(-1);
-        var failure = new AtomicReference<Throwable>();
+        var failure = new AtomicReference<Exception>();
         var reader = Thread.ofPlatform().name("handler-under-test").start(() -> {
             try {
                 code.set(handler.run());
             }
-            /*TODO: Catch specific not Throwable. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-            catch (Throwable failed) {
+            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
+            catch (Exception failed) {
                 failure.set(failed);
             }
         });

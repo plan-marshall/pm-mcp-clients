@@ -574,16 +574,11 @@ public final class EntryFlow {
     static <T> T bounded(IoCallable<T> task, Duration bound, String threadName) throws IOException {
         var result = new AtomicReference<T>();
         var failure = new AtomicReference<IOException>();
-        var runtimeFailure = new AtomicReference<RuntimeException>();
         var thread = new Thread(() -> {
             try {
                 result.set(task.call());
             } catch (IOException e) {
                 failure.set(e);
-            }
-            /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-            catch (RuntimeException e) {
-                runtimeFailure.set(e);
             }
         }, threadName);
         thread.setDaemon(true);
@@ -599,23 +594,12 @@ public final class EntryFlow {
             thread.interrupt();
             throw new IOException("the runtime did not answer within " + bound.toMillis() + " ms");
         }
-        if (runtimeFailure.get() != null) {
-            throw runtimeFailure.get();
-        }
         if (failure.get() != null) {
             throw failure.get();
         }
         return result.get();
     }
 
-    /**
-     * The prompt badges of a status (04-console.adoc#prompt): one per {@code needs_operator} kind
-     * that is not zero, and the machine's onboarding badge while the machine is not onboarded.
-     *
-     * @param locale the interface locale
-     * @param status the runtime's status
-     * @return the badges, in the order the prompt shows them
-     */
     /**
      * Builds structured prompt badges for console consumption.
      *

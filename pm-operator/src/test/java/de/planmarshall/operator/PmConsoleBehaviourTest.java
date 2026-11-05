@@ -396,14 +396,14 @@ class PmConsoleBehaviourTest {
         fixture.start((request, response) -> {
             if ("/api/v1/status".equals(request.target())) {
                 try {
-                    Thread.sleep(4000);
+                    new CountDownLatch(1).await(4, TimeUnit.SECONDS);
                 } catch (InterruptedException _) {
                     Thread.currentThread().interrupt();
                 }
                 response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
             } else if ("/api/v1/project-onboardings".equals(request.target())) {
                 try {
-                    Thread.sleep(4000);
+                    new CountDownLatch(1).await(4, TimeUnit.SECONDS);
                 } catch (InterruptedException _) {
                     Thread.currentThread().interrupt();
                 }
@@ -583,10 +583,10 @@ class PmConsoleBehaviourTest {
                                 ClientEnvironment.capture(fixture.environment()),
                                 () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
             MessageCatalogue.setForTest("en", "operator.console.badge.setup", "Installation {done}/{total}");
-            try {
+            try (var printWriter = new PrintWriter(rendered)) {
                 var console = new PmConsole(context);
                 console.refreshSetupBadge("en", terminal);
-                console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
+                console.handleEmptyEnter(printWriter, reader, terminal);
                 assertTrue(onboardingRequested.get(), "Enter must still act when machine setup badge template is changed in catalogue");
             } finally {
                 MessageCatalogue.clearCacheForTest();
