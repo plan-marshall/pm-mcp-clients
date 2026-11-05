@@ -57,6 +57,16 @@ Source of this plan (read before scoping):
      - The row of the package `web-moving-between-plans` in `doc/plans/README.adoc` is set to `done` if `PLAN-83` and `PLAN-59` D4 have landed (evidence order: `none`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
+6. **The chat guards are pinned, and two replies are true** (PLAN-101 residue, `landings/PLAN-101.md`)
+   - What: (a) `DecisionView.svelte` ~64-66 keeps one `chatBusyId` slot: B finishing first clears A's busy marker while A's request is in flight; busy is tracked per decision (the PR 319 thread asked for it), the operation token stays. (b) No test pins the guards of `11be8390`: the `chatBusyToken` clear, the `takeProposedAnswer` revision guard (a late answer to an earlier revision is dropped; the operator is told or the design says it is dropped silently) and the `endTheChat` generation guard. (c) Two replies in the PR 319 threads are false and are corrected in the thread: `format.ts:363` ("handled in `7c7ea71c`": that commit changes `DecisionView.test.ts` only; the finding was answered, not changed, and its behaviour is decided: a first paint without the unit key keeps the numeric figure or the design says it does not) and `DecisionView.svelte:60` (the fix is `e0140658`/`11be8390` of PR 335, then this deliverable).
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing, pm-dev-frontend:javascript-security
+   - Done when:
+     - Tests that fail when each guard is reverted: the per-decision busy marker survives another decision's operation; a late proposal answer after a revision applies nothing; `endTheChat` of an earlier generation closes nothing of the reopened panel (evidence order: `mutation-after`)
+     - The two PR 319 threads carry a reply that states the real commit or the reason, and the `format.ts` first-paint behaviour is decided in the design (evidence order: `none`)
+     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+     - The landing message states `unresolved_review_threads=N` (read through GraphQL `reviewThreads` at the merge head, path:line of each open thread) and `sonar_open_new_issues=N` as lines of its facts block (evidence order: `none`)
+
 ## Standing Constraints
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20510 PM_WEB_PORT=20511 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
