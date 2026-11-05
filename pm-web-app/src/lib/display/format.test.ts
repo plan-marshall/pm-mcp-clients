@@ -287,30 +287,37 @@ describe('formatSplit', () => {
   it('takes the unit of its total, in both languages', () => {
     expectBothLocales(
       (locale) => formatSplit(412_000, 380_000, 32_000, true, locale),
-      '≥ 412 k tokens (≥ 380 k in · ≥ 32 k out)',
-      '≥ 412 Tsd. Tokens (≥ 380 Tsd. rein · ≥ 32 Tsd. raus)',
+      '≥ 412 k (≥ 380 k in · ≥ 32 k out)',
+      '≥ 412 Tsd. (≥ 380 Tsd. rein · ≥ 32 Tsd. raus)',
     );
     expectBothLocales(
       (locale) => formatSplit(412_000, 380_000, 32_000, false, locale),
-      '412 k tokens (380 k in · 32 k out)',
-      '412 Tsd. Tokens (380 Tsd. rein · 32 Tsd. raus)',
+      '412 k (380 k in · 32 k out)',
+      '412 Tsd. (380 Tsd. rein · 32 Tsd. raus)',
     );
   });
 
   it('shows every part in the total’s unit, even a part far below it', () => {
     expectBothLocales(
       (locale) => formatSplit(1002, 998, 4, false, locale),
-      '1.0 k tokens (1.0 k in · 0.0 k out)',
-      '1,0 Tsd. Tokens (1,0 Tsd. rein · 0,0 Tsd. raus)',
+      '1.0 k (1.0 k in · 0.0 k out)',
+      '1,0 Tsd. (1,0 Tsd. rein · 0,0 Tsd. raus)',
     );
   });
 
   it('shows plain numbers when the total is below a thousand', () => {
     expectBothLocales(
       (locale) => formatSplit(412, 380, 32, false, locale),
-      '412 tokens (380 in · 32 out)',
-      '412 Tokens (380 rein · 32 raus)',
+      '412 (380 in · 32 out)',
+      '412 (380 rein · 32 raus)',
     );
+  });
+
+  it('leaves the word “tokens” to the label beside it', () => {
+    // The plan view, the epic view and the system view each name the figure in their own label;
+    // the split repeats no noun of its own (texts-and-languages.adoc, Numbers: Tokens).
+    expect(formatSplit(412_000, 380_000, 32_000, false, 'en')).not.toContain('token');
+    expect(formatSplit(412_000, 380_000, 32_000, false, 'de')).not.toContain('Token');
   });
 });
 

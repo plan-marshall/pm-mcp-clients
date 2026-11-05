@@ -253,10 +253,11 @@ class SystemViewConsistencyTest {
     }
 
     private static String split(String lang, long total, long in, long out) {
-        return MessageCatalogue.format(lang, "common.tokens.split",
+        var combined = MessageCatalogue.format(lang, "common.tokens.split",
                             Map.of("total", TokenFormat.formatTokens(total, false, lang),
                                                 "in", TokenFormat.formatTokens(in, false, lang),
                                                 "out", TokenFormat.formatTokens(out, false, lang)));
+        return MessageCatalogue.format(lang, "common.tokens.total", Map.of("figure", combined));
     }
 
     @Test

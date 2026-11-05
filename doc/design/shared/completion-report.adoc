@@ -64,7 +64,7 @@ What the plan used, in tokens and never in money (link:../../../../pm-mcp-core/d
 ----
   fix-relay · tokens                                merged · #214 · today 11:20
   ─────────────────────────────────────────────────────────────────────────────
-  Total        ≥ 412 k tokens (≥ 380 k in · ≥ 32 k out) · ran 2 h 40 min
+  Total        ≥ 412 k (≥ 380 k in · ≥ 32 k out) · ran 2 h 40 min
   Coverage     3 of 41 tasks not measured: their worker was terminated
   ─────────────────────────────────────────────────────────────────────────────
   By phase     refine      38 k (35 k in · 3 k out)

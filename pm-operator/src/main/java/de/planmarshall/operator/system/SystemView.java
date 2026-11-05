@@ -533,10 +533,13 @@ public final class SystemView {
         if (totals.unmeasured() > 0 && totals.total() == 0) {
             return MessageCatalogue.format(locale, "common.tokens.not_measured", Map.of());
         }
-        return MessageCatalogue.format(locale, "common.tokens.split",
+        // The split carries the figure and its parts; the noun is a label of its own here, because
+        // this line has no column header that says what the figure counts.
+        var split = MessageCatalogue.format(locale, "common.tokens.split",
                             Map.of(PARAM_TOTAL, TokenFormat.formatTokens(totals.total(), totals.floor(), locale),
                                                 "in", TokenFormat.formatTokens(totals.in(), totals.floor(), locale),
                                                 "out", TokenFormat.formatTokens(totals.out(), totals.floor(), locale)));
+        return MessageCatalogue.format(locale, "common.tokens.total", Map.of("figure", split));
     }
 
     private static String windowLabel(String locale, SystemWindow window) {
