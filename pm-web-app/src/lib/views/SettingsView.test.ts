@@ -230,6 +230,94 @@ describe('SettingsView component', () => {
     expect(screen.getByTestId('lan-fingerprint')).toHaveTextContent('4F:1A:9C');
   });
 
+  it('ends a devices read that times out in the error state instead of waiting for it', async () => {
+    // Arrange: the read is handed a signal, and it answers with the error a real timeout produces.
+    const signals: (AbortSignal | undefined)[] = [];
+    vi.spyOn(apiClient, 'getDevices').mockImplementation((signal?: AbortSignal) => {
+      signals.push(signal);
+      return Promise.reject(new DOMException('The operation timed out.', 'TimeoutError'));
+    });
+
+    // Act
+    render(SettingsView);
+
+    // Assert: the bound is carried into the read, and its timeout ends in the error state.
+    expect(await screen.findByText('The paired devices could not be loaded.')).toBeInTheDocument();
+    expect(signals[0]).toBeInstanceOf(AbortSignal);
+    expect(signals[0]?.aborted).toBe(false);
+  });
+
+  it('keeps the newer list when an older read answers after it', async () => {
+    // Arrange: the first read answers; the reads the two timed-out revokes start stay open.
+    const newerDevice = {
+      device_id: 'dev-3',
+      label: 'Chrome on build-box',
+      paired_from: 'network',
+      created_at: '2026-06-01T10:00:00Z',
+      last_used_at: '2026-10-20T09:00:00Z',
+    };
+    const pending: Array<(rows: typeof mockDevices) => void> = [];
+    vi.spyOn(apiClient, 'getDevices')
+      .mockResolvedValueOnce(mockDevices)
+      .mockImplementation(
+        () =>
+          new Promise<typeof mockDevices>((resolve) => {
+            pending.push(resolve);
+          }),
+      );
+    vi.spyOn(apiClient, 'revokeDevice').mockRejectedValue(
+      new DOMException('The operation timed out.', 'TimeoutError'),
+    );
+
+    render(SettingsView);
+    await waitFor(() => expect(within(deviceRow('dev-2')).getByTestId('action-bar-overflow')));
+
+    // The first timed-out revoke starts the older read.
+    await fireEvent.click(within(deviceRow('dev-2')).getByTestId('action-bar-overflow'));
+    await fireEvent.click(await within(deviceRow('dev-2')).findByTestId('action-revoke'));
+    await fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+
+    // The second starts the newer one.
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+    expect(pending).toHaveLength(2);
+
+    // Act: the newer read answers, then the older one answers late.
+    pending[1]([mockDevices[0], newerDevice]);
+    expect(await screen.findByText('Chrome on build-box')).toBeInTheDocument();
+    pending[0]([mockDevices[0]]);
+
+    // Assert: the late answer never replaces what the newer read brought.
+    await waitFor(() => expect(screen.queryByText('Safari on iPad')).not.toBeInTheDocument());
+    expect(screen.getByText('Chrome on build-box')).toBeInTheDocument();
+  });
+
+  it('bounds the read after a timed-out revoke and ends it in the error state', async () => {
+    // Arrange: the revoke gives up on its deadline, and the recovery read gives up too.
+    const signals: (AbortSignal | undefined)[] = [];
+    vi.spyOn(apiClient, 'revokeDevice').mockRejectedValue(
+      new DOMException('The operation timed out.', 'TimeoutError'),
+    );
+    vi.spyOn(apiClient, 'getDevices').mockImplementation((signal?: AbortSignal) => {
+      signals.push(signal);
+      return signals.length === 1
+        ? Promise.resolve(mockDevices)
+        : Promise.reject(new DOMException('The operation timed out.', 'TimeoutError'));
+    });
+
+    render(SettingsView);
+    await waitFor(() => expect(within(deviceRow('dev-2')).getByTestId('action-bar-overflow')));
+
+    // Act: the revoke times out and asks for the list again.
+    await fireEvent.click(within(deviceRow('dev-2')).getByTestId('action-bar-overflow'));
+    await fireEvent.click(await within(deviceRow('dev-2')).findByTestId('action-revoke'));
+    await fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+
+    // Assert: the recovery read is bounded, and its failure is the error state.
+    expect(await screen.findByText('The paired devices could not be loaded.')).toBeInTheDocument();
+    expect(signals).toHaveLength(2);
+    expect(signals[1]).toBeInstanceOf(AbortSignal);
+  });
+
   it('returns to the route the caller came from on Back', async () => {
     runtimeStore.set(
       makeRuntimeState({

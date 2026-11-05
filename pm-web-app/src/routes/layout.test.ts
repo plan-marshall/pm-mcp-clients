@@ -359,6 +359,123 @@ describe('the app shell', () => {
     expect(await screen.findByTestId('draining-failure')).toHaveTextContent('already stopping');
   });
 
+  it('lets go of a hung withdrawal, saying so and re-enabling both drain acts', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...STATUS,
+      lifecycle_state: 'draining',
+      draining_by: 'the console',
+      drain_remaining_items: ['build of fix-relay'],
+    });
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isDraining: true,
+        drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
+      }),
+    );
+    const withdraw = vi
+      .spyOn(apiClient, 'withdrawStop')
+      .mockRejectedValue(new DOMException('The operation timed out.', 'TimeoutError'));
+
+    render(Layout);
+    const banner = await screen.findByTestId('draining-banner');
+    const withdrawAct = within(banner).getByRole('button', { name: 'Withdraw the stop' });
+    const stopAct = within(banner).getByRole('button', { name: 'Stop now' });
+
+    await fireEvent.click(withdrawAct);
+
+    // The request carries its own deadline, so a DELETE the runtime never answers ends.
+    expect(withdraw).toHaveBeenCalledWith(expect.any(AbortSignal));
+    expect(await screen.findByTestId('draining-failure')).toHaveTextContent(
+      'The stop could not be withdrawn',
+    );
+    await waitFor(() => {
+      expect(withdrawAct).toBeEnabled();
+      expect(stopAct).toBeEnabled();
+    });
+  });
+
+  it('treats a lost stop-now response as an unknown outcome and reads the state again', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    const status = vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...STATUS,
+      lifecycle_state: 'draining',
+      draining_by: 'the console',
+      drain_remaining_items: ['build of fix-relay'],
+    });
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isDraining: true,
+        drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
+      }),
+    );
+    vi.spyOn(apiClient, 'stopRuntime').mockRejectedValue(new Error('network_offline'));
+
+    render(Layout);
+    const banner = await screen.findByTestId('draining-banner');
+    await screen.findByTestId('header-machine');
+    // No read of the status carries a bound of its own before the act.
+    expect(status.mock.calls.some((call) => call[0] instanceof AbortSignal)).toBe(false);
+
+    await fireEvent.click(within(banner).getByRole('button', { name: 'Stop now' }));
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+
+    // A response that never arrived is not a refusal: the act ends as an unknown outcome.
+    expect(await screen.findByTestId('draining-failure')).toHaveTextContent(
+      'The stop now was sent but not confirmed; check the runtime state.',
+    );
+    // And the state is read again, within a bound of its own.
+    await waitFor(() =>
+      expect(status.mock.calls.some((call) => call[0] instanceof AbortSignal)).toBe(true),
+    );
+  });
+
+  it('ends a stop now that timed out with the same unknown notice', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...STATUS,
+      lifecycle_state: 'draining',
+      draining_by: 'the console',
+      drain_remaining_items: ['build of fix-relay'],
+    });
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isDraining: true,
+        drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
+      }),
+    );
+    vi.spyOn(apiClient, 'stopRuntime').mockRejectedValue(
+      new DOMException('The operation timed out.', 'TimeoutError'),
+    );
+
+    render(Layout);
+    const banner = await screen.findByTestId('draining-banner');
+    await fireEvent.click(within(banner).getByRole('button', { name: 'Stop now' }));
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+
+    expect(await screen.findByTestId('draining-failure')).toHaveTextContent(
+      'The stop now was sent but not confirmed; check the runtime state.',
+    );
+  });
+
   it('probes the connection again after 30 seconds and reports the machine online again', async () => {
     // Only the interval is faked: promise callbacks and `waitFor` keep real time, so the probe's
     // completion and the store update it triggers are observed without clock gymnastics.

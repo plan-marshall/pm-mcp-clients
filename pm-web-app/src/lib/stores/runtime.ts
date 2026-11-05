@@ -381,6 +381,28 @@ export async function openStartPage(): Promise<void> {
   }
 }
 
+/**
+ * @param status the status the runtime reports
+ * @returns the lifecycle fields the store keeps, so every read of them agrees
+ */
+export function lifecycleFieldsOf(status: StatusResponse): Pick<
+  RuntimeState,
+  'isDraining' | 'drainInfo' | 'isStopped'
+> {
+  const draining = status.lifecycle_state === 'draining';
+  return {
+    isDraining: draining,
+    drainInfo: draining
+      ? {
+          who: status.draining_by,
+          items: status.drain_remaining_items,
+          count: status.drain_remaining_items?.length ?? status.drain_remaining_count,
+        }
+      : null,
+    isStopped: status.lifecycle_state === 'stopped',
+  };
+}
+
 export async function initRuntime(): Promise<void> {
   if (typeof window !== 'undefined' && !hashListenerRegistered) {
     window.addEventListener('hashchange', () => {
@@ -471,15 +493,7 @@ export async function initRuntime(): Promise<void> {
       startEntryId: requested?.entryId ?? null,
       currentState,
       activeStep: deriveStepFromState(currentState?.state),
-      isDraining: status.lifecycle_state === 'draining',
-      drainInfo: status.lifecycle_state === 'draining'
-        ? {
-            who: status.draining_by,
-            items: status.drain_remaining_items,
-            count: status.drain_remaining_items?.length ?? status.drain_remaining_count,
-          }
-        : null,
-      isStopped: status.lifecycle_state === 'stopped',
+      ...lifecycleFieldsOf(status),
       isOffline: false,
       isRevoked: false,
     }));

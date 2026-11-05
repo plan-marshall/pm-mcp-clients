@@ -7,6 +7,7 @@
     runtimeStore,
     initRuntime,
     adoptRouteFromLocation,
+    lifecycleFieldsOf,
     routeParamsOf,
     syncUrl,
   } from '../lib/stores/runtime';
@@ -63,6 +64,30 @@
   }
 
   /**
+   * @param err the failure a drain act reported
+   * @returns whether the act's outcome is unknown: the request neither confirmed nor refused it,
+   *   because it gave up on its deadline or never reached the runtime
+   */
+  function outcomeUnknown(err: unknown): boolean {
+    const name = (err as Error)?.name;
+    const message = (err as Error)?.message;
+    return name === 'TimeoutError' || name === 'AbortError' || message === 'network_offline';
+  }
+
+  /** How long the read after an unknown outcome may wait for the runtime. */
+  const STATE_REFRESH_TIMEOUT_MS = 5_000;
+
+  /** Reads the lifecycle again, so the banner follows what the machine really does. */
+  async function refreshLifecycle(): Promise<void> {
+    try {
+      const status = await apiClient.getStatus(AbortSignal.timeout(STATE_REFRESH_TIMEOUT_MS));
+      runtimeStore.update((s) => ({ ...s, ...lifecycleFieldsOf(status) }));
+    } catch {
+      // The outcome stays unknown; the banner keeps saying so until the next event.
+    }
+  }
+
+  /**
    * Runs the act the drain banner reports (UX-P-04: withdraw the stop, or stop now).
    *
    * "Stop now" ends running work, so it asks first (<<draining>>); both acts carry a busy state and
@@ -83,6 +108,9 @@
     }
   }
 
+  /** How long a withdraw of the stop may wait for the runtime before its outcome is unknown. */
+  const WITHDRAW_TIMEOUT_MS = 15_000;
+
   /** Withdraws the stop, and says so in the banner when the runtime refuses. */
   async function withdrawDrain(): Promise<void> {
     if (drainingBusy) {
@@ -91,7 +119,8 @@
     drainingBusy = true;
     drainingFailure = '';
     try {
-      await apiClient.withdrawStop();
+      // The bound belongs to the act: a DELETE the runtime never answers must let go of the bar.
+      await apiClient.withdrawStop(AbortSignal.timeout(WITHDRAW_TIMEOUT_MS));
       runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
     } catch (err: unknown) {
       drainingFailure = $t('system.stopping.withdraw_failed', { reason: refusalOf(err) });
@@ -118,11 +147,12 @@
     } catch (err: unknown) {
       // The refusal belongs in the banner; the short confirmation has done its work.
       stopNowConfirm = false;
-      const name = (err as Error)?.name;
-      const unknownOutcome = name === 'TimeoutError' || name === 'AbortError';
-      drainingFailure = unknownOutcome
+      const unknown = outcomeUnknown(err);
+      drainingFailure = unknown
         ? $t('system.stopping.stop_now_unknown')
         : $t('system.stopping.stop_now_failed', { reason: refusalOf(err) });
+      // A response that never arrived is not a stop: read what the runtime really does.
+      if (unknown) void refreshLifecycle();
     } finally {
       drainingBusy = false;
     }

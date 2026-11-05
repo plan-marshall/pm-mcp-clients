@@ -35,6 +35,13 @@
   let clock = Date.now();
   let clockTimer: ReturnType<typeof setInterval> | null = null;
 
+  /** How long the devices and the status may take before the view says the read failed. */
+  const LOAD_TIMEOUT_MS = 15_000;
+  /** The read in flight, aborted when a newer one starts. */
+  let loadController: AbortController | null = null;
+  /** The number of the newest read; an older answer never reaches the view. */
+  let loadSequence = 0;
+
   onMount(() => {
     isMounted = true;
     unsubscribeEvents = apiClient.subscribeEvents((event, data) => {
@@ -48,6 +55,8 @@
 
   onDestroy(() => {
     isMounted = false;
+    loadController?.abort();
+    loadController = null;
     if (clockTimer !== null) {
       clearInterval(clockTimer);
       clockTimer = null;
@@ -74,25 +83,38 @@
     }
   }
 
+  /**
+   * Reads the devices and the status.
+   *
+   * Every read carries a deadline, so a runtime that never answers ends in the error state rather
+   * than in a spinner; and every read carries its number, so an answer the view no longer waits for
+   * cannot replace a newer list. The read it supersedes is aborted on the way.
+   */
   async function loadData() {
+    const sequence = ++loadSequence;
+    loadController?.abort();
+    const controller = new AbortController();
+    loadController = controller;
     isLoading = true;
     loadError = false;
     try {
+      const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(LOAD_TIMEOUT_MS)]);
       const [devList, status] = await Promise.all([
-        apiClient.getDevices(),
-        apiClient.getStatus().catch(() => null),
+        apiClient.getDevices(signal),
+        apiClient.getStatus(signal).catch(() => null),
       ]);
-      if (!isMounted) return;
+      if (!isMounted || sequence !== loadSequence) return;
       devices = Array.isArray(devList) ? devList : [];
       if (status?.web && typeof status.web.lan === 'boolean') {
         lanListenerOn = status.web.lan;
       }
     } catch {
-      if (!isMounted) return;
+      if (!isMounted || sequence !== loadSequence) return;
       loadError = true;
       devices = [];
     } finally {
-      if (isMounted) {
+      if (isMounted && sequence === loadSequence) {
+        loadController = null;
         isLoading = false;
       }
     }
