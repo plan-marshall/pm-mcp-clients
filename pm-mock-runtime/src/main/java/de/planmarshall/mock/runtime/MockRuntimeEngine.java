@@ -2170,7 +2170,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var resp = new LinkedHashMap<String, Object>();
         resp.put(FIELD_ENABLED, true);
         resp.put(FIELD_LAN, lanListenerOn);
-        resp.put("port", webPort > 0 ? webPort : 7420);
+        resp.put("port", effectiveWebPort());
         resp.put("open", true);
         response.json(200, resp);
     }
@@ -2198,7 +2198,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private List<Map<String, Object>> listenerMaps() {
-        var port = webPort > 0 ? webPort : 7420;
+        var port = effectiveWebPort();
         var loopback = new ListenerResource(ListenerKind.LOOPBACK, ListenerState.OPEN, port,
                 loopbackUrl(), null);
         var lan = new ListenerResource(
@@ -2212,7 +2212,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void handleOpenLanListener(MockHttpRequest request, MockHttpResponse response) throws IOException {
         var requestedPort = extractLanPort(request);
-        var liveLoopbackPort = webPort > 0 ? webPort : 7420;
+        var liveLoopbackPort = effectiveWebPort();
         if (requestedPort == liveLoopbackPort) {
             broadcastListenerChanged(ListenerState.PORT_OCCUPIED, requestedPort);
             response.json(409, Map.of(
@@ -2263,9 +2263,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
         broadcastEvent(EVENT_LISTENER_CHANGED, event.toMap());
     }
 
+    private int effectiveWebPort() {
+        return webPort > 0 ? webPort : 7420;
+    }
+
     private String loopbackUrl() {
-        var port = webPort > 0 ? webPort : 7420;
-        return "http://127.0.0.1:" + port;
+        return "http://127.0.0.1:" + effectiveWebPort();
     }
 
     private String lanListenerUrl() {
@@ -2320,7 +2323,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             var resp = new LinkedHashMap<String, Object>();
             resp.put(FIELD_ENABLED, true);
             resp.put(FIELD_LAN, lanListenerOn);
-            resp.put("port", webPort > 0 ? webPort : 7420);
+            resp.put("port", effectiveWebPort());
             resp.put("open", true);
             response.json(200, resp);
             return true;
@@ -8315,7 +8318,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 40802189312L,
                 "13:40",
                 true,
-                "127.0.0.1:" + (webPort > 0 ? webPort : 7420),
+                "127.0.0.1:" + effectiveWebPort(),
                 lanListenerOn ? "192.168.1.20:7421" : "off",
                 2,
                 0,
