@@ -605,6 +605,7 @@
         projectId={resource?.project_id ?? epic.project}
         ended={resource?.state === 'ended'}
         scope={resource?.scope ?? 0}
+        scopeKnown={resource !== null}
         running={resource?.running ?? null}
         nextPlan={nextPlanId()}
         autoStart={resource?.auto_start ?? null}

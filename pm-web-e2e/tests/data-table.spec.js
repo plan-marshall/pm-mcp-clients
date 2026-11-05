@@ -106,6 +106,13 @@ test.describe('the row menu of a product view', () => {
             '.devices-table tbody tr:first-child td:last-child [data-testid="action-bar-overflow"]',
           ),
         ).toBeVisible();
+        // The catalogue of the chosen locale is what labels the control: wait for that name, so a
+        // fallback label cannot be measured as the German one.
+        await expect(
+          page.locator(
+            '.devices-table tbody tr:first-child td:last-child [data-testid="action-bar-overflow"]',
+          ),
+        ).toHaveAccessibleName(locale === 'de' ? 'Mehr' : 'More');
 
         const overhang = await overhangOf(
           page,

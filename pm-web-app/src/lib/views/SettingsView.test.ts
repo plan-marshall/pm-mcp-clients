@@ -360,6 +360,8 @@ describe('SettingsView component', () => {
     expect(await screen.findByText('The paired devices could not be loaded.')).toBeInTheDocument();
     expect(signals).toHaveLength(2);
     expect(signals[1]).toBeInstanceOf(AbortSignal);
+    // The listener state the first read carried is not a current one any more.
+    expect(screen.getByTestId('listener-status')).toHaveTextContent('Network listener: unknown.');
   });
 
   it('shows an unknown listener state when the status read fails', async () => {

@@ -118,6 +118,8 @@
       if (!isMounted || sequence !== loadSequence) return;
       loadError = true;
       devices = [];
+      // Nothing says how the listener stands any more: the earlier answer is not a current one.
+      listenerKnown = false;
     } finally {
       if (isMounted && sequence === loadSequence) {
         loadController = null;

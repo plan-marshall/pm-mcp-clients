@@ -630,7 +630,10 @@ describe('the app shell', () => {
     // The runtime withdraws the drain while the refresh is in flight, then the older answer lands.
     handleRuntimeEvent('runtime.drain_withdrawn', {});
     settleRead({ ...STATUS, lifecycle_state: 'draining' });
-    await waitFor(() => expect(get(runtimeStore).isDraining).toBe(false));
+    // Let the refresh continuation run, so a stale snapshot would already have been applied.
+    await pendingRead;
+    await Promise.resolve();
+    expect(get(runtimeStore).isDraining).toBe(false);
   });
 
   it('keeps the count the runtime reports when it names no items', async () => {

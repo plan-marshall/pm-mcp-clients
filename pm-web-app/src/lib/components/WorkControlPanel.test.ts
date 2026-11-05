@@ -376,6 +376,27 @@ describe('WorkControlPanel component', () => {
     expect(screen.queryByTestId('raise-confirm')).not.toBeInTheDocument();
   });
 
+  it('waits with the next plan while the epic itself is not read', async () => {
+    vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue({
+      subject_id: 'relay-hardening',
+      subject_kind: 'epic',
+      state: 'running',
+      actions: [{ action: 'next', available: true }],
+    });
+    const apply = vi.spyOn(apiClient, 'applyEpicAction').mockResolvedValue(running);
+    render(WorkControlPanel, {
+      props: { subjectId: 'relay-hardening', subjectKind: 'epic', scopeKnown: false },
+    });
+
+    const next = await screen.findByTestId('action-next');
+
+    // Nothing weighs a scope it has not read: the act is refused with its reason, and sends nothing.
+    expect(next).toBeDisabled();
+    expect(next).toHaveAttribute('title', 'The epic is still being read; the next plan cannot start yet.');
+    await fireEvent.click(next);
+    expect(apply).not.toHaveBeenCalled();
+  });
+
   it('keeps the hold dialogue shut when the read behind it fails', async () => {
     const hold = {
       hold_id: 'H-0001',

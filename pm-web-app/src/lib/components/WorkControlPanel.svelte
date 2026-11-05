@@ -35,6 +35,8 @@
     projectId?: string;
     ended?: boolean;
     scope?: number;
+    /** Whether the epic's own resource is read; without it the scope and the count are unknown. */
+    scopeKnown?: boolean;
     /** How many of the epic's plans run; `null` when the view does not know, and then the raise dialogue says the count is unknown. */
     running?: number | null;
     nextPlan?: string;
@@ -53,6 +55,7 @@
     projectId = '',
     ended = false,
     scope = 0,
+    scopeKnown = true,
     running = null,
     nextPlan = '',
     pullRequestNumber = null,
@@ -179,17 +182,20 @@
 
   /**
    * @param spec the act's table entry
-   * @returns the act as the bar draws it
+   * @returns the act as the bar draws it, refused while the epic's own resource is not read
    */
   function toBarAct(spec: ActSpec) {
+    const waitingForEpic = subjectKind === 'epic' && !scopeKnown && spec.id === 'next';
     return {
       id: spec.id,
       label: label(spec.id),
       advisory: spec.advisoryKey ? $t(spec.advisoryKey) : undefined,
       role: spec.role,
       destructive: spec.destructive,
-      disabled: spec.disabled,
-      disabledReason: spec.disabledReason,
+      disabled: spec.disabled || waitingForEpic,
+      disabledReason: waitingForEpic
+        ? $t('control.epic.next_waiting')
+        : spec.disabledReason,
     };
   }
 
@@ -393,6 +399,11 @@
   /** @param id the chosen act of an epic */
   function chooseEpic(id: string): void {
     if (id === 'next') {
+      // The epic's own resource is not read: neither the scope nor the count is known, so the act
+      // waits (its control says why) instead of starting a plan nothing has weighed.
+      if (!scopeKnown) {
+        return;
+      }
       // A count the view does not know cannot be read as "a place is free": where the epic's
       // scope is known, ask and say that the count is unknown instead of showing it as none.
       // Without a scope (a row of Running Work) there is nothing to weigh, so the act starts.
