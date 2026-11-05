@@ -8339,8 +8339,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
-    /** Removes the first item the drain still runs and reports the shorter list. */
-    private void shrinkDrain() {
+    /**
+     * Removes the first item the drain still runs and reports the shorter list.
+     *
+     * <p>Package-private so the mock's own tests can finish an item without waiting on the clock.
+     */
+    void shrinkDrain() {
         synchronized (systemLock) {
             if (lifecycleState != RuntimeLifecycleState.DRAINING || drainRemainingItems.get().isEmpty()) {
                 return;

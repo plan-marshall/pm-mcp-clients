@@ -223,6 +223,30 @@ class ScenarioStateContractTest {
         }
     }
 
+    @Test
+    @DisplayName("a drain shrinks its list and count as an item ends")
+    void aDrainShrinksItsListAndCount() throws Exception {
+        var registry = new ScenarioRegistry();
+        try (var engine = new MockRuntimeEngine(registry,
+                     registry.resolve(StandardScenarios.REPORTS_AND_SYSTEM), runtimeToken, deviceSecret)) {
+            engine.goToState("system.draining");
+            var before = get(engine, "/api/v1/status").json();
+            var beforeItems = JsonTree.asArray(before.get("drain_remaining_items"));
+            assertNotNull(beforeItems, "the drain names what it still runs");
+            var beforeCount = JsonTree.integer(before, "drain_remaining_count");
+
+            engine.shrinkDrain();
+
+            var after = get(engine, "/api/v1/status").json();
+            var afterItems = JsonTree.asArray(after.get("drain_remaining_items"));
+            assertNotNull(afterItems, "the drain still names what it runs");
+            assertEquals(beforeItems.size() - 1, afterItems.size(),
+                    "the list loses the item that ended");
+            assertEquals(beforeCount - 1, JsonTree.integer(after, "drain_remaining_count"),
+                    "the count is the list's own length");
+        }
+    }
+
     /**
      * @param engine the engine
      * @param path   the resource
