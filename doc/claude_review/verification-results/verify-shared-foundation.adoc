@@ -14,9 +14,10 @@ link:../use-cases/verification.adoc[Use Cases, Verification], link:../cli/use-ca
 Cases, Verification], and link:../cli/cross-cutting/verification.adoc[CLI Review, Cross-Cutting, Verification]. Each
 check ran as written, except four. UC-V-09 and CLI-UC-V-10 ask that the use cases pass the `doc-review` skill; they ran
 as the read-only review described in <<review,Review of the Use-Case Documents>>, not as the full skill, and are
-recorded as `not verified`. CLI-UC-V-09 and CLI-CC-V-03 ran as their mock part and their rule part only; the walk in a
-real terminal that each of them also asks for was not run, and that part is recorded as `not verified`. Nothing that
-was found was fixed.
+recorded as `not verified`. CLI-UC-V-09 ran as its mock part only; the walk in a real terminal that it also asks for
+was not run. CLI-CC-V-03 ran as its rule part only; the table tests of `Display.duration` and `Display.time` and the
+walk in a real terminal that it also asks for were not run. Each part that was not run is recorded as `not verified`.
+Nothing that was found was fixed.
 
 [#subject]
 == What Was Verified
@@ -144,6 +145,12 @@ The designs of the terminal client show the same forms: `15-overview.adoc` (4), 
 `18-starting.adoc` (1), and `08-transcripts-later.adoc` (1) in weeks, and `19-actions.adoc` (2) in days.
 |—
 
+|link:../cli/cross-cutting/verification.adoc[CLI-CC-V-03], table-test part
+|`not verified`
+|The check also asks that `Display.duration` and `Display.time` pass their table tests in both languages. No test of
+`Display.duration` or `Display.time` was run in this plan.
+|—
+
 |link:../cli/cross-cutting/verification.adoc[CLI-CC-V-03], walk part
 |`not verified`
 |The check also asks for a walk in a real terminal: the overview and the plan view show the same age for one plan. The
@@ -179,8 +186,9 @@ it as one machine-readable document." Both use cases are `AGREED`. `trace.py` re
 |—
 |===
 
-Totals: 7 rows for 5 checks: 2 `pass`, 1 `fail`, 4 `not verified`, and the verify-first step `pass`. CLI-UC-V-09
-and CLI-CC-V-03 have two rows each, one for the part that ran and one for the walk part that did not.
+Totals: 8 rows for 5 checks: 2 `pass`, 1 `fail`, 5 `not verified`, and the verify-first step `pass`. CLI-UC-V-09
+has two rows, one for the mock part that ran and one for the walk part that did not. CLI-CC-V-03 has three rows, one
+for the rule part that ran and one each for the table-test part and the walk part that did not.
 
 [#review]
 == Review of the Use-Case Documents
