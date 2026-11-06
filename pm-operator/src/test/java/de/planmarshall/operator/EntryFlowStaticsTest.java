@@ -16,7 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -48,7 +50,7 @@ class EntryFlowStaticsTest {
     void aThrowingWorkerMarksTheReadFailed() {
         var failure = assertThrows(IOException.class, () -> EntryFlow.bounded(() -> {
             throw new IllegalStateException("boom");
-        }, java.time.Duration.ofSeconds(1), "throwing-read"));
+        }, Duration.ofSeconds(1), "throwing-read"));
 
         assertTrue(failure.getMessage().contains("throwing-read"), failure.getMessage());
     }
@@ -56,7 +58,7 @@ class EntryFlowStaticsTest {
     @Test
     @DisplayName("a sub-millisecond bound does not wait forever")
     void aSubMillisecondBoundDoesNotWaitForever() {
-        assertTimeoutPreemptively(java.time.Duration.ofSeconds(5), () -> {
+        assertTimeoutPreemptively(Duration.ofSeconds(5), () -> {
             var started = System.nanoTime();
             assertThrows(IOException.class, () -> EntryFlow.bounded(() -> {
                 try {
@@ -65,16 +67,16 @@ class EntryFlowStaticsTest {
                     Thread.currentThread().interrupt();
                 }
                 return "late";
-            }, java.time.Duration.ofNanos(1), "slow-read"));
-            var elapsed = java.time.Duration.ofNanos(System.nanoTime() - started);
-            assertTrue(elapsed.compareTo(java.time.Duration.ofSeconds(1)) < 0, elapsed.toString());
+            }, Duration.ofNanos(1), "slow-read"));
+            var elapsed = Duration.ofNanos(System.nanoTime() - started);
+            assertTrue(elapsed.compareTo(Duration.ofSeconds(1)) < 0, elapsed.toString());
         });
     }
 
     @Test
     @DisplayName("a read interrupted while waiting interrupts its worker and keeps the flag")
     void anInterruptedWaitInterruptsTheWorker() {
-        var worker = new java.util.concurrent.atomic.AtomicReference<Thread>();
+        var worker = new AtomicReference<Thread>();
         Thread.currentThread().interrupt();
         try {
             assertThrows(IOException.class, () -> EntryFlow.bounded(() -> {
@@ -85,7 +87,7 @@ class EntryFlowStaticsTest {
                     Thread.currentThread().interrupt();
                 }
                 return "late";
-            }, java.time.Duration.ofSeconds(5), "interrupted-read"));
+            }, Duration.ofSeconds(5), "interrupted-read"));
             assertTrue(Thread.currentThread().isInterrupted(), "the caller's interrupt flag stays set");
         } finally {
             Thread.interrupted();

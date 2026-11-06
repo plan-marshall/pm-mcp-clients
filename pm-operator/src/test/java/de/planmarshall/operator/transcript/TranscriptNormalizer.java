@@ -11,9 +11,12 @@ package de.planmarshall.operator.transcript;
 
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+
+import de.planmarshall.api.message.MessageCatalogue;
 
 /**
  * Removes what a transcript must not pin from a rendered terminal buffer: ANSI and OSC escapes,
@@ -21,6 +24,12 @@ import java.util.regex.Pattern;
  * Everything a reader would compare, the texts, the layout, and the order, stays untouched.
  */
 public final class TranscriptNormalizer {
+
+    /** The catalogue row that carries the "last used" label in front of its value. */
+    private static final String LAST_USED_ROW = "operator.devices.row";
+
+    /** A value no locale renders, so the label in front of it can be read back. */
+    private static final String LAST_USED_VALUE = "\u0000last-used\u0000";
 
     private static final Pattern OSC = Pattern.compile("\u001B\\][^\u0007\u001B]*(?:\u0007|\u001B\\\\)");
     private static final Pattern CSI = Pattern.compile("\u001B\\[[0-9;?]*[ -/]*[@-~]");
@@ -32,7 +41,7 @@ public final class TranscriptNormalizer {
     private static final Pattern HOURS_MINUTES = Pattern.compile("\\b\\d+ h(?: \\d+ min)?\\b");
     private static final Pattern MINUTES = Pattern.compile("\\b\\d+ min\\b");
     private static final Pattern AGO = Pattern.compile("\\b(?:just now|\\d+ (?:s|min|h|d|day|days|week|weeks|month|months) ago)\\b");
-    private static final Pattern ABSOLUTE_LAST_USED = Pattern.compile("(?<=(?:last used|zuletzt benutzt) )\\d{1,2} [A-Z][a-z]{2} <time>");
+    private static final Pattern ABSOLUTE_LAST_USED = absoluteLastUsed();
     private static final Pattern TRAILING_SPACE = Pattern.compile("(?m)[ \t]+$");
 
     private final Map<String, String> literals = new LinkedHashMap<>();
@@ -79,6 +88,53 @@ public final class TranscriptNormalizer {
         text = ABSOLUTE_LAST_USED.matcher(text).replaceAll("<ago>");
         text = TRAILING_SPACE.matcher(text).replaceAll("");
         return text;
+    }
+
+    /**
+     * Builds the pattern for an absolute "last used" date from the catalogue words of every
+     * supported locale, so a wording change in the catalogue never leaves a transcript pinned to
+     * a label the console no longer prints.
+     *
+     * @return the pattern for an absolute last-used value, its label read from the catalogue
+     */
+    private static Pattern absoluteLastUsed() {
+        var labels = lastUsedLabels();
+        if (labels.isEmpty()) {
+            return Pattern.compile("\\b\\B");
+        }
+        var alternation = String.join("|", labels.stream().map(Pattern::quote).toList());
+        return Pattern.compile("(?<=(?:" + alternation + ") )\\d{1,2} [A-Z][a-z]{2} <time>");
+    }
+
+    /**
+     * @return the "last used" label of every supported locale, read from the catalogue row that
+     *         prints it in front of its value
+     */
+    static List<String> lastUsedLabels() {
+        var labels = new LinkedHashSet<String>();
+        for (var locale : MessageCatalogue.SUPPORTED_LOCALES) {
+            var row = MessageCatalogue.format(locale, LAST_USED_ROW, Map.of(
+                                "index", 1, "label", "label", "date", "date", "from", "from",
+                                "last_used", LAST_USED_VALUE));
+            var value = row.indexOf(LAST_USED_VALUE);
+            if (value > 0) {
+                var label = trailingWords(row.substring(0, value));
+                if (!label.isEmpty()) {
+                    labels.add(label);
+                }
+            }
+        }
+        return List.copyOf(labels);
+    }
+
+    /**
+     * @param prefix the text in front of the value placeholder
+     * @return the words that label the value, that is those after the last run of spaces
+     */
+    private static String trailingWords(String prefix) {
+        var stripped = prefix.strip();
+        var gap = stripped.lastIndexOf("  ");
+        return gap >= 0 ? stripped.substring(gap + 2).strip() : stripped;
     }
 
     /**

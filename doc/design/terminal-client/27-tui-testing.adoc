@@ -233,6 +233,22 @@ refuses a coding agent, and only the harness runs the operator. For a plan's ter
 set runs before the change into `.plan/temp/terminal/{plan}/before/` and after it into
 `.../after/`; every `.txt` and `.attrs.txt` is read and compared with the deliverable.
 
+[#stalled-read]
+=== A Read That Is Still Running
+
+The mock runtime answers every read at once, so a capture set cannot show what the console does
+while a read is in flight. `ConsoleBadgeStallIT` covers that one case: it copies the machine root of
+the mock runtime, points the console at a `StallingSocketProxy` on the copy's socket, and holds
+`/api/v1/project-onboardings` until the test releases it. Both screens come from the same runtime
+scenario and the same session — the stalled read leaves the project badge out of the prompt, the
+released one adds it — and the test asserts both lines and that they differ. It writes
+`stalled.txt` and `recovered.txt` below `target/screens/104-cli-console-third-residue/`, and it runs
+in the integration-test lane, unlike `ScreenCaptureIT`, because it is a single case with its own
+assertions.
+
+The proxy relays bytes, so an event stream stays a stream; it neither reads nor rewrites a body, and
+it is test code only.
+
 [#flake]
 == Flake Control
 

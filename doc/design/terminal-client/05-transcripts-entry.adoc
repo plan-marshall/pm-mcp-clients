@@ -13,7 +13,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 [#transcripts]
 == Transcripts
 
-One transcript per state or per short sequence of states; the states each one shows are named above it, and xref:08-transcripts-later.adoc#state-coverage[Every State and Its Transcript] lists every state with its transcript. The operator's input follows `› `; `⏎` stands for `Enter` alone. A check is shown as it ended. The transcripts are in English; the German texts are those of xref:09-texts-common.adoc#texts[Texts], and one German transcript (xref:06-transcripts-steps-1-3.adoc#t-language[1 Language (language.detect, language.choose, language.record, language.done)]) shows the switch.
+One transcript per state or per short sequence of states; the states each one shows are named above it, and xref:08-transcripts-later.adoc#state-coverage[Every State and Its Transcript] lists every state with its transcript. The operator's input follows `› `; `⏎` stands for `Enter` alone. A check is shown as it ended. The transcripts are in English; the German texts are those of xref:09-texts-common.adoc#texts[Texts], and two German transcripts show the switch: xref:06-transcripts-steps-1-3.adoc#t-language[1 Language (language.detect, language.choose, language.record, language.done)] and the console's settings with the paired devices (xref:08-transcripts-later.adoc#t-devices[Paired Devices]), whose row carries the catalogue's `zuletzt benutzt`.
 
 [#t-entry]
 === The Entry `pm-operator`

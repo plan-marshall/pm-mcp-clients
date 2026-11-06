@@ -16,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
@@ -35,13 +37,9 @@ import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
 
-import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.testsupport.RuntimeFixture;
-
-import de.cuioss.test.generator.Generators;
-import de.cuioss.test.generator.junit.EnableGeneratorController;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -706,7 +704,7 @@ class PmConsoleBehaviourTest {
             console.refreshBadges(terminal);
             assertEquals(List.of("setup demo-proj 1/4"), console.currentBadges());
             assertTrue(rendered.toString(StandardCharsets.UTF_8)
-                                .contains("\u001B]0;pm-operator [setup demo-proj 1/4]\u0007"),
+                                                    .contains("\u001B]0;pm-operator [setup demo-proj 1/4]\u0007"),
                                 "the window title must carry the refreshed badges");
         }
     }

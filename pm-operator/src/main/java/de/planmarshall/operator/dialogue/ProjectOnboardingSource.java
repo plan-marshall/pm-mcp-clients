@@ -85,9 +85,9 @@ public final class ProjectOnboardingSource implements StateDialogue.Source {
         gate.verifyAct();
         var response = entryScoped
                             ? runtime.send(HttpRequest.json("POST",
-                                                path + LINKS + OperatorUrlUtil.encodePathSegment(linkId), "{}"))
+                            path + LINKS + OperatorUrlUtil.encodePathSegment(linkId), "{}"))
                             : runtime.send(HttpRequest.json("POST", path,
-                                                JsonTree.write(Map.of("link", linkId))));
+                            JsonTree.write(Map.of("link", linkId))));
         if (response.status() != 200) {
             throw new IOException("the project setup answered HTTP " + response.status());
         }

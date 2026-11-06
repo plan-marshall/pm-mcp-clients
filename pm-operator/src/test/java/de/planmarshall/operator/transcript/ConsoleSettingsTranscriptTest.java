@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator.transcript;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Clock;
@@ -49,5 +50,24 @@ class ConsoleSettingsTranscriptTest {
         assertTrue(dialogue.rendered().contains("last used 16 Oct 14:02"),
                             () -> "raw output should reflect absolute date with clock 120 days ahead: " + dialogue.rendered());
         dialogue.assertRecorded();
+    }
+
+    @Test
+    @DisplayName("renders the German machine settings and the devices as recorded")
+    void machineSettingsGerman() throws Exception {
+        var dialogue = TranscriptDialogues.consoleSettingsGerman(FIXED_CLOCK_120_DAYS);
+        assertTrue(dialogue.rendered().contains("zuletzt benutzt"),
+                            () -> "the German row should carry the catalogue's words: " + dialogue.rendered());
+        dialogue.assertRecorded();
+    }
+
+    @Test
+    @DisplayName("the printed ages follow the injected clock, not the system clock")
+    void machineSettingsFollowTheInjectedClock() throws Exception {
+        var atBaseInstant = TranscriptDialogues.consoleSettings(FIXED_CLOCK);
+        var oneHundredTwentyDaysLater = TranscriptDialogues.consoleSettings(FIXED_CLOCK_120_DAYS);
+
+        assertNotEquals(atBaseInstant.withoutMachineRoot(), oneHundredTwentyDaysLater.withoutMachineRoot(),
+                            "a console reading the system clock prints the same ages for both clocks");
     }
 }

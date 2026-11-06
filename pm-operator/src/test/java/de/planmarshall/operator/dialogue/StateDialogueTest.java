@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.StartPrompt;
