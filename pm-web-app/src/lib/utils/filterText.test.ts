@@ -34,6 +34,8 @@ describe('filterText', () => {
     { query: 'fix ...', tokens: ['fix'] },
     { query: '#214 -- relay', tokens: ['#214', 'relay'] },
     { query: 'Ärger ?', tokens: ['arger'] },
+    { query: '修復 …', tokens: ['修復'] },
+    { query: 'исправить -', tokens: ['исправить'] },
     { query: 'v2 ·', tokens: ['v2'] },
   ])('keeps only the tokens with a letter or a digit: "$query"', ({ query, tokens }) => {
     expect(tokenize(query)).toEqual(tokens);

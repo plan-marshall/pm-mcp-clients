@@ -28,7 +28,7 @@ The explorer is where the operator finds a project among all the machine's proje
   Being added
       ~/git/cui-parent   step 2 of 10: Identity        [Continue]  [Abandon]
   All projects                                    [ filter ]   by name ▾
-      API-Sheriff        ready                                     35 d ago
+      API-Sheriff        ready                                     last month
       cui-http           ready                                     3 d ago
       …
 ----

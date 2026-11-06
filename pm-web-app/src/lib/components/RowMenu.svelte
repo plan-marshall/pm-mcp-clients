@@ -9,7 +9,7 @@
 </script>
 
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import IconButton from './IconButton.svelte';
 
   /**
@@ -38,18 +38,45 @@
   let menuHost: HTMLElement | null = null;
   let triggerElement: HTMLElement | null = null;
 
+  /** The gap between the trigger and its menu, `--space-1`. */
+  const MENU_GAP = 4;
+
   /**
    * Opens the menu upwards when it would pass the bottom of the viewport below its trigger and the
    * viewport has more room above the trigger than below it. A row at the bottom of a phone screen
-   * thereby opens its menu into the page, not under the sticky bottom bar.
+   * thereby opens its menu into the page, not under the sticky bottom bar. A menu taller than the
+   * room on its side is capped to that room and scrolls, so no entry lies beyond the viewport.
    */
   function place(): void {
     if (!menuHost || !rootElement) return;
+    menuHost.style.maxBlockSize = '';
     const row = rootElement.getBoundingClientRect();
-    const menu = menuHost.getBoundingClientRect();
-    const roomBelow = window.innerHeight - row.bottom;
-    above = menu.bottom > window.innerHeight && row.top > roomBelow;
+    const height = menuHost.getBoundingClientRect().height;
+    const roomBelow = window.innerHeight - row.bottom - MENU_GAP;
+    const roomAbove = row.top - MENU_GAP;
+    above = height > roomBelow && roomAbove > roomBelow;
+    const room = Math.max(0, above ? roomAbove : roomBelow);
+    if (height > room) {
+      menuHost.style.maxBlockSize = `${room}px`;
+    }
   }
+
+  /** Places the open menu again after the page scrolled or the viewport changed its size. */
+  function onViewportChange(): void {
+    if (open) place();
+  }
+
+  function followViewport(follow: boolean): void {
+    if (follow) {
+      window.addEventListener('scroll', onViewportChange, true);
+      window.addEventListener('resize', onViewportChange);
+    } else {
+      window.removeEventListener('scroll', onViewportChange, true);
+      window.removeEventListener('resize', onViewportChange);
+    }
+  }
+
+  onDestroy(() => followViewport(false));
 
   function menuEntries(): HTMLButtonElement[] {
     if (!menuHost) return [];
@@ -64,6 +91,7 @@
     open = true;
     await tick();
     place();
+    followViewport(true);
     await tick();
     menuEntries()[0]?.focus();
   }
@@ -71,6 +99,7 @@
   export async function closeMenu(returnFocus = false): Promise<void> {
     if (!open) return;
     open = false;
+    followViewport(false);
     if (returnFocus) {
       await tick();
       triggerElement?.focus();
@@ -215,6 +244,7 @@
     display: flex;
     flex-direction: column;
     min-inline-size: 180px;
+    overflow-y: auto;
     padding: var(--space-1);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);

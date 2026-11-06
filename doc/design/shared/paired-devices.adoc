@@ -21,7 +21,7 @@ Every paired browser can do what the operator does: it is an operator channel. T
   ─────────────────────────────────────────────────────────────────────────────
     Firefox on mbp-oliver   paired 12 May from loopback   last used today 14:02   this one
     iPad Oliver             paired 20 May from network    last used 3 d ago
-    Chrome on build-box     paired 2 Jun from loopback    last used 35 d ago
+    Chrome on build-box     paired 2 Jun from loopback    last used 2 months ago
   ─────────────────────────────────────────────────────────────────────────────
   The terminal client needs no pairing and is not listed.
   Network listener: on                          [Turn the network listener off]

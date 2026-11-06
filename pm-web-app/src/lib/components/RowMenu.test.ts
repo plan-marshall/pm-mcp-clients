@@ -450,6 +450,91 @@ describe('RowMenu component', () => {
       }
     });
 
+    it('caps a menu taller than the room above its trigger and lets it scroll', async () => {
+      const restore = layOut(340, 360);
+      try {
+        render(RowMenu, { props: { label: 'Row actions', items: sampleItems } });
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Row actions' }));
+
+        await waitFor(() => {
+          expect(screen.getByRole('menu')).toHaveClass('row-menu__list--above');
+        });
+        // The row starts at 340 and the menu keeps a 4 px gap to it: 336 px of room above.
+        expect(screen.getByRole('menu').style.maxBlockSize).toBe('336px');
+        const listRules = rulesOf(
+          styleOf(path.resolve(__dirname, './RowMenu.svelte')),
+          '.row-menu__list',
+        ).join(';');
+        expect(listRules).toContain('overflow-y: auto');
+      } finally {
+        restore();
+      }
+    });
+
+    it('leaves a menu that fits its side uncapped', async () => {
+      const restore = layOut(100, 80);
+      try {
+        render(RowMenu, { props: { label: 'Row actions', items: sampleItems } });
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Row actions' }));
+
+        await waitFor(() => {
+          expect(screen.getAllByRole('menuitem')[0]).toHaveFocus();
+        });
+        expect(screen.getByRole('menu').style.maxBlockSize).toBe('');
+      } finally {
+        restore();
+      }
+    });
+
+    it.each(['scroll', 'resize'])(
+      'places an open menu again when the viewport changes (%s)',
+      async (change) => {
+        let restore = layOut(340, 80);
+        try {
+          render(RowMenu, { props: { label: 'Row actions', items: sampleItems } });
+          await fireEvent.click(screen.getByRole('button', { name: 'Row actions' }));
+          await waitFor(() => {
+            expect(screen.getByRole('menu')).toHaveClass('row-menu__list--above');
+          });
+
+          restore();
+          restore = layOut(100, 80);
+          window.dispatchEvent(new Event(change));
+
+          await waitFor(() => {
+            expect(screen.getByRole('menu')).not.toHaveClass('row-menu__list--above');
+          });
+        } finally {
+          restore();
+        }
+      },
+    );
+
+    it('stops following the viewport once the menu is closed', async () => {
+      const removed = vi.spyOn(window, 'removeEventListener');
+      try {
+        render(RowMenu, { props: { label: 'Row actions', items: sampleItems } });
+        const trigger = screen.getByRole('button', { name: 'Row actions' });
+        await fireEvent.click(trigger);
+        await waitFor(() => {
+          expect(screen.getAllByRole('menuitem')[0]).toHaveFocus();
+        });
+
+        await fireEvent.keyDown(screen.getAllByRole('menuitem')[0], { key: 'Escape' });
+
+        await waitFor(() => {
+          expect(screen.queryByRole('menu')).toBeNull();
+        });
+        const types = removed.mock.calls.map(([type]) => type);
+        expect(types).toContain('scroll');
+        expect(types).toContain('resize');
+      } finally {
+        removed.mockRestore();
+      }
+    });
+
     it('lays the open menu above the sticky chrome of the phone frame', () => {
       const style = styleOf(path.resolve(__dirname, './RowMenu.svelte'));
       const listRules = rulesOf(style, '.row-menu__list').join(';');
