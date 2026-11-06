@@ -1510,12 +1510,6 @@ class MockRuntimeEngineTest {
     private static final String THEN_EXIT = "exit";
 
     /**
-     * Fails the test when the task does not end within the bound, as a deadlocked one never does.
-     *
-     * @param task the task
-     * @param what the task, for the failure message
-     */
-    /**
      * Forces the interleaving a lock-order inversion between a stop and a reset deadlocks on: the stop
      * holds {@code systemLock} while its answer waits on a slow client, a reset takes the engine
      * monitor and waits on {@code systemLock}, then the client reads on. Under the single lock order
@@ -1605,7 +1599,7 @@ class MockRuntimeEngineTest {
                 if (!reading.await(20, TimeUnit.SECONDS)) {
                     throw new InterruptedIOException("the client never read on");
                 }
-            } catch (InterruptedException interrupted) {
+            } catch (InterruptedException _) {
                 Thread.currentThread().interrupt();
                 throw new InterruptedIOException("interrupted while the client waited to read");
             }
