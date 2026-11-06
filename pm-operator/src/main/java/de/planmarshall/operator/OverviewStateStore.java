@@ -91,8 +91,7 @@ public final class OverviewStateStore {
                 return Optional.of(state);
             }
         }
-        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (IOException | RuntimeException _) {
+        catch (IOException _) {
             // Missing, insecure, unreadable, or corrupt: the view opens at its default.
             return Optional.empty();
         }

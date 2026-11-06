@@ -771,7 +771,6 @@ public final class EntryFlow {
         if (value instanceof JsonNumber jsonNumber) {
             try {
                 return (int) jsonNumber.longValue();
-                // cui-rewrite:disable InvalidExceptionUsageRecipe
             } catch (NumberFormatException _) {
                 return -1;
             }

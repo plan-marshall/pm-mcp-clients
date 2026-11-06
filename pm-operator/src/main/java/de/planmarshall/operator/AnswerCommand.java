@@ -243,8 +243,7 @@ public final class AnswerCommand implements Callable<Integer> {
         } catch (StartPrompt.InterruptException interrupt) {
             throw interrupt;
         }
-        // cui-rewrite:disable InvalidExceptionUsageRecipe
-        catch (IOException | RuntimeException e) {
+        catch (IOException e) {
             out.println("Error reading interactive input: " + e.getMessage());
             out.flush();
             return 1;

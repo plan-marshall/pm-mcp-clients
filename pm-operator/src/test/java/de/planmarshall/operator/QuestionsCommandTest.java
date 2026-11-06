@@ -357,6 +357,43 @@ class QuestionsCommandTest {
     }
 
     @Test
+    @DisplayName("an interactive answer whose terminal cannot be opened reports it and leaves with 1")
+    void answerInteractiveTerminalFailure() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "id": "Q-001",
+                                      "revision": 1,
+                                      "title": "Select merge strategy",
+                                      "subject": "fix-relay",
+                                      "scope": "plan",
+                                      "asking_phase": "refine",
+                                      "asking_role": "outline",
+                                      "blocks": "plan",
+                                      "reversibility": "reversible",
+                                      "description": "Preserve clean history"
+                                    }
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        OperatorContext.TerminalProvider failingTerminal = () -> {
+            throw new IOException("terminal is gone");
+        };
+        var context = new OperatorContext(fixture.environment(), tempDir, true,
+                            ClientEnvironment.capture(fixture.environment()), failingTerminal, null);
+
+        var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "answer", "Q-001", "-i");
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(out.toString().contains("Error reading interactive input: terminal is gone"),
+                                                out.toString()));
+    }
+
+    @Test
     @DisplayName("interactive decision answering with note and other option")
     void answerInteractiveWithNoteAndChoice() throws Exception {
         fixture.start((request, response) -> {
