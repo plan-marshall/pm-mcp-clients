@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/svelte';
+import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
 import CompletionReportView from './CompletionReportView.svelte';
 import { apiClient, type PlanCompletionReport } from '../api/client';
 
@@ -247,5 +247,61 @@ describe('CompletionReportView component', () => {
     expect(screen.getByRole('heading', { level: 4, name: 'By phase' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 4, name: 'By role' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 4, name: 'By model' })).toBeInTheDocument();
+  });
+
+  it('renders exactly one h1 in loading state when titleLevel is 1 (D3)', () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockImplementation(() => new Promise(() => {}));
+    render(CompletionReportView, { planId: 'fix-relay', titleLevel: 1 });
+
+    const h1Elements = document.querySelectorAll('h1');
+    expect(h1Elements).toHaveLength(1);
+    expect(h1Elements[0]).toHaveTextContent(/Loading completion report/i);
+  });
+
+  it('renders exactly one h1 in error state when titleLevel is 1 (D3)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockRejectedValue(new Error('Fetch failed'));
+    render(CompletionReportView, { planId: 'fix-relay', titleLevel: 1 });
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    const h1Elements = document.querySelectorAll('h1');
+    expect(h1Elements).toHaveLength(1);
+    expect(h1Elements[0]).toHaveTextContent(/Failed to load completion report/i);
+  });
+
+  it('skips no heading level across all sections of a full report at both titleLevel 1 and 2 (D3)', () => {
+    // Narrow layout (titleLevel 1)
+    const { unmount } = render(CompletionReportView, {
+      planId: 'fix-relay',
+      report: mockReport,
+      titleLevel: 1,
+    });
+
+    const checkNoSkippedLevels = () => {
+      const headings = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+      expect(headings.length).toBeGreaterThan(0);
+      let maxLevelSeen = 0;
+      for (const h of headings) {
+        const level = parseInt(h.tagName[1], 10);
+        if (maxLevelSeen === 0) {
+          maxLevelSeen = level;
+        } else {
+          // A heading level cannot increase by more than 1 compared to previously encountered levels
+          expect(level).toBeLessThanOrEqual(maxLevelSeen + 1);
+          if (level > maxLevelSeen) {
+            maxLevelSeen = level;
+          }
+        }
+      }
+    };
+
+    checkNoSkippedLevels();
+    unmount();
+
+    // Wide layout (titleLevel 2)
+    render(CompletionReportView, { planId: 'fix-relay', report: mockReport, titleLevel: 2 });
+    checkNoSkippedLevels();
   });
 });

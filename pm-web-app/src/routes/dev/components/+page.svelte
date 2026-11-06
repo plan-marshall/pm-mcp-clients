@@ -221,15 +221,15 @@
       <ActionBar {acts} onAct={() => {}} />
 
       <h3 class="dev__section-title">{$t('dev.section.row_menu')}</h3>
-      <div class="dev__row">
+      <div class="dev__row dev__row--end">
         <RowMenu
           items={rowMenuItems}
-          label="{$t('dev.section.row_menu')} ({$t('web.common.more')})"
+          label="{$t('dev.section.row_menu')} ({$t('web.common.more')}, {theme})"
           visibleLabel={$t('web.common.more')}
         />
         <RowMenu
           items={rowMenuItems}
-          label="{$t('dev.section.row_menu')} ({$t('report.action.mark_read')})"
+          label="{$t('dev.section.row_menu')} ({$t('report.action.mark_read')}, {theme})"
         />
       </div>
 
@@ -435,6 +435,10 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--space-3);
+  }
+
+  .dev__row--end {
+    justify-content: flex-end;
   }
 
   .dev__grid {

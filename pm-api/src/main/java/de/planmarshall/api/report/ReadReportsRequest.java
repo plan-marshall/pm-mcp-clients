@@ -24,24 +24,13 @@ import de.planmarshall.api.json.JsonTree;
  * Request payload for {@code POST /api/v1/reports/read}.
  *
  * @param reportIds explicit list of report identifiers to mark read
- * @param all       if true, mark all unread reports read
  */
-public record ReadReportsRequest(List<String> reportIds, boolean all) {
+public record ReadReportsRequest(List<String> reportIds) {
 
     private static final String FIELD_REPORT_IDS = "report_ids";
-    private static final String FIELD_ALL = "all";
 
     public ReadReportsRequest {
         reportIds = reportIds != null ? Collections.unmodifiableList(new ArrayList<>(reportIds)) : List.of();
-    }
-
-    /**
-     * Creates an all-reports request.
-     *
-     * @return ReadReportsRequest
-     */
-    public static ReadReportsRequest markAll() {
-        return new ReadReportsRequest(List.of(), true);
     }
 
     /**
@@ -51,7 +40,7 @@ public record ReadReportsRequest(List<String> reportIds, boolean all) {
      * @return ReadReportsRequest
      */
     public static ReadReportsRequest of(List<String> ids) {
-        return new ReadReportsRequest(ids, false);
+        return new ReadReportsRequest(ids);
     }
 
     /**
@@ -63,9 +52,6 @@ public record ReadReportsRequest(List<String> reportIds, boolean all) {
         var map = new LinkedHashMap<String, Object>();
         if (!reportIds.isEmpty()) {
             map.put(FIELD_REPORT_IDS, reportIds);
-        }
-        if (all) {
-            map.put(FIELD_ALL, true);
         }
         return map;
     }
@@ -99,8 +85,7 @@ public record ReadReportsRequest(List<String> reportIds, boolean all) {
                 }
             }
         }
-        boolean all = Boolean.TRUE.equals(map.get(FIELD_ALL));
-        return new ReadReportsRequest(ids, all);
+        return new ReadReportsRequest(ids);
     }
 
     /**

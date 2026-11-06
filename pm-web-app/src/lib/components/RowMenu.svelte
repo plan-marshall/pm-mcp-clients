@@ -130,9 +130,6 @@
 
   function onWindowKeydown(event: KeyboardEvent): void {
     if (event.key === 'Escape' && open) {
-      if (menuHost && menuHost.contains(event.target as Node)) {
-        return;
-      }
       void closeMenu(true);
     }
   }
@@ -219,8 +216,7 @@
 
   .row-menu__item:focus:not(:disabled) {
     background-color: var(--color-bg-subtle);
-    outline: 2px solid var(--color-brand);
-    outline-offset: -2px;
+    outline: none;
   }
 
   .row-menu__item:focus-visible:not(:disabled) {

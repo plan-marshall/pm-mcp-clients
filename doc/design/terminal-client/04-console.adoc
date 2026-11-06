@@ -254,7 +254,36 @@ Where JLine falls back to the `exec` provider, the prompt a dialogue draws is fo
 === Notifications
 
 * While `console.notify` is `true`, what waits for the operator rings the terminal bell once, when it arrives.
-* A desktop notification is sent instead, under the same key, where the terminal is known to support one: OSC 9 (iTerm2, Ghostty, WezTerm), OSC 777 (rxvt family), OSC 99 (kitty, which can also withdraw it). Over SSH the sequence reaches the operator's own terminal; under tmux only with `allow-passthrough on`.
+* A desktop notification is sent instead, under the same key, where the terminal is known to support one: OSC 9 (iTerm2, Ghostty, WezTerm), OSC 777 (rxvt family), OSC 99 (kitty, which can also withdraw it). Over SSH the sequence reaches the operator's own terminal.
+* *Which terminal is known* is read once from the console's environment when it starts; the first rule that applies decides, and every terminal no rule names gets the bell, so the operator is never left with a sequence nobody shows:
++
+[cols="3,1",options="header"]
+|===
+|The environment |Signal
+
+|`TERM=dumb`, or no terminal
+|the bell
+
+|`TERMINAL_EMULATOR` begins with `JetBrains` (the terminal of a JetBrains IDE, which shows no desktop notification and may have inherited `TERM_PROGRAM` from the terminal the IDE was started in)
+|the bell
+
+|`TERM_PROGRAM=tmux`, or `TERM` begins with `screen` or `tmux` (a multiplexer passes the sequence on only with `allow-passthrough on`, which the console cannot see)
+|the bell
+
+|`TERM=xterm-kitty`, or `KITTY_WINDOW_ID` is set
+|OSC 99
+
+|`TERM_PROGRAM` is `ghostty`, `iTerm.app` or `WezTerm`, or `TERM` is `xterm-ghostty` or `wezterm`
+|OSC 9
+
+|`TERM` begins with `rxvt`
+|OSC 777
+
+|anything else
+|the bell
+|===
++
+Over SSH `TERM_PROGRAM` is usually not passed on, so a remote console knows the terminal by `TERM` alone, and rings the bell where `TERM` names none.
 * The machine configuration key `console.notify` (link:../../../../pm-mcp-core/doc/specification/store-schemas/12-machine-stores.adoc#machine-config[Machine Configuration Store]) turns them on and off: `true`, the default, sends the desktop notification where known and else rings the bell; `false` sends neither.
 * A notification carries the scope and the kind (`plan fix-relay asks a question`, `epic storage-v2 asks a question`, `the setup of pm-mcp-clients asks a question`, `plan fix-relay asks for a waiver`), never the text of the question, which may hold content of the project.
 

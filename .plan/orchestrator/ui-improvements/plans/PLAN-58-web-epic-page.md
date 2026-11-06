@@ -41,7 +41,13 @@ Source of this plan (read before scoping):
      - Unit tests: epic counts equal rows; `FindingsReviewModal` selects the first open item (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `running-work` → `control.epic`, `control.review`; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
-
+4. **A failed epic-resource read says so and can be retried (PLAN-100 residue, `landings/PLAN-100.md` defect 3)**
+   - What: after `3efd10dc`, a failed initial `getEpicResource` leaves `resource = null` (`EpicView.svelte` ~158-160): Next plan then stays disabled with "The epic is still being read" although the read failed, with no error and no retry. Show the error state of deliverable 3's pattern for the resource, with "Try again", and let the bar say the true thing.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
+   - Done when:
+     - A test that fails before: a rejected resource read shows the error and a retry that reloads it, and Next plan does not claim the epic is still being read (evidence order: `test-first`)
+     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 ## Standing Constraints
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20580 PM_WEB_PORT=20581 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.

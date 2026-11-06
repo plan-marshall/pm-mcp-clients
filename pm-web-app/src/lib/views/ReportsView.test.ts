@@ -104,6 +104,80 @@ describe('ReportsView component', () => {
     } as unknown as PlanCompletionReport;
   }
 
+  /** @returns a full completion report with deliverables, replanning, decisions and tokens */
+  function fullRelayCompletion(): PlanCompletionReport {
+    return {
+      plan_id: 'fix-relay',
+      title: 'fix-relay',
+      from: { project: 'pm-mcp-clients', epic: 'relay-hardening', plan: 'fix-relay' },
+      outcome: 'merged',
+      terminal_reason: 'the pull request #214 was merged into main',
+      pull_request_number: 214,
+      pull_request_url: 'https://github.com/plan-marshall/pm-mcp-clients/pull/214',
+      started_at: '2026-10-16T08:40:00Z',
+      ended_at: '2026-10-16T11:20:00Z',
+      duration_seconds: 9600,
+      paused_seconds: 0,
+      deliverables: [
+        { name: 'cursor write order', state: 'done' },
+        { name: 'fsync of the cursor file', state: 'done' },
+      ],
+      replanning_records: [{ trigger: 'the base moved', time: '09:55', change: 'TASK-5 added' }],
+      decision_records: [
+        { id: 'Q-003', question: 'Rebase onto main', answer: 'rebase', by: 'operator' },
+      ],
+      change: {
+        files: 12,
+        insertions: 340,
+        deletions: 27,
+        unplanned: 2,
+      },
+      token_usage: {
+        total: 412000,
+        input: 380000,
+        output: 32000,
+        duration_seconds: 9600,
+        workers_count: 6,
+        models_count: 3,
+        tasks_measured: 38,
+        tasks_total: 41,
+        is_floor: false,
+        by_phase: [
+          {
+            name: 'refine',
+            total: 38000,
+            input: 35000,
+            output: 3000,
+            unmeasured: 0,
+            floor: false,
+          },
+        ],
+        by_role: [
+          {
+            name: 'planner',
+            harness_model: 'claude:opus-5.5',
+            effort: 'high',
+            total: 128000,
+            input: 120000,
+            output: 8000,
+            unmeasured: 0,
+            floor: false,
+          },
+        ],
+        by_model: [
+          {
+            name: 'claude:opus-5.5',
+            total: 128000,
+            input: 120000,
+            output: 8000,
+            unmeasured: 0,
+            floor: false,
+          },
+        ],
+      },
+    } as unknown as PlanCompletionReport;
+  }
+
   it('renders unread reports grouped by project, epic, and plan', async () => {
     render(ReportsView);
 
@@ -272,7 +346,7 @@ describe('ReportsView component', () => {
     const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
     await fireEvent.click(markAllBtn);
 
-    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(undefined);
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(['rep-0142', 'rep-0139', 'rep-0131']);
   });
 
   it('renders empty state when there are no unread reports', async () => {
@@ -1325,8 +1399,8 @@ describe('ReportsView component', () => {
     });
   });
 
-  it('has exactly one h1 heading on screen at 390 px when a report is open (D1)', async () => {
-    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+  it('has exactly one h1 heading and h2 section headings with tokens at 390 px (N2)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fullRelayCompletion());
     window.innerWidth = 390;
     window.dispatchEvent(new Event('resize'));
 
@@ -1343,23 +1417,90 @@ describe('ReportsView component', () => {
     const h1Elements = document.querySelectorAll('h1');
     expect(h1Elements).toHaveLength(1);
     expect(h1Elements[0]).toHaveClass('report-title');
+    expect(h1Elements[0]).toHaveTextContent('fix-relay');
+
+    // Section headings are h2 (Deliverables, Replanning, Decisions, Tokens)
+    expect(screen.getByRole('heading', { level: 2, name: /Deliverables/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: /Re-planning/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: /Decisions/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 2, name: /Tokens/i })).toBeInTheDocument();
+
+    // Token breakdown subheadings are h3
+    expect(screen.getByRole('heading', { level: 3, name: /By phase/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: /By role/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: /By model/i })).toBeInTheDocument();
   });
 
-  it('leaves no unread report behind on unfiltered mark-all and keeps the load-older control (D1)', async () => {
-    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
-      items: mockReports,
-      unread_count: 3,
-      has_older: true,
-      older_count: 5,
-    });
+  it('renders h1 page title, h2 report title, and h3 deliverables and decisions at wide layout (N2)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fullRelayCompletion());
+    window.innerWidth = 1280;
+    window.dispatchEvent(new Event('resize'));
+
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
 
-    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
-    await fireEvent.click(markAllBtn);
+    const detailBtn = screen.getAllByRole('button', { name: /Show the details/i })[0];
+    await fireEvent.click(detailBtn);
 
-    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(undefined);
-    expect(screen.getByRole('button', { name: /Show.*older/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.querySelector('.report-title')).not.toBeNull();
+    });
+
+    // Page title is h1
+    const h1Elements = document.querySelectorAll('h1');
+    expect(h1Elements).toHaveLength(1);
+    expect(h1Elements[0]).toHaveTextContent('Reports');
+
+    // Report title is h2
+    const reportTitle = document.querySelector('.report-title');
+    expect(reportTitle?.tagName.toLowerCase()).toBe('h2');
+    expect(reportTitle).toHaveTextContent('fix-relay');
+
+    // Deliverables, Decisions, Tokens section titles are h3
+    expect(screen.getByRole('heading', { level: 3, name: /Deliverables/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: /Decisions/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 3, name: /Tokens/i })).toBeInTheDocument();
+
+    // Token breakdown subheadings are h4
+    expect(screen.getByRole('heading', { level: 4, name: /By phase/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 4, name: /By role/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 4, name: /By model/i })).toBeInTheDocument();
+  });
+
+  it('has exactly one h1 heading on screen at 390 px while detail is loading (D3)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockImplementation(() => new Promise(() => {}));
+    window.innerWidth = 390;
+    window.dispatchEvent(new Event('resize'));
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const detailBtn = screen.getAllByRole('button', { name: /Show the details/i })[0];
+    await fireEvent.click(detailBtn);
+
+    const h1Elements = document.querySelectorAll('h1');
+    expect(h1Elements).toHaveLength(1);
+    expect(h1Elements[0]).toHaveTextContent(/Loading completion report/i);
+  });
+
+  it('has exactly one h1 heading on screen at 390 px while detail has error (D3)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockRejectedValue(new Error('Network error'));
+    window.innerWidth = 390;
+    window.dispatchEvent(new Event('resize'));
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const detailBtn = screen.getAllByRole('button', { name: /Show the details/i })[0];
+    await fireEvent.click(detailBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    const h1Elements = document.querySelectorAll('h1');
+    expect(h1Elements).toHaveLength(1);
+    expect(h1Elements[0]).toHaveTextContent(/Failed to load completion report/i);
   });
 
   it('treats a punctuation-only query as unfiltered and shows what the count says (D1)', async () => {
@@ -1374,7 +1515,165 @@ describe('ReportsView component', () => {
 
     const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
     await fireEvent.click(markAllBtn);
-    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(undefined);
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(['rep-0142', 'rep-0139', 'rep-0131']);
+  });
+
+  it('posts the shown ids and no all on unfiltered mark-all (D1)', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(['rep-0142', 'rep-0139', 'rep-0131']);
+    expect(apiClient.markAllReportsRead).not.toHaveBeenCalledWith(undefined);
+  });
+
+  it('keeps a report that arrived after the list was drawn listed and unread on mark-all (D1)', async () => {
+    let resolveMarkAll: (() => void) | undefined;
+    vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(
+      () =>
+        new Promise<{ marked_count: number }>((resolve) => {
+          resolveMarkAll = () => resolve({ marked_count: 3 });
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+
+    const arrivedReport: ReportItem = {
+      id: 'rep-arrived',
+      from: { project: 'pm-mcp-clients', plan: 'fix-relay' },
+      kind: 'plan.ended',
+      subject: 'Arrived during request',
+      created_at: '2026-10-16T12:00:00Z',
+    };
+    eventHandler?.('report.sent', { report: arrivedReport });
+    await tick();
+
+    if (!resolveMarkAll) throw new Error('markAllReportsRead was never called');
+    resolveMarkAll();
+    await tick();
+    await tick();
+
+    expect(screen.getByText('Arrived during request')).toBeInTheDocument();
+    expect(screen.getByTestId('unread-count')).toHaveTextContent('1 unread report');
+  });
+
+  it('decrements unread count by shown reports marked and keeps load-older control (D1)', async () => {
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: mockReports,
+      unread_count: 8,
+      has_older: true,
+      older_count: 5,
+    });
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('unread-count')).toHaveTextContent('5 unread reports');
+    });
+    expect(screen.getByRole('button', { name: /Show 5 older/i })).toBeInTheDocument();
+  });
+
+  it('keeps the retained read marker when mark-all request fails (D1)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const detailBtn = screen.getAllByRole('button', { name: /Show the details/i })[0];
+    await fireEvent.click(detailBtn);
+    await waitFor(() => {
+      expect(document.querySelector('.report-title')).not.toBeNull();
+      expect(screen.getByTestId('report-read-state')).toBeInTheDocument();
+    });
+
+    vi.spyOn(apiClient, 'markAllReportsRead').mockRejectedValue(new Error('mark all failed'));
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('mark all failed');
+    });
+
+    expect(screen.getByTestId('report-read-state')).toBeInTheDocument();
+  });
+
+  it('keeps unread count equal to server count when filtered mark-all follows a reload with retained read (D1)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const detailBtn = screen.getAllByRole('button', { name: /Show the details/i })[0];
+    await fireEvent.click(detailBtn);
+    await waitFor(() => {
+      expect(document.querySelector('.report-title')).not.toBeNull();
+      expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+    });
+
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: [
+        {
+          id: 'rep-0139',
+          from: { project: 'pm-mcp-clients', plan: 'docs-typo' },
+          kind: 'plan.ended',
+          subject: 'Ended: no change',
+          created_at: '2026-10-16T09:40:00Z',
+        },
+        {
+          id: 'rep-0131',
+          from: { project: 'pm-mcp-core' },
+          kind: 'project.onboarded',
+          subject: 'Onboarded',
+          created_at: '2026-10-15T18:40:00Z',
+        },
+      ],
+      unread_count: 2,
+      has_older: false,
+      older_count: 0,
+    });
+    eventHandler?.('report.read', {});
+    await tick();
+    await waitFor(() => {
+      expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+    });
+
+    await typeFilter('relay');
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+
+    expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+  });
+
+  it('guards against double click and sends only one mark-all request (D1)', async () => {
+    let resolveRequest: (() => void) | undefined;
+    vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(
+      () =>
+        new Promise<{ marked_count: number }>((resolve) => {
+          resolveRequest = () => resolve({ marked_count: 3 });
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+    await fireEvent.click(markAllBtn);
+
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledTimes(1);
+
+    if (!resolveRequest) throw new Error('markAllReportsRead was never called');
+    resolveRequest();
+    await tick();
   });
 
   it('tracks unreadCount accurately and prevents double decrements on duplicate events (D3e)', async () => {
