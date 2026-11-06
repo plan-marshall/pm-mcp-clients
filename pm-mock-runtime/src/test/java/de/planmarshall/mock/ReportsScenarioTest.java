@@ -140,25 +140,30 @@ class ReportsScenarioTest {
     }
 
     @Test
-    @DisplayName("marks all unread reports read via POST /api/v1/reports/read")
+    @DisplayName("marks shown reports read via POST /api/v1/reports/read")
     void shouldMarkAllReportsRead() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.REPORTS)) {
             var client = new UnixSocketHttpClient(runtime.socketPath());
             var auth = "Bearer " + runtime.token();
 
-            var reqBody = ReadReportsRequest.markAll().toJson();
+            var listBefore = client.send(HttpRequest.get("/api/v1/reports").withHeader("Authorization", auth));
+            var pageBefore = ReportsPage.fromJson(listBefore.bodyText());
+            var shownIds = pageBefore.items().stream().map(r -> r.id()).toList();
+            assertEquals(5, shownIds.size());
+
+            var reqBody = ReadReportsRequest.of(shownIds).toJson();
             var res = client.send(HttpRequest.json("POST", "/api/v1/reports/read", reqBody)
                     .withHeader("Authorization", auth));
             assertEquals(200, res.status());
 
             var readResp = ReadReportsResponse.fromJson(res.bodyText());
-            assertEquals(7, readResp.markedCount());
+            assertEquals(5, readResp.markedCount());
 
-            // Listing is now empty
+            // 2 older unread reports remain
             var listRes = client.send(HttpRequest.get("/api/v1/reports").withHeader("Authorization", auth));
             var page = ReportsPage.fromJson(listRes.bodyText());
-            assertEquals(0, page.unreadCount());
-            assertTrue(page.items().isEmpty());
+            assertEquals(2, page.unreadCount());
+            assertEquals(2, page.items().size());
         }
     }
 

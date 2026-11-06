@@ -1800,7 +1800,7 @@ public final class OverviewFullScreenApp {
         }
         try {
             context.gate().verifyAct();
-            var request = new ReadReportsRequest(reportIds, false);
+            var request = new ReadReportsRequest(reportIds);
             var response = context.runtime(true).send(
                                 HttpRequest.json("POST", "/api/v1/reports/read", request.toJson()));
             return response.status() >= 200 && response.status() < 300;

@@ -28,6 +28,7 @@
   let olderCount = $state(0);
   let isLoading = $state(true);
   let isLoadingOlder = $state(false);
+  let isMarkingAll = $state(false);
   /** A failed read of the list; the list area says so and offers the retry. */
   let loadError = $state('');
   /** A failed act on an already loaded list (mark read, mark all, older page). */
@@ -408,7 +409,7 @@
       // A read whose response is still in flight keeps its marker: that response must not subtract
       // a read the fresh count already reflects.
       for (const id of [...countedReadIds]) {
-        if (!pendingReadIds.has(id)) countedReadIds.delete(id);
+        if (!pendingReadIds.has(id) && !retainedReadIds[id]) countedReadIds.delete(id);
       }
       unreadCount = page.unread_count ?? items.length;
       hasOlder = page.has_older;
@@ -502,68 +503,58 @@
   }
 
   async function markAllShownRead() {
-    if (matchingItems.length === 0) return;
-    const isFiltered = queryTokens.length > 0;
+    if (isMarkingAll || matchingItems.length === 0) return;
+    isMarkingAll = true;
     const shownIds = matchingItems.map((i) => i.id);
     const shownIdSet = new Set(shownIds);
     for (const id of shownIds) pendingReadIds.add(id);
 
     // Pre-mark retention for the open report among shown items before the network request
     // so an early report.read event does not discard it while in flight.
+    const newlyRetainedIds: string[] = [];
     if (activeDetailPlanId !== null) {
       for (const item of matchingItems) {
-        if (planIdOf(item) === activeDetailPlanId) {
+        if (planIdOf(item) === activeDetailPlanId && !retainedReadIds[item.id]) {
           retainedReadIds[item.id] = true;
+          newlyRetainedIds.push(item.id);
         }
       }
-      retainedReadIds = { ...retainedReadIds };
+      if (newlyRetainedIds.length > 0) {
+        retainedReadIds = { ...retainedReadIds };
+      }
     }
 
     try {
-      await apiClient.markAllReportsRead(isFiltered ? shownIds : undefined);
-      if (isFiltered) {
-        const newlyRead = shownIds.filter((id) => !countedReadIds.has(id));
-        for (const id of newlyRead) countedReadIds.add(id);
-        unreadCount = Math.max(0, unreadCount - newlyRead.length);
+      await apiClient.markAllReportsRead(shownIds);
+      const newlyRead = shownIds.filter((id) => !countedReadIds.has(id) && !retainedReadIds[id]);
+      for (const id of newlyRead) countedReadIds.add(id);
+      unreadCount = Math.max(0, unreadCount - newlyRead.length);
 
-        for (const item of items) {
-          if (!shownIdSet.has(item.id)) continue;
-          const stillSelected = activeDetailPlanId !== null && planIdOf(item) === activeDetailPlanId;
-          if (stillSelected) {
-            retainedReadIds[item.id] = true;
-          } else {
-            delete retainedReadIds[item.id];
-          }
+      for (const item of items) {
+        if (!shownIdSet.has(item.id)) continue;
+        const stillSelected = activeDetailPlanId !== null && planIdOf(item) === activeDetailPlanId;
+        if (stillSelected) {
+          retainedReadIds[item.id] = true;
+        } else {
+          delete retainedReadIds[item.id];
         }
-        retainedReadIds = { ...retainedReadIds };
-        items = items.filter((i) => !shownIdSet.has(i.id) || Boolean(retainedReadIds[i.id]));
-      } else {
-        for (const item of items) {
-          const stillSelected = activeDetailPlanId !== null && planIdOf(item) === activeDetailPlanId;
-          if (stillSelected) {
-            retainedReadIds[item.id] = true;
-          } else {
-            delete retainedReadIds[item.id];
-          }
-        }
-        retainedReadIds = { ...retainedReadIds };
-        items = items.filter((i) => Boolean(retainedReadIds[i.id]));
-        countedReadIds.clear();
-        unreadCount = 0;
       }
+      retainedReadIds = { ...retainedReadIds };
+      items = items.filter((i) => !shownIdSet.has(i.id) || Boolean(retainedReadIds[i.id]));
 
       void refreshReportsCount();
     } catch (err: unknown) {
-      if (activeDetailPlanId !== null) {
-        for (const id of shownIds) {
-          delete retainedReadIds[id];
-        }
+      for (const id of newlyRetainedIds) {
+        delete retainedReadIds[id];
+      }
+      if (newlyRetainedIds.length > 0) {
         retainedReadIds = { ...retainedReadIds };
       }
       retryAction = markAllShownRead;
       actionError = (err as Error)?.message || $t('report.list.mark_all_failed');
     } finally {
       for (const id of shownIds) pendingReadIds.delete(id);
+      isMarkingAll = false;
     }
   }
 
@@ -886,6 +877,8 @@
               size="small"
               onclick={markAllShownRead}
               title={$t('report.action.mark_all_read.title')}
+              disabled={isMarkingAll}
+              loading={isMarkingAll}
             >
               {$t('report.action.mark_all_read')}
             </Button>

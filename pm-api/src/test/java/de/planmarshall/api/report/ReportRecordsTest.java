@@ -156,16 +156,8 @@ class ReportRecordsTest {
         var reportId2 = Generators.nonEmptyStrings().next();
         var markedCount = Generators.integers(0, 100).next();
 
-        var req1 = ReadReportsRequest.markAll();
-        assertTrue(req1.all());
-        var parsed1 = ReadReportsRequest.fromJson(req1.toJson());
-        assertTrue(parsed1.all());
-        assertTrue(parsed1.reportIds().isEmpty());
-
         var req2 = ReadReportsRequest.of(List.of(reportId1, reportId2));
-        assertFalse(req2.all());
         var parsed2 = ReadReportsRequest.fromJson(req2.toJson());
-        assertFalse(parsed2.all());
         assertEquals(List.of(reportId1, reportId2), parsed2.reportIds());
 
         var resp = new ReadReportsResponse(markedCount, "ok");
