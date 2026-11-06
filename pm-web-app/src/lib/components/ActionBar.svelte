@@ -241,11 +241,14 @@
             >
               {act.label}
             </button>
-            {#if act.disabled && act.disabledReason}
-              <span class="sr-only" id={reasonIdOf(act.id)}>{act.disabledReason}</span>
-            {/if}
           {/each}
         </div>
+        <!-- A menu holds menu items: the reason of a disabled entry is described from outside it. -->
+        {#each overflow as act (act.id)}
+          {#if act.disabled && act.disabledReason}
+            <span class="sr-only" id={reasonIdOf(act.id)}>{act.disabledReason}</span>
+          {/if}
+        {/each}
       {/if}
     </div>
   {/if}

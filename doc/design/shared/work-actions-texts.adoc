@@ -194,6 +194,14 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |{epic} runs {running} of {scope} at once; the next plan, {plan}, waits for a free place.
 |{epic} führt {running} von {scope} gleichzeitig aus; der nächste Plan, {plan}, wartet auf einen freien Platz.
 
+|`control.epic.scope_unknown`
+|How many plans run is not known; {epic} may run {scope} at once, and the next plan, {plan}, waits for a free place.
+|Wie viele Pläne laufen, ist nicht bekannt; {epic} darf {scope} gleichzeitig ausführen, und der nächste Plan, {plan}, wartet auf einen freien Platz.
+
+|`control.epic.next_waiting`
+|The epic is still being read; the next plan cannot start yet.
+|Die Epik wird noch gelesen; der nächste Plan kann noch nicht starten.
+
 |`control.epic.auto`
 |Automatic: {mode, select, on {on} other {off}}
 |Automatischer Start: {mode, select, on {an} other {aus}}
