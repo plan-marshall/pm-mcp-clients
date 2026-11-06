@@ -341,6 +341,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String SEGMENT_ENROL = "/enrol";
     private static final String SEGMENT_STORES_DIGEST = "/stores/digest";
     private static final String SEGMENT_STORES_ACCEPT_EDIT = "/stores/accept-edit";
+    private static final String SEGMENT_ENROLMENT_DIGEST = "/enrolment/digest";
+    private static final String SEGMENT_ENROLMENT_ACCEPT_EDIT = "/enrolment/accept-edit";
+    /** The state fact naming the projects whose enrolment file fails its integrity check. */
+    private static final String FACT_ENROLMENT_TAMPERED = "enrolment_tampered";
+    private static final long ENROLMENT_RECORDED_SIZE = 512L;
+    private static final long ENROLMENT_CURRENT_SIZE = 540L;
     private static final String EVENT_PROJECT_UNENROLLED = "project.unenrolled";
     private static final String EVENT_STORE_EDIT_ACCEPTED = "store.edit_accepted";
     private static final String KEY_STORE_PATH = "store_path";
@@ -661,6 +667,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Map<String, String> projectSetupStates = new ConcurrentHashMap<>();
     private final Object storeLock = new Object();
     private final Map<String, MockStore> mockStores = new LinkedHashMap<>();
+    /** The enrolment files whose HMAC sidecar no longer matches, by project; guarded by {@link #storeLock}. */
+    private final Map<String, MockStore> tamperedEnrolments = new LinkedHashMap<>();
     private final StartRegistry startRegistry;
     private final Object startLock = new Object();
     private final Set<String> startedPlanIds = new LinkedHashSet<>();
@@ -1685,6 +1693,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 || handleMachineSettingsRoutes(request, response)
                 || handleDesignerRoutes(request, response, isWeb)
                 || handleEnrolmentRoutes(request, response)
+                || refuseTamperedEnrolment(request, response)
                 || handleProjectExplorerRoutes(request, response)
                 || handleProjectOverviewRoutes(request, response)
                 || handleNeedsAndFindRoutes(request, response)
@@ -7648,7 +7657,25 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     1248L, ENROL_RECORDED_SHA256, 1512L, ENROL_CURRENT_SHA256));
             mockStores.put(CONST_PLAN_MARSHALL, new MockStore(CONST_PLAN_MARSHALL, ENROL_STORE_PATH,
                     2048L, ENROL_RECORDED_SHA256, 2048L, ENROL_RECORDED_SHA256));
+            tamperedEnrolments.clear();
+            var facts = stateFacts(fixtureStateId.get());
+            var tampered = facts != null ? JsonTree.asArray(facts.get(FACT_ENROLMENT_TAMPERED)) : null;
+            if (tampered != null) {
+                for (var projectId : tampered) {
+                    var id = String.valueOf(projectId);
+                    tamperedEnrolments.put(id, new MockStore(id, enrolmentFile(id), ENROLMENT_RECORDED_SIZE,
+                            ENROL_RECORDED_SHA256, ENROLMENT_CURRENT_SIZE, ENROL_CURRENT_SHA256));
+                }
+            }
         }
+    }
+
+    /**
+     * @param projectId the project
+     * @return the project's enrolment file, relative to {@code <PM_MCP_BASE>}
+     */
+    private static String enrolmentFile(String projectId) {
+        return "enrolments/" + projectId + ".json";
     }
 
     /**
@@ -7688,7 +7715,108 @@ public final class MockRuntimeEngine implements AutoCloseable {
             handleAcceptEdit(request, response, prjId);
             return true;
         }
+        if ("GET".equals(method) && path.startsWith(PATH_PROJECTS_PREFIX) && path.endsWith(SEGMENT_ENROLMENT_DIGEST)) {
+            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(), path.length() - SEGMENT_ENROLMENT_DIGEST.length());
+            handleEnrolmentDigest(response, prjId);
+            return true;
+        }
+        if (METHOD_POST.equals(method) && path.startsWith(PATH_PROJECTS_PREFIX)
+                && path.endsWith(SEGMENT_ENROLMENT_ACCEPT_EDIT)) {
+            var prjId = path.substring(PATH_PROJECTS_PREFIX.length(),
+                    path.length() - SEGMENT_ENROLMENT_ACCEPT_EDIT.length());
+            handleEnrolmentAcceptEdit(request, response, prjId);
+            return true;
+        }
         return false;
+    }
+
+    /**
+     * Serves the recorded and current size and SHA-256 of a project's enrolment file: a tampered
+     * file differs from its HMAC sidecar, every other enrolled project's file matches it.
+     */
+    private void handleEnrolmentDigest(MockHttpResponse response, String projectId) throws IOException {
+        synchronized (storeLock) {
+            var tampered = tamperedEnrolments.get(projectId);
+            if (tampered != null) {
+                response.json(200, new StoreDigestComparison(tampered.storePath(), tampered.recordedSize(),
+                        tampered.recordedSha256(), tampered.currentSize(), tampered.currentSha256(),
+                        "the enrolment file differs from its HMAC sidecar").toMap());
+                return;
+            }
+        }
+        if (!isEnrolled(projectId)) {
+            sendStoreNotFound(response, projectId);
+            return;
+        }
+        response.json(200, new StoreDigestComparison(enrolmentFile(projectId), ENROLMENT_RECORDED_SIZE,
+                ENROL_RECORDED_SHA256, ENROLMENT_RECORDED_SIZE, ENROL_RECORDED_SHA256, null).toMap());
+    }
+
+    /**
+     * Accepts the edit of a tampered enrolment file for the confirmed current SHA-256 only: the
+     * sidecar is re-baselined and the project is served again.
+     */
+    private void handleEnrolmentAcceptEdit(MockHttpRequest request, MockHttpResponse response, String projectId)
+            throws IOException {
+        var accept = parseAcceptEdit(request.body());
+        synchronized (storeLock) {
+            var tampered = tamperedEnrolments.get(projectId);
+            if (tampered == null) {
+                response.json(409, Map.of(
+                        KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(),
+                        KEY_MESSAGE, "The enrolment file of " + projectId + " matches its sidecar"));
+                return;
+            }
+            if (accept == null || !tampered.currentSha256().equals(accept.confirmedSha256())) {
+                response.json(409, Map.of(
+                        KEY_ERROR, ERR_CONFIRMATION_MISMATCH,
+                        KEY_MESSAGE, "The confirmed SHA-256 does not match the current enrolment file",
+                        KEY_CURRENT_SHA256, tampered.currentSha256()));
+                return;
+            }
+            tamperedEnrolments.remove(projectId);
+            broadcastEvent(EVENT_STORE_EDIT_ACCEPTED, Map.of(
+                    KEY_PROJECT_ID, projectId,
+                    KEY_STORE_PATH, tampered.storePath(),
+                    KEY_NEW_SHA256, tampered.currentSha256()));
+            response.json(200, new AcceptEditResult(AcceptEditResult.STATUS_ACCEPTED, tampered.currentSha256()).toMap());
+        }
+    }
+
+    /**
+     * Refuses a request of a project whose enrolment file fails its integrity check with
+     * {@code enrolment_tampered}, naming the act that resolves it; the enrolment routes and the store
+     * routes stay open so the operator can review and accept the file.
+     *
+     * @return {@code true} if the request was refused
+     */
+    private boolean refuseTamperedEnrolment(MockHttpRequest request, MockHttpResponse response) throws IOException {
+        var path = request.path();
+        if (!path.startsWith(PATH_PROJECTS_PREFIX)) {
+            return false;
+        }
+        var rest = path.substring(PATH_PROJECTS_PREFIX.length());
+        var slash = rest.indexOf('/');
+        var projectId = slash < 0 ? rest : rest.substring(0, slash);
+        synchronized (storeLock) {
+            if (!tamperedEnrolments.containsKey(projectId)) {
+                return false;
+            }
+        }
+        var command = "pm-operator accept-edit enrolment " + projectId;
+        response.json(409, Map.of(
+                KEY_ERROR, ApiErrorCode.ENROLMENT_TAMPERED.wire(),
+                KEY_MESSAGE, "The enrolment file of " + projectId + " fails its integrity check; review and accept it: "
+                        + command,
+                KEY_PROJECT_ID, projectId,
+                "command", command));
+        return true;
+    }
+
+    private boolean isEnrolled(String projectId) {
+        synchronized (projectsLock) {
+            return enrolledProjects.stream().anyMatch(project -> project.projectId().equals(projectId));
+        }
     }
 
     private void handleEnrol(MockHttpRequest request, MockHttpResponse response, @Nullable String pathProjectId)

@@ -1003,6 +1003,26 @@
       },
       "links": {}
     },
+    "enrol.enrolment-tampered": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "enrol.enrolment-tampered",
+          "kind": "operator_wait"
+        },
+        "links": [],
+        "facts": {
+          "enrolment_tampered": [
+            "pm-mcp-clients"
+          ],
+          "summary": "The enrolment file of pm-mcp-clients fails its integrity check; accept-edit enrolment re-baselines it"
+        }
+      },
+      "links": {}
+    },
     "sources.git": {
       "representation": {
         "scope": {

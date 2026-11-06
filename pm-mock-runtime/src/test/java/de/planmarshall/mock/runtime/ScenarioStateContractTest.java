@@ -308,6 +308,9 @@ class ScenarioStateContractTest {
         if (stateId.startsWith("reports.")) {
             return "/api/v1/reports";
         }
+        if ("enrol.enrolment-tampered".equals(stateId)) {
+            return "/api/v1/projects/pm-mcp-clients";
+        }
         if (stateId.startsWith("system.")) {
             return "system.running".equals(stateId) ? "/api/v1/system" : "/api/v1/status";
         }
