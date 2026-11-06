@@ -218,9 +218,14 @@ describe('CompletionReportView component', () => {
     ).toBeInTheDocument();
 
     // By phase
+    expect(screen.getByRole('heading', { level: 3, name: 'By phase' })).toBeInTheDocument();
     expect(screen.getByText('refine')).toBeInTheDocument();
     // By role
+    expect(screen.getByRole('heading', { level: 3, name: 'By role' })).toBeInTheDocument();
     expect(screen.getByText('planner')).toBeInTheDocument();
+    expect(screen.getByText('claude:opus-5.5 · high')).toBeInTheDocument();
+    // By model
+    expect(screen.getByRole('heading', { level: 3, name: 'By model' })).toBeInTheDocument();
     expect(screen.getByText('claude:opus-5.5 · high')).toBeInTheDocument();
 
     // Waste
@@ -233,5 +238,14 @@ describe('CompletionReportView component', () => {
     await fireEvent.click(toggleBtn);
 
     expect(screen.getByText(/cache read 10 k/)).toBeInTheDocument();
+  });
+
+  it('renders breakdown titles as h4 when titleLevel is 2', () => {
+    render(CompletionReportView, { planId: 'fix-relay', report: mockReport, titleLevel: 2 });
+
+    expect(screen.getByRole('heading', { level: 3, name: 'Tokens' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 4, name: 'By phase' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 4, name: 'By role' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 4, name: 'By model' })).toBeInTheDocument();
   });
 });

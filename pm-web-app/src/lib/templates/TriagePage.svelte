@@ -10,10 +10,11 @@
    * its selection and its `j`/`k`/`Enter` handling.
    */
   export let selected = false;
+  export let hasFilters = true;
 </script>
 
 <div class="triage-page" class:triage-page--detail={selected} data-testid="triage-page">
-  {#if $$slots.filters}
+  {#if $$slots.filters && hasFilters}
     <div class="triage-page__filters" data-testid="triage-filters">
       <slot name="filters" />
     </div>

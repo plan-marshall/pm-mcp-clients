@@ -79,6 +79,8 @@ describe('ReportsView component', () => {
     vi.spyOn(apiClient, 'markReportRead').mockResolvedValue(undefined);
     vi.spyOn(apiClient, 'markAllReportsRead').mockResolvedValue({ marked_count: 3 });
     eventHandler = null;
+    window.innerWidth = 1440;
+    window.dispatchEvent(new Event('resize'));
     vi.spyOn(apiClient, 'subscribeEvents').mockImplementation((handler) => {
       eventHandler = handler;
       return () => {};
@@ -140,7 +142,7 @@ describe('ReportsView component', () => {
     render(ReportsView);
 
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
     expect(apiClient.getPlanCompletion).toHaveBeenCalledWith('fix-relay');
 
@@ -165,7 +167,7 @@ describe('ReportsView component', () => {
     const details = await screen.findAllByRole('button', { name: /Show the details/i });
     await fireEvent.click(details[0]);
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
     expect(get(runtimeStore).selectedReportDetailPlanId).toBe('fix-relay');
 
@@ -214,7 +216,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(details[0]);
 
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
     const active = document.querySelector('.report-card--active') as HTMLElement;
     expect(active).toHaveAttribute('data-unread', 'false');
@@ -270,7 +272,7 @@ describe('ReportsView component', () => {
     const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
     await fireEvent.click(markAllBtn);
 
-    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(['rep-0142', 'rep-0139', 'rep-0131']);
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(undefined);
   });
 
   it('renders empty state when there are no unread reports', async () => {
@@ -585,7 +587,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(details[0]);
 
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
     expect(document.querySelector('.reports-tree')).not.toBeNull();
     const active = document.querySelector('.report-card--active');
@@ -602,7 +604,7 @@ describe('ReportsView component', () => {
     await screen.findByText('Ended: merged (#214)');
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
 
     // The runtime announces a report the view cannot place, so it reloads the list; the server no
@@ -768,7 +770,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
 
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
 
     // The runtime answers the request with an event that can overtake the HTTP response.
@@ -823,7 +825,7 @@ describe('ReportsView component', () => {
     await screen.findByText('Ended: merged (#214)');
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
 
     // The operator closes the detail before the read request settles.
@@ -855,7 +857,7 @@ describe('ReportsView component', () => {
     await screen.findByText('Ended: merged (#214)');
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
     await fireEvent.click(screen.getByRole('button', { name: /^Back$/i }));
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
@@ -882,7 +884,7 @@ describe('ReportsView component', () => {
     await screen.findByText('Ended: merged (#214)');
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
 
     // The event overtakes the HTTP response and counts the read.
@@ -914,7 +916,7 @@ describe('ReportsView component', () => {
     await screen.findByText('Ended: merged (#214)');
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
 
     // The response settles first and counts the read.
@@ -973,7 +975,7 @@ describe('ReportsView component', () => {
     await screen.findByText('Ended: merged (#214)');
     await fireEvent.click(screen.getAllByRole('button', { name: /Show the details/i })[0]);
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
 
     eventHandler?.('report.read', { report_id: 'rep-0142' });
@@ -1135,7 +1137,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(detailBtn);
 
     await waitFor(() => {
-      expect(document.querySelector('.completion-report')).not.toBeNull();
+      expect(document.querySelector('.report-title')).not.toBeNull();
     });
 
     const h1Elements = document.querySelectorAll('h1');
@@ -1175,6 +1177,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(markReadItem);
 
     await waitFor(() => {
+      expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
       expect(secondCardTrigger).toHaveFocus();
     });
   });
@@ -1204,6 +1207,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(await within(card).findByRole('menuitem', { name: /Mark read/i }));
 
     await waitFor(() => {
+      expect(screen.queryByText('Only report')).toBeNull();
       expect(document.querySelector('.reports-heading')).toHaveFocus();
     });
   });
@@ -1242,6 +1246,7 @@ describe('ReportsView component', () => {
     await fireEvent.click(await within(card1).findByRole('menuitem', { name: /Mark read/i }));
 
     await waitFor(() => {
+      expect(screen.queryByText('Only report')).toBeNull();
       expect(document.querySelector('.reports-heading')).toHaveFocus();
     });
   });
@@ -1292,5 +1297,141 @@ describe('ReportsView component', () => {
 
     const realProjectSection = projectBtn.closest('.project-section') as HTMLElement;
     expect(within(realProjectSection).getByText('Real project named __machine__ is onboarded')).toBeInTheDocument();
+  });
+
+  it('keeps the open report mounted and the filter text across a reload (D1)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const input = await typeFilter('relay');
+    expect((input as HTMLInputElement).value).toBe('relay');
+
+    const detailBtn = screen.getAllByRole('button', { name: /Show the details/i })[0];
+    await fireEvent.click(detailBtn);
+    await waitFor(() => {
+      expect(document.querySelector('.report-title')).not.toBeNull();
+    });
+
+    const reportTitleBefore = document.querySelector('.report-title');
+
+    eventHandler?.('report.sent', {});
+    await tick();
+
+    await waitFor(() => {
+      expect(screen.getByRole('searchbox')).toHaveValue('relay');
+      expect(document.querySelector('.report-title')).not.toBeNull();
+      expect(document.querySelector('.report-title')).toBe(reportTitleBefore);
+    });
+  });
+
+  it('has exactly one h1 heading on screen at 390 px when a report is open (D1)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    window.innerWidth = 390;
+    window.dispatchEvent(new Event('resize'));
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const detailBtn = screen.getAllByRole('button', { name: /Show the details/i })[0];
+    await fireEvent.click(detailBtn);
+
+    await waitFor(() => {
+      expect(document.querySelector('.report-title')).not.toBeNull();
+    });
+
+    const h1Elements = document.querySelectorAll('h1');
+    expect(h1Elements).toHaveLength(1);
+    expect(h1Elements[0]).toHaveClass('report-title');
+  });
+
+  it('leaves no unread report behind on unfiltered mark-all and keeps the load-older control (D1)', async () => {
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: mockReports,
+      unread_count: 3,
+      has_older: true,
+      older_count: 5,
+    });
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(undefined);
+    expect(screen.getByRole('button', { name: /Show.*older/i })).toBeInTheDocument();
+  });
+
+  it('treats a punctuation-only query as unfiltered and shows what the count says (D1)', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    await typeFilter('...');
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+    expect(screen.getByText('Ended: no change')).toBeInTheDocument();
+    expect(screen.getByText('Onboarded')).toBeInTheDocument();
+    expect(screen.queryByTestId('filter-results')).toBeNull();
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(undefined);
+  });
+
+  it('tracks unreadCount accurately and prevents double decrements on duplicate events (D3e)', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    expect(screen.getByTestId('unread-count')).toHaveTextContent('3 unread reports');
+
+    // Mark one report read via API
+    const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
+    await fireEvent.click(within(card).getByRole('button', { name: /Report actions/i }));
+    await fireEvent.click(await within(card).findByRole('menuitem', { name: /Mark read/i }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+    });
+
+    // Duplicate event arriving for same report does not double decrement
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
+    await tick();
+
+    expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+  });
+
+  it('retains the open report beside the detail during a filtered mark-all and drops it when detail closes (D3e)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    // Filter to relay items
+    await typeFilter('relay');
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+
+    // Open detail for fix-relay
+    const detailBtn = screen.getAllByRole('button', { name: /Show the details/i })[0];
+    await fireEvent.click(detailBtn);
+    await waitFor(() => {
+      expect(document.querySelector('.report-title')).not.toBeNull();
+    });
+
+    // Mark all matching read
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+
+    // Filtered mark-all called with matching IDs
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(['rep-0142']);
+
+    // The selected report stays retained in list beside open detail
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+
+    // Close detail
+    const backBtn = screen.getByRole('button', { name: /^Back$/i });
+    await fireEvent.click(backBtn);
+
+    // Retained row is now flushed from list
+    await waitFor(() => {
+      expect(screen.queryByText('Ended: merged (#214)')).toBeNull();
+    });
   });
 });
