@@ -614,8 +614,7 @@ class PmOperatorProcessIT {
     @DisplayName("accept-edit refuses execution without an interactive terminal (PM-SEC-3)")
     void acceptEditRefusesWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        try (var process = operator(environment(), "accept-edit", ".plan/marshal.json",
-                                 "--project", "pm-mcp-clients", "--force")) {
+        try (var process = operator(environment(), "accept-edit", "enrolment", "pm-mcp-clients")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
             assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),

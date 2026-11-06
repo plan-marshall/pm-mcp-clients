@@ -24,6 +24,7 @@ import org.jline.terminal.Terminal;
 
 import de.planmarshall.api.MachinePaths;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.testsupport.BinaryUnderTest;
 import de.planmarshall.mock.MockRuntime;
@@ -142,6 +143,18 @@ final class DialogueHarness implements AutoCloseable {
             }
         }
         return acts;
+    }
+
+    /**
+     * Sends a request to the mock as an authenticated client, beside the process under test: a case
+     * reads what the runtime serves before and after the dialogue.
+     *
+     * @param request the request
+     * @return the mock's answer
+     * @throws IOException if the request fails
+     */
+    HttpResponse send(HttpRequest request) throws IOException {
+        return runtime.client().send(request);
     }
 
     /**

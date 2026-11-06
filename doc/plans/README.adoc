@@ -389,7 +389,7 @@ The status of a package is `open`, `blocked`, `done` or `dropped`; a `dropped` r
 
 |link:accept-edit-enrolment.adoc[`accept-edit-enrolment`]
 |`pm-operator accept-edit` in the forms of the specification, `enrolment <project_id>` among them
-|`open`
+|`done`
 |`operator-enrolment-verbs`
 |client work
 
