@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import WorkControlPanel from './WorkControlPanel.svelte';
 import { apiClient, type ArchiveCheck, type PlanSettingsRecord, type WorkActions } from '../api/client';
+import { PLAN_ACTS, EPIC_ACTS, handledActIds, tableActIds } from '../actions/byState';
 
 /**
  * `WorkControlPanel` (UC-CTL-1..5, UX-P-04): it draws the acts the state offers through
@@ -930,6 +931,41 @@ describe('WorkControlPanel component', () => {
     expect(screen.getByTestId('work-control')).toHaveAccessibleName();
     for (const button of screen.getAllByRole('button')) {
       expect(button).toHaveAccessibleName();
+    }
+  });
+
+  it('derives handled act ids from the action tables and posts a dynamically added table act', async () => {
+    expect(handledActIds('plan')).toEqual(tableActIds(PLAN_ACTS, ['decision']));
+    expect(handledActIds('epic')).toEqual(tableActIds(EPIC_ACTS, ['decision']));
+
+    const customAct = {
+      id: 'custom_inspect',
+      labelKey: 'control.plan.custom_inspect',
+      role: 'overflow' as const,
+    };
+    PLAN_ACTS.running.push(customAct);
+    try {
+      vi.spyOn(apiClient, 'getPlanActions').mockResolvedValue({
+        ...running,
+        actions: [
+          ...running.actions!,
+          { action: 'custom_inspect', available: true },
+        ],
+      });
+
+      render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+
+      const menu = await openOverflow();
+      const customButton = within(menu).getByTestId('action-custom_inspect');
+      expect(customButton).toBeInTheDocument();
+
+      await fireEvent.click(customButton);
+      expect(apiClient.applyPlanAction).toHaveBeenCalledWith('fix-relay', 'custom_inspect', {});
+    } finally {
+      const idx = PLAN_ACTS.running.indexOf(customAct);
+      if (idx !== -1) {
+        PLAN_ACTS.running.splice(idx, 1);
+      }
     }
   });
 });

@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { ACT_TABLES, RESOURCE_KINDS, actsFor, type ActSpec, type ResourceKind } from './byState';
+import {
+  ACT_TABLES,
+  EPIC_ACTS,
+  PLAN_ACTS,
+  RESOURCE_KINDS,
+  actsFor,
+  handledActIds,
+  tableActIds,
+  type ActSpec,
+  type ResourceKind,
+} from './byState';
 
 /**
  * The acts-by-state tables (UX-P-04, UC-P-02): every state of every resource kind names its acts,
@@ -183,5 +193,22 @@ describe('actsFor', () => {
 
   it('names the five resource kinds the use cases carry', () => {
     expect(RESOURCE_KINDS).toEqual(['plan', 'epic', 'project', 'device', 'runtime']);
+  });
+});
+
+describe('tableActIds and handledActIds', () => {
+  it('collects unique act ids from state tables and excludes specified ids', () => {
+    const planIds = tableActIds(PLAN_ACTS);
+    expect(planIds.has('decision')).toBe(true);
+    expect(planIds.has('pause')).toBe(true);
+    expect(planIds.has('start')).toBe(true);
+
+    const planIdsMinusDecision = tableActIds(PLAN_ACTS, ['decision']);
+    expect(planIdsMinusDecision.has('decision')).toBe(false);
+    expect(planIdsMinusDecision.size).toBe(planIds.size - 1);
+
+    expect(handledActIds('plan')).toEqual(planIdsMinusDecision);
+    expect(handledActIds('epic')).toEqual(tableActIds(EPIC_ACTS, ['decision']));
+    expect(handledActIds('epic')).toEqual(tableActIds(EPIC_ACTS));
   });
 });
