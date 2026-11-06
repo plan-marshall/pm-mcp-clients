@@ -414,8 +414,8 @@ class PmConsoleBehaviourTest {
                     response.send(404, null, "");
                 }
             });
-            var rendered = new ByteArrayOutputStream();
-            try (rendered; var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            try (var rendered = new ByteArrayOutputStream();
+                                var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
                 var context = new OperatorContext(fixture.environment(), tempDir, true,
                                     ClientEnvironment.capture(fixture.environment()),
                                     () -> terminal, null);
@@ -566,8 +566,8 @@ class PmConsoleBehaviourTest {
                     response.send(404, null, "");
                 }
             });
-            var rendered = new ByteArrayOutputStream();
-            try (rendered; var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            try (var rendered = new ByteArrayOutputStream();
+                                var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
                 var context = new OperatorContext(fixture.environment(), tempDir, true,
                                     ClientEnvironment.capture(fixture.environment()),
                                     () -> terminal, null);
@@ -598,8 +598,8 @@ class PmConsoleBehaviourTest {
                     response.send(404, null, "");
                 }
             });
-            var rendered = new ByteArrayOutputStream();
-            try (rendered; var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            try (var rendered = new ByteArrayOutputStream();
+                                var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
                 var context = new OperatorContext(fixture.environment(), tempDir, true,
                                     ClientEnvironment.capture(fixture.environment()),
                                     () -> terminal, null);
@@ -651,8 +651,8 @@ class PmConsoleBehaviourTest {
                     response.send(404, null, "");
                 }
             });
-            var rendered = new ByteArrayOutputStream();
-            try (rendered; var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            try (var rendered = new ByteArrayOutputStream();
+                                var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
                 var context = new OperatorContext(fixture.environment(), tempDir, true,
                                     ClientEnvironment.capture(fixture.environment()),
                                     () -> terminal, null);
