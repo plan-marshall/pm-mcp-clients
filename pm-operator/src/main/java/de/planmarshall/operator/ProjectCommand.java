@@ -85,9 +85,10 @@ public final class ProjectCommand implements Callable<Integer> {
         var safeId = OperatorUrlUtil.encodePathSegment(projectId);
         var response = context.runtime(true).send(HttpRequest.get(PROJECTS_API + safeId));
         var out = spec.commandLine().getOut();
+        var locale = context.clientEnvironment().locale();
 
         if (response.status() == 404) {
-            out.println(MessageCatalogue.format(KEY_PROJECT_NOT_FOUND,
+            out.println(MessageCatalogue.format(locale, KEY_PROJECT_NOT_FOUND,
                                 Map.of(PARAM_PROJECT, OutputSafety.stripControlSequences(projectId))));
             out.flush();
             return 1;
@@ -95,47 +96,57 @@ public final class ProjectCommand implements Callable<Integer> {
 
         if (response.status() == 200) {
             var project = EnrolledProject.fromJson(response.bodyText());
-            renderProjectDetail(out, project);
+            renderProjectDetail(out, locale, project);
             return 0;
         }
 
         throw new OperatorRefusedException("project " + OutputSafety.stripControlSequences(projectId), response);
     }
 
-    private static void renderProjectDetail(PrintWriter out, EnrolledProject project) {
+    /**
+     * @param locale the client's locale
+     * @param key    the catalogue key of a text without parameters
+     * @return the text in the client's locale
+     */
+    private static String text(String locale, String key) {
+        return MessageCatalogue.format(locale, key, Map.of());
+    }
+
+    private static void renderProjectDetail(PrintWriter out, String locale, EnrolledProject project) {
         var name = OutputSafety.stripControlSequences(project.displayName());
         var pId = OutputSafety.stripControlSequences(project.projectId());
         var remote = project.remoteUrl() != null ? OutputSafety.stripControlSequences(project.remoteUrl()) : "";
         var readiness = switch (project.readiness()) {
-            case READY -> MessageCatalogue.get("operator.project.readiness.ready");
-            case RELEASED -> MessageCatalogue.get("operator.project.readiness.released");
-            case SETUP_NEEDS -> MessageCatalogue.format("operator.project.readiness.setup_needs",
+            case READY -> text(locale, "operator.project.readiness.ready");
+            case RELEASED -> text(locale, "operator.project.readiness.released");
+            case SETUP_NEEDS -> MessageCatalogue.format(locale, "operator.project.readiness.setup_needs",
                                 Map.of("summary", OutputSafety.stripControlSequences(project.setupNeedsSummary() != null
                                                     ? project.setupNeedsSummary()
-                                                    : MessageCatalogue.get("operator.project.readiness.setup"))));
+                                                    : text(locale, "operator.project.readiness.setup"))));
         };
-        var yes = MessageCatalogue.get("operator.project.detail.yes");
-        var no = MessageCatalogue.get("operator.project.detail.no");
+        var yes = text(locale, "operator.project.detail.yes");
+        var no = text(locale, "operator.project.detail.no");
 
-        out.println(MessageCatalogue.format("operator.project.detail.project", Map.of("name", name, "id", pId)));
+        out.println(MessageCatalogue.format(locale, "operator.project.detail.project", Map.of("name", name, "id", pId)));
         if (!remote.isBlank()) {
-            out.println(MessageCatalogue.format("operator.project.detail.remote", Map.of("remote", remote)));
+            out.println(MessageCatalogue.format(locale, "operator.project.detail.remote", Map.of("remote", remote)));
         }
-        out.println(MessageCatalogue.format("operator.project.detail.readiness", Map.of("readiness", readiness)));
+        out.println(MessageCatalogue.format(locale, "operator.project.detail.readiness",
+                            Map.of("readiness", readiness)));
         if (project.needsOperatorCount() > 0) {
-            out.println(MessageCatalogue.format("operator.project.detail.operator",
+            out.println(MessageCatalogue.format(locale, "operator.project.detail.operator",
                                 Map.of("count", String.valueOf(project.needsOperatorCount()))));
         }
-        out.println(MessageCatalogue.format("operator.project.detail.work",
+        out.println(MessageCatalogue.format(locale, "operator.project.detail.work",
                             Map.of("plans", String.valueOf(project.activePlansCount()),
                                                 "epics", String.valueOf(project.activeEpicsCount()))));
         if (project.lastActive() != null) {
-            out.println(MessageCatalogue.format("operator.project.detail.last_seen",
+            out.println(MessageCatalogue.format(locale, "operator.project.detail.last_seen",
                                 Map.of("when", ProjectsCommand.formatRelativeTime(project.lastActive()))));
         }
-        out.println(MessageCatalogue.format("operator.project.detail.favourite", Map.of(PARAM_VALUE,
-                            project.isFavourite() ? MessageCatalogue.get("operator.project.detail.favourite_yes") : no)));
-        out.println(MessageCatalogue.format("operator.project.detail.released",
+        out.println(MessageCatalogue.format(locale, "operator.project.detail.favourite", Map.of(PARAM_VALUE,
+                            project.isFavourite() ? text(locale, "operator.project.detail.favourite_yes") : no)));
+        out.println(MessageCatalogue.format(locale, "operator.project.detail.released",
                             Map.of(PARAM_VALUE, project.isReleased() ? yes : no)));
         out.flush();
     }
@@ -172,6 +183,7 @@ public final class ProjectCommand implements Callable<Integer> {
             var out = spec.commandLine().getOut();
             var err = spec.commandLine().getErr();
             var safePath = OutputSafety.stripControlSequences(path);
+            var locale = context.clientEnvironment().locale();
 
             var request = new EnrolRequest(path, pilot);
             var response = context.runtime(true).send(HttpRequest.json("POST", PATH_ENROL, request.toJson()));
@@ -179,29 +191,29 @@ public final class ProjectCommand implements Callable<Integer> {
             if (response.status() == 200 || response.status() == 201) {
                 var result = EnrolResult.fromJson(response.bodyText());
                 var id = OutputSafety.stripControlSequences(result.projectId());
-                var mode = MessageCatalogue.get(result.pilot() ? "enrolment.enrol.mode.pilot"
+                var mode = text(locale, result.pilot() ? "enrolment.enrol.mode.pilot"
                                     : "enrolment.enrol.mode.standard");
-                out.println(MessageCatalogue.format("enrolment.enrol.done", Map.of("id", id, "mode", mode)));
+                out.println(MessageCatalogue.format(locale, "enrolment.enrol.done", Map.of("id", id, "mode", mode)));
                 out.flush();
                 return 0;
             }
             if (response.status() == 409) {
                 var reason = refusalReason(response.bodyText());
                 if (ERR_ENROLMENT_ROOT_CONFLICT.equals(reason)) {
-                    out.println(MessageCatalogue.format("enrolment.enrol.refused.root_conflict",
+                    out.println(MessageCatalogue.format(locale, "enrolment.enrol.refused.root_conflict",
                                         Map.of("path", safePath)));
                 } else if (ERR_PROJECT_STORE_ROOT_MISMATCH.equals(reason)) {
-                    out.println(MessageCatalogue.format("enrolment.enrol.refused.store_root_mismatch",
+                    out.println(MessageCatalogue.format(locale, "enrolment.enrol.refused.store_root_mismatch",
                                         Map.of("id", safePath)));
                 } else {
-                    out.println(MessageCatalogue.format("enrolment.enrol.failed",
+                    out.println(MessageCatalogue.format(locale, "enrolment.enrol.failed",
                                         Map.of("path", safePath, "status", response.status())));
                 }
                 out.flush();
                 return 1;
             }
             if (response.status() >= 400 && response.status() < 500) {
-                err.println(MessageCatalogue.format("enrolment.enrol.failed",
+                err.println(MessageCatalogue.format(locale, "enrolment.enrol.failed",
                                     Map.of("path", safePath, "status", response.status())));
                 err.flush();
                 return 1;
@@ -298,8 +310,9 @@ public final class ProjectCommand implements Callable<Integer> {
             var response = context.runtime(true).send(HttpRequest.json("PUT", path, JsonTree.write(body)));
             var out = spec.commandLine().getOut();
             if (response.status() == 200 || response.status() == 204) {
-                var state = MessageCatalogue.get(off ? "operator.project.favourite.off" : "operator.project.favourite.on");
-                out.println(MessageCatalogue.format("operator.project.favourite.done",
+                var locale = context.clientEnvironment().locale();
+                var state = text(locale, off ? "operator.project.favourite.off" : "operator.project.favourite.on");
+                out.println(MessageCatalogue.format(locale, "operator.project.favourite.done",
                                     Map.of(PARAM_PROJECT, sanitizedId, "state", state)));
                 out.flush();
                 return 0;
@@ -342,10 +355,11 @@ public final class ProjectCommand implements Callable<Integer> {
             var err = spec.commandLine().getErr();
             var safeId = OperatorUrlUtil.encodePathSegment(projectId);
             var sanitizedId = OutputSafety.stripControlSequences(projectId);
+            var locale = context.clientEnvironment().locale();
 
             if (reason == null || reason.isBlank()) {
                 if (noInput) {
-                    err.println(MessageCatalogue.get("operator.project.release.reason_required"));
+                    err.println(text(locale, "operator.project.release.reason_required"));
                     err.flush();
                     return EXIT_NEEDS_INPUT;
                 }
@@ -355,7 +369,7 @@ public final class ProjectCommand implements Callable<Integer> {
             }
 
             if (!yes && noInput) {
-                err.println(MessageCatalogue.get("operator.project.release.confirm_required"));
+                err.println(text(locale, "operator.project.release.confirm_required"));
                 err.flush();
                 return EXIT_NEEDS_INPUT;
             }
@@ -364,18 +378,19 @@ public final class ProjectCommand implements Callable<Integer> {
             var path = PROJECTS_API + safeId + "/release";
             var response = context.runtime(true).send(HttpRequest.json("POST", path, req.toJson()));
             if (response.status() == 200 || response.status() == 204) {
-                out.println(MessageCatalogue.format("operator.project.release.done",
+                out.println(MessageCatalogue.format(locale, "operator.project.release.done",
                                     Map.of(PARAM_PROJECT, sanitizedId)));
                 out.flush();
                 return 0;
             }
             if (response.status() == 404) {
-                err.println(MessageCatalogue.format(KEY_PROJECT_NOT_FOUND, Map.of(PARAM_PROJECT, sanitizedId)));
+                err.println(MessageCatalogue.format(locale, KEY_PROJECT_NOT_FOUND,
+                                    Map.of(PARAM_PROJECT, sanitizedId)));
                 err.flush();
                 return 1;
             }
             if (response.status() == 409) {
-                err.println(MessageCatalogue.format("operator.project.release.pending",
+                err.println(MessageCatalogue.format(locale, "operator.project.release.pending",
                                     Map.of(PARAM_PROJECT, sanitizedId)));
                 err.flush();
                 return 1;
@@ -416,9 +431,10 @@ public final class ProjectCommand implements Callable<Integer> {
             var err = spec.commandLine().getErr();
             var safeId = OperatorUrlUtil.encodePathSegment(projectId);
             var sanitizedId = OutputSafety.stripControlSequences(projectId);
+            var locale = context.clientEnvironment().locale();
 
             if (!yes && noInput) {
-                err.println(MessageCatalogue.get("enrolment.unenrol.confirm_required"));
+                err.println(text(locale, "enrolment.unenrol.confirm_required"));
                 err.flush();
                 return EXIT_NEEDS_INPUT;
             }
@@ -427,21 +443,22 @@ public final class ProjectCommand implements Callable<Integer> {
             var path = PROJECTS_API + safeId + "/unenrol";
             var response = context.runtime(true).send(HttpRequest.json("POST", path, request.toJson()));
             if (response.status() == 200 || response.status() == 204) {
-                out.println(MessageCatalogue.format("enrolment.unenrol.done", Map.of("id", sanitizedId)));
+                out.println(MessageCatalogue.format(locale, "enrolment.unenrol.done", Map.of("id", sanitizedId)));
                 out.flush();
                 return 0;
             }
             if (response.status() == 404) {
-                err.println(MessageCatalogue.format("enrolment.unenrol.not_found", Map.of("id", sanitizedId)));
+                err.println(MessageCatalogue.format(locale, "enrolment.unenrol.not_found",
+                                    Map.of("id", sanitizedId)));
                 err.flush();
                 return 1;
             }
             if (response.status() == 409) {
                 if (ERR_SCOPE_ACTIVE.equals(refusalReason(response.bodyText()))) {
-                    err.println(MessageCatalogue.format("enrolment.unenrol.scope_active",
+                    err.println(MessageCatalogue.format(locale, "enrolment.unenrol.scope_active",
                                         Map.of("id", sanitizedId)));
                 } else {
-                    err.println(MessageCatalogue.format("enrolment.unenrol.failed",
+                    err.println(MessageCatalogue.format(locale, "enrolment.unenrol.failed",
                                         Map.of("id", sanitizedId, "status", response.status())));
                 }
                 err.flush();
