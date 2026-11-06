@@ -1393,7 +1393,7 @@ describe('ReportsView component', () => {
     });
 
     // Duplicate event arriving for same report does not double decrement
-    eventHandler?.('report.read', { id: 'rep-0142' });
+    eventHandler?.('report.read', { report_id: 'rep-0142' });
     await tick();
 
     expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');

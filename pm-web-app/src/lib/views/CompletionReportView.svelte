@@ -433,7 +433,11 @@
           <!-- Breakdown by Phase -->
           {#if usage.by_phase && usage.by_phase.length > 0}
             <div class="breakdown-group">
-              <h3 class="breakdown-title">{$t('report.completion.by_phase')}</h3>
+              {#if titleLevel === 1}
+                <h3 class="breakdown-title">{$t('report.completion.by_phase')}</h3>
+              {:else}
+                <h4 class="breakdown-title">{$t('report.completion.by_phase')}</h4>
+              {/if}
               <table class="breakdown-table">
                 <tbody>
                   {#each usage.by_phase as item}
@@ -477,7 +481,11 @@
           <!-- Breakdown by Role -->
           {#if usage.by_role && usage.by_role.length > 0}
             <div class="breakdown-group">
-              <h3 class="breakdown-title">{$t('report.completion.by_role')}</h3>
+              {#if titleLevel === 1}
+                <h3 class="breakdown-title">{$t('report.completion.by_role')}</h3>
+              {:else}
+                <h4 class="breakdown-title">{$t('report.completion.by_role')}</h4>
+              {/if}
               <table class="breakdown-table">
                 <tbody>
                   {#each usage.by_role as item}
@@ -526,7 +534,11 @@
           <!-- Breakdown by Model -->
           {#if usage.by_model && usage.by_model.length > 0}
             <div class="breakdown-group">
-              <h3 class="breakdown-title">{$t('report.completion.by_model')}</h3>
+              {#if titleLevel === 1}
+                <h3 class="breakdown-title">{$t('report.completion.by_model')}</h3>
+              {:else}
+                <h4 class="breakdown-title">{$t('report.completion.by_model')}</h4>
+              {/if}
               <table class="breakdown-table">
                 <tbody>
                   {#each usage.by_model as item}

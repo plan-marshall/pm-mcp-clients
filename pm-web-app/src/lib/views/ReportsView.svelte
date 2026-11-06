@@ -507,6 +507,18 @@
     const shownIds = matchingItems.map((i) => i.id);
     const shownIdSet = new Set(shownIds);
     for (const id of shownIds) pendingReadIds.add(id);
+
+    // Pre-mark retention for the open report among shown items before the network request
+    // so an early report.read event does not discard it while in flight.
+    if (activeDetailPlanId !== null) {
+      for (const item of matchingItems) {
+        if (planIdOf(item) === activeDetailPlanId) {
+          retainedReadIds[item.id] = true;
+        }
+      }
+      retainedReadIds = { ...retainedReadIds };
+    }
+
     try {
       await apiClient.markAllReportsRead(isFiltered ? shownIds : undefined);
       if (isFiltered) {
@@ -514,7 +526,8 @@
         for (const id of newlyRead) countedReadIds.add(id);
         unreadCount = Math.max(0, unreadCount - newlyRead.length);
 
-        for (const item of matchingItems) {
+        for (const item of items) {
+          if (!shownIdSet.has(item.id)) continue;
           const stillSelected = activeDetailPlanId !== null && planIdOf(item) === activeDetailPlanId;
           if (stillSelected) {
             retainedReadIds[item.id] = true;
@@ -541,6 +554,12 @@
 
       void refreshReportsCount();
     } catch (err: unknown) {
+      if (activeDetailPlanId !== null) {
+        for (const id of shownIds) {
+          delete retainedReadIds[id];
+        }
+        retainedReadIds = { ...retainedReadIds };
+      }
       retryAction = markAllShownRead;
       actionError = (err as Error)?.message || $t('report.list.mark_all_failed');
     } finally {

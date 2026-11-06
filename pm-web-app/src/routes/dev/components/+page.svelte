@@ -224,12 +224,12 @@
       <div class="dev__row">
         <RowMenu
           items={rowMenuItems}
-          label={$t('report.list.row_menu')}
+          label="{$t('dev.section.row_menu')} ({$t('web.common.more')})"
           visibleLabel={$t('web.common.more')}
         />
         <RowMenu
           items={rowMenuItems}
-          label={$t('report.list.row_menu')}
+          label="{$t('dev.section.row_menu')} ({$t('report.action.mark_read')})"
         />
       </div>
 
