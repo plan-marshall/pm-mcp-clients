@@ -12,9 +12,11 @@ link:../README.adoc[Review] » Verification Results » The Shared Foundation
 This document records five checks of the two reviews against the merged code. The checks come from
 link:../use-cases/verification.adoc[Use Cases, Verification], link:../cli/use-cases/verification.adoc[CLI Review, Use
 Cases, Verification], and link:../cli/cross-cutting/verification.adoc[CLI Review, Cross-Cutting, Verification]. Each
-check ran as written, except UC-V-09 and CLI-UC-V-10: they ask that the use cases pass the `doc-review` skill, and they
-ran as the read-only review described in <<review,Review of the Use-Case Documents>>, not as the full skill, and are
-recorded as `not verified`. Nothing that was found was fixed.
+check ran as written, except four. UC-V-09 and CLI-UC-V-10 ask that the use cases pass the `doc-review` skill; they ran
+as the read-only review described in <<review,Review of the Use-Case Documents>>, not as the full skill, and are
+recorded as `not verified`. CLI-UC-V-09 and CLI-CC-V-03 ran as their mock part and their rule part only; the walk in a
+real terminal that each of them also asks for was not run, and that part is recorded as `not verified`. Nothing that
+was found was fixed.
 
 [#subject]
 == What Was Verified
@@ -124,6 +126,12 @@ probe of an unknown plan: `GET /api/v1/plans/nope/process` answers `404` with `{
 |`GET /api/v1/plans/{id}` without `/process` answers `404 mock_no_route` for every id, also for `fix-relay`. The
 contract resource is `/process`.
 
+|link:../cli/use-cases/verification.adoc[CLI-UC-V-09], walk part
+|`not verified`
+|The check also asks for a walk in a real terminal: the full-screen overview in `reports-and-system` never shows
+"Nothing runs" for a refused request. The walk was not run, because no view of a client was observed in this plan.
+|—
+
 |link:../cli/cross-cutting/verification.adoc[CLI-CC-V-03], rule part
 |`fail`
 |The rule is specified once, in link:../../design/shared/texts-and-languages.adoc#time[Texts and Languages, Time and
@@ -134,6 +142,12 @@ weeks. link:../../design/shared/work-actions.adoc#review[Actions on Plans and Ep
 `last used 5 weeks ago`. link:../../design/shared/project-explorer.adoc[Project Explorer] shows one more age in weeks.
 The designs of the terminal client show the same forms: `15-overview.adoc` (4), `17-projects.adoc` (2),
 `18-starting.adoc` (1), and `08-transcripts-later.adoc` (1) in weeks, and `19-actions.adoc` (2) in days.
+|—
+
+|link:../cli/cross-cutting/verification.adoc[CLI-CC-V-03], walk part
+|`not verified`
+|The check also asks for a walk in a real terminal: the overview and the plan view show the same age for one plan. The
+walk was not run, because no view of a client was observed in this plan.
 |—
 
 |link:../use-cases/verification.adoc[UC-V-09]
@@ -165,7 +179,8 @@ it as one machine-readable document." Both use cases are `AGREED`. `trace.py` re
 |—
 |===
 
-Totals: 2 `pass`, 1 `fail`, 2 `not verified` (5 checks), and the verify-first step `pass`.
+Totals: 7 rows for 5 checks: 2 `pass`, 1 `fail`, 4 `not verified`, and the verify-first step `pass`. CLI-UC-V-09
+and CLI-CC-V-03 have two rows each, one for the part that ran and one for the walk part that did not.
 
 [#review]
 == Review of the Use-Case Documents
