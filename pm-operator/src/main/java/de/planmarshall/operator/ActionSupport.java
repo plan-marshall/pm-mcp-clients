@@ -32,7 +32,7 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * Shared action execution and formatting support for plan, epic, and abort verbs.
+ * Shared action execution and formatting support for the plan and epic verbs.
  */
 final class ActionSupport {
 
@@ -86,6 +86,48 @@ final class ActionSupport {
     }
 
     static final String CANCEL = "cancel";
+
+    /** Exit code of two flags that contradict each other. */
+    static final int EXIT_USAGE = 2;
+
+    /**
+     * Two flags of one verb that contradict each other when given together.
+     *
+     * @param first  the first flag, as the operator types it
+     * @param second the second flag, as the operator types it
+     */
+    record FlagPair(String first, String second) {
+
+        /** What happens to the open pull request of an ended plan. */
+        static final FlagPair PULL_REQUEST = new FlagPair("--close-pr", "--keep-pr");
+
+        /** What happens to the running plans of a cancelled epic. */
+        static final FlagPair PLANS = new FlagPair("--with-plans", "--without-plans");
+    }
+
+    /**
+     * Rejects two flags given together that contradict each other, such as {@code --close-pr} with
+     * {@code --keep-pr}: the usage error is written to the error stream in the context's locale and the
+     * caller returns {@link #EXIT_USAGE} before any request is sent.
+     *
+     * @param context the operator context, whose locale renders the text
+     * @param spec    the picocli command specification
+     * @param first   whether the first flag was given
+     * @param second  whether the second flag was given
+     * @param pair    the names of the two flags, as the operator types them
+     * @return {@code true} when both flags were given and the usage error was written
+     */
+    static boolean contradicts(OperatorContext context, CommandSpec spec, boolean first, boolean second,
+                        FlagPair pair) {
+        if (!first || !second) {
+            return false;
+        }
+        var err = spec.commandLine().getErr();
+        err.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.actions.flags.exclusive",
+                            Map.of("first", pair.first(), "second", pair.second())));
+        err.flush();
+        return true;
+    }
 
     /**
      * Builds the pause choice of both entry points: the console's {@code pause} act and the direct
@@ -175,12 +217,16 @@ final class ActionSupport {
      * @param kind       "plan" or "epic"
      * @param options    the termination options
      * @param actionVerb "cancel" or "abandon"
-     * @return exit code (0 on success, 3 on missing input, 130 when the operator interrupted)
+     * @return exit code (0 on success, 2 for {@code --close-pr} with {@code --keep-pr}, 3 on missing
+     *         input, 130 when the operator interrupted)
      * @throws IOException on network or runtime error
      */
     static int endWork(OperatorContext context, CommandSpec spec, String kind,
                         TerminationOptions options, String actionVerb) throws IOException {
         context.gate().verify();
+        if (contradicts(context, spec, options.closePr, options.keepPr, FlagPair.PULL_REQUEST)) {
+            return EXIT_USAGE;
+        }
         var out = spec.commandLine().getOut();
         var id = options.id != null ? options.id : "";
         String effectiveReason = options.reason;
