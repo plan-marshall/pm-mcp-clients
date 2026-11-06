@@ -135,28 +135,53 @@ The designs of the terminal client show the same forms: `15-overview.adoc` (4), 
 |—
 
 |link:../use-cases/verification.adoc[UC-V-09]
-|`not verified`
-|The `doc-review` skill did not run. It is a conversation with the operator and with parallel reviewer agents, and the
-check ran in a subagent that can do neither. Every other part holds. The five changes are on `main` and linked from
-link:{docs}/UseCases.adoc#index[Use Cases, Use Case Areas], each `AGREED`. They are
+|`pass`
+|The read-only review of <<review,Review of the Use-Case Documents>> found no defect in the five changes. They are on
+`main` and linked from link:{docs}/UseCases.adoc#index[Use Cases, Use Case Areas], each `AGREED`. They are
 link:{docs}/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7] and link:{docs}/use-cases/03-plans.adoc#UC-PLN-8[UC-PLN-8] (new),
 link:{docs}/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2] (_Several open_, _Own answer confirmed_),
 link:{docs}/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1] (_Needs the terminal_), and
 link:{docs}/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (_Not onboarded yet_). The status `AGREED` is the
-operator's recorded agreement. The link checker of `doc-review` (`trace.py`) reports 0 broken links.
+operator's recorded agreement. The traceability checker of `doc-review` (`trace.py`) reports 0 broken links.
 |—
 
 |link:../cli/use-cases/verification.adoc[CLI-UC-V-10]
-|`not verified`
-|The `doc-review` skill did not run, for the reason given for UC-V-09. Both variations are on `main`, in client-neutral
-words instead of the proposal's text. link:{docs}/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7]: "In the terminal client,
+|`pass`
+|The read-only review of <<review,Review of the Use-Case Documents>> found no defect in either variation. Both are on
+`main`, in client-neutral words instead of the proposal's text. link:{docs}/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7]: "In the terminal client,
 the count of each kind is visible without opening a view, and one act lists every item across projects."
 link:{docs}/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]: "A script asks for the same picture: the terminal client prints
 it as one machine-readable document." Both use cases are `AGREED`. `trace.py` reports 0 broken links.
 |—
 |===
 
-Totals: 2 `pass`, 1 `fail`, 2 `not verified` (5 checks), and the verify-first step `pass`.
+Totals: 4 `pass`, 1 `fail`, 0 `not verified` (5 checks), and the verify-first step `pass`.
+
+[#review]
+== Review of the Use-Case Documents
+
+The review for UC-V-09 and CLI-UC-V-10 ran in the main session, read-only. `plan-marshall-documentation` stood at
+`376492c9`; the commit verified for the use cases stays `be5750dd`.
+
+* The traceability checker of the `doc-review` skill ran with explicit roots:
+`python3 ../plan-marshall-documentation/.claude/skills/doc-review/scripts/trace.py <documentation>/doc <pm-mcp-core>`.
+It reports 0 broken links, no requirement missing from the roadmap (`REQS NOT IN ROADMAP []`), and no undefined
+requirement id referenced (`UNDEFINED REQ IDS REFERENCED []`). Its remaining findings concern watch backlinks
+(`PM-WATCH-DISP-71`, `PM-WATCH-PHASE-127`, `PM-WATCH-JOB-46`, `PM-WATCH-STORE-43`) and requirement ids listed only in
+the specification of model work and timeouts. None concerns the five changed use-case passages.
+
+* The five changed passages (UC-PLN-7, UC-PLN-8, the variations of UC-PLN-2, UC-PRJ-1, and UC-ONB-1) and the variation
+of UC-PLN-4 were read against the commit that introduced them (#128). No defect: all carry the status `AGREED`, the
+index row in `doc/UseCases.adoc` names UC-PLN-7 and UC-PLN-8 without `DRAFT`, the specification anchor
+`needs-operator-list` that UC-PLN-7 links exists, and the two variations of the terminal client are worded
+client-neutrally.
+
+* This result file was reviewed too: its relative links, anchors, and table structure were read. No defect was found
+other than the two rows UC-V-09 and CLI-UC-V-10, which this section settles.
+
+Scope limit: this was a read-only review of the changed passages plus the checker. The skill's parallel corpus
+reviewers, its fix pass, and its one-by-one discussion with the operator were not run, because this plan only
+verifies.
 
 [#matrices]
 == The Verdict Matrices
