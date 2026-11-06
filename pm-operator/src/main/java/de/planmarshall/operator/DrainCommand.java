@@ -53,6 +53,7 @@ public final class DrainCommand implements Callable<Integer> {
 
     private static final String DRAIN_TIMEOUT_FIELD = "drain_timeout_seconds";
     private static final String PID = "pid";
+    private static final String KEY_CONFIG_UNREADABLE = "operator.drain.config_unreadable";
 
     private final OperatorContext context;
     private final @Nullable Duration bound;
@@ -80,8 +81,8 @@ public final class DrainCommand implements Callable<Integer> {
     @Override
     public Integer call() throws IOException {
         var out = spec.commandLine().getOut();
-        var record = context.directFiles().readRuntimeRecord().filter(RuntimeRecord::processAlive);
-        var handle = record.flatMap(alive -> ProcessHandle.of(alive.pid()));
+        var runtimeRecord = context.directFiles().readRuntimeRecord().filter(RuntimeRecord::processAlive);
+        var handle = runtimeRecord.flatMap(alive -> ProcessHandle.of(alive.pid()));
         if (handle.isEmpty() || handle.get().pid() == ProcessHandle.current().pid()) {
             out.println(text("operator.drain.not_running", Map.of()));
             out.flush();
@@ -140,7 +141,7 @@ public final class DrainCommand implements Callable<Integer> {
                 seconds = drainTimeout(raw.get(), file.toString(), err);
             }
         } catch (IOException _) {
-            warn(err, "operator.drain.config_unreadable", file.toString());
+            warn(err, KEY_CONFIG_UNREADABLE, file.toString());
         }
         return Duration.ofSeconds(seconds).plus(GRACE_PERIOD).plus(MARGIN);
     }
@@ -150,11 +151,11 @@ public final class DrainCommand implements Callable<Integer> {
         try {
             config = JsonTree.asObject(JsonTree.parse(raw));
         } catch (IOException _) {
-            warn(err, "operator.drain.config_unreadable", file);
+            warn(err, KEY_CONFIG_UNREADABLE, file);
             return DEFAULT_DRAIN_TIMEOUT_SECONDS;
         }
         if (config == null) {
-            warn(err, "operator.drain.config_unreadable", file);
+            warn(err, KEY_CONFIG_UNREADABLE, file);
             return DEFAULT_DRAIN_TIMEOUT_SECONDS;
         }
         if (!config.containsKey(DRAIN_TIMEOUT_FIELD)) {
