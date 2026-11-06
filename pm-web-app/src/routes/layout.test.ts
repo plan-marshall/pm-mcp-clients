@@ -28,6 +28,7 @@ describe('the app shell', () => {
     );
     window.history.replaceState(null, '', '/reports');
     vi.spyOn(apiClient, 'getMessages').mockResolvedValue(loadMessages('en'));
+    messagesStore.set(loadMessages('en'));
     vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
     vi.spyOn(apiClient, 'getReports').mockResolvedValue(REPORTS);
     vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
