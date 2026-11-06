@@ -2,10 +2,10 @@
   "id": "PLAN-101",
   "slug": "web-format-and-token-second-residue",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "101-web-format-and-token-second-residue",
+  "pr": "335",
+  "landing": "landings/PLAN-101.md",
   "seq": 101
 }

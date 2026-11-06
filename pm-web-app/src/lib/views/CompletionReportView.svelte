@@ -12,10 +12,11 @@
   interface Props {
     planId: string;
     report?: PlanCompletionReport | null;
+    titleLevel?: 1 | 2;
     onClose?: () => void;
   }
 
-  let { planId, report = null, onClose }: Props = $props();
+  let { planId, report = null, titleLevel = 1, onClose }: Props = $props();
 
   let fetchedData = $state<PlanCompletionReport | null>(null);
   let data = $derived(report ?? fetchedData);
@@ -130,7 +131,11 @@
     <!-- Header bar -->
     <header class="report-header">
       <div class="report-header__headline">
-        <h2 class="report-title">{data.plan_id}</h2>
+        {#if titleLevel === 1}
+          <h1 class="report-title">{data.plan_id}</h1>
+        {:else}
+          <h2 class="report-title">{data.plan_id}</h2>
+        {/if}
         <StatusLabel tone={outcomeTone(data.outcome)} label={$t('overview.ended.outcome', { outcome: data.outcome })} />
         {#if data.pull_request_number}
           <a
@@ -196,17 +201,31 @@
 
       <!-- Deliverables -->
       <section class="report-section">
-        <h2 class="section-title">
-          {$t('report.completion.deliverables')}
-          {#if data.deliverables && data.deliverables.length > 0}
-            <span class="section-badge">
-              {$t('report.completion.deliverables_done', {
-                done: data.deliverables.filter((d) => d.state?.toLowerCase() === 'done').length,
-                total: data.deliverables.length,
-              })}
-            </span>
-          {/if}
-        </h2>
+        {#if titleLevel === 1}
+          <h2 class="section-title">
+            {$t('report.completion.deliverables')}
+            {#if data.deliverables && data.deliverables.length > 0}
+              <span class="section-badge">
+                {$t('report.completion.deliverables_done', {
+                  done: data.deliverables.filter((d) => d.state?.toLowerCase() === 'done').length,
+                  total: data.deliverables.length,
+                })}
+              </span>
+            {/if}
+          </h2>
+        {:else}
+          <h3 class="section-title">
+            {$t('report.completion.deliverables')}
+            {#if data.deliverables && data.deliverables.length > 0}
+              <span class="section-badge">
+                {$t('report.completion.deliverables_done', {
+                  done: data.deliverables.filter((d) => d.state?.toLowerCase() === 'done').length,
+                  total: data.deliverables.length,
+                })}
+              </span>
+            {/if}
+          </h3>
+        {/if}
         {#if !data.deliverables || data.deliverables.length === 0}
           <p class="empty-text">{$t('report.completion.deliverables_none', { phase: 'refine' })}</p>
         {:else}
@@ -227,10 +246,17 @@
       <!-- Re-planning -->
       {#if data.replanning_records && data.replanning_records.length > 0}
         <section class="report-section">
-          <h2 class="section-title">
-            {$t('report.completion.replanning')}
-            <span class="section-badge">{data.replanning_records.length}</span>
-          </h2>
+          {#if titleLevel === 1}
+            <h2 class="section-title">
+              {$t('report.completion.replanning')}
+              <span class="section-badge">{data.replanning_records.length}</span>
+            </h2>
+          {:else}
+            <h3 class="section-title">
+              {$t('report.completion.replanning')}
+              <span class="section-badge">{data.replanning_records.length}</span>
+            </h3>
+          {/if}
           <ul class="replanning-list">
             {#each data.replanning_records as r}
               <li class="replanning-item">
@@ -248,10 +274,17 @@
       <!-- Decisions -->
       {#if data.decision_records && data.decision_records.length > 0}
         <section class="report-section">
-          <h2 class="section-title">
-            {$t('report.completion.decisions')}
-            <span class="section-badge">{data.decision_records.length}</span>
-          </h2>
+          {#if titleLevel === 1}
+            <h2 class="section-title">
+              {$t('report.completion.decisions')}
+              <span class="section-badge">{data.decision_records.length}</span>
+            </h2>
+          {:else}
+            <h3 class="section-title">
+              {$t('report.completion.decisions')}
+              <span class="section-badge">{data.decision_records.length}</span>
+            </h3>
+          {/if}
           <ul class="decisions-list">
             {#each data.decision_records as dec}
               <li class="decision-item">
@@ -269,10 +302,17 @@
       <!-- Own calls -->
       {#if data.own_calls && data.own_calls.length > 0}
         <section class="report-section">
-          <h2 class="section-title">
-            {$t('report.completion.own_calls')}
-            <span class="section-badge">{data.own_calls.length}</span>
-          </h2>
+          {#if titleLevel === 1}
+            <h2 class="section-title">
+              {$t('report.completion.own_calls')}
+              <span class="section-badge">{data.own_calls.length}</span>
+            </h2>
+          {:else}
+            <h3 class="section-title">
+              {$t('report.completion.own_calls')}
+              <span class="section-badge">{data.own_calls.length}</span>
+            </h3>
+          {/if}
           <ul class="own-calls-list">
             {#each data.own_calls as call}
               <li class="own-call-item">
@@ -311,12 +351,21 @@
       <!-- Change map -->
       {#if data.change_map}
         <section class="report-section">
-          <h2 class="section-title">
-            {$t('report.completion.change_map')}
-            <span class="section-badge">
-              {displayState('change_map', data.change_map.state, $t)}
-            </span>
-          </h2>
+          {#if titleLevel === 1}
+            <h2 class="section-title">
+              {$t('report.completion.change_map')}
+              <span class="section-badge">
+                {displayState('change_map', data.change_map.state, $t)}
+              </span>
+            </h2>
+          {:else}
+            <h3 class="section-title">
+              {$t('report.completion.change_map')}
+              <span class="section-badge">
+                {displayState('change_map', data.change_map.state, $t)}
+              </span>
+            </h3>
+          {/if}
           {#if data.change_map.cause}
             <p class="change-map-cause text-muted">
               {$t('report.completion.change_map_cause', { cause: data.change_map.cause })}
@@ -330,7 +379,11 @@
       {#if data.token_usage}        {@const usage = data.token_usage}
         <section class="report-section tokens-section">
           <div class="tokens-header">
-            <h2 class="section-title">{$t('report.completion.tokens')}</h2>
+            {#if titleLevel === 1}
+              <h2 class="section-title">{$t('report.completion.tokens')}</h2>
+            {:else}
+              <h3 class="section-title">{$t('report.completion.tokens')}</h3>
+            {/if}
             <Button
               variant="secondary"
               size="small"
@@ -380,7 +433,11 @@
           <!-- Breakdown by Phase -->
           {#if usage.by_phase && usage.by_phase.length > 0}
             <div class="breakdown-group">
-              <h3 class="breakdown-title">{$t('report.completion.by_phase')}</h3>
+              {#if titleLevel === 1}
+                <h3 class="breakdown-title">{$t('report.completion.by_phase')}</h3>
+              {:else}
+                <h4 class="breakdown-title">{$t('report.completion.by_phase')}</h4>
+              {/if}
               <table class="breakdown-table">
                 <tbody>
                   {#each usage.by_phase as item}
@@ -424,7 +481,11 @@
           <!-- Breakdown by Role -->
           {#if usage.by_role && usage.by_role.length > 0}
             <div class="breakdown-group">
-              <h3 class="breakdown-title">{$t('report.completion.by_role')}</h3>
+              {#if titleLevel === 1}
+                <h3 class="breakdown-title">{$t('report.completion.by_role')}</h3>
+              {:else}
+                <h4 class="breakdown-title">{$t('report.completion.by_role')}</h4>
+              {/if}
               <table class="breakdown-table">
                 <tbody>
                   {#each usage.by_role as item}
@@ -473,7 +534,11 @@
           <!-- Breakdown by Model -->
           {#if usage.by_model && usage.by_model.length > 0}
             <div class="breakdown-group">
-              <h3 class="breakdown-title">{$t('report.completion.by_model')}</h3>
+              {#if titleLevel === 1}
+                <h3 class="breakdown-title">{$t('report.completion.by_model')}</h3>
+              {:else}
+                <h4 class="breakdown-title">{$t('report.completion.by_model')}</h4>
+              {/if}
               <table class="breakdown-table">
                 <tbody>
                   {#each usage.by_model as item}
