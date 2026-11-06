@@ -50,8 +50,9 @@ import picocli.CommandLine;
  * the same session, so the badge line alone tells the two apart: the stalled read leaves the
  * project badge out, the recovered read adds it.
  *
- * <p>The two screens are written below {@code target/screens/104-cli-console-third-residue} for the
- * change's evidence.
+ * <p>The two screens are written below {@code target/screens/104-cli-console-third-residue}, or below
+ * {@code -Dpm.screens.out} when a plan's terminal check collects them under
+ * {@code .plan/temp/terminal/{plan}/}, for the change's evidence.
  */
 @DisplayName("pm-operator console badge line on a stalled project-onboardings read")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -62,6 +63,9 @@ class ConsoleBadgeStallIT {
     private static final String CONSOLE_PROMPT = "pm ";
     private static final String PROMPT_SUFFIX = "\u203a";
     private static final String OUTPUT_SET = "104-cli-console-third-residue";
+
+    /** The system property that moves the two screens to an absolute directory, as a plan's terminal check does. */
+    private static final String OUTPUT_PROPERTY = "pm.screens.out";
     private static final Duration READY_TIMEOUT = Duration.ofSeconds(60);
 
     @TempDir
@@ -131,7 +135,10 @@ class ConsoleBadgeStallIT {
     }
 
     private static void write(String name, AnsiScreen screen) throws IOException {
-        var output = Path.of("target", "screens", OUTPUT_SET);
+        var selected = System.getProperty(OUTPUT_PROPERTY);
+        var output = selected != null && !selected.isBlank()
+                            ? Path.of(selected)
+                            : Path.of("target", "screens", OUTPUT_SET);
         Files.createDirectories(output);
         Files.writeString(output.resolve(name + ".txt"),
                             String.join("\n", screen.lines()) + "\n", StandardCharsets.UTF_8);

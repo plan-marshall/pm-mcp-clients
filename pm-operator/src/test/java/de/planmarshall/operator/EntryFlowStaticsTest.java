@@ -92,6 +92,8 @@ class EntryFlowStaticsTest {
                 return "late";
             }, Duration.ofSeconds(5), "interrupted-read"));
             assertTrue(Thread.currentThread().isInterrupted(), "the caller's interrupt flag stays set");
+            // Clear the flag the read left set, so the join below can wait for the worker.
+            Thread.interrupted();
             worker.get().join(5_000);
             assertTrue(workerInterrupted.get(), "the worker was interrupted, not left running");
         } finally {

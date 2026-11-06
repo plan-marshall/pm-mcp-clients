@@ -91,15 +91,6 @@ Every kind of the closed list of `needs_operator` (link:../shared/plan-overview.
 
 The holds among the kinds are exactly `stalled`, `condition`, `integrity_hold`, `held`, and `landing_failed`; the command of each opens the hold with its acts (xref:19-actions.adoc#holds[What Holds a Plan]). The open onboardings are badges of their own, not notices: `setup 3/7` for the machine (`operator.console.badge.setup`) and `setup cui-parent 5/9` for each project's (`operator.console.badge.setup_project`), whose name is the checkout's directory because a being-added run has no project id (`<<being-added-address>>`).
 
-[#being-added-address]
-=== Addressing a Being-Added Project
-
-A project's run is continued by what the contract carries. Before its enrolment the run has no project id — `BeingAddedProject` in `pm-api` carries the checkout path, the step, and its hypermedia links, and no id — and the run is entry-scoped (link:../shared/project-onboarding.adoc#several[Several Onboardings at Once]). The console therefore reads the address from the run's `continue_link` (`/api/v1/entries/{entry_id}/continue`) and continues the run at the entry resource `/api/v1/entries/{entry_id}`; where the contract carries no link, the directory name of the checkout stands for the address, as it does for the badge's text, so the operator recognises the run.
-
-The address travels as an argument of the verb, never through a command line the console quotes and parses back: an id with a quote or a backslash reaches the verb unaltered (`project setup --entry <entry_id>`).
-
-*Open item*: the pre-enrolment run's setup state and its act links at `/api/v1/entries/{entry_id}` — a `GET` of the state and the act surface the dialogue posts a chosen link to. Owner: `plan-marshall/plan-marshall-mcp` (the daemon). Until the daemon serves them, `Enter` on a being-added badge reports the run as unreadable instead of addressing a project that does not exist.
-
 A notice is printed *above* the prompt: the line the operator is typing is taken off, the notice is printed, and the prompt is drawn again with the typed text and the cursor where they were. Nothing typed is lost, and nothing typed becomes an answer.
 
 ----
@@ -110,6 +101,15 @@ pm › config roles --pro
   answer Q-007   ·   questions
 pm [1 question] › config roles --pro
 ----
+
+[#being-added-address]
+=== Addressing a Being-Added Project
+
+A project's run is continued by what the contract carries. Before its enrolment the run has no project id — `BeingAddedProject` in `pm-api` carries the checkout path, the step, and its hypermedia links, and no id — and the run is entry-scoped (link:../shared/project-onboarding.adoc#several[Several Onboardings at Once]). The console therefore reads the address from the run's `continue_link` (`/api/v1/entries/{entry_id}/continue`) and continues the run at the entry resource `/api/v1/entries/{entry_id}`; where the contract carries no link, the directory name of the checkout stands for the address, as it does for the badge's text, so the operator recognises the run.
+
+The address travels as an argument of the verb, never through a command line the console quotes and parses back: an id with a quote or a backslash reaches the verb unaltered (`project setup --entry <entry_id>`).
+
+*Open item*: the pre-enrolment run's setup state and its act links at `/api/v1/entries/{entry_id}` — a `GET` of the state and the act surface the dialogue posts a chosen link to. Owner: `plan-marshall/plan-marshall-mcp` (the daemon). Until the daemon serves them, `Enter` on a being-added badge reports the run as unreadable instead of addressing a project that does not exist.
 
 [#answering]
 === Answering a Question

@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
@@ -633,26 +634,21 @@ class PmConsoleBehaviourTest {
     void twoConcurrentRefreshesNeverInterleave() throws Exception {
         var firstEntered = new CountDownLatch(1);
         var releaseFirst = new CountDownLatch(1);
-        var inFlight = new AtomicInteger();
-        var maxConcurrent = new AtomicInteger();
+        var statusRequests = new AtomicInteger();
         try {
             fixture.start((request, response) -> {
-                var current = inFlight.incrementAndGet();
-                maxConcurrent.accumulateAndGet(current, Math::max);
-                try {
-                    if ("/api/v1/status".equals(request.target()) && firstEntered.getCount() > 0) {
+                if ("/api/v1/status".equals(request.target())) {
+                    statusRequests.incrementAndGet();
+                    if (firstEntered.getCount() > 0) {
                         firstEntered.countDown();
+                        // The first refresh keeps the lock and its read open until the test says so.
                         awaitRelease(releaseFirst);
                     }
-                    if ("/api/v1/status".equals(request.target())) {
-                        response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
-                    } else if ("/api/v1/project-onboardings".equals(request.target())) {
-                        response.json(200, "{\"onboardings\":[]}");
-                    } else {
-                        response.send(404, null, "");
-                    }
-                } finally {
-                    inFlight.decrementAndGet();
+                    response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
+                } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                    response.json(200, "{\"onboardings\":[]}");
+                } else {
+                    response.send(404, null, "");
                 }
             });
             var rendered = new ByteArrayOutputStream();
@@ -666,6 +662,13 @@ class PmConsoleBehaviourTest {
                 t1.start();
                 assertTrue(firstEntered.await(5, TimeUnit.SECONDS), "the first refresh must be in flight");
                 t2.start();
+
+                // While the first refresh holds the lock and its read is open, the second must not
+                // reach the runtime: a second status request in this window is the interleaving.
+                assertTrue(awaitNoSecondStatusRequest(statusRequests),
+                                    () -> "the second refresh read the runtime while the first held the lock: "
+                                                        + statusRequests.get());
+
                 releaseFirst.countDown();
                 t1.join(30_000);
                 t2.join(30_000);
@@ -673,8 +676,17 @@ class PmConsoleBehaviourTest {
         } finally {
             releaseFirst.countDown();
         }
-        assertEquals(1, maxConcurrent.get(),
-                            "refreshSetupBadge and refreshBadges must be serialized by badgeRefreshLock");
+    }
+
+    private static boolean awaitNoSecondStatusRequest(AtomicInteger statusRequests) {
+        var deadline = System.nanoTime() + Duration.ofMillis(500).toNanos();
+        while (System.nanoTime() < deadline) {
+            if (statusRequests.get() > 1) {
+                return false;
+            }
+            LockSupport.parkNanos(Duration.ofMillis(10).toNanos());
+        }
+        return true;
     }
 
     @Test

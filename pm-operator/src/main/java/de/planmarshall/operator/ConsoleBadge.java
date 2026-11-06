@@ -62,7 +62,7 @@ int count,
     /**
      * Creates a badge for project onboarding setup.
      *
-     * @param projectId the project identifier or checkout directory name
+     * @param projectId the address of the run: the entry id, or the checkout directory's name
      * @param text      the formatted badge text (e.g. "setup cui-http 5/10")
      * @return the project setup badge
      */

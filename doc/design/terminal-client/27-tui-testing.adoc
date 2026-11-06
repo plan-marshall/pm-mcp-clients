@@ -153,6 +153,7 @@ printed the status tree instead.
 == Screen Captures for Review
 
 `ScreenCaptureIT` runs a named capture set on the same `PtySession` and `MockRuntime`:
+
 [source,bash]
 ----
 ./mvnw -pl pm-operator verify -Pintegration-tests \
@@ -242,7 +243,8 @@ the mock runtime, points the console at a `StallingSocketProxy` on the copy's so
 its prompt carries no project badge; after the release the next refresh adds it. Both screens come
 from the same runtime scenario and the same session, and the test asserts both badge lines and that
 they differ. It writes
-`stalled.txt` and `recovered.txt` below `target/screens/104-cli-console-third-residue/`. It runs in
+`stalled.txt` and `recovered.txt` below `target/screens/104-cli-console-third-residue/`, or below
+`-Dpm.screens.out` when a plan's terminal check collects them. It runs in
 the integration-test lane because it is a single case with its own assertions; `ScreenCaptureIT`
 skips itself there unless `-Dpm.screens` selects a set.
 
