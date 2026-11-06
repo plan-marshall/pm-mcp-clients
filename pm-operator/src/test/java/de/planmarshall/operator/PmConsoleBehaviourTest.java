@@ -415,7 +415,7 @@ class PmConsoleBehaviourTest {
                 }
             });
             var rendered = new ByteArrayOutputStream();
-            try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            try (rendered; var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
                 var context = new OperatorContext(fixture.environment(), tempDir, true,
                                     ClientEnvironment.capture(fixture.environment()),
                                     () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
@@ -567,7 +567,7 @@ class PmConsoleBehaviourTest {
                 }
             });
             var rendered = new ByteArrayOutputStream();
-            try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            try (rendered; var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
                 var context = new OperatorContext(fixture.environment(), tempDir, true,
                                     ClientEnvironment.capture(fixture.environment()),
                                     () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
@@ -599,7 +599,7 @@ class PmConsoleBehaviourTest {
                 }
             });
             var rendered = new ByteArrayOutputStream();
-            try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            try (rendered; var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
                 var context = new OperatorContext(fixture.environment(), tempDir, true,
                                     ClientEnvironment.capture(fixture.environment()),
                                     () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
@@ -652,7 +652,7 @@ class PmConsoleBehaviourTest {
                 }
             });
             var rendered = new ByteArrayOutputStream();
-            try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            try (rendered; var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
                 var context = new OperatorContext(fixture.environment(), tempDir, true,
                                     ClientEnvironment.capture(fixture.environment()),
                                     () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);

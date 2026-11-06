@@ -72,6 +72,9 @@ public final class StateDialogue {
     private static final String STEP_ROLES = "roles";
     private static final String STEP_DONE = "onboard.step.done";
     private static final String DONE = "done";
+
+    /** The step every project state of the checkout phase names. */
+    private static final String CHECKOUT_STEP = "checkout";
     private static final String UNKNOWN = "onboard.state.unknown";
     private static final String LABEL = "label";
     private static final int CONTENT_WIDTH = 76;
@@ -661,11 +664,11 @@ public final class StateDialogue {
 
     private static Map<String, String> projectSteps() {
         var steps = new LinkedHashMap<String, String>();
-        steps.put("consent", "checkout");
-        steps.put("detect", "checkout");
-        steps.put("run-consent", "checkout");
-        steps.put("probe", "checkout");
-        steps.put("checkout", "checkout");
+        steps.put("consent", CHECKOUT_STEP);
+        steps.put("detect", CHECKOUT_STEP);
+        steps.put("run-consent", CHECKOUT_STEP);
+        steps.put("probe", CHECKOUT_STEP);
+        steps.put("checkout", CHECKOUT_STEP);
         steps.put("enrol", STEP_ENROLMENT);
         steps.put(STEP_ENROLMENT, STEP_ENROLMENT);
         steps.put(OPERATOR, STEP_OWN);

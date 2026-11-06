@@ -65,7 +65,8 @@ class EntryFlowStaticsTest {
             var started = System.nanoTime();
             assertThrows(IOException.class, () -> EntryFlow.bounded(() -> {
                 try {
-                    Thread.sleep(10_000);
+                    // A worker that never gets a result of its own: it waits until it is interrupted.
+                    new CountDownLatch(1).await();
                 } catch (InterruptedException _) {
                     Thread.currentThread().interrupt();
                 }
@@ -88,7 +89,8 @@ class EntryFlowStaticsTest {
                 worker.set(Thread.currentThread());
                 workerStarted.countDown();
                 try {
-                    Thread.sleep(10_000);
+                    // Blocks until the caller interrupts it, which is what this test observes.
+                    new CountDownLatch(1).await();
                 } catch (InterruptedException _) {
                     Thread.currentThread().interrupt();
                 }
