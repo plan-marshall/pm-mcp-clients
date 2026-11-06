@@ -70,6 +70,20 @@ Source of this plan (read before scoping):
 - Overlaps with: none known at staging
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (PLAN-74). **Scope change:**
+
+- **Deliverable 1 is dropped** (writing the `web-app/README.adoc` structure, principles and visual language): D1 and D2 write
+  the README.
+- **Deliverables 3 and 4 move out** to the new runbook `PLAN-108` (`web-design-docs-residue`), which has no dependency on
+  `PLAN-72` / `PLAN-73` and runs before D1; not in parallel with `PLAN-107` (both touch `RowMenu.test.ts`).
+- **It keeps deliverable 2** (the proposal-status list) **and setting `FINAL`**, after D1–D4 and their implementations: it
+  closes the docs; it does not write them. The Dependencies line above is replaced by: D1–D4 merged and their implementation
+  packages landed, then `PLAN-72`, `PLAN-73`.
+
+Queue status: `parked`; the orchestrator re-grounds this spec (deliverables, Expected Surface) when it is restarted.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

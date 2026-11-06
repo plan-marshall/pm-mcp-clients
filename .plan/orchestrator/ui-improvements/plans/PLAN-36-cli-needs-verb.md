@@ -87,6 +87,18 @@ Source of this plan (read before scoping):
 - Overlaps with: `cli-display-layer` touches `overview/`: runs after it
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions and § Terminal client (message 006).
+Queue status stays `staged`. This plan builds on the shared `overview.needs.*` keys
+(message 006: reasons are worded only by those keys, and where the contract accepts two wire spellings — `waiver` /
+`waiver_request`, `waits_for_you` / `operator_wait` — `pm-api` first normalises the spelling so one key remains for both
+clients). The needs-spelling normalisation is one pull request, **the terminal package** (`pm-api`, the catalogue, the
+`pm-operator` readers `PmConsole`, `ConsoleBadge`, `ConsoleNotice`, `OverviewFormatting`, and `NeedsCommand` if this plan has
+landed), staged after D1 and started after the running `PLAN-104` has landed. If this plan lands first, the terminal package
+updates its `NeedsCommand`; if the terminal package lands first, this plan reads the normalised spelling. Re-read at the
+restart; no Expected Surface change is made now.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

@@ -90,6 +90,16 @@ Source of this plan (read before scoping):
 - Overlaps with: `cli-system-model` touches `system/`: runs after it
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions and `PLAN-108`. Queue status stays
+`staged`. **Deliverable 4 (the rule for ages) is reduced:** because this plan has not landed, `PLAN-108`
+(`web-design-docs-residue`) decides the rule in `doc/design/shared/texts-and-languages.adoc#time` and rewrites the shared
+wireframes (`work-actions.adoc:332`, `paired-devices.adoc:24`, `project-explorer.adoc:26,31,71`, `plan-overview.adoc:141`).
+This plan's deliverable 4 then only applies the decided rule to the client designs (`terminal-client/08`, `15`, `17`, `18`,
+`19`) and to `ProjectsCommand` / the display layer; `19-actions.adoc` is `PLAN-97`'s until it lands. Re-read the decided rule
+at restart (start after `PLAN-108` has merged); no Expected Surface change is made now.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

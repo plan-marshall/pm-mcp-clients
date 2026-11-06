@@ -111,6 +111,26 @@ Source of this plan (read before scoping):
 - Overlaps with: `PLAN-83` (package `web-moving-between-plans`), `PLAN-21` (the terminal answer dialogue; separate client)
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 003, 004, 006, 007, 008, 009).
+**Gate: D1 and D2 merged** (documents `AGREED`) and the packages that build what this plan uses; its decision-chat part
+waits for the D4 web chat package. **`PLAN-111` (drop the layout modes) lands first**: this plan starts from Decisions
+without layout modes. Queue status: `parked`; the orchestrator re-grounds this spec when it is restarted. The Expected Surface
+above is NOT widened now (a parked row is not in the disjointness gate population). When restarted:
+
+- Layout: list → one decision; the next decision after deciding is a `replaceState`; `Enter` decides a decision with a
+  selected option (003).
+- Tags: subject as `Chip`, phase in list and detail, reversibility and "blocks the plan" as detail text, "3 offen" as a
+  `CountBadge` in the group head (006).
+- Interaction: options as `RadioGroup` cards and one primary "Entscheide"; the waiver's agreed answers "Erteile den Waiver"
+  and "Lehne ab" both secondary, no preselection, `Enter` answers nothing, "Später" ghost (`decisions.adoc:174`); rows
+  `RowLink` + `aria-current`; one "Later" key (007).
+- Fields: "Notiz (optional)", own words as `Compose`, waiver reason `TextArea` with the one required text, "Entscheide"
+  disabled with its reason, its "Entschieden: <Option>" line as the form's `FormStatus` (008).
+- Chat: the decision chat in the new `Chat` with the agreed texts ("Antworte mit diesen Worten") (009).
+- The "layout parts" of its scope (removing the toggle for Decisions) are already done by `PLAN-111`.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

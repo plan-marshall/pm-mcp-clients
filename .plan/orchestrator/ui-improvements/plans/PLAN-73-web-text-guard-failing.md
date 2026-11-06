@@ -81,6 +81,18 @@ Source of this plan (read before scoping):
 - Overlaps with: none known at staging
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 006, 007, 008, 009). **Gate: D1,
+the D4 web chat, the per-view packages (including the views no staged plan owns) and PLAN-70**, as `PLAN-72`. Queue status:
+`parked`; the orchestrator re-grounds this spec when it is restarted. The Expected Surface above is NOT widened now (a parked
+row is not in the disjointness gate population). Its expected first failures, to list in the spec when restarted:
+
+- wire values in tags (006);
+- literals and glyph labels (007);
+- machine ids as labels, raw `e.message`, labels with colons or title case (008);
+- `start.*` keys reused in the chat instead of `control.chat.*` (009).
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

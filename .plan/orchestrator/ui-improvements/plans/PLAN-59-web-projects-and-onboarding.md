@@ -90,6 +90,21 @@ Source of this plan (read before scoping):
 - Overlaps with: `PLAN-83` and `PLAN-51` (the package `web-moving-between-plans`)
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 003, 006, 007, 008, 009).
+**Hold. Gate: D1 and D2 merged** (documents `AGREED`) and the D2 navigation engine; its chat waits for the D4 web chat
+package. Queue status: `parked`; the orchestrator re-grounds this spec when it is restarted. The Expected Surface above is NOT
+widened now (a parked row is not in the disjointness gate population). When restarted:
+
+- The **one project page** (work, setup, release) and project rows as `RowLink`: Projects becomes list → one project page
+  instead of a card grid (003).
+- Readiness as `StatusLabel`, "setup needs" as `ReasonBadge` with a catalogue word (006).
+- Acts from `PROJECT_ACTS` via `RowMenu` instead of the `ActionBar` on cards of its deliverable 4; "Füge einen Plan hinzu"
+  visible on a ready project's row and disabled with its reason otherwise; release / unenrol through `ConfirmDialog` (007).
+- `FilterInput`, the release reason in `ConfirmDialog` with `TextArea`, per-aspect settings by the settings-form rule (008).
+- The project-onboarding chat in `Chat` (009).
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

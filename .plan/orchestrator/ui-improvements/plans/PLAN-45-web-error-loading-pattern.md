@@ -93,6 +93,13 @@ Source of this plan (read before scoping):
 - Overlaps with: `PLAN-105` (reports view and row menu; whichever starts second rebases)
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 008, 009). **Waits for nothing
+new**; queue status stays `staged`. Field, form and chat errors use the same `displayError` codes (PLAN-09) as this plan's
+load errors, so the codes this plan settles are the ones the field system (`Field` … `FormStatus`) and the `Chat`
+component consume; keep the code set closed and documented where those later plans can import it. No Expected Surface change.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

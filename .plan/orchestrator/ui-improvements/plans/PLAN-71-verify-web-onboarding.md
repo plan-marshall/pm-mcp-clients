@@ -55,6 +55,13 @@ Run the checks of the onboarding screen registry and variations against the merg
 - Overlaps with: other verification plans may update the same analysis matrix (one shared file)
 - Adjacent to: the plans verified; their code stays untouched
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions. **Hold.** It is re-grounded after D1 and
+D3 and runs after `PLAN-64` / `PLAN-66` (its checks are rewritten against the AGREED component vocabulary and brand
+document). Queue status: `parked`; the Expected Surface above is NOT widened now (a parked row is not in the disjointness
+gate population).
+
 ## Hand-Off Command
 
 Lane: `plan-marshall` (verification plans run in the plan lifecycle, separate from the implementation runs).

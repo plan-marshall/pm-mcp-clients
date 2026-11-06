@@ -255,6 +255,22 @@ plan spec names the plan, proposal and finding documents it comes from.
   message is named as a claim to compare against after the agent has read the diff. The agent writes nothing. The orchestrator verifies every
   finding it records against git or the CI read side, and keeps all ledger writes, the merge-rule check and the decision what to emit.
 
+- WS-06 and the design-review rows (2026-11-06) — PLAN-108 (residue, runs before D1), PLAN-112 (D1 component vocabulary),
+  PLAN-113 (D2 navigation), PLAN-114 (D3 brand and mascot), PLAN-115 (D4 chat and voice) are design sessions: documents only,
+  `Status: DRAFT`, one pull request each (D4: one per repository), no auto-merge, the operator sets `AGREED` as the last commit
+  and the merge on the operator's word. Gate for a waiting plan = the merge of its session's pull request, not the status a
+  document has today. Order: PLAN-108 → D1 → D2 and D3 (D3's pull request merges after D2's) → D4. Hand-off for these rows and
+  for PLAN-109/110/111 is a direct Claude Code session with the absolute spec path in the prompt (operator instruction
+  2026-11-06); the row's `lane` field carries the default and has no meaning for them.
+- PLAN-109 (rail "Settings" label, cog, `control.plan.settings`) and PLAN-110 (drop the start-page toggle) start after the
+  running PLAN-106 lands (`control.*` properties and `runtime.ts`); PLAN-111 (drop the layout modes) shares nothing with a
+  running plan, but not in parallel with PLAN-109 (`common.*.properties`); PLAN-107 (staged) starts after PLAN-97 lands and not in
+  parallel with PLAN-108 (`RowMenu.test.ts`).
+- Parked for the design review (2026-11-06): PLAN-29, 41, 49, 51, 52, 53, 55, 58, 59, 60, 62, 64, 65, 66, 70, 71, 72, 73, 74,
+  75, 83, 85, 88 — each carries a `## Design Review 2026-11-06 (Amendment)` section with its gate. Hold-class (re-ground
+  after D1–D3/D4): 41, 52, 55, 58, 59, 71, 75; PLAN-83 is folded into the D2 engine. Unparked by the merge of the named session
+  and its implementation package, by the orchestrator, with a re-grounding of the spec.
+
 ## Decisions
 
 - 2026-10-25 — Parallelization scope 3, stated by the operator in the invocation.
@@ -516,6 +532,39 @@ plan spec names the plan, proposal and finding documents it comes from.
   theme (same two places, `pm_locale` stays in local storage), so PLAN-85 owns every browser-only setting and its view
   is their one home; PLAN-16 keeps only how the switch refreshes the texts. The rail's collapse button stays on the rail
   (a layout toggle, not a preference). Orchestrator choices open to the operator: the view is called "This browser".
+- 2026-11-06 — DESIGN REVIEW DRAINED (inbox `design-review-001` … `010`, ten `finding` messages from the operator's browser
+  review against the mock runtime; archived under `inbox/archive/design-review/`). The operator's instruction for this drain:
+  analyse thoroughly, re-ground the remaining plans, cover the design aspects first, and emit as direct Claude Code commands,
+  not the runbook lane and not `/plan-marshall`. Message 010 is the index (process, order, document ownership, merged per-plan
+  instructions); 001–009 are its sources. Dispositions (each also a `decision.log` line): **001** Stage PLAN-109; **002** Stage
+  PLAN-110 (and fold into PLAN-49); **003** Stage PLAN-113 (D2) and fold into PLAN-49, 51, 52, 55, 58, 59, 62, 70, 72, 83;
+  **004** Stage PLAN-111 (code) and its design text into PLAN-113; **005** Stage PLAN-114 (D3) and fold into PLAN-49, 64, 66, 70,
+  72, 85; **006/007/008** Stage PLAN-112 (D1) and fold into the plans of 010; **009** Stage PLAN-115 (D4) and fold; **010** folded
+  into every plan it names and into the staging of PLAN-108. Orchestrator choices, open to the operator: (1) The design sessions
+  are staged as ordinary rows in a new workstream **WS-06 design-review** (PLAN-112 to PLAN-115) with the residue package
+  PLAN-108 first; their `lane` field carries the default and means nothing — they run as direct Claude Code sessions with the
+  spec path in the prompt, no auto-merge, the operator sets `AGREED` and the merge word. (2) **Every plan that waits on a design
+  session is `parked`** (23 rows: 29, 41, 49, 51, 52, 53, 55, 58, 59, 60, 62, 64, 65, 66, 70, 71, 72, 73, 74, 75, 83, 85, 88),
+  not left `staged`: `next` never reads "Depends on", so a staged row waiting for design would be emitted by the first free slot;
+  a parked row is also outside the disjointness gate population, so the specs' now-outdated Expected Surface does not mislead the
+  gate while the new component names do not exist. Each parked spec carries a `## Design Review 2026-11-06 (Amendment)`
+  section (gate, instructions, re-ground at restart) and its Expected Surface is deliberately not widened (the fold's surface
+  obligation is discharged by this decision line: the surface is the design sessions' output; the row is parked; re-ground at
+  restart). Still `staged` with an amendment note only: PLAN-34 (the rule for ages moves to PLAN-108 because PLAN-34 has not
+  landed), PLAN-36, PLAN-45. (3) PLAN-74 is cut: its deliverable 1 is dropped, 3 and 4 become PLAN-108, it keeps deliverable 2
+  and `FINAL`. (4) PLAN-83 is parked and becomes `superseded` (naming the D2 navigation engine row) when that package is staged.
+  (5) The new implementation packages — the terminal package (needs-spelling normalisation, D1's shared-text renames; after D1
+  and the running PLAN-104), the D1 foundation, the D2 navigation engine, the D3 brand assets, the D4 contract + mock, the D4 web
+  chat, the D4 voice package, and the package for the views no staged plan owns (System, Cleanup, CompletionReport, Reports,
+  decomposition, Pairing, `HoldResolutionModal`, `FindingsReviewModal`, `ConfinedFilePicker`, `PrAdoptPanel`, `RecipeSelector`) —
+  are NOT staged now; each is staged after its design session has merged, from the AGREED documents (a spec written now would
+  name components that do not exist). See the Watch "Design review 2026-11-06". (6) Verification of the three code-only messages
+  by a read-only sub-agent at HEAD 60b4bfa5 found scope the messages missed, now in the specs: 001 — four e2e specs click the rail
+  entry by its old name, `theme-readability.spec.js:159` matches it, `onboarding-texts.adoc:91-93` is the catalogue row of the
+  key, the terminal asserts the plan-menu label in plain tests (there are no transcript files); 004 — the split state is
+  entangled with the command-palette deep-link, three palette tests pre-set the layout and `decisions.spec.js:217-235` clicks
+  `layout-compact`; 002 — fully corroborated. Order: PLAN-108 → D1 → D2 and D3 → D4; the code runbooks wait for PLAN-106
+  (109, 110), PLAN-111 is independent and not parallel with 109.
 
 ## Open Defects
 
@@ -917,3 +966,19 @@ plan spec names the plan, proposal and finding documents it comes from.
   to be left out, so the overview and the activity (whole footer fits) do not end with it. — PLAN-56
   (`verify-cli-interaction`, `CLI-UX-V-02`) takes the design, not the clause, as its criterion; check the clause
   before emitting it.
+- Design review 2026-11-06 (opened by the drain of `design-review-001` … `010`): (1) After each design pull request merges,
+  stage the packages it unlocks from the AGREED documents and re-ground the parked plans it gates — the terminal package (after D1
+  and PLAN-104), D1 foundation (components, catalogue clean-up, lints as warnings), D2 navigation engine (supersede PLAN-83 naming
+  it), D3 brand assets and icon, D4 contract + mock, D4 web chat, D4 voice package, and the package for the views no staged plan
+  owns; PLAN-72 later switches the lints to errors. (2) Open points the sessions settle with the operator: the D2 width table
+  (from the column-window prototype), the D3 icon (A bear head or B star clipboard, on the review sheet) and the pose artwork
+  (operator or a named image tool), the D4 staging-window entry in the roadmap. Decided already: kind tints only for Project,
+  Epic and Plan; German buttons in the du-imperative; bottom bar What waits · Running work · Decisions · More; the mascot is the
+  operator's own work; the rail-foot bear is a reversible test; `marked` is approved for `pm-web-app` (to be recorded in
+  `chat.adoc`); syntax highlighting is a later, separate dependency decision. (3) D4 files requests outside this repository:
+  `plan-marshall/pm-mcp-core` (streaming `chat.reply`, the `transcribe` role) and `plan-marshall/plan-marshall-mcp` (routes,
+  events, `Permissions-Policy`), and changes requirements and specification in `plan-marshall-documentation` first. (4) The sender
+  may amend a drained message no more (archived messages are frozen): further review points arrive as new messages. (5) Recheck
+  at each landing: the line references in the messages into `WorkControlPanel` are re-read (PLAN-106 rewrites its act lists),
+  and `terminal-client/19-actions.adoc` (PLAN-97) and `web-app/onboarding.adoc` (PLAN-104) are not edited by D1/D3/D4 before those
+  plans land.

@@ -57,6 +57,14 @@ Run the cross-cutting checks of the web texts plans against the merged code and 
 - Overlaps with: other verification plans may update the same analysis matrix (one shared file)
 - Adjacent to: the plans verified; their code stays untouched
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (merged from messages 001–009). **Gate:
+waits with PLAN-85** (the verification checks the texts, theme and language placement that PLAN-85 and the design sessions
+change). Queue status: `parked` — not emitted until its gate is met; the orchestrator re-grounds this spec against the
+AGREED documents when it is restarted. The Expected Surface above is deliberately NOT widened now: the files and component
+names are the design sessions' output, and a parked row is not in the disjointness gate population.
+
 ## Hand-Off Command
 
 Lane: `plan-marshall` (verification plans run in the plan lifecycle, separate from the implementation runs).

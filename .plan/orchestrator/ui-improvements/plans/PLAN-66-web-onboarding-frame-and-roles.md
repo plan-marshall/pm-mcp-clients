@@ -134,6 +134,18 @@ Source of this plan (read before scoping):
 - Overlaps with: none known at staging
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 005, 007, 008). **Gate: D1 and
+D3 merged** (documents `AGREED`) and the D1 foundation / D3 brand assets packages (restarted with `PLAN-64`). Queue status:
+`parked`; the orchestrator re-grounds this spec when it is restarted. The Expected Surface above is NOT widened now (a parked
+row is not in the disjointness gate population). When restarted:
+
+- Until onboarded the header shows brand, machine, language and theme, so the brand there is the **chosen icon** of D3 (005).
+- The token entry is `SecretField`, the per-harness model text field is `TextField`, the choice screens are `RadioGroup` /
+  `CheckGroup`; the stray `/>` in `HarnessChoice.svelte:151-152` goes (008); "Abandon" through `ConfirmDialog` (007).
+- The role `transcribe` in the roles step belongs to the D4 voice package.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

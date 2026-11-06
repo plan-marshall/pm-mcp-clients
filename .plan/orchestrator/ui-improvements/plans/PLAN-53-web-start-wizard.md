@@ -86,6 +86,17 @@ Source of this plan (read before scoping):
 - Overlaps with: none known at staging
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 007, 008, 009). **Gate: D1
+merged** (document `AGREED`) and the D1 foundation package; its chat part waits for the D4 web chat package. Queue status:
+`parked`; the orchestrator re-grounds this spec when it is restarted. The Expected Surface above is NOT widened now (a parked
+row is not in the disjointness gate population). When restarted:
+
+- `Button` on `WizardPage`, one primary per step, the duplicate "Choose" / "Add" labels resolved (007).
+- Fields via `Field`, Enter submits, errors under the field, documents mode as the shared `RadioGroup` (008).
+- The start-entry chat in `Chat` (009), with `control.chat.*` keys rather than reused `start.*` keys.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

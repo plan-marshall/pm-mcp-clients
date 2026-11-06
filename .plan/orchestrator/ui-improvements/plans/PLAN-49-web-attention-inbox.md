@@ -75,6 +75,22 @@ Source of this plan (read before scoping):
 - Overlaps with: none known at staging
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 002, 003, 005, 006, 007).
+**Gate: D1, D2 and D3 merged** (documents `AGREED`) and the D1 foundation / D2 navigation engine / D3 brand assets packages
+that build what this plan uses. Queue status: `parked`; the orchestrator re-grounds this spec (Expected Surface, Claim Labels,
+deliverables) when it is restarted. The Expected Surface above is NOT widened now: the new files and component names are the
+design sessions' output, and a parked row is not in the disjointness gate population. When restarted:
+
+- `pm_start_route` is gone (`PLAN-110` removes the toggle), so this plan does not take the toggle over; it starts from a
+  `landingRoute` without the `remembered` branch.
+- What waits is a launcher at `/`, which becomes an `AppRoute` (003).
+- Rows: `KindMark` + `ReasonBadge` on the `overview.needs.*` keys, `decision` items as Decision rows (003, 006); each row a
+  `RowLink` (007).
+- The empty state uses the mascot "nothing waits" pose or the source bust (005).
+- The bottom bar becomes What waits · Running work · Decisions · More; Reports moves into More with its unread count (003).
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

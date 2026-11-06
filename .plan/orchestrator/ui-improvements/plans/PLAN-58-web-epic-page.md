@@ -86,6 +86,19 @@ Source of this plan (read before scoping):
 - Overlaps with: none known at staging
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 003, 006, 007, 009). **Hold.
+Gate: D1 and D2 merged** (documents `AGREED`) and the D2 navigation engine; the chat column waits for the D4 web chat
+package. Queue status: `parked`; the orchestrator re-grounds this spec when it is restarted. The Expected Surface above is NOT
+widened now (a parked row is not in the disjointness gate population). When restarted:
+
+- The epic page becomes an object / list column of the column chain (003); the epic's path in the head is replaced by the
+  top-bar breadcrumb with titles, not slugs.
+- Head slots as for the plan page (006); one `ActionBar` with the primary, head links, no "Zurück" (007).
+- The chat as a side column (009).
+- `WorkControlPanel` dialogs of the epic belong to this plan (with `PLAN-55`).
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

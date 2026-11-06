@@ -93,6 +93,22 @@ Both controls leave the rail foot (desktop) and the More sheet (phone), where `P
 - Overlaps with: `PLAN-60` (the one settings view: this plan's view becomes its tab "This browser"; run one after the other, either order), `PLAN-70` (light theme pass: `theme-readability.spec.js`), `PLAN-16` (locale switch in the same frame), `PLAN-37` (accessibility baseline), `PLAN-83` (`AppShell`, shell files), `PLAN-46` (shell)
 - Adjacent to: `PLAN-60`
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 001, 003, 005, 007, 008, 009).
+**Gate: D1, D2 and D3 merged** (documents `AGREED`) and the D1 foundation / D2 engine / D3 brand assets packages; **it starts
+after `PLAN-109`** (the rail icon is not its concern). Queue status: `parked`; the orchestrator re-grounds this spec
+(deliverables, Expected Surface) when it is restarted. The Expected Surface above is NOT widened now (a parked row is not in
+the disjointness gate population). When restarted:
+
+- The rail-foot bear (D3, a reversible test with a fixed, contrast-checked opacity) moves above the collapse control once
+  theme and language leave the rail foot; the pairing and revoked layouts are checked **together with the figure** (005).
+- The duplicated language toggle in `BottomBar` (`:169`, `:212`) goes, inside D2's bottom bar and More sheet (What waits ·
+  Running work · Decisions · More) (003, 007).
+- Theme and language become a `RadioGroup`, applied at once (008); `/settings/browser` follows D2's address scheme and routes
+  table (it becomes the tab "This browser" of `PLAN-60`'s one settings view).
+- The per-browser transcription choice ("Dieser Browser") belongs to the D4 voice package, not to this plan (009).
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).
