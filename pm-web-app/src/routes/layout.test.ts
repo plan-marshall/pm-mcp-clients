@@ -482,7 +482,7 @@ describe('the app shell', () => {
     );
   });
 
-  it('refuses a stop-now confirm that reaches the handler past the busy button', async () => {
+  it('ignores a second stop-now confirm through the dialog’s busy prop while the act runs', async () => {
     localStorage.setItem('pm_device_secret', 'pmw_valid');
     vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
       ...STATUS,
@@ -513,11 +513,12 @@ describe('the app shell', () => {
     await fireEvent.click(confirm);
     expect(stopNow).toHaveBeenCalledOnce();
 
-    // A click dispatched on the disabled button still reaches the view's handler.
+    // In jsdom, a dispatched click event reaches the element's handler. ConfirmDialog
+    // ignores it because busy is true; the view's own handler is not reached a second time.
     confirm.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
 
-    // The stop is sent once: the dialog's busy prop and the view's own guard both stand against a
-    // second send, and either alone must keep the request single.
+    // The stop is sent once: ConfirmDialog's busy prop keeps the request single while
+    // the action is in flight.
     expect(stopNow).toHaveBeenCalledOnce();
   });
 
