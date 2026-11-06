@@ -51,9 +51,9 @@ import picocli.CommandLine.Spec;
 public final class ProjectCommand implements Callable<Integer> {
 
     private static final String PROJECTS_API = "/api/v1/projects/";
-    private static final String PATH_ENROL = "/api/v1/enrol";
     private static final String KEY_PROJECT_NOT_FOUND = "operator.project.not_found";
     private static final String PARAM_PROJECT = "project";
+    private static final String PARAM_STATUS = "status";
     private static final String PARAM_VALUE = "value";
     private static final String ERR_ENROLMENT_ROOT_CONFLICT = "enrolment_root_conflict";
     private static final String ERR_PROJECT_STORE_ROOT_MISMATCH = "project_store_root_mismatch";
@@ -186,7 +186,7 @@ public final class ProjectCommand implements Callable<Integer> {
             var locale = context.clientEnvironment().locale();
 
             var request = new EnrolRequest(path, pilot);
-            var response = context.runtime(true).send(HttpRequest.json("POST", PATH_ENROL, request.toJson()));
+            var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/enrol", request.toJson()));
 
             if (response.status() == 200 || response.status() == 201) {
                 var result = EnrolResult.fromJson(response.bodyText());
@@ -207,14 +207,14 @@ public final class ProjectCommand implements Callable<Integer> {
                                         Map.of("id", safePath)));
                 } else {
                     out.println(MessageCatalogue.format(locale, "enrolment.enrol.failed",
-                                        Map.of("path", safePath, "status", response.status())));
+                                        Map.of("path", safePath, PARAM_STATUS, response.status())));
                 }
                 out.flush();
                 return 1;
             }
             if (response.status() >= 400 && response.status() < 500) {
                 err.println(MessageCatalogue.format(locale, "enrolment.enrol.failed",
-                                    Map.of("path", safePath, "status", response.status())));
+                                    Map.of("path", safePath, PARAM_STATUS, response.status())));
                 err.flush();
                 return 1;
             }
@@ -269,7 +269,7 @@ public final class ProjectCommand implements Callable<Integer> {
                 return 0;
             } catch (IOException _) {
                 err.println(MessageCatalogue.format(locale, "project.setup.unreadable",
-                                    Map.of("project", sanitizedId)));
+                                    Map.of(PARAM_PROJECT, sanitizedId)));
                 err.flush();
                 return 1;
             }
@@ -453,7 +453,7 @@ public final class ProjectCommand implements Callable<Integer> {
                                         Map.of("id", sanitizedId)));
                 } else {
                     err.println(MessageCatalogue.format(locale, "enrolment.unenrol.failed",
-                                        Map.of("id", sanitizedId, "status", response.status())));
+                                        Map.of("id", sanitizedId, PARAM_STATUS, response.status())));
                 }
                 err.flush();
                 return 1;

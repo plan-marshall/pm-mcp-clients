@@ -46,6 +46,7 @@ public final class LessonSourceCommand implements Callable<Integer> {
     private static final String SEGMENT_SOURCES_LESSONS = "/sources/lessons/";
     private static final String SUFFIX_PREMISE_CHECK = "/premise-check";
     private static final String NONE = "none";
+    private static final String PARAM_LESSON = "lesson";
 
     @Spec
     CommandSpec spec = CommandSpec.create();
@@ -87,12 +88,12 @@ public final class LessonSourceCommand implements Callable<Integer> {
         var lesson = safe(check.lessonId());
         switch (check.status()) {
             case LessonPremiseCheckResult.STATUS_HOLDS ->
-                out.println(MessageCatalogue.format("lesson_source.check.holds", Map.of("lesson", lesson)));
+                out.println(MessageCatalogue.format("lesson_source.check.holds", Map.of(PARAM_LESSON, lesson)));
             case LessonPremiseCheckResult.STATUS_UNAVAILABLE -> out.println(MessageCatalogue.format(
                                 "lesson_source.check.unavailable",
-                                Map.of("lesson", lesson, "cause", safe(check.cause()))));
+                                Map.of(PARAM_LESSON, lesson, "cause", safe(check.cause()))));
             default -> {
-                out.println(MessageCatalogue.format("lesson_source.check.broken", Map.of("lesson", lesson)));
+                out.println(MessageCatalogue.format("lesson_source.check.broken", Map.of(PARAM_LESSON, lesson)));
                 printEvidence(out, check);
             }
         }
@@ -101,7 +102,7 @@ public final class LessonSourceCommand implements Callable<Integer> {
 
     private static void printEvidence(PrintWriter out, LessonPremiseCheckResult check) {
         out.println("  " + MessageCatalogue.format("lesson_source.broken.title",
-                            Map.of("lesson", safe(check.lessonId()), "count", check.evidence().size())));
+                            Map.of(PARAM_LESSON, safe(check.lessonId()), "count", check.evidence().size())));
         for (var evidence : check.evidence()) {
             out.println("    " + MessageCatalogue.format("lesson_source.evidence.line", evidenceParams(evidence)));
         }
