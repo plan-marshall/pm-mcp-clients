@@ -21,7 +21,6 @@ import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
 
 import de.planmarshall.api.http.HttpRequest;
-import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.resource.AcceptEditRequest;
 import de.planmarshall.api.resource.AcceptEditResult;
@@ -91,10 +90,6 @@ public final class AcceptEditCommand implements Callable<Integer> {
 
     @Spec
     CommandSpec spec = CommandSpec.create();
-
-    AcceptEditCommand(OperatorContext context) {
-        Objects.requireNonNull(context, "context");
-    }
 
     /**
      * The verb without its scope form is a usage error.
@@ -405,18 +400,10 @@ public final class AcceptEditCommand implements Callable<Integer> {
     }
 
     private static String refusalReason(String locale, String body) {
-        try {
-            var map = JsonTree.asObject(JsonTree.parse(body));
-            var reason = JsonTree.string(map, "reason");
-            if (reason == null) {
-                reason = JsonTree.string(map, "error");
-            }
-            if (ERR_CONFIRMATION_MISMATCH.equals(reason)) {
-                return MessageCatalogue.format(locale, "enrolment.accept.refused.stale", Map.of());
-            }
-            return reason != null ? OutputSafety.stripControlSequences(reason) : "";
-        } catch (IOException _) {
-            return "";
+        var reason = ProjectCommand.refusalReason(body);
+        if (ERR_CONFIRMATION_MISMATCH.equals(reason)) {
+            return MessageCatalogue.format(locale, "enrolment.accept.refused.stale", Map.of());
         }
+        return OutputSafety.stripControlSequences(reason);
     }
 }
