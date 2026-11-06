@@ -28,6 +28,24 @@ describe('filterText', () => {
     expect(tokenize('  Fix   RELAY ')).toEqual(['fix', 'relay']);
   });
 
+  it.each([
+    { query: '...', tokens: [] },
+    { query: ' - / … ', tokens: [] },
+    { query: 'fix ...', tokens: ['fix'] },
+    { query: '#214 -- relay', tokens: ['#214', 'relay'] },
+    { query: 'Ärger ?', tokens: ['arger'] },
+    { query: 'v2 ·', tokens: ['v2'] },
+  ])('keeps only the tokens with a letter or a digit: "$query"', ({ query, tokens }) => {
+    expect(tokenize(query)).toEqual(tokens);
+  });
+
+  it('treats a query of punctuation alone as no filter', () => {
+    expect(matchesQuery('...', ['anything'])).toBe(true);
+    expect(matchesQuery('…', [])).toBe(true);
+    expect(matchesQuery('fix ...', ['fix-relay ended: merged'])).toBe(true);
+    expect(matchesQuery('fix ...', ['ended: merged'])).toBe(false);
+  });
+
   it('matches everything for an empty or blank query', () => {
     expect(matchesQuery('', ['anything'])).toBe(true);
     expect(matchesQuery('   ', ['anything'])).toBe(true);

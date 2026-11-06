@@ -86,7 +86,7 @@
   }
 
   /** The normalized query tokens, computed once per keystroke rather than once per item. */
-  const queryTokens = $derived(tokenize(query).filter((t) => /\p{L}|\p{N}/u.test(t)));
+  const queryTokens = $derived(tokenize(query));
   const isFiltered = $derived(queryTokens.length > 0);
 
   /** One normalized haystack per loaded report, rebuilt only when the list or locale changes. */
