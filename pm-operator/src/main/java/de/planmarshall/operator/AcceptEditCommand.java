@@ -81,6 +81,7 @@ public final class AcceptEditCommand implements Callable<Integer> {
     private static final String PROJECT_DESCRIPTION = "Project that owns the scope";
     private static final String NO_INPUT_OPTION = "--no-input";
     private static final String NO_INPUT_DESCRIPTION = "Non-interactive mode: stop at the confirmation";
+    private static final String CONTEXT = "context";
 
     private static final int LABEL_WIDTH = 12;
     private static final int RECORDED_WIDTH = 68;
@@ -156,7 +157,7 @@ public final class AcceptEditCommand implements Callable<Integer> {
         boolean noInput;
 
         PlanForm(OperatorContext context) {
-            this.context = Objects.requireNonNull(context, "context");
+            this.context = Objects.requireNonNull(context, CONTEXT);
         }
 
         @Override
@@ -186,7 +187,7 @@ public final class AcceptEditCommand implements Callable<Integer> {
         boolean noInput;
 
         EpicForm(OperatorContext context) {
-            this.context = Objects.requireNonNull(context, "context");
+            this.context = Objects.requireNonNull(context, CONTEXT);
         }
 
         @Override
@@ -216,7 +217,7 @@ public final class AcceptEditCommand implements Callable<Integer> {
         boolean noInput;
 
         WorkspaceForm(OperatorContext context) {
-            this.context = Objects.requireNonNull(context, "context");
+            this.context = Objects.requireNonNull(context, CONTEXT);
         }
 
         @Override
@@ -243,7 +244,7 @@ public final class AcceptEditCommand implements Callable<Integer> {
         boolean noInput;
 
         LessonForm(OperatorContext context) {
-            this.context = Objects.requireNonNull(context, "context");
+            this.context = Objects.requireNonNull(context, CONTEXT);
         }
 
         @Override
@@ -268,7 +269,7 @@ public final class AcceptEditCommand implements Callable<Integer> {
         boolean noInput;
 
         EnrolmentForm(OperatorContext context) {
-            this.context = Objects.requireNonNull(context, "context");
+            this.context = Objects.requireNonNull(context, CONTEXT);
         }
 
         @Override
