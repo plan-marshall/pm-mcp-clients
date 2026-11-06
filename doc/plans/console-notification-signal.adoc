@@ -1,0 +1,25 @@
+= Console: the notification signal by the terminal
+:nofooter:
+
+link:README.adoc[Work packages of `pm-mcp-clients`] » `console-notification-signal`
+
+[horizontal]
+Serves:: link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7]
+Where:: `pm-operator` (`PmConsole`, the notification of what waits)
+Part of:: link:epic-clients.adoc[the client work]
+Status and dependencies:: in the link:README.adoc#packages[index], the only place that states them
+
+== Tasks
+
+. The console chooses its signal from the environment by the table of the design: the bell, OSC 9, OSC 99 or OSC 777, read once at start; today it writes OSC 9 to every terminal and never rings the bell, so the operator of a terminal that does not show OSC 9 (Terminal.app, a JetBrains IDE, tmux without passthrough) is told nothing.
+  Anchor: link:../design/terminal-client/04-console.adoc#notifications[The Console, Notifications].
+  Proof: a unit test per row of the table, with the environment of the row (among them `TERM_PROGRAM=ghostty` together with `TERMINAL_EMULATOR=JetBrains-JediTerm`, which rings the bell), asserts the one signal written and that no other is; `console.notify=false` writes none.
+. The withdrawal of an answered question's notification (`OSC 99` with its id) is sent only where the signal is OSC 99.
+  Anchor: link:../design/terminal-client/04-console.adoc#answered-elsewhere[The Console, Answered Elsewhere].
+  Proof: a unit test sees the withdrawal under kitty and nothing under every other signal.
+
+== Trace
+
+* Design: link:../design/terminal-client/04-console.adoc#notifications[The Console, Notifications]
+* Specification: link:../../../pm-mcp-core/doc/specification/store-schemas/12-machine-stores.adoc#machine-config[Machine Configuration Store] (`console.notify`)
+* Reason: link:../../../plan-marshall-documentation/doc/articles/jetbrains-terminal-ghostty.adoc[JetBrains' New AI-Powered Terminal Embraces Ghostty]
