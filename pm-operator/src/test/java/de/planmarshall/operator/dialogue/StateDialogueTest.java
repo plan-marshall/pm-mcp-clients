@@ -254,6 +254,18 @@ class StateDialogueTest {
     }
 
     @Test
+    @DisplayName("the intro line says the number of steps the run reports")
+    void introFollowsTheRunStepCount() {
+        var frame = new StateDialogue.Frame(MODE, "operator_wait", 0, 8, null, Map.of(),
+                            List.of(new StateDialogue.Link("begin", "next", true)));
+
+        var content = dialogue(new FakeSource(mode()), "", new StringWriter()).content(frame);
+
+        assertTrue(content.getFirst().startsWith("8 steps."), content.getFirst());
+        assertFalse(content.getFirst().contains("Seven"), content.getFirst());
+    }
+
+    @Test
     @DisplayName("wraps a content line at its width without breaking a word")
     void wrapsContent() {
         assertEquals(List.of("one two", "three"), StateDialogue.wrap("one two three", 8));

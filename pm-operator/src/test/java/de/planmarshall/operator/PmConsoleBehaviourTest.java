@@ -23,6 +23,7 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -30,10 +31,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -627,6 +630,57 @@ class PmConsoleBehaviourTest {
         }
         assertEquals(1, maxConcurrent.get(),
                             "refreshSetupBadge and refreshBadges must be serialized by badgeRefreshLock");
+    }
+
+    @Test
+    @DisplayName("the refresh path and the intro line follow an aspect list of another size")
+    void refreshPathAndIntroFollowAnotherAspectList() throws Exception {
+        var aspects = new ArrayList<>(List.of(OnboardingAspect.values()));
+        aspects.add(OnboardingAspect.LANGUAGE);
+        assertEquals(8, aspects.size());
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":false,\"onboard\":{\"step\":3}}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context, new EntryFlow(context, aspects));
+
+            console.refreshSetupBadge("en", terminal);
+
+            assertEquals(List.of("setup 3/8"), console.currentBadges(),
+                                "the refresh path must take the machine step count from the flow it runs");
+        }
+
+        fixture.close();
+        fixture = RuntimeFixture.create();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":false}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var intro = new StringWriter();
+        var introContext = new OperatorContext(fixture.environment(), tempDir, true);
+        new EntryFlow(introContext, aspects).run(new PrintWriter(intro), createReader("q\n"));
+        assertTrue(intro.toString().contains("8 steps."),
+                            "the intro line must say the run's step count");
+    }
+
+    private LineReader createReader(String input) throws Exception {
+        var in = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
+        return LineReaderBuilder.builder().terminal(new DumbTerminal(in, new ByteArrayOutputStream())).build();
     }
 
     @Test

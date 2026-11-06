@@ -283,7 +283,7 @@ public final class StateDialogue {
      */
     List<String> content(Frame frame) {
         if ("onboard.mode".equals(frame.stateId())) {
-            return modeContent();
+            return modeContent(frame);
         }
         if ("onboard.completed".equals(frame.stateId())) {
             return List.of(MessageCatalogue.format(locale, "onboard.completed.next", Map.of()));
@@ -296,9 +296,9 @@ public final class StateDialogue {
         return lines;
     }
 
-    private List<String> modeContent() {
+    private List<String> modeContent(Frame frame) {
         var lines = new ArrayList<String>();
-        lines.add(MessageCatalogue.format(locale, "onboard.entry.intro", Map.of()));
+        lines.add(MessageCatalogue.format(locale, "onboard.entry.intro", Map.of("total", frame.totalSteps())));
         addStepOverview(lines);
         return lines;
     }

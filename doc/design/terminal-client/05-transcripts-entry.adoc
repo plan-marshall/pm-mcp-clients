@@ -142,7 +142,7 @@ $ pm-operator
 
 plan-marshall is running. This machine is not set up yet.
 
-  Seven steps. Nothing on this machine is looked at, run, or changed until
+  7 steps. Nothing on this machine is looked at, run, or changed until
   you say so in that step. You can stop at any point; Enter at the prompt,
   or the web app, continues where you stopped.
 
@@ -157,9 +157,9 @@ plan-marshall is running. This machine is not set up yet.
 Where do you want to set it up?   h) here, in the terminal [Enter]   w) in the web app   ?   › ⏎
 
 Set up this machine for plan-marshall
-  Seven steps. Nothing on this machine is looked at, run, or changed until you
-  say so in that step. You can stop at any point; the next visit, here or in
-  pm-operator, continues where you stopped.
+  7 steps. Nothing on this machine is looked at, run, or changed until you say
+  so in that step. You can stop at any point; Enter at the prompt, or the web
+  app, continues where you stopped.
   1  Language: the language of plan-marshall and of the models' texts
   …
   7  Plans: how plans run unless a project says otherwise
@@ -474,9 +474,9 @@ After _here_ in `entry.where-to-onboard` (<<t-entry-first>>), or in a console wh
 [source,text]
 ----
 Set up this machine for plan-marshall
-  Seven steps. Nothing on this machine is looked at, run, or changed until you
-  say so in that step. You can stop at any point; the next visit, here or in
-  pm-operator, continues where you stopped.
+  7 steps. Nothing on this machine is looked at, run, or changed until you say
+  so in that step. You can stop at any point; Enter at the prompt, or the web
+  app, continues where you stopped.
   1  Language: the language of plan-marshall and of the models' texts
   …
   7  Plans: how plans run unless a project says otherwise

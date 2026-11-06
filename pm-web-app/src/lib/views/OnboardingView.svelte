@@ -234,6 +234,9 @@
     'plans',
   ];
 
+  /** The step numbers the overview lists: the one list the intro's count comes from. */
+  const MACHINE_STEPS = STEP_KEYS.map((_, index) => index + 1);
+
   /**
    * @param step the step number, 1-based
    * @returns the catalogue key suffix of the step's name
@@ -368,11 +371,11 @@
           <div class="state-card">
             <div class="state-card__header">
               <h1 class="state-card__title">{$t('onboard.entry.title')}</h1>
-              <p class="state-card__summary">{$t('onboard.entry.intro')}</p>
+              <p class="state-card__summary">{$t('onboard.entry.intro', { total: MACHINE_STEPS.length })}</p>
             </div>
 
             <ol class="steps-overview" data-testid="steps-overview">
-              {#each [1, 2, 3, 4, 5, 6, 7] as step}
+              {#each MACHINE_STEPS as step}
                 <li>
                   <strong>{step}. {$t(`onboard.step.${stepKey(step)}`)}</strong>
                   ─ {$t(`onboard.entry.step.${stepKey(step)}`)}
