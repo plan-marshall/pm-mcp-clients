@@ -100,7 +100,7 @@ class DrainCommandTest {
      * @param trap the trap command the fixture sets first
      * @return the fixture process
      */
-    private Process recordedRuntime(String trap) throws IOException, InterruptedException {
+    private Process recordedRuntime(String trap) throws IOException {
         var ready = tempDir.resolve("ready-" + children.size());
         var child = start(trap + "; : > " + ready + "; while :; do sleep 0.05; done");
         var deadline = System.nanoTime() + GENEROUS.toNanos();
@@ -109,7 +109,7 @@ class DrainCommandTest {
             assertTrue(System.nanoTime() < deadline, "the fixture did not set its trap");
             Thread.onSpinWait();
         }
-        record(child);
+        recordRuntime(child);
         return child;
     }
 
@@ -119,7 +119,7 @@ class DrainCommandTest {
         return child;
     }
 
-    private void record(Process child) throws IOException {
+    private void recordRuntime(Process child) throws IOException {
         var handle = child.toHandle();
         var start = handle.info().startInstant();
         Files.createDirectories(fixture.paths().stateDir());
@@ -192,7 +192,7 @@ class DrainCommandTest {
     void deadRecordNoSignal() throws Exception {
         var child = start("exit 0");
         assertTrue(child.waitFor(GENEROUS.toSeconds(), TimeUnit.SECONDS), "the fixture did not end");
-        record(child);
+        recordRuntime(child);
 
         var code = execute("drain");
 
