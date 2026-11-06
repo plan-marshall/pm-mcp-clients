@@ -13,7 +13,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.URLDecoder;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -27,6 +29,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.UserInterruptException;
@@ -57,6 +60,7 @@ public final class EntryFlow {
     private static final String LOOPBACK_URL_PREFIX = "http://127.0.0.1:";
     private static final String VERSION = "version";
     private static final String PAIR_CODE = "/pair#code=";
+    private static final Pattern ENTRY_LINK = Pattern.compile("/entries/([^/?#]+)");
 
     private final OperatorContext context;
     private final List<OnboardingAspect> aspects;
@@ -654,19 +658,56 @@ public final class EntryFlow {
         }
         try {
             var being = BeingAddedProject.fromMap(map);
-            var daemonProjectId = JsonTree.string(map, "project_id");
-            var targetId = daemonProjectId != null && !daemonProjectId.isBlank()
-                                ? daemonProjectId
-                                : checkoutDirectoryName(being.checkoutPath());
-            if (targetId != null) {
-                var text = ConsolePrompt.formatProjectSetupBadge(locale, targetId,
+            // A pre-enrolment run is entry-scoped and has no project id: the contract carries the
+            // address in its continue link (project-onboarding.adoc#several). Where the contract
+            // carries no link, the checkout directory name stands for it, as the console design says.
+            var address = entryAddress(being);
+            var display = checkoutDirectoryName(being.checkoutPath());
+            if (address != null) {
+                var text = ConsolePrompt.formatProjectSetupBadge(locale,
+                                    display != null ? display : address,
                                     being.stepNumber(), being.totalSteps());
-                return ConsoleBadge.projectSetup(targetId, text);
+                return ConsoleBadge.projectSetup(address, text);
             }
         } catch (IOException _) {
             // skip malformed entries
         }
         return null;
+    }
+
+    /**
+     * Reads the address a being-added project's run is continued by: the entry id of the
+     * contract's {@code continue_link}, or the checkout directory name where the contract carries
+     * no link.
+     *
+     * @param being the run as the runtime reports it
+     * @return the address, or {@code null} when neither is available
+     */
+    static @Nullable String entryAddress(BeingAddedProject being) {
+        var fromLink = entryId(being.continueLink());
+        return fromLink != null ? fromLink : checkoutDirectoryName(being.checkoutPath());
+    }
+
+    /**
+     * @param continueLink the contract's continuation link ({@code /api/v1/entries/{entry_id}/continue})
+     * @return the id the link addresses, decoded, or {@code null} when the link names none
+     */
+    private static @Nullable String entryId(@Nullable String continueLink) {
+        if (continueLink == null || continueLink.isBlank()) {
+            return null;
+        }
+        var match = ENTRY_LINK.matcher(continueLink);
+        if (!match.find()) {
+            return null;
+        }
+        var raw = match.group(1);
+        try {
+            var decoded = URLDecoder.decode(raw, StandardCharsets.UTF_8);
+            return decoded.isBlank() ? null : decoded;
+        } catch (IllegalArgumentException _) {
+            // A segment that is not valid percent-encoding is taken as it stands.
+            return raw;
+        }
     }
 
     static List<ConsoleBadge> readProjectSetupConsoleBadgesQuiet(String locale, RuntimeClient runtime) {

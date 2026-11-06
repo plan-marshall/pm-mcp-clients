@@ -282,10 +282,12 @@ public final class PmConsole {
         }
     }
 
-    private void continueProjectOnboarding(String projectId, PrintWriter out, LineReader reader, Terminal terminal) {
+    private void continueProjectOnboarding(String address, PrintWriter out, LineReader reader, Terminal terminal) {
         context.useTerminal(terminal);
         try {
-            runOperatorVerb("project setup \"" + projectId.replace("\"", "\\\"") + "\"", out, reader, terminal);
+            // The address travels as an argument, never through a command line the console would
+            // have to quote and parse back: an id with a quote or a backslash reaches the verb as it is.
+            runOperatorVerb(List.of("project", "setup", "--entry", address), out, reader, terminal);
         } finally {
             try {
                 context.clearTerminal(terminal);
@@ -428,7 +430,10 @@ public final class PmConsole {
      * @param terminal the terminal the console owns
      */
     private void runOperatorVerb(String line, PrintWriter out, LineReader reader, Terminal terminal) {
-        var args = parseArgs(line);
+        runOperatorVerb(parseArgs(line), out, reader, terminal);
+    }
+
+    private void runOperatorVerb(List<String> args, PrintWriter out, LineReader reader, Terminal terminal) {
         var selection = ProjectSelector.rewrite(context, out, out, args.toArray(String[]::new), reader);
         if (!selection.proceed()) {
             return;
@@ -903,9 +908,15 @@ public final class PmConsole {
         var args = new ArrayList<String>();
         var sb = new StringBuilder();
         boolean inQuotes = false;
+        boolean escaped = false;
         for (int i = 0; i < line.length(); i++) {
             char c = line.charAt(i);
-            if (c == '"') {
+            if (escaped) {
+                sb.append(c);
+                escaped = false;
+            } else if (c == '\\') {
+                escaped = true;
+            } else if (c == '"') {
                 inQuotes = !inQuotes;
             } else if (Character.isWhitespace(c) && !inQuotes) {
                 if (sb.length() > 0) {
@@ -915,6 +926,9 @@ public final class PmConsole {
             } else {
                 sb.append(c);
             }
+        }
+        if (escaped) {
+            sb.append('\\');
         }
         if (sb.length() > 0) {
             args.add(sb.toString());

@@ -34,6 +34,7 @@ import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -423,22 +424,20 @@ class PmConsoleBehaviourTest {
     }
 
     @Test
-    @DisplayName("Enter on a project badge addresses the project id returned by the daemon")
-    void enterOnAProjectBadgeAddressesDaemonProjectId() throws Exception {
-        var exactSetupTarget = new AtomicReference<String>();
+    @DisplayName("Enter on a being-added project badge addresses the entry the continue link carries")
+    void enterOnABeingAddedProjectBadgeAddressesItsEntry() throws Exception {
+        // The fixture is the contract's own map: BeingAddedProject has no project id to write into it.
+        var entry = new BeingAddedProject("/work/other-dir-name", "Identity", 3, 10,
+                            "/api/v1/entries/ent-3f9a2c41/continue", "/api/v1/entries/ent-3f9a2c41/abandon");
+        var exactEntryTarget = new AtomicReference<String>();
         fixture.start((request, response) -> {
-            if (request.target().startsWith("/api/v1/projects/") && request.target().endsWith("/setup")) {
-                exactSetupTarget.set(request.target());
+            if ("/api/v1/entries/ent-3f9a2c41".equals(request.target())) {
+                exactEntryTarget.set(request.target());
                 response.send(404, null, "");
             } else if ("/api/v1/status".equals(request.target())) {
                 response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
             } else if ("/api/v1/project-onboardings".equals(request.target())) {
-                response.json(200, """
-                                    {"onboardings":[{"project_id":"custom-daemon-id",
-                                                     "checkout_path":"/work/other-dir-name",
-                                                     "current_step":"Identity",
-                                                     "step_number":3,"total_steps":10}]}
-                                    """);
+                response.json(200, "{\"onboardings\":[" + entry.toJson() + "]}");
             } else {
                 response.send(404, null, "");
             }
@@ -452,9 +451,48 @@ class PmConsoleBehaviourTest {
             var console = new PmConsole(context);
             console.refreshSetupBadge("en", terminal);
             console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
-            assertEquals("/api/v1/projects/custom-daemon-id/setup", exactSetupTarget.get(),
-                                "Enter on project badge must target daemon project_id, not checkout directory name");
+            assertEquals("/api/v1/entries/ent-3f9a2c41", exactEntryTarget.get(),
+                                "Enter on a being-added badge must address the entry continue_link carries");
         }
+    }
+
+    @Test
+    @DisplayName("an entry id with a quote or a backslash reaches the runtime unaltered")
+    void entryIdWithQuoteOrBackslashReachesTheRuntimeUnaltered() throws Exception {
+        var entry = new BeingAddedProject("/work/other-dir-name", "Identity", 3, 10,
+                            "/api/v1/entries/ent-%22q%22%5Cb/continue", "/api/v1/entries/ent-%22q%22%5Cb/abandon");
+        var exactEntryTarget = new AtomicReference<String>();
+        fixture.start((request, response) -> {
+            if (request.target().startsWith("/api/v1/entries/")) {
+                exactEntryTarget.set(request.target());
+                response.send(404, null, "");
+            } else if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[" + entry.toJson() + "]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            console.refreshSetupBadge("en", terminal);
+            console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
+            assertEquals("/api/v1/entries/ent-%22q%22%5Cb", exactEntryTarget.get(),
+                                "an id with a quote or a backslash must reach the command unaltered");
+        }
+    }
+
+    @Test
+    @DisplayName("a typed quoted id keeps its backslash escapes")
+    void typedQuotedIdKeepsItsBackslashEscapes() {
+        assertEquals(List.of("project", "setup", "--entry", "ent-\"q\"\\b"),
+                            PmConsole.parseArgs("project setup --entry \"ent-\\\"q\\\"\\\\b\""));
     }
 
     @Test
@@ -622,15 +660,17 @@ class PmConsoleBehaviourTest {
     @Test
     @DisplayName("Enter on a project badge continues project onboarding")
     void enterOnAProjectBadgeContinuesProjectOnboarding() throws Exception {
-        var projectSetupRequested = new AtomicBoolean(false);
+        var entry = new BeingAddedProject("/work/cui-http", "Own settings", 5, 10,
+                            "/api/v1/entries/ent-cui/continue", "/api/v1/entries/ent-cui/abandon");
+        var entrySetupRequested = new AtomicBoolean(false);
         fixture.start((request, response) -> {
-            if ("/api/v1/projects/cui-http/setup".equals(request.target())) {
-                projectSetupRequested.set(true);
+            if ("/api/v1/entries/ent-cui".equals(request.target())) {
+                entrySetupRequested.set(true);
                 response.send(404, null, "");
             } else if ("/api/v1/status".equals(request.target())) {
                 response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
             } else if ("/api/v1/project-onboardings".equals(request.target())) {
-                response.json(200, "{\"onboardings\":[]}");
+                response.json(200, "{\"onboardings\":[" + entry.toJson() + "]}");
             } else {
                 response.send(404, null, "");
             }
@@ -641,9 +681,10 @@ class PmConsoleBehaviourTest {
             var context = new OperatorContext(fixture.environment(), tempDir, true,
                                 ClientEnvironment.capture(fixture.environment()),
                                 () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
-            var console = new PmConsole(context, List.of(ConsoleBadge.projectSetup("cui-http", "setup cui-http 5/10")));
+            var console = new PmConsole(context);
+            console.refreshSetupBadge("en", terminal);
             console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
-            assertTrue(projectSetupRequested.get(), "Enter on project badge must continue project onboarding");
+            assertTrue(entrySetupRequested.get(), "Enter on project badge must continue project onboarding");
         }
     }
 }
