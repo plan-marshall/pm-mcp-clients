@@ -1,0 +1,227 @@
+= Verification Results: The Shared Foundation
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+:nofooter:
+:docs: https://github.com/plan-marshall/plan-marshall-documentation/blob/be5750ddd418256e1040d99cdb6fea15e42fdcb8/doc
+
+link:../README.adoc[Review] » Verification Results » The Shared Foundation
+
+This document records five checks of the two reviews against the merged code. The checks come from
+link:../use-cases/verification.adoc[Use Cases, Verification], link:../cli/use-cases/verification.adoc[CLI Review, Use
+Cases, Verification], and link:../cli/cross-cutting/verification.adoc[CLI Review, Cross-Cutting, Verification]. Each
+check ran as written, except four. UC-V-09 and CLI-UC-V-10 ask that the use cases pass the `doc-review` skill; they ran
+as the read-only review described in <<review,Review of the Use-Case Documents>>, not as the full skill, and are
+recorded as `not verified`. CLI-UC-V-09 ran as its mock part only; the walk in a real terminal that it also asks for
+was not run. CLI-CC-V-03 ran as its rule part only; the table tests of `Display.duration` and `Display.time` and the
+walk in a real terminal that it also asks for were not run. Each part that was not run is recorded as `not verified`.
+Nothing that was found was fixed.
+
+[#subject]
+== What Was Verified
+
+[cols="1,3",options="header"]
+|===
+|Item |Value
+
+|Commit
+|`92c18515d0b37c8c290718f925183c053c9e0a67`, `main` of `pm-mcp-clients`
+
+|Use-case documents
+|`be5750ddd418256e1040d99cdb6fea15e42fdcb8`, `main` of `plan-marshall-documentation`
+
+|Date
+|2026-11-06
+
+|Machine
+|macOS 27.2, `aarch64`, locale `de_DE`, UTF-8
+
+|Java and Maven
+|OpenJDK 25.0.1 (Temurin), Apache Maven 3.9.16 through the wrapper
+
+|Mock
+|`pm-mock-runtime/start.sh --scenario running-work --web-port 20180`; the scenarios `projects-and-start` and
+`reports-and-system` through `POST /mock/scenario` on the same mock. This plan started the mock and stopped it with
+`stop.sh`. The app port `20181` was not used: no check needs the web app.
+
+|Build
+|`./mvnw verify -pl pm-mock-runtime -am`: `BUILD SUCCESS` in 2:39 min. 1198 tests ran (`pm-api` 692,
+`pm-mock-runtime` 506), with 0 failures, 0 errors, and 0 skipped.
+|===
+
+[#dependencies]
+== Verify-First: The Dependency Plans
+
+Every check depends on plans of the epic `ui-improvements`. Each of them has a landing commit on `main`. Only PLAN-86
+names its plan id in the commit subject. The others were matched through the pull request that the epic's ledger
+records for the plan.
+
+[cols="1,2,1,1",options="header"]
+|===
+|Plan |Subject |Pull request |Commit on `main`
+
+|PLAN-03
+|mock scenario states
+|#253
+|`4efa0314`
+
+|PLAN-06
+|shared display vocabulary
+|#249
+|`a9513530`
+
+|PLAN-08
+|use-case documents
+|#259 (and #128 in `plan-marshall-documentation`)
+|`eba84c17`
+
+|PLAN-11
+|mock fixes for the terminal client
+|#269
+|`bae3a8c8`
+
+|PLAN-76
+|shared port assignment
+|#243
+|`15b7780c`
+
+|PLAN-82
+|needs and find contract
+|#284
+|`7d7b4d71`
+
+|PLAN-86
+|shared error texts
+|#283
+|`1b6c6ae3`
+|===
+
+Verdict: `pass`. No check is held back by a dependency.
+
+[#checks]
+== The Checks
+
+[cols="1,1,4,2",options="header"]
+|===
+|Check |Verdict |Evidence |Mock limit
+
+|link:../use-cases/verification.adoc[UC-V-01]
+|`pass`
+|The build is green. `FixtureConsistencyTest` passes: 13 tests, 0 failures. `ScenarioStateContractTest` passes: 6
+tests, 0 failures. It jumps to every state of `running-work`, `projects-and-start`, and `reports-and-system` and
+compares the resource the state concerns with the start state. 29 states are declared equal on purpose. A live sample
+over the socket API gave the same result. `control.pause` changed `/api/v1/plans/fix-relay/actions` (`running` to
+`pausing`), and `control.ready` left it equal to the start. `projects.being-added` changed `/api/v1/projects`, and
+`projects.ready` left it equal. `system.draining` changed `/api/v1/status` (`lifecycle_state` `draining`,
+`drain_remaining_count` 2).
+|The check proves the API resource, not what a view shows (link:../README.adoc#limits[Limits of the Mock]). The live
+walk was a sample, because `GET /mock/state` lists no states; the test covers every state.
+
+|link:../cli/use-cases/verification.adoc[CLI-UC-V-09], mock part
+|`pass`
+|`MockRuntimeEngineTest` (50 tests), `PlanDetailTest` (2 tests), and `PlanViewScenarioTest` (16 tests) pass. A live
+probe of an unknown plan: `GET /api/v1/plans/nope/process` answers `404` with `{"message":"Plan not found: nope",
+"error":"plan_not_found"}`.
+|`GET /api/v1/plans/{id}` without `/process` answers `404 mock_no_route` for every id, also for `fix-relay`. The
+contract resource is `/process`.
+
+|link:../cli/use-cases/verification.adoc[CLI-UC-V-09], walk part
+|`not verified`
+|The check also asks for a walk in a real terminal: the full-screen overview in `reports-and-system` never shows
+"Nothing runs" for a refused request. The walk was not run, because no view of a client was observed in this plan.
+|—
+
+|link:../cli/cross-cutting/verification.adoc[CLI-CC-V-03], rule part
+|`fail`
+|The rule is specified once, in link:../../design/shared/texts-and-languages.adoc#time[Texts and Languages, Time and
+Duration], and no other document states a second rule. But shared design documents write ages in forms the rule does
+not allow. The rule writes an age in a list as `9 d ago`, with the units `s`, `min`, `h`, and `d`, and no unit for
+weeks. link:../../design/shared/work-actions.adoc#review[Actions on Plans and Epics, Reviewing] (line 332) shows
+`2 days ago`. link:../../design/shared/paired-devices.adoc#list[Paired Devices, The List] (line 24) shows
+`last used 5 weeks ago`. link:../../design/shared/project-explorer.adoc[Project Explorer] shows one more age in weeks.
+The designs of the terminal client show the same forms: `15-overview.adoc` (4), `17-projects.adoc` (2),
+`18-starting.adoc` (1), and `08-transcripts-later.adoc` (1) in weeks, and `19-actions.adoc` (2) in days.
+|—
+
+|link:../cli/cross-cutting/verification.adoc[CLI-CC-V-03], table-test part
+|`not verified`
+|The check also asks that `Display.duration` and `Display.time` pass their table tests in both languages. No test of
+`Display.duration` or `Display.time` was run in this plan.
+|—
+
+|link:../cli/cross-cutting/verification.adoc[CLI-CC-V-03], walk part
+|`not verified`
+|The check also asks for a walk in a real terminal: the overview and the plan view show the same age for one plan. The
+walk was not run, because no view of a client was observed in this plan.
+|—
+
+|link:../use-cases/verification.adoc[UC-V-09]
+|`not verified`
+|The check asks that the use cases pass the `doc-review` skill. The skill's parallel corpus reviewers, its fix pass,
+and its discussion with the operator were not run, because this plan only verifies; the operator chose to record the
+check as not verified. What the read-only review of <<review,Review of the Use-Case Documents>> established stands as
+evidence. The five changes are on `main`; the links here point at the verified commit `be5750dd`. They are
+link:{docs}/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7] and link:{docs}/use-cases/03-plans.adoc#UC-PLN-8[UC-PLN-8] (new),
+link:{docs}/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2] (_Several open_, _Own answer confirmed_),
+link:{docs}/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1] (_Needs the terminal_), and
+link:{docs}/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (_Not onboarded yet_), each `AGREED`. The row for
+`UC-PLN` in link:{docs}/UseCases.adoc#index[Use Cases, Use Case Areas] names UC-PLN-7 and UC-PLN-8, both without
+`DRAFT`; UC-PLN-2, UC-PRJ-1, and UC-ONB-1 are existing use cases in modules the index lists as a whole. The status
+`AGREED` is the operator's recorded agreement. The traceability checker of `doc-review` (`trace.py`) reports 0 broken
+links.
+|—
+
+|link:../cli/use-cases/verification.adoc[CLI-UC-V-10]
+|`not verified`
+|The check asks that the use cases pass the `doc-review` skill. The skill's parallel corpus reviewers, its fix pass,
+and its discussion with the operator were not run, because this plan only verifies; the operator chose to record the
+check as not verified. What the read-only review of <<review,Review of the Use-Case Documents>> established stands as
+evidence. Both variations are on `main`, in client-neutral words instead of the proposal's text; the links point at the
+verified commit `be5750dd`. link:{docs}/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7]: "In the terminal client,
+the count of each kind is visible without opening a view, and one act lists every item across projects."
+link:{docs}/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]: "A script asks for the same picture: the terminal client prints
+it as one machine-readable document." Both use cases are `AGREED`. `trace.py` reports 0 broken links.
+|—
+|===
+
+Totals: 8 rows for 5 checks: 2 `pass`, 1 `fail`, 5 `not verified`, and the verify-first step `pass`. CLI-UC-V-09
+has two rows, one for the mock part that ran and one for the walk part that did not. CLI-CC-V-03 has three rows, one
+for the rule part that ran and one each for the table-test part and the walk part that did not.
+
+[#review]
+== Review of the Use-Case Documents
+
+The review for UC-V-09 and CLI-UC-V-10 ran in the main session, read-only. `plan-marshall-documentation` stood at
+`376492c9`; the commit verified for the use cases stays `be5750dd`. `doc/UseCases.adoc` and `doc/use-cases` are
+identical at both commits, so the review read the verified content.
+
+* The traceability checker of the `doc-review` skill ran with explicit roots, with `pm-mcp-core` at
+`4a032949c1ccb62961daec0350161842a8ccf069`:
+`python3 ../plan-marshall-documentation/.claude/skills/doc-review/scripts/trace.py <documentation>/doc <pm-mcp-core>`.
+It reports 0 broken links, no requirement missing from the roadmap (`REQS NOT IN ROADMAP []`), and no undefined
+requirement id referenced (`UNDEFINED REQ IDS REFERENCED []`). Its remaining findings concern watch backlinks
+(`PM-WATCH-DISP-71`, `PM-WATCH-PHASE-127`, `PM-WATCH-JOB-46`, `PM-WATCH-STORE-43`) and requirement ids listed only in
+the specification of model work and timeouts. None concerns the five changed use-case passages.
+
+* The five changed passages (UC-PLN-7, UC-PLN-8, the variations of UC-PLN-2, UC-PRJ-1, and UC-ONB-1) and the variation
+of UC-PLN-4 were read against the commit that introduced them (#128). No defect: all carry the status `AGREED`, the
+index row in `doc/UseCases.adoc` names UC-PLN-7 and UC-PLN-8 without `DRAFT`, the specification anchor
+`needs-operator-list` that UC-PLN-7 links exists, and the two variations of the terminal client are worded
+client-neutrally.
+
+* This result file was reviewed too: its relative links, anchors, and table structure were read. No defect was found.
+This section describes the evidence behind the two rows UC-V-09 and CLI-UC-V-10, which stay `not verified`.
+
+Scope limit: this was a read-only review of the changed passages plus the checker. The skill's parallel corpus
+reviewers, its fix pass, and its one-by-one discussion with the operator were not run, because this plan only
+verifies.
+
+[#matrices]
+== The Verdict Matrices
+
+No verdict moved in link:../use-cases/analysis.adoc#matrix[Use Cases, Analysis] or in
+link:../cli/use-cases/analysis.adoc#matrix[CLI Review, Use Cases, Analysis]. Their verdicts grade how a client shows a
+use case. The checks above prove the contract of the mock and the use-case documents, and none of them observes a view
+of a client.
