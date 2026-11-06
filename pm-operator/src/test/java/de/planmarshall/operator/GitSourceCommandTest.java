@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -45,6 +46,21 @@ class GitSourceCommandTest {
 
     private static final String PROJECT = "pm-mcp-clients";
     private static final String ENTRY = "ent-3f9a2c41";
+
+    /**
+     * @return the number of a pull request; the case state decides what the runtime observes
+     */
+    private static String pullRequestNumber() {
+        return String.valueOf(Generators.integers(1, 99_999).next());
+    }
+
+    /**
+     * @param stateId a case state of the projects-and-start scenario
+     * @return the scenario reference that starts the mock runtime at that state
+     */
+    private static String caseOf(String stateId) {
+        return StandardScenarios.PROJECTS_AND_START + "#" + stateId;
+    }
 
     @Test
     @DisplayName("plan add --pull-request stores the pull request with its changed files untrusted and starts")
@@ -91,6 +107,60 @@ class GitSourceCommandTest {
                             "plan", "add", "--project", PROJECT, "--entry", ENTRY, "--no-input");
 
         assertEquals(StartDialogue.EXIT_MISSING_INPUT, outcome.code(), outcome.rendered());
+    }
+
+    @Test
+    @DisplayName("plan add --pull-request whose pull request is not open stops a --no-input start with exit 3")
+    void pullRequestNotOpen() throws Exception {
+        var outcome = run(caseOf("start.pull-request-not-open"), null,
+                            "plan", "add", "--project", PROJECT, "--entry", ENTRY, "--pull-request", pullRequestNumber(),
+                            "--no-input");
+
+        assertAll(
+                            () -> assertEquals(StartDialogue.EXIT_MISSING_INPUT, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("not open"), outcome.rendered()),
+                            () -> assertFalse(outcome.rendered().contains("has started"), outcome.rendered()));
+    }
+
+    @Test
+    @DisplayName("plan add --pull-request whose pull request is flagged is accepted with the operator's reason")
+    void flaggedPullRequestAccepted() throws Exception {
+        var reason = Generators.letterStrings(8, 24).next();
+
+        var outcome = run(caseOf("start.pull-request-flagged"), "u\n" + reason + "\n\n\n\n",
+                            "plan", "add", "--project", PROJECT, "--entry", ENTRY, "--pull-request", pullRequestNumber());
+
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("flagged"), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains(reason), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("has started"), outcome.rendered()));
+    }
+
+    @Test
+    @DisplayName("plan add --pull-request whose pull request is flagged stops a --no-input start with exit 3")
+    void flaggedPullRequestStopsNoInput() throws Exception {
+        var outcome = run(caseOf("start.pull-request-flagged"), null,
+                            "plan", "add", "--project", PROJECT, "--entry", ENTRY, "--pull-request", pullRequestNumber(),
+                            "--no-input");
+
+        assertAll(
+                            () -> assertEquals(StartDialogue.EXIT_MISSING_INPUT, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("flagged"), outcome.rendered()),
+                            () -> assertFalse(outcome.rendered().contains("has started"), outcome.rendered()));
+    }
+
+    @Test
+    @DisplayName("plan add --local-changes where the landing commits captures the local changes and starts")
+    void localChangesCaptured() throws Exception {
+        var outcome = run(caseOf("start.local-changes-captured"), null,
+                            "plan", "add", "--project", PROJECT, "--entry", ENTRY, "--local-changes", "--no-input");
+
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("2 files changed"), outcome.rendered()),
+                            () -> assertFalse(outcome.rendered().contains("landing.files"), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("has started"), outcome.rendered()));
     }
 
     @Test
