@@ -38,7 +38,13 @@ Source of this plan (read before scoping):
    - Done when:
      - The documents pass the checks of deliverable 1 and the diagram matches the shipped menu (evidence order: `none`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
-
+4. **Shared designs write times in the form of the rule (from the verification of PLAN-18)**
+   - What: `doc/design/shared/texts-and-languages.adoc#time` (lines ~127-194) specifies an age in a list as `9 d ago` / `vor 9 T` with the units `s`, `min`, `h`, `d` and no unit for weeks, but the shared wireframes write other forms (`inbox/plan-18-verify-shared-foundation-001.md`, verified by the orchestrator at `origin/main` 2026-11-06): `work-actions.adoc:332` ("2 days ago"), `paired-devices.adoc:24` ("last used 5 weeks ago"), `project-explorer.adoc:31` ("5 weeks ago"). Rewrite them in the rule's form (`2 d ago`, `35 d ago`); if weeks are wanted, add the unit to the rule first, in the German pack too, and say so in the pull request. The client designs (`terminal-client/08`, `15`, `17`, `18`, `19`) are PLAN-34's deliverable 4.
+   - Persona: plan-marshall:persona-documenter
+   - Skills: pm-documents:ref-asciidoc, pm-documents:ref-documentation
+   - Done when:
+     - `git grep -nE "(weeks?|days?) ago" -- doc/design/shared` names no rendered time (a retention setting in days is not one) (evidence order: `none`)
+     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 ## Standing Constraints
 
 - No new dependency or plugin unless this spec names it as approved by the operator.

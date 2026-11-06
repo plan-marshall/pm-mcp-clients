@@ -48,7 +48,13 @@ Source of this plan (read before scoping):
    - Done when:
      - A test that fails before: a reload with a row menu open and the list scrolled keeps both (evidence order: `test-first`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
-
+5. **One client-level time limit and one truncated-body contract (from the landing of PLAN-100)**
+   - What: PLAN-100 bounded the settings and drain requests with six scattered 15 s constants (`SettingsView` `LOAD_TIMEOUT_MS`; `+layout.svelte` `WITHDRAW_TIMEOUT_MS`, `STOP_NOW_TIMEOUT_MS`, `STATE_REFRESH_TIMEOUT_MS`; `client.ts` `REVOKE_TIMEOUT_MS`, `WITHDRAW_TIMEOUT_MS`) and a `signal ?? AbortSignal.timeout(...)` fallback in `withdrawStop` that the product never uses (`landings/PLAN-100.md` defect 10). Deliverable 2 introduces the client-level limit: collapse these into it and delete the dead fallback. A truncated response body (`res.json()` SyntaxError) gets one error contract in `request()` and is an unknown outcome for the acts that have one (defect 13: CodeRabbit offered an issue, none was opened). A lost response (`network_offline`) is unknown for revoke too: `revokeTimedOut` in `SettingsView.svelte` omits it and does not re-read the list (defect 8).
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
+   - Done when:
+     - Tests that fail before: a truncated body ends in the unknown outcome; a lost revoke response re-reads the list; no per-call 15 s constant remains (`git grep -n "15_000" -- pm-web-app/src` names only the client's limit) (evidence order: `test-first`)
+     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 ## Standing Constraints
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20450 PM_WEB_PORT=20451 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
