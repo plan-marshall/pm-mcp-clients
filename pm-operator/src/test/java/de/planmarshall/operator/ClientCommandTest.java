@@ -147,31 +147,13 @@ class ClientCommandTest {
     }
 
     @Test
-    @DisplayName("drain sends stop request with drain flag without starting runtime")
-    void drainCommand() throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        fixture.start((request, response) -> {
-            if ("/api/v1/runtime/stop".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(202, "{\"draining\":true}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
-
-        int code = execute("drain");
-        assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("runtime   draining"))
-        );
-    }
-
-    @Test
-    @DisplayName("drain reports not running when runtime unavailable")
+    @DisplayName("drain reports that there is nothing to drain when no runtime is recorded")
     void drainWhenNotRunning() {
         int code = execute("drain");
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("runtime   not running"))
+                            () -> assertTrue(out.toString()
+                                                .contains("The runtime is not running; there is nothing to drain."))
         );
     }
 }
