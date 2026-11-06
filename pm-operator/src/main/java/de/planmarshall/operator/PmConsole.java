@@ -918,22 +918,14 @@ public final class PmConsole {
         for (int i = 0; i < line.length(); i++) {
             char c = line.charAt(i);
             if (escaped) {
-                // Only a quote and a backslash are escapes; any other backslash is a literal one,
-                // so a quoted path keeps its separators.
-                if (c != '\\' && c != '"') {
-                    sb.append('\\');
-                }
-                sb.append(c);
+                appendEscaped(sb, c);
                 escaped = false;
             } else if (c == '\\' && inQuotes) {
                 escaped = true;
             } else if (c == '"') {
                 inQuotes = !inQuotes;
             } else if (Character.isWhitespace(c) && !inQuotes) {
-                if (sb.length() > 0) {
-                    args.add(sb.toString());
-                    sb.setLength(0);
-                }
+                flushToken(args, sb);
             } else {
                 sb.append(c);
             }
@@ -941,10 +933,32 @@ public final class PmConsole {
         if (escaped) {
             sb.append('\\');
         }
+        flushToken(args, sb);
+        return args;
+    }
+
+    /**
+     * @param sb the argument being built
+     * @param c  the character that followed a backslash inside a quote
+     */
+    private static void appendEscaped(StringBuilder sb, char c) {
+        // Only a quote and a backslash are escapes; any other backslash is a literal one, so a
+        // quoted path keeps its separators.
+        if (c != '\\' && c != '"') {
+            sb.append('\\');
+        }
+        sb.append(c);
+    }
+
+    /**
+     * @param args the arguments read so far
+     * @param sb   the argument being built
+     */
+    private static void flushToken(List<String> args, StringBuilder sb) {
         if (sb.length() > 0) {
             args.add(sb.toString());
+            sb.setLength(0);
         }
-        return args;
     }
 
     private String getHostname() {
