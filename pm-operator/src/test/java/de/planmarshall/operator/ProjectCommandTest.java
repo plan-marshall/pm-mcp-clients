@@ -24,6 +24,7 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 import org.jline.terminal.impl.DumbTerminal;
 
@@ -65,6 +66,15 @@ class ProjectCommandTest {
 
     private int execute(String... args) {
         var context = new OperatorContext(fixture.environment(), tempDir, true);
+        return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    }
+
+    private int executeGerman(String... args) {
+        var environment = new HashMap<>(fixture.environment());
+        environment.put("LANG", "de_DE.UTF-8");
+        environment.remove("LC_ALL");
+        environment.remove("LC_MESSAGES");
+        var context = new OperatorContext(environment, tempDir, true, ClientEnvironment.capture(environment));
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
 
@@ -286,6 +296,67 @@ class ProjectCommandTest {
         assertAll(
                             () -> assertEquals(1, code),
                             () -> assertTrue(out.toString().contains("Project nonexistent not found."))
+        );
+    }
+
+    @Test
+    @DisplayName("project <id> renders its texts in a German client locale")
+    void projectInspectGerman() throws Exception {
+        var projectId = Generators.letterStrings(4, 12).next();
+        fixture.start((request, response) -> {
+            if (("/api/v1/projects/" + projectId).equals(request.target())) {
+                response.json(200, "{\"project_id\":\"" + projectId + "\",\"display_name\":\"" + projectId
+                                    + "\",\"readiness\":\"ready\",\"needs_operator_count\":0,"
+                                    + "\"active_plans_count\":0,\"active_epics_count\":0,"
+                                    + "\"is_favourite\":false,\"is_released\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeGerman("project", projectId);
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains("Projekt:      " + projectId + " (" + projectId + ")"),
+                                                output),
+                            () -> assertTrue(output.contains("Bereitschaft: bereit"), output),
+                            () -> assertTrue(output.contains("Favorit:      nein"), output),
+                            () -> assertTrue(output.contains("Abgegeben:    ja"), output)
+        );
+    }
+
+    @Test
+    @DisplayName("project <id> not found is reported in a German client locale")
+    void projectInspectNotFoundGerman() throws Exception {
+        var projectId = Generators.letterStrings(4, 12).next();
+        fixture.start((request, response) -> response.send(404, null, ""));
+
+        int code = executeGerman("project", projectId);
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(out.toString().contains("Projekt " + projectId + " nicht gefunden."),
+                                                out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("project favourite confirms in a German client locale")
+    void projectFavouriteGerman() throws Exception {
+        var projectId = Generators.letterStrings(4, 12).next();
+        fixture.start((request, response) -> {
+            if (("/api/v1/projects/" + projectId + "/favourite").equals(request.target())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeGerman("project", "favourite", projectId);
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(out.toString().contains("✓ Projekt " + projectId + " Favorit: an (★)"),
+                                                out.toString())
         );
     }
 
