@@ -293,7 +293,7 @@ public final class RuntimeCommand implements Callable<Integer> {
             body.put("then", "restart");
 
             var response = context.runtime(true).send(
-                                HttpRequest.json("POST", "/api/v1/operator/runtime/stop", JsonTree.write(body)));
+                                HttpRequest.json("POST", OPERATOR_STOP, JsonTree.write(body)));
             if (response.status() == 200 || response.status() == 202) {
                 out.println("runtime   restarting");
                 out.flush();
