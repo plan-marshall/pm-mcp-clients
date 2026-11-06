@@ -31,6 +31,13 @@ Source of this plan (read before scoping):
    - Done when:
      - No proposal is unaccounted for (evidence order: `none`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+3. **Design leftovers of the reports landing (from PLAN-102)**
+   - What: (a) `doc/design/web-app/components.adoc` ~59 names `PLAN-100` in lasting design text: state the reason without a plan number. (b) `RowMenu` skips disabled entries on the arrow keys while `components.adoc` ~80 says the ActionBar's arrow keys reach disabled entries with their reason: name the divergence or remove it. (c) `doc/resources/diagrams/web-component-row-menu.svg` draws "Copy link" and "Archive", which the product menu does not have, and its annotation labels (x=290 in a 360-wide viewBox) probably clip: redraw from the shipped menu. (d) The reports token filter (`queryTokens`, a token with a letter or digit) is local to `ReportsView`; state the shared filter rule once in the design and in `utils/filterText.ts`, so other filterable views treat "..." the same way (`landings/PLAN-102.md` defects 14 and 16).
+   - Persona: plan-marshall:persona-documenter
+   - Skills: pm-documents:ref-asciidoc, pm-documents:ref-documentation, pm-documents:ref-svg-diagrams
+   - Done when:
+     - The documents pass the checks of deliverable 1 and the diagram matches the shipped menu (evidence order: `none`)
+     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 ## Standing Constraints
 

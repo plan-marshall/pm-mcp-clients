@@ -41,6 +41,13 @@ Source of this plan (read before scoping):
      - e2e: `/plans/does-not-exist` shows the pattern; stopping the mock shows it within 15 s with "Try again" (evidence order: `test-first`)
      - Browser check (Playwright MCP) shows this deliverable's change as specified on: `/plans/does-not-exist`; `/start` for an unknown project; stopping the mock while a view loads shows the pattern within 15 s; baseline and after snapshots plus screenshots recorded (evidence order: `none`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
+4. **A reload keeps the list on screen (from the landing of PLAN-102)**
+   - What: `ReportsView.svelte` (~67-70) replaces the whole list pane with a `Skeleton` on every `loadReports()` (a `report.sent` without ids, a retry): an open `RowMenu`, the scroll position and the focus inside the list are lost, and PLAN-102's stable-page fix covered the detail and the filter only (`landings/PLAN-102.md` defect 15). Give the loading pattern of deliverable 3 a refresh form that keeps the rows, the scroll position and an open menu while the data reloads, and use it on the reports list.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
+   - Done when:
+     - A test that fails before: a reload with a row menu open and the list scrolled keeps both (evidence order: `test-first`)
+     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 
 ## Standing Constraints
 
@@ -77,7 +84,7 @@ Source of this plan (read before scoping):
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-35` (`web-data-components`), `PLAN-39` (`web-app-shell`, shipped), `PLAN-76` (`shared-port-assignment`, shipped), `PLAN-86` (`shared-error-texts`), `PLAN-09` (`displayError`)
-- Overlaps with: none known at staging
+- Overlaps with: `PLAN-105` (reports view and row menu; whichever starts second rebases)
 - Adjacent to: none
 
 ## Hand-Off Command
