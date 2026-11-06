@@ -42,7 +42,13 @@ Source of this plan (read before scoping):
      - Terminal check (screen capture) shows this deliverable's change as specified on: `running-work` in both locales: overview, plan view, printed epic, reports, system, ended work, `questions` — one title per plan, no raw id, link name, `-` placeholder or ISO time; before and after captures recorded (evidence order: `none`)
      - Browser regression check (Playwright MCP) on `fully-onboarded` and `running-work`: the web views that render the changed catalogue areas (common) show the new texts with no missing or raw key; snapshots and screenshots recorded (evidence order: `none`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
-
+4. **The client designs write times in the form of the rule (from the verification of PLAN-18)**
+   - What: the shared rule (`doc/design/shared/texts-and-languages.adoc#time`: `9 d ago`, units `s`, `min`, `h`, `d`, no weeks) is what `Display.time` and `Display.duration` render, but the terminal-client designs show other forms (verified by the orchestrator at `origin/main` 2026-11-06): `08-transcripts-later.adoc:314` ("5 weeks ago"), `15-overview.adoc:569, 570, 584, 585` ("2 weeks ago", "3 weeks ago"), `17-projects.adoc:53, 366` ("5 weeks ago"), `18-starting.adoc:209` ("3 weeks ago"), `19-actions.adoc:330, 368` ("5 days ago", "2 days ago"). Rewrite them in the rule's form so the transcripts equal what the code prints (the transcripts are compared by tests where a `.transcript` file exists: change both). The shared wireframes are PLAN-74's deliverable 4. `19-actions.adoc` is also edited by `PLAN-97`: start after it has landed or rebase on it.
+   - Persona: plan-marshall:persona-documenter
+   - Skills: pm-documents:ref-asciidoc, pm-documents:ref-documentation
+   - Done when:
+     - `git grep -nE "(weeks?|days?) ago" -- doc/design/terminal-client` names no rendered time (evidence order: `none`)
+     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 ## Standing Constraints
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-operator verify -Pintegration-tests`, `./mvnw -pl pm-api verify`.
