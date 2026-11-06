@@ -671,9 +671,15 @@ export function lifecycleEpochOf(): number {
   return lifecycleEpoch;
 }
 
+/** Advances the lifecycle epoch, so older snapshots cannot overwrite a newer act or event. */
+export function advanceLifecycleEpoch(): number {
+  lifecycleEpoch += 1;
+  return lifecycleEpoch;
+}
+
 /** The runtime's lifecycle: a drain, a withdrawn drain, or a stop. */
 function handleLifecycleEvent(event: string, data: unknown): void {
-  lifecycleEpoch += 1;
+  advanceLifecycleEpoch();
   if (event === 'runtime.draining') {
     const payload = (data || {}) as {
       who?: string;

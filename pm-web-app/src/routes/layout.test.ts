@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import { get } from 'svelte/store';
+import { messagesStore } from '../lib/i18n';
 import Layout from './+layout.svelte';
 import { apiClient, type ReportsPage, type StatusResponse } from '../lib/api/client';
 import { runtimeStore, handleRuntimeEvent } from '../lib/stores/runtime';
@@ -395,7 +396,7 @@ describe('the app shell', () => {
     expect(withdraw).toHaveBeenCalledWith(expect.any(AbortSignal));
     expect(timeout).toHaveBeenCalledWith(15_000);
     expect(await screen.findByTestId('draining-failure')).toHaveTextContent(
-      'The stop could not be withdrawn',
+      'The withdrawal was sent but not confirmed; check the runtime state.',
     );
     await waitFor(() => {
       expect(withdrawAct).toBeEnabled();
@@ -405,6 +406,143 @@ describe('the app shell', () => {
     await waitFor(() =>
       expect(status.mock.calls.some((call) => call[0] instanceof AbortSignal)).toBe(true),
     );
+  });
+
+  it('shows the unknown withdraw notice on timeout or connection loss in en', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...STATUS,
+      lifecycle_state: 'draining',
+      draining_by: 'the console',
+      drain_remaining_items: ['build of fix-relay'],
+    });
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isDraining: true,
+        drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
+      }),
+    );
+    vi.spyOn(apiClient, 'withdrawStop').mockRejectedValue(
+      new DOMException('The operation timed out.', 'TimeoutError'),
+    );
+
+    render(Layout);
+    const banner = await screen.findByTestId('draining-banner');
+    await fireEvent.click(within(banner).getByRole('button', { name: 'Withdraw the stop' }));
+
+    expect(await screen.findByTestId('draining-failure')).toHaveTextContent(
+      'The withdrawal was sent but not confirmed; check the runtime state.',
+    );
+  });
+
+  it('shows the unknown withdraw notice on timeout or connection loss in de', async () => {
+    messagesStore.set(loadMessages('de'));
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...STATUS,
+      lifecycle_state: 'draining',
+      draining_by: 'the console',
+      drain_remaining_items: ['build of fix-relay'],
+    });
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isDraining: true,
+        drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
+      }),
+    );
+    vi.spyOn(apiClient, 'withdrawStop').mockRejectedValue(
+      new DOMException('The operation timed out.', 'TimeoutError'),
+    );
+
+    render(Layout);
+    const banner = await screen.findByTestId('draining-banner');
+    await fireEvent.click(within(banner).getByRole('button', { name: 'Ziehe den Stopp zurück' }));
+
+    expect(await screen.findByTestId('draining-failure')).toHaveTextContent(
+      'Die Rücknahme wurde gesendet, aber nicht bestätigt; prüfe den Zustand der Runtime.',
+    );
+  });
+
+  it('does not let a stale refresh snapshot overwrite a later successful withdraw', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    let resolveStaleStatus: (value: StatusResponse) => void = () => {};
+    const staleStatusPromise = new Promise<StatusResponse>((resolve) => {
+      resolveStaleStatus = resolve;
+    });
+
+    vi.spyOn(apiClient, 'getStatus').mockImplementation((signal) => {
+      if (signal instanceof AbortSignal) {
+        return staleStatusPromise;
+      }
+      return Promise.resolve({
+        ...STATUS,
+        lifecycle_state: 'draining',
+        draining_by: 'the console',
+        drain_remaining_items: ['build of fix-relay'],
+      });
+    });
+
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isDraining: true,
+        drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
+      }),
+    );
+
+    vi.spyOn(apiClient, 'withdrawStop')
+      .mockRejectedValueOnce(new DOMException('The operation timed out.', 'TimeoutError'))
+      .mockResolvedValueOnce(undefined);
+
+    render(Layout);
+    const banner = await screen.findByTestId('draining-banner');
+    const withdrawBtn = within(banner).getByRole('button', { name: 'Withdraw the stop' });
+
+    // First attempt times out -> outcomeUnknown -> starts refreshLifecycle() with staleStatusPromise
+    await fireEvent.click(withdrawBtn);
+    expect(await screen.findByTestId('draining-failure')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(withdrawBtn).toBeEnabled();
+    });
+
+    // Second attempt succeeds -> should advance epoch and clear draining in store
+    await fireEvent.click(withdrawBtn);
+    await waitFor(() => {
+      expect(get(runtimeStore).isDraining).toBe(false);
+    });
+
+    // The stale refresh read finally resolves with draining state
+    resolveStaleStatus({
+      ...STATUS,
+      lifecycle_state: 'draining',
+      draining_by: 'the console',
+      drain_remaining_items: ['build of fix-relay'],
+    });
+
+    // Allow promise microtasks to process
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Assert: stale snapshot did not re-enable draining
+    expect(get(runtimeStore).isDraining).toBe(false);
+    expect(screen.queryByTestId('draining-banner')).not.toBeInTheDocument();
   });
 
   it('treats a lost stop-now response as an unknown outcome and reads the state again', async () => {

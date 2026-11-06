@@ -7,6 +7,7 @@
     runtimeStore,
     initRuntime,
     adoptRouteFromLocation,
+    advanceLifecycleEpoch,
     lifecycleEpochOf,
     lifecycleFieldsOf,
     routeParamsOf,
@@ -129,11 +130,15 @@
     try {
       // The bound belongs to the act: a DELETE the runtime never answers must let go of the bar.
       await apiClient.withdrawStop(AbortSignal.timeout(WITHDRAW_TIMEOUT_MS));
+      advanceLifecycleEpoch();
       runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
     } catch (err: unknown) {
-      drainingFailure = $t('system.stopping.withdraw_failed', { reason: refusalOf(err) });
+      const unknown = outcomeUnknown(err);
+      drainingFailure = unknown
+        ? $t('system.stopping.withdraw_unknown')
+        : $t('system.stopping.withdraw_failed', { reason: refusalOf(err) });
       // A response that never arrived may still be a withdrawal: read what the runtime does.
-      if (outcomeUnknown(err)) void refreshLifecycle();
+      if (unknown) void refreshLifecycle();
     } finally {
       drainingBusy = false;
     }
@@ -152,6 +157,7 @@
     try {
       await apiClient.stopRuntime('now', undefined, AbortSignal.timeout(STOP_NOW_TIMEOUT_MS));
       stopNowConfirm = false;
+      advanceLifecycleEpoch();
       // The stop ends the drain; the lifecycle event may be missed on a dropped stream.
       runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
     } catch (err: unknown) {
