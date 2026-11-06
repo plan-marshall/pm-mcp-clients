@@ -7807,7 +7807,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         response.json(409, Map.of(
                 KEY_ERROR, ApiErrorCode.ENROLMENT_TAMPERED.wire(),
                 KEY_MESSAGE, "The enrolment file of " + projectId + " fails its integrity check; review and accept it: "
-                        + command,
+                + command,
                 KEY_PROJECT_ID, projectId,
                 "command", command));
         return true;
