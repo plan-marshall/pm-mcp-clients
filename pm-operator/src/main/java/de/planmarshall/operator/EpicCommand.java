@@ -103,10 +103,8 @@ public final class EpicCommand implements Callable<Integer> {
                         var epic = EpicProcess.fromJson(body);
                         printEpicProcess(out, epic);
                         return 0;
-                    }
-                    /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-                    catch (Exception ignored) {
-                        // Fall through to print bodyText
+                    } catch (IOException _) {
+                        // Not an epic process the parser can read: fall through to print bodyText
                     }
                 }
                 out.println(body);
