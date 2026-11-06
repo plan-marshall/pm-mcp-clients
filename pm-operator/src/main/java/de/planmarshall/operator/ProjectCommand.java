@@ -52,7 +52,9 @@ public final class ProjectCommand implements Callable<Integer> {
 
     private static final String PROJECTS_API = "/api/v1/projects/";
     private static final String PATH_ENROL = "/api/v1/enrol";
-    private static final String FMT_PROJECT_NOT_FOUND = "Project %s not found.%n";
+    private static final String KEY_PROJECT_NOT_FOUND = "operator.project.not_found";
+    private static final String PARAM_PROJECT = "project";
+    private static final String PARAM_VALUE = "value";
     private static final String ERR_ENROLMENT_ROOT_CONFLICT = "enrolment_root_conflict";
     private static final String ERR_PROJECT_STORE_ROOT_MISMATCH = "project_store_root_mismatch";
     private static final String ERR_SCOPE_ACTIVE = "scope_active";
@@ -85,7 +87,8 @@ public final class ProjectCommand implements Callable<Integer> {
         var out = spec.commandLine().getOut();
 
         if (response.status() == 404) {
-            out.printf(FMT_PROJECT_NOT_FOUND, OutputSafety.stripControlSequences(projectId));
+            out.println(MessageCatalogue.format(KEY_PROJECT_NOT_FOUND,
+                                Map.of(PARAM_PROJECT, OutputSafety.stripControlSequences(projectId))));
             out.flush();
             return 1;
         }
@@ -104,26 +107,36 @@ public final class ProjectCommand implements Callable<Integer> {
         var pId = OutputSafety.stripControlSequences(project.projectId());
         var remote = project.remoteUrl() != null ? OutputSafety.stripControlSequences(project.remoteUrl()) : "";
         var readiness = switch (project.readiness()) {
-            case READY -> "ready";
-            case RELEASED -> "released";
-            case SETUP_NEEDS -> "setup needs: " + OutputSafety.stripControlSequences(
-                                project.setupNeedsSummary() != null ? project.setupNeedsSummary() : "setup");
+            case READY -> MessageCatalogue.get("operator.project.readiness.ready");
+            case RELEASED -> MessageCatalogue.get("operator.project.readiness.released");
+            case SETUP_NEEDS -> MessageCatalogue.format("operator.project.readiness.setup_needs",
+                                Map.of("summary", OutputSafety.stripControlSequences(project.setupNeedsSummary() != null
+                                                    ? project.setupNeedsSummary()
+                                                    : MessageCatalogue.get("operator.project.readiness.setup"))));
         };
+        var yes = MessageCatalogue.get("operator.project.detail.yes");
+        var no = MessageCatalogue.get("operator.project.detail.no");
 
-        out.println("Project:   " + name + " (" + pId + ")");
+        out.println(MessageCatalogue.format("operator.project.detail.project", Map.of("name", name, "id", pId)));
         if (!remote.isBlank()) {
-            out.println("Remote:    " + remote);
+            out.println(MessageCatalogue.format("operator.project.detail.remote", Map.of("remote", remote)));
         }
-        out.println("Readiness: " + readiness);
+        out.println(MessageCatalogue.format("operator.project.detail.readiness", Map.of("readiness", readiness)));
         if (project.needsOperatorCount() > 0) {
-            out.println("Operator:  needs you: " + project.needsOperatorCount());
+            out.println(MessageCatalogue.format("operator.project.detail.operator",
+                                Map.of("count", String.valueOf(project.needsOperatorCount()))));
         }
-        out.println("Work:      " + project.activePlansCount() + " plans · " + project.activeEpicsCount() + " epics");
+        out.println(MessageCatalogue.format("operator.project.detail.work",
+                            Map.of("plans", String.valueOf(project.activePlansCount()),
+                                                "epics", String.valueOf(project.activeEpicsCount()))));
         if (project.lastActive() != null) {
-            out.println("Last seen: " + ProjectsCommand.formatRelativeTime(project.lastActive()));
+            out.println(MessageCatalogue.format("operator.project.detail.last_seen",
+                                Map.of("when", ProjectsCommand.formatRelativeTime(project.lastActive()))));
         }
-        out.println("Favourite: " + (project.isFavourite() ? "yes (★)" : "no"));
-        out.println("Released:  " + (project.isReleased() ? "yes" : "no"));
+        out.println(MessageCatalogue.format("operator.project.detail.favourite", Map.of(PARAM_VALUE,
+                            project.isFavourite() ? MessageCatalogue.get("operator.project.detail.favourite_yes") : no)));
+        out.println(MessageCatalogue.format("operator.project.detail.released",
+                            Map.of(PARAM_VALUE, project.isReleased() ? yes : no)));
         out.flush();
     }
 
@@ -279,7 +292,9 @@ public final class ProjectCommand implements Callable<Integer> {
             var response = context.runtime(true).send(HttpRequest.json("PUT", path, JsonTree.write(body)));
             var out = spec.commandLine().getOut();
             if (response.status() == 200 || response.status() == 204) {
-                out.printf("✓ Project %s favourite: %s%n", sanitizedId, off ? "off" : "on (★)");
+                var state = MessageCatalogue.get(off ? "operator.project.favourite.off" : "operator.project.favourite.on");
+                out.println(MessageCatalogue.format("operator.project.favourite.done",
+                                    Map.of(PARAM_PROJECT, sanitizedId, "state", state)));
                 out.flush();
                 return 0;
             }
@@ -324,15 +339,17 @@ public final class ProjectCommand implements Callable<Integer> {
 
             if (reason == null || reason.isBlank()) {
                 if (noInput) {
-                    err.println("Release reason required (--reason)");
+                    err.println(MessageCatalogue.get("operator.project.release.reason_required"));
                     err.flush();
                     return EXIT_NEEDS_INPUT;
                 }
+                // The reason the release request records when the operator gave none: a value of the
+                // request the runtime stores, not a text the terminal shows.
                 reason = "Released by operator";
             }
 
             if (!yes && noInput) {
-                err.println("Release confirmation required (--yes)");
+                err.println(MessageCatalogue.get("operator.project.release.confirm_required"));
                 err.flush();
                 return EXIT_NEEDS_INPUT;
             }
@@ -341,17 +358,19 @@ public final class ProjectCommand implements Callable<Integer> {
             var path = PROJECTS_API + safeId + "/release";
             var response = context.runtime(true).send(HttpRequest.json("POST", path, req.toJson()));
             if (response.status() == 200 || response.status() == 204) {
-                out.printf("✓ %s released%n", sanitizedId);
+                out.println(MessageCatalogue.format("operator.project.release.done",
+                                    Map.of(PARAM_PROJECT, sanitizedId)));
                 out.flush();
                 return 0;
             }
             if (response.status() == 404) {
-                err.printf(FMT_PROJECT_NOT_FOUND, sanitizedId);
+                err.println(MessageCatalogue.format(KEY_PROJECT_NOT_FOUND, Map.of(PARAM_PROJECT, sanitizedId)));
                 err.flush();
                 return 1;
             }
             if (response.status() == 409) {
-                err.printf("✗ %s was not released: release landing pending. Nothing was ended.%n", sanitizedId);
+                err.println(MessageCatalogue.format("operator.project.release.pending",
+                                    Map.of(PARAM_PROJECT, sanitizedId)));
                 err.flush();
                 return 1;
             }
