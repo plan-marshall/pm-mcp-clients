@@ -167,6 +167,8 @@ A figure that counts things leads to them, in one step, where the clients have a
 
 Gauges (memory, CPU, disk, uptime) lead nowhere; their detail is the figure's line of details (what it measures, since when).
 
+*What a drain still runs is the one figure that is not a step, and the design says so rather than promising a step it cannot take*: the draining line names at most three items and counts the rest (<<draining>>), and those names are text. The runtime sends the names of what it still runs (`drain_remaining_items`) and no identifier or route for each one, so no client can lead to the view of an item; the step arrives the day the runtime serves one, and until then a name is not drawn as a control.
+
 [#persistence]
 === Where the Operator Left It
 

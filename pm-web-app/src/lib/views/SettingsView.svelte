@@ -24,6 +24,8 @@
   let renamingId: string | null = null;
   let renameValue = '';
   let lanListenerOn = true;
+  /** Whether the status read said how the listener stands; a failed read leaves it unknown. */
+  let listenerKnown = false;
   let lanModalOpen = false;
   let pendingRevokeTarget: PairedDevice | 'others' | null = null;
   /** Whether the confirmed revoke runs; the dialog stays open and refuses a second confirm. */
@@ -34,6 +36,13 @@
   /** The moment the ages are measured at; a quiet timer moves it so an idle list stays true. */
   let clock = Date.now();
   let clockTimer: ReturnType<typeof setInterval> | null = null;
+
+  /** How long the devices and the status may take before the view says the read failed. */
+  const LOAD_TIMEOUT_MS = 15_000;
+  /** The read in flight, aborted when a newer one starts. */
+  let loadController: AbortController | null = null;
+  /** The number of the newest read; an older answer never reaches the view. */
+  let loadSequence = 0;
 
   onMount(() => {
     isMounted = true;
@@ -48,6 +57,8 @@
 
   onDestroy(() => {
     isMounted = false;
+    loadController?.abort();
+    loadController = null;
     if (clockTimer !== null) {
       clearInterval(clockTimer);
       clockTimer = null;
@@ -74,25 +85,44 @@
     }
   }
 
+  /**
+   * Reads the devices and the status.
+   *
+   * Every read carries a deadline, so a runtime that never answers ends in the error state rather
+   * than in a spinner; and every read carries its number, so an answer the view no longer waits for
+   * cannot replace a newer list. The read it supersedes is aborted on the way.
+   */
   async function loadData() {
+    if (!isMounted) return;
+    const sequence = ++loadSequence;
+    loadController?.abort();
+    const controller = new AbortController();
+    loadController = controller;
     isLoading = true;
     loadError = false;
     try {
+      const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(LOAD_TIMEOUT_MS)]);
       const [devList, status] = await Promise.all([
-        apiClient.getDevices(),
-        apiClient.getStatus().catch(() => null),
+        apiClient.getDevices(signal),
+        apiClient.getStatus(signal).catch(() => null),
       ]);
-      if (!isMounted) return;
+      if (!isMounted || sequence !== loadSequence) return;
       devices = Array.isArray(devList) ? devList : [];
-      if (status?.web && typeof status.web.lan === 'boolean') {
-        lanListenerOn = status.web.lan;
+      listenerKnown = Boolean(status?.web && typeof status.web.lan === 'boolean');
+      if (listenerKnown) {
+        lanListenerOn = status?.web?.lan === true;
       }
     } catch {
-      if (!isMounted) return;
+      // The status read behind this one has nothing left to say: end it here.
+      controller.abort();
+      if (!isMounted || sequence !== loadSequence) return;
       loadError = true;
       devices = [];
+      // Nothing says how the listener stands any more: the earlier answer is not a current one.
+      listenerKnown = false;
     } finally {
-      if (isMounted) {
+      if (isMounted && sequence === loadSequence) {
+        loadController = null;
         isLoading = false;
       }
     }
@@ -416,7 +446,9 @@
 
     <div class="listener-bar" data-testid="listener-bar">
       <span class="listener-status" data-testid="listener-status">
-        {$t('devices.list.listener', { state: lanListenerOn ? 'on' : 'off' })}.
+        {$t(listenerKnown ? 'devices.list.listener' : 'devices.list.listener_unknown', {
+          state: lanListenerOn ? 'on' : 'off',
+        })}.
       </span>
       <div class="listener-actions">
         <Button
@@ -426,7 +458,7 @@
         >
           {$t('entry.lan.title')}
         </Button>
-        {#if lanListenerOn}
+        {#if listenerKnown && lanListenerOn}
           <Button variant="secondary" on:click={turnListenerOff} data-testid="listener-off-button">
             {$t('devices.act.listener_off')}
           </Button>

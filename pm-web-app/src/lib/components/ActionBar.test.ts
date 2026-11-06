@@ -151,6 +151,32 @@ describe('ActionBar', () => {
     expect(onAct).not.toHaveBeenCalled();
   });
 
+  it('keeps the reason of a disabled menu entry out of the menu itself', async () => {
+    render(ActionBar, {
+      props: {
+        acts: [
+          { id: 'next', label: 'Next' },
+          { id: 'pause', label: 'Pause' },
+          { id: 'chat', label: 'Chat' },
+          { id: 'settings', label: 'Settings' },
+          { id: 'later', label: 'Later', disabled: true, disabledReason: 'Not yet' },
+        ],
+      },
+    });
+
+    await fireEvent.click(screen.getByTestId('action-bar-overflow'));
+    const menu = screen.getByRole('menu');
+    // A menu holds menu items; the reason is described, not drawn as an entry of its own.
+    expect(menu.querySelector('span')).toBeNull();
+
+    const later = screen.getByRole('menuitem', { name: 'Later' });
+    const describedBy = later.getAttribute('aria-describedby');
+    expect(describedBy).toBeTruthy();
+    expect(document.getElementById(describedBy as string)).toHaveTextContent('Not yet');
+    // The described element sits outside the menu, whatever element carries it.
+    expect(menu.contains(document.getElementById(describedBy as string))).toBe(false);
+  });
+
   it('closes on Tab and gives the focus back to the button', async () => {
     render(ActionBar, { props: { acts: FIVE_ACTS } });
     const overflow = screen.getByTestId('action-bar-overflow');

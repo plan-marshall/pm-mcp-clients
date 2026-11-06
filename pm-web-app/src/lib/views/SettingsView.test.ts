@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { tick } from 'svelte';
 import { get } from 'svelte/store';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import SettingsView from './SettingsView.svelte';
@@ -12,6 +13,17 @@ import { apiClient } from '../api/client';
  */
 function deviceRow(id: string): HTMLElement {
   return screen.getByTestId(`device-row-${id}`);
+}
+
+/**
+ * Lets every microtask a read's chain needs run: the promise reactions of `Promise.all`, the
+ * component's continuation, and Svelte's own flush.
+ */
+async function settleMicrotasks(): Promise<void> {
+  for (let step = 0; step < 6; step += 1) {
+    await Promise.resolve();
+  }
+  await tick();
 }
 
 describe('SettingsView component', () => {
@@ -156,6 +168,34 @@ describe('SettingsView component', () => {
     await waitFor(() => expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument());
   });
 
+  it('refuses a confirm that reaches the revoke handler past the busy button', async () => {
+    // Arrange: the revoke runs, so the confirm button is disabled while the guard is what refuses.
+    let settle: () => void = () => {};
+    const pending = new Promise<void>((resolve) => {
+      settle = resolve;
+    });
+    const revokeSpy = vi.spyOn(apiClient, 'revokeDevice').mockReturnValue(pending);
+
+    render(SettingsView);
+    await waitFor(() => {
+      expect(within(deviceRow('dev-2')).getByTestId('action-bar-overflow')).toBeInTheDocument();
+    });
+    await fireEvent.click(within(deviceRow('dev-2')).getByTestId('action-bar-overflow'));
+    await fireEvent.click(await within(deviceRow('dev-2')).findByTestId('action-revoke'));
+
+    const confirm = await screen.findByTestId('confirm-dialog-confirm');
+    await fireEvent.click(confirm);
+    expect(revokeSpy).toHaveBeenCalledOnce();
+
+    // A click dispatched on the disabled button still reaches the view's handler.
+    confirm.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+    // The revoke is sent once: the dialog's busy prop and the view's own guard both stand against
+    // a second send, and either alone must keep the request single.
+    expect(revokeSpy).toHaveBeenCalledOnce();
+    settle();
+  });
+
   it('asks for the typed name before revoking all other devices', async () => {
     const revokeOthersSpy = vi.spyOn(apiClient, 'revokeOtherDevices').mockResolvedValue();
 
@@ -228,6 +268,119 @@ describe('SettingsView component', () => {
 
     await waitFor(() => expect(screen.getByTestId('lan-listener-modal')).toBeInTheDocument());
     expect(screen.getByTestId('lan-fingerprint')).toHaveTextContent('4F:1A:9C');
+  });
+
+  it('ends a devices read that times out in the error state instead of waiting for it', async () => {
+    // Arrange: the read is handed a signal, and it answers with the error a real timeout produces.
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+    const signals: (AbortSignal | undefined)[] = [];
+    vi.spyOn(apiClient, 'getDevices').mockImplementation((signal?: AbortSignal) => {
+      signals.push(signal);
+      return Promise.reject(new DOMException('The operation timed out.', 'TimeoutError'));
+    });
+
+    // Act
+    render(SettingsView);
+
+    // Assert: the bound is carried into the read, and its timeout ends in the error state.
+    expect(await screen.findByText('The paired devices could not be loaded.')).toBeInTheDocument();
+    expect(signals[0]).toBeInstanceOf(AbortSignal);
+    expect(timeout).toHaveBeenCalledWith(15_000);
+  });
+
+  it('keeps the newer list when an older read answers after it', async () => {
+    // Arrange: the first read answers; the reads the two timed-out revokes start stay open.
+    const newerDevice = {
+      device_id: 'dev-3',
+      label: 'Chrome on build-box',
+      paired_from: 'network',
+      created_at: '2026-06-01T10:00:00Z',
+      last_used_at: '2026-10-20T09:00:00Z',
+    };
+    const pending: Array<(rows: typeof mockDevices) => void> = [];
+    vi.spyOn(apiClient, 'getDevices')
+      .mockResolvedValueOnce(mockDevices)
+      .mockImplementation(
+        () =>
+          new Promise<typeof mockDevices>((resolve) => {
+            pending.push(resolve);
+          }),
+      );
+    vi.spyOn(apiClient, 'revokeDevice').mockRejectedValue(
+      new DOMException('The operation timed out.', 'TimeoutError'),
+    );
+
+    render(SettingsView);
+    await waitFor(() => expect(within(deviceRow('dev-2')).getByTestId('action-bar-overflow')));
+
+    // The first timed-out revoke starts the older read.
+    await fireEvent.click(within(deviceRow('dev-2')).getByTestId('action-bar-overflow'));
+    await fireEvent.click(await within(deviceRow('dev-2')).findByTestId('action-revoke'));
+    await fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+
+    // The second starts the newer one.
+    await fireEvent.click(screen.getByTestId('confirm-dialog-confirm'));
+    expect(pending).toHaveLength(2);
+
+    // Act: the newer read answers, then the older one answers late.
+    pending[1]([mockDevices[0], newerDevice]);
+    expect(await screen.findByText('Chrome on build-box')).toBeInTheDocument();
+    pending[0]([mockDevices[0]]);
+
+    // Assert: the late answer never replaces what the newer read brought. The older read's chain
+    // runs through promise reactions and Svelte's own microtask flush, so the assertions wait for
+    // that chain to reach its end instead of racing it.
+    await settleMicrotasks();
+    expect(screen.queryByText('Safari on iPad')).not.toBeInTheDocument();
+    expect(screen.getByText('Chrome on build-box')).toBeInTheDocument();
+  });
+
+  it('bounds the read after a timed-out revoke and ends it in the error state', async () => {
+    // Arrange: the revoke gives up on its deadline, and the recovery read gives up too.
+    const signals: (AbortSignal | undefined)[] = [];
+    vi.spyOn(apiClient, 'revokeDevice').mockRejectedValue(
+      new DOMException('The operation timed out.', 'TimeoutError'),
+    );
+    vi.spyOn(apiClient, 'getDevices').mockImplementation((signal?: AbortSignal) => {
+      signals.push(signal);
+      return signals.length === 1
+        ? Promise.resolve(mockDevices)
+        : Promise.reject(new DOMException('The operation timed out.', 'TimeoutError'));
+    });
+
+    render(SettingsView);
+    await waitFor(() => expect(within(deviceRow('dev-2')).getByTestId('action-bar-overflow')));
+
+    // Act: the revoke times out and asks for the list again.
+    await fireEvent.click(within(deviceRow('dev-2')).getByTestId('action-bar-overflow'));
+    await fireEvent.click(await within(deviceRow('dev-2')).findByTestId('action-revoke'));
+    await fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+
+    // Assert: the recovery read is bounded, and its failure is the error state.
+    expect(await screen.findByText('The paired devices could not be loaded.')).toBeInTheDocument();
+    expect(signals).toHaveLength(2);
+    expect(signals[1]).toBeInstanceOf(AbortSignal);
+    // The listener state the first read carried is not a current one any more.
+    expect(screen.getByTestId('listener-status')).toHaveTextContent('Network listener: unknown.');
+  });
+
+  it('shows an unknown listener state when the status read fails', async () => {
+    // Arrange: the devices answer, the status does not — so nothing says how the listener stands.
+    const reads: (AbortSignal | undefined)[] = [];
+    vi.spyOn(apiClient, 'getStatus').mockImplementation((signal?: AbortSignal) => {
+      reads.push(signal);
+      return Promise.reject(new DOMException('The operation timed out.', 'TimeoutError'));
+    });
+
+    // Act
+    render(SettingsView);
+
+    // Assert: an unknown state, never "on", and no act that would act on the guess.
+    expect(await screen.findByText('Firefox on mbp-oliver')).toBeInTheDocument();
+    expect(screen.getByTestId('listener-status')).toHaveTextContent('Network listener: unknown.');
+    expect(screen.queryByTestId('listener-off-button')).not.toBeInTheDocument();
+    // The status read is bounded like the devices read beside it.
+    expect(reads[0]).toBeInstanceOf(AbortSignal);
   });
 
   it('returns to the route the caller came from on Back', async () => {

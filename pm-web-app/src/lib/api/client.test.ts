@@ -557,6 +557,24 @@ describe('ApiClient', () => {
     expect(client.getSecret()).toBeNull();
   });
 
+  it('gives the withdraw of a stop a deadline of its own when the caller brings none', async () => {
+    // Arrange: a runtime that never answers the DELETE.
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+    let capturedSignal: AbortSignal | undefined;
+    globalThis.fetch = vi.fn().mockImplementation((_url, init) => {
+      capturedSignal = (init as RequestInit)?.signal as AbortSignal | undefined;
+      return new Promise(() => {});
+    });
+
+    // Act: the caller passes no signal, so the client's own bound is the one that applies.
+    void client.withdrawStop();
+
+    // Assert: the request is bounded by the client's 15-second deadline.
+    expect(timeout).toHaveBeenCalledWith(15_000);
+    expect(capturedSignal).toBeInstanceOf(AbortSignal);
+    expect(capturedSignal?.aborted).toBe(false);
+  });
+
   it('reports online again after a failed request and the next success', async () => {
     // Arrange
     const onOffline = vi.fn();

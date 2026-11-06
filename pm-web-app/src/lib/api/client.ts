@@ -43,6 +43,9 @@ export interface StatusResponse {
   version?: string;
   listener?: string;
   onboarded?: boolean;
+  /** The lifecycle, as the daemon's own status resource writes it. */
+  state?: string;
+  /** The lifecycle, as the mock and the tests write it. */
   lifecycle_state?: string;
   draining_by?: string;
   drain_remaining_count?: number;
@@ -2204,12 +2207,12 @@ export class ApiClient {
     return this.request<Record<string, string>>('GET', `/api/v1/messages/${locale}/${area}`);
   }
 
-  public async getStatus(): Promise<StatusResponse> {
-    return this.request<StatusResponse>('GET', '/api/v1/status');
+  public async getStatus(signal?: AbortSignal): Promise<StatusResponse> {
+    return this.request<StatusResponse>('GET', '/api/v1/status', undefined, signal);
   }
 
-  public async getDevices(): Promise<PairedDevice[]> {
-    return this.request<PairedDevice[]>('GET', '/api/v1/web/devices');
+  public async getDevices(signal?: AbortSignal): Promise<PairedDevice[]> {
+    return this.request<PairedDevice[]>('GET', '/api/v1/web/devices', undefined, signal);
   }
 
   public async getOnboardingState(): Promise<OnboardingState> {
@@ -2968,8 +2971,24 @@ export class ApiClient {
     return this.request<{ lifecycle_state: string }>('POST', '/api/v1/runtime/stop', body, signal);
   }
 
-  public async withdrawStop(): Promise<void> {
-    await this.request('DELETE', '/api/v1/runtime/stop');
+  /** How long a withdraw of the stop may wait for the runtime before the request gives up. */
+  private static readonly WITHDRAW_TIMEOUT_MS = 15_000;
+
+  /**
+   * Withdraws the stop.
+   *
+   * The caller's signal bounds the request where it has one; without one the client's own deadline
+   * does, so a runtime that never answers cannot hold the drain acts disabled forever.
+   *
+   * @param signal the caller's bound, where it brings one
+   */
+  public async withdrawStop(signal?: AbortSignal): Promise<void> {
+    await this.request(
+      'DELETE',
+      '/api/v1/runtime/stop',
+      undefined,
+      signal ?? AbortSignal.timeout(ApiClient.WITHDRAW_TIMEOUT_MS),
+    );
   }
 
   public async upgradeRuntime(
