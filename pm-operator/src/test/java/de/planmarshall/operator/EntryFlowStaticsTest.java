@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -78,11 +80,13 @@ class EntryFlowStaticsTest {
     @DisplayName("a read interrupted while waiting interrupts its worker and keeps the flag")
     void anInterruptedWaitInterruptsTheWorker() throws Exception {
         var worker = new AtomicReference<Thread>();
+        var workerStarted = new CountDownLatch(1);
         var workerInterrupted = new AtomicBoolean();
         Thread.currentThread().interrupt();
         try {
             assertThrows(IOException.class, () -> EntryFlow.bounded(() -> {
                 worker.set(Thread.currentThread());
+                workerStarted.countDown();
                 try {
                     Thread.sleep(10_000);
                 } catch (InterruptedException _) {
@@ -92,8 +96,9 @@ class EntryFlowStaticsTest {
                 return "late";
             }, Duration.ofSeconds(5), "interrupted-read"));
             assertTrue(Thread.currentThread().isInterrupted(), "the caller's interrupt flag stays set");
-            // Clear the flag the read left set, so the join below can wait for the worker.
+            // Clear the flag the read left set, so the waits below can wait for the worker.
             Thread.interrupted();
+            assertTrue(workerStarted.await(5, TimeUnit.SECONDS), "the worker must have started");
             worker.get().join(5_000);
             assertTrue(workerInterrupted.get(), "the worker was interrupted, not left running");
         } finally {
