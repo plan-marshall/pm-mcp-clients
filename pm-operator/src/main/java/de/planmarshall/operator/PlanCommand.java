@@ -141,9 +141,8 @@ public final class PlanCommand implements Callable<Integer> {
                         var taskActivity = TaskActivity.fromJson(response.bodyText());
                         printTaskActivity(out, planId, taskActivity);
                         return 0;
-                    }
-                    /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-                    catch (Exception e) {
+                    } catch (IOException _) {
+                        // Not a task activity the parser can read: print the body as it came
                         out.println(response.bodyText());
                         out.flush();
                         return 0;
@@ -173,10 +172,8 @@ public final class PlanCommand implements Callable<Integer> {
                         var tree = ProcessTree.fromJson(body);
                         printProcessTree(out, tree);
                         return 0;
-                    }
-                    /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-                    catch (Exception ignored) {
-                        // Fall through to print bodyText
+                    } catch (IOException _) {
+                        // Not a process tree the parser can read: fall through to print bodyText
                     }
                 }
                 out.println(body);

@@ -11,8 +11,11 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -28,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 @DisplayName("EpicCommand")
+@EnableGeneratorController
 class EpicCommandTest {
 
     @TempDir
@@ -53,8 +57,55 @@ class EpicCommandTest {
     }
 
     private int execute(String... args) {
+        return execute(new PrintWriter(out), args);
+    }
+
+    private int execute(PrintWriter console, String... args) {
         var context = new OperatorContext(fixture.environment(), tempDir, true);
-        return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+        return PmOperator.execute(context, console, new PrintWriter(err), args);
+    }
+
+    private void serveEpicProcess(String epicId, String body) throws IOException {
+        var processPath = "/api/v1/epics/" + epicId + "/process";
+        fixture.start((request, response) -> {
+            if (processPath.equals(request.target())) {
+                response.json(200, body);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    @Test
+    @DisplayName("epic <id> prints a malformed process body as it came")
+    void malformedProcessBodyFallsBack() throws Exception {
+        var epicId = Generators.letterStrings(6, 12).next();
+        var body = "{\"epic_id\":\"" + epicId + "\",\"running_plans\":[";
+        serveEpicProcess(epicId, body);
+
+        int code = execute("epic", epicId);
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(out.toString().contains(body), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("epic <id> does not hide a failure of the process view behind the raw body")
+    void processViewFailureIsNotSwallowed() throws Exception {
+        var epicId = Generators.letterStrings(6, 12).next();
+        var failure = Generators.letterStrings(8, 16).next();
+        var body = "{\"epic_id\":\"" + epicId + "\",\"running_plans\":[]}";
+        serveEpicProcess(epicId, body);
+        var console = new FailingOnceWriter(out, epicId, failure);
+
+        int code = execute(console, "epic", epicId);
+        var accepted = console.accepted();
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code, accepted),
+                            () -> assertTrue(err.toString().contains(failure), err.toString()),
+                            () -> assertFalse(accepted.contains(body), accepted)
+        );
     }
 
     private static final String EPIC_RESOURCE = """

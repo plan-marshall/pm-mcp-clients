@@ -11,8 +11,11 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -25,10 +28,12 @@ import de.planmarshall.mock.StandardScenarios;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 @DisplayName("PlanCommand")
+@EnableGeneratorController
 class PlanCommandTest {
 
     @TempDir
@@ -159,8 +164,99 @@ class PlanCommandTest {
     }
 
     private int execute(String... args) {
+        return execute(new PrintWriter(out), args);
+    }
+
+    private int execute(PrintWriter console, String... args) {
         var context = new OperatorContext(fixture.environment(), tempDir, true);
-        return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+        return PmOperator.execute(context, console, new PrintWriter(err), args);
+    }
+
+    private void serve(String path, String body) throws IOException {
+        fixture.start((request, response) -> {
+            if (path.equals(request.target())) {
+                response.json(200, body);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    @Nested
+    @DisplayName("plan <id> --task <task> on its activity body")
+    class ActivityBody {
+
+        private final String planId = Generators.letterStrings(6, 12).next();
+        private final String taskId = Generators.letterStrings(6, 12).next();
+        private final String path = "/api/v1/plans/" + planId + "/tasks/" + taskId + "/activity";
+
+        @Test
+        @DisplayName("prints a malformed activity body as it came")
+        void malformedBodyFallsBack() throws Exception {
+            var body = "{\"task_id\":\"" + taskId + "\",\"entries\":[";
+            serve(path, body);
+
+            int code = execute("plan", planId, "--task", taskId);
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(out.toString().contains(body), out.toString())
+            );
+        }
+
+        @Test
+        @DisplayName("does not hide a failure of the activity view behind the raw body")
+        void viewFailureIsNotSwallowed() throws Exception {
+            var failure = Generators.letterStrings(8, 16).next();
+            var body = "{\"task_id\":\"" + taskId + "\",\"entries\":[]}";
+            serve(path, body);
+            var console = new FailingOnceWriter(out, taskId, failure);
+
+            int code = execute(console, "plan", planId, "--task", taskId);
+            var accepted = console.accepted();
+            assertAll(
+                                () -> assertEquals(PmOperator.EXIT_FAILURE, code, accepted),
+                                () -> assertTrue(err.toString().contains(failure), err.toString()),
+                                () -> assertFalse(accepted.contains(body), accepted)
+            );
+        }
+    }
+
+    @Nested
+    @DisplayName("plan <id> on its process body")
+    class ProcessBody {
+
+        private final String planId = Generators.letterStrings(6, 12).next();
+        private final String path = "/api/v1/plans/" + planId + "/process";
+
+        @Test
+        @DisplayName("prints a malformed process body as it came")
+        void malformedBodyFallsBack() throws Exception {
+            var body = "{\"plan_id\":\"" + planId + "\",\"nodes\":[";
+            serve(path, body);
+
+            int code = execute("plan", planId, "--print");
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(out.toString().contains(body), out.toString())
+            );
+        }
+
+        @Test
+        @DisplayName("does not hide a failure of the process view behind the raw body")
+        void viewFailureIsNotSwallowed() throws Exception {
+            var failure = Generators.letterStrings(8, 16).next();
+            var body = "{\"plan_id\":\"" + planId + "\",\"nodes\":[]}";
+            serve(path, body);
+            var console = new FailingOnceWriter(out, planId, failure);
+
+            int code = execute(console, "plan", planId, "--print");
+            var accepted = console.accepted();
+            assertAll(
+                                () -> assertEquals(PmOperator.EXIT_FAILURE, code, accepted),
+                                () -> assertTrue(err.toString().contains(failure), err.toString()),
+                                () -> assertFalse(accepted.contains(body), accepted)
+            );
+        }
     }
 
     @Test
