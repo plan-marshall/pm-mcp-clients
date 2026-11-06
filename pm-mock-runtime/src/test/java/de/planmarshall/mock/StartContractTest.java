@@ -499,7 +499,7 @@ class StartContractTest {
                 .filter(stateId -> stateId.startsWith("start."))
                 .sorted()
                 .toList();
-        assertEquals(15, startStates.size(), "every start case is a state");
+        assertEquals(18, startStates.size(), "every start case is a state");
         for (var stateId : startStates) {
             var startCase = startFixture(scenario, stateId);
             assertNotNull(StartState.fromWire((String) startCase.get("state")), stateId);
