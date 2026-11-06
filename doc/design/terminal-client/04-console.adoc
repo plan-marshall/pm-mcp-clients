@@ -89,7 +89,7 @@ Every kind of the closed list of `needs_operator` (link:../shared/plan-overview.
 |`project setup <id>`
 |===
 
-The holds among the kinds are exactly `stalled`, `condition`, `integrity_hold`, `held`, and `landing_failed`; the command of each opens the hold with its acts (xref:19-actions.adoc#holds[What Holds a Plan]). The open onboardings are badges of their own, not notices: `setup 3/7` for the machine (`operator.console.badge.setup`) and `setup <project_id> 5/9` for each project's (`operator.console.badge.setup_project`).
+The holds among the kinds are exactly `stalled`, `condition`, `integrity_hold`, `held`, and `landing_failed`; the command of each opens the hold with its acts (xref:19-actions.adoc#holds[What Holds a Plan]). The open onboardings are badges of their own, not notices: `setup 3/7` for the machine (`operator.console.badge.setup`) and `setup cui-parent 5/9` for each project's (`operator.console.badge.setup_project`), whose name is the checkout's directory because a being-added run has no project id (`<<being-added-address>>`).
 
 [#being-added-address]
 === Addressing a Being-Added Project

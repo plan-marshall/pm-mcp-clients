@@ -703,7 +703,9 @@ public final class EntryFlow {
         }
         var raw = match.group(1);
         try {
-            var decoded = URLDecoder.decode(raw, StandardCharsets.UTF_8);
+            // A path segment keeps `+` as a plus; URLDecoder would read it as a space. Decoding it
+            // as `%2B` first keeps an id such as `ent+a` intact on its way back to the runtime.
+            var decoded = URLDecoder.decode(raw.replace("+", "%2B"), StandardCharsets.UTF_8);
             return decoded.isBlank() ? null : decoded;
         } catch (IllegalArgumentException _) {
             // A segment that is not valid percent-encoding is taken as it stands.

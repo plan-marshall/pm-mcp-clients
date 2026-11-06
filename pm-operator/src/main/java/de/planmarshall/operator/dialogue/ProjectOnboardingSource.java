@@ -21,8 +21,9 @@ import de.planmarshall.operator.OperatorUrlUtil;
 
 /**
  * A project's onboarding as a {@link StateDialogue.Source}: the run a project's setup reports
- * ({@code CLI-UC-P-01}). The resource is the project's setup, and a chosen link is sent as the same
- * request with the link's id, so the runtime keeps the run it already holds.
+ * ({@code CLI-UC-P-01}). For an enrolled project the resource is the project's setup, and a chosen
+ * link is sent as the same request with the link's id, so the runtime keeps the run it already
+ * holds.
  *
  * <p>A run that has not been enrolled yet has no project id: it is addressed by its entry, the
  * resource {@code /api/v1/entries/{entry_id}} the shared design names for a pre-enrolment run, and

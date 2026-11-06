@@ -38,6 +38,7 @@ pm-operator config <aspect> [<level>] [<choices>]         [op]  one aspect of th
 pm-operator projects [--list]                                  the explorer of the machine's projects; full screen in the console (17-projects)
 pm-operator project add [<path>]                          [op]  onboard a project; the working directory is the proposed checkout
 pm-operator project setup <project_id> [<step>]           [op]  a later run of a project's onboarding, or the open one continued
+pm-operator project setup --entry <entry_id>              [op]  the same for a run that has no project id yet (17-projects)
 pm-operator project favourite <project_id> [--off]        [op]  mark or unmark a favourite
 pm-operator project release <project_id> [--reason <text>]
                                                           [op]  release a project: no new work starts in it (UC-PRJ-3, 17-projects)

@@ -899,6 +899,14 @@ public final class PmConsole {
         return Objects.requireNonNull(reader, "reader").readLine(prompt, '*');
     }
 
+    /**
+     * Splits a typed console line into arguments. Quoted text stays one argument, and a
+     * backslash escapes the next character inside a quote only: text typed outside quotes, such as
+     * a path or a label, keeps its backslashes.
+     *
+     * @param line the typed line
+     * @return the arguments
+     */
     static List<String> parseArgs(@Nullable String line) {
         if (line == null) {
             return List.of();
@@ -912,7 +920,7 @@ public final class PmConsole {
             if (escaped) {
                 sb.append(c);
                 escaped = false;
-            } else if (c == '\\') {
+            } else if (c == '\\' && inQuotes) {
                 escaped = true;
             } else if (c == '"') {
                 inQuotes = !inQuotes;

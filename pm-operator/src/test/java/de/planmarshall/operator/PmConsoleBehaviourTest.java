@@ -473,6 +473,38 @@ class PmConsoleBehaviourTest {
     }
 
     @Test
+    @DisplayName("an entry id with a plus reaches the runtime as a plus")
+    void entryIdWithAPlusReachesTheRuntimeAsAPlus() throws Exception {
+        var entry = new BeingAddedProject("/work/plus-dir-name", "Identity", 3, 10,
+                            "/api/v1/entries/ent+a/continue", "/api/v1/entries/ent+a/abandon");
+        var exactEntryTarget = new AtomicReference<String>();
+        fixture.start((request, response) -> {
+            if (request.target().startsWith("/api/v1/entries/")) {
+                exactEntryTarget.set(request.target());
+                response.send(404, null, "");
+            } else if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[" + entry.toJson() + "]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            console.refreshSetupBadge("en", terminal);
+            console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
+            assertEquals("/api/v1/entries/ent%2Ba", exactEntryTarget.get(),
+                                "a plus in a path segment is a plus, not a space");
+        }
+    }
+
+    @Test
     @DisplayName("an entry id with a quote or a backslash reaches the runtime unaltered")
     void entryIdWithQuoteOrBackslashReachesTheRuntimeUnaltered() throws Exception {
         var entry = new BeingAddedProject("/work/other-dir-name", "Identity", 3, 10,
@@ -512,6 +544,13 @@ class PmConsoleBehaviourTest {
     }
 
     @Test
+    @DisplayName("a backslash typed outside quotes stays a backslash")
+    void typedBackslashOutsideQuotesStays() {
+        assertEquals(List.of("web", "devices", "rename", "1", "my\\label"),
+                            PmConsole.parseArgs("web devices rename 1 my\\label"));
+    }
+
+    @Test
     @DisplayName("a stalled runtime lets the prompt return within the bound")
     void aStalledRuntimeLetsThePromptReturnWithinTheBound() throws Exception {
         var release = new CountDownLatch(1);
@@ -542,12 +581,14 @@ class PmConsoleBehaviourTest {
     @Test
     @DisplayName("a refresh that waits for the lock gives up within the refresh bound")
     void aLockedRefreshGivesUpWithinTheBound() throws Exception {
-        var entered = new CountDownLatch(1);
         var release = new CountDownLatch(1);
+        var firstInFlight = new CountDownLatch(1);
         try {
             fixture.start((request, response) -> {
                 if ("/api/v1/status".equals(request.target())) {
-                    entered.countDown();
+                    firstInFlight.countDown();
+                    // Every refresh is held at its own bound, so the lock is held by one refresh
+                    // after the other; a caller that queued behind them waits for more than one.
                     awaitRelease(release);
                     response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
                 } else if ("/api/v1/project-onboardings".equals(request.target())) {
@@ -562,19 +603,25 @@ class PmConsoleBehaviourTest {
                                     ClientEnvironment.capture(fixture.environment()),
                                     () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
                 var console = new PmConsole(context);
-                var holder = new Thread(() -> console.refreshSetupBadge("en", terminal));
-                holder.start();
-                assertTrue(entered.await(5, TimeUnit.SECONDS), "the first refresh must hold the lock");
+                var first = new Thread(() -> console.refreshSetupBadge("en", terminal));
+                var second = new Thread(() -> console.refreshBadges(terminal));
+                var third = new Thread(() -> console.refreshSetupBadge("en", terminal));
+                first.start();
+                // The first refresh takes the lock before its status read leaves the process; the
+                // other two queue behind it from there.
+                assertTrue(firstInFlight.await(5, TimeUnit.SECONDS), "the first refresh must take the lock");
+                second.start();
+                third.start();
 
                 var started = System.nanoTime();
-                assertTimeoutPreemptively(Duration.ofSeconds(PmConsole.REFRESH_BOUND.toSeconds() + 2),
-                                    () -> console.refreshSetupBadge("en", terminal));
+                third.join(30_000);
                 var waited = Duration.ofNanos(System.nanoTime() - started);
 
-                assertTrue(waited.compareTo(PmConsole.REFRESH_BOUND.plusSeconds(1)) < 0,
-                                    "a contention wait must stay within the refresh budget: " + waited);
+                assertTrue(waited.compareTo(PmConsole.REFRESH_BOUND.plusSeconds(2)) < 0,
+                                    "a queued refresh must not wait out its predecessors: " + waited);
                 release.countDown();
-                holder.join(30_000);
+                first.join(30_000);
+                second.join(30_000);
             }
         } finally {
             release.countDown();

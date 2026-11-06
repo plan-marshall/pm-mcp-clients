@@ -153,7 +153,6 @@ printed the status tree instead.
 == Screen Captures for Review
 
 `ScreenCaptureIT` runs a named capture set on the same `PtySession` and `MockRuntime`:
-
 [source,bash]
 ----
 ./mvnw -pl pm-operator verify -Pintegration-tests \
@@ -236,15 +235,16 @@ set runs before the change into `.plan/temp/terminal/{plan}/before/` and after i
 [#stalled-read]
 === A Read That Is Still Running
 
-The mock runtime answers every read at once, so a capture set cannot show what the console does
-while a read is in flight. `ConsoleBadgeStallIT` covers that one case: it copies the machine root of
+The mock runtime answers every read at once, so a capture set cannot show the console's badge line
+while a read does not answer. `ConsoleBadgeStallIT` covers that case: it copies the machine root of
 the mock runtime, points the console at a `StallingSocketProxy` on the copy's socket, and holds
-`/api/v1/project-onboardings` until the test releases it. Both screens come from the same runtime
-scenario and the same session — the stalled read leaves the project badge out of the prompt, the
-released one adds it — and the test asserts both lines and that they differ. It writes
-`stalled.txt` and `recovered.txt` below `target/screens/104-cli-console-third-residue/`, and it runs
-in the integration-test lane, unlike `ScreenCaptureIT`, because it is a single case with its own
-assertions.
+`/api/v1/project-onboardings` until the test releases it. The console's read reaches its bound, so
+its prompt carries no project badge; after the release the next refresh adds it. Both screens come
+from the same runtime scenario and the same session, and the test asserts both badge lines and that
+they differ. It writes
+`stalled.txt` and `recovered.txt` below `target/screens/104-cli-console-third-residue/`. It runs in
+the integration-test lane because it is a single case with its own assertions; `ScreenCaptureIT`
+skips itself there unless `-Dpm.screens` selects a set.
 
 The proxy relays bytes, so an event stream stays a stream; it neither reads nor rewrites a body, and
 it is test code only.

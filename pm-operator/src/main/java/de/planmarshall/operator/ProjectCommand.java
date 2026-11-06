@@ -158,7 +158,7 @@ public final class ProjectCommand implements Callable<Integer> {
         CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
-        @Parameters(index = "0", description = "Project ID")
+        @Parameters(index = "0", description = "Project ID, or the entry id with --entry")
         String projectId = "";
 
         @Parameters(index = "1", arity = "0..1", description = "Setup step name or number")

@@ -22,7 +22,8 @@ import org.jspecify.annotations.Nullable;
  * @param text      the rendered badge text
  * @param itemKind  the notice or needs_operator kind (for {@link Kind#WAITING})
  * @param count     the waiting item count (for {@link Kind#WAITING})
- * @param projectId the project name or directory (for {@link Kind#PROJECT_SETUP})
+ * @param projectId the address of the run: the entry id of a being-added project, or the checkout
+ *                  directory's name
  */
 public record ConsoleBadge(
 Kind kind,

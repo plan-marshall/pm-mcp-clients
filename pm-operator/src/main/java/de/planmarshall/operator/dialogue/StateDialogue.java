@@ -659,13 +659,6 @@ public final class StateDialogue {
         return PROJECT_STEP_BY_STATE.getOrDefault(id, DONE);
     }
 
-    /**
-     * @return the states a project's setup reports, as the table names them
-     */
-    static List<String> projectStates() {
-        return PROJECT_STEP_BY_STATE.keySet().stream().map(state -> PROJECT_PREFIX + state).toList();
-    }
-
     private static Map<String, String> projectSteps() {
         var steps = new LinkedHashMap<String, String>();
         steps.put("consent", "checkout");

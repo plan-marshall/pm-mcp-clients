@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -75,8 +76,9 @@ class EntryFlowStaticsTest {
 
     @Test
     @DisplayName("a read interrupted while waiting interrupts its worker and keeps the flag")
-    void anInterruptedWaitInterruptsTheWorker() {
+    void anInterruptedWaitInterruptsTheWorker() throws Exception {
         var worker = new AtomicReference<Thread>();
+        var workerInterrupted = new AtomicBoolean();
         Thread.currentThread().interrupt();
         try {
             assertThrows(IOException.class, () -> EntryFlow.bounded(() -> {
@@ -86,9 +88,12 @@ class EntryFlowStaticsTest {
                 } catch (InterruptedException _) {
                     Thread.currentThread().interrupt();
                 }
+                workerInterrupted.set(Thread.currentThread().isInterrupted());
                 return "late";
             }, Duration.ofSeconds(5), "interrupted-read"));
             assertTrue(Thread.currentThread().isInterrupted(), "the caller's interrupt flag stays set");
+            worker.get().join(5_000);
+            assertTrue(workerInterrupted.get(), "the worker was interrupted, not left running");
         } finally {
             Thread.interrupted();
         }
