@@ -77,6 +77,7 @@ public final class PmConsole {
 
     private final OperatorContext context;
     static final Duration REFRESH_BOUND = Duration.ofSeconds(5);
+    private final EntryFlow entryFlow;
     private final ReentrantLock badgeRefreshLock = new ReentrantLock();
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
@@ -95,20 +96,18 @@ public final class PmConsole {
      * @param context the operator context
      */
     public PmConsole(OperatorContext context) {
-        this(context, List.of(), new EntryFlow(context).aspects().size());
+        this(context, new EntryFlow(context));
     }
 
-    PmConsole(OperatorContext context, List<ConsoleBadge> initialBadges) {
-        this(context, initialBadges, new EntryFlow(context).aspects().size());
-    }
-
-    PmConsole(OperatorContext context, List<ConsoleBadge> initialBadges, int machineSteps) {
+    /**
+     * @param context   the operator context
+     * @param entryFlow the entry flow the console runs and takes its machine step count from
+     */
+    public PmConsole(OperatorContext context, EntryFlow entryFlow) {
         this.context = Objects.requireNonNull(context, "context");
         this.noticeBuffer = context.noticeBuffer();
-        this.machineSteps = machineSteps;
-        if (!initialBadges.isEmpty()) {
-            this.badges.set(List.copyOf(initialBadges));
-        }
+        this.entryFlow = Objects.requireNonNull(entryFlow, "entryFlow");
+        this.machineSteps = entryFlow.aspects().size();
     }
 
     private String locale() {
@@ -145,7 +144,6 @@ public final class PmConsole {
                             .variable(LineReader.HISTORY_FILE, historyFile)
                             .build();
 
-        var entryFlow = new EntryFlow(context);
         var entryResult = entryFlow.run(out, reader);
 
         activePairingCode = entryResult.activeCode();

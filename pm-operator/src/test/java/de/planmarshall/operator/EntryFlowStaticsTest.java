@@ -11,8 +11,11 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.util.Map;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -30,11 +33,63 @@ class EntryFlowStaticsTest {
 
     @Test
     @DisplayName("step names follow the interface locale and the unknown step keeps its number")
-    void stepNames() {
-        assertEquals("Harnesses", EntryFlow.getStepName("en", 2));
-        assertEquals("Harnesses", EntryFlow.getStepName("de", 2));
-        assertEquals("Step 8", EntryFlow.getStepName("en", 8));
-        assertEquals("Schritt 8", EntryFlow.getStepName("de", 8));
+    void stepNames() throws Exception {
+        try (var fixture = RuntimeFixture.create()) {
+            var flow = new EntryFlow(new OperatorContext(fixture.environment(), fixture.base().getParent(), true));
+            assertEquals("Harnesses", flow.stepName("en", 2));
+            assertEquals("Harnesses", flow.stepName("de", 2));
+            assertEquals("Step 8", flow.stepName("en", 8));
+            assertEquals("Schritt 8", flow.stepName("de", 8));
+        }
+    }
+
+    @Test
+    @DisplayName("a worker that throws marks the read failed instead of answering null")
+    void aThrowingWorkerMarksTheReadFailed() {
+        var failure = assertThrows(IOException.class, () -> EntryFlow.bounded(() -> {
+            throw new IllegalStateException("boom");
+        }, java.time.Duration.ofSeconds(1), "throwing-read"));
+
+        assertTrue(failure.getMessage().contains("throwing-read"), failure.getMessage());
+    }
+
+    @Test
+    @DisplayName("a sub-millisecond bound does not wait forever")
+    void aSubMillisecondBoundDoesNotWaitForever() {
+        assertTimeoutPreemptively(java.time.Duration.ofSeconds(5), () -> {
+            var started = System.nanoTime();
+            assertThrows(IOException.class, () -> EntryFlow.bounded(() -> {
+                try {
+                    Thread.sleep(10_000);
+                } catch (InterruptedException _) {
+                    Thread.currentThread().interrupt();
+                }
+                return "late";
+            }, java.time.Duration.ofNanos(1), "slow-read"));
+            var elapsed = java.time.Duration.ofNanos(System.nanoTime() - started);
+            assertTrue(elapsed.compareTo(java.time.Duration.ofSeconds(1)) < 0, elapsed.toString());
+        });
+    }
+
+    @Test
+    @DisplayName("a read interrupted while waiting interrupts its worker and keeps the flag")
+    void anInterruptedWaitInterruptsTheWorker() {
+        var worker = new java.util.concurrent.atomic.AtomicReference<Thread>();
+        Thread.currentThread().interrupt();
+        try {
+            assertThrows(IOException.class, () -> EntryFlow.bounded(() -> {
+                worker.set(Thread.currentThread());
+                try {
+                    Thread.sleep(10_000);
+                } catch (InterruptedException _) {
+                    Thread.currentThread().interrupt();
+                }
+                return "late";
+            }, java.time.Duration.ofSeconds(5), "interrupted-read"));
+            assertTrue(Thread.currentThread().isInterrupted(), "the caller's interrupt flag stays set");
+        } finally {
+            Thread.interrupted();
+        }
     }
 
     @Test

@@ -536,18 +536,6 @@ public final class EntryFlow {
         return MessageCatalogue.format(locale, "operator.entry.step_unknown", Map.of("step", step));
     }
 
-    static String getStepName(int step) {
-        return getStepName("en", step);
-    }
-
-    static String getStepName(String locale, int step) {
-        var aspects = OnboardingAspect.values();
-        if (step >= 1 && step <= aspects.length) {
-            return MessageCatalogue.format(locale, aspects[step - 1].stepNameKey(), Map.of());
-        }
-        return MessageCatalogue.format(locale, "operator.entry.step_unknown", Map.of("step", step));
-    }
-
     static int getWebPort(Map<String, Object> status) {
         if (status.get("web") instanceof Map<?, ?> web) {
             var port = web.get("port");
@@ -578,6 +566,7 @@ public final class EntryFlow {
     static <T> T bounded(IoCallable<T> task, Duration bound, String threadName) throws IOException {
         var result = new AtomicReference<T>();
         var failure = new AtomicReference<IOException>();
+        var thrown = new AtomicReference<Throwable>();
         var thread = new Thread(() -> {
             try {
                 result.set(task.call());
@@ -586,22 +575,34 @@ public final class EntryFlow {
             }
         }, threadName);
         thread.setDaemon(true);
+        // A worker that dies on an unexpected exception would otherwise leave `result` unset and
+        // the caller to dereference `null`: the handler marks the read failed instead.
+        thread.setUncaughtExceptionHandler((_, error) -> thrown.set(error));
         thread.start();
         try {
+            // A bound below a millisecond rounds to 0, which joins forever: the clamp keeps the
+            // call bounded.
             thread.join(Math.max(1L, bound.toMillis()));
-        } catch (InterruptedException _) {
-            // Interrupted while waiting for worker thread
+        } catch (InterruptedException e) {
+            thread.interrupt();
             Thread.currentThread().interrupt();
-            throw new IOException("interrupted while waiting for " + threadName);
+            throw new IOException("interrupted while waiting for " + threadName, e);
         }
         if (thread.isAlive()) {
             thread.interrupt();
             throw new IOException("the runtime did not answer within " + bound.toMillis() + " ms");
         }
+        if (thrown.get() != null) {
+            throw new IOException("the read failed in " + threadName, thrown.get());
+        }
         if (failure.get() != null) {
             throw failure.get();
         }
-        return result.get();
+        var value = result.get();
+        if (value == null) {
+            throw new IOException("the read in " + threadName + " answered nothing");
+        }
+        return value;
     }
 
     /**

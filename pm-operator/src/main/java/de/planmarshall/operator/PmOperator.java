@@ -107,7 +107,8 @@ public final class PmOperator implements Callable<Integer> {
                 return code;
             }
         }
-        return new PmConsole(context).run();
+        var entryFlow = new EntryFlow(context);
+        return new PmConsole(context, entryFlow).run();
     }
 
     /**

@@ -44,11 +44,11 @@ import de.planmarshall.operator.TerminalSanitizer;
  */
 public final class StateDialogue {
 
-    static final List<String> PROJECT_STATES = List.of(
-                        "project.consent", "project.detect", "project.run-consent", "project.probe", "project.checkout",
-                        "project.enrol", "project.enrolment", "project.operator", "project.own",
-                        "project.identity", "project.team", "project.architecture", "project.landing",
-                        "project.roles", "project.descriptions", "project.commit");
+    /**
+     * The states a project's setup reports and the step each belongs to: the one table
+     * {@link #projectStepOf} reads, so no second list mirrors it.
+     */
+    static final Map<String, String> PROJECT_STEP_BY_STATE = projectSteps();
 
     /** How long one working state may stay without a link before the dialogue gives up. */
     private static final long WORKING_TIMEOUT_NANOS = 60_000_000_000L;
@@ -656,14 +656,35 @@ public final class StateDialogue {
      */
     static String projectStepOf(String stateId) {
         var id = stateId.substring(PROJECT_PREFIX.length());
-        return switch (id) {
-            case "consent", "detect", "run-consent", "probe", "checkout" -> "checkout";
-            case "enrol", STEP_ENROLMENT -> STEP_ENROLMENT;
-            case OPERATOR, STEP_OWN -> STEP_OWN;
-            case "identity", "team", "architecture", "landing",
-                STEP_ROLES, "descriptions", "commit" -> id;
-            default -> DONE;
-        };
+        return PROJECT_STEP_BY_STATE.getOrDefault(id, DONE);
+    }
+
+    /**
+     * @return the states a project's setup reports, as the table names them
+     */
+    static List<String> projectStates() {
+        return PROJECT_STEP_BY_STATE.keySet().stream().map(state -> PROJECT_PREFIX + state).toList();
+    }
+
+    private static Map<String, String> projectSteps() {
+        var steps = new LinkedHashMap<String, String>();
+        steps.put("consent", "checkout");
+        steps.put("detect", "checkout");
+        steps.put("run-consent", "checkout");
+        steps.put("probe", "checkout");
+        steps.put("checkout", "checkout");
+        steps.put("enrol", STEP_ENROLMENT);
+        steps.put(STEP_ENROLMENT, STEP_ENROLMENT);
+        steps.put(OPERATOR, STEP_OWN);
+        steps.put(STEP_OWN, STEP_OWN);
+        steps.put("identity", "identity");
+        steps.put("team", "team");
+        steps.put("architecture", "architecture");
+        steps.put("landing", "landing");
+        steps.put(STEP_ROLES, STEP_ROLES);
+        steps.put("descriptions", "descriptions");
+        steps.put("commit", "commit");
+        return Collections.unmodifiableMap(steps);
     }
 
     /**
