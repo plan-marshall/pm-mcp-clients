@@ -377,7 +377,7 @@ The status of a package is `open`, `blocked`, `done` or `dropped`; a `dropped` r
 
 |link:operator-drain-signal.adoc[`operator-drain-signal`]
 |`pm-operator drain` as the signal of the recorded runtime process with its bounded wait; withdrawing a drain only as `runtime stop --withdraw`
-|`open`
+|`done`
 |`cli-system`
 |client work
 

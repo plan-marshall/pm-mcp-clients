@@ -18,8 +18,11 @@ import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
+import de.planmarshall.api.interaction.OperatorText;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.resource.ApiErrorCode;
 import de.planmarshall.api.runtime.RuntimeUnavailableException;
 
 import picocli.CommandLine.Command;
@@ -42,6 +45,15 @@ import picocli.CommandLine.Spec;
 public final class RuntimeCommand implements Callable<Integer> {
 
     private static final String DRAIN = "drain";
+
+    /** The operator's stop of the runtime, and the withdrawal of its drain. */
+    private static final String OPERATOR_STOP = "/api/v1/operator/runtime/stop";
+
+    /** The line of a withdrawal refused because a signal started the drain. */
+    private static final String SIGNAL_DRAIN = "operator.system.signal_drain";
+
+    /** The line of a withdrawal refused because the runtime has begun to stop. */
+    private static final String TOO_LATE = "system.stopping.too_late";
 
     @Spec
     CommandSpec spec = CommandSpec.create();
@@ -191,19 +203,52 @@ public final class RuntimeCommand implements Callable<Integer> {
             return 0;
         }
 
+        /**
+         * Withdraws a drain the operator asked ({@code DELETE /api/v1/operator/runtime/stop},
+         * runtime-lifecycle/01-startup-recovery-drain.adoc#withdraw-drain). The runtime refuses
+         * {@code not_withdrawable} for a drain of a signal and once it has begun to stop; each
+         * refusal prints its line of 25-system.adoc#t-stop and exits {@code 1}, and every other
+         * refusal is the runtime's refusal of the act.
+         */
         private int withdraw(PrintWriter out) throws IOException {
-            var response = context.runtime(false).send(
-                                HttpRequest.delete("/api/v1/runtime/stop"));
+            var response = context.runtime(false).send(HttpRequest.delete(OPERATOR_STOP));
+            var locale = context.clientEnvironment().locale();
             if (response.status() == 200 || response.status() == 204) {
-                out.println("runtime   drain withdrawn");
+                out.println(MessageCatalogue.format(locale, "system.stopping.withdrawn", Map.of()));
                 out.flush();
                 return 0;
             }
+            var refusal = withdrawRefusal(response);
+            if (refusal == null) {
+                throw new OperatorRefusedException("runtime stop --withdraw", response);
+            }
             var err = spec.commandLine().getErr();
-            err.printf("Failed to withdraw drain: HTTP %d%n", response.status());
+            err.println(MessageCatalogue.format(locale, refusal, Map.of()));
             err.flush();
-            return 1;
+            return PmOperator.EXIT_FAILURE;
         }
+    }
+
+    /**
+     * @param response the runtime's answer to a withdrawal
+     * @return the key of the line a {@code not_withdrawable} refusal prints, or {@code null} for
+     *         every other answer
+     */
+    static @Nullable String withdrawRefusal(HttpResponse response) {
+        if (response.body().length == 0) {
+            return null;
+        }
+        final Map<String, Object> body;
+        try {
+            body = JsonTree.asObject(JsonTree.parse(response.body()));
+        } catch (IOException _) {
+            return null;
+        }
+        if (body == null || ApiErrorCode.fromWireOrNull(JsonTree.string(body, "error")) != ApiErrorCode.NOT_WITHDRAWABLE) {
+            return null;
+        }
+        var detail = JsonTree.string(JsonTree.object(body, "detail"), OperatorText.FIELD_KEY);
+        return SIGNAL_DRAIN.equals(detail) ? SIGNAL_DRAIN : TOO_LATE;
     }
 
     @Command(name = "restart", description = "Restarts the runtime.")

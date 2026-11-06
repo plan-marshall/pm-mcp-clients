@@ -36,7 +36,7 @@ The verbs of the specification stay as they are: `status` (the running work, wit
 * *`system`* is a read, like `status`, and no operator verb: in the console it opens the full-screen view (<<full-screen>>), as a shell command, or where the full-screen view is not available, it prints the view once (<<print>>); `--watch` prints it again as figures change, as `status --watch` does. `--window` and `--by` choose the models' window and grouping (default `hour` and `model`), `--project` one project.
 * *`runtime stop|restart|upgrade`* are operator verbs: privileged requests of the operator's channel, refused without the operator checks (exit code `4`; xref:04-console.adoc#console-security[The Operator Checks]). Each shows its confirmation (`runtime.confirm-stop`, `runtime.confirm-upgrade`) as a dialogue; `--when-done` or `--now` answer its choice of when. With `--no-input` and no `--when-done` or `--now`, the verb stops at the choice with exit code `3`, as every direct verb (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]). The confirmation asks nothing else, so there is no `--yes`: accepting it means answering its choice of when.
 * *`runtime upgrade --check`* asks the consent `check_updates` where it is not remembered (`runtime.update-consent`; `--consent check_updates` answers it for this run) and prints the answer (`runtime.check-update`); `runtime upgrade` without a version upgrades to the newest version known and checks first where none is.
-* *`drain`* is the signal of the specification: it asks nothing, cannot be withdrawn, and works when the runtime does not answer. A refusal of `runtime stop` because the runtime does not answer names it (`operator.system.not_answering`).
+* *`drain`* is the signal of the specification: it signals the process recorded in `state/runtime.json` and sends no request to the runtime's API, so it works when the runtime does not answer; it asks nothing, runs without the operator checks, has no options, and cannot be withdrawn (`drain --withdraw` is a usage error, exit `2`). Without a record, or with one whose process is gone, it signals nothing, prints `operator.drain.not_running`, and exits `0`. Otherwise it prints `operator.drain.signalled` and waits for the exit, at most the drain timeout of `machine-config.json` plus the grace period plus `10` seconds (link:../../../../pm-mcp-core/doc/specification/timeouts/02-runtime-leases-operator-web.adoc#drain-timeout[Timeouts & Budgets, Drain Timeout]): the exit prints `operator.drain.ended`, the bound prints `operator.system.still_draining`, both with exit `0`. A drain ends with the last of what it waits for: its last step leaves draining for what follows it, which for the signal is the stop and the exit (link:../shared/system.adoc#draining[System, While It Stops]). A refusal of `runtime stop` because the runtime does not answer names it (`operator.system.not_answering`).
 * *`status`* keeps its tree; its runtime line carries the lifecycle state while there is one (`Runtime pm-mcpd 0.9.1, stopping when what runs is done (2 left)`) and names `system` for the rest.
 
 [#print]
@@ -181,7 +181,7 @@ Starting the runtime …
 pm ›
 ----
 
-* `runtime stop --withdraw` withdraws a drain the operator asked (link:../../../../pm-mcp-core/doc/specification/runtime-lifecycle/01-startup-recovery-drain.adoc#withdraw-drain[Runtime Lifecycle, Drain, Stop & Upgrade]); for a drain of a signal it is refused with `The drain was started by a signal; it cannot be withdrawn.` (`operator.system.signal_drain`); too late, it prints `system.stopping.too_late`.
+* `runtime stop --withdraw` withdraws a drain the operator asked with `DELETE /api/v1/operator/runtime/stop` (link:../../../../pm-mcp-core/doc/specification/runtime-lifecycle/01-startup-recovery-drain.adoc#withdraw-drain[Runtime Lifecycle, Drain, Stop & Upgrade]) and prints `system.stopping.withdrawn`. The runtime refuses it `not_withdrawable`, the detail naming the line: for a drain of a signal it prints `The drain was started by a signal; it cannot be withdrawn.` (`operator.system.signal_drain`); too late, once the runtime has begun to stop, `system.stopping.too_late` (also for a refusal without a detail). Both exit `1`, since nothing was withdrawn; every other refusal is the refusal of the act.
 * *Stopped*: the console stays open and does not reconnect by itself (link:../shared/system.adoc#stopped[System, Stopped, and Starting Again]); a verb that needs the runtime starts it and prints `Starting the runtime …` first.
 
 [#t-restart]
@@ -327,6 +327,30 @@ The texts of the view and of the acts are those of link:../shared/system-texts.a
 |`operator.system.not_answering`
 |The runtime does not answer. pm-operator drain stops it by a signal.
 |Die Runtime antwortet nicht. pm-operator drain stoppt sie durch ein Signal.
+
+|`operator.drain.not_running`
+|The runtime is not running; there is nothing to drain.
+|Die Runtime läuft nicht; es gibt nichts zu leeren.
+
+|`operator.drain.signalled`
+|Signalled the runtime (PID {pid}); it drains and exits.
+|Signal an die Runtime gesendet (PID {pid}); sie leert sich und beendet sich.
+
+|`operator.drain.ended`
+|The runtime has drained and stopped.
+|Die Runtime hat sich geleert und ist gestoppt.
+
+|`operator.drain.signal_failed`
+|The runtime (PID {pid}) could not be signalled.
+|Die Runtime (PID {pid}) konnte kein Signal erhalten.
+
+|`operator.drain.config_unreadable`
+|{file} cannot be read as one JSON object; the drain timeout of {seconds} s applies.
+|{file} lässt sich nicht als ein JSON-Objekt lesen; der Leerungs-Timeout von {seconds} s gilt.
+
+|`operator.drain.config_invalid`
+|drain_timeout_seconds in {file} is no whole number from 0 to 3153600000; the drain timeout of {seconds} s applies.
+|drain_timeout_seconds in {file} ist keine ganze Zahl von 0 bis 3153600000; der Leerungs-Timeout von {seconds} s gilt.
 
 |`operator.system.console_older`
 |The runtime runs {runtime}, this console {console}. Leave it and open pm-operator again.
