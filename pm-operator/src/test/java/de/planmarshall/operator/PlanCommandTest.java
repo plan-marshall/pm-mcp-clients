@@ -22,6 +22,7 @@ import java.io.StringWriter;
 import java.nio.file.Path;
 import java.time.Duration;
 
+import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.mock.StandardScenarios;
 
@@ -459,6 +460,79 @@ class PlanCommandTest {
                             () -> assertEquals(0, code),
                             () -> assertTrue(out.toString().contains("✓ p-001 abandoned and archived"))
         );
+    }
+
+    @Nested
+    @DisplayName("plan cancel|abandon with --close-pr and --keep-pr")
+    class PullRequestFlags {
+
+        private static final String EXCLUSIVE = "--close-pr and --keep-pr are mutually exclusive.";
+
+        private final String planId = Generators.letterStrings(6, 12).next();
+        private final String reason = Generators.letterStrings(8, 16).next();
+
+        private FakeRuntimeServer serveEnd(String verb) throws IOException {
+            var path = "/api/v1/plans/" + planId + "/" + verb;
+            return fixture.start((request, response) -> {
+                if (path.equals(request.target()) && "POST".equals(request.method())) {
+                    response.json(200, "{\"ok\":true}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+        }
+
+        @Test
+        @DisplayName("plan cancel with both flags is a usage error and sends nothing")
+        void cancelRejectsBoth() throws Exception {
+            var server = serveEnd("cancel");
+
+            int code = execute("plan", "cancel", planId, "--reason", reason, "--close-pr", "--keep-pr");
+            assertAll(
+                                () -> assertEquals(2, code, err.toString()),
+                                () -> assertTrue(err.toString().contains(EXCLUSIVE), err.toString()),
+                                () -> assertTrue(server.requests().isEmpty(), server.requests().toString())
+            );
+        }
+
+        @Test
+        @DisplayName("plan abandon with both flags is a usage error and sends nothing")
+        void abandonRejectsBoth() throws Exception {
+            var server = serveEnd("abandon");
+
+            int code = execute("plan", "abandon", planId, "--reason", reason, "--keep-pr", "--close-pr");
+            assertAll(
+                                () -> assertEquals(2, code, err.toString()),
+                                () -> assertTrue(err.toString().contains(EXCLUSIVE), err.toString()),
+                                () -> assertTrue(server.requests().isEmpty(), server.requests().toString())
+            );
+        }
+
+        @Test
+        @DisplayName("plan cancel --close-pr alone closes the pull request")
+        void closePrAlone() throws Exception {
+            var server = serveEnd("cancel");
+
+            int code = execute("plan", "cancel", planId, "--reason", reason, "--close-pr");
+            var body = server.requests().getFirst().bodyText();
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(body.contains("\"close_pr\":true"), body)
+            );
+        }
+
+        @Test
+        @DisplayName("plan abandon --keep-pr alone keeps the pull request")
+        void keepPrAlone() throws Exception {
+            var server = serveEnd("abandon");
+
+            int code = execute("plan", "abandon", planId, "--reason", reason, "--keep-pr");
+            var body = server.requests().getFirst().bodyText();
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(body.contains("\"close_pr\":false"), body)
+            );
+        }
     }
 
     @Test

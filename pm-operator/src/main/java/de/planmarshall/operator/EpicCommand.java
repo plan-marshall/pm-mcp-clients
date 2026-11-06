@@ -608,6 +608,12 @@ public final class EpicCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
+            if (ActionSupport.contradicts(context, spec, options.closePr, options.keepPr,
+                                ActionSupport.FlagPair.PULL_REQUEST)
+                                || ActionSupport.contradicts(context, spec, withPlans, withoutPlans,
+                                                    ActionSupport.FlagPair.PLANS)) {
+                return ActionSupport.EXIT_USAGE;
+            }
             var out = spec.commandLine().getOut();
             var effectiveReason = options.reason;
             if (effectiveReason == null || effectiveReason.isBlank()) {
