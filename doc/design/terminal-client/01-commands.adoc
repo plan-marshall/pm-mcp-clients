@@ -36,7 +36,8 @@ pm-operator config <aspect> [<level>] [<choices>]         [op]  one aspect of th
     consents       the remembered consents, to withdraw one (08-transcripts-later)
     documents      [--mode copy|move|ask]   how documents are taken into a plan (UC-ONB-10)
 pm-operator projects [--list]                                  the explorer of the machine's projects; full screen in the console (17-projects)
-pm-operator project add [<path>]                          [op]  onboard a project; the working directory is the proposed checkout
+pm-operator project add [<path>] [--pilot]                [op]  onboard a project; the working directory is the proposed checkout;
+                                                                --pilot enrols it in pilot mode (17-projects)
 pm-operator project setup <project_id> [<step>]           [op]  a later run of a project's onboarding, or the open one continued
 pm-operator project favourite <project_id> [--off]        [op]  mark or unmark a favourite
 pm-operator project release <project_id> [--reason <text>]
@@ -48,6 +49,8 @@ pm-operator epic add [--project <project_id>|.] [<source>]... [--title <title>] 
                                                           [op]  start an epic from its sources, or adopt one of the ledger (18-starting)
 pm-operator recipe run [<recipe_key>] [--project <project_id>|.] [<source>]... [--param <name>=<value>]... [--title <title>]
                                                           [op]  run a recipe of the project (18-starting)
+pm-operator lesson check <lesson_id> [--project <project_id>]
+                                                                a lesson's premise against the repository, before a plan starts from it (UC-STA-8, 18-starting)
 pm-operator plan pause <plan_id> [--now|--after-task|--after-phase]
 pm-operator plan start <plan_id>
 pm-operator plan cancel|abandon <plan_id> [--reason <text>] [--close-pr|--keep-pr]
@@ -92,7 +95,10 @@ pm-operator cleanup [--delete|--remind|--ignore|--exclude <item>...|--kept|--rel
 pm-operator config cleanup [--project <project_id>|.] [<duration options>]
                                                           [op]  how long ended work is kept (UC-ONB-10, UC-SYS-3, 26-cleanup)
 pm-operator credentials|roles|profile|decision-log|waive|grant-access|accept-edit|sweep ...
-                                                          [op]  the other operator verbs of the specification, with its options
+pm-operator client install|update|remove|status ...
+pm-operator enrol-harness <client>
+                                                          [op]  the other operator verbs of the specification, with its options; `client status`
+                                                                is a read
 
 <level>:   --machine (the default) | --project <project_id>|.|? | --plan <plan_id>|?
 <source>:  --description <text>|-   --document <path>   --issue <number>|<url>   --pull-request <number>|<url>
@@ -101,14 +107,16 @@ common:    --no-input   never ask; stop at the first choice not given (exit code
            --yes        accept the confirmations of the displayed changes (never a consent)
            --consent <kind>   the operator's yes to one consent kind for this run (never remembered)
 
-In the console only:
+In the console and as direct verbs:
   plans                       the overview of running work, full screen (15-overview); E shows the ended work, R the reports
   plan <plan_id> [--print] [--all|--depth <n>] [--tokens [--components]] [--activity <task_id> [--watch]]
                               a plan's process as a tree, its tokens so far, what a task's worker does;
                               opens full screen in a terminal, prints with --print (16-plan-view)
-  epic <epic_id> [--tokens]   an epic's view as a tree, with its tokens per plan (19-actions)
   questions                   the open decisions and waiver requests, with what they block and the recommendation
   answer <id> [<option>]      open a decision or a waiver request as a dialogue, or answer a decision with an option
+
+In the console only:
+  epic <epic_id> [--tokens]   an epic's view as a tree, with its tokens per plan (19-actions)
   web [qr|copy [ssh]]         the ways into the web app; the code's QR code again; copy the URL or the ssh command
                               (a new code is the verb web pair, other devices the verb web enable --lan)
   help [<verb>]               the verbs and console commands
@@ -131,7 +139,7 @@ In the console only:
 * *`reports`* lists the unread reports and *`plan report`* renders a plan's completion report; both read. `reports read` marks them read, and `reports open` opens a report's detail, which reads it (xref:24-reports.adoc[Reports]; link:../shared/reports.adoc[Reports] is what both clients show). Those two are operator acts because reading changes the state every client shows; the console prints the count of unread reports when it opens.
 * *The flags of the actions* on plans and epics are those of xref:19-actions.adoc[Actions on Plans and Epics], which says what each does; the listing above repeats them, 19 is the reference.
 * *No designer*: designing a plan's process (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3]) is offered in the web app only (link:../web-app/process-designer.adoc[Web App, Process Designer]); `help` says so in one line (`operator.help.designer`, link:../web-app/process-designer-texts.adoc#texts[its text]) and offers no verb for it.
-* *The console commands* (`plans`, `plan`, `epic`, `questions`, `answer`, `web` without a verb of the specification, `help`, `exit`) exist only inside the console; they are not shell verbs. `web qr` prints the QR code of the open pairing code again, with its URL, and `web pair` replaces the code (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#fresh-code[A Fresh Code after a Redemption]).
+* *The console commands* `plans`, `plan <plan_id>`, `questions` and `answer` run inside the console and as direct verbs (`pm-operator questions`); `epic <epic_id>`, `web` without a verb of the specification, `help` and `exit` exist only inside the console and are not shell verbs. `web qr` prints the QR code of the open pairing code again, with its URL, and `web pair` replaces the code (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#fresh-code[A Fresh Code after a Redemption]).
 
 [#one-surface]
 === One Surface in Every Language

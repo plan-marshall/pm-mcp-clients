@@ -26,8 +26,11 @@ import java.nio.file.Files;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.MachinePaths;
@@ -46,6 +49,10 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import picocli.CommandLine.Command;
 
 @DisplayName("pm-operator command line")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -172,6 +179,55 @@ class PmOperatorTest {
 
         int exitCode = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err));
         assertEquals(0, exitCode);
+    }
+
+    @Nested
+    @DisplayName("command tree")
+    class CommandTree {
+
+        /** The verbs of the design's command tree (01-commands.adoc#command-tree), the contract. */
+        private static final Set<String> DESIGN_VERBS = Set.of(
+                            "config", "projects", "project", "plan", "epic", "recipe", "lesson", "web", "status",
+                            "reports", "system", "runtime", "drain", "client", "enrol-harness", "cleanup",
+                            "credentials", "roles", "accept-edit", "plans", "questions", "answer");
+
+        @Test
+        @DisplayName("registers the verbs of the design's command tree and nothing else")
+        void registersTheDesignVerbsOnly() {
+            var declared = PmOperator.class.getAnnotation(Command.class);
+
+            var registered = Arrays.stream(declared.subcommands())
+                                .map(type -> type.getAnnotation(Command.class).name())
+                                .collect(Collectors.toSet());
+
+            assertEquals(DESIGN_VERBS, registered);
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @ValueSource(strings = {"start", "onboard", "abort", "unenrol", "enrol", "settings", "git-source"})
+        @DisplayName("reports a folded verb as an unknown verb with the usage exit code")
+        void foldedVerbIsUnknown(String verb) {
+            var code = run(verb);
+
+            assertAll(
+                                () -> assertEquals(2, code),
+                                () -> assertTrue(err.toString().contains(verb), err.toString()));
+        }
+
+        @Test
+        @DisplayName("--help lists the design's verbs and none of the folded ones")
+        void helpListsTheDesignVerbs() {
+            assertEquals(0, run("--help"));
+
+            var help = out.toString();
+            assertAll(
+                                () -> assertTrue(help.contains("project"), help),
+                                () -> assertTrue(help.contains("accept-edit"), help),
+                                () -> assertFalse(help.contains("git-source"), help),
+                                () -> assertFalse(help.contains("onboard "), help),
+                                () -> assertFalse(help.lines().anyMatch(line -> line.strip().startsWith("start ")),
+                                                    help));
+        }
     }
 
     @Nested

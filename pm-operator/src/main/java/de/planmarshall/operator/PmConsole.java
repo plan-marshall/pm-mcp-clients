@@ -133,10 +133,13 @@ public final class PmConsole {
             // best-effort history file
         }
 
+        // The console commands and the verbs of the design's command tree (01-commands.adoc), and
+        // nothing else: a verb the tree does not declare is unknown here as on the shell.
         var completer = new StringsCompleter(
                             "exit", "quit", "help", "status", PLANS, "tui", "plan", "epic", "questions",
                             "answer", "web", "runtime", "config", "credentials", "projects", "project",
-                            "client", "drain"
+                            "client", "drain", "recipe", "lesson", "reports", "system", "cleanup",
+                            "enrol-harness", "roles", "accept-edit"
         );
 
         var reader = LineReaderBuilder.builder()

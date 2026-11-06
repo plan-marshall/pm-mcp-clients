@@ -30,6 +30,12 @@ import picocli.CommandLine.Option;
 
 /**
  * The operator command line {@code pm-operator}: the verbs a human runs at a terminal.
+ * <p>
+ * The subcommands are the verbs of the design's command tree (01-commands.adoc#command-tree) and
+ * nothing else: without a verb the console opens, and what to do first follows from the state of
+ * the machine, so there is no verb {@code start} and no verb {@code onboard}. The console commands
+ * {@code plans}, {@code plan <plan_id>}, {@code questions} and {@code answer} also run as direct
+ * verbs.
  */
 @Command(name = "pm-operator", mixinStandardHelpOptions = true, versionProvider = PmOperator.Version.class,
                     description = "Operator command line of PM-MCP.",
@@ -39,29 +45,22 @@ import picocli.CommandLine.Option;
                                         WebCommand.class,
                                         RuntimeCommand.class,
                                         DrainCommand.class,
-                                        OnboardCommand.class,
                                         ConfigCommand.class,
                                         CredentialsCommand.class,
-                                        SettingsCommand.class,
                                         ProjectCommand.class,
                                         ProjectsCommand.class,
                                         ClientCommand.class,
                                         PlanCommand.class,
                                         EpicCommand.class,
-                                        AbortCommand.class,
                                         RecipeCommand.class,
-                                        StartCommand.class,
                                         LessonSourceCommand.class,
-                                        GitSourceCommand.class,
                                         QuestionsCommand.class,
                                         AnswerCommand.class,
                                         ReportsCommand.class,
                                         SystemCommand.class,
                                         CleanupCommand.class,
-                                        EnrolCommand.class,
                                         EnrolHarnessCommand.class,
                                         RolesCommand.class,
-                                        UnenrolCommand.class,
                                         AcceptEditCommand.class
                     })
 @OperatorVerb

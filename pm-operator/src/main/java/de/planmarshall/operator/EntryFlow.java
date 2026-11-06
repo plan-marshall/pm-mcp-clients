@@ -49,6 +49,11 @@ import de.planmarshall.operator.dialogue.StateDialogue;
 /**
  * Evaluates the runtime and machine onboarding status upon entering {@code pm-operator}
  * without a verb (01-cli-and-installer.adoc#start, 05-transcripts-entry.adoc#t-entry).
+ * <p>
+ * The machine's onboarding has two entry points and no verb of its own: the bare
+ * {@code pm-operator}, which runs it from where it stands while it is not complete, and
+ * {@code config <aspect>}, which runs one of its steps again as a later change
+ * (01-commands.adoc#command-tree).
  */
 public final class EntryFlow {
 

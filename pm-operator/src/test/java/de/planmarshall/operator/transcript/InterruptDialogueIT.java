@@ -123,16 +123,22 @@ class InterruptDialogueIT {
     }
 
     @Test
-    @DisplayName("onboard: the first state prompt interrupted leaves with 130")
-    void onboardInterrupt() throws Exception {
+    @DisplayName("the bare pm-operator: the onboarding interrupted returns to the console, which exits with 0")
+    void onboardingInterrupt() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.ONBOARDING);
-             var session = harness.open("onboard")) {
+             var session = harness.open()) {
+            awaitPrompt(session, "Where do you want to set it up?");
+            DialogueHarness.type(session, "h\n");
             awaitPrompt(session, "Set up this machine for plan-marshall");
 
+            // The onboarding runs inside the console, which always exits with 0 (01-commands.adoc
+            // #exit-codes): Ctrl+C leaves the dialogue back to the console's prompt, nothing sent.
             DialogueHarness.type(session, INTERRUPT);
+            awaitPrompt(session, "pm [setup 0/7");
+            DialogueHarness.type(session, "exit\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
-            assertEquals(EXIT_INTERRUPTED, session.exitCode(), session.rawOutput());
+            assertEquals(0, session.exitCode(), session.rawOutput());
             harness.assertNoAct();
         }
     }

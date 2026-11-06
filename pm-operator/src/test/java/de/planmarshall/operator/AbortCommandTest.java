@@ -13,11 +13,15 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
+import java.time.Duration;
 
+import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -26,7 +30,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-@DisplayName("AbortCommand")
+/**
+ * The acts of the folded verb {@code abort} through their design verbs: work is ended as one shell
+ * command only by {@code plan cancel}, {@code plan abandon} and {@code epic cancel}
+ * (19-actions.adoc#commands).
+ */
+@EnableGeneratorController
+@DisplayName("Ending work through plan cancel, plan abandon and epic cancel")
 class AbortCommandTest {
 
     @TempDir
@@ -56,79 +66,87 @@ class AbortCommandTest {
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
 
-    @Test
-    @DisplayName("abort plan on running plan cancels and archives")
-    void abortRunningPlan() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/plans/p-001".equals(request.target()) && "GET".equals(request.method())) {
-                response.json(200, "{\"id\":\"p-001\",\"state\":\"running\"}");
-            } else if ("/api/v1/plans/p-001/cancel".equals(request.target()) && "POST".equals(request.method())) {
+    private FakeRuntimeServer acceptPost(String path) throws IOException {
+        return fixture.start((request, response) -> {
+            if (path.equals(request.target()) && "POST".equals(request.method())) {
                 response.json(200, "{\"ok\":true}");
             } else {
                 response.send(404, null, "");
             }
         });
-
-        int code = execute("abort", "plan", "p-001", "--reason", "Emergency stop");
-        assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ p-001 cancelled and archived"))
-        );
     }
 
     @Test
-    @DisplayName("abort plan on paused plan abandons and archives")
-    void abortPausedPlan() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/plans/p-002".equals(request.target()) && "GET".equals(request.method())) {
-                response.json(200, "{\"id\":\"p-002\",\"state\":\"paused\"}");
-            } else if ("/api/v1/plans/p-002/abandon".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"ok\":true}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
+    @DisplayName("plan cancel ends a running plan with its reason and archives it")
+    void planCancel() throws Exception {
+        var planId = Generators.letterStrings(4, 12).next();
+        var reason = Generators.letterStrings(4, 24).next();
+        var server = acceptPost("/api/v1/plans/" + planId + "/cancel");
 
-        int code = execute("abort", "plan", "p-002", "--reason", "Not continuing");
+        int code = execute("plan", "cancel", planId, "--reason", reason);
+
+        var request = server.awaitRequest(Duration.ofSeconds(1));
         assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ p-002 abandoned and archived"))
-        );
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(request.bodyText().contains("\"reason\":\"" + reason + "\""),
+                                                request.bodyText()),
+                            () -> assertTrue(out.toString().contains("✓ " + planId + " cancelled and archived"),
+                                                out.toString()));
     }
 
     @Test
-    @DisplayName("abort epic cancels epic")
-    void abortEpic() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/epics/ep-001/cancel".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, "{\"ok\":true}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
+    @DisplayName("plan abandon ends a paused plan and keeps its pull request with --keep-pr")
+    void planAbandon() throws Exception {
+        var planId = Generators.letterStrings(4, 12).next();
+        var server = acceptPost("/api/v1/plans/" + planId + "/abandon");
 
-        int code = execute("abort", "epic", "ep-001", "--reason", "Epic superseded");
+        int code = execute("plan", "abandon", planId, "--reason", Generators.letterStrings(4, 24).next(),
+                            "--keep-pr");
+
+        var request = server.awaitRequest(Duration.ofSeconds(1));
         assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ ep-001 cancelled"))
-        );
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(request.bodyText().contains("\"close_pr\":false"), request.bodyText()),
+                            () -> assertTrue(out.toString().contains("✓ " + planId + " abandoned and archived"),
+                                                out.toString()));
     }
 
     @Test
-    @DisplayName("rejects mutually exclusive flags and unknown kind")
-    void rejectsInvalidCombinations() {
-        int code1 = execute("abort", "plan", "p-001", "--reason", "r", "--close-pr", "--keep-pr");
-        assertEquals(2, code1);
-        assertTrue(err.toString().contains("--close-pr and --keep-pr are mutually exclusive"));
+    @DisplayName("epic cancel ends an epic and leaves its plans running with --without-plans")
+    void epicCancel() throws Exception {
+        var epicId = Generators.letterStrings(4, 12).next();
+        var server = acceptPost("/api/v1/epics/" + epicId + "/cancel");
 
-        err.getBuffer().setLength(0);
-        int code2 = execute("abort", "epic", "e-001", "--reason", "r", "--with-plans", "--without-plans");
-        assertEquals(2, code2);
-        assertTrue(err.toString().contains("--with-plans and --without-plans are mutually exclusive"));
+        int code = execute("epic", "cancel", epicId, "--reason", Generators.letterStrings(4, 24).next(),
+                            "--without-plans");
 
-        err.getBuffer().setLength(0);
-        int code3 = execute("abort", "other", "o-001", "--reason", "r");
-        assertEquals(2, code3);
-        assertTrue(err.toString().contains("Unknown abort target"));
+        var request = server.awaitRequest(Duration.ofSeconds(1));
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(request.bodyText().contains("\"with_plans\":false"), request.bodyText()),
+                            () -> assertTrue(out.toString().contains("✓ " + epicId + " cancelled"), out.toString()));
+    }
+
+    @Test
+    @DisplayName("plan cancel --no-input without a reason stops with exit 3 and sends nothing")
+    void planCancelWithoutReason() throws Exception {
+        var planId = Generators.letterStrings(4, 12).next();
+        var server = acceptPost("/api/v1/plans/" + planId + "/cancel");
+
+        int code = execute("plan", "cancel", planId, "--no-input");
+
+        assertAll(
+                            () -> assertEquals(3, code),
+                            () -> assertTrue(out.toString().contains("Cancellation reason required (--reason)"),
+                                                out.toString()),
+                            () -> assertTrue(server.requests().isEmpty(), "no request was sent"));
+    }
+
+    @Test
+    @DisplayName("abort is no verb: it is reported with the usage exit code")
+    void abortIsUnknown() {
+        int code = execute("abort", "plan", Generators.letterStrings(4, 12).next());
+
+        assertEquals(2, code);
     }
 }

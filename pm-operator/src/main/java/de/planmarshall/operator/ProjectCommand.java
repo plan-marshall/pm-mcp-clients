@@ -22,6 +22,9 @@ import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.ProjectReleaseRequest;
+import de.planmarshall.api.resource.EnrolRequest;
+import de.planmarshall.api.resource.EnrolResult;
+import de.planmarshall.api.resource.UnenrolRequest;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 import de.planmarshall.operator.dialogue.ProjectOnboardingSource;
 import de.planmarshall.operator.dialogue.StateDialogue;
@@ -48,7 +51,14 @@ import picocli.CommandLine.Spec;
 public final class ProjectCommand implements Callable<Integer> {
 
     private static final String PROJECTS_API = "/api/v1/projects/";
+    private static final String PATH_ENROL = "/api/v1/enrol";
     private static final String FMT_PROJECT_NOT_FOUND = "Project %s not found.%n";
+    private static final String ERR_ENROLMENT_ROOT_CONFLICT = "enrolment_root_conflict";
+    private static final String ERR_PROJECT_STORE_ROOT_MISMATCH = "project_store_root_mismatch";
+    private static final String ERR_SCOPE_ACTIVE = "scope_active";
+
+    /** The exit code of a run that stopped before its done state (01-commands.adoc#exit-codes). */
+    static final int EXIT_NEEDS_INPUT = 3;
 
     private final OperatorContext context;
 
@@ -117,15 +127,27 @@ public final class ProjectCommand implements Callable<Integer> {
         out.flush();
     }
 
-    @Command(name = "add", description = "Onboards a project from the specified or current directory.")
+    /**
+     * {@code project add [<path>] [--pilot]}: the direct verb of a project's enrolment, its
+     * arguments the answers of {@code project.identity} to {@code project.enrol} (PM-EXEC-2; CLI
+     * &amp; Security § Enrolment, Lifecycle Gate &amp; Release; 17-projects.adoc#commands).
+     * <p>
+     * It reaches the stores only through the runtime's local API, and the operator gate refuses it
+     * outside an interactive terminal or inside a coding-agent environment (PM-SEC-3).
+     */
+    @Command(name = "add", description = "Enrols a project from the specified or current directory.")
     @OperatorVerb
     static final class AddCommand implements Callable<Integer> {
         @Spec
         CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
-        @Parameters(index = "0", arity = "0..1", defaultValue = ".", description = "Working directory or checkout path")
+        @Parameters(index = "0", arity = "0..1", defaultValue = ".",
+                            description = "Checkout path to enrol; the working directory by default")
         String path = ".";
+
+        @Option(names = "--pilot", description = "Enrol the project in pilot mode (the lifecycle gate)")
+        boolean pilot;
 
         AddCommand(OperatorContext context) {
             this.context = context;
@@ -134,20 +156,44 @@ public final class ProjectCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
-            var body = new LinkedHashMap<String, Object>();
-            body.put("path", path);
-            var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/projects", JsonTree.write(body)));
             var out = spec.commandLine().getOut();
+            var err = spec.commandLine().getErr();
             var safePath = OutputSafety.stripControlSequences(path);
+
+            var request = new EnrolRequest(path, pilot);
+            var response = context.runtime(true).send(HttpRequest.json("POST", PATH_ENROL, request.toJson()));
+
             if (response.status() == 200 || response.status() == 201) {
-                out.println("✓ Project onboarding started for " + safePath);
+                var result = EnrolResult.fromJson(response.bodyText());
+                var id = OutputSafety.stripControlSequences(result.projectId());
+                var mode = MessageCatalogue.get(result.pilot() ? "enrolment.enrol.mode.pilot"
+                                    : "enrolment.enrol.mode.standard");
+                out.println(MessageCatalogue.format("enrolment.enrol.done", Map.of("id", id, "mode", mode)));
                 out.flush();
                 return 0;
             }
-            var err = spec.commandLine().getErr();
-            err.printf("Failed to onboard project at %s: HTTP %d%n", safePath, response.status());
-            err.flush();
-            return 1;
+            if (response.status() == 409) {
+                var reason = refusalReason(response.bodyText());
+                if (ERR_ENROLMENT_ROOT_CONFLICT.equals(reason)) {
+                    out.println(MessageCatalogue.format("enrolment.enrol.refused.root_conflict",
+                                        Map.of("path", safePath)));
+                } else if (ERR_PROJECT_STORE_ROOT_MISMATCH.equals(reason)) {
+                    out.println(MessageCatalogue.format("enrolment.enrol.refused.store_root_mismatch",
+                                        Map.of("id", safePath)));
+                } else {
+                    out.println(MessageCatalogue.format("enrolment.enrol.failed",
+                                        Map.of("path", safePath, "status", response.status())));
+                }
+                out.flush();
+                return 1;
+            }
+            if (response.status() >= 400 && response.status() < 500) {
+                err.println(MessageCatalogue.format("enrolment.enrol.failed",
+                                    Map.of("path", safePath, "status", response.status())));
+                err.flush();
+                return 1;
+            }
+            throw new OperatorRefusedException("project add " + safePath, response);
         }
     }
 
@@ -191,7 +237,7 @@ public final class ProjectCommand implements Callable<Integer> {
                 }
                 // A project setup that ends without reaching its final state did not complete: the
                 // exit-code table's 3, the same code the onboarding run leaves with.
-                return dialogue.run().isFinal() ? 0 : OnboardCommand.EXIT_NEEDS_INPUT;
+                return dialogue.run().isFinal() ? 0 : EXIT_NEEDS_INPUT;
             } catch (StartPrompt.InterruptException _) {
                 return StartPrompt.EXIT_INTERRUPTED;
             } catch (StartPrompt.StartLeftException _) {
@@ -280,7 +326,7 @@ public final class ProjectCommand implements Callable<Integer> {
                 if (noInput) {
                     err.println("Release reason required (--reason)");
                     err.flush();
-                    return 3;
+                    return EXIT_NEEDS_INPUT;
                 }
                 reason = "Released by operator";
             }
@@ -288,7 +334,7 @@ public final class ProjectCommand implements Callable<Integer> {
             if (!yes && noInput) {
                 err.println("Release confirmation required (--yes)");
                 err.flush();
-                return 3;
+                return EXIT_NEEDS_INPUT;
             }
 
             var req = new ProjectReleaseRequest(projectId, true, force, reason);
@@ -313,6 +359,11 @@ public final class ProjectCommand implements Callable<Integer> {
         }
     }
 
+    /**
+     * {@code project unenrol <project_id>}: removes a project's enrolment, refused while work of it
+     * runs (PM-EXEC-2; 17-projects.adoc#release). The enrolment and nothing else is removed; the
+     * project's machine store stays for the operator's cleanup.
+     */
     @Command(name = "unenrol", description = "Removes a project's enrolment.")
     @OperatorVerb
     static final class UnenrolCommand implements Callable<Integer> {
@@ -342,29 +393,53 @@ public final class ProjectCommand implements Callable<Integer> {
             var sanitizedId = OutputSafety.stripControlSequences(projectId);
 
             if (!yes && noInput) {
-                err.println("Unenrol confirmation required (--yes)");
+                err.println(MessageCatalogue.get("enrolment.unenrol.confirm_required"));
                 err.flush();
-                return 3;
+                return EXIT_NEEDS_INPUT;
             }
 
+            var request = new UnenrolRequest(projectId);
             var path = PROJECTS_API + safeId + "/unenrol";
-            var response = context.runtime(true).send(HttpRequest.json("POST", path, "{}"));
+            var response = context.runtime(true).send(HttpRequest.json("POST", path, request.toJson()));
             if (response.status() == 200 || response.status() == 204) {
-                out.printf("✓ %s unenrolled%n", sanitizedId);
+                out.println(MessageCatalogue.format("enrolment.unenrol.done", Map.of("id", sanitizedId)));
                 out.flush();
                 return 0;
             }
             if (response.status() == 404) {
-                err.printf(FMT_PROJECT_NOT_FOUND, sanitizedId);
+                err.println(MessageCatalogue.format("enrolment.unenrol.not_found", Map.of("id", sanitizedId)));
                 err.flush();
                 return 1;
             }
             if (response.status() == 409) {
-                err.printf("✗ %s still runs work; unenrolling is refused while it does.%n", sanitizedId);
+                if (ERR_SCOPE_ACTIVE.equals(refusalReason(response.bodyText()))) {
+                    err.println(MessageCatalogue.format("enrolment.unenrol.scope_active",
+                                        Map.of("id", sanitizedId)));
+                } else {
+                    err.println(MessageCatalogue.format("enrolment.unenrol.failed",
+                                        Map.of("id", sanitizedId, "status", response.status())));
+                }
                 err.flush();
                 return 1;
             }
-            throw new OperatorRefusedException("unenrol project " + sanitizedId, response);
+            throw new OperatorRefusedException("project unenrol " + sanitizedId, response);
+        }
+    }
+
+    /**
+     * @param body the body of a refusal
+     * @return the refusal's reason, or its error code where it names no reason, or the empty string
+     */
+    private static String refusalReason(String body) {
+        try {
+            var map = JsonTree.asObject(JsonTree.parse(body));
+            var reason = JsonTree.string(map, "reason");
+            if (reason == null) {
+                reason = JsonTree.string(map, "error");
+            }
+            return reason != null ? reason : "";
+        } catch (IOException _) {
+            return "";
         }
     }
 }

@@ -17,7 +17,7 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
 
 ----
   projects [--list]                     the explorer, full screen; --list prints it into the scrollback
-  project add [<path>]                  onboard a project; the working directory is the proposed checkout
+  project add [<path>] [--pilot]        onboard a project; the working directory is the proposed checkout
   project setup <project_id> [<step>]   a later run of a project's onboarding, at a step (identity, own,
                                         team, architecture, landing, roles, descriptions, commit); without
                                         a step it asks which, release and unenrol among the choices
@@ -29,7 +29,7 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
   project favourite <project_id> [--off]
 ----
 
-* All are operator verbs and run in the console or as one shell command (xref:01-commands.adoc#command-tree[The Verbs]); `pm-operator enrol` is the direct verb of a project's enrolment, with its arguments as the answers of `project.identity` to `project.enrol`.
+* All are operator verbs and run in the console or as one shell command (xref:01-commands.adoc#command-tree[The Verbs]); `project add` is the direct verb of a project's enrolment, with its arguments as the answers of `project.identity` to `project.enrol` (`--pilot` answers the pilot line of the identity).
 * `--project ?` of every other verb shows the same list as the explorer, favourites first (xref:02-levels.adoc#addressing[Addressing a Level]).
 * `project release` and `project unenrol` are direct verbs (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]): `--reason` answers the release's reason, a missing one is asked, and `--no-input` stops there; the confirmation is answered by `--yes`, never by `Enter` alone (<<release>>).
 
@@ -71,7 +71,7 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
       *  Remove from favourites
 ----
 
-* *A released project* offers instead `a  Enrol again`, which runs its onboarding again from `project.identity` with its current values (as `pm-operator enrol` does), and `E  Ended work`, its ended plans and epics (xref:15-overview.adoc#ended[Ended Work]); the release ended every plan and epic of it, so it offers no `r  Running work`.
+* *A released project* offers instead `a  Enrol again`, which runs its onboarding again from `project.identity` with its current values (as `project add` does), and `E  Ended work`, its ended plans and epics (xref:15-overview.adoc#ended[Ended Work]); the release ended every plan and epic of it, so it offers no `r  Running work`.
 * *A project that is not ready* offers `c  Continue the setup` first; `e` and `p` are shown disabled with the reason (`pm-mcp-core is not ready: credential sonar`).
 * *A project with an open entry* (a start not finished) offers `c  Continue starting` first (link:../shared/starting-work.adoc#leaving[Starting Work, Leaving and Coming Back]).
 * *A project being added* offers `c  Continue` and `x  Abandon…`; abandoning asks first and deletes the run, of which nothing is enrolled yet.

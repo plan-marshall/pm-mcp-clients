@@ -32,6 +32,9 @@ import org.jline.terminal.Terminal;
 
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
+import de.planmarshall.operator.dialogue.OnboardingSource;
+import de.planmarshall.operator.dialogue.StateDialogue;
 import de.planmarshall.operator.tui.VirtualScreenTerminal;
 
 import org.junit.jupiter.api.AfterEach;
@@ -210,18 +213,29 @@ class InterruptExitCodeTest {
     }
 
     @Test
-    @DisplayName("onboard: the first state prompt interrupted leaves with 130")
-    void onboardInterrupt() throws Exception {
+    @DisplayName("the machine onboarding dialogue the bare pm-operator runs: its first prompt interrupted leaves with 130")
+    void onboardingDialogueInterrupt() throws Exception {
         var server = fixture.start((request, response) -> {
-            if (OnboardCommand.STATE_PATH.equals(request.target())) {
+            if (OnboardingSource.STATE_PATH.equals(request.target())) {
                 response.json(200, onboardingConsent());
             } else {
                 response.send(404, null, "");
             }
         });
 
-        var code = interruptedAt("Look for harnesses on this machine?", () -> PmOperator.execute(context,
-                            new PrintWriter(out), new PrintWriter(new StringWriter()), "onboard"));
+        var code = interruptedAt("Look for harnesses on this machine?", () -> {
+            var writer = new PrintWriter(out);
+            var locale = context.clientEnvironment().locale();
+            var prompt = new StartPrompt(context, writer, locale, false);
+            var dialogue = new StateDialogue(new OnboardingSource(context.runtime(true), context.gate()), writer,
+                                locale, stateId -> new ChoicePrompt(prompt, stateId));
+            try {
+                dialogue.run();
+                return 0;
+            } catch (StartPrompt.InterruptException _) {
+                return StartPrompt.EXIT_INTERRUPTED;
+            }
+        });
 
         assertEquals(130, code, out.toString());
         assertNoAct(server);

@@ -21,6 +21,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.List;
 import org.jline.terminal.impl.DumbTerminal;
 
@@ -33,7 +34,9 @@ import de.planmarshall.api.onboarding.MachineSettingsRecord;
 import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.onboarding.PlanDefaults;
 import de.planmarshall.api.system.CleanupDurations;
+import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.operator.dialogue.OnboardingSource;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,10 +45,31 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import picocli.CommandLine;
-
-@DisplayName("OnboardCommand and SettingsCommand")
+/**
+ * The machine's onboarding through its two entry points, now that it has no verb of its own: the
+ * bare {@code pm-operator}, which runs it from where it stands, and {@code config <aspect>}, which
+ * runs one of its steps again as a later change (01-commands.adoc#command-tree).
+ */
+@DisplayName("The onboarding through the bare pm-operator and config <aspect>")
 class OnboardCommandTest {
+
+    private static final String HARNESS_CONSENT = """
+                        {"scope":"machine","state":"harness.consent","summary":"Look for harnesses on this machine?",
+                         "completed_steps":1,"auto":false,
+                         "links":{"yes":{"href":"/api/v1/onboarding/harness/scan","method":"POST","next":"harness.choose","preselected":true},
+                                  "no":{"href":"/api/v1/onboarding/harness/decline","method":"POST","next":"harness.consent"}}}
+                        """;
+
+    private static final String HARNESS_CHOOSE = """
+                        {"scope":"machine","state":"harness.choose","summary":"Choose the harnesses to enrol",
+                         "completed_steps":1,"auto":false,
+                         "links":{"choose":{"href":"/api/v1/onboarding/harness/choose","method":"POST","next":"harness.probe-consent"}}}
+                        """;
+
+    private static final String UNONBOARDED_STATUS = """
+                        {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":1},
+                         "web":{"enabled":true,"port":7420}}
+                        """;
 
     @TempDir
     Path tempDir;
@@ -64,400 +88,131 @@ class OnboardCommandTest {
         }
     }
 
-    private OperatorContext createContext(String input) throws IOException {
-        var inStream = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
-        var outStream = new ByteArrayOutputStream();
-        var terminal = new DumbTerminal(inStream, outStream);
-        var clientEnv = ClientEnvironment.capture(fixture.environment());
-        return new OperatorContext(fixture.environment(), tempDir, true, clientEnv, () -> terminal, null);
-    }
-
-    private void seedOnboardingRoutes() throws Exception {
+    private FakeRuntimeServer seedOnboardingRoutes() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        var autoStarted = new boolean[1];
-        fixture.start((request, response) -> {
+        return fixture.start((request, response) -> {
             var path = request.target();
-            var method = request.method();
-            if (OnboardCommand.STATE_PATH.equals(path)) {
-                response.json(200, autoStarted[0] ? AUTO_RESULT : HARNESS_CONSENT);
-            } else if (OnboardCommand.STEP_PATH.equals(path) && "POST".equals(method)) {
-                if (autoStarted[0]) {
-                    assertTrue(request.bodyText().contains("\"link\":\"yes\""), request.bodyText());
-                }
-                response.json(200, autoStarted[0] ? AUTO_RESULT : HARNESS_CHOOSE);
-            } else if (OnboardCommand.AUTO_PATH.equals(path) && "POST".equals(method)) {
-                autoStarted[0] = true;
-                response.json(200, AUTO_CONSENT);
+            if ("/api/v1/status".equals(path)) {
+                response.json(200, UNONBOARDED_STATUS);
+            } else if (OnboardingSource.STATE_PATH.equals(path)) {
+                response.json(200, HARNESS_CONSENT);
+            } else if (OnboardingSource.STEP_PATH.equals(path) && "POST".equals(request.method())) {
+                response.json(200, HARNESS_CHOOSE);
             } else {
-                response.send(404, null, "Not found: " + path);
+                response.send(404, null, "");
             }
         });
     }
 
-    private static final String HARNESS_CONSENT = """
-                        {"scope":"machine","state":"harness.consent","summary":"Look for harnesses on this machine?",
-                         "completed_steps":1,"auto":false,
-                         "links":{"yes":{"href":"/api/v1/onboarding/harness/scan","method":"POST","next":"harness.choose","preselected":true},
-                                  "no":{"href":"/api/v1/onboarding/harness/decline","method":"POST","next":"harness.consent"}}}
-                        """;
-
-    private static final String HARNESS_CHOOSE = """
-                        {"scope":"machine","state":"harness.choose","summary":"Choose the harnesses to enrol",
-                         "completed_steps":1,"auto":false,
-                         "links":{"choose":{"href":"/api/v1/onboarding/harness/choose","method":"POST","next":"harness.probe-consent"}}}
-                        """;
-
-    private static final String AUTO_CONSENT = """
-                        {"scope":"machine","state":"auto.consent","summary":"Decide everything for me?",
-                         "completed_steps":0,"auto":true,
-                         "links":{"yes":{"href":"/api/v1/onboarding/auto/run","method":"POST","next":"auto.scan","preselected":true}}}
-                        """;
-
-    private static final String AUTO_RESULT = """
-                        {"scope":"machine","state":"auto.result","summary":"Everything is decided.",
-                         "completed_steps":7,"auto":true,
-                         "results":[{"aspect":"language","value":"Deutsch, models too","reason":"detected"}],
-                         "links":{"done":{"href":"/api/v1/onboarding/auto/result/done","method":"POST","next":"onboard.completed","preselected":true}}}
-                        """;
+    /**
+     * Runs the bare {@code pm-operator} on a terminal that reads the given input.
+     *
+     * @return the exit code and what the terminal showed
+     */
+    private Outcome runBare(String input) {
+        var inStream = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
+        var screen = new ByteArrayOutputStream();
+        var context = new OperatorContext(fixture.environment(), tempDir, true,
+                            ClientEnvironment.capture(fixture.environment()),
+                            () -> new DumbTerminal(inStream, screen), null);
+        var code = PmOperator.execute(context, new PrintWriter(new StringWriter()),
+                            new PrintWriter(new StringWriter()));
+        return new Outcome(code, screen.toString(StandardCharsets.UTF_8));
+    }
 
     @Nested
-    @DisplayName("onboard")
-    class Onboard {
+    @DisplayName("the bare pm-operator")
+    class Bare {
 
         @Test
-        @DisplayName("shows the current state as the dialogue's first frame")
-        void showsCurrentState() throws Exception {
+        @DisplayName("runs the onboarding here from where it stands, as the dialogue's first frame")
+        void showsTheCurrentState() throws Exception {
             seedOnboardingRoutes();
 
-            var writer = new StringWriter();
-            var cmd = new CommandLine(new OnboardCommand(createContext("")));
-            cmd.setOut(new PrintWriter(writer));
+            var outcome = runBare("h\nq\nexit\n");
 
-            int code = cmd.execute();
-
-            var output = writer.toString();
             assertAll(
-                                () -> assertEquals(0, code),
-                                () -> assertTrue(output.contains("[2/7] Harnesses \u00b7 Look for harnesses on this machine?"),
-                                                    output),
-                                () -> assertTrue(output.contains("Yes")),
-                                () -> assertTrue(output.contains("Not now")));
+                                () -> assertEquals(0, outcome.code()),
+                                () -> assertTrue(outcome.screen().contains("Look for harnesses on this machine?"),
+                                                    outcome.screen()),
+                                () -> assertTrue(outcome.screen().contains("Nothing was sent."), outcome.screen()));
         }
 
         @Test
-        @DisplayName("follows a named step")
-        void followsStep() throws Exception {
-            seedOnboardingRoutes();
+        @DisplayName("follows the link the operator chooses to the next state")
+        void followsAStep() throws Exception {
+            var server = seedOnboardingRoutes();
 
-            var writer = new StringWriter();
-            var cmd = new CommandLine(new OnboardCommand(createContext("")));
-            cmd.setOut(new PrintWriter(writer));
+            var outcome = runBare("h\n1\nq\nexit\n");
 
-            int code = cmd.execute("--step", "yes");
-
-            var output = writer.toString();
             assertAll(
-                                () -> assertEquals(0, code),
-                                () -> assertTrue(output.contains("Choose the harnesses to enrol")));
+                                () -> assertEquals(0, outcome.code()),
+                                () -> assertTrue(outcome.screen().contains("Choose the harnesses to enrol"),
+                                                    outcome.screen()),
+                                () -> assertTrue(server.requests().stream().anyMatch(recorded ->
+                                                                        OnboardingSource.STEP_PATH.equals(recorded.target())
+                                                                                            && recorded.bodyText().contains("yes")),
+                                                    "the chosen link was sent"));
         }
 
         @Test
-        @DisplayName("starts the automatic run with a confirmed consent")
-        void startsAutomaticRun() throws Exception {
-            seedOnboardingRoutes();
+        @DisplayName("sends no step while the operator leaves the dialogue at once")
+        void leavingSendsNothing() throws Exception {
+            var server = seedOnboardingRoutes();
 
-            var writer = new StringWriter();
-            var cmd = new CommandLine(new OnboardCommand(createContext("")));
-            cmd.setOut(new PrintWriter(writer));
+            var outcome = runBare("h\nq\nexit\n");
 
-            int code = cmd.execute("--auto", "--yes");
-
-            var output = writer.toString();
             assertAll(
-                                () -> assertEquals(0, code),
-                                () -> assertTrue(output.contains("Decide everything for me?")),
-                                () -> assertTrue(output.contains("Everything is decided.")),
-                                () -> assertTrue(output.contains("Language  Deutsch, models too")));
-        }
-
-        @Test
-        @DisplayName("declines the automatic run when the confirmation is not given")
-        void declinesAutomaticRun() throws Exception {
-            seedOnboardingRoutes();
-
-            var writer = new StringWriter();
-            var cmd = new CommandLine(new OnboardCommand(createContext("n\n")));
-            cmd.setOut(new PrintWriter(writer));
-
-            int code = cmd.execute("--auto");
-
-            var output = writer.toString();
-            assertAll(
-                                () -> assertEquals(0, code),
-                                () -> assertTrue(output.contains("Nothing was done.")));
-        }
-
-        @Test
-        @DisplayName("asks for input instead of running non-interactively")
-        void failsWithoutInput() throws Exception {
-            seedOnboardingRoutes();
-
-            var writer = new StringWriter();
-            var cmd = new CommandLine(new OnboardCommand(createContext("")));
-            cmd.setOut(new PrintWriter(writer));
-
-            int code = cmd.execute("--auto", "--no-input");
-
-            var output = writer.toString();
-            assertAll(
-                                () -> assertEquals(3, code),
-                                () -> assertTrue(output.contains("Decide everything for me?")));
+                                () -> assertEquals(0, outcome.code()),
+                                () -> assertFalse(server.requests().stream().anyMatch(recorded ->
+                                                                        OnboardingSource.STEP_PATH.equals(recorded.target())),
+                                                    "no step was sent"));
         }
     }
 
     @Nested
-    @DisplayName("settings machine")
-    class SettingsMachine {
-
-        private static final String OVERVIEW = """
-                            {"revision":4,
-                             "aspects":[
-                               {"aspect":"language","step":1,"summary":"Deutsch, models English","current":"de"},
-                               {"aspect":"harness","step":2,"summary":"Claude Code 2.4.1 (default)","current":"claude"}],
-                             "language_interface":"de","language_model":"en","documents_mode":"ask",
-                             "cleanup_durations":{"plans_after_days":30,"epics_after_days":30,"logs_after_days":30,"reports_after_days":30,"unenrolled_after_days":30,"remind_after_days":3},
-                             "plan_defaults":{"landing":"landing.pull-request","method":"method.test-first","asking":"ask.key-points"},
-                             "consents":[{"kind":"scan_harnesses","status":"remembered","remember":true,"channel":"terminal"}],
-                             "credentials":[]}
-                            """;
+    @DisplayName("config <aspect>")
+    class ConfigAspect {
 
         @Test
-        @DisplayName("shows the revision, the aspects and the remembered consents")
-        void showsOverview() throws Exception {
+        @DisplayName("runs one step again as a later change and reports it")
+        void runsOneStepAgain() throws Exception {
             PmOperatorTest.writeLiveRecord(fixture);
-            fixture.start((request, response) -> {
-                if (SettingsCommand.MachineCommand.MACHINE_PATH.equals(request.target())) {
-                    response.json(200, OVERVIEW);
+            var server = fixture.start((request, response) -> {
+                if ("/api/v1/config/language".equals(request.target()) && "POST".equals(request.method())) {
+                    response.json(200, "{}");
                 } else {
                     response.send(404, null, "");
                 }
             });
+            var out = new StringWriter();
+            var context = new OperatorContext(fixture.environment(), tempDir, true);
 
-            var writer = new StringWriter();
-            var cmd = new CommandLine(new SettingsCommand.MachineCommand(createContext("")));
-            cmd.setOut(new PrintWriter(writer));
+            var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(new StringWriter()),
+                                "config", "language", "--interface", "de");
 
-            int code = cmd.execute();
-
-            var output = writer.toString();
+            var request = server.awaitRequest(Duration.ofSeconds(1));
             assertAll(
                                 () -> assertEquals(0, code),
-                                () -> assertTrue(output.contains("Machine settings")),
-                                () -> assertTrue(output.contains("Settings revision 4")),
-                                () -> assertTrue(output.contains("1. Language: Deutsch, models English")),
-                                () -> assertTrue(output.contains("Remembered consents")),
-                                () -> assertTrue(output.contains("look for harnesses")));
+                                () -> assertTrue(request.bodyText().contains("\"interface\":\"de\""), request.bodyText()),
+                                () -> assertTrue(out.toString().contains("Language settings updated"), out.toString()));
         }
 
         @Test
-        @DisplayName("applies a change against the current revision")
-        void appliesChange() throws Exception {
+        @DisplayName("reports a step the runtime refuses")
+        void reportsARefusedStep() throws Exception {
             PmOperatorTest.writeLiveRecord(fixture);
-            fixture.start((request, response) -> {
-                if (SettingsCommand.MachineCommand.MACHINE_PATH.equals(request.target())
-                                    && "GET".equals(request.method())) {
-                    response.json(200, OVERVIEW);
-                } else if (SettingsCommand.MachineCommand.MACHINE_PATH.equals(request.target())
-                                    && "PUT".equals(request.method())) {
-                    response.json(200, "{\"applied\":true,\"conflict\":false,\"revision\":5}");
-                } else {
-                    response.send(404, null, "");
-                }
-            });
+            fixture.start((request, response) -> response.send(409, null, ""));
+            var err = new StringWriter();
+            var context = new OperatorContext(fixture.environment(), tempDir, true);
 
-            var writer = new StringWriter();
-            var cmd = new CommandLine(new SettingsCommand.MachineCommand(createContext("")));
-            cmd.setOut(new PrintWriter(writer));
-
-            int code = cmd.execute("--set", "documents_mode=copy");
-
-            var output = writer.toString();
-            assertAll(
-                                () -> assertEquals(0, code),
-                                () -> assertTrue(output.contains("Saved.")));
-        }
-
-        @Test
-        @DisplayName("keeps going through a conflict on --yes and applies the change again")
-        void recoversFromConflict() throws Exception {
-            PmOperatorTest.writeLiveRecord(fixture);
-            final int[] putCount = {0};
-            fixture.start((request, response) -> {
-                if (SettingsCommand.MachineCommand.MACHINE_PATH.equals(request.target())
-                                    && "GET".equals(request.method())) {
-                    response.json(200, OVERVIEW);
-                } else if (SettingsCommand.MachineCommand.MACHINE_PATH.equals(request.target())
-                                    && "PUT".equals(request.method())) {
-                    putCount[0]++;
-                    if (putCount[0] == 1) {
-                        response.json(409, "{\"applied\":false,\"conflict\":true,\"revision\":9,\"current_value\":\"copy\"}");
-                    } else {
-                        response.json(200, "{\"applied\":true,\"conflict\":false,\"revision\":10}");
-                    }
-                } else {
-                    response.send(404, null, "");
-                }
-            });
-
-            var writer = new StringWriter();
-            var cmd = new CommandLine(new SettingsCommand.MachineCommand(createContext("")));
-            cmd.setOut(new PrintWriter(writer));
-
-            int code = cmd.execute("--set", "documents_mode=move", "--yes");
-
-            var output = writer.toString();
-            assertAll(
-                                () -> assertEquals(0, code),
-                                () -> assertEquals(2, putCount[0]),
-                                () -> assertTrue(output.contains("Changed meanwhile")),
-                                () -> assertTrue(output.contains("Saved.")));
-        }
-
-        @Test
-        @DisplayName("withdraws a remembered consent")
-        void withdrawsConsent() throws Exception {
-            PmOperatorTest.writeLiveRecord(fixture);
-            fixture.start((request, response) -> {
-                if (SettingsCommand.MachineCommand.MACHINE_PATH.equals(request.target())
-                                    && "GET".equals(request.method())) {
-                    response.json(200, OVERVIEW);
-                } else if (SettingsCommand.MachineCommand.MACHINE_PATH.equals(request.target())
-                                    && "PUT".equals(request.method())) {
-                    response.json(200, "{\"applied\":true,\"conflict\":false,\"revision\":5}");
-                } else {
-                    response.send(404, null, "");
-                }
-            });
-
-            var writer = new StringWriter();
-            var cmd = new CommandLine(new SettingsCommand.MachineCommand(createContext("")));
-            cmd.setOut(new PrintWriter(writer));
-
-            int code = cmd.execute("--withdraw", ConsentKind.SCAN_HARNESSES.wireValue());
-
-            var output = writer.toString();
-            assertAll(
-                                () -> assertEquals(0, code),
-                                () -> assertTrue(output.contains("Consent withdrawn")));
-        }
-
-        @Test
-        @DisplayName("reports a conflict and stops when --yes is not given")
-        void conflictWithoutYes() throws Exception {
-            PmOperatorTest.writeLiveRecord(fixture);
-            final int[] putCount = {0};
-            fixture.start((request, response) -> {
-                if (SettingsCommand.MachineCommand.MACHINE_PATH.equals(request.target())
-                                    && "GET".equals(request.method())) {
-                    response.json(200, OVERVIEW);
-                } else if (SettingsCommand.MachineCommand.MACHINE_PATH.equals(request.target())
-                                    && "PUT".equals(request.method())) {
-                    putCount[0]++;
-                    response.json(409, "{\"applied\":false,\"conflict\":true,\"revision\":9,\"current_value\":\"copy\"}");
-                } else {
-                    response.send(404, null, "");
-                }
-            });
-
-            var writer = new StringWriter();
-            var cmd = new CommandLine(new SettingsCommand.MachineCommand(createContext("")));
-            cmd.setOut(new PrintWriter(writer));
-
-            int code = cmd.execute("--set", "documents_mode=move");
-
-            var output = writer.toString();
-            assertAll(
-                                () -> assertEquals(0, code),
-                                () -> assertEquals(1, putCount[0]),
-                                () -> assertTrue(output.contains("Changed meanwhile")),
-                                () -> assertFalse(output.contains("Saved.")));
-        }
-
-        @Test
-        @DisplayName("refuses an unknown consent kind and a malformed pair")
-        void refusesBadInput() throws Exception {
-            PmOperatorTest.writeLiveRecord(fixture);
-            fixture.start((request, response) -> {
-                if (SettingsCommand.MachineCommand.MACHINE_PATH.equals(request.target())) {
-                    response.json(200, OVERVIEW);
-                } else {
-                    response.send(404, null, "");
-                }
-            });
-
-            var unknownWriter = new StringWriter();
-            var unknownCmd = new CommandLine(new SettingsCommand.MachineCommand(createContext("")));
-            unknownCmd.setOut(new PrintWriter(unknownWriter));
-            var unknownCode = unknownCmd.execute("--withdraw", "not_a_kind");
-
-            var malformedWriter = new StringWriter();
-            var malformedCmd = new CommandLine(new SettingsCommand.MachineCommand(createContext("")));
-            malformedCmd.setOut(new PrintWriter(malformedWriter));
-            var malformedCode = malformedCmd.execute("--set", "noequals");
-
-            assertAll(
-                                () -> assertEquals(1, unknownCode),
-                                () -> assertTrue(unknownWriter.toString().contains("Refused")),
-                                () -> assertEquals(1, malformedCode),
-                                () -> assertTrue(malformedWriter.toString().contains("Refused")));
-        }
-
-        @Test
-        @DisplayName("refuses when the settings cannot be read")
-        void refusesUnreadableSettings() throws Exception {
-            PmOperatorTest.writeLiveRecord(fixture);
-            fixture.start((request, response) -> response.send(500, null, ""));
-
-            var writer = new StringWriter();
-            var cmd = new CommandLine(new SettingsCommand.MachineCommand(createContext("")));
-            cmd.setOut(new PrintWriter(writer));
-
-            int code = cmd.execute();
+            var code = PmOperator.execute(context, new PrintWriter(new StringWriter()), new PrintWriter(err),
+                                "config", "language", "--interface", "de");
 
             assertAll(
                                 () -> assertEquals(1, code),
-                                () -> assertTrue(writer.toString().contains("Refused")));
+                                () -> assertTrue(err.toString().contains("HTTP 409"), err.toString()));
         }
-    }
-
-    @Test
-    @DisplayName("settings without a subcommand prints its usage")
-    void settingsUsage() throws Exception {
-        var out = new StringWriter();
-        var err = new StringWriter();
-        int code = PmOperator.execute(createContext(""), new PrintWriter(out), new PrintWriter(err), "settings");
-
-        assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("settings")));
-    }
-
-    @Test
-    @DisplayName("onboard reports a refused step")
-    void reportsRefusedStep() throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        fixture.start((request, response) -> response.send(404, null, ""));
-
-        var writer = new StringWriter();
-        var cmd = new CommandLine(new OnboardCommand(createContext("")));
-        cmd.setOut(new PrintWriter(writer));
-
-        int code = cmd.execute("--step", "yes");
-
-        assertAll(
-                            () -> assertEquals(1, code),
-                            () -> assertTrue(writer.toString().contains("The onboarding could not be read."),
-                                                writer.toString()));
     }
 
     @Test
@@ -469,8 +224,14 @@ class OnboardCommandTest {
                             List.of(new ConsentRecord(ConsentKind.SCAN_HARNESSES, ConsentStatus.REMEMBERED, true,
                                                 null, "terminal", null, null)),
                             List.of());
+
         var parsed = MachineSettingsRecord.fromJson(settings.toJson());
-        assertEquals(3, parsed.revision());
-        assertFalse(parsed.aspects().isEmpty());
+
+        assertAll(
+                            () -> assertEquals(3, parsed.revision()),
+                            () -> assertFalse(parsed.aspects().isEmpty()));
+    }
+
+    private record Outcome(int code, String screen) {
     }
 }

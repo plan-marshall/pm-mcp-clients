@@ -165,19 +165,6 @@ class HandlerInterruptExitCodeTest {
     }
 
     @Test
-    @DisplayName("the automatic onboarding's confirmation interrupted leaves with 130")
-    void onboardAutomaticConfirmationInterrupt() throws Exception {
-        var server = fixture.start((request, response) -> response.send(404, null, ""));
-
-        var code = interruptedAt("Decide everything for me?",
-                            () -> PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err),
-                                                "onboard", "--auto"));
-
-        assertEquals(StartPrompt.EXIT_INTERRUPTED, code, out.toString());
-        assertNoAct(server);
-    }
-
-    @Test
     @DisplayName("the credential confirmation interrupted leaves with 130")
     void credentialsConfirmationInterrupt() throws Exception {
         var server = fixture.start((request, response) -> response.send(404, null, ""));
