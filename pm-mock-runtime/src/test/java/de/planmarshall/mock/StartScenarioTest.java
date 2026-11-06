@@ -257,7 +257,7 @@ class StartScenarioTest {
                 .filter(stateId -> stateId.startsWith("start."))
                 .sorted()
                 .toList();
-        assertEquals(15, startStates.size(), "every start case is a state");
+        assertEquals(18, startStates.size(), "every start case is a state");
 
         for (var stateId : startStates) {
             var fixture = startFixture(scenario, stateId);
@@ -267,7 +267,8 @@ class StartScenarioTest {
         }
         assertTrue(scenario.states().keySet().containsAll(List.of("projects.explorer", "projects.ready",
                 "projects.empty", "projects.attention", "projects.being-added", "projects.unenrolled",
-                "enrol.scan", "enrol.digest-mismatch", "sources.git", "sources.lessons")));
+                "enrol.scan", "enrol.digest-mismatch", "sources.git", "sources.lessons",
+                "start.pull-request-not-open", "start.pull-request-flagged", "start.local-changes-captured")));
     }
 
     @Test
