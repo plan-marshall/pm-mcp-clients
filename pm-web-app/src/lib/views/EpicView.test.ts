@@ -570,4 +570,29 @@ describe('EpicView component', () => {
 
     expect(screen.getByTestId('epic-row-relay-docs')).toBeInTheDocument();
   });
+
+  it('opens the raise dialogue with the unknown count text when the epic resource omits running', async () => {
+    vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue({
+      subject_id: 'relay-hardening',
+      subject_kind: 'epic',
+      state: 'running',
+      actions: [{ action: 'next', available: true }],
+    });
+    const resourceWithoutRunning: EpicResource = {
+      ...mockResource,
+      running: null,
+    };
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(resourceWithoutRunning);
+    render(EpicView);
+
+    const next = await screen.findByTestId('action-next');
+    expect(next).not.toBeDisabled();
+
+    await fireEvent.click(next);
+
+    const raise = await screen.findByTestId('raise-scope');
+    expect(raise).toHaveTextContent(
+      'How many plans run is not known; relay-hardening may run 3 at once, and the next plan, relay-reconnect-metrics, waits for a free place.',
+    );
+  });
 });
