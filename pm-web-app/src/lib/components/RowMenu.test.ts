@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
@@ -223,7 +224,10 @@ describe('RowMenu component', () => {
   });
 
   it('restores focus to trigger when an item is chosen (D2c)', async () => {
-    const actHandler = vi.fn();
+    let focusDuringAction: Element | null = null;
+    const actHandler = vi.fn().mockImplementation(() => {
+      focusDuringAction = document.activeElement;
+    });
     render(RowMenu, {
       props: {
         label: 'Row actions',
@@ -238,6 +242,7 @@ describe('RowMenu component', () => {
     await fireEvent.click(item);
 
     expect(actHandler).toHaveBeenCalled();
+    expect(focusDuringAction).toBe(trigger);
     await waitFor(() => {
       expect(screen.queryByRole('menu')).toBeNull();
       expect(trigger).toHaveFocus();
@@ -262,38 +267,85 @@ describe('RowMenu component', () => {
 
   it('has a visible focus style distinct from its hover with >= 3:1 contrast cue (D2a)', () => {
     const style = styleOf(path.resolve(__dirname, './RowMenu.svelte'));
-    const focusRules = rulesOf(style, '.row-menu__item:focus:not(:disabled)');
-    expect(focusRules.length).toBeGreaterThan(0);
-    const combined = focusRules.join(';');
-    expect(combined).not.toContain('outline: none');
-    expect(combined).toContain('outline:');
-    expect(combined).toContain('var(--color-brand)');
+    const focusVisibleRules = rulesOf(style, '.row-menu__item:focus-visible:not(:disabled)');
+    expect(focusVisibleRules.length).toBeGreaterThan(0);
+    const combinedVisible = focusVisibleRules.join(';');
+    expect(combinedVisible).not.toContain('outline: none');
+    expect(combinedVisible).toContain('outline:');
+    expect(combinedVisible).toContain('var(--color-brand)');
 
-    // Contrast verification: brand color (#2563EB light, #60A5FA dark) vs surface (#FFFFFF light, #1C2230 dark)
+    // Mouse focus has outline: none
+    const focusRules = rulesOf(style, '.row-menu__item:focus:not(:disabled)');
+    expect(focusRules.join(';')).toContain('outline: none');
+
+    // Read real tokens from tokens.css
+    const tokensCss = fs.readFileSync(path.resolve(__dirname, '../../styles/tokens.css'), 'utf-8');
+
+    // Parse hex colors for rgb conversion
+    const hexToRgb = (hex: string) => {
+      const clean = hex.replace('#', '').trim();
+      return {
+        r: parseInt(clean.slice(0, 2), 16),
+        g: parseInt(clean.slice(2, 4), 16),
+        b: parseInt(clean.slice(4, 6), 16),
+      };
+    };
+
     const lum = (c: { r: number; g: number; b: number }) => {
       const sRGB = [c.r / 255, c.g / 255, c.b / 255].map((v) =>
         v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4),
       );
       return 0.2126 * sRGB[0] + 0.7152 * sRGB[1] + 0.0722 * sRGB[2];
     };
-    const lightBrand = { r: 37, g: 99, b: 235 };
-    const lightSurface = { r: 255, g: 255, b: 255 };
-    const lightContrast = (Math.max(lum(lightBrand), lum(lightSurface)) + 0.05) / (Math.min(lum(lightBrand), lum(lightSurface)) + 0.05);
+
+    // Extract light brand & surface from :root or [data-theme='light']
+    const lightBrandMatch = tokensCss.match(/--color-brand:\s*(#[0-9a-fA-F]{6})/);
+    expect(lightBrandMatch).not.toBeNull();
+    const lightSurfaceMatch = tokensCss.match(/--color-bg-surface:\s*(#[0-9a-fA-F]{6})/);
+    expect(lightSurfaceMatch).not.toBeNull();
+
+    const lightBrand = hexToRgb(lightBrandMatch![1]);
+    const lightSurface = hexToRgb(lightSurfaceMatch![1]);
+    expect(lightBrandMatch![1].toUpperCase()).toBe('#5B4BDB');
+    expect(lightSurfaceMatch![1].toUpperCase()).toBe('#FFFFFF');
+
+    const lightContrast =
+      (Math.max(lum(lightBrand), lum(lightSurface)) + 0.05) /
+      (Math.min(lum(lightBrand), lum(lightSurface)) + 0.05);
     expect(lightContrast).toBeGreaterThanOrEqual(3.0);
 
-    const darkBrand = { r: 96, g: 165, b: 250 };
-    const darkSurface = { r: 28, g: 34, b: 48 };
-    const darkContrast = (Math.max(lum(darkBrand), lum(darkSurface)) + 0.05) / (Math.min(lum(darkBrand), lum(darkSurface)) + 0.05);
+    // Extract dark brand & surface from [data-theme='dark'] or @media (prefers-color-scheme: dark)
+    const darkSection = tokensCss.slice(tokensCss.lastIndexOf("[data-theme='dark']"));
+    const darkBrandMatch = darkSection.match(/--color-brand:\s*(#[0-9a-fA-F]{6})/);
+    expect(darkBrandMatch).not.toBeNull();
+    const darkSurfaceMatch = darkSection.match(/--color-bg-raised:\s*(#[0-9a-fA-F]{6})/);
+    expect(darkSurfaceMatch).not.toBeNull();
+
+    const darkBrand = hexToRgb(darkBrandMatch![1]);
+    const darkSurface = hexToRgb(darkSurfaceMatch![1]);
+    expect(darkBrandMatch![1].toUpperCase()).toBe('#8B7EF9');
+    expect(darkSurfaceMatch![1].toUpperCase()).toBe('#1C2230');
+
+    const darkContrast =
+      (Math.max(lum(darkBrand), lum(darkSurface)) + 0.05) /
+      (Math.min(lum(darkBrand), lum(darkSurface)) + 0.05);
     expect(darkContrast).toBeGreaterThanOrEqual(3.0);
   });
 
   it('measures 44px min-block-size on phone viewports (D2b)', () => {
     const style = styleOf(path.resolve(__dirname, './RowMenu.svelte'));
-    expect(style).toContain('@media (max-width: 767px)');
-    expect(style).toMatch(/\.row-menu__item\s*\{[^}]*min-block-size:\s*44px/);
+    const mediaMatch = style.match(/@media\s*\(max-width:\s*767px\)\s*\{([\s\S]*?\})\s*\}/);
+    expect(mediaMatch).not.toBeNull();
+    const mediaBlock = mediaMatch![1];
+    expect(mediaBlock).toMatch(/\.row-menu__item\s*\{[^}]*min-block-size:\s*44px/);
+
+    // Outside the phone media query, row-menu__item does not have min-block-size
+    const outsideStyle = style.replace(/@media\s*\(max-width:\s*767px\)\s*\{[\s\S]*?\}/, '');
+    const outsideRules = rulesOf(outsideStyle, '.row-menu__item');
+    expect(outsideRules.join(';')).not.toContain('min-block-size');
   });
 
-  it('handles Escape inside menu and isolates window handler from menuHost events (D2c)', async () => {
+  it('closes menu and restores focus to trigger on Escape key inside menu (N1)', async () => {
     render(RowMenu, {
       props: {
         label: 'Row actions',
@@ -309,7 +361,54 @@ describe('RowMenu component', () => {
       expect(items[0]).toHaveFocus();
     });
 
-    // Window handler closes menu on outside Escape
+    await fireEvent.keyDown(items[0], { key: 'Escape' });
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).toBeNull();
+      expect(trigger).toHaveFocus();
+    });
+  });
+
+  it('closes menu and retains focus on trigger when Escape is pressed on the trigger itself (N1)', async () => {
+    render(RowMenu, {
+      props: {
+        label: 'Row actions',
+        items: sampleItems,
+      },
+    });
+
+    const trigger = screen.getByRole('button', { name: 'Row actions' });
+    await fireEvent.click(trigger);
+
+    await waitFor(() => {
+      expect(screen.getByRole('menu')).toBeInTheDocument();
+    });
+
+    trigger.focus();
+    expect(trigger).toHaveFocus();
+
+    await fireEvent.keyDown(trigger, { key: 'Escape' });
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menu')).toBeNull();
+      expect(trigger).toHaveFocus();
+    });
+  });
+
+  it('closes menu on outside Escape key via window listener (N1)', async () => {
+    render(RowMenu, {
+      props: {
+        label: 'Row actions',
+        items: sampleItems,
+      },
+    });
+
+    const trigger = screen.getByRole('button', { name: 'Row actions' });
+    await fireEvent.click(trigger);
+
+    await waitFor(() => {
+      expect(screen.getByRole('menu')).toBeInTheDocument();
+    });
+
     await fireEvent.keyDown(document.body, { key: 'Escape' });
     await waitFor(() => {
       expect(screen.queryByRole('menu')).toBeNull();
