@@ -418,7 +418,7 @@ class PmConsoleBehaviourTest {
             try (rendered; var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
                 var context = new OperatorContext(fixture.environment(), tempDir, true,
                                     ClientEnvironment.capture(fixture.environment()),
-                                    () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+                                    () -> terminal, null);
                 var console = new PmConsole(context);
                 var started = System.nanoTime();
                 assertTimeoutPreemptively(Duration.ofSeconds(8), () -> console.refreshSetupBadge("en", terminal));
@@ -570,7 +570,7 @@ class PmConsoleBehaviourTest {
             try (rendered; var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
                 var context = new OperatorContext(fixture.environment(), tempDir, true,
                                     ClientEnvironment.capture(fixture.environment()),
-                                    () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+                                    () -> terminal, null);
                 var console = new PmConsole(context);
                 assertTimeoutPreemptively(Duration.ofSeconds(8), () -> console.refreshSetupBadge("en", terminal));
             }
@@ -602,7 +602,7 @@ class PmConsoleBehaviourTest {
             try (rendered; var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
                 var context = new OperatorContext(fixture.environment(), tempDir, true,
                                     ClientEnvironment.capture(fixture.environment()),
-                                    () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+                                    () -> terminal, null);
                 var console = new PmConsole(context);
                 var first = new Thread(() -> console.refreshSetupBadge("en", terminal));
                 var second = new Thread(() -> console.refreshBadges(terminal));
@@ -655,7 +655,7 @@ class PmConsoleBehaviourTest {
             try (rendered; var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
                 var context = new OperatorContext(fixture.environment(), tempDir, true,
                                     ClientEnvironment.capture(fixture.environment()),
-                                    () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+                                    () -> terminal, null);
                 var console = new PmConsole(context);
                 var t1 = new Thread(() -> console.refreshSetupBadge("en", terminal));
                 var t2 = new Thread(() -> console.refreshBadges(terminal));

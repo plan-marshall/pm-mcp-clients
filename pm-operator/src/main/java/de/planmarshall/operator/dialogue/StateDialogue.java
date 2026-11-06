@@ -668,7 +668,7 @@ public final class StateDialogue {
         steps.put("detect", CHECKOUT_STEP);
         steps.put("run-consent", CHECKOUT_STEP);
         steps.put("probe", CHECKOUT_STEP);
-        steps.put("checkout", CHECKOUT_STEP);
+        steps.put(CHECKOUT_STEP, CHECKOUT_STEP);
         steps.put("enrol", STEP_ENROLMENT);
         steps.put(STEP_ENROLMENT, STEP_ENROLMENT);
         steps.put(OPERATOR, STEP_OWN);
