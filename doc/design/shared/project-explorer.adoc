@@ -23,12 +23,12 @@ The explorer is where the operator finds a project among all the machine's proje
     ★ pm-mcp-clients     ready    ! 2   3 plans · 1 epic   2 min ago
     ★ pm-mcp-core        ready          2 plans                    9 min ago
   Recent
-      plan-marshall      setup needs: credential sonar             yesterday
+      plan-marshall      setup needs: credential sonar             1 d ago
       cui-http           ready                                     3 d ago
   Being added
       ~/git/cui-parent   step 2 of 10: Identity        [Continue]  [Abandon]
   All projects                                    [ filter ]   by name ▾
-      API-Sheriff        ready                                     5 weeks ago
+      API-Sheriff        ready                                     35 d ago
       cui-http           ready                                     3 d ago
       …
 ----
@@ -68,7 +68,7 @@ A project's onboarding that has not reached its enrolment has no project id yet 
 |its active plans and epics, counted apart; nothing when none runs
 
 |Last active
-|when the operator or its plans last worked in it, as a duration (`2 min ago`, `yesterday`)
+|when the operator or its plans last worked in it, as an age in a list (link:texts-and-languages.adoc#time[Time and Duration]: `2 min ago`, `3 d ago`, `2 months ago`)
 |===
 
 A project's running work shows its own pull requests by their numbers, each a link to the provider, where the client shows its plans (link:plan-overview.adoc#item-rows[A Plan, an Epic]).

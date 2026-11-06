@@ -138,7 +138,7 @@ A project's ended plans and epics are a list of their own, apart from Running Wo
   pm-mcp-clients · ended work                                         page 1 of 3
   ─────────────────────────────────────────────────────────────────────────────
   ▸ plan  fix-relay               merged      #214                  today 11:20
-  ◇ epic  relay-hardening         completed                         yesterday
+  ◇ epic  relay-hardening         completed                         1 d ago
   ▸ plan  relay-cursor-order      aborted     the edit was not ours 1 d ago
   ▸ plan  codeberg-issues         cancelled   replaced by relay-v2  2 d ago
   ▸ plan  docs-cleanup            abandoned   no longer needed      5 d ago

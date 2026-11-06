@@ -329,7 +329,7 @@ The review goes through the items of one register (`review.open`), one at a time
               the cursor is written after the event is delivered.
   Rules       a fix must hold for every transport; covered by a test that
               drops the connection between delivery and cursor write
-  Origin      landing of relay-reconnect (#211) · 2 days ago
+  Origin      landing of relay-reconnect (#211) · 2 d ago
   Proposal    Promote to a plan: it needs a change across two modules
               (the planning role)
   ─────────────────────────────────────────────────────────────────────────────
