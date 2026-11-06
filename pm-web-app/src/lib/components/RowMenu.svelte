@@ -16,7 +16,9 @@
    * RowMenu (VD-P-05): the WAI-ARIA menu button pattern for row actions in card layouts and lists.
    *
    * It uses `IconButton` as its trigger (`act.more`), names its row through `label`, and manages
-   * its popup menu with full keyboard navigation (arrows, Home/End, Escape, Tab).
+   * its popup menu with full keyboard navigation (arrows, Home/End, Escape, Tab). The open menu is
+   * a popup layer above the sticky chrome of the frame, and it opens upwards where it would pass
+   * the bottom of the viewport (`doc/design/web-app/components.adoc#row-menu-placement`).
    */
   export let items: RowMenuItem[] = [];
   /** Accessible name describing which row/subject the menu acts on. */
@@ -30,8 +32,24 @@
   export let disabled = false;
 
   let open = false;
+  /** Whether the open menu hangs above its trigger instead of below it. */
+  let above = false;
+  let rootElement: HTMLElement | null = null;
   let menuHost: HTMLElement | null = null;
   let triggerElement: HTMLElement | null = null;
+
+  /**
+   * Opens the menu upwards when it would pass the bottom of the viewport below its trigger and the
+   * viewport has more room above the trigger than below it. A row at the bottom of a phone screen
+   * thereby opens its menu into the page, not under the sticky bottom bar.
+   */
+  function place(): void {
+    if (!menuHost || !rootElement) return;
+    const row = rootElement.getBoundingClientRect();
+    const menu = menuHost.getBoundingClientRect();
+    const roomBelow = window.innerHeight - row.bottom;
+    above = menu.bottom > window.innerHeight && row.top > roomBelow;
+  }
 
   function menuEntries(): HTMLButtonElement[] {
     if (!menuHost) return [];
@@ -42,7 +60,10 @@
 
   export async function openMenu(): Promise<void> {
     if (disabled || open) return;
+    above = false;
     open = true;
+    await tick();
+    place();
     await tick();
     menuEntries()[0]?.focus();
   }
@@ -137,7 +158,7 @@
 
 <svelte:window onclick={onWindowClick} onkeydown={onWindowKeydown} />
 
-<div class="row-menu">
+<div class="row-menu" bind:this={rootElement}>
   <IconButton
     {icon}
     {label}
@@ -154,6 +175,7 @@
     <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
     <div
       class="row-menu__list"
+      class:row-menu__list--above={above}
       role="menu"
       tabindex="-1"
       aria-label={label}
@@ -188,7 +210,8 @@
     position: absolute;
     inset-block-start: calc(100% + var(--space-1));
     inset-inline-end: 0;
-    z-index: 10;
+    /* A popup layer: above the sticky chrome of the phone frame (20), below a dialog (50). */
+    z-index: 30;
     display: flex;
     flex-direction: column;
     min-inline-size: 180px;
@@ -197,6 +220,11 @@
     border-radius: var(--radius-md);
     background-color: var(--color-bg-raised);
     box-shadow: var(--shadow-2);
+  }
+
+  .row-menu__list--above {
+    inset-block-start: auto;
+    inset-block-end: calc(100% + var(--space-1));
   }
 
   .row-menu__item {

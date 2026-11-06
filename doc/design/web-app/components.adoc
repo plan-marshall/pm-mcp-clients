@@ -52,19 +52,27 @@ Source and surface: `pm-web-app/src/lib/components/IconButton.svelte`, tests in 
 [#row-menu]
 === RowMenu
 
-image::../../resources/diagrams/web-component-row-menu.svg[RowMenu closed and opened with keyboard navigation,360,align=center]
+image::../../resources/diagrams/web-component-row-menu.svg[RowMenu closed, open below its trigger, and open upwards above the bottom bar of a phone,360,align=center]
 
 The WAI-ARIA menu button pattern for card-based views and lists that do not use `DataTable` (such as `ReportsView`). While `DataTable` draws an `IconButton` and reports the click, card layouts require their own contextual popup menu co-located with each card's actions.
 
-`RowMenu` is deliberately separate from `ActionBar`: `RowMenu` is a compact contextual pop-up menu button co-located with individual card or list rows (taking an arbitrary list of actions and an accessible subject label), whereas `ActionBar` manages entity state transitions with horizontal primary/secondary/overflow roles and modal `ConfirmDialog` flows. Unifying them would couple generic row actions to entity-state roles and modal dialogs, and risks cross-plan regressions while PLAN-100 refactors `ActionBar`. Both components consistently enforce the design system's 44 px touch target on phone viewports (`min-block-size: 44px`), and `RowMenu` menu items provide a visible focus ring with at least 3:1 contrast against surface in both light and dark themes.
+`RowMenu` is deliberately separate from `ActionBar`: `RowMenu` is a compact contextual pop-up menu button co-located with individual card or list rows (taking an arbitrary list of actions and an accessible subject label), whereas `ActionBar` manages entity state transitions with horizontal primary/secondary/overflow roles and modal `ConfirmDialog` flows. Unifying them would couple generic row actions to entity-state roles and modal dialogs. Both components consistently enforce the design system's 44 px touch target on phone viewports (`min-block-size: 44px`), and `RowMenu` menu items provide a visible focus ring with at least 3:1 contrast against surface in both light and dark themes.
 
 `RowMenu` uses `IconButton` as its trigger (`act.more`), names its row through `label` (and an optional `visibleLabel`), and manages its popup menu with full keyboard navigation:
+
 * `ArrowDown` and `ArrowUp` move between enabled menu items with wrapping (skipping disabled items).
-* `Home` and `End` jump to the first and last menu items.
+* `Home` and `End` jump to the first and last enabled menu items.
 * `Escape` closes the menu and restores focus to the trigger.
 * `Tab` closes the menu and restores focus to the trigger (preventing focus loss into the document body).
 * Clicking outside the menu closes it.
 * Activating an item closes the menu and restores focus to the trigger while executing the item's action.
+
+The arrow keys of `RowMenu` skip a disabled entry, where those of the `ActionBar` overflow reach it (link:#action-bar[ActionBar]). The divergence is deliberate while a `RowMenu` entry carries no reason: its `title` is a hover advisory, not a described-by reason, so a disabled entry would take the focus and say nothing. No view of the product passes a disabled entry today (only the fixture of `/dev/components` draws one, to show the skip); an act that cannot run and owes its reason belongs in an `ActionBar`, or `RowMenu` first gains a `disabledReason` and then takes the `ActionBar` rule.
+
+[#row-menu-placement]
+==== Where the Menu Opens
+
+The menu opens below its trigger, aligned to the trigger's inline end. It opens above the trigger instead when it would pass the bottom of the viewport below the trigger and the viewport has more room above the trigger than below it; it opens below again the next time it opens with room. The open menu is a popup layer: it lies above the sticky chrome of the frame — the bottom bar of a phone (`z-index: 20`) — and below a dialog (`z-index: 50`). A row at the bottom of a phone screen therefore opens its menu where the bottom bar does not cover it: upwards into the page, or, where the menu still fits in the viewport, over the bar until it closes. `pm-web-e2e/tests/row-menu.spec.js` measures this at 390 px.
 
 Source and surface: `pm-web-app/src/lib/components/RowMenu.svelte`, tests in `RowMenu.test.ts`; the props are `items` (`id`, `label`, `title`, `disabled`, `onclick`), `label`, `visibleLabel`, `advisory`, `icon`, `size`, `disabled`, and forwarded button attributes.
 
@@ -77,7 +85,7 @@ One primary act, up to three secondary acts, and an overflow `IconButton` that o
 
 A destructive act (cancel, abandon, release, unenrol, revoke, delete) is never primary and never red at rest: it lives in the overflow and asks through `ConfirmDialog`, which names the consequences in the danger colour.
 
-An act that cannot run says why, and the entry stays in the menu: its reason is the entry's described-by text (screen-reader-only), and the arrow keys reach it, because an act whose reason is worth reading must not vanish from the keyboard. The reason is never only the hover advisory. On a phone every entry of the menu takes the 44 px target the rest of the design system takes.
+An act that cannot run says why, and the entry stays in the menu: its reason is the entry's described-by text (screen-reader-only), and the arrow keys reach it, because an act whose reason is worth reading must not vanish from the keyboard. (A `RowMenu` entry carries no reason, and its arrow keys skip a disabled entry: link:#row-menu[RowMenu].) The reason is never only the hover advisory. On a phone every entry of the menu takes the 44 px target the rest of the design system takes.
 
 Source and surface: `pm-web-app/src/lib/components/ActionBar.svelte`, tests in `ActionBar.test.ts`; the props are `acts` (`id`, `label`, `role` (`primary`, `secondary`, `overflow`), `destructive`, `disabled`, `disabledReason`, `advisory`), with `onAct(id)` reporting the chosen one. `pm-web-app/src/lib/components/ConfirmDialog.svelte` draws the confirmation, with `title`, `consequences`, `actionLabel`, `cancelLabel`, an optional `typedName`, `busy` (the guard that ignores a second confirm and holds Escape and cancel while the act runs), `confirmDisabled` and `testid`.
 

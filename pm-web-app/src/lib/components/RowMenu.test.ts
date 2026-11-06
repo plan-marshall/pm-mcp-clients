@@ -350,6 +350,121 @@ describe('RowMenu component', () => {
     });
   });
 
+  describe('placement at the bottom of the viewport', () => {
+    /** Lays out the trigger's row at `rowTop` and every menu at `menuHeight`, in a 400 px viewport. */
+    function layOut(rowTop: number, menuHeight: number): () => void {
+      const original = HTMLElement.prototype.getBoundingClientRect;
+      const viewport = window.innerHeight;
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: 400 });
+      const spy = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockImplementation(function (this: HTMLElement) {
+          if (this.classList.contains('row-menu__list')) {
+            const top = this.classList.contains('row-menu__list--above')
+              ? rowTop - menuHeight - 4
+              : rowTop + 32;
+            return DOMRect.fromRect({ x: 0, y: top, width: 180, height: menuHeight });
+          }
+          if (this.classList.contains('row-menu')) {
+            return DOMRect.fromRect({ x: 0, y: rowTop, width: 28, height: 28 });
+          }
+          return original.call(this);
+        });
+      return () => {
+        spy.mockRestore();
+        Object.defineProperty(window, 'innerHeight', { configurable: true, value: viewport });
+      };
+    }
+
+    it('opens upwards when the menu would pass the bottom of the viewport', async () => {
+      const restore = layOut(340, 80);
+      try {
+        render(RowMenu, { props: { label: 'Row actions', items: sampleItems } });
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Row actions' }));
+
+        await waitFor(() => {
+          expect(screen.getByRole('menu')).toHaveClass('row-menu__list--above');
+          expect(screen.getAllByRole('menuitem')[0]).toHaveFocus();
+        });
+      } finally {
+        restore();
+      }
+    });
+
+    it('opens downwards when the menu fits below its trigger', async () => {
+      const restore = layOut(100, 80);
+      try {
+        render(RowMenu, { props: { label: 'Row actions', items: sampleItems } });
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Row actions' }));
+
+        await waitFor(() => {
+          expect(screen.getAllByRole('menuitem')[0]).toHaveFocus();
+        });
+        expect(screen.getByRole('menu')).not.toHaveClass('row-menu__list--above');
+      } finally {
+        restore();
+      }
+    });
+
+    it('stays below when there is no more room above than below', async () => {
+      const restore = layOut(60, 380);
+      try {
+        render(RowMenu, { props: { label: 'Row actions', items: sampleItems } });
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Row actions' }));
+
+        await waitFor(() => {
+          expect(screen.getAllByRole('menuitem')[0]).toHaveFocus();
+        });
+        expect(screen.getByRole('menu')).not.toHaveClass('row-menu__list--above');
+      } finally {
+        restore();
+      }
+    });
+
+    it('opens downwards again after a menu that opened upwards was closed', async () => {
+      let restore = layOut(340, 80);
+      try {
+        render(RowMenu, { props: { label: 'Row actions', items: sampleItems } });
+        const trigger = screen.getByRole('button', { name: 'Row actions' });
+        await fireEvent.click(trigger);
+        await waitFor(() => {
+          expect(screen.getByRole('menu')).toHaveClass('row-menu__list--above');
+        });
+        await fireEvent.keyDown(screen.getAllByRole('menuitem')[0], { key: 'Escape' });
+        await waitFor(() => {
+          expect(screen.queryByRole('menu')).toBeNull();
+        });
+
+        restore();
+        restore = layOut(100, 80);
+        await fireEvent.click(trigger);
+        await waitFor(() => {
+          expect(screen.getAllByRole('menuitem')[0]).toHaveFocus();
+        });
+        expect(screen.getByRole('menu')).not.toHaveClass('row-menu__list--above');
+      } finally {
+        restore();
+      }
+    });
+
+    it('lays the open menu above the sticky chrome of the phone frame', () => {
+      const style = styleOf(path.resolve(__dirname, './RowMenu.svelte'));
+      const listRules = rulesOf(style, '.row-menu__list').join(';');
+      const bottomBarStyle = styleOf(path.resolve(__dirname, '../shell/BottomBar.svelte'));
+      const barLayer = Number(/z-index:\s*(\d+)/.exec(bottomBarStyle)?.[1]);
+      const menuLayer = Number(/z-index:\s*(\d+)/.exec(listRules)?.[1]);
+
+      expect(barLayer).toBeGreaterThan(0);
+      expect(menuLayer).toBeGreaterThan(barLayer);
+      const aboveRules = rulesOf(style, '.row-menu__list--above').join(';');
+      expect(aboveRules).toContain('inset-block-end: calc(100% + var(--space-1))');
+      expect(aboveRules).toContain('inset-block-start: auto');
+    });
+  });
+
   it('closes menu on outside Escape key via window listener (N1)', async () => {
     render(RowMenu, {
       props: {
