@@ -728,10 +728,10 @@ class PmOperatorTest {
         }
 
         @Test
-        @DisplayName("stop with --withdraw withdraws drain")
+        @DisplayName("stop --withdraw withdraws the drain on the operator's path")
         void stopWithdraw() throws Exception {
-            runtime((request, response) -> {
-                if ("/api/v1/runtime/stop".equals(request.target()) && "DELETE".equals(request.method())) {
+            var server = runtime((request, response) -> {
+                if ("/api/v1/operator/runtime/stop".equals(request.target()) && "DELETE".equals(request.method())) {
                     response.send(200, null, "");
                 } else {
                     response.send(404, null, "");
@@ -739,16 +739,56 @@ class PmOperatorTest {
             });
 
             assertEquals(0, run("runtime", "stop", "--withdraw"));
-            assertEquals("runtime   drain withdrawn", out.toString().strip());
+
+            var request = server.awaitRequest(Duration.ofSeconds(1));
+            assertAll(
+                                () -> assertEquals("DELETE", request.method()),
+                                () -> assertEquals("/api/v1/operator/runtime/stop", request.target()),
+                                () -> assertEquals("The runtime keeps running; the stop was withdrawn.",
+                                                    out.toString().strip()));
         }
 
         @Test
-        @DisplayName("stop with --withdraw reports error on failure")
+        @DisplayName("stop --withdraw of a drain of a signal prints its refusal")
+        void stopWithdrawSignalDrain() throws Exception {
+            runtime((request, response) -> response.json(409,
+                                "{\"error\":\"not_withdrawable\",\"detail\":{\"key\":\"operator.system.signal_drain\",\"args\":{}}}"));
+
+            assertEquals(1, run("runtime", "stop", "--withdraw"));
+            assertAll(
+                                () -> assertEquals("The drain was started by a signal; it cannot be withdrawn.",
+                                                    err.toString().strip()),
+                                () -> assertFalse(err.toString().contains("HTTP"), err.toString()));
+        }
+
+        @Test
+        @DisplayName("stop --withdraw too late prints its refusal")
+        void stopWithdrawTooLate() throws Exception {
+            runtime((request, response) -> response.json(409,
+                                "{\"error\":\"not_withdrawable\",\"detail\":{\"key\":\"system.stopping.too_late\",\"args\":{}}}"));
+
+            assertEquals(1, run("runtime", "stop", "--withdraw"));
+            assertEquals("Too late to keep it running; the runtime is stopping.", err.toString().strip());
+        }
+
+        @Test
+        @DisplayName("stop --withdraw refused without a detail is too late")
+        void stopWithdrawNotWithdrawable() throws Exception {
+            runtime((request, response) -> response.json(409, "{\"error\":\"not_withdrawable\"}"));
+
+            assertEquals(1, run("runtime", "stop", "--withdraw"));
+            assertEquals("Too late to keep it running; the runtime is stopping.", err.toString().strip());
+        }
+
+        @Test
+        @DisplayName("stop --withdraw reports every other refusal as refused by the runtime")
         void stopWithdrawFailed() throws Exception {
             runtime((request, response) -> response.send(500, null, ""));
 
             assertEquals(1, run("runtime", "stop", "--withdraw"));
-            assertTrue(err.toString().contains("Failed to withdraw drain: HTTP 500"));
+            assertAll(
+                                () -> assertTrue(err.toString().contains("refused by the runtime (HTTP 500)"), err.toString()),
+                                () -> assertFalse(err.toString().contains("Failed to withdraw"), err.toString()));
         }
 
         @Test

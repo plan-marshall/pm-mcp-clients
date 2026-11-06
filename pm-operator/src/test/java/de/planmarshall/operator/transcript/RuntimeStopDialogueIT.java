@@ -32,6 +32,7 @@ class RuntimeStopDialogueIT {
     private static final String PROMPT = "1) Stop when done";
     private static final String STOP_NOW = "2) Stop now";
     private static final String KEEP = "k) keep it running";
+    private static final String WITHDRAW = "/api/v1/operator/runtime/stop";
 
     @Test
     @DisplayName("q first: the dialogue leaves and sends nothing")
@@ -110,6 +111,50 @@ class RuntimeStopDialogueIT {
             assertTrue(session.screenText().contains("runtime   draining"), session.screenText());
             assertEquals(0, session.exitCode(), session.rawOutput());
             harness.assertAct("POST", "/api/v1/runtime/stop");
+        }
+    }
+
+    @Test
+    @DisplayName("--withdraw withdraws a drain the operator asked")
+    void withdrawsAnOperatorsDrain() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("system.draining");
+             var session = harness.open("runtime", "stop", "--withdraw")) {
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            assertTrue(session.screenText().contains("The runtime keeps running; the stop was withdrawn."),
+                                session.screenText());
+            assertEquals(0, session.exitCode(), session.rawOutput());
+            harness.assertAct("DELETE", WITHDRAW);
+        }
+    }
+
+    @Test
+    @DisplayName("--withdraw of a drain of a signal is refused with the design's line")
+    void refusesTheDrainOfASignal() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("system.draining-signal");
+             var session = harness.open("runtime", "stop", "--withdraw")) {
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            assertTrue(session.screenText().contains("The drain was started by a signal; it cannot be withdrawn."),
+                                session.screenText());
+            assertFalse(session.screenText().contains("HTTP"), session.screenText());
+            assertEquals(1, session.exitCode(), session.rawOutput());
+            harness.assertAct("DELETE", WITHDRAW);
+        }
+    }
+
+    @Test
+    @DisplayName("--withdraw too late is refused with the design's line")
+    void refusesTooLate() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("system.force-stop");
+             var session = harness.open("runtime", "stop", "--withdraw")) {
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            assertTrue(session.screenText().contains("Too late to keep it running; the runtime is stopping."),
+                                session.screenText());
+            assertFalse(session.screenText().contains("HTTP"), session.screenText());
+            assertEquals(1, session.exitCode(), session.rawOutput());
+            harness.assertAct("DELETE", WITHDRAW);
         }
     }
 }

@@ -1,0 +1,25 @@
+# Screen captures for PLAN-97: Terminal: One Command Tree, the Drain Signal and Accept-Edit by Project
+# name | scenario | states | command | keys | columnsxrows | locale | environment | keys before the capture
+#
+# The targets are the three answers of `runtime stop --withdraw` in `reports-and-system`
+# (25-system.adoc#t-stop):
+#   withdraw-*   `system.draining`: a drain the console asked, withdrawn
+#   signal-*     `system.draining-signal`: a drain of a signal, refused (operator.system.signal_drain)
+#   too-late-*   `system.force-stop`: the runtime stops already, refused (system.stopping.too_late)
+#
+# Each verb prints and exits, so no capture types keys.
+
+withdraw-120x30-en | reports-and-system | system.draining | runtime stop --withdraw | - | 120x30 | en_US.UTF-8 | -
+withdraw-80x24-en | reports-and-system | system.draining | runtime stop --withdraw | - | 80x24 | en_US.UTF-8 | -
+withdraw-120x30-de | reports-and-system | system.draining | runtime stop --withdraw | - | 120x30 | de_DE.UTF-8 | -
+withdraw-80x24-de | reports-and-system | system.draining | runtime stop --withdraw | - | 80x24 | de_DE.UTF-8 | -
+
+signal-120x30-en | reports-and-system | system.draining-signal | runtime stop --withdraw | - | 120x30 | en_US.UTF-8 | -
+signal-80x24-en | reports-and-system | system.draining-signal | runtime stop --withdraw | - | 80x24 | en_US.UTF-8 | -
+signal-120x30-de | reports-and-system | system.draining-signal | runtime stop --withdraw | - | 120x30 | de_DE.UTF-8 | -
+signal-80x24-de | reports-and-system | system.draining-signal | runtime stop --withdraw | - | 80x24 | de_DE.UTF-8 | -
+
+too-late-120x30-en | reports-and-system | system.force-stop | runtime stop --withdraw | - | 120x30 | en_US.UTF-8 | -
+too-late-80x24-en | reports-and-system | system.force-stop | runtime stop --withdraw | - | 80x24 | en_US.UTF-8 | -
+too-late-120x30-de | reports-and-system | system.force-stop | runtime stop --withdraw | - | 120x30 | de_DE.UTF-8 | -
+too-late-80x24-de | reports-and-system | system.force-stop | runtime stop --withdraw | - | 80x24 | de_DE.UTF-8 | -

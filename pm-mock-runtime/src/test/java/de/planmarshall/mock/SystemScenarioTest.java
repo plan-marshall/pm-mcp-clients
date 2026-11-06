@@ -190,6 +190,39 @@ class SystemScenarioTest {
     }
 
     @Test
+    @DisplayName("withdraws an operator's drain on the operator path and refuses a drain of a signal and a stop too late")
+    void shouldAnswerTheWithdrawalOnTheOperatorPath() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.SYSTEM)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+            var withdraw = HttpRequest.delete("/api/v1/operator/runtime/stop").withHeader("Authorization", auth);
+
+            runtime.goToState("system.draining");
+            var withdrawn = client.send(withdraw);
+            assertEquals(200, withdrawn.status(), withdrawn.bodyText());
+            assertEquals(RuntimeLifecycleState.RUNNING, runtime.engine().lifecycleState());
+
+            runtime.goToState("system.draining-signal");
+            var signal = client.send(withdraw);
+            assertEquals(409, signal.status(), signal.bodyText());
+            var signalBody = JsonTree.asObject(JsonTree.parse(signal.bodyText()));
+            assertEquals("not_withdrawable", signalBody.get("error"));
+            assertEquals("operator.system.signal_drain", JsonTree.string(JsonTree.object(signalBody, "detail"), "key"));
+            assertEquals(RuntimeLifecycleState.DRAINING, runtime.engine().lifecycleState(),
+                    "a refused withdrawal leaves the drain of the signal running");
+
+            runtime.goToState("system.force-stop");
+            var tooLate = client.send(withdraw);
+            assertEquals(409, tooLate.status(), tooLate.bodyText());
+            var tooLateBody = JsonTree.asObject(JsonTree.parse(tooLate.bodyText()));
+            assertEquals("not_withdrawable", tooLateBody.get("error"));
+            assertEquals("system.stopping.too_late", JsonTree.string(JsonTree.object(tooLateBody, "detail"), "key"));
+            assertEquals(RuntimeLifecycleState.STOPPING, runtime.engine().lifecycleState(),
+                    "a withdrawal too late leaves the stop running");
+        }
+    }
+
+    @Test
     @DisplayName("manages cleanup job: get open job, postpone, ignore, delete, and kept items")
     void shouldManageCleanupJob() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.SYSTEM)) {

@@ -108,6 +108,7 @@ import de.planmarshall.api.intent.OutlineResource;
 import de.planmarshall.api.intent.OverSizeDistributionResource;
 import de.planmarshall.api.intent.PlanIntentResource;
 import de.planmarshall.api.interaction.OperatorStateResource;
+import de.planmarshall.api.interaction.OperatorText;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.onboarding.ConsentKind;
@@ -257,6 +258,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String PATH_DEVICES = "/api/v1/web/devices";
     private static final String PATH_DEVICES_SLASH = "/api/v1/web/devices/";
     private static final String METHOD_DELETE = "DELETE";
+    /** The withdrawal of the operator's stop, as the request key of an operator link. */
+    private static final String WITHDRAW_STOP = METHOD_DELETE + " /api/v1/operator/runtime/stop";
     private static final String EVENT_STREAM_CLOSED = "stream.closed";
     private static final String KEY_REASON = "reason";
     private static final String KEY_DETAILS = "details";
@@ -1835,6 +1838,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
 
         var requestKey = request.method().toUpperCase() + " " + request.path();
+        if (WITHDRAW_STOP.equals(requestKey)) {
+            // A withdrawal the state no longer offers is answered not_withdrawable by its own handler,
+            // as the runtime answers it, never as an act of a state left meanwhile.
+            return false;
+        }
         var offeredBy = offeredOperatorLinks.get(requestKey);
         if (offeredBy == null || offeredBy.equals(activeStateId)) {
             return false;
@@ -8605,9 +8613,21 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
+    /**
+     * Withdraws a drain the operator asked (runtime-lifecycle/01-startup-recovery-drain.adoc#withdraw-drain).
+     * A drain the state marks as not withdrawable, a drain of a signal, is refused {@code not_withdrawable}
+     * with the line {@code operator.system.signal_drain}; a runtime that has begun to stop is refused
+     * {@code not_withdrawable} with {@code system.stopping.too_late}; with nothing draining there is no act.
+     */
     private void handleDeleteStopRuntime(MockHttpResponse response) throws IOException {
         synchronized (systemLock) {
-            if (lifecycleState == RuntimeLifecycleState.DRAINING) {
+            if (lifecycleState == RuntimeLifecycleState.DRAINING && !canWithdrawStop) {
+                response.json(409, notWithdrawable("operator.system.signal_drain",
+                        "The drain was started by a signal; it cannot be withdrawn"));
+            } else if (lifecycleState == RuntimeLifecycleState.STOPPING) {
+                response.json(409, notWithdrawable("system.stopping.too_late",
+                        "The runtime has begun to stop; the drain can no longer be withdrawn"));
+            } else if (lifecycleState == RuntimeLifecycleState.DRAINING) {
                 lifecycleState = RuntimeLifecycleState.RUNNING;
                 cancelPendingTasks();
                 drainingBy = null;
@@ -8624,11 +8644,23 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 ));
             } else {
                 response.json(409, Map.of(
-                        KEY_ERROR, "cannot_withdraw",
+                        KEY_ERROR, ApiErrorCode.ACT_NOT_AVAILABLE.wire(),
                         KEY_MESSAGE, "Cannot withdraw stop: runtime is not draining"
                 ));
             }
         }
+    }
+
+    /**
+     * @param key     the message key of the line the client prints for the refusal
+     * @param message the refusal for a log
+     * @return the body of a {@code not_withdrawable} refusal, its detail a message key
+     */
+    private static Map<String, Object> notWithdrawable(String key, String message) {
+        return Map.of(
+                KEY_ERROR, ApiErrorCode.NOT_WITHDRAWABLE.wire(),
+                KEY_MESSAGE, message,
+                "detail", OperatorText.ofKey(key).toMap());
     }
 
     private void handlePostUpgradeRuntime(MockHttpRequest request, MockHttpResponse response) throws IOException {
