@@ -430,7 +430,7 @@ public final class ProjectCommand implements Callable<Integer> {
      * @param body the body of a refusal
      * @return the refusal's reason, or its error code where it names no reason, or the empty string
      */
-    private static String refusalReason(String body) {
+    static String refusalReason(String body) {
         try {
             var map = JsonTree.asObject(JsonTree.parse(body));
             var reason = JsonTree.string(map, "reason");
