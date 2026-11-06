@@ -13,8 +13,8 @@ This document records five checks of the two reviews against the merged code. Th
 link:../use-cases/verification.adoc[Use Cases, Verification], link:../cli/use-cases/verification.adoc[CLI Review, Use
 Cases, Verification], and link:../cli/cross-cutting/verification.adoc[CLI Review, Cross-Cutting, Verification]. Each
 check ran as written, except UC-V-09 and CLI-UC-V-10: they ask that the use cases pass the `doc-review` skill, and they
-ran as the read-only review described in <<review,Review of the Use-Case Documents>>, not as the full skill. Nothing
-that was found was fixed.
+ran as the read-only review described in <<review,Review of the Use-Case Documents>>, not as the full skill, and are
+recorded as `not verified`. Nothing that was found was fixed.
 
 [#subject]
 == What Was Verified
@@ -137,27 +137,35 @@ The designs of the terminal client show the same forms: `15-overview.adoc` (4), 
 |—
 
 |link:../use-cases/verification.adoc[UC-V-09]
-|`pass`
-|The read-only review of <<review,Review of the Use-Case Documents>> found no defect in the five changes. They are on
-`main`; the links here point at the verified commit `be5750dd`. They are linked from link:{docs}/UseCases.adoc#index[Use Cases, Use Case Areas], each `AGREED`. They are
+|`not verified`
+|The check asks that the use cases pass the `doc-review` skill. The skill's parallel corpus reviewers, its fix pass,
+and its discussion with the operator were not run, because this plan only verifies; the operator chose to record the
+check as not verified. What the read-only review of <<review,Review of the Use-Case Documents>> established stands as
+evidence. The five changes are on `main`; the links here point at the verified commit `be5750dd`. They are
 link:{docs}/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7] and link:{docs}/use-cases/03-plans.adoc#UC-PLN-8[UC-PLN-8] (new),
 link:{docs}/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2] (_Several open_, _Own answer confirmed_),
 link:{docs}/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1] (_Needs the terminal_), and
-link:{docs}/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (_Not onboarded yet_). The status `AGREED` is the
-operator's recorded agreement. The traceability checker of `doc-review` (`trace.py`) reports 0 broken links.
+link:{docs}/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (_Not onboarded yet_), each `AGREED`. The row for
+`UC-PLN` in link:{docs}/UseCases.adoc#index[Use Cases, Use Case Areas] names UC-PLN-7 and UC-PLN-8, both without
+`DRAFT`; UC-PLN-2, UC-PRJ-1, and UC-ONB-1 are existing use cases in modules the index lists as a whole. The status
+`AGREED` is the operator's recorded agreement. The traceability checker of `doc-review` (`trace.py`) reports 0 broken
+links.
 |—
 
 |link:../cli/use-cases/verification.adoc[CLI-UC-V-10]
-|`pass`
-|The read-only review of <<review,Review of the Use-Case Documents>> found no defect in either variation. Both are on
-`main`, in client-neutral words instead of the proposal's text; the links point at the verified commit `be5750dd`. link:{docs}/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7]: "In the terminal client,
+|`not verified`
+|The check asks that the use cases pass the `doc-review` skill. The skill's parallel corpus reviewers, its fix pass,
+and its discussion with the operator were not run, because this plan only verifies; the operator chose to record the
+check as not verified. What the read-only review of <<review,Review of the Use-Case Documents>> established stands as
+evidence. Both variations are on `main`, in client-neutral words instead of the proposal's text; the links point at the
+verified commit `be5750dd`. link:{docs}/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7]: "In the terminal client,
 the count of each kind is visible without opening a view, and one act lists every item across projects."
 link:{docs}/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]: "A script asks for the same picture: the terminal client prints
 it as one machine-readable document." Both use cases are `AGREED`. `trace.py` reports 0 broken links.
 |—
 |===
 
-Totals: 4 `pass`, 1 `fail`, 0 `not verified` (5 checks), and the verify-first step `pass`.
+Totals: 2 `pass`, 1 `fail`, 2 `not verified` (5 checks), and the verify-first step `pass`.
 
 [#review]
 == Review of the Use-Case Documents
@@ -180,8 +188,8 @@ index row in `doc/UseCases.adoc` names UC-PLN-7 and UC-PLN-8 without `DRAFT`, th
 `needs-operator-list` that UC-PLN-7 links exists, and the two variations of the terminal client are worded
 client-neutrally.
 
-* This result file was reviewed too: its relative links, anchors, and table structure were read. No defect was found
-other than the two rows UC-V-09 and CLI-UC-V-10, which this section settles.
+* This result file was reviewed too: its relative links, anchors, and table structure were read. No defect was found.
+This section describes the evidence behind the two rows UC-V-09 and CLI-UC-V-10, which stay `not verified`.
 
 Scope limit: this was a read-only review of the changed passages plus the checker. The skill's parallel corpus
 reviewers, its fix pass, and its one-by-one discussion with the operator were not run, because this plan only
