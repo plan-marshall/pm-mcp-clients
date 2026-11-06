@@ -34,16 +34,6 @@ public record ReadReportsRequest(List<String> reportIds) {
     }
 
     /**
-     * Backward-compatibility constructor for callers previously passing {@code all}.
-     *
-     * @param reportIds explicit list of report identifiers to mark read
-     * @param all ignored; all-form has been removed
-     */
-    public ReadReportsRequest(List<String> reportIds, boolean all) {
-        this(reportIds);
-    }
-
-    /**
      * Creates a specific-reports request.
      *
      * @param ids report IDs

@@ -92,7 +92,10 @@ describe('RowMenu component', () => {
     expect(items[2]).toHaveFocus();
   });
 
-  it('closes menu and restores focus to trigger on Escape key', async () => {
+  it.each([
+    { key: 'Escape', desc: 'Escape key' },
+    { key: 'Tab', desc: 'Tab key' },
+  ])('closes menu and restores focus to trigger on $desc inside menu (N1)', async ({ key }) => {
     render(RowMenu, {
       props: {
         label: 'Row actions',
@@ -108,31 +111,7 @@ describe('RowMenu component', () => {
       expect(items[0]).toHaveFocus();
     });
 
-    await fireEvent.keyDown(items[0], { key: 'Escape' });
-
-    await waitFor(() => {
-      expect(screen.queryByRole('menu')).toBeNull();
-      expect(trigger).toHaveFocus();
-    });
-  });
-
-  it('closes menu and restores focus to trigger on Tab key', async () => {
-    render(RowMenu, {
-      props: {
-        label: 'Row actions',
-        items: sampleItems,
-      },
-    });
-
-    const trigger = screen.getByRole('button', { name: 'Row actions' });
-    await fireEvent.click(trigger);
-
-    const items = screen.getAllByRole('menuitem');
-    await waitFor(() => {
-      expect(items[0]).toHaveFocus();
-    });
-
-    await fireEvent.keyDown(items[0], { key: 'Tab' });
+    await fireEvent.keyDown(items[0], { key });
 
     await waitFor(() => {
       expect(screen.queryByRole('menu')).toBeNull();
@@ -343,29 +322,6 @@ describe('RowMenu component', () => {
     const outsideStyle = style.replace(/@media\s*\(max-width:\s*767px\)\s*\{[\s\S]*?\}/, '');
     const outsideRules = rulesOf(outsideStyle, '.row-menu__item');
     expect(outsideRules.join(';')).not.toContain('min-block-size');
-  });
-
-  it('closes menu and restores focus to trigger on Escape key inside menu (N1)', async () => {
-    render(RowMenu, {
-      props: {
-        label: 'Row actions',
-        items: sampleItems,
-      },
-    });
-
-    const trigger = screen.getByRole('button', { name: 'Row actions' });
-    await fireEvent.click(trigger);
-
-    const items = screen.getAllByRole('menuitem');
-    await waitFor(() => {
-      expect(items[0]).toHaveFocus();
-    });
-
-    await fireEvent.keyDown(items[0], { key: 'Escape' });
-    await waitFor(() => {
-      expect(screen.queryByRole('menu')).toBeNull();
-      expect(trigger).toHaveFocus();
-    });
   });
 
   it('closes menu and retains focus on trigger when Escape is pressed on the trigger itself (N1)', async () => {
