@@ -395,7 +395,7 @@ class EpicCommandTest {
             assertAll(
                                 () -> assertEquals(2, code, err.toString()),
                                 () -> assertTrue(err.toString().contains(
-                                                    "--with-plans and --without-plans are mutually exclusive."),
+                                                                        "--with-plans and --without-plans are mutually exclusive."),
                                                     err.toString()),
                                 () -> assertTrue(server.requests().isEmpty(), server.requests().toString())
             );
@@ -410,7 +410,7 @@ class EpicCommandTest {
             assertAll(
                                 () -> assertEquals(2, code, err.toString()),
                                 () -> assertTrue(err.toString().contains(
-                                                    "--close-pr and --keep-pr are mutually exclusive."),
+                                                                        "--close-pr and --keep-pr are mutually exclusive."),
                                                     err.toString()),
                                 () -> assertTrue(server.requests().isEmpty(), server.requests().toString())
             );

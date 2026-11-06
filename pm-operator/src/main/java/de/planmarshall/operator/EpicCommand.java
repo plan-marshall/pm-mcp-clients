@@ -611,7 +611,7 @@ public final class EpicCommand implements Callable<Integer> {
             if (ActionSupport.contradicts(context, spec, options.closePr, options.keepPr,
                                 ActionSupport.FlagPair.PULL_REQUEST)
                                 || ActionSupport.contradicts(context, spec, withPlans, withoutPlans,
-                                                    ActionSupport.FlagPair.PLANS)) {
+                                ActionSupport.FlagPair.PLANS)) {
                 return ActionSupport.EXIT_USAGE;
             }
             var out = spec.commandLine().getOut();
