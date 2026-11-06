@@ -237,6 +237,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
     /** The fixture member the cleanup residues are read from. */
     private static final String FIXTURE_RESIDUE = "residue";
 
+    /** The fixture member the items kept for good are read from. */
+    private static final String FIXTURE_KEPT = "kept";
+
     /** The fixture members the cleanup job and its sweep durations are read from. */
     private static final String FIXTURE_JOB = "job";
     private static final String FIXTURE_DURATIONS = "durations";
@@ -250,6 +253,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_REMAINING_ITEMS = "remaining_items";
     /** The number of items a drain still runs, its list's own length. */
     private static final String KEY_REMAINING_WORK_COUNT = "remaining_work_count";
+    /** The drain a {@code runtime.draining} event belongs to; an event of an earlier drain is stale. */
+    private static final String KEY_DRAIN_GENERATION = "drain_generation";
+    private static final String KEY_LIFECYCLE_STATE = "lifecycle_state";
+    /** What follows a stop: {@code exit}, the default, or {@code restart}. */
+    private static final String KEY_THEN = "then";
+    private static final String THEN_EXIT = "exit";
+    private static final String THEN_RESTART = "restart";
+    private static final String EVENT_RUNTIME_STOPPING = "runtime.stopping";
     private static final String KEY_LOOPBACK = "loopback";
     private static final String KEY_DEVICE_ID = "device_id";
     private static final String KEY_LABEL = "label";
@@ -577,7 +588,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Map<MockEventStream, List<FramedEvent>> pendingFrames = new ConcurrentHashMap<>();
     private final Set<MockEventStream> readyStreams = ConcurrentHashMap.newKeySet();
     private final Map<MockEventStream, ReplayPlan> replayPlans = new ConcurrentHashMap<>();
+    /** The current state's own scheduled events and its auto transition; guarded by the engine monitor. */
     private final List<ScheduledFuture<?>> pendingTasks = new ArrayList<>();
+    /** The scheduled shrink steps of the running drain, and nothing else; guarded by {@link #systemLock}. */
+    private final List<ScheduledFuture<?>> drainTasks = new ArrayList<>();
 
     /**
      * One buffered event of a stream scope, replayable after a {@code Last-Event-ID}.
@@ -646,10 +660,26 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Map<String, PlanCompletionReport> completionReports = new ConcurrentHashMap<>();
     private final Object decisionsLock = new Object();
     private final Map<String, DecisionEnvelope> openDecisions = new LinkedHashMap<>();
+    /**
+     * The open decisions an act created rather than a state's fixture; a jump that re-seeds the
+     * decisions tells the live clients that these are gone. Guarded by {@link #decisionsLock}.
+     */
+    private final Set<String> operatorCreatedDecisionIds = new LinkedHashSet<>();
+    /**
+     * Guards the runtime lifecycle, the drain and the cleanup stores.
+     * <p>
+     * Lock order: the engine monitor before {@code systemLock}, in every path. A scenario switch, a
+     * reset and a jump hold the engine monitor and take {@code systemLock} to re-seed the system; no
+     * path takes the engine monitor while it holds {@code systemLock}, which is why the drain's own
+     * scheduled steps are kept in {@link #drainTasks} under this lock rather than among the state's
+     * tasks under the monitor.
+     */
     private final Object systemLock = new Object();
     private volatile RuntimeLifecycleState lifecycleState = RuntimeLifecycleState.RUNNING;
     private volatile @Nullable String drainingBy;
     private volatile boolean canWithdrawStop;
+    /** What follows the running drain once its last item ends: {@code exit} or {@code restart}. */
+    private volatile String drainThen = THEN_EXIT;
     /** What a drain still runs, by name; the status and the live event carry the same list. */
     private final AtomicReference<List<String>> drainRemainingItems = new AtomicReference<>(List.of());
     /** The drain the scheduled shrink callbacks belong to; a withdraw or a new drain moves it on. */
@@ -1203,7 +1233,9 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * The jump is a re-seed, not only a move: the domain stores — plans, epics, holdings, settings,
      * chats, reviews, decisions, reports, projects, start entries, the system lifecycle with its
      * cleanup job, and the paired devices — are wiped and re-seeded from the state's runtime
-     * fixture, so operator-made state does not survive it.
+     * fixture, so operator-made state does not survive it. A decision an act created and the new
+     * state does not declare is closed for the live clients ({@code decision.closed}, outcome
+     * {@code withdrawn}), so no client keeps showing a question the runtime no longer holds.
      *
      * @param stateId the state identifier
      * @throws IllegalArgumentException if the state does not exist in the current scenario
@@ -1218,6 +1250,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             validateFixtureMembers(fixture);
         }
         validateStateFacts(scenario, stateId);
+        var operatorDecisions = openOperatorCreatedDecisionIds();
         var previousStateId = this.fixtureStateId.get();
         this.fixtureStateId.set(stateId);
         try {
@@ -1226,9 +1259,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
         } catch (IllegalStateException failure) {
             this.fixtureStateId.set(previousStateId);
             seedStateFixtures();
+            broadcastRemovedDecisions(operatorDecisions);
             throw failure;
         }
         transitionTo(stateId);
+        broadcastRemovedDecisions(operatorDecisions);
         // Do NOT call broadcastReset() here: broadcastReset clears every ring buffer and sends a
         // reset to every open stream, and exists for a scenario switch where the previous scenario's
         // envelopes must not be replayed into the new one; a jump stays inside one scenario, and
@@ -1259,6 +1294,37 @@ public final class MockRuntimeEngine implements AutoCloseable {
         var durations = fixtureObject(facts, FIXTURE_DURATIONS, PATH_FACTS + FIXTURE_DURATIONS);
         if (durations != null) {
             readFixture(() -> CleanupDurations.fromMap(durations), PATH_FACTS + FIXTURE_DURATIONS);
+        }
+        CleanupFixtures.keptItems(fixtureObjects(facts, FIXTURE_KEPT, PATH_FACTS + FIXTURE_KEPT));
+        CleanupFixtures.residues(fixtureObjects(facts, FIXTURE_RESIDUE, PATH_FACTS + FIXTURE_RESIDUE));
+    }
+
+    /**
+     * @return the ids of the open decisions an act created, in the order they were created
+     */
+    private List<String> openOperatorCreatedDecisionIds() {
+        synchronized (decisionsLock) {
+            return operatorCreatedDecisionIds.stream().filter(openDecisions::containsKey).toList();
+        }
+    }
+
+    /**
+     * Closes, for the live clients, every decision of the list the engine no longer holds open.
+     *
+     * @param decisionIds the decisions an act created that were open before a re-seed
+     */
+    private void broadcastRemovedDecisions(List<String> decisionIds) {
+        for (var decisionId : decisionIds) {
+            boolean removed;
+            synchronized (decisionsLock) {
+                removed = !openDecisions.containsKey(decisionId);
+            }
+            if (removed) {
+                broadcastEvent(DECISION_CLOSED, Map.of(
+                        "id", decisionId,
+                        KEY_OUTCOME, "withdrawn",
+                        KEY_REASON, "state_left"));
+            }
         }
     }
 
@@ -1297,11 +1363,28 @@ public final class MockRuntimeEngine implements AutoCloseable {
         }
     }
 
+    /**
+     * Cancels the current state's own scheduled events and its auto transition; a drain's steps are
+     * not among them ({@link #cancelDrainTasks()}).
+     */
     private synchronized void cancelPendingTasks() {
         for (var task : pendingTasks) {
             task.cancel(false);
         }
         pendingTasks.clear();
+    }
+
+    /**
+     * Cancels the scheduled shrink steps of the running drain, and nothing else: a state's own events
+     * and its auto transition keep running. Takes {@link #systemLock} only, never the engine monitor.
+     */
+    private void cancelDrainTasks() {
+        synchronized (systemLock) {
+            for (var task : drainTasks) {
+                task.cancel(false);
+            }
+            drainTasks.clear();
+        }
     }
 
     /**
@@ -1357,7 +1440,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param data  the event payload
      */
     private void broadcastEvent(String event, Object data) {
-        if (EVENT_RUNTIME_DRAINING.equals(event) && lifecycleState != RuntimeLifecycleState.DRAINING) {
+        // A stale drain event is dropped before it is buffered, so no stream replays it either.
+        if (isStaleDrainEvent(event, data)) {
             return;
         }
         syncDrainItems(event, data);
@@ -7338,9 +7422,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     private void initDefaultSystem() {
         synchronized (systemLock) {
+            // A re-seed ends any drain of the state left: its steps are cancelled and its generation
+            // moved on, so neither a step nor a buffered event of it reaches the new state.
+            cancelDrainTasks();
+            drainGeneration.incrementAndGet();
             lifecycleState = RuntimeLifecycleState.RUNNING;
             drainingBy = null;
             canWithdrawStop = false;
+            drainThen = THEN_EXIT;
             drainRemainingItems.set(List.of());
 
             keptItems.clear();
@@ -7412,9 +7501,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (facts == null) {
             return;
         }
-        lifecycleState = RuntimeLifecycleState.fromValue(JsonTree.string(facts, "lifecycle_state"));
+        lifecycleState = RuntimeLifecycleState.fromValue(JsonTree.string(facts, KEY_LIFECYCLE_STATE));
         canWithdrawStop = Boolean.TRUE.equals(JsonTree.bool(facts, "can_withdraw_stop"));
         drainingBy = JsonTree.string(facts, "draining_by");
+        drainThen = THEN_RESTART.equalsIgnoreCase(JsonTree.string(facts, KEY_THEN)) ? THEN_RESTART : THEN_EXIT;
         drainRemainingItems.set(drainItemNames(facts));
         var runtime = JsonTree.object(facts, FIXTURE_RUNTIME);
         systemSnapshotFixture = runtime != null ? JsonTree.asObject(runtime.get(FIXTURE_SNAPSHOT)) : null;
@@ -7429,14 +7519,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param data  the event payload
      */
     private void syncDrainItems(String event, Object data) {
-        if (!EVENT_RUNTIME_DRAINING.equals(event) || lifecycleState != RuntimeLifecycleState.DRAINING) {
+        if (!EVENT_RUNTIME_DRAINING.equals(event) || isStaleDrainEvent(event, data)) {
             return;
         }
         var payload = JsonTree.asObject(data);
-        var gen = payload != null ? JsonTree.integer(payload, "drain_generation") : null;
-        if (gen != null && gen.longValue() != drainGeneration.get()) {
-            return;
-        }
         var items = payload != null ? JsonTree.asArray(payload.get(KEY_REMAINING_ITEMS)) : null;
         if (items == null) {
             return;
@@ -7448,6 +7534,27 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
         drainRemainingItems.set(List.copyOf(names));
+    }
+
+    /**
+     * A {@code runtime.draining} event is stale when nothing drains, or when it names a drain other
+     * than the running one by its {@code drain_generation}. An event that names no generation, as a
+     * scenario's own event may, belongs to the running drain.
+     *
+     * @param event the event name
+     * @param data  the event payload
+     * @return {@code true} when the event is a drain event that must be neither buffered nor sent
+     */
+    private boolean isStaleDrainEvent(String event, Object data) {
+        if (!EVENT_RUNTIME_DRAINING.equals(event)) {
+            return false;
+        }
+        if (lifecycleState != RuntimeLifecycleState.DRAINING) {
+            return true;
+        }
+        var payload = JsonTree.asObject(data);
+        var generation = payload != null ? JsonTree.number(payload, KEY_DRAIN_GENERATION) : null;
+        return generation != null && generation.longValue() != drainGeneration.get();
     }
 
     /**
@@ -7480,6 +7587,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * Applies the cleanup facts a state declares: whether a job is open, the job itself, the sweep
      * durations, the kept items, and the residues. A fact the state does not declare keeps the
      * engine's default.
+     * <p>
+     * Every fact is read before any store changes, so a malformed {@code facts.kept} or
+     * {@code facts.residue} leaves the cleanup stores as they were; {@link #validateStateFacts} reads
+     * the same facts before a switch or a jump changes the scenario at all.
      *
      * @param facts the seeding state's operator facts
      */
@@ -7487,30 +7598,40 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (facts == null) {
             return;
         }
+        var job = JsonTree.object(facts, FIXTURE_JOB);
+        var parsedJob = job != null ? readFixture(() -> CleanupJob.fromMap(job), PATH_FACTS + FIXTURE_JOB) : null;
+        var durations = JsonTree.object(facts, FIXTURE_DURATIONS);
+        var parsedDurations = durations != null
+                ? readFixture(() -> CleanupDurations.fromMap(durations), PATH_FACTS + FIXTURE_DURATIONS)
+                : null;
+        var kept = facts.containsKey(FIXTURE_KEPT)
+                ? CleanupFixtures.keptItems(fixtureObjects(facts, FIXTURE_KEPT, PATH_FACTS + FIXTURE_KEPT))
+                : null;
+        var residues = facts.containsKey(FIXTURE_RESIDUE)
+                ? CleanupFixtures.residues(fixtureObjects(facts, FIXTURE_RESIDUE, PATH_FACTS + FIXTURE_RESIDUE))
+                : null;
+
         if (Boolean.FALSE.equals(JsonTree.bool(facts, "open"))) {
             activeCleanupJob = null;
         }
-        var job = JsonTree.object(facts, FIXTURE_JOB);
-        if (job != null) {
-            activeCleanupJob = readFixture(() -> CleanupJob.fromMap(job), PATH_FACTS + FIXTURE_JOB);
+        if (parsedJob != null) {
+            activeCleanupJob = parsedJob;
         }
         if (JsonTree.object(facts, "progress") != null && activeCleanupJob != null) {
             var running = activeCleanupJob;
             activeCleanupJob = new CleanupJob(running.jobId(), CleanupJobState.DELETING, running.dueSince(),
                     running.summary(), running.projectItems(), running.links());
         }
-        var durations = JsonTree.object(facts, FIXTURE_DURATIONS);
-        if (durations != null) {
-            cleanupDurations = readFixture(() -> CleanupDurations.fromMap(durations), PATH_FACTS + FIXTURE_DURATIONS);
+        if (parsedDurations != null) {
+            cleanupDurations = parsedDurations;
         }
-        if (facts.containsKey("kept")) {
+        if (kept != null) {
             keptItems.clear();
-            keptItems.addAll(CleanupFixtures.keptItems(fixtureObjects(facts, "kept", "facts.kept")));
+            keptItems.addAll(kept);
         }
-        if (facts.containsKey(FIXTURE_RESIDUE)) {
+        if (residues != null) {
             cleanupResidues.clear();
-            cleanupResidues.addAll(CleanupFixtures.residues(
-                    fixtureObjects(facts, FIXTURE_RESIDUE, PATH_FACTS + FIXTURE_RESIDUE)));
+            cleanupResidues.addAll(residues);
         }
     }
 
@@ -8642,24 +8763,29 @@ public final class MockRuntimeEngine implements AutoCloseable {
             }
         }
 
+        // Only systemLock is taken here: the drain's steps live in drainTasks, so the stop never
+        // takes the engine monitor while it holds systemLock (see systemLock's lock order).
         synchronized (systemLock) {
             if ("now".equalsIgnoreCase(when)) {
                 lifecycleState = RuntimeLifecycleState.STOPPING;
-                broadcastEvent("runtime.stopping", Map.of(
-                        "lifecycle_state", "stopping",
-                        "then", thenVal
+                broadcastEvent(EVENT_RUNTIME_STOPPING, Map.of(
+                        KEY_LIFECYCLE_STATE, "stopping",
+                        KEY_THEN, thenVal
                 ));
                 response.json(200, Map.of(
                         KEY_STATUS, "stopping",
                         KEY_STATE, "stopping",
-                        "then", thenVal
+                        KEY_THEN, thenVal
                 ));
             } else {
+                // A new drain replaces a running one; the state's own events and auto transition
+                // keep running, only the earlier drain's steps end.
+                cancelDrainTasks();
                 lifecycleState = RuntimeLifecycleState.DRAINING;
-                cancelPendingTasks();
                 drainingBy = isWeb ? "the web app" : "the console";
                 canWithdrawStop = true;
-                drainGeneration.incrementAndGet();
+                drainThen = THEN_RESTART.equalsIgnoreCase(thenVal) ? THEN_RESTART : THEN_EXIT;
+                var generation = drainGeneration.incrementAndGet();
                 // The scenario names what it still runs; the engine's own list stands where none
                 // is declared.
                 var facts = stateFacts(currentStateId.get());
@@ -8674,11 +8800,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         : declared;
                 drainRemainingItems.set(drainItems);
                 broadcastEvent(EVENT_RUNTIME_DRAINING, Map.of(
-                        "lifecycle_state", "draining",
+                        KEY_LIFECYCLE_STATE, "draining",
                         "draining_by", drainingBy,
                         KEY_REMAINING_ITEMS, drainItems,
                         KEY_REMAINING_WORK_COUNT, drainItems.size(),
-                        "can_withdraw", true
+                        "can_withdraw", true,
+                        KEY_DRAIN_GENERATION, generation
                 ));
                 response.json(200, Map.of(
                         KEY_STATUS, "draining",
@@ -8696,20 +8823,23 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
     /**
      * Lets the work of a drain finish one item at a time: each step re-emits the shorter list, as
-     * the runtime does when a running task or a job ends.
+     * the runtime does when a running task or a job ends. The steps are the drain's own tasks, kept
+     * apart from the state's, so a withdraw or a new drain cancels them and nothing else.
+     *
+     * @param items the number of items the drain runs
      */
     private void scheduleDrainShrink(int items) {
-        var generation = drainGeneration.get();
-        for (var seconds = 1; seconds <= items; seconds++) {
-            var task = scheduler.schedule(() -> shrinkDrain(generation), seconds, TimeUnit.SECONDS);
-            synchronized (this) {
-                pendingTasks.add(task);
+        synchronized (systemLock) {
+            var generation = drainGeneration.get();
+            for (var seconds = 1; seconds <= items; seconds++) {
+                drainTasks.add(scheduler.schedule(() -> shrinkDrain(generation), seconds, TimeUnit.SECONDS));
             }
         }
     }
 
     /**
-     * Removes the first item the drain still runs and reports the shorter list.
+     * Removes the first item the drain still runs and reports the shorter list; the step that removes
+     * the last item ends the drain instead (see {@link #endDrain()}).
      *
      * <p>Package-private so the mock's own tests can finish an item without waiting on the clock.
      */
@@ -8729,16 +8859,42 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             var next = new ArrayList<>(drainRemainingItems.get());
-            next.remove(0);
+            next.removeFirst();
             drainRemainingItems.set(List.copyOf(next));
+            if (next.isEmpty()) {
+                endDrain();
+                return;
+            }
             broadcastEvent(EVENT_RUNTIME_DRAINING, Map.of(
-                    "lifecycle_state", "draining",
+                    KEY_LIFECYCLE_STATE, "draining",
                     "draining_by", drainingBy != null ? drainingBy : "the console",
                     KEY_REMAINING_ITEMS, drainRemainingItems.get(),
                     KEY_REMAINING_WORK_COUNT, drainRemainingItems.get().size(),
-                    "can_withdraw", canWithdrawStop
+                    "can_withdraw", canWithdrawStop,
+                    KEY_DRAIN_GENERATION, generation
             ));
         }
+    }
+
+    /**
+     * Ends a drain whose last item ended: the runtime leaves {@code draining} for the state the stop
+     * named, {@code stopped} for a drain that ends in an exit and {@code running} again for a restart,
+     * whose successor runs on the same release (doc/design/shared/system.adoc#draining). The drain's
+     * generation moves on, so a step or an event of it that is still on its way finds it gone.
+     * Called under {@link #systemLock}.
+     */
+    private void endDrain() {
+        var then = drainThen;
+        lifecycleState = THEN_RESTART.equals(then) ? RuntimeLifecycleState.RUNNING : RuntimeLifecycleState.STOPPED;
+        drainingBy = null;
+        canWithdrawStop = false;
+        drainRemainingItems.set(List.of());
+        drainGeneration.incrementAndGet();
+        cancelDrainTasks();
+        broadcastEvent(EVENT_RUNTIME_STOPPING, Map.of(
+                KEY_LIFECYCLE_STATE, lifecycleState.value(),
+                KEY_THEN, then
+        ));
     }
 
     /**
@@ -8746,8 +8902,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * A drain the state marks as not withdrawable, a drain of a signal, is refused {@code not_withdrawable}
      * with the line {@code operator.system.signal_drain}; a runtime that has begun to stop is refused
      * {@code not_withdrawable} with {@code system.stopping.too_late}; with nothing draining there is no act.
+     * A withdraw ends the drain's own steps only; the state's events and its auto transition run on.
      */
     private void handleDeleteStopRuntime(MockHttpResponse response) throws IOException {
+        // Only systemLock is taken here, as for the stop itself (see systemLock's lock order).
         synchronized (systemLock) {
             if (lifecycleState == RuntimeLifecycleState.DRAINING && !canWithdrawStop) {
                 response.json(409, notWithdrawable("operator.system.signal_drain",
@@ -8757,13 +8915,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         "The runtime has begun to stop; the drain can no longer be withdrawn"));
             } else if (lifecycleState == RuntimeLifecycleState.DRAINING) {
                 lifecycleState = RuntimeLifecycleState.RUNNING;
-                cancelPendingTasks();
+                cancelDrainTasks();
                 drainingBy = null;
                 canWithdrawStop = false;
+                drainThen = THEN_EXIT;
                 drainGeneration.incrementAndGet();
                 drainRemainingItems.set(List.of());
                 broadcastEvent("runtime.drain_withdrawn", Map.of(
-                        "lifecycle_state", "running",
+                        KEY_LIFECYCLE_STATE, "running",
                         KEY_STATUS, "drain_withdrawn"
                 ));
                 response.json(200, Map.of(
@@ -9165,6 +9324,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private void initDefaultDecisions() {
         synchronized (decisionsLock) {
             openDecisions.clear();
+            operatorCreatedDecisionIds.clear();
             var fixture = startRuntimeFixture();
             for (var entry : fixtureObjects(fixture, FIXTURE_DECISIONS)) {
                 var decision = DecisionEnvelope.fromMap(entry);
@@ -9174,13 +9334,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     /**
-     * Adds an open decision and broadcasts {@code decision.opened}.
+     * Adds an open decision and broadcasts {@code decision.opened}. The decision counts as created by
+     * an act, so a later jump that does not declare it closes it for the live clients.
      *
      * @param decision the decision envelope
      */
     public void addDecisionAndBroadcast(DecisionEnvelope decision) {
         synchronized (decisionsLock) {
             openDecisions.put(decision.id(), decision);
+            operatorCreatedDecisionIds.add(decision.id());
         }
         broadcastEvent(DECISION_OPENED, Map.of(CONST_DECISION, decision.toMap()));
     }
@@ -9496,6 +9658,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         );
         synchronized (decisionsLock) {
             openDecisions.put("Q-009", replacement);
+            operatorCreatedDecisionIds.add("Q-009");
         }
         broadcastEvent(DECISION_OPENED, Map.of(CONST_DECISION, replacement.toMap()));
 
@@ -9848,6 +10011,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if (!closed) {
             closed = true;
             cancelPendingTasks();
+            cancelDrainTasks();
             scheduler.shutdownNow();
             for (var stream : activeStreams.keySet()) {
                 try {
