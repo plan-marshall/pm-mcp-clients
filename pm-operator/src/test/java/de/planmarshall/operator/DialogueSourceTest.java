@@ -16,7 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.dialogue.OnboardingSource;
 import de.planmarshall.operator.dialogue.ProjectOnboardingSource;
@@ -57,6 +59,21 @@ class DialogueSourceTest {
         return new OperatorContext(fixture.environment(), tempDir, true);
     }
 
+    /**
+     * @param body a request body
+     * @return the {@code link} the body sends, or {@code null} for an empty or unreadable body
+     */
+    private static @Nullable String linkOf(String body) {
+        if (body.isBlank()) {
+            return null;
+        }
+        try {
+            return JsonTree.string(JsonTree.asObject(JsonTree.parse(body)), "link");
+        } catch (IOException | IllegalArgumentException _) {
+            return null;
+        }
+    }
+
     @Test
     @DisplayName("the machine onboarding reads its state and sends the chosen link")
     void readsAndSendsTheMachineOnboarding() throws Exception {
@@ -93,7 +110,7 @@ class DialogueSourceTest {
     void readsAndSendsTheProjectSetup() throws Exception {
         fixture.start((request, response) -> {
             if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
-                if (request.bodyText().contains("\"link\":\"set\"")) {
+                if ("set".equals(linkOf(request.bodyText()))) {
                     response.json(200, """
                                         {"project_id":"cui-parent","state":"project.completed",
                                          "step":10,"total_steps":10,"summary":"cui-parent is ready","links":{}}
