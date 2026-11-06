@@ -660,15 +660,14 @@ public final class EntryFlow {
         try {
             var being = BeingAddedProject.fromMap(map);
             // A pre-enrolment run is entry-scoped and has no project id: the contract carries the
-            // address in its continue link (project-onboarding.adoc#several). Where the contract
-            // carries no link, the checkout directory name stands for it, as the console design says.
-            var address = entryAddress(being);
+            // address in its continue link (project-onboarding.adoc#several). A run whose contract
+            // carries no link still shows as a badge, named by its checkout, but offers no
+            // continuation: the directory name is not an entry id.
             var display = checkoutDirectoryName(being.checkoutPath());
-            if (address != null) {
+            if (display != null) {
                 var text = ConsolePrompt.formatProjectSetupBadge(locale,
-                                    display != null ? display : address,
-                                    being.stepNumber(), being.totalSteps());
-                return ConsoleBadge.projectSetup(address, text);
+                                    display, being.stepNumber(), being.totalSteps());
+                return ConsoleBadge.projectSetup(entryAddress(being), text);
             }
         } catch (IOException _) {
             // skip malformed entries
@@ -677,16 +676,16 @@ public final class EntryFlow {
     }
 
     /**
-     * Reads the address a being-added project's run is continued by: the entry id of the
-     * contract's {@code continue_link}, or the checkout directory name where the contract carries
-     * no link.
+     * Reads the address a being-added project's run is continued by: the entry id the contract's
+     * {@code continue_link} names. A run whose contract carries no link has no address the daemon
+     * serves — the checkout directory name is not an entry id — so it gets none and the badge stops
+     * offering a continuation (`project add <path>` still continues it).
      *
      * @param being the run as the runtime reports it
-     * @return the address, or {@code null} when neither is available
+     * @return the entry id, or {@code null} when the contract carries no link
      */
     static @Nullable String entryAddress(BeingAddedProject being) {
-        var fromLink = entryId(being.continueLink());
-        return fromLink != null ? fromLink : checkoutDirectoryName(being.checkoutPath());
+        return entryId(being.continueLink());
     }
 
     /**

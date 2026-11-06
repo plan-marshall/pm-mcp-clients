@@ -105,7 +105,7 @@ pm [1 question] › config roles --pro
 [#being-added-address]
 === Addressing a Being-Added Project
 
-A project's run is continued by what the contract carries. Before its enrolment the run has no project id — `BeingAddedProject` in `pm-api` carries the checkout path, the step, and its hypermedia links, and no id — and the run is entry-scoped (link:../shared/project-onboarding.adoc#several[Several Onboardings at Once]). The console therefore reads the address from the run's `continue_link` (`/api/v1/entries/{entry_id}/continue`) and continues the run at the entry resource `/api/v1/entries/{entry_id}`; where the contract carries no link, the directory name of the checkout stands for the address, as it does for the badge's text, so the operator recognises the run.
+A project's run is continued by what the contract carries. Before its enrolment the run has no project id — `BeingAddedProject` in `pm-api` carries the checkout path, the step, and its hypermedia links, and no id — and the run is entry-scoped (link:../shared/project-onboarding.adoc#several[Several Onboardings at Once]). The console therefore reads the address from the run's `continue_link` (`/api/v1/entries/{entry_id}/continue`) and continues the run at the entry resource `/api/v1/entries/{entry_id}`; the badge names the run by the directory of its checkout, and a run whose contract carries no link gets a badge without a continuation — the directory name is not an entry id, and `project add <path>` continues such a run.
 
 The address travels as an argument of the verb, never through a command line the console quotes and parses back: an id with a quote or a backslash reaches the verb unaltered (`project setup --entry <entry_id>`).
 

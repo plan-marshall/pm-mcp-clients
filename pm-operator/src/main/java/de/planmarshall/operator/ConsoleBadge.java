@@ -62,11 +62,12 @@ int count,
     /**
      * Creates a badge for project onboarding setup.
      *
-     * @param projectId the address of the run: the entry id, or the checkout directory's name
+     * @param projectId the address of the run: the entry id, the checkout directory's name, or
+     *                  {@code null} where the contract offers no continuation
      * @param text      the formatted badge text (e.g. "setup cui-http 5/10")
      * @return the project setup badge
      */
-    public static ConsoleBadge projectSetup(String projectId, String text) {
+    public static ConsoleBadge projectSetup(@Nullable String projectId, String text) {
         return new ConsoleBadge(Kind.PROJECT_SETUP, text, null, 0, projectId);
     }
 

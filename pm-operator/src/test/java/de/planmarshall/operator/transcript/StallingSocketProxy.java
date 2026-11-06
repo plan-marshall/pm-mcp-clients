@@ -22,6 +22,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Predicate;
 
@@ -47,6 +49,7 @@ final class StallingSocketProxy implements AutoCloseable {
     private final Path listenPath;
     private final Predicate<String> stalled;
     private final CountDownLatch released = new CountDownLatch(1);
+    private final Set<SocketChannel> active = ConcurrentHashMap.newKeySet();
     private final Thread acceptor;
     private volatile boolean closed;
 
@@ -128,6 +131,7 @@ final class StallingSocketProxy implements AutoCloseable {
     }
 
     private void serve(SocketChannel client) {
+        active.add(client);
         try (client;
              var fromClient = new BufferedInputStream(Channels.newInputStream(client));
              var toClient = Channels.newOutputStream(client)) {
@@ -160,6 +164,8 @@ final class StallingSocketProxy implements AutoCloseable {
             // A client that leaves closes its exchange; the proxy holds no state of its own.
         } catch (InterruptedException _) {
             Thread.currentThread().interrupt();
+        } finally {
+            active.remove(client);
         }
     }
 
@@ -211,6 +217,15 @@ final class StallingSocketProxy implements AutoCloseable {
             server.close();
         } finally {
             acceptor.interrupt();
+            // An exchange the console still holds open would outlive the proxy otherwise.
+            for (var channel : active) {
+                try {
+                    channel.close();
+                } catch (IOException _) {
+                    // A channel that is already gone needs no second close.
+                }
+            }
+            active.clear();
             Files.deleteIfExists(listenPath);
         }
     }

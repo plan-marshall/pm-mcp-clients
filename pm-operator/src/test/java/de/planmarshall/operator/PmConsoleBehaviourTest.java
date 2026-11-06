@@ -552,6 +552,13 @@ class PmConsoleBehaviourTest {
     }
 
     @Test
+    @DisplayName("a backslash before an ordinary character stays, quoted or not")
+    void typedBackslashBeforeAnOrdinaryCharacterStays() {
+        assertEquals(List.of("project", "setup", "--entry", "my\\label"),
+                            PmConsole.parseArgs("project setup --entry \"my\\label\""));
+    }
+
+    @Test
     @DisplayName("a stalled runtime lets the prompt return within the bound")
     void aStalledRuntimeLetsThePromptReturnWithinTheBound() throws Exception {
         var release = new CountDownLatch(1);

@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -572,7 +573,9 @@ class EntryFlowTest {
             assertEquals(2, badges.size());
             assertEquals(entryId, badges.get(0).projectId());
             assertEquals("setup " + otherDir + " 1/5", badges.get(0).text());
-            assertEquals("beta", badges.get(1).projectId());
+            // A run whose contract carries no continue link still shows, but offers no continuation:
+            // the checkout directory name is not an entry id.
+            assertNull(badges.get(1).projectId());
             assertEquals("setup beta 2/5", badges.get(1).text());
 
             var status = Map.<String, Object>of(

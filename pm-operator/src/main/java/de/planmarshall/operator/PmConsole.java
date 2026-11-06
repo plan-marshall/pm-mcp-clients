@@ -918,6 +918,11 @@ public final class PmConsole {
         for (int i = 0; i < line.length(); i++) {
             char c = line.charAt(i);
             if (escaped) {
+                // Only a quote and a backslash are escapes; any other backslash is a literal one,
+                // so a quoted path keeps its separators.
+                if (c != '\\' && c != '"') {
+                    sb.append('\\');
+                }
                 sb.append(c);
                 escaped = false;
             } else if (c == '\\' && inQuotes) {
