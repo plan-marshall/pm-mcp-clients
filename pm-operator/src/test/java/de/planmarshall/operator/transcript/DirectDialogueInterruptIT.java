@@ -26,9 +26,10 @@ import org.junit.jupiter.api.condition.OS;
  * in the in-process handler tests.
  *
  * <p>The key is typed once the prompt is on screen. PLAN-94 D5(g) asked for a reader-ready
- * condition or a reason it cannot race: the prompt a dialogue draws is followed by JLine's own
- * {@code stty} child that switches the terminal to raw mode, so a key typed in that window kills the
- * child ({@code java.io.IOError: Error executing '/bin/stty ...'}) rather than reaching the reader.
+ * condition or a reason it cannot race: where JLine falls back to the {@code exec} provider, the
+ * prompt a dialogue draws is followed by JLine's {@code stty} child that switches the terminal to raw
+ * mode, so Ctrl+C typed in that window can kill the child
+ * ({@code java.io.IOError: Error executing '/bin/stty ...'}) rather than reaching the reader.
  * No output marks the end of that switch, and a probe key would change the dialogue's own state; the
  * drawn prompt is therefore the last condition the harness can read. Recorded as a decision.
  */

@@ -1,0 +1,12 @@
+# Screen captures for PLAN-103: Terminal: What the Console Badges Residue Plan Left Open
+# name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys
+
+console-stalled-runtime-120x30-en | status-only | - |  | exit\n | 120x30 | en_US.UTF-8 | - | -
+console-stalled-runtime-80x24-en | status-only | - |  | exit\n | 80x24 | en_US.UTF-8 | - | -
+console-stalled-runtime-120x30-de | status-only | - |  | exit\n | 120x30 | de_DE.UTF-8 | - | -
+console-stalled-runtime-80x24-de | status-only | - |  | exit\n | 80x24 | de_DE.UTF-8 | - | -
+
+console-recovered-runtime-120x30-en | fully-onboarded | - |  | exit\n | 120x30 | en_US.UTF-8 | - | -
+console-recovered-runtime-80x24-en | fully-onboarded | - |  | exit\n | 80x24 | en_US.UTF-8 | - | -
+console-recovered-runtime-120x30-de | fully-onboarded | - |  | exit\n | 120x30 | de_DE.UTF-8 | - | -
+console-recovered-runtime-80x24-de | fully-onboarded | - |  | exit\n | 80x24 | de_DE.UTF-8 | - | -

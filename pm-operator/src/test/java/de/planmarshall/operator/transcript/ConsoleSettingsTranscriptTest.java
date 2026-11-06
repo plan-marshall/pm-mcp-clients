@@ -9,8 +9,12 @@
  */
 package de.planmarshall.operator.transcript;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,16 +29,25 @@ import org.junit.jupiter.api.condition.OS;
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class ConsoleSettingsTranscriptTest {
 
+    private static final Instant BASE_INSTANT = Instant.parse("2026-10-18T10:00:00Z");
+    private static final Clock FIXED_CLOCK = Clock.fixed(BASE_INSTANT, ZoneId.of("UTC"));
+    private static final Clock FIXED_CLOCK_120_DAYS = Clock.fixed(BASE_INSTANT.plus(Duration.ofDays(120)), ZoneId.of("UTC"));
+
     @Test
     @DisplayName("renders the machine settings, the devices, and the consents as recorded")
     void machineSettings() throws Exception {
-        TranscriptDialogues.consoleSettings().assertRecorded();
+        var dialogue = TranscriptDialogues.consoleSettings(FIXED_CLOCK);
+        assertTrue(dialogue.rendered().contains("last used 1 d ago"),
+                            () -> "raw output should reflect fixed clock: " + dialogue.rendered());
+        dialogue.assertRecorded();
     }
 
     @Test
     @DisplayName("the transcript test passes with the clock moved forward by 120 days")
     void machineSettingsClockMovedForward120Days() throws Exception {
-        var clock120Days = Clock.offset(Clock.systemUTC(), Duration.ofDays(120));
-        TranscriptDialogues.consoleSettings(clock120Days).assertRecorded();
+        var dialogue = TranscriptDialogues.consoleSettings(FIXED_CLOCK_120_DAYS);
+        assertTrue(dialogue.rendered().contains("last used 16 Oct 14:02"),
+                            () -> "raw output should reflect absolute date with clock 120 days ahead: " + dialogue.rendered());
+        dialogue.assertRecorded();
     }
 }

@@ -247,20 +247,21 @@ class SystemViewConsistencyTest {
     void theSummaryNamesItsFloor() {
         var rows = SystemLevel.root(sampleSnapshot(), SystemWindow.HOUR, "model", null).rows("en");
         var modelsRow = rows.stream()
-                .filter(row -> SystemLevel.ROW_MODELS.equals(row.id()))
-                .findFirst()
-                .orElseThrow();
+                            .filter(row -> SystemLevel.ROW_MODELS.equals(row.id()))
+                            .findFirst()
+                            .orElseThrow();
 
         // A model whose calls are partly unmeasured makes the summary a floor: it carries "≥".
         assertTrue(modelsRow.line().contains("\u2265"),
-                "the models summary line carries the floor marker: " + modelsRow.line());
+                            "the models summary line carries the floor marker: " + modelsRow.line());
     }
 
     private static String split(String lang, long total, long in, long out) {
-        return MessageCatalogue.format(lang, "common.tokens.split",
+        var combined = MessageCatalogue.format(lang, "common.tokens.split",
                             Map.of("total", TokenFormat.formatTokens(total, false, lang),
                                                 "in", TokenFormat.formatTokens(in, false, lang),
                                                 "out", TokenFormat.formatTokens(out, false, lang)));
+        return MessageCatalogue.format(lang, "common.tokens.total", Map.of("figure", combined));
     }
 
     @Test

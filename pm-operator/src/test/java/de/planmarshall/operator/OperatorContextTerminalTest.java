@@ -15,7 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.file.Path;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -25,6 +26,8 @@ import de.planmarshall.operator.tui.VirtualScreenTerminal;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import picocli.CommandLine;
 
 /**
  * The terminal ownership seam: a scoped terminal is returned while it is set, the provider is not
@@ -149,39 +152,22 @@ class OperatorContextTerminalTest {
     @SuppressWarnings({"java:S5778", "java:S108"})
     void clearTerminalFailureDoesNotMaskTryExceptionAndClosesOwnedTerminal() throws Exception {
         try (var outer = VirtualScreenTerminal.create(80, 24);
-             var owned = VirtualScreenTerminal.create(80, 24)) {
+             var owned = VirtualScreenTerminal.create(20, 10)) {
             var context = new OperatorContext(Map.of(), tempDir, true,
                                 ClientEnvironment.capture(Map.of()), owned::terminal, null);
 
-            var terminal = context.createTerminal();
-            var ownsTerminal = context.ownsTerminal(terminal);
-            assertTrue(ownsTerminal);
-
-            // Context lends terminal
-            context.useTerminal(terminal);
-
-            // Corrupt the stack so clearTerminal(terminal) throws IllegalStateException
-            context.useTerminal(outer.terminal());
-
-            var thrown = assertThrows(IllegalArgumentException.class, () -> {
-                try {
+            var cmd = new PlansCommand(context);
+            var corruptingWriter = new PrintWriter(new StringWriter()) {
+                @Override
+                public void println(String s) {
+                    context.useTerminal(outer.terminal());
                     throw new IllegalArgumentException("original error");
-                } finally {
-                    try {
-                        context.clearTerminal(terminal);
-                    } catch (IllegalStateException _) {
-                        // Scope already cleared
-                    }
-                    if (ownsTerminal) {
-                        try {
-                            terminal.close();
-                        } catch (IOException _) {
-                            // Terminal close failure ignored
-                        }
-                    }
                 }
-            });
+            };
+            var commandLine = new CommandLine(cmd);
+            commandLine.setErr(corruptingWriter);
 
+            var thrown = assertThrows(IllegalArgumentException.class, cmd::call);
             assertEquals("original error", thrown.getMessage());
             assertTrue(owned.isClosed(), "owned terminal is closed despite clearTerminal throwing");
         }

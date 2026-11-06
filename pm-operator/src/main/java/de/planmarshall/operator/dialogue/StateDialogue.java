@@ -44,6 +44,12 @@ import de.planmarshall.operator.TerminalSanitizer;
  */
 public final class StateDialogue {
 
+    static final List<String> PROJECT_STATES = List.of(
+                        "project.consent", "project.detect", "project.run-consent", "project.probe", "project.checkout",
+                        "project.enrol", "project.enrolment", "project.operator", "project.own",
+                        "project.identity", "project.team", "project.architecture", "project.landing",
+                        "project.roles", "project.descriptions", "project.commit");
+
     /** How long one working state may stay without a link before the dialogue gives up. */
     private static final long WORKING_TIMEOUT_NANOS = 60_000_000_000L;
     private static final long POLL_PAUSE_NANOS = 100_000_000L;

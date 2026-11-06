@@ -58,7 +58,20 @@
   let chatOpen = $state(false);
   /** The decision whose chat has a request in flight, so another decision's panel stays usable. */
   let chatBusyId = $state<string | null>(null);
+  /** The operation that set `chatBusyId`; a late `finally` clears only its own. */
+  let chatBusyToken = 0;
   let chatNotice = $state('');
+  /**
+   * Counts the panel's opens: reopening the same decision makes its id equal again, so the id alone
+   * cannot tell a stale load from the one the panel now shows. Every continuation checks the
+   * generation it started with, and closing the panel invalidates it.
+   */
+  let chatGeneration = $state(0);
+
+  /** Invalidates every chat continuation still in flight, as closing the panel does. */
+  function invalidateChat(): void {
+    chatGeneration += 1;
+  }
 
   let unsubscribeEvents: (() => void) | null = null;
   let isMounted = true;
@@ -356,6 +369,7 @@
         notices = [{ id: `${id}-answered`, text }, ...notices];
         if (chatDecisionId === id) {
           chatOpen = false;
+          invalidateChat();
           chatNotice = $t('decision.chat.closed_elsewhere', {
             id,
             channel:
@@ -375,6 +389,7 @@
         decisions = decisions.filter((d) => d.id !== id);
         if (chatDecisionId === id) {
           chatOpen = false;
+          invalidateChat();
           chatNotice = $t('decision.chat.withdrawn', {
             id,
             reason: closeData.reason || $t('decision.outcome.withdrawn'),
@@ -611,8 +626,17 @@
     if (chatDecisionId === id) {
       chatOpen = false;
       chat = null;
+      invalidateChat();
     }
     void refreshDecisionsCount();
+  }
+
+  /** Closes the chat panel; a load or answer still in flight must not reopen it. */
+  function closeChatPanel(): void {
+    chatDecisionId = null;
+    chatOpen = false;
+    chat = null;
+    invalidateChat();
   }
 
   function handleLater(id: string) {
@@ -625,17 +649,19 @@
   }
 
   async function openChat(dec: DecisionEnvelope): Promise<void> {
+    invalidateChat();
+    const generation = chatGeneration;
     chatDecisionId = dec.id;
     chatOpen = true;
     chat = null;
     chatNotice = '';
     try {
       const loaded = await apiClient.getDecisionChat(dec.id);
-      // The operator may have switched to another decision's chat while this one loaded: the
-      // answer belongs to the panel it was asked for, never to the one now on screen.
-      if (chatDecisionId === dec.id) chat = loaded;
+      // The operator may have switched to another decision's chat, or reopened this one, while
+      // this load ran: the answer belongs to the panel it was asked for, never to a newer one.
+      if (chatGeneration === generation) chat = loaded;
     } catch (err: unknown) {
-      if (chatDecisionId === dec.id) {
+      if (chatGeneration === generation) {
         chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
         chatOpen = false;
       }
@@ -645,48 +671,72 @@
   async function sendChat(text: string): Promise<void> {
     const decisionId = chatDecisionId;
     if (!decisionId) return;
+    const generation = chatGeneration;
+    const token = ++chatBusyToken;
     chatBusyId = decisionId;
     try {
       const answered = await apiClient.decisionChatTurn(decisionId, text);
-      if (chatDecisionId === decisionId) chat = answered;
+      if (chatGeneration === generation) chat = answered;
     } catch (err: unknown) {
-      if (chatDecisionId === decisionId) {
+      if (chatGeneration === generation) {
         chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
       }
     } finally {
-      if (chatBusyId === decisionId) chatBusyId = null;
+      if (chatBusyToken === token) chatBusyId = null;
     }
   }
 
   async function answerChatProposal(accept: boolean): Promise<void> {
     if (!chatDecisionId) return;
     // The panel can be closed, or another decision's panel opened, while the answer is in flight,
-    // so the decision it belongs to is carried past the await: a late answer never replaces
-    // another decision's transcript.
+    // so the decision, its revision and the generation it belongs to are carried past the await:
+    // a late answer never replaces another panel's transcript or a revised decision's answer.
     const decisionId = chatDecisionId;
+    const generation = chatGeneration;
+    const revision = decisions.find((entry) => entry.id === decisionId)?.revision ?? 1;
     const proposal = chat?.proposal;
+    const token = ++chatBusyToken;
     chatBusyId = decisionId;
     try {
       const answered = await apiClient.answerDecisionChatProposal(decisionId, accept);
-      if (chatDecisionId === decisionId) {
+      if (chatGeneration === generation) {
         chat = answered;
       }
       if (accept && proposal?.after) {
-        takeProposedAnswer(decisionId, proposal.after, proposal.applies ?? '');
+        takeProposedAnswer(
+          decisionId,
+          proposal.after,
+          proposal.applies ?? '',
+          generation,
+          revision,
+        );
       }
     } catch (err: unknown) {
-      if (chatDecisionId === decisionId) {
+      if (chatGeneration === generation) {
         chatNotice = $t('decision.chat.unavailable', { reason: reasonOf(err) });
       }
     } finally {
-      if (chatBusyId === decisionId) chatBusyId = null;
+      if (chatBusyToken === token) chatBusyId = null;
     }
   }
 
   /** Takes a proposed answer as the operator's own words and reads it back. */
-  function takeProposedAnswer(decisionId: string, words: string, applies: string): void {
+  function takeProposedAnswer(
+    decisionId: string,
+    words: string,
+    applies: string,
+    generation: number,
+    revision: number,
+  ): void {
     const dec = decisions.find((entry) => entry.id === decisionId);
     if (!dec || dec.parts.length === 0) return;
+    // Only the chat this answer belongs to closes: a panel the operator opened meanwhile stays.
+    if (chatGeneration === generation && chatDecisionId === decisionId) {
+      chatOpen = false;
+      invalidateChat();
+    }
+    // An answer to an earlier revision of the decision does not apply to its current revision.
+    if ((dec.revision ?? 1) !== revision) return;
     const match = /part\s+(\d+)/i.exec(applies);
     const index = match
       ? Math.max(0, Math.min(dec.parts.length - 1, Number.parseInt(match[1], 10) - 1))
@@ -696,31 +746,30 @@
     ownWordsTexts[key] = words;
     ownWordsMode[key] = true;
     interpretations[key] = null;
-    // Only the chat this answer belongs to closes: a panel the operator opened meanwhile stays.
-    if (chatDecisionId === decisionId) {
-      chatOpen = false;
-    }
     void interpretOwnWords(dec, part, index);
   }
 
   async function endTheChat(): Promise<void> {
     if (!chatDecisionId) return;
     // The panel can be left while the chat is ended, and another decision's chat opened meanwhile:
-    // only the chat this act ended is closed when it answers.
+    // only the chat this act ended is closed when it answers, and only the open it belonged to.
     const decisionId = chatDecisionId;
+    const generation = chatGeneration;
+    const token = ++chatBusyToken;
     chatBusyId = decisionId;
     try {
       await apiClient.endDecisionChat(decisionId);
     } catch {
       // Closing the panel is the operator's act; a chat the runtime already closed stays closed.
     } finally {
-      if (chatDecisionId === decisionId) {
+      if (chatGeneration === generation && chatDecisionId === decisionId) {
         chatOpen = false;
         chat = null;
         chatNotice = '';
         chatDecisionId = null;
+        invalidateChat();
       }
-      if (chatBusyId === decisionId) {
+      if (chatBusyToken === token) {
         chatBusyId = null;
       }
     }
@@ -1160,7 +1209,7 @@
               onAccept={() => answerChatProposal(true)}
               onReject={() => answerChatProposal(false)}
               onToggle={() => openChat(dec)}
-              onClose={() => (chatDecisionId = null)}
+              onClose={closeChatPanel}
               acceptLabel={$t('decision.chat.answer_proposed')}
             />
             <p class="decision-chat__open" role="status">
