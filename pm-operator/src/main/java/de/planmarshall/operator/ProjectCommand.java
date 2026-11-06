@@ -158,12 +158,16 @@ public final class ProjectCommand implements Callable<Integer> {
         CommandSpec spec = CommandSpec.create();
         private final OperatorContext context;
 
-        @Parameters(index = "0", description = "Project ID")
+        @Parameters(index = "0", description = "Project ID, or the entry id with --entry")
         String projectId = "";
 
         @Parameters(index = "1", arity = "0..1", description = "Setup step name or number")
         @Nullable
         String step;
+
+        /** A run that has not been enrolled yet: the parameter is the entry the continue link names. */
+        @Option(names = "--entry", description = "Continue a pre-enrolment run by its entry id")
+        boolean entry;
 
         SetupCommand(OperatorContext context) {
             this.context = context;
@@ -176,7 +180,9 @@ public final class ProjectCommand implements Callable<Integer> {
             var err = spec.commandLine().getErr();
             var sanitizedId = OutputSafety.stripControlSequences(projectId);
             var locale = context.clientEnvironment().locale();
-            var source = new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId);
+            var source = entry
+                                ? ProjectOnboardingSource.forEntry(context.runtime(true), context.gate(), projectId)
+                                : new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId);
             var startPrompt = new StartPrompt(context, out, locale, false);
             var dialogue = new StateDialogue(source, out, locale,
                                 stateId -> new ChoicePrompt(startPrompt, stateId));

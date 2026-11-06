@@ -44,6 +44,14 @@ final class TranscriptDialogues {
             TranscriptAssert.assertMatches(name, rendered,
                                 new TranscriptNormalizer().replacing(machineRoot, "<machine-root>"));
         }
+
+        /**
+         * @return the rendered buffer with the throw-away machine root replaced and the texts the
+         *         clock moves left as they are, so two runs with different clocks can be compared
+         */
+        String withoutMachineRoot() {
+            return rendered.replace(machineRoot.toString(), "<machine-root>");
+        }
     }
 
     /**
@@ -166,11 +174,24 @@ final class TranscriptDialogues {
      * @throws Exception if the runtime or the console fails
      */
     static Dialogue consoleSettings(Clock clock) throws Exception {
+        return consoleSettings(clock, "en_US.UTF-8", "console-settings");
+    }
+
+    /**
+     * @param clock the clock to inject into the console context
+     * @return the same console, run with the German catalogue
+     * @throws Exception if the runtime or the console fails
+     */
+    static Dialogue consoleSettingsGerman(Clock clock) throws Exception {
+        return consoleSettings(clock, "de_DE.UTF-8", "console-settings-de");
+    }
+
+    private static Dialogue consoleSettings(Clock clock, String language, String name) throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
                                  .scenario(StandardScenarios.ONBOARDING).build());
              var driver = TerminalTestDriver.create()) {
             MockMachine.recordLiveRuntime(runtime);
-            driver.project(environment(runtime), runtime.base().getParent(), clock);
+            driver.project(environment(runtime, language), runtime.base().getParent(), clock);
             driver.typeLine("config");
             driver.typeLine("q");
             driver.typeLine("web devices");
@@ -181,7 +202,7 @@ final class TranscriptDialogues {
             if (exitCode != 0) {
                 throw new IllegalStateException("console exited with " + exitCode);
             }
-            return new Dialogue("console-settings", driver.render(), runtime.base());
+            return new Dialogue(name, driver.render(), runtime.base());
         }
     }
 
@@ -229,10 +250,14 @@ final class TranscriptDialogues {
     }
 
     private static Map<String, String> environment(MockRuntime runtime) {
+        return environment(runtime, "en_US.UTF-8");
+    }
+
+    private static Map<String, String> environment(MockRuntime runtime, String language) {
         var environment = new HashMap<>(runtime.environment());
         environment.put("USER", "operator");
         environment.put("HOSTNAME", "transcript-host");
-        environment.put("LANG", "en_US.UTF-8");
+        environment.put("LANG", language);
         return environment;
     }
 }

@@ -1,0 +1,52 @@
+✓ Runtime läuft (pm-mcpd 0.1.0-SNAPSHOT)
+
+plan-marshall läuft. Diese Maschine ist noch nicht eingerichtet.
+
+  7 Schritte. Auf dieser Maschine wird nichts angesehen, ausgeführt oder geändert, bevor
+  du es in dem Schritt erlaubst. Du kannst jederzeit aufhören; Enter am Prompt oder
+  die Web-App setzt dort fort, wo du aufgehört hast.
+
+    1  Sprache      die Sprache von plan-marshall und der Texte der Modelle
+    2  Harnesses    die Coding-Agenten, mit denen der Server arbeitet, einer als Vorgabe
+    3  Modelle      die Modelle, die Pläne auf jedem Coding-Agenten nutzen dürfen
+    4  Rollen       ein Coding-Agent und ein Modell für jede Rolle
+    5  Zugangsdaten wo diese Maschine ihre Tokens aufbewahrt
+    6  Provider     die Git-Hosts, CI- und Analysedienste, die diese Maschine nutzt
+    7  Pläne        wie Pläne laufen, solange ein Projekt nichts anderes sagt
+
+Wo möchtest du sie einrichten?   w) in der Web-App [Enter]   h) hier, im Termina l   ?   › config
+
+Maschine für plan-marshall einrichten
+  7 Schritte. Auf dieser Maschine wird nichts angesehen, ausgeführt oder
+  geändert, bevor du es in dem Schritt erlaubst. Du kannst jederzeit aufhören;
+  Enter am Prompt oder die Web-App setzt dort fort, wo du aufgehört hast.
+  1  Sprache: die Sprache von plan-marshall und der Texte der Modelle
+  2  Harnesses: die Coding Agents, mit denen der Server arbeitet, einer davon
+  die Vorgabe
+  3  Modelle: die Modelle, die Pläne auf jedem Coding Agent verwenden dürfen
+  4  Rollen: ein Agent und ein Modell für jede Rolle
+  5  Zugangsdaten: wo diese Maschine ihre Tokens aufbewahrt
+  6  Provider: die Git-Hosts, CI- und Analyse-Dienste, die diese Maschine
+  nutzt
+  7  Pläne: wie Pläne laufen, solange ein Projekt nichts anderes sagt
+  1) Entscheide alles für mich…
+  2) Mit Schritt 1 beginnen ←
+  › q
+Verlassen: Maschine für plan-marshall einrichten. Es wurde nichts gesendet.
+pm [Einrichtung 0/7 · Einrichtung cui-parent 2/10] › web devices
+Gekoppelte Geräte · Die Browser, die auf dieser Maschine handeln können
+    1) Firefox on mbp-oliver   gekoppelt 12 May von loopback   zuletzt benutzt <ago>
+    2) Safari on iPad   gekoppelt 20 May von network   zuletzt benutzt <ago>
+    3) Chrome on build-box   gekoppelt 2 Jun von loopback   zuletzt benutzt <ago>
+
+  Die Konsole braucht keine Kopplung und steht nicht in der Liste. Netzwerk-Listener: on.
+pm [Einrichtung 0/7 · Einrichtung cui-parent 2/10] › config consents
+Die Zustimmungen, die du dir gemerkt hast
+    1) nach Harnesses suchen    scan_harnesses
+         <timestamp> · terminal
+    2) prüfen, ob ein Harness angemeldet ist    probe_harness_login
+         <timestamp> · Firefox
+
+Eine zurückgenommene Zustimmung wird beim nächsten Lauf ihrer Aktion wieder erfragt.
+Nimm zurück: 1-2   q) verlasse   ?   › exit
+pm [Einrichtung 0/7 · Einrichtung cui-parent 2/10] ›

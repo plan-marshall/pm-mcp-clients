@@ -482,8 +482,7 @@ public final class WebCommand implements Callable<Integer> {
                 // Ctrl+C at the device prompt is the exit-code table's 130, never a swallowed read.
                 throw interrupt;
             }
-            // cui-rewrite:disable InvalidExceptionUsageRecipe
-            catch (IOException | RuntimeException _) {
+            catch (IOException _) {
                 // The act did not run: say so and leave with the failure, never a silent 0.
                 out.println(MessageCatalogue.format(locale, "operator.devices.act_failed", Map.of()));
                 out.flush();
@@ -677,9 +676,9 @@ public final class WebCommand implements Callable<Integer> {
                 // The interrupt must not confirm the destructive revoke.
                 throw interrupt;
             }
-            // cui-rewrite:disable InvalidExceptionUsageRecipe
-            catch (IOException | RuntimeException _) {
-                // A read that failed cannot confirm; it leaves the way "b" does, with 0.
+            catch (IOException | EndOfFileException _) {
+                // A read that failed or ran out of input cannot confirm; it leaves the way "b"
+                // does, with 0.
                 return false;
             }
         }

@@ -22,7 +22,8 @@ import org.jspecify.annotations.Nullable;
  * @param text      the rendered badge text
  * @param itemKind  the notice or needs_operator kind (for {@link Kind#WAITING})
  * @param count     the waiting item count (for {@link Kind#WAITING})
- * @param projectId the project name or directory (for {@link Kind#PROJECT_SETUP})
+ * @param projectId the address of the run: the entry id of a being-added project, or the checkout
+ *                  directory's name
  */
 public record ConsoleBadge(
 Kind kind,
@@ -61,11 +62,12 @@ int count,
     /**
      * Creates a badge for project onboarding setup.
      *
-     * @param projectId the project identifier or checkout directory name
+     * @param projectId the address of the run: the entry id, the checkout directory's name, or
+     *                  {@code null} where the contract offers no continuation
      * @param text      the formatted badge text (e.g. "setup cui-http 5/10")
      * @return the project setup badge
      */
-    public static ConsoleBadge projectSetup(String projectId, String text) {
+    public static ConsoleBadge projectSetup(@Nullable String projectId, String text) {
         return new ConsoleBadge(Kind.PROJECT_SETUP, text, null, 0, projectId);
     }
 

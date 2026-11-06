@@ -12,8 +12,11 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -33,6 +36,7 @@ import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.onboarding.OnboardingAspect;
+import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -43,6 +47,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+@EnableGeneratorController
 @DisplayName("EntryFlow")
 class EntryFlowTest {
 
@@ -91,17 +96,18 @@ class EntryFlowTest {
         }
 
         @Test
-        @DisplayName("getStepName returns normative names for steps 1 to 7")
+        @DisplayName("stepName returns normative names for steps 1 to 7 and the number beyond")
         void stepNames() {
+            var flow = new EntryFlow(new OperatorContext(fixture.environment(), tempDir, true));
             assertAll(
-                                () -> assertEquals("Language", EntryFlow.getStepName(1)),
-                                () -> assertEquals("Harnesses", EntryFlow.getStepName(2)),
-                                () -> assertEquals("Models", EntryFlow.getStepName(3)),
-                                () -> assertEquals("Roles", EntryFlow.getStepName(4)),
-                                () -> assertEquals("Credentials", EntryFlow.getStepName(5)),
-                                () -> assertEquals("Providers", EntryFlow.getStepName(6)),
-                                () -> assertEquals("Plans", EntryFlow.getStepName(7)),
-                                () -> assertEquals("Step 8", EntryFlow.getStepName(8))
+                                () -> assertEquals("Language", flow.stepName("en", 1)),
+                                () -> assertEquals("Harnesses", flow.stepName("en", 2)),
+                                () -> assertEquals("Models", flow.stepName("en", 3)),
+                                () -> assertEquals("Roles", flow.stepName("en", 4)),
+                                () -> assertEquals("Credentials", flow.stepName("en", 5)),
+                                () -> assertEquals("Providers", flow.stepName("en", 6)),
+                                () -> assertEquals("Plans", flow.stepName("en", 7)),
+                                () -> assertEquals("Step 8", flow.stepName("en", 8))
             );
         }
 
@@ -544,20 +550,20 @@ class EntryFlowTest {
         }
 
         @Test
-        @DisplayName("EntryFlow exposes its aspects and prefers daemon project_id in project badges")
-        void entryFlowAspectsAndDaemonProjectId() throws Exception {
+        @DisplayName("EntryFlow exposes its aspects and addresses project badges by the entry their continue link names")
+        void entryFlowAspectsAndEntryAddress() throws Exception {
             var context = new OperatorContext(fixture.environment(), tempDir, true);
             var flow = new EntryFlow(context);
             assertEquals(List.of(OnboardingAspect.values()), flow.aspects());
 
+            var entryId = Generators.letterStrings(4, 10).next();
+            var otherDir = Generators.letterStrings(4, 10).next();
+            var withLink = new BeingAddedProject("/tmp/" + otherDir, "build", 1, 5,
+                                "/api/v1/entries/" + entryId + "/continue", "/api/v1/entries/" + entryId + "/abandon");
+            var withoutLink = new BeingAddedProject("/tmp/beta", "test", 2, 5, null, null);
             fixture.start((request, response) -> {
                 if ("/api/v1/project-onboardings".equals(request.target())) {
-                    response.json(200, """
-                                        {"onboardings":[
-                                          {"project_id":"daemon-id","checkout_path":"/tmp/alpha","current_step":"build","step_number":1,"total_steps":5},
-                                          {"checkout_path":"/tmp/beta","current_step":"test","step_number":2,"total_steps":5}
-                                        ]}
-                                        """);
+                    response.json(200, "{\"onboardings\":[" + withLink.toJson() + "," + withoutLink.toJson() + "]}");
                 } else {
                     response.send(404, null, "");
                 }
@@ -565,9 +571,11 @@ class EntryFlowTest {
 
             var badges = EntryFlow.readProjectSetupConsoleBadges("en", context.runtime(true));
             assertEquals(2, badges.size());
-            assertEquals("daemon-id", badges.get(0).projectId());
-            assertEquals("setup daemon-id 1/5", badges.get(0).text());
-            assertEquals("beta", badges.get(1).projectId());
+            assertEquals(entryId, badges.get(0).projectId());
+            assertEquals("setup " + otherDir + " 1/5", badges.get(0).text());
+            // A run whose contract carries no continue link still shows, but offers no continuation:
+            // the checkout directory name is not an entry id.
+            assertNull(badges.get(1).projectId());
             assertEquals("setup beta 2/5", badges.get(1).text());
 
             var status = Map.<String, Object>of(
@@ -620,8 +628,11 @@ class EntryFlowTest {
                                 "intro line must say '8 steps.' when 8 aspects are configured");
             assertFalse(textIntro.contains("Seven steps."),
                                 "intro line must not contain 'Seven steps.' when 8 aspects are configured");
-            assertTrue(textIntro.contains("8") && textIntro.contains("Language"),
-                                "intro line must list all 8 steps when an aspect is added");
+            assertTrue(textIntro.contains("   8  Language"),
+                                "intro line must carry row 8 with the eighth aspect's name");
+            assertEquals(8,
+                                textIntro.lines().filter(line -> line.trim().matches("\\d+  .*")).count(),
+                                "intro line must list one row per aspect");
 
             fixture.close();
             fixture = RuntimeFixture.create();

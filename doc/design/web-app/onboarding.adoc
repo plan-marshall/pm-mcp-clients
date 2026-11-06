@@ -69,7 +69,7 @@ The onboarding fills the whole app until it is complete; the rest of the app is 
 ----
   Set up this machine for plan-marshall
 
-  Seven steps. Nothing on this machine is looked at, run, or changed until
+  7 steps. Nothing on this machine is looked at, run, or changed until
   you say so in that step.
 
     ① Language    the language of plan-marshall and of the models' texts
