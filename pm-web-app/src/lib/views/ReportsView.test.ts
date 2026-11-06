@@ -272,7 +272,7 @@ describe('ReportsView component', () => {
     const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
     await fireEvent.click(markAllBtn);
 
-    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(undefined);
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(['rep-0142', 'rep-0139', 'rep-0131']);
   });
 
   it('renders empty state when there are no unread reports', async () => {
@@ -1345,23 +1345,6 @@ describe('ReportsView component', () => {
     expect(h1Elements[0]).toHaveClass('report-title');
   });
 
-  it('leaves no unread report behind on unfiltered mark-all and keeps the load-older control (D1)', async () => {
-    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
-      items: mockReports,
-      unread_count: 3,
-      has_older: true,
-      older_count: 5,
-    });
-    render(ReportsView);
-    await screen.findByText('Ended: merged (#214)');
-
-    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
-    await fireEvent.click(markAllBtn);
-
-    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(undefined);
-    expect(screen.getByRole('button', { name: /Show.*older/i })).toBeInTheDocument();
-  });
-
   it('treats a punctuation-only query as unfiltered and shows what the count says (D1)', async () => {
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
@@ -1374,7 +1357,165 @@ describe('ReportsView component', () => {
 
     const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
     await fireEvent.click(markAllBtn);
-    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(undefined);
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(['rep-0142', 'rep-0139', 'rep-0131']);
+  });
+
+  it('posts the shown ids and no all on unfiltered mark-all (D1)', async () => {
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(['rep-0142', 'rep-0139', 'rep-0131']);
+    expect(apiClient.markAllReportsRead).not.toHaveBeenCalledWith(undefined);
+  });
+
+  it('keeps a report that arrived after the list was drawn listed and unread on mark-all (D1)', async () => {
+    let resolveMarkAll: (() => void) | undefined;
+    vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(
+      () =>
+        new Promise<{ marked_count: number }>((resolve) => {
+          resolveMarkAll = () => resolve({ marked_count: 3 });
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+
+    const arrivedReport: ReportItem = {
+      id: 'rep-arrived',
+      from: { project: 'pm-mcp-clients', plan: 'fix-relay' },
+      kind: 'plan.ended',
+      subject: 'Arrived during request',
+      created_at: '2026-10-16T12:00:00Z',
+    };
+    eventHandler?.('report.sent', { report: arrivedReport });
+    await tick();
+
+    if (!resolveMarkAll) throw new Error('markAllReportsRead was never called');
+    resolveMarkAll();
+    await tick();
+    await tick();
+
+    expect(screen.getByText('Arrived during request')).toBeInTheDocument();
+    expect(screen.getByTestId('unread-count')).toHaveTextContent('1 unread report');
+  });
+
+  it('decrements unread count by shown reports marked and keeps load-older control (D1)', async () => {
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: mockReports,
+      unread_count: 8,
+      has_older: true,
+      older_count: 5,
+    });
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('unread-count')).toHaveTextContent('5 unread reports');
+    });
+    expect(screen.getByRole('button', { name: /Show 5 older/i })).toBeInTheDocument();
+  });
+
+  it('keeps the retained read marker when mark-all request fails (D1)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const detailBtn = screen.getAllByRole('button', { name: /Show the details/i })[0];
+    await fireEvent.click(detailBtn);
+    await waitFor(() => {
+      expect(document.querySelector('.report-title')).not.toBeNull();
+      expect(screen.getByTestId('report-read-state')).toBeInTheDocument();
+    });
+
+    vi.spyOn(apiClient, 'markAllReportsRead').mockRejectedValue(new Error('mark all failed'));
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('mark all failed');
+    });
+
+    expect(screen.getByTestId('report-read-state')).toBeInTheDocument();
+  });
+
+  it('keeps unread count equal to server count when filtered mark-all follows a reload with retained read (D1)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const detailBtn = screen.getAllByRole('button', { name: /Show the details/i })[0];
+    await fireEvent.click(detailBtn);
+    await waitFor(() => {
+      expect(document.querySelector('.report-title')).not.toBeNull();
+      expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+    });
+
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
+      items: [
+        {
+          id: 'rep-0139',
+          from: { project: 'pm-mcp-clients', plan: 'docs-typo' },
+          kind: 'plan.ended',
+          subject: 'Ended: no change',
+          created_at: '2026-10-16T09:40:00Z',
+        },
+        {
+          id: 'rep-0131',
+          from: { project: 'pm-mcp-core' },
+          kind: 'project.onboarded',
+          subject: 'Onboarded',
+          created_at: '2026-10-15T18:40:00Z',
+        },
+      ],
+      unread_count: 2,
+      has_older: false,
+      older_count: 0,
+    });
+    eventHandler?.('report.read', {});
+    await tick();
+    await waitFor(() => {
+      expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+    });
+
+    await typeFilter('relay');
+    expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+
+    expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+  });
+
+  it('guards against double click and sends only one mark-all request (D1)', async () => {
+    let resolveRequest: (() => void) | undefined;
+    vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(
+      () =>
+        new Promise<{ marked_count: number }>((resolve) => {
+          resolveRequest = () => resolve({ marked_count: 3 });
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    await fireEvent.click(markAllBtn);
+    await fireEvent.click(markAllBtn);
+
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledTimes(1);
+
+    if (!resolveRequest) throw new Error('markAllReportsRead was never called');
+    resolveRequest();
+    await tick();
   });
 
   it('tracks unreadCount accurately and prevents double decrements on duplicate events (D3e)', async () => {

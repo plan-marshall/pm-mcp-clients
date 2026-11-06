@@ -5402,12 +5402,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     }
 
     private void handleMarkReportsRead(MockHttpRequest request, MockHttpResponse response, boolean isWeb) throws IOException {
-        boolean all = false;
         List<String> ids = List.of();
         if (request.body().length > 0) {
             try {
                 var req = ReadReportsRequest.fromJson(request.bodyText());
-                all = req.all();
                 ids = req.reportIds();
             } catch (IOException _) {
                 // Ignore parse errors from malformed body
@@ -5417,7 +5415,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         synchronized (reportsLock) {
             for (int i = 0; i < mockReports.size(); i++) {
                 var rep = mockReports.get(i);
-                if (!rep.isRead() && (all || ids.contains(rep.id()))) {
+                if (!rep.isRead() && ids.contains(rep.id())) {
                     var readItem = markAsRead(rep, isWeb);
                     mockReports.set(i, readItem);
                     marked.add(readItem);

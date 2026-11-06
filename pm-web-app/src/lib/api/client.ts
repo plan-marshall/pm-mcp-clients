@@ -2875,8 +2875,8 @@ export class ApiClient {
     await this.request('POST', `/api/v1/reports/${encodeURIComponent(reportId)}/read`, {});
   }
 
-  public async markAllReportsRead(ids?: string[]): Promise<{ marked_count: number }> {
-    const body = ids && ids.length > 0 ? { report_ids: ids } : { all: true };
+  public async markAllReportsRead(ids: string[]): Promise<{ marked_count: number }> {
+    const body = { report_ids: ids };
     return this.request<{ marked_count: number }>('POST', '/api/v1/reports/read', body);
   }
 
