@@ -54,7 +54,13 @@ Source of this plan (read before scoping):
      - The stale captures and the `texts-and-languages.adoc` example carry the new wording (evidence order: `none`)
      - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
      - The landing message states `unresolved_review_threads=N` (read through GraphQL `reviewThreads` at the merge head, path:line of each open thread) and `sonar_open_new_issues=N` as lines of its facts block (evidence order: `none`)
-
+5. **The device list loads without losing an edit or an event (PLAN-100 residue, `landings/PLAN-100.md`)**
+   - What: `SettingsView.svelte` bounds its reads and drops a superseded one (`loadSequence`, `loadController`, `listenerKnown`: keep all three through the merge of the two views, deliverable 1). Three leftovers: a successful revoke edits `devices` locally without bumping `loadSequence`, so an older load in flight can re-add the revoked row; `device.revoked` and `device.renamed` arriving during a load are replaced by the load's snapshot (CodeRabbit follow-up F2: drop the snapshot if an event arrived after the read started, the epoch pattern `+layout.svelte` already uses); and the CodeRabbit fixes of PLAN-100 that no test pins: the destroy guard (`if (!isMounted) return;`), the abort of the status read in the catch, the `onDestroy` abort, and a status read that never settles.
+   - Persona: plan-marshall:persona-implementer
+   - Skills: pm-dev-frontend:javascript, pm-dev-frontend:jest-testing
+   - Done when:
+     - Tests that fail before, one per leftover, each failing when its code is reverted: the revoked row stays gone; an event during a load survives it; unmounting during a load writes nothing; the status read is aborted in the catch; a pending status read ends at its bound (evidence order: `mutation-after`; cite the reverted code)
+     - The open-issue read at the pull request head is recorded: the open Sonar issue count and the rules left open (`unknown` for a failed read, never `0`); it is a confirmed `0` or every open issue is dismissed (evidence order: `none`)
 ## Standing Constraints
 
 - Build and test through Maven only (CLAUDE.md). Beside the lane's build gate, these module builds pass at the head: `./mvnw -pl pm-web-app verify`, `PM_MOCK_WEB_PORT=20600 PM_WEB_PORT=20601 ./mvnw -pl pm-web-e2e verify -Pe2e`, `./mvnw -pl pm-api verify`.
