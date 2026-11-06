@@ -21,6 +21,9 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InterruptedIOException;
+import java.io.OutputStream;
+import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -31,6 +34,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -1285,12 +1289,17 @@ class MockRuntimeEngineTest {
     }
 
     @Test
-    @DisplayName("a stop racing a reset does not deadlock")
+    @DisplayName("a stop holding the system lock while a reset holds the engine monitor, and a stop racing resets, do not deadlock")
     void stopRacingResetDoesNotDeadlock() throws Exception {
         engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
         engine.goToState(STATE_SYSTEM_RUNNING);
         var rounds = Generators.integers(150, 300).next();
         var drain = drainBody(THEN_EXIT);
+
+        // The one interleaving a lock-order inversion deadlocks on, forced rather than hoped for.
+        assertEquals(200, forceStopHoldingSystemLockAgainstReset(drain));
+
+        // Then the free race of many stops, withdrawals and resets.
         var acceptedStops = new AtomicInteger();
         var start = new CountDownLatch(1);
         var executor = Executors.newVirtualThreadPerTaskExecutor();
@@ -1506,6 +1515,116 @@ class MockRuntimeEngineTest {
      * @param task the task
      * @param what the task, for the failure message
      */
+    /**
+     * Forces the interleaving a lock-order inversion between a stop and a reset deadlocks on: the stop
+     * holds {@code systemLock} while its answer waits on a slow client, a reset takes the engine
+     * monitor and waits on {@code systemLock}, then the client reads on. Under the single lock order
+     * the stop needs nothing beyond {@code systemLock} after that point and both end; a stop that takes
+     * the engine monitor after {@code systemLock}, as the drain's step scheduling did before the single
+     * lock order, never ends. Both run on platform threads so their lock waits can be observed.
+     *
+     * @param drain the body of the stop
+     * @return the status the stop answered
+     */
+    private int forceStopHoldingSystemLockAgainstReset(byte[] drain) throws Exception {
+        var subject = engine;
+        var client = new SlowClient();
+        var request = new MockHttpRequest("POST", PATH_STOP, auth, drain, System.nanoTime());
+        var stop = new FutureTask<>(() -> {
+            subject.dispatch(request, new MockHttpResponse(client), false);
+            return parseStatus(client.text());
+        });
+        var stopThread = Thread.ofPlatform().daemon().name("stop").start(stop);
+        assertTrue(client.awaitWriting(), "the stop must reach its answer");
+
+        var reset = new FutureTask<>(() -> {
+            subject.reset();
+            subject.goToState(STATE_SYSTEM_RUNNING);
+            return null;
+        });
+        var resetThread = Thread.ofPlatform().daemon().name("reset").start(reset);
+        awaitBlockedBy(resetThread, stopThread);
+        client.readOn();
+
+        if (!endsWithinBound(stop) || !endsWithinBound(reset)) {
+            // A deadlocked engine holds its monitor for good and cannot be closed; tear down a fresh one.
+            engine = new MockRuntimeEngine(registry, registry.resolve(StandardScenarios.STATUS_ONLY),
+                    runtimeToken, deviceSecret);
+            fail("the stop and the reset did not end within the bound: they deadlocked");
+        }
+        return stop.get();
+    }
+
+    /**
+     * Waits until {@code waiter} is blocked on a lock {@code owner} holds.
+     */
+    private static void awaitBlockedBy(Thread waiter, Thread owner) {
+        var threads = ManagementFactory.getThreadMXBean();
+        var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+        while (true) {
+            var info = threads.getThreadInfo(waiter.threadId());
+            if (info != null && info.getThreadState() == Thread.State.BLOCKED
+                    && info.getLockOwnerId() == owner.threadId()) {
+                return;
+            }
+            if (System.nanoTime() > deadline) {
+                fail(waiter.getName() + " never waited on a lock " + owner.getName() + " holds");
+            }
+            Thread.onSpinWait();
+        }
+    }
+
+    private static boolean endsWithinBound(Future<?> task) throws Exception {
+        try {
+            task.get(20, TimeUnit.SECONDS);
+            return true;
+        } catch (TimeoutException _) {
+            return false;
+        }
+    }
+
+    /**
+     * A client that takes an answer only once the test lets it read on, as a slow client's socket
+     * does: the writer waits inside its first write until then.
+     */
+    private static final class SlowClient extends OutputStream {
+
+        private final ByteArrayOutputStream received = new ByteArrayOutputStream();
+        private final CountDownLatch writing = new CountDownLatch(1);
+        private final CountDownLatch reading = new CountDownLatch(1);
+
+        @Override
+        public void write(int value) throws IOException {
+            write(new byte[]{(byte) value}, 0, 1);
+        }
+
+        @Override
+        public void write(byte[] bytes, int offset, int length) throws IOException {
+            writing.countDown();
+            try {
+                if (!reading.await(20, TimeUnit.SECONDS)) {
+                    throw new InterruptedIOException("the client never read on");
+                }
+            } catch (InterruptedException interrupted) {
+                Thread.currentThread().interrupt();
+                throw new InterruptedIOException("interrupted while the client waited to read");
+            }
+            received.write(bytes, offset, length);
+        }
+
+        boolean awaitWriting() throws InterruptedException {
+            return writing.await(20, TimeUnit.SECONDS);
+        }
+
+        void readOn() {
+            reading.countDown();
+        }
+
+        String text() {
+            return received.toString(StandardCharsets.UTF_8);
+        }
+    }
+
     private static void awaitBounded(Future<?> task, String what) throws Exception {
         try {
             task.get(20, TimeUnit.SECONDS);
