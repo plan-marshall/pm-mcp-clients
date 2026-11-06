@@ -261,6 +261,14 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String THEN_EXIT = "exit";
     private static final String THEN_RESTART = "restart";
     private static final String EVENT_RUNTIME_STOPPING = "runtime.stopping";
+    /** The lifecycle state, and the stop's status, of a runtime that stops now. */
+    private static final String LIFECYCLE_STOPPING = "stopping";
+    /** The lifecycle state, and the stop's status, of a runtime that drains first. */
+    private static final String LIFECYCLE_DRAINING = "draining";
+    /** The outcome of a decision closed because it was withdrawn. */
+    private static final String OUTCOME_WITHDRAWN = "withdrawn";
+    /** The decision a withdrawn question is asked anew as. */
+    private static final String DECISION_ASKED_ANEW = "Q-009";
     private static final String KEY_LOOPBACK = "loopback";
     private static final String KEY_DEVICE_ID = "device_id";
     private static final String KEY_LABEL = "label";
@@ -1322,7 +1330,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             if (removed) {
                 broadcastEvent(DECISION_CLOSED, Map.of(
                         "id", decisionId,
-                        KEY_OUTCOME, "withdrawn",
+                        KEY_OUTCOME, OUTCOME_WITHDRAWN,
                         KEY_REASON, "state_left"));
             }
         }
@@ -8769,12 +8777,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
             if ("now".equalsIgnoreCase(when)) {
                 lifecycleState = RuntimeLifecycleState.STOPPING;
                 broadcastEvent(EVENT_RUNTIME_STOPPING, Map.of(
-                        KEY_LIFECYCLE_STATE, "stopping",
+                        KEY_LIFECYCLE_STATE, LIFECYCLE_STOPPING,
                         KEY_THEN, thenVal
                 ));
                 response.json(200, Map.of(
-                        KEY_STATUS, "stopping",
-                        KEY_STATE, "stopping",
+                        KEY_STATUS, LIFECYCLE_STOPPING,
+                        KEY_STATE, LIFECYCLE_STOPPING,
                         KEY_THEN, thenVal
                 ));
             } else {
@@ -8800,7 +8808,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         : declared;
                 drainRemainingItems.set(drainItems);
                 broadcastEvent(EVENT_RUNTIME_DRAINING, Map.of(
-                        KEY_LIFECYCLE_STATE, "draining",
+                        KEY_LIFECYCLE_STATE, LIFECYCLE_DRAINING,
                         "draining_by", drainingBy,
                         KEY_REMAINING_ITEMS, drainItems,
                         KEY_REMAINING_WORK_COUNT, drainItems.size(),
@@ -8808,8 +8816,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         KEY_DRAIN_GENERATION, generation
                 ));
                 response.json(200, Map.of(
-                        KEY_STATUS, "draining",
-                        KEY_STATE, "draining",
+                        KEY_STATUS, LIFECYCLE_DRAINING,
+                        KEY_STATE, LIFECYCLE_DRAINING,
                         "draining_by", drainingBy,
                         KEY_REMAINING_ITEMS, drainItems,
                         KEY_REMAINING_WORK_COUNT, drainItems.size(),
@@ -8866,7 +8874,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 return;
             }
             broadcastEvent(EVENT_RUNTIME_DRAINING, Map.of(
-                    KEY_LIFECYCLE_STATE, "draining",
+                    KEY_LIFECYCLE_STATE, LIFECYCLE_DRAINING,
                     "draining_by", drainingBy != null ? drainingBy : "the console",
                     KEY_REMAINING_ITEMS, drainRemainingItems.get(),
                     KEY_REMAINING_WORK_COUNT, drainRemainingItems.get().size(),
@@ -8926,7 +8934,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         KEY_STATUS, "drain_withdrawn"
                 ));
                 response.json(200, Map.of(
-                        KEY_STATUS, "withdrawn",
+                        KEY_STATUS, OUTCOME_WITHDRAWN,
                         "lifecycle_state", "running"
                 ));
             } else {
@@ -8988,7 +8996,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             if (lifecycleState == RuntimeLifecycleState.UPGRADING) {
                 lifecycleState = RuntimeLifecycleState.RUNNING;
                 response.json(200, Map.of(
-                        KEY_STATUS, "withdrawn",
+                        KEY_STATUS, OUTCOME_WITHDRAWN,
                         "lifecycle_state", "running"
                 ));
             } else {
@@ -9645,24 +9653,24 @@ public final class MockRuntimeEngine implements AutoCloseable {
 
         broadcastEvent(DECISION_CLOSED, Map.of(
                 "id", decisionId,
-                "outcome", "withdrawn",
+                "outcome", OUTCOME_WITHDRAWN,
                 "reason", "none_fits"
         ));
 
         // When Q-007 is withdrawn, ask anew as Q-009 or replacement
         var replacement = new DecisionEnvelope(
-                "Q-009", 1, "Resolve rebase conflict (asked anew)", null, removed.subject(),
+                DECISION_ASKED_ANEW, 1, "Resolve rebase conflict (asked anew)", null, removed.subject(),
                 removed.scope(), removed.askingPhase(), removed.askingRole(), removed.blocks(),
                 removed.reversibility(), "The role implement asked anew after " + decisionId,
                 removed.evidence(), removed.parts(), Instant.now(), false, null, null, null
         );
         synchronized (decisionsLock) {
-            openDecisions.put("Q-009", replacement);
-            operatorCreatedDecisionIds.add("Q-009");
+            openDecisions.put(DECISION_ASKED_ANEW, replacement);
+            operatorCreatedDecisionIds.add(DECISION_ASKED_ANEW);
         }
         broadcastEvent(DECISION_OPENED, Map.of(CONST_DECISION, replacement.toMap()));
 
-        response.json(200, Map.of(KEY_STATUS, "withdrawn", "id", decisionId));
+        response.json(200, Map.of(KEY_STATUS, OUTCOME_WITHDRAWN, "id", decisionId));
     }
 
     private boolean handleProcessRoutes(MockHttpRequest request, MockHttpResponse response) throws IOException {
