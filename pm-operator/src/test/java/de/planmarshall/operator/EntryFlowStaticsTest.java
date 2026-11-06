@@ -9,8 +9,10 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -80,32 +82,38 @@ class EntryFlowStaticsTest {
     @Test
     @DisplayName("a read interrupted while waiting interrupts its worker and keeps the flag")
     void anInterruptedWaitInterruptsTheWorker() throws Exception {
-        var worker = new AtomicReference<Thread>();
         var workerStarted = new CountDownLatch(1);
         var workerInterrupted = new AtomicBoolean();
-        Thread.currentThread().interrupt();
-        try {
-            assertThrows(IOException.class, () -> EntryFlow.bounded(() -> {
-                worker.set(Thread.currentThread());
-                workerStarted.countDown();
-                try {
-                    // Blocks until the caller interrupts it, which is what this test observes.
-                    new CountDownLatch(1).await();
-                } catch (InterruptedException _) {
-                    Thread.currentThread().interrupt();
-                }
-                workerInterrupted.set(Thread.currentThread().isInterrupted());
-                return "late";
-            }, Duration.ofSeconds(5), "interrupted-read"));
-            assertTrue(Thread.currentThread().isInterrupted(), "the caller's interrupt flag stays set");
-            // Clear the flag the read left set, so the waits below can wait for the worker.
-            Thread.interrupted();
-            assertTrue(workerStarted.await(5, TimeUnit.SECONDS), "the worker must have started");
-            worker.get().join(5_000);
-            assertTrue(workerInterrupted.get(), "the worker was interrupted, not left running");
-        } finally {
-            Thread.interrupted();
-        }
+        var callerFlagKept = new AtomicBoolean();
+        var failure = new AtomicReference<IOException>();
+        // The caller is interrupted only once the worker blocks, so the interrupt releases a worker
+        // that is already waiting instead of racing the read's own start.
+        var caller = Thread.ofPlatform().unstarted(() -> {
+            try {
+                EntryFlow.bounded(() -> {
+                    workerStarted.countDown();
+                    try {
+                        new CountDownLatch(1).await();
+                    } catch (InterruptedException _) {
+                        Thread.currentThread().interrupt();
+                    }
+                    workerInterrupted.set(Thread.currentThread().isInterrupted());
+                    return "late";
+                }, Duration.ofSeconds(30), "interrupted-read");
+            } catch (IOException e) {
+                callerFlagKept.set(Thread.currentThread().isInterrupted());
+                failure.set(e);
+            }
+        });
+        caller.start();
+        assertTrue(workerStarted.await(5, TimeUnit.SECONDS), "the worker must have started");
+        caller.interrupt();
+        caller.join(5_000);
+
+        assertAll(
+                            () -> assertNotNull(failure.get(), "the read must fail when the caller is interrupted"),
+                            () -> assertTrue(callerFlagKept.get(), "the caller's interrupt flag stays set"),
+                            () -> assertTrue(workerInterrupted.get(), "the worker was interrupted, not left running"));
     }
 
     @Test
