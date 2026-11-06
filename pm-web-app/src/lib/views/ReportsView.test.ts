@@ -1467,6 +1467,42 @@ describe('ReportsView component', () => {
     expect(screen.getByRole('heading', { level: 4, name: /By model/i })).toBeInTheDocument();
   });
 
+  it('has exactly one h1 heading on screen at 390 px while detail is loading (D3)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockImplementation(() => new Promise(() => {}));
+    window.innerWidth = 390;
+    window.dispatchEvent(new Event('resize'));
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const detailBtn = screen.getAllByRole('button', { name: /Show the details/i })[0];
+    await fireEvent.click(detailBtn);
+
+    const h1Elements = document.querySelectorAll('h1');
+    expect(h1Elements).toHaveLength(1);
+    expect(h1Elements[0]).toHaveTextContent(/Loading completion report/i);
+  });
+
+  it('has exactly one h1 heading on screen at 390 px while detail has error (D3)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockRejectedValue(new Error('Network error'));
+    window.innerWidth = 390;
+    window.dispatchEvent(new Event('resize'));
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const detailBtn = screen.getAllByRole('button', { name: /Show the details/i })[0];
+    await fireEvent.click(detailBtn);
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    const h1Elements = document.querySelectorAll('h1');
+    expect(h1Elements).toHaveLength(1);
+    expect(h1Elements[0]).toHaveTextContent(/Failed to load completion report/i);
+  });
+
   it('treats a punctuation-only query as unfiltered and shows what the count says (D1)', async () => {
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');

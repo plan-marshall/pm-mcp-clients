@@ -105,10 +105,16 @@
 
   {#if isLoading}
     <div class="completion-report__loading">
+      <svelte:element this={`h${titleLevel}`} class="report-title report-title--loading">
+        {$t('report.completion.loading')}
+      </svelte:element>
       <Spinner size="2.5rem" label={$t('report.completion.loading')} />
     </div>
   {:else if errorMessage}
     <div class="completion-report__error" role="alert">
+      <svelte:element this={`h${titleLevel}`} class="report-title report-title--error">
+        {$t('report.completion.load_failed')}
+      </svelte:element>
       <p>{errorMessage}</p>
       <Button variant="secondary" onclick={fetchReport}>{$t('web.common.retry')}</Button>
     </div>
@@ -121,7 +127,7 @@
         {/if}
         {#if data.from.epic}
           <span class="breadcrumb-sep">›</span>
-          <span class="breadcrumb-item">{data.from.epic}</span>
+        <span class="breadcrumb-item">{data.from.epic}</span>
         {/if}
         <span class="breadcrumb-sep">›</span>
         <span class="breadcrumb-item font-semibold">{data.plan_id}</span>
@@ -131,11 +137,7 @@
     <!-- Header bar -->
     <header class="report-header">
       <div class="report-header__headline">
-        {#if titleLevel === 1}
-          <h1 class="report-title">{data.plan_id}</h1>
-        {:else}
-          <h2 class="report-title">{data.plan_id}</h2>
-        {/if}
+        <svelte:element this={`h${titleLevel}`} class="report-title">{data.plan_id}</svelte:element>
         <StatusLabel tone={outcomeTone(data.outcome)} label={$t('overview.ended.outcome', { outcome: data.outcome })} />
         {#if data.pull_request_number}
           <a
@@ -201,31 +203,17 @@
 
       <!-- Deliverables -->
       <section class="report-section">
-        {#if titleLevel === 1}
-          <h2 class="section-title">
-            {$t('report.completion.deliverables')}
-            {#if data.deliverables && data.deliverables.length > 0}
-              <span class="section-badge">
-                {$t('report.completion.deliverables_done', {
-                  done: data.deliverables.filter((d) => d.state?.toLowerCase() === 'done').length,
-                  total: data.deliverables.length,
-                })}
-              </span>
-            {/if}
-          </h2>
-        {:else}
-          <h3 class="section-title">
-            {$t('report.completion.deliverables')}
-            {#if data.deliverables && data.deliverables.length > 0}
-              <span class="section-badge">
-                {$t('report.completion.deliverables_done', {
-                  done: data.deliverables.filter((d) => d.state?.toLowerCase() === 'done').length,
-                  total: data.deliverables.length,
-                })}
-              </span>
-            {/if}
-          </h3>
-        {/if}
+        <svelte:element this={`h${titleLevel + 1}`} class="section-title">
+          {$t('report.completion.deliverables')}
+          {#if data.deliverables && data.deliverables.length > 0}
+            <span class="section-badge">
+              {$t('report.completion.deliverables_done', {
+                done: data.deliverables.filter((d) => d.state?.toLowerCase() === 'done').length,
+                total: data.deliverables.length,
+              })}
+            </span>
+          {/if}
+        </svelte:element>
         {#if !data.deliverables || data.deliverables.length === 0}
           <p class="empty-text">{$t('report.completion.deliverables_none', { phase: 'refine' })}</p>
         {:else}
@@ -246,17 +234,10 @@
       <!-- Re-planning -->
       {#if data.replanning_records && data.replanning_records.length > 0}
         <section class="report-section">
-          {#if titleLevel === 1}
-            <h2 class="section-title">
-              {$t('report.completion.replanning')}
-              <span class="section-badge">{data.replanning_records.length}</span>
-            </h2>
-          {:else}
-            <h3 class="section-title">
-              {$t('report.completion.replanning')}
-              <span class="section-badge">{data.replanning_records.length}</span>
-            </h3>
-          {/if}
+          <svelte:element this={`h${titleLevel + 1}`} class="section-title">
+            {$t('report.completion.replanning')}
+            <span class="section-badge">{data.replanning_records.length}</span>
+          </svelte:element>
           <ul class="replanning-list">
             {#each data.replanning_records as r}
               <li class="replanning-item">
@@ -274,17 +255,10 @@
       <!-- Decisions -->
       {#if data.decision_records && data.decision_records.length > 0}
         <section class="report-section">
-          {#if titleLevel === 1}
-            <h2 class="section-title">
-              {$t('report.completion.decisions')}
-              <span class="section-badge">{data.decision_records.length}</span>
-            </h2>
-          {:else}
-            <h3 class="section-title">
-              {$t('report.completion.decisions')}
-              <span class="section-badge">{data.decision_records.length}</span>
-            </h3>
-          {/if}
+          <svelte:element this={`h${titleLevel + 1}`} class="section-title">
+            {$t('report.completion.decisions')}
+            <span class="section-badge">{data.decision_records.length}</span>
+          </svelte:element>
           <ul class="decisions-list">
             {#each data.decision_records as dec}
               <li class="decision-item">
@@ -302,17 +276,10 @@
       <!-- Own calls -->
       {#if data.own_calls && data.own_calls.length > 0}
         <section class="report-section">
-          {#if titleLevel === 1}
-            <h2 class="section-title">
-              {$t('report.completion.own_calls')}
-              <span class="section-badge">{data.own_calls.length}</span>
-            </h2>
-          {:else}
-            <h3 class="section-title">
-              {$t('report.completion.own_calls')}
-              <span class="section-badge">{data.own_calls.length}</span>
-            </h3>
-          {/if}
+          <svelte:element this={`h${titleLevel + 1}`} class="section-title">
+            {$t('report.completion.own_calls')}
+            <span class="section-badge">{data.own_calls.length}</span>
+          </svelte:element>
           <ul class="own-calls-list">
             {#each data.own_calls as call}
               <li class="own-call-item">
@@ -351,21 +318,12 @@
       <!-- Change map -->
       {#if data.change_map}
         <section class="report-section">
-          {#if titleLevel === 1}
-            <h2 class="section-title">
-              {$t('report.completion.change_map')}
-              <span class="section-badge">
-                {displayState('change_map', data.change_map.state, $t)}
-              </span>
-            </h2>
-          {:else}
-            <h3 class="section-title">
-              {$t('report.completion.change_map')}
-              <span class="section-badge">
-                {displayState('change_map', data.change_map.state, $t)}
-              </span>
-            </h3>
-          {/if}
+          <svelte:element this={`h${titleLevel + 1}`} class="section-title">
+            {$t('report.completion.change_map')}
+            <span class="section-badge">
+              {displayState('change_map', data.change_map.state, $t)}
+            </span>
+          </svelte:element>
           {#if data.change_map.cause}
             <p class="change-map-cause text-muted">
               {$t('report.completion.change_map_cause', { cause: data.change_map.cause })}
@@ -379,11 +337,9 @@
       {#if data.token_usage}        {@const usage = data.token_usage}
         <section class="report-section tokens-section">
           <div class="tokens-header">
-            {#if titleLevel === 1}
-              <h2 class="section-title">{$t('report.completion.tokens')}</h2>
-            {:else}
-              <h3 class="section-title">{$t('report.completion.tokens')}</h3>
-            {/if}
+            <svelte:element this={`h${titleLevel + 1}`} class="section-title">
+              {$t('report.completion.tokens')}
+            </svelte:element>
             <Button
               variant="secondary"
               size="small"
@@ -433,11 +389,9 @@
           <!-- Breakdown by Phase -->
           {#if usage.by_phase && usage.by_phase.length > 0}
             <div class="breakdown-group">
-              {#if titleLevel === 1}
-                <h3 class="breakdown-title">{$t('report.completion.by_phase')}</h3>
-              {:else}
-                <h4 class="breakdown-title">{$t('report.completion.by_phase')}</h4>
-              {/if}
+              <svelte:element this={`h${titleLevel + 2}`} class="breakdown-title">
+                {$t('report.completion.by_phase')}
+              </svelte:element>
               <table class="breakdown-table">
                 <tbody>
                   {#each usage.by_phase as item}
@@ -481,11 +435,9 @@
           <!-- Breakdown by Role -->
           {#if usage.by_role && usage.by_role.length > 0}
             <div class="breakdown-group">
-              {#if titleLevel === 1}
-                <h3 class="breakdown-title">{$t('report.completion.by_role')}</h3>
-              {:else}
-                <h4 class="breakdown-title">{$t('report.completion.by_role')}</h4>
-              {/if}
+              <svelte:element this={`h${titleLevel + 2}`} class="breakdown-title">
+                {$t('report.completion.by_role')}
+              </svelte:element>
               <table class="breakdown-table">
                 <tbody>
                   {#each usage.by_role as item}
@@ -534,11 +486,9 @@
           <!-- Breakdown by Model -->
           {#if usage.by_model && usage.by_model.length > 0}
             <div class="breakdown-group">
-              {#if titleLevel === 1}
-                <h3 class="breakdown-title">{$t('report.completion.by_model')}</h3>
-              {:else}
-                <h4 class="breakdown-title">{$t('report.completion.by_model')}</h4>
-              {/if}
+              <svelte:element this={`h${titleLevel + 2}`} class="breakdown-title">
+                {$t('report.completion.by_model')}
+              </svelte:element>
               <table class="breakdown-table">
                 <tbody>
                   {#each usage.by_model as item}
