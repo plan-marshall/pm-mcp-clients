@@ -383,7 +383,7 @@ The status of a package is `open`, `blocked`, `done` or `dropped`; a `dropped` r
 
 |link:operator-command-tree.adoc[`operator-command-tree`]
 |`pm-operator` registers the command tree of the design: the verbs it does not have folded into their design verbs or removed, a verb without a counterpart reported
-|`open`
+|`done`
 |`command-tree`; `operator-enrolment-verbs`
 |client work
 

@@ -32,7 +32,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-@DisplayName("EnrolCommand and UnenrolCommand")
+/**
+ * The acts of the folded verbs {@code enrol} and {@code unenrol} through their design verbs: a
+ * project is enrolled by {@code project add [<path>] [--pilot]} and its enrolment removed by
+ * {@code project unenrol <project_id>} (17-projects.adoc#commands).
+ */
+@DisplayName("Enrolling through project add and unenrolling through project unenrol")
 class EnrolCommandTest {
 
     @TempDir
@@ -71,7 +76,7 @@ class EnrolCommandTest {
     }
 
     @Test
-    @DisplayName("enrol posts the checkout path and reports the enrolled project")
+    @DisplayName("project add posts the checkout path and reports the enrolled project")
     void enrolProject() throws Exception {
         var server = runtime((request, response) -> {
             if ("/api/v1/enrol".equals(request.target()) && "POST".equals(request.method())) {
@@ -81,7 +86,7 @@ class EnrolCommandTest {
             }
         });
 
-        assertEquals(0, execute("enrol", "/home/oliver/git/new-service"));
+        assertEquals(0, execute("project", "add", "/home/oliver/git/new-service"));
         assertTrue(out.toString().contains("✓ Enrolled new-service (standard mode)"), out.toString());
 
         var posted = server.awaitRequest(Duration.ofSeconds(1));
@@ -90,7 +95,7 @@ class EnrolCommandTest {
     }
 
     @Test
-    @DisplayName("enrol --pilot marks the enrolment as pilot mode")
+    @DisplayName("project add --pilot marks the enrolment as pilot mode")
     void enrolPilot() throws Exception {
         var server = runtime((request, response) -> {
             if ("/api/v1/enrol".equals(request.target())) {
@@ -100,7 +105,7 @@ class EnrolCommandTest {
             }
         });
 
-        assertEquals(0, execute("enrol", "--pilot", "."));
+        assertEquals(0, execute("project", "add", "--pilot", "."));
         assertTrue(out.toString().contains("✓ Enrolled new-service (pilot mode)"), out.toString());
         assertTrue(server.awaitRequest(Duration.ofSeconds(1)).bodyText().contains("\"pilot\":true"));
     }
@@ -111,7 +116,7 @@ class EnrolCommandTest {
         runtime((request, response) -> response.json(409,
                             JsonTree.write(Map.of("error", "enrolment_root_conflict"))));
 
-        assertEquals(1, execute("enrol", "/home/oliver/git/taken"));
+        assertEquals(1, execute("project", "add", "/home/oliver/git/taken"));
         assertTrue(out.toString().contains("Another enrolment already names /home/oliver/git/taken"),
                             out.toString());
     }
@@ -122,7 +127,7 @@ class EnrolCommandTest {
         runtime((request, response) -> response.json(409,
                             JsonTree.write(Map.of("error", "project_store_root_mismatch"))));
 
-        assertEquals(1, execute("enrol", "/home/oliver/git/other"));
+        assertEquals(1, execute("project", "add", "/home/oliver/git/other"));
         assertTrue(out.toString().contains("names a different checkout root"), out.toString());
     }
 
@@ -131,7 +136,7 @@ class EnrolCommandTest {
     void enrolStripsControlSequences() throws Exception {
         runtime((request, response) -> response.json(200, enrolResult("evil", false)));
 
-        assertEquals(0, execute("enrol", "\u001B[31m/x\u001B[0m"));
+        assertEquals(0, execute("project", "add", "\u001B[31m/x\u001B[0m"));
         assertFalse(out.toString().contains("\u001B[31m"), out.toString());
     }
 
@@ -146,7 +151,7 @@ class EnrolCommandTest {
             }
         });
 
-        assertEquals(0, execute("unenrol", "old-app", "--yes"));
+        assertEquals(0, execute("project", "unenrol", "old-app", "--yes"));
         assertTrue(out.toString().contains("✓ old-app unenrolled"), out.toString());
         assertEquals("/api/v1/projects/old-app/unenrol", server.awaitRequest(Duration.ofSeconds(1)).target());
     }
@@ -157,7 +162,7 @@ class EnrolCommandTest {
         var server = runtime((request, response) -> response.json(200, "{}"));
 
         assertAll(
-                            () -> assertEquals(3, execute("unenrol", "old-app", "--no-input")),
+                            () -> assertEquals(3, execute("project", "unenrol", "old-app", "--no-input")),
                             () -> assertTrue(err.toString().contains("Unenrol confirmation required (--yes)"),
                                                 err.toString()),
                             () -> assertTrue(server.requests().isEmpty(), "no request may be sent")
@@ -169,7 +174,7 @@ class EnrolCommandTest {
     void unenrolScopeActive() throws Exception {
         runtime((request, response) -> response.json(409, JsonTree.write(Map.of("error", "scope_active"))));
 
-        assertEquals(1, execute("unenrol", "busy-app", "--yes"));
+        assertEquals(1, execute("project", "unenrol", "busy-app", "--yes"));
         assertTrue(err.toString().contains("busy-app still runs work"), err.toString());
     }
 
@@ -178,7 +183,18 @@ class EnrolCommandTest {
     void unenrolNotFound() throws Exception {
         runtime((request, response) -> response.json(404, "{\"error\":\"project_not_found\"}"));
 
-        assertEquals(1, execute("unenrol", "missing", "--yes"));
+        assertEquals(1, execute("project", "unenrol", "missing", "--yes"));
         assertTrue(err.toString().contains("missing not found."), err.toString());
+    }
+
+    @Test
+    @DisplayName("enrol and unenrol are no verbs: they are reported with the usage exit code")
+    void foldedVerbsAreUnknown() throws Exception {
+        var server = runtime((request, response) -> response.json(200, "{}"));
+
+        assertAll(
+                            () -> assertEquals(2, execute("enrol", ".")),
+                            () -> assertEquals(2, execute("unenrol", "old-app", "--yes")),
+                            () -> assertTrue(server.requests().isEmpty(), "no request may be sent"));
     }
 }

@@ -24,6 +24,7 @@ import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.operator.dialogue.OnboardingSource;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -195,7 +196,7 @@ class PmConsoleTest {
                 response.json(200, """
                                     {"status":"onboarding","onboarded":false,"version":"0.9.0","onboard":{"step":1},"web":{"enabled":true,"port":7420}}
                                     """);
-            } else if (OnboardCommand.STATE_PATH.equals(request.target())) {
+            } else if (OnboardingSource.STATE_PATH.equals(request.target())) {
                 response.json(200, """
                                     {"state":"onboard.mode","summary":"Set up this machine for plan-marshall",
                                      "completed_steps":1,

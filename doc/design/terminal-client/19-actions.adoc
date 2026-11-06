@@ -41,6 +41,7 @@ What the actions are, per state, is link:../shared/work-actions.adoc[Actions on 
 * An action the state does not allow is refused with the state and the actions it allows (`fix-relay is paused: start, abandon, chat, settings`).
 * *Settings* is an action of every state of a plan until it has ended: `config <aspect> --plan <plan_id>` sets the plan's own value of an aspect, where the plan first needs it or later (xref:02-levels.adoc#level-model[Machine, Project, Plan]; <<settings>>).
 * `plan cancel` on a plan held by an integrity hold is that hold's abort: its dialogue is `Abort fix-relay?`, and the plan ends `aborted` (link:../shared/work-actions.adoc#confirm-end[Ending a Plan]); its epic is told `cancelled` (link:../shared/work-actions.adoc#epic-told[The Epic Is Told]). A waiting or held plan is cancelled like a running one.
+* Work is ended as one shell command only by `plan cancel`, `plan abandon` and `epic cancel`; an integrity hold's abort has no verb of its own (xref:01-commands.adoc#command-tree[The Verbs]).
 * The reviews and the chat are dialogues; as one shell command they need a terminal, like every dialogue.
 
 [#full-screen]

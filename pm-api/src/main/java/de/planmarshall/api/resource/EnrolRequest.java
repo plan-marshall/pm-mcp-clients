@@ -19,7 +19,7 @@ import de.planmarshall.api.json.JsonTree;
 
 /**
  * Request payload of {@code POST /api/v1/enrol}: the direct verb of a project's enrolment
- * ({@code pm-operator enrol [--pilot] [path]}, PM-EXEC-2).
+ * ({@code pm-operator project add [<path>] [--pilot]}, PM-EXEC-2).
  *
  * @param projectPath the checkout path to enrol; resolved canonically by the runtime
  * @param pilot       whether the project is enrolled in pilot mode (the lifecycle gate)

@@ -57,9 +57,14 @@ final class OperatorActs {
 
     private static final Set<String> CONFIG_READ_SUBCOMMANDS = Set.of("show");
 
+    /**
+     * The verbs of the command tree that are acts as a whole (01-commands.adoc#command-tree). A
+     * project's enrolment and its removal are subcommands of {@code project} ({@code project add},
+     * {@code project unenrol}); a verb the tree does not declare is no act, so picocli reports it
+     * as unknown before any gate is asked.
+     */
     private static final Set<String> ACT_VERBS = Set.of(
-                        "answer", "cleanup", "enrol", "unenrol", "enrol-harness", "accept-edit", "onboard",
-                        "abort", "recipe", "start", WEB, "git-source");
+                        "answer", "cleanup", "enrol-harness", "accept-edit", "recipe", WEB);
 
     private OperatorActs() {
         // Utility class
@@ -114,7 +119,6 @@ final class OperatorActs {
             case "plan" -> planAct(rest);
             case "epic" -> epicAct(rest);
             case "config" -> !rest.isEmpty() && !CONFIG_READ_SUBCOMMANDS.contains(rest.get(0));
-            case SETTINGS -> settingsAct(rest);
             case "credentials" -> !rest.isEmpty() && !"status".equals(rest.get(0));
             case "roles" -> !rest.isEmpty() && "qualify".equals(rest.get(0));
             case "runtime" -> runtimeAct(rest);
@@ -148,10 +152,6 @@ final class OperatorActs {
 
     private static boolean epicAct(List<String> rest) {
         return subcommandAct(EpicCommand.class, EPIC_READ_SUBCOMMANDS, rest);
-    }
-
-    private static boolean settingsAct(List<String> rest) {
-        return !rest.isEmpty() && "machine".equals(rest.get(0)) && hasAny(rest, "--set", "--withdraw");
     }
 
     private static boolean runtimeAct(List<String> rest) {
