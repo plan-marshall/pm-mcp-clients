@@ -1,0 +1,167 @@
+= Verification Results: The Shared Foundation
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+:nofooter:
+:docs: https://github.com/plan-marshall/plan-marshall-documentation/blob/main/doc
+
+link:../README.adoc[Review] » Verification Results » The Shared Foundation
+
+This document records five checks of the two reviews against the merged code. The checks come from
+link:../use-cases/verification.adoc[Use Cases, Verification], link:../cli/use-cases/verification.adoc[CLI Review, Use
+Cases, Verification], and link:../cli/cross-cutting/verification.adoc[CLI Review, Cross-Cutting, Verification]. Each
+check ran as written. Nothing that was found was fixed.
+
+[#subject]
+== What Was Verified
+
+[cols="1,3",options="header"]
+|===
+|Item |Value
+
+|Commit
+|`92c18515d0b37c8c290718f925183c053c9e0a67`, `main` of `pm-mcp-clients`
+
+|Use-case documents
+|`be5750ddd418256e1040d99cdb6fea15e42fdcb8`, `main` of `plan-marshall-documentation`
+
+|Date
+|2026-11-06
+
+|Machine
+|macOS 27.2, `aarch64`, locale `de_DE`, UTF-8
+
+|Java and Maven
+|OpenJDK 25.0.1 (Temurin), Apache Maven 3.9.16 through the wrapper
+
+|Mock
+|`pm-mock-runtime/start.sh --scenario running-work --web-port 20180`; the scenarios `projects-and-start` and
+`reports-and-system` through `POST /mock/scenario` on the same mock. This plan started the mock and stopped it with
+`stop.sh`. The app port `20181` was not used: no check needs the web app.
+
+|Build
+|`./mvnw verify -pl pm-mock-runtime -am`: `BUILD SUCCESS` in 2:39 min. 1198 tests ran (`pm-api` 692,
+`pm-mock-runtime` 506), with 0 failures, 0 errors, and 0 skipped.
+|===
+
+[#dependencies]
+== Verify-First: The Dependency Plans
+
+Every check depends on plans of the epic `ui-improvements`. Each of them has a landing commit on `main`. Only PLAN-86
+names its plan id in the commit subject. The others were matched through the pull request that the epic's ledger
+records for the plan.
+
+[cols="1,2,1,1",options="header"]
+|===
+|Plan |Subject |Pull request |Commit on `main`
+
+|PLAN-03
+|mock scenario states
+|#253
+|`4efa0314`
+
+|PLAN-06
+|shared display vocabulary
+|#249
+|`a9513530`
+
+|PLAN-08
+|use-case documents
+|#259 (and #128 in `plan-marshall-documentation`)
+|`eba84c17`
+
+|PLAN-11
+|mock fixes for the terminal client
+|#269
+|`bae3a8c8`
+
+|PLAN-76
+|shared port assignment
+|#243
+|`15b7780c`
+
+|PLAN-82
+|needs and find contract
+|#284
+|`7d7b4d71`
+
+|PLAN-86
+|shared error texts
+|#283
+|`1b6c6ae3`
+|===
+
+Verdict: `pass`. No check is held back by a dependency.
+
+[#checks]
+== The Checks
+
+[cols="1,1,4,2",options="header"]
+|===
+|Check |Verdict |Evidence |Mock limit
+
+|link:../use-cases/verification.adoc[UC-V-01]
+|`pass`
+|The build is green. `FixtureConsistencyTest` passes: 13 tests, 0 failures. `ScenarioStateContractTest` passes: 6
+tests, 0 failures. It jumps to every state of `running-work`, `projects-and-start`, and `reports-and-system` and
+compares the resource the state concerns with the start state. 29 states are declared equal on purpose. A live sample
+over the socket API gave the same result. `control.pause` changed `/api/v1/plans/fix-relay/actions` (`running` to
+`pausing`), and `control.ready` left it equal to the start. `projects.being-added` changed `/api/v1/projects`, and
+`projects.ready` left it equal. `system.draining` changed `/api/v1/status` (`lifecycle_state` `draining`,
+`drain_remaining_count` 2).
+|The check proves the API resource, not what a view shows (link:../README.adoc#limits[Limits of the Mock]). The live
+walk was a sample, because `GET /mock/state` lists no states; the test covers every state.
+
+|link:../cli/use-cases/verification.adoc[CLI-UC-V-09], mock part
+|`pass`
+|`MockRuntimeEngineTest` (50 tests), `PlanDetailTest` (2 tests), and `PlanViewScenarioTest` (16 tests) pass. A live
+probe of an unknown plan: `GET /api/v1/plans/nope/process` answers `404` with `{"message":"Plan not found: nope",
+"error":"plan_not_found"}`.
+|`GET /api/v1/plans/{id}` without `/process` answers `404 mock_no_route` for every id, also for `fix-relay`. The
+contract resource is `/process`.
+
+|link:../cli/cross-cutting/verification.adoc[CLI-CC-V-03], rule part
+|`fail`
+|The rule is specified once, in link:../../design/shared/texts-and-languages.adoc#time[Texts and Languages, Time and
+Duration], and no other document states a second rule. But shared design documents write ages in forms the rule does
+not allow. The rule writes an age in a list as `9 d ago`, with the units `s`, `min`, `h`, and `d`, and no unit for
+weeks. link:../../design/shared/work-actions.adoc#review[Actions on Plans and Epics, Reviewing] (line 332) shows
+`2 days ago`. link:../../design/shared/paired-devices.adoc#list[Paired Devices, The List] (line 24) shows
+`last used 5 weeks ago`. link:../../design/shared/project-explorer.adoc[Project Explorer] shows one more age in weeks.
+The designs of the terminal client show the same forms: `15-overview.adoc` (4), `17-projects.adoc` (2),
+`18-starting.adoc` (1), and `08-transcripts-later.adoc` (1) in weeks, and `19-actions.adoc` (2) in days.
+|—
+
+|link:../use-cases/verification.adoc[UC-V-09]
+|`not verified`
+|The `doc-review` skill did not run. It is a conversation with the operator and with parallel reviewer agents, and the
+check ran in a subagent that can do neither. Every other part holds. The five changes are on `main` and linked from
+link:{docs}/UseCases.adoc#index[Use Cases, Use Case Areas], each `AGREED`. They are
+link:{docs}/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7] and link:{docs}/use-cases/03-plans.adoc#UC-PLN-8[UC-PLN-8] (new),
+link:{docs}/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2] (_Several open_, _Own answer confirmed_),
+link:{docs}/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1] (_Needs the terminal_), and
+link:{docs}/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (_Not onboarded yet_). The status `AGREED` is the
+operator's recorded agreement. The link checker of `doc-review` (`trace.py`) reports 0 broken links.
+|—
+
+|link:../cli/use-cases/verification.adoc[CLI-UC-V-10]
+|`not verified`
+|The `doc-review` skill did not run, for the reason given for UC-V-09. Both variations are on `main`, in client-neutral
+words instead of the proposal's text. link:{docs}/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7]: "In the terminal client,
+the count of each kind is visible without opening a view, and one act lists every item across projects."
+link:{docs}/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]: "A script asks for the same picture: the terminal client prints
+it as one machine-readable document." Both use cases are `AGREED`. `trace.py` reports 0 broken links.
+|—
+|===
+
+Totals: 2 `pass`, 1 `fail`, 2 `not verified` (5 checks), and the verify-first step `pass`.
+
+[#matrices]
+== The Verdict Matrices
+
+No verdict moved in link:../use-cases/analysis.adoc#matrix[Use Cases, Analysis] or in
+link:../cli/use-cases/analysis.adoc#matrix[CLI Review, Use Cases, Analysis]. Their verdicts grade how a client shows a
+use case. The checks above prove the contract of the mock and the use-case documents, and none of them observes a view
+of a client.
