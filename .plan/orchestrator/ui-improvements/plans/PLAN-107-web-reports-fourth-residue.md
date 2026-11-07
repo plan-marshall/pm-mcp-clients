@@ -83,6 +83,8 @@ PLAN-105 made the web "Mark all shown read" post exactly the shown ids, but the 
 - OBSERVED: `pm-web-app/src/lib/components/RowMenu.svelte` — present at HEAD ddcab793
 - OBSERVED: `pm-web-app/src/lib/display/format.test.ts` — present at HEAD ddcab793
 - OBSERVED: `pm-web-e2e/tests/row-menu.spec.js` — present at HEAD ddcab793
+- OBSERVED: `pm-web-e2e/tests/port-guard.spec.js` — present at HEAD bb30d71e
+- OBSERVED: `pm-web-e2e/tests/theme-readability.spec.js` — present at HEAD bb30d71e
 
 ## Dependencies and Sequencing
 
@@ -94,6 +96,10 @@ PLAN-105 made the web "Mark all shown read" post exactly the shown ids, but the 
 ## Amendment 2026-11-07 (PLAN-108 landing)
 
 PLAN-108 merged (`ddcab793`), so this plan may now touch `RowMenu.test.ts`. Add to the reports-and-menu work: (a) a test that a scroll event INSIDE a capped `RowMenu` (not on `window`) keeps its `scrollTop` (`RowMenu.svelte` `place()` clears and re-applies `max-block-size` on every capturing `scroll`: HYPOTHESIS, confirm or refute); (b) `row-menu.spec.js` waits for the condition the menu needs (the report row rendered), not only the `unread-count` element; (c) a `format.test.ts` case for the 30-59 day age (`last month` / `letzten Monat`); (d) the `reports.spec.js` expectation `6 unread reports` fails at base (7 vs 6, PLAN-105 defect 13, reported by the PLAN-108 session): fix the test or the scenario. Surfaces added (same act): `pm-web-app/src/lib/components/RowMenu.svelte`, `pm-web-app/src/lib/display/format.test.ts`, `pm-web-e2e/tests/row-menu.spec.js`.
+
+## Amendment 2026-11-07 (PLAN-111 landing)
+
+Also: (e) the two now-vacuous absence asserts of the removed layout test ids, `ReportsView.test.ts:650-651` and `reports.spec.js:309`, are deleted; (f) the pre-existing prettier drift of `pm-web-e2e/tests/port-guard.spec.js` (lines 2, 24) and `theme-readability.spec.js` (~1159), which fails `pm-web-e2e`'s `quality` (`format:check`), is fixed by running the formatter. Surfaces added (same act): `pm-web-e2e/tests/port-guard.spec.js`, `pm-web-e2e/tests/theme-readability.spec.js`.
 
 ## Hand-Off Command
 

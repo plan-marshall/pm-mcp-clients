@@ -121,6 +121,10 @@ ui-improvements`; read, never write):
   `PLAN-111` (the code removal of the layout modes; its design sentence is true only after it merges)
 - Adjacent to: none
 
+## Amendment 2026-11-07 (PLAN-111 landing)
+
+PLAN-111 merged (`bb30d71e`): the layout modes are gone from the code, the Decisions view is one column. The design text to rewrite also holds: `web-app/needs-and-find.adoc:57` ("selected and its detail pane shows it rather than the placeholder" is false: the card is scrolled to and marked, a hiding filter is cleared), the `web-app/view-density-and-filtering.adoc` "Layout Modes" section (~46-73) and the rollback paragraph (~151), and `web-app/README.adoc:19`. The text at ~:64 ("aria-current and a primary left border") now matches the code and stays.
+
 ## Hand-Off Command
 
 Lane: none — a direct Claude Code session (operator instruction 2026-11-06). Start it in its own worktree and branch of

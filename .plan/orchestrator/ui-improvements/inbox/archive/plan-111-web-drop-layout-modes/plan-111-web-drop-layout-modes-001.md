@@ -4,15 +4,17 @@ sender_id=plan-111-web-drop-layout-modes
 epic=ui-improvements
 kind=landing
 created=2026-11-07T09:32:23Z
+revision=1
+amended=2026-11-07T14:04:39Z
 
-PLAN-111 (drop the layout modes): pull request open, not merged; every Done-when clause met except the browser check, which is blocked because no browser tool was connected to the session.
+PLAN-111 (drop the layout modes): PR #363 merged on the operator's word as bb30d71e (2026-11-07T14:03:54Z). Every Done-when clause is met except the browser check, which stayed blocked: the session's browser tools never saw a browser, even after the operator ran /chrome twice. The operator chose to merge without it.
 
 ```landing-facts
 schema=landing-facts/1
 plan_id=plan-111-web-drop-layout-modes
 epic=ui-improvements
 pr=#363
-merge_state=open
+merge_state=merged
 cleanup_owed=n/a
 deliverables_total=1
 deliverables_done=0
@@ -26,7 +28,7 @@ step.sonar-roundtrip.open_issue_count=0
 step.sonar-roundtrip.open_issue_rules=none
 ```
 
-## What shipped (PR #363, head 69d4e91c)
+## What shipped (PR #363, head 69d4e91c, merged as bb30d71e)
 
 - Deleted `ViewLayoutToggle.svelte`, `stores/viewLayout.ts` and `viewLayout.test.ts`.
 - `DecisionView.svelte` is one column: no toggle or header row wrapper, no split or compact branch, no split placeholder, and no `.decisions-split*` or `.layout-compact` CSS.
