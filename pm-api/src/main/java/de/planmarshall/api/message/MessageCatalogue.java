@@ -354,29 +354,4 @@ public final class MessageCatalogue {
         }
         return map;
     }
-
-    /**
-     * Overrides a message template for testing purposes.
-     *
-     * @param locale   the locale
-     * @param key      the message key
-     * @param template the template to inject
-     */
-    public static void setForTest(String locale, String key, String template) {
-        String effectiveLocale = normalizeLocale(locale);
-        // Ensure cache is populated
-        getMessages(effectiveLocale, "all");
-        CACHE.computeIfPresent("all." + effectiveLocale, (_, oldMap) -> {
-            var map = new LinkedHashMap<>(oldMap);
-            map.put(key, template);
-            return Collections.unmodifiableMap(map);
-        });
-    }
-
-    /**
-     * Clears message caches for testing purposes.
-     */
-    public static void clearCacheForTest() {
-        CACHE.clear();
-    }
 }

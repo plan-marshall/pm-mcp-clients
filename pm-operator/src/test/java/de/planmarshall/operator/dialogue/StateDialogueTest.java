@@ -24,7 +24,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.operator.StartPrompt;
@@ -240,35 +239,29 @@ class StateDialogueTest {
     }
 
     @Test
-    @DisplayName("every project setup state names a step the catalogue defines and maps to its defined step")
+    @DisplayName("every project setup state maps to a step the catalogue defines")
     void projectStatesNameCatalogueSteps() {
-        var setupStates = Map.ofEntries(
-                            Map.entry("project.consent", "checkout"),
-                            Map.entry("project.detect", "checkout"),
-                            Map.entry("project.run-consent", "checkout"),
-                            Map.entry("project.probe", "checkout"),
-                            Map.entry("project.checkout", "checkout"),
-                            Map.entry("project.enrol", "enrolment"),
-                            Map.entry("project.enrolment", "enrolment"),
-                            Map.entry("project.operator", "own"),
-                            Map.entry("project.own", "own"),
-                            Map.entry("project.identity", "identity"),
-                            Map.entry("project.team", "team"),
-                            Map.entry("project.architecture", "architecture"),
-                            Map.entry("project.landing", "landing"),
-                            Map.entry("project.roles", "roles"),
-                            Map.entry("project.descriptions", "descriptions"),
-                            Map.entry("project.commit", "commit")
-        );
+        var states = StateDialogue.PROJECT_STEP_BY_STATE;
 
-        assertEquals(Set.copyOf(StateDialogue.PROJECT_STATES), setupStates.keySet());
-
-        for (var entry : setupStates.entrySet()) {
-            var suffix = StateDialogue.projectStepOf(entry.getKey());
-            assertEquals(entry.getValue(), suffix, entry.getKey() + " -> " + suffix);
-            assertTrue(MessageCatalogue.hasKey("en", "project.step." + suffix), entry.getKey() + " -> " + suffix);
+        for (var entry : states.entrySet()) {
+            var state = "project." + entry.getKey();
+            var suffix = StateDialogue.projectStepOf(state);
+            assertEquals(entry.getValue(), suffix, state + " -> " + suffix);
+            assertTrue(MessageCatalogue.hasKey("en", "project.step." + suffix), state + " -> " + suffix);
         }
         assertEquals("done", StateDialogue.projectStepOf("project.completed"));
+    }
+
+    @Test
+    @DisplayName("the intro line says the number of steps the run reports")
+    void introFollowsTheRunStepCount() {
+        var frame = new StateDialogue.Frame(MODE, "operator_wait", 0, 8, null, Map.of(),
+                            List.of(new StateDialogue.Link("begin", "next", true)));
+
+        var content = dialogue(new FakeSource(mode()), "", new StringWriter()).content(frame);
+
+        assertTrue(content.getFirst().startsWith("8 steps."), content.getFirst());
+        assertFalse(content.getFirst().contains("Seven"), content.getFirst());
     }
 
     @Test

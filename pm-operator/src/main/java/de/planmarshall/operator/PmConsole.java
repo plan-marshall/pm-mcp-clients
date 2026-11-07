@@ -77,6 +77,7 @@ public final class PmConsole {
 
     private final OperatorContext context;
     static final Duration REFRESH_BOUND = Duration.ofSeconds(5);
+    private final EntryFlow entryFlow;
     private final ReentrantLock badgeRefreshLock = new ReentrantLock();
     private final AtomicBoolean running = new AtomicBoolean(true);
     private final AtomicBoolean reconnecting = new AtomicBoolean(false);
@@ -95,20 +96,18 @@ public final class PmConsole {
      * @param context the operator context
      */
     public PmConsole(OperatorContext context) {
-        this(context, List.of(), new EntryFlow(context).aspects().size());
+        this(context, new EntryFlow(context));
     }
 
-    PmConsole(OperatorContext context, List<ConsoleBadge> initialBadges) {
-        this(context, initialBadges, new EntryFlow(context).aspects().size());
-    }
-
-    PmConsole(OperatorContext context, List<ConsoleBadge> initialBadges, int machineSteps) {
+    /**
+     * @param context   the operator context
+     * @param entryFlow the entry flow the console runs and takes its machine step count from
+     */
+    public PmConsole(OperatorContext context, EntryFlow entryFlow) {
         this.context = Objects.requireNonNull(context, "context");
         this.noticeBuffer = context.noticeBuffer();
-        this.machineSteps = machineSteps;
-        if (!initialBadges.isEmpty()) {
-            this.badges.set(List.copyOf(initialBadges));
-        }
+        this.entryFlow = Objects.requireNonNull(entryFlow, "entryFlow");
+        this.machineSteps = entryFlow.aspects().size();
     }
 
     private String locale() {
@@ -145,7 +144,6 @@ public final class PmConsole {
                             .variable(LineReader.HISTORY_FILE, historyFile)
                             .build();
 
-        var entryFlow = new EntryFlow(context);
         var entryResult = entryFlow.run(out, reader);
 
         activePairingCode = entryResult.activeCode();
@@ -282,10 +280,12 @@ public final class PmConsole {
         }
     }
 
-    private void continueProjectOnboarding(String projectId, PrintWriter out, LineReader reader, Terminal terminal) {
+    private void continueProjectOnboarding(String address, PrintWriter out, LineReader reader, Terminal terminal) {
         context.useTerminal(terminal);
         try {
-            runOperatorVerb("project setup \"" + projectId.replace("\"", "\\\"") + "\"", out, reader, terminal);
+            // The address travels as an argument, never through a command line the console would
+            // have to quote and parse back: an id with a quote or a backslash reaches the verb as it is.
+            runOperatorVerb(List.of("project", "setup", "--entry", address), out, reader, terminal);
         } finally {
             try {
                 context.clearTerminal(terminal);
@@ -428,7 +428,10 @@ public final class PmConsole {
      * @param terminal the terminal the console owns
      */
     private void runOperatorVerb(String line, PrintWriter out, LineReader reader, Terminal terminal) {
-        var args = parseArgs(line);
+        runOperatorVerb(parseArgs(line), out, reader, terminal);
+    }
+
+    private void runOperatorVerb(List<String> args, PrintWriter out, LineReader reader, Terminal terminal) {
         var selection = ProjectSelector.rewrite(context, out, out, args.toArray(String[]::new), reader);
         if (!selection.proceed()) {
             return;
@@ -896,6 +899,14 @@ public final class PmConsole {
         return Objects.requireNonNull(reader, "reader").readLine(prompt, '*');
     }
 
+    /**
+     * Splits a typed console line into arguments. Quoted text stays one argument, and a
+     * backslash escapes the next character inside a quote only: text typed outside quotes, such as
+     * a path or a label, keeps its backslashes.
+     *
+     * @param line the typed line
+     * @return the arguments
+     */
     static List<String> parseArgs(@Nullable String line) {
         if (line == null) {
             return List.of();
@@ -903,23 +914,51 @@ public final class PmConsole {
         var args = new ArrayList<String>();
         var sb = new StringBuilder();
         boolean inQuotes = false;
+        boolean escaped = false;
         for (int i = 0; i < line.length(); i++) {
             char c = line.charAt(i);
-            if (c == '"') {
+            if (escaped) {
+                appendEscaped(sb, c);
+                escaped = false;
+            } else if (c == '\\' && inQuotes) {
+                escaped = true;
+            } else if (c == '"') {
                 inQuotes = !inQuotes;
             } else if (Character.isWhitespace(c) && !inQuotes) {
-                if (sb.length() > 0) {
-                    args.add(sb.toString());
-                    sb.setLength(0);
-                }
+                flushToken(args, sb);
             } else {
                 sb.append(c);
             }
         }
+        if (escaped) {
+            sb.append('\\');
+        }
+        flushToken(args, sb);
+        return args;
+    }
+
+    /**
+     * @param sb the argument being built
+     * @param c  the character that followed a backslash inside a quote
+     */
+    private static void appendEscaped(StringBuilder sb, char c) {
+        // Only a quote and a backslash are escapes; any other backslash is a literal one, so a
+        // quoted path keeps its separators.
+        if (c != '\\' && c != '"') {
+            sb.append('\\');
+        }
+        sb.append(c);
+    }
+
+    /**
+     * @param args the arguments read so far
+     * @param sb   the argument being built
+     */
+    private static void flushToken(List<String> args, StringBuilder sb) {
         if (sb.length() > 0) {
             args.add(sb.toString());
+            sb.setLength(0);
         }
-        return args;
     }
 
     private String getHostname() {

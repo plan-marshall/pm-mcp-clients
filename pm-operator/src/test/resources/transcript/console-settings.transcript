@@ -17,9 +17,9 @@ plan-marshall is running. This machine is not set up yet.
 Where do you want to set it up?   w) in the web app [Enter]   h) here, in the te rminal   ?   › config
 
 Set up this machine for plan-marshall
-  Seven steps. Nothing on this machine is looked at, run, or changed until you
-  say so in that step. You can stop at any point; the next visit, here or in
-  pm-operator, continues where you stopped.
+  7 steps. Nothing on this machine is looked at, run, or changed until you say
+  so in that step. You can stop at any point; Enter at the prompt, or the web
+  app, continues where you stopped.
   1  Language: the language of plan-marshall and of the models' texts
   2  Harnesses: the coding agents the server works with, one of them the
   default

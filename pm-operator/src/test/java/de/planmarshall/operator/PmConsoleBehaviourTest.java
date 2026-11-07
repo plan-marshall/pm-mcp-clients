@@ -16,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintWriter;
@@ -23,6 +25,7 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -30,10 +33,13 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.LockSupport;
+import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
 
-import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.onboarding.OnboardingAspect;
+import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -47,6 +53,7 @@ import org.junit.jupiter.api.io.TempDir;
  * an empty {@code Ctrl+C}, the questions that stay open on {@code Ctrl+D}, and the desktop
  * notification payload, which must not carry the text of the question.
  */
+@EnableGeneratorController
 @DisplayName("PmConsole behaviour")
 class PmConsoleBehaviourTest {
 
@@ -393,52 +400,61 @@ class PmConsoleBehaviourTest {
     @Test
     @DisplayName("the prompt is not delayed past the deadline by a stalled refresh")
     void thePromptIsNotDelayedPastTheDeadlineByAStalledRefresh() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/status".equals(request.target())) {
-                try {
-                    new CountDownLatch(1).await(4, TimeUnit.SECONDS);
-                } catch (InterruptedException _) {
-                    Thread.currentThread().interrupt();
+        // The stalemate ends when the test releases it, never on a timer of its own.
+        var release = new CountDownLatch(1);
+        try {
+            fixture.start((request, response) -> {
+                if ("/api/v1/status".equals(request.target())
+                                    || "/api/v1/project-onboardings".equals(request.target())) {
+                    awaitRelease(release);
+                    response.json(200, "/api/v1/status".equals(request.target())
+                                        ? "{\"status\":\"ready\",\"onboarded\":true}"
+                                        : "{\"onboardings\":[]}");
+                } else {
+                    response.send(404, null, "");
                 }
-                response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
-            } else if ("/api/v1/project-onboardings".equals(request.target())) {
-                try {
-                    new CountDownLatch(1).await(4, TimeUnit.SECONDS);
-                } catch (InterruptedException _) {
-                    Thread.currentThread().interrupt();
-                }
-                response.json(200, "{\"onboardings\":[]}");
-            } else {
-                response.send(404, null, "");
+            });
+            try (var rendered = new ByteArrayOutputStream();
+                 var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+                var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                    ClientEnvironment.capture(fixture.environment()),
+                                    () -> terminal, null);
+                var console = new PmConsole(context);
+                var started = System.nanoTime();
+                assertTimeoutPreemptively(Duration.ofSeconds(8), () -> console.refreshSetupBadge("en", terminal));
+                var elapsed = Duration.ofNanos(System.nanoTime() - started);
+                assertTrue(elapsed.compareTo(PmConsole.REFRESH_BOUND.plusSeconds(1)) < 0, elapsed.toString());
             }
-        });
-        var rendered = new ByteArrayOutputStream();
-        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
-            var context = new OperatorContext(fixture.environment(), tempDir, true,
-                                ClientEnvironment.capture(fixture.environment()),
-                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
-            var console = new PmConsole(context);
-            assertTimeoutPreemptively(Duration.ofSeconds(6), () -> console.refreshSetupBadge("en", terminal));
+        } finally {
+            release.countDown();
+        }
+    }
+
+    private static void awaitRelease(CountDownLatch release) {
+        try {
+            release.await(30, TimeUnit.SECONDS);
+        } catch (InterruptedException _) {
+            Thread.currentThread().interrupt();
         }
     }
 
     @Test
-    @DisplayName("Enter on a project badge addresses the project id returned by the daemon")
-    void enterOnAProjectBadgeAddressesDaemonProjectId() throws Exception {
-        var exactSetupTarget = new AtomicReference<String>();
+    @DisplayName("Enter on a being-added project badge addresses the entry the continue link carries")
+    void enterOnABeingAddedProjectBadgeAddressesItsEntry() throws Exception {
+        // The fixture is the contract's own map: BeingAddedProject has no project id to write into it.
+        var entryId = Generators.letterStrings(4, 10).next();
+        var checkout = "/work/" + Generators.letterStrings(4, 10).next();
+        var entry = new BeingAddedProject(checkout, "Identity", 3, 10,
+                            "/api/v1/entries/" + entryId + "/continue", "/api/v1/entries/" + entryId + "/abandon");
+        var exactEntryTarget = new AtomicReference<String>();
         fixture.start((request, response) -> {
-            if (request.target().startsWith("/api/v1/projects/") && request.target().endsWith("/setup")) {
-                exactSetupTarget.set(request.target());
+            if (("/api/v1/entries/" + entryId).equals(request.target())) {
+                exactEntryTarget.set(request.target());
                 response.send(404, null, "");
             } else if ("/api/v1/status".equals(request.target())) {
                 response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
             } else if ("/api/v1/project-onboardings".equals(request.target())) {
-                response.json(200, """
-                                    {"onboardings":[{"project_id":"custom-daemon-id",
-                                                     "checkout_path":"/work/other-dir-name",
-                                                     "current_step":"Identity",
-                                                     "step_number":3,"total_steps":10}]}
-                                    """);
+                response.json(200, "{\"onboardings\":[" + entry.toJson() + "]}");
             } else {
                 response.send(404, null, "");
             }
@@ -452,55 +468,243 @@ class PmConsoleBehaviourTest {
             var console = new PmConsole(context);
             console.refreshSetupBadge("en", terminal);
             console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
-            assertEquals("/api/v1/projects/custom-daemon-id/setup", exactSetupTarget.get(),
-                                "Enter on project badge must target daemon project_id, not checkout directory name");
+            assertEquals("/api/v1/entries/" + entryId, exactEntryTarget.get(),
+                                "Enter on a being-added badge must address the entry continue_link carries");
         }
     }
 
     @Test
-    @DisplayName("a stalled runtime lets the prompt return within the bound")
-    void aStalledRuntimeLetsThePromptReturnWithinTheBound() throws Exception {
+    @DisplayName("an entry id with a plus reaches the runtime as a plus")
+    void entryIdWithAPlusReachesTheRuntimeAsAPlus() throws Exception {
+        var entry = new BeingAddedProject("/work/plus-dir-name", "Identity", 3, 10,
+                            "/api/v1/entries/ent+a/continue", "/api/v1/entries/ent+a/abandon");
+        var exactEntryTarget = new AtomicReference<String>();
         fixture.start((request, response) -> {
-            if ("/api/v1/status".equals(request.target())) {
+            if (request.target().startsWith("/api/v1/entries/")) {
+                exactEntryTarget.set(request.target());
+                response.send(404, null, "");
+            } else if ("/api/v1/status".equals(request.target())) {
                 response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
             } else if ("/api/v1/project-onboardings".equals(request.target())) {
-                try {
-                    new CountDownLatch(1).await(10, TimeUnit.SECONDS);
-                } catch (InterruptedException _) {
-                    Thread.currentThread().interrupt();
-                }
-                response.json(200, "{\"onboardings\":[]}");
+                response.json(200, "{\"onboardings\":[" + entry.toJson() + "]}");
             } else {
                 response.send(404, null, "");
             }
         });
         var rendered = new ByteArrayOutputStream();
         try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
             var context = new OperatorContext(fixture.environment(), tempDir, true,
                                 ClientEnvironment.capture(fixture.environment()),
                                 () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
             var console = new PmConsole(context);
-            assertTimeoutPreemptively(Duration.ofSeconds(8), () -> console.refreshSetupBadge("en", terminal));
+            console.refreshSetupBadge("en", terminal);
+            console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
+            assertEquals("/api/v1/entries/ent%2Ba", exactEntryTarget.get(),
+                                "a plus in a path segment is a plus, not a space");
+        }
+    }
+
+    @Test
+    @DisplayName("an entry id with a quote or a backslash reaches the runtime unaltered")
+    void entryIdWithQuoteOrBackslashReachesTheRuntimeUnaltered() throws Exception {
+        var entry = new BeingAddedProject("/work/other-dir-name", "Identity", 3, 10,
+                            "/api/v1/entries/ent-%22q%22%5Cb/continue", "/api/v1/entries/ent-%22q%22%5Cb/abandon");
+        var exactEntryTarget = new AtomicReference<String>();
+        fixture.start((request, response) -> {
+            if (request.target().startsWith("/api/v1/entries/")) {
+                exactEntryTarget.set(request.target());
+                response.send(404, null, "");
+            } else if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[" + entry.toJson() + "]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            console.refreshSetupBadge("en", terminal);
+            console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
+            assertEquals("/api/v1/entries/ent-%22q%22%5Cb", exactEntryTarget.get(),
+                                "an id with a quote or a backslash must reach the command unaltered");
+        }
+    }
+
+    @Test
+    @DisplayName("a typed quoted id keeps its backslash escapes")
+    void typedQuotedIdKeepsItsBackslashEscapes() {
+        assertEquals(List.of("project", "setup", "--entry", "ent-\"q\"\\b"),
+                            PmConsole.parseArgs("project setup --entry \"ent-\\\"q\\\"\\\\b\""));
+    }
+
+    @Test
+    @DisplayName("a backslash typed outside quotes stays a backslash")
+    void typedBackslashOutsideQuotesStays() {
+        assertEquals(List.of("web", "devices", "rename", "1", "my\\label"),
+                            PmConsole.parseArgs("web devices rename 1 my\\label"));
+    }
+
+    @Test
+    @DisplayName("a backslash before an ordinary character stays, quoted or not")
+    void typedBackslashBeforeAnOrdinaryCharacterStays() {
+        assertEquals(List.of("project", "setup", "--entry", "my\\label"),
+                            PmConsole.parseArgs("project setup --entry \"my\\label\""));
+    }
+
+    @Test
+    @DisplayName("a stalled runtime lets the prompt return within the bound")
+    void aStalledRuntimeLetsThePromptReturnWithinTheBound() throws Exception {
+        var release = new CountDownLatch(1);
+        try {
+            fixture.start((request, response) -> {
+                if ("/api/v1/status".equals(request.target())) {
+                    response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
+                } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                    awaitRelease(release);
+                    response.json(200, "{\"onboardings\":[]}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            try (var rendered = new ByteArrayOutputStream();
+                 var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+                var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                    ClientEnvironment.capture(fixture.environment()),
+                                    () -> terminal, null);
+                var console = new PmConsole(context);
+                assertTimeoutPreemptively(Duration.ofSeconds(8), () -> console.refreshSetupBadge("en", terminal));
+            }
+        } finally {
+            release.countDown();
+        }
+    }
+
+    @Test
+    @DisplayName("a refresh that waits for the lock gives up within the refresh bound")
+    void aLockedRefreshGivesUpWithinTheBound() throws Exception {
+        var release = new CountDownLatch(1);
+        var firstInFlight = new CountDownLatch(1);
+        try {
+            fixture.start((request, response) -> {
+                if ("/api/v1/status".equals(request.target())) {
+                    firstInFlight.countDown();
+                    // Every refresh is held at its own bound, so the lock is held by one refresh
+                    // after the other; a caller that queued behind them waits for more than one.
+                    awaitRelease(release);
+                    response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
+                } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                    response.json(200, "{\"onboardings\":[]}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            try (var rendered = new ByteArrayOutputStream();
+                 var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+                var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                    ClientEnvironment.capture(fixture.environment()),
+                                    () -> terminal, null);
+                var console = new PmConsole(context);
+                var first = new Thread(() -> console.refreshSetupBadge("en", terminal));
+                var second = new Thread(() -> console.refreshBadges(terminal));
+                var third = new Thread(() -> console.refreshSetupBadge("en", terminal));
+                first.start();
+                // The first refresh takes the lock before its status read leaves the process; the
+                // other two queue behind it from there.
+                assertTrue(firstInFlight.await(5, TimeUnit.SECONDS), "the first refresh must take the lock");
+                second.start();
+                third.start();
+
+                var started = System.nanoTime();
+                third.join(30_000);
+                var waited = Duration.ofNanos(System.nanoTime() - started);
+
+                assertTrue(waited.compareTo(PmConsole.REFRESH_BOUND.plusSeconds(2)) < 0,
+                                    "a queued refresh must not wait out its predecessors: " + waited);
+                release.countDown();
+                first.join(30_000);
+                second.join(30_000);
+            }
+        } finally {
+            release.countDown();
         }
     }
 
     @Test
     @DisplayName("two concurrent refreshes never interleave")
     void twoConcurrentRefreshesNeverInterleave() throws Exception {
-        var inFlight = new AtomicInteger();
-        var maxConcurrent = new AtomicInteger();
-        fixture.start((request, response) -> {
-            var current = inFlight.incrementAndGet();
-            maxConcurrent.accumulateAndGet(current, Math::max);
-            try {
-                new CountDownLatch(1).await(100, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException _) {
-                Thread.currentThread().interrupt();
-            } finally {
-                inFlight.decrementAndGet();
+        var firstEntered = new CountDownLatch(1);
+        var releaseFirst = new CountDownLatch(1);
+        var statusRequests = new AtomicInteger();
+        try {
+            fixture.start((request, response) -> {
+                if ("/api/v1/status".equals(request.target())) {
+                    statusRequests.incrementAndGet();
+                    if (firstEntered.getCount() > 0) {
+                        firstEntered.countDown();
+                        // The first refresh keeps the lock and its read open until the test says so.
+                        awaitRelease(releaseFirst);
+                    }
+                    response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
+                } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                    response.json(200, "{\"onboardings\":[]}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+            try (var rendered = new ByteArrayOutputStream();
+                 var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+                var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                    ClientEnvironment.capture(fixture.environment()),
+                                    () -> terminal, null);
+                var console = new PmConsole(context);
+                var t1 = new Thread(() -> console.refreshSetupBadge("en", terminal));
+                var t2 = new Thread(() -> console.refreshBadges(terminal));
+                t1.start();
+                assertTrue(firstEntered.await(5, TimeUnit.SECONDS), "the first refresh must be in flight");
+                t2.start();
+
+                // While the first refresh holds the lock and its read is open, the second must not
+                // reach the runtime: a second status request in this window is the interleaving.
+                assertTrue(awaitNoSecondStatusRequest(statusRequests),
+                                    () -> "the second refresh read the runtime while the first held the lock: "
+                                                        + statusRequests.get());
+
+                releaseFirst.countDown();
+                t1.join(30_000);
+                t2.join(30_000);
             }
+        } finally {
+            releaseFirst.countDown();
+        }
+    }
+
+    private static boolean awaitNoSecondStatusRequest(AtomicInteger statusRequests) {
+        var deadline = System.nanoTime() + Duration.ofMillis(500).toNanos();
+        while (System.nanoTime() < deadline) {
+            if (statusRequests.get() > 1) {
+                return false;
+            }
+            LockSupport.parkNanos(Duration.ofMillis(10).toNanos());
+        }
+        return true;
+    }
+
+    @Test
+    @DisplayName("the refresh path and the intro line follow an aspect list of another size")
+    void refreshPathAndIntroFollowAnotherAspectList() throws Exception {
+        var aspects = new ArrayList<>(List.of(OnboardingAspect.values()));
+        aspects.add(OnboardingAspect.LANGUAGE);
+        assertEquals(8, aspects.size());
+        fixture.start((request, response) -> {
             if ("/api/v1/status".equals(request.target())) {
-                response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":false,\"onboard\":{\"step\":3}}");
             } else if ("/api/v1/project-onboardings".equals(request.target())) {
                 response.json(200, "{\"onboardings\":[]}");
             } else {
@@ -512,16 +716,35 @@ class PmConsoleBehaviourTest {
             var context = new OperatorContext(fixture.environment(), tempDir, true,
                                 ClientEnvironment.capture(fixture.environment()),
                                 () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
-            var console = new PmConsole(context);
-            var t1 = new Thread(() -> console.refreshSetupBadge("en", terminal));
-            var t2 = new Thread(() -> console.refreshBadges(terminal));
-            t1.start();
-            t2.start();
-            t1.join();
-            t2.join();
+            var console = new PmConsole(context, new EntryFlow(context, aspects));
+
+            console.refreshSetupBadge("en", terminal);
+
+            assertEquals(List.of("setup 3/8"), console.currentBadges(),
+                                "the refresh path must take the machine step count from the flow it runs");
         }
-        assertEquals(1, maxConcurrent.get(),
-                            "refreshSetupBadge and refreshBadges must be serialized by badgeRefreshLock");
+
+        fixture.close();
+        fixture = RuntimeFixture.create();
+        fixture.start((request, response) -> {
+            if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":false}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var intro = new StringWriter();
+        var introContext = new OperatorContext(fixture.environment(), tempDir, true);
+        new EntryFlow(introContext, aspects).run(new PrintWriter(intro), createReader("q\n"));
+        assertTrue(intro.toString().contains("8 steps."),
+                            "the intro line must say the run's step count");
+    }
+
+    private LineReader createReader(String input) throws Exception {
+        var in = new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8));
+        return LineReaderBuilder.builder().terminal(new DumbTerminal(in, new ByteArrayOutputStream())).build();
     }
 
     @Test
@@ -546,6 +769,9 @@ class PmConsoleBehaviourTest {
             var console = new PmConsole(context);
             console.refreshBadges(terminal);
             assertEquals(List.of("setup demo-proj 1/4"), console.currentBadges());
+            assertTrue(rendered.toString(StandardCharsets.UTF_8)
+                                                    .contains("\u001B]0;pm-operator [setup demo-proj 1/4]\u0007"),
+                                "the window title must carry the refreshed badges");
         }
     }
 
@@ -586,8 +812,8 @@ class PmConsoleBehaviourTest {
     }
 
     @Test
-    @DisplayName("a test changes the badge template in the catalogue and Enter still acts")
-    void aTestChangesTheBadgeTemplateInTheCatalogueAndEnterStillActs() throws Exception {
+    @DisplayName("Enter on the machine badge continues the machine onboarding")
+    void enterOnTheMachineBadgeContinuesTheMachineOnboarding() throws Exception {
         var onboardingRequested = new AtomicBoolean(false);
         fixture.start((request, response) -> {
             if (request.target().startsWith("/api/v1/onboarding")) {
@@ -607,14 +833,11 @@ class PmConsoleBehaviourTest {
             var context = new OperatorContext(fixture.environment(), tempDir, true,
                                 ClientEnvironment.capture(fixture.environment()),
                                 () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
-            MessageCatalogue.setForTest("en", "operator.console.badge.setup", "Installation {done}/{total}");
             try (var printWriter = new PrintWriter(rendered)) {
                 var console = new PmConsole(context);
                 console.refreshSetupBadge("en", terminal);
                 console.handleEmptyEnter(printWriter, reader, terminal);
-                assertTrue(onboardingRequested.get(), "Enter must still act when machine setup badge template is changed in catalogue");
-            } finally {
-                MessageCatalogue.clearCacheForTest();
+                assertTrue(onboardingRequested.get(), "Enter must act on the machine badge");
             }
         }
     }
@@ -622,15 +845,17 @@ class PmConsoleBehaviourTest {
     @Test
     @DisplayName("Enter on a project badge continues project onboarding")
     void enterOnAProjectBadgeContinuesProjectOnboarding() throws Exception {
-        var projectSetupRequested = new AtomicBoolean(false);
+        var entry = new BeingAddedProject("/work/cui-http", "Own settings", 5, 10,
+                            "/api/v1/entries/ent-cui/continue", "/api/v1/entries/ent-cui/abandon");
+        var entrySetupRequested = new AtomicBoolean(false);
         fixture.start((request, response) -> {
-            if ("/api/v1/projects/cui-http/setup".equals(request.target())) {
-                projectSetupRequested.set(true);
+            if ("/api/v1/entries/ent-cui".equals(request.target())) {
+                entrySetupRequested.set(true);
                 response.send(404, null, "");
             } else if ("/api/v1/status".equals(request.target())) {
                 response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
             } else if ("/api/v1/project-onboardings".equals(request.target())) {
-                response.json(200, "{\"onboardings\":[]}");
+                response.json(200, "{\"onboardings\":[" + entry.toJson() + "]}");
             } else {
                 response.send(404, null, "");
             }
@@ -641,9 +866,10 @@ class PmConsoleBehaviourTest {
             var context = new OperatorContext(fixture.environment(), tempDir, true,
                                 ClientEnvironment.capture(fixture.environment()),
                                 () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
-            var console = new PmConsole(context, List.of(ConsoleBadge.projectSetup("cui-http", "setup cui-http 5/10")));
+            var console = new PmConsole(context);
+            console.refreshSetupBadge("en", terminal);
             console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
-            assertTrue(projectSetupRequested.get(), "Enter on project badge must continue project onboarding");
+            assertTrue(entrySetupRequested.get(), "Enter on project badge must continue project onboarding");
         }
     }
 }

@@ -78,7 +78,7 @@ Each project's onboarding runs in a scope of its own (an entry until its enrolme
 
 * *Before its enrolment* a run has no project id: the explorer lists it under _Being added_ by the path of its checkout, with the step it waits at, _Continue_, and _Abandon_ (link:project-explorer.adoc#being-added[Being Added]). _Abandon_ deletes the entry; nothing was enrolled.
 * *After its enrolment* it is listed by its project id like every project, not ready, with _Continue the setup_.
-* *The terminal client* shows one badge per open run at its prompt (`pm [setup pm-mcp-clients 4/10]`); `Enter` on the empty prompt continues the most recent, `project setup <id>` a specific one (link:../terminal-client/17-projects.adoc#several[Terminal Client, Several at Once]).
+* *The terminal client* shows one badge per open run at its prompt (`pm [setup pm-mcp-clients 4/10]`); `Enter` on the empty prompt continues the most recent, `project setup <id>` a specific one and `project setup --entry <entry_id>` a run that has no project id yet (link:../terminal-client/17-projects.adoc#several[Terminal Client, Several at Once]).
 * *The web app* gives each run a route of its own, so that each can be open in its own tab and continued from its address.
 
 [#texts]

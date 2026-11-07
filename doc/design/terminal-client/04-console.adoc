@@ -21,7 +21,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 * `pm ›` is the prompt; it is the same in every language.
 * *Badges* say what waits for the operator, between `pm` and `›`, only when there is something: `pm [1 question] ›`, `pm [setup 3/7] ›`, `pm [2 questions · 1 waiver request · setup 3/7] ›`. One badge per kind of the runtime's `needs_operator` summary that is not zero (<<pushed>>), with its count, and one per open onboarding: the machine's (`setup 3/7`) and each project's that has not completed (`setup pm-mcp-clients 5/9`). The counts come from the runtime (its `needs_operator` summaries and the open onboarding runs), never from counting in the client, so a question answered in the web app leaves the badge at once. More than three badges are cut to the first three and `+<n>` (`pm [2 questions · 1 waiver request · 1 stalled · +2] ›`); `questions` and `plans` show them all.
 * *Connection*: `pm (reconnecting) ›` while the runtime cannot be reached (<<connection>>).
-* `Enter` on the empty prompt takes what the badge offers first: an unfinished onboarding continues where it stopped, the first machine or project badge in runtime order when several are open (the machine's first while it is not complete, it gates the others); `project setup <project_id>` continues a specific project's. Otherwise nothing happens. A question is never taken by `Enter` alone (<<answering>>).
+* `Enter` on the empty prompt takes what the badge offers first: an unfinished onboarding continues where it stopped, the first machine or project badge in runtime order when several are open (the machine's first while it is not complete, it gates the others); `project setup --entry <entry_id>` continues a specific being-added run's (<<being-added-address>>). Otherwise nothing happens. A question is never taken by `Enter` alone (<<answering>>).
 * A badge changes while the operator types: the console rebuilds the whole badge set from the runtime on every event that can change what waits — its `needs_operator` summary and the machine's open onboarding (`setup 3/7`, which stays first while the machine is not onboarded) — and the prompt is redrawn with the typed text and the cursor where they were. The prompt of a line that is already being read keeps the badges it was drawn with; the refreshed ones appear at its next draw, and the window title, which carries the same badges, changes at once.
 
 [#pushed]
@@ -89,7 +89,7 @@ Every kind of the closed list of `needs_operator` (link:../shared/plan-overview.
 |`project setup <id>`
 |===
 
-The holds among the kinds are exactly `stalled`, `condition`, `integrity_hold`, `held`, and `landing_failed`; the command of each opens the hold with its acts (xref:19-actions.adoc#holds[What Holds a Plan]). The open onboardings are badges of their own, not notices: `setup 3/7` for the machine (`operator.console.badge.setup`) and `setup <project_id> 5/9` for each (before its enrolment, the directory name of its checkout stands for the id) project's (`operator.console.badge.setup_project`).
+The holds among the kinds are exactly `stalled`, `condition`, `integrity_hold`, `held`, and `landing_failed`; the command of each opens the hold with its acts (xref:19-actions.adoc#holds[What Holds a Plan]). The open onboardings are badges of their own, not notices: `setup 3/7` for the machine (`operator.console.badge.setup`) and `setup cui-parent 5/9` for each project's (`operator.console.badge.setup_project`), whose name is the checkout's directory because a being-added run has no project id (`<<being-added-address>>`).
 
 A notice is printed *above* the prompt: the line the operator is typing is taken off, the notice is printed, and the prompt is drawn again with the typed text and the cursor where they were. Nothing typed is lost, and nothing typed becomes an answer.
 
@@ -101,6 +101,15 @@ pm › config roles --pro
   answer Q-007   ·   questions
 pm [1 question] › config roles --pro
 ----
+
+[#being-added-address]
+=== Addressing a Being-Added Project
+
+A project's run is continued by what the contract carries. Before its enrolment the run has no project id — `BeingAddedProject` in `pm-api` carries the checkout path, the step, and its hypermedia links, and no id — and the run is entry-scoped (link:../shared/project-onboarding.adoc#several[Several Onboardings at Once]). The console therefore reads the address from the run's `continue_link` (`/api/v1/entries/{entry_id}/continue`) and continues the run at the entry resource `/api/v1/entries/{entry_id}`; the badge names the run by the directory of its checkout, and a run whose contract carries no link gets a badge without a continuation — the directory name is not an entry id, and `project add <path>` continues such a run.
+
+The address travels as an argument of the verb, never through a command line the console quotes and parses back: an id with a quote or a backslash reaches the verb unaltered (`project setup --entry <entry_id>`).
+
+*Open item*: the pre-enrolment run's setup state and its act links at `/api/v1/entries/{entry_id}` — a `GET` of the state and the act surface the dialogue posts a chosen link to. Owner: `plan-marshall/plan-marshall-mcp` (the daemon). Until the daemon serves them, `Enter` on a being-added badge reports the run as unreadable instead of addressing a project that does not exist.
 
 [#answering]
 === Answering a Question
@@ -245,7 +254,36 @@ Where JLine falls back to the `exec` provider, the prompt a dialogue draws is fo
 === Notifications
 
 * While `console.notify` is `true`, what waits for the operator rings the terminal bell once, when it arrives.
-* A desktop notification is sent instead, under the same key, where the terminal is known to support one: OSC 9 (iTerm2, Ghostty, WezTerm), OSC 777 (rxvt family), OSC 99 (kitty, which can also withdraw it). Over SSH the sequence reaches the operator's own terminal; under tmux only with `allow-passthrough on`.
+* A desktop notification is sent instead, under the same key, where the terminal is known to support one: OSC 9 (iTerm2, Ghostty, WezTerm), OSC 777 (rxvt family), OSC 99 (kitty, which can also withdraw it). Over SSH the sequence reaches the operator's own terminal.
+* *Which terminal is known* is read once from the console's environment when it starts; the first rule that applies decides, and every terminal no rule names gets the bell, so the operator is never left with a sequence nobody shows:
++
+[cols="3,1",options="header"]
+|===
+|The environment |Signal
+
+|`TERM=dumb`, or no terminal
+|the bell
+
+|`TERMINAL_EMULATOR` begins with `JetBrains` (the terminal of a JetBrains IDE, which shows no desktop notification and may have inherited `TERM_PROGRAM` from the terminal the IDE was started in)
+|the bell
+
+|`TERM_PROGRAM=tmux`, or `TERM` begins with `screen` or `tmux` (a multiplexer passes the sequence on only with `allow-passthrough on`, which the console cannot see)
+|the bell
+
+|`TERM=xterm-kitty`, or `KITTY_WINDOW_ID` is set
+|OSC 99
+
+|`TERM_PROGRAM` is `ghostty`, `iTerm.app` or `WezTerm`, or `TERM` is `xterm-ghostty` or `wezterm`
+|OSC 9
+
+|`TERM` begins with `rxvt`
+|OSC 777
+
+|anything else
+|the bell
+|===
++
+Over SSH `TERM_PROGRAM` is usually not passed on, so a remote console knows the terminal by `TERM` alone, and rings the bell where `TERM` names none.
 * The machine configuration key `console.notify` (link:../../../../pm-mcp-core/doc/specification/store-schemas/12-machine-stores.adoc#machine-config[Machine Configuration Store]) turns them on and off: `true`, the default, sends the desktop notification where known and else rings the bell; `false` sends neither.
 * A notification carries the scope and the kind (`plan fix-relay asks a question`, `epic storage-v2 asks a question`, `the setup of pm-mcp-clients asks a question`, `plan fix-relay asks for a waiver`), never the text of the question, which may hold content of the project.
 

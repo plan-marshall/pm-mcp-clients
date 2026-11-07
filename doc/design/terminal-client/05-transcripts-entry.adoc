@@ -13,7 +13,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 [#transcripts]
 == Transcripts
 
-One transcript per state or per short sequence of states; the states each one shows are named above it, and xref:08-transcripts-later.adoc#state-coverage[Every State and Its Transcript] lists every state with its transcript. The operator's input follows `› `; `⏎` stands for `Enter` alone. A check is shown as it ended. The transcripts are in English; the German texts are those of xref:09-texts-common.adoc#texts[Texts], and one German transcript (xref:06-transcripts-steps-1-3.adoc#t-language[1 Language (language.detect, language.choose, language.record, language.done)]) shows the switch.
+One transcript per state or per short sequence of states; the states each one shows are named above it, and xref:08-transcripts-later.adoc#state-coverage[Every State and Its Transcript] lists every state with its transcript. The operator's input follows `› `; `⏎` stands for `Enter` alone. A check is shown as it ended. The transcripts are in English; the German texts are those of xref:09-texts-common.adoc#texts[Texts], and two German transcripts show the switch: xref:06-transcripts-steps-1-3.adoc#t-language[1 Language (language.detect, language.choose, language.record, language.done)] and the console settings with the paired devices, recorded as `console-settings-de.transcript` beside the English block (xref:08-transcripts-later.adoc#t-devices[Paired Devices]), with the catalogue's `zuletzt benutzt` in the device row.
 
 [#t-entry]
 === The Entry `pm-operator`
@@ -142,7 +142,7 @@ $ pm-operator
 
 plan-marshall is running. This machine is not set up yet.
 
-  Seven steps. Nothing on this machine is looked at, run, or changed until
+  7 steps. Nothing on this machine is looked at, run, or changed until
   you say so in that step. You can stop at any point; Enter at the prompt,
   or the web app, continues where you stopped.
 
@@ -157,9 +157,9 @@ plan-marshall is running. This machine is not set up yet.
 Where do you want to set it up?   h) here, in the terminal [Enter]   w) in the web app   ?   › ⏎
 
 Set up this machine for plan-marshall
-  Seven steps. Nothing on this machine is looked at, run, or changed until you
-  say so in that step. You can stop at any point; the next visit, here or in
-  pm-operator, continues where you stopped.
+  7 steps. Nothing on this machine is looked at, run, or changed until you say
+  so in that step. You can stop at any point; Enter at the prompt, or the web
+  app, continues where you stopped.
   1  Language: the language of plan-marshall and of the models' texts
   …
   7  Plans: how plans run unless a project says otherwise
@@ -474,9 +474,9 @@ After _here_ in `entry.where-to-onboard` (<<t-entry-first>>), or in a console wh
 [source,text]
 ----
 Set up this machine for plan-marshall
-  Seven steps. Nothing on this machine is looked at, run, or changed until you
-  say so in that step. You can stop at any point; the next visit, here or in
-  pm-operator, continues where you stopped.
+  7 steps. Nothing on this machine is looked at, run, or changed until you say
+  so in that step. You can stop at any point; Enter at the prompt, or the web
+  app, continues where you stopped.
   1  Language: the language of plan-marshall and of the models' texts
   …
   7  Plans: how plans run unless a project says otherwise

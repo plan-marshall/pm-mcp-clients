@@ -15,6 +15,7 @@ import java.util.Objects;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.operator.OperatorGate;
 
@@ -33,7 +34,8 @@ public final class OnboardingSource implements StateDialogue.Source {
     /** The path a chosen link is sent to. */
     public static final String STEP_PATH = "/api/v1/onboarding/step";
 
-    private static final int TOTAL_STEPS = 7;
+    /** The step count of the onboarding dialogue is the aspect list the runtime runs. */
+    private static final int TOTAL_STEPS = OnboardingAspect.values().length;
 
     private final RuntimeClient runtime;
     private final OperatorGate gate;

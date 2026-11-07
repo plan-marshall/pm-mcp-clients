@@ -13,7 +13,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.URLDecoder;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -27,6 +29,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.regex.Pattern;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.UserInterruptException;
@@ -57,6 +60,7 @@ public final class EntryFlow {
     private static final String LOOPBACK_URL_PREFIX = "http://127.0.0.1:";
     private static final String VERSION = "version";
     private static final String PAIR_CODE = "/pair#code=";
+    private static final Pattern ENTRY_LINK = Pattern.compile("/entries/([^/?#]+)");
 
     private final OperatorContext context;
     private final List<OnboardingAspect> aspects;
@@ -532,18 +536,6 @@ public final class EntryFlow {
         return MessageCatalogue.format(locale, "operator.entry.step_unknown", Map.of("step", step));
     }
 
-    static String getStepName(int step) {
-        return getStepName("en", step);
-    }
-
-    static String getStepName(String locale, int step) {
-        var aspects = OnboardingAspect.values();
-        if (step >= 1 && step <= aspects.length) {
-            return MessageCatalogue.format(locale, aspects[step - 1].stepNameKey(), Map.of());
-        }
-        return MessageCatalogue.format(locale, "operator.entry.step_unknown", Map.of("step", step));
-    }
-
     static int getWebPort(Map<String, Object> status) {
         if (status.get("web") instanceof Map<?, ?> web) {
             var port = web.get("port");
@@ -574,6 +566,7 @@ public final class EntryFlow {
     static <T> T bounded(IoCallable<T> task, Duration bound, String threadName) throws IOException {
         var result = new AtomicReference<T>();
         var failure = new AtomicReference<IOException>();
+        var thrown = new AtomicReference<Throwable>();
         var thread = new Thread(() -> {
             try {
                 result.set(task.call());
@@ -582,22 +575,34 @@ public final class EntryFlow {
             }
         }, threadName);
         thread.setDaemon(true);
+        // A worker that dies on an unexpected exception would otherwise leave `result` unset and
+        // the caller to dereference `null`: the handler marks the read failed instead.
+        thread.setUncaughtExceptionHandler((_, error) -> thrown.set(error));
         thread.start();
         try {
+            // A bound below a millisecond rounds to 0, which joins forever: the clamp keeps the
+            // call bounded.
             thread.join(Math.max(1L, bound.toMillis()));
-        } catch (InterruptedException _) {
-            // Interrupted while waiting for worker thread
+        } catch (InterruptedException e) {
+            thread.interrupt();
             Thread.currentThread().interrupt();
-            throw new IOException("interrupted while waiting for " + threadName);
+            throw new IOException("interrupted while waiting for " + threadName, e);
         }
         if (thread.isAlive()) {
             thread.interrupt();
             throw new IOException("the runtime did not answer within " + bound.toMillis() + " ms");
         }
+        if (thrown.get() != null) {
+            throw new IOException("the read failed in " + threadName, thrown.get());
+        }
         if (failure.get() != null) {
             throw failure.get();
         }
-        return result.get();
+        var value = result.get();
+        if (value == null) {
+            throw new IOException("the read in " + threadName + " answered nothing");
+        }
+        return value;
     }
 
     /**
@@ -654,19 +659,57 @@ public final class EntryFlow {
         }
         try {
             var being = BeingAddedProject.fromMap(map);
-            var daemonProjectId = JsonTree.string(map, "project_id");
-            var targetId = daemonProjectId != null && !daemonProjectId.isBlank()
-                                ? daemonProjectId
-                                : checkoutDirectoryName(being.checkoutPath());
-            if (targetId != null) {
-                var text = ConsolePrompt.formatProjectSetupBadge(locale, targetId,
-                                    being.stepNumber(), being.totalSteps());
-                return ConsoleBadge.projectSetup(targetId, text);
+            // A pre-enrolment run is entry-scoped and has no project id: the contract carries the
+            // address in its continue link (project-onboarding.adoc#several). A run whose contract
+            // carries no link still shows as a badge, named by its checkout, but offers no
+            // continuation: the directory name is not an entry id.
+            var display = checkoutDirectoryName(being.checkoutPath());
+            if (display != null) {
+                var text = ConsolePrompt.formatProjectSetupBadge(locale,
+                                    display, being.stepNumber(), being.totalSteps());
+                return ConsoleBadge.projectSetup(entryAddress(being), text);
             }
         } catch (IOException _) {
             // skip malformed entries
         }
         return null;
+    }
+
+    /**
+     * Reads the address a being-added project's run is continued by: the entry id the contract's
+     * {@code continue_link} names. A run whose contract carries no link has no address the daemon
+     * serves — the checkout directory name is not an entry id — so it gets none and the badge stops
+     * offering a continuation (`project add <path>` still continues it).
+     *
+     * @param being the run as the runtime reports it
+     * @return the entry id, or {@code null} when the contract carries no link
+     */
+    static @Nullable String entryAddress(BeingAddedProject being) {
+        return entryId(being.continueLink());
+    }
+
+    /**
+     * @param continueLink the contract's continuation link ({@code /api/v1/entries/{entry_id}/continue})
+     * @return the id the link addresses, decoded, or {@code null} when the link names none
+     */
+    private static @Nullable String entryId(@Nullable String continueLink) {
+        if (continueLink == null || continueLink.isBlank()) {
+            return null;
+        }
+        var match = ENTRY_LINK.matcher(continueLink);
+        if (!match.find()) {
+            return null;
+        }
+        var raw = match.group(1);
+        try {
+            // A path segment keeps `+` as a plus; URLDecoder would read it as a space. Decoding it
+            // as `%2B` first keeps an id such as `ent+a` intact on its way back to the runtime.
+            var decoded = URLDecoder.decode(raw.replace("+", "%2B"), StandardCharsets.UTF_8);
+            return decoded.isBlank() ? null : decoded;
+        } catch (IllegalArgumentException _) {
+            // A segment that is not valid percent-encoding is taken as it stands.
+            return raw;
+        }
     }
 
     static List<ConsoleBadge> readProjectSetupConsoleBadgesQuiet(String locale, RuntimeClient runtime) {
@@ -729,7 +772,6 @@ public final class EntryFlow {
         if (value instanceof JsonNumber jsonNumber) {
             try {
                 return (int) jsonNumber.longValue();
-                // cui-rewrite:disable InvalidExceptionUsageRecipe
             } catch (NumberFormatException _) {
                 return -1;
             }

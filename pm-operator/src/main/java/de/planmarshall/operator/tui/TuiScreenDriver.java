@@ -228,8 +228,7 @@ public final class TuiScreenDriver {
                 return !(console.get("full_screen") instanceof Boolean enabled) || enabled;
             }
         }
-        /*TODO: Catch specific not RuntimeException. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-        catch (IOException | RuntimeException _) {
+        catch (IOException _) {
             // An unreadable or malformed machine configuration keeps the compiled default.
         }
         return true;

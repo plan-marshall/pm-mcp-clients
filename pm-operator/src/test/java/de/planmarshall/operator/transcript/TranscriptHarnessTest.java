@@ -15,7 +15,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
@@ -69,6 +71,13 @@ class TranscriptHarnessTest {
         void replacesGermanAbsoluteLastUsed() {
             var buffer = "gekoppelt 2 Jun von loopback   zuletzt benutzt 8 Sep 14:32";
             assertEquals("gekoppelt 2 Jun von loopback   zuletzt benutzt <ago>", normalizer.normalize(buffer));
+        }
+
+        @Test
+        @DisplayName("takes the last-used label from the catalogue of every locale")
+        void lastUsedLabelsComeFromTheCatalogue() {
+            assertEquals(Set.of("last used", "zuletzt benutzt"),
+                                new HashSet<>(TranscriptNormalizer.lastUsedLabels()));
         }
 
         @Test

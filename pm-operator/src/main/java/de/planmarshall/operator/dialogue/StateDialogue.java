@@ -44,11 +44,11 @@ import de.planmarshall.operator.TerminalSanitizer;
  */
 public final class StateDialogue {
 
-    static final List<String> PROJECT_STATES = List.of(
-                        "project.consent", "project.detect", "project.run-consent", "project.probe", "project.checkout",
-                        "project.enrol", "project.enrolment", "project.operator", "project.own",
-                        "project.identity", "project.team", "project.architecture", "project.landing",
-                        "project.roles", "project.descriptions", "project.commit");
+    /**
+     * The states a project's setup reports and the step each belongs to: the one table
+     * {@link #projectStepOf} reads, so no second list mirrors it.
+     */
+    static final Map<String, String> PROJECT_STEP_BY_STATE = projectSteps();
 
     /** How long one working state may stay without a link before the dialogue gives up. */
     private static final long WORKING_TIMEOUT_NANOS = 60_000_000_000L;
@@ -72,6 +72,9 @@ public final class StateDialogue {
     private static final String STEP_ROLES = "roles";
     private static final String STEP_DONE = "onboard.step.done";
     private static final String DONE = "done";
+
+    /** The step every project state of the checkout phase names. */
+    private static final String CHECKOUT_STEP = "checkout";
     private static final String UNKNOWN = "onboard.state.unknown";
     private static final String LABEL = "label";
     private static final int CONTENT_WIDTH = 76;
@@ -283,7 +286,7 @@ public final class StateDialogue {
      */
     List<String> content(Frame frame) {
         if ("onboard.mode".equals(frame.stateId())) {
-            return modeContent();
+            return modeContent(frame);
         }
         if ("onboard.completed".equals(frame.stateId())) {
             return List.of(MessageCatalogue.format(locale, "onboard.completed.next", Map.of()));
@@ -296,9 +299,9 @@ public final class StateDialogue {
         return lines;
     }
 
-    private List<String> modeContent() {
+    private List<String> modeContent(Frame frame) {
         var lines = new ArrayList<String>();
-        lines.add(MessageCatalogue.format(locale, "onboard.entry.intro", Map.of()));
+        lines.add(MessageCatalogue.format(locale, "onboard.entry.intro", Map.of("total", frame.totalSteps())));
         addStepOverview(lines);
         return lines;
     }
@@ -656,14 +659,28 @@ public final class StateDialogue {
      */
     static String projectStepOf(String stateId) {
         var id = stateId.substring(PROJECT_PREFIX.length());
-        return switch (id) {
-            case "consent", "detect", "run-consent", "probe", "checkout" -> "checkout";
-            case "enrol", STEP_ENROLMENT -> STEP_ENROLMENT;
-            case OPERATOR, STEP_OWN -> STEP_OWN;
-            case "identity", "team", "architecture", "landing",
-                STEP_ROLES, "descriptions", "commit" -> id;
-            default -> DONE;
-        };
+        return PROJECT_STEP_BY_STATE.getOrDefault(id, DONE);
+    }
+
+    private static Map<String, String> projectSteps() {
+        var steps = new LinkedHashMap<String, String>();
+        steps.put("consent", CHECKOUT_STEP);
+        steps.put("detect", CHECKOUT_STEP);
+        steps.put("run-consent", CHECKOUT_STEP);
+        steps.put("probe", CHECKOUT_STEP);
+        steps.put(CHECKOUT_STEP, CHECKOUT_STEP);
+        steps.put("enrol", STEP_ENROLMENT);
+        steps.put(STEP_ENROLMENT, STEP_ENROLMENT);
+        steps.put(OPERATOR, STEP_OWN);
+        steps.put(STEP_OWN, STEP_OWN);
+        steps.put("identity", "identity");
+        steps.put("team", "team");
+        steps.put("architecture", "architecture");
+        steps.put("landing", "landing");
+        steps.put(STEP_ROLES, STEP_ROLES);
+        steps.put("descriptions", "descriptions");
+        steps.put("commit", "commit");
+        return Collections.unmodifiableMap(steps);
     }
 
     /**
