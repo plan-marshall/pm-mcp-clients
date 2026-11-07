@@ -33,9 +33,9 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
   project favourite <project_id> [--off]
 ----
 
-* All are operator verbs and run in the console or as one shell command (xref:01-commands.adoc#command-tree[The Verbs]); `project add` is the direct verb of a project's enrolment, with its arguments as the answers of `project.identity` to `project.enrol` (`--pilot` answers the pilot line of the identity).
+* All are operator verbs and run in the console or as one shell command (xref:01-commands.adoc#command-tree[The Verbs]); `project add` is meant to be the direct verb of the onboarding of <<onboarding>>, its arguments the answers of `project.identity` to `project.enrol` (`--pilot` answers the pilot line of the identity). Today it sends the enrolment request (`POST /api/v1/enrol`) and runs no dialogue, so a project is enrolled without the identity questions this document asks. *Open item* `project-add-onboarding`: either the verb starts the dialogue as that section describes, or this section states the direct enrolment as what the verb does. Owner: `plan-marshall/pm-mcp-clients`; the choice is the operator's, asked in the pull request that records this gap.
 * `--project ?` of every other verb shows the same list as the explorer, favourites first (xref:02-levels.adoc#addressing[Addressing a Level]).
-* `project release` and `project unenrol` are direct verbs (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]): `--reason` answers the release's reason, a missing one is asked, and `--no-input` stops there; the confirmation is answered by `--yes`, never by `Enter` alone (<<release>>).
+* `project release` and `project unenrol` are direct verbs (xref:01-commands.adoc#direct-verbs[A Direct Verb Runs a Sub-Workflow]): `--reason` answers the release's reason; `--yes` answers the confirmation, and `--no-input` without it stops with exit code `3`. The shell path asks nothing: without `--yes` the verb sends the act at once, and `project release` records `Released by operator` where `--reason` is absent. *Open item* `release-confirmation-prompt`: the confirmation of <<release>> reaches both verbs on every path, or this section states the flag-only confirmation as the rule. Owner: `plan-marshall/pm-mcp-clients`; the choice is the operator's, asked in the pull request that records this gap.
 
 [#explorer]
 == The Explorer, Full Screen
@@ -351,7 +351,7 @@ pm ›
 
 * The confirmation names what ends before it asks and is answered by `y` or `n`, never by `Enter` alone; its texts are the shared keys `project.release.*` (link:../shared/project-explorer.adoc#release[Project Explorer, Release and Unenrol]).
 * An unenrolment refused while work runs lists the running plans and epics, each with the verb that ends it (xref:19-actions.adoc[Actions on Plans and Epics]).
-* As one shell command, `pm-operator project release plan-marshall --reason "…" --yes` answers the reason and the confirmation; without `--yes` it asks, and `--no-input` stops there.
+* As one shell command, `pm-operator project release plan-marshall --reason "…" --yes` answers the reason and the confirmation; without `--yes` it sends the act without asking (open item `release-confirmation-prompt`, above), and `--no-input` without `--yes` stops with exit code `3`.
 
 [#list]
 == The List (`projects --list`)

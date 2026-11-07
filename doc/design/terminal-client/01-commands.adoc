@@ -57,12 +57,17 @@ pm-operator plan start <plan_id>
 pm-operator plan cancel|abandon <plan_id> [--reason <text>] [--close-pr|--keep-pr]
 pm-operator plan chat <plan_id>
                                                           [op]  act on a plan by its state (19-actions)
+pm-operator plan findings|watches <plan_id>                       the plan's review findings, and what listens on it (19-actions)
+pm-operator plan resolve <plan_id> ...                    [op]  resolve what holds a plan (UC-CTL-4)
+pm-operator plan settings <plan_id> ...                   [op]  read or change a plan's own settings (UC-CTL-5)
 pm-operator plan report <plan_id> [--tokens [--components]]
                                                                  an ended plan's completion report (24-reports)
 pm-operator epic next <epic_id> [--raise-scope]
 pm-operator epic auto <epic_id> on|off | --common-files <n>
 pm-operator epic decompose <epic_id> [--instruction <text>]
 pm-operator epic archive|findings|watches|chat <epic_id>
+pm-operator epic review|instruct <epic_id> [--instruction <text>]
+                                                          [op]  check the decomposition and agree the cut, or shape one staged plan (19-actions)
 pm-operator epic cancel <epic_id> [--reason <text>] [--with-plans|--without-plans]
                                                           [op]  act on an epic, or chat; `findings` and `watches` read the review without the checks (19-actions)
 pm-operator web enable|disable [--lan]                    [op]  open the loopback listener, or with --lan the LAN listener beside it; close both
@@ -83,9 +88,9 @@ pm-operator reports read <report_id>...|--all             [op]  mark reports rea
 pm-operator reports open <report_id>                      [op]  a report's detail; reads it
 pm-operator system [--project <project_id>|.] [--window hour|today|7d] [--by model|role] [--watch]
                                                                 the system view; full screen in the console (25-system)
-pm-operator runtime stop|restart [--when-done|--now]      [op]  stop or restart the runtime (UC-SYS-1, 25-system)
+pm-operator runtime stop|restart [--when-done|--drain|--now]      [op]  stop or restart the runtime (UC-SYS-1, 25-system)
 pm-operator runtime stop --withdraw                       [op]  withdraw a drain asked from a client
-pm-operator runtime upgrade [<version>|--check|--withdraw|--notes] [--when-done|--now]
+pm-operator runtime upgrade [<version>|--check|--withdraw|--notes] [--when-done|--drain|--now]
                                                           [op]  a newer version: check, upgrade, withdraw (25-system); --check and --notes
                                                                 read and run without the checks
 pm-operator drain                                               signal the runtime to stop by its drain
@@ -140,6 +145,11 @@ In the console only:
 * *The flags of the actions* on plans and epics are those of xref:19-actions.adoc[Actions on Plans and Epics], which says what each does; the listing above repeats them, 19 is the reference.
 * *No designer*: designing a plan's process (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3]) is offered in the web app only (link:../web-app/process-designer.adoc[Web App, Process Designer]); `help` says so in one line (`operator.help.designer`, link:../web-app/process-designer-texts.adoc#texts[its text]) and offers no verb for it.
 * *The console commands* `plans`, `plan <plan_id>`, `epic <epic_id>`, `questions` and `answer` run inside the console and as direct verbs (`pm-operator questions`, `pm-operator epic <epic_id>`, which prints the epic's view); `web` without a verb of the specification, `help` and `exit` exist only inside the console and are not shell verbs. `web qr` prints the QR code of the open pairing code again, with its URL, and `web pair` replaces the code (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#fresh-code[A Fresh Code after a Redemption]).
+* *The sub-verbs beside the lines of the tree* — decided here, once: `plan findings` and `plan watches` stay, reads of a plan's review and of what listens on it; `plan resolve` stays, the act that resolves what holds a plan (UC-CTL-4); `plan settings` stays, the act that reads or changes a plan's own settings (UC-CTL-5); `epic review` and `epic instruct` stay, the act that checks a decomposition and agrees the cut, and the one that shapes one staged plan; `runtime stop|restart|upgrade --drain` stays as the alias of `--when-done` a script can type.
+* *No `onboard`, and none of what it carried*: the verb is folded (above), and `onboard --auto` and `onboard --step` go with it — no line of this tree names them, and no state of the onboarding takes them. The entry is the bare `pm-operator` and `config <aspect>`.
+* *Open items of this tree*, each with its owner:
+** `profile`, `decision-log`, `waive`, `grant-access` and `sweep` stand in the verb listing above and no registered verb answers them. Owner: `plan-marshall/pm-mcp-clients` — each needs its verb with its options, or its removal, decided per verb.
+** The specification's operator channel (`doc/specification/cli-and-security/02-operator-channel.adoc`, line 42 of `plan-marshall/plan-marshall-documentation`) still names `enrol` where this tree folds it into `project add`. Owner: `plan-marshall/plan-marshall-documentation` — a companion change there, not opened yet.
 
 [#one-surface]
 === One Surface in Every Language
