@@ -595,7 +595,7 @@ export interface EpicResource {
   auto_start: boolean;
   overlap_max_files: number;
   scope: number;
-  running: number;
+  running?: number | null;
   terminal_reason?: string | null;
   workstreams: EpicWorkstream[];
   sources: string[];

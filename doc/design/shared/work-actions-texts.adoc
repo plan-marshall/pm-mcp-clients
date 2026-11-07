@@ -200,7 +200,7 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 
 |`control.epic.next_waiting`
 |The epic is still being read; the next plan cannot start yet.
-|Die Epik wird noch gelesen; der nächste Plan kann noch nicht starten.
+|Das Epic wird noch gelesen; der nächste Plan kann noch nicht starten.
 
 |`control.epic.auto`
 |Automatic: {mode, select, on {on} other {off}}

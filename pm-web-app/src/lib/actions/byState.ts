@@ -200,6 +200,41 @@ export const ACT_TABLES: Record<ResourceKind, Record<string, ActSpec[]>> = {
 };
 
 /**
+ * Collects the unique act ids across every state of a table.
+ *
+ * @param table the state-to-specs table
+ * @param exclude optional act ids to exclude (e.g. 'decision')
+ * @returns the unique act ids present across all states in the table
+ */
+export function tableActIds(
+  table: Record<string, ActSpec[]>,
+  exclude?: ReadonlySet<string> | string[],
+): Set<string> {
+  const excluded = exclude instanceof Set ? exclude : new Set(exclude ?? []);
+  const ids = new Set<string>();
+  for (const specs of Object.values(table)) {
+    for (const spec of specs) {
+      if (!excluded.has(spec.id)) {
+        ids.add(spec.id);
+      }
+    }
+  }
+  return ids;
+}
+
+/**
+ * The permitted act ids for a subject kind handled by the panel: the table's ids minus 'decision'.
+ *
+ * @param kind the subject kind ('plan' | 'epic')
+ * @returns the handled act ids
+ */
+export function handledActIds(kind: 'plan' | 'epic'): Set<string> {
+  return kind === 'epic'
+    ? tableActIds(EPIC_ACTS, ['decision'])
+    : tableActIds(PLAN_ACTS, ['decision']);
+}
+
+/**
  * @param kind the resource kind
  * @param action an act id the table does not know
  * @returns a label key following the catalogue's `control.{kind}.{action}` convention

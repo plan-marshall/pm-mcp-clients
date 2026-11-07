@@ -531,4 +531,11 @@ describe('the catalogue carries the corrected strings of CC-F-05', () => {
     expect(en['decision.outcome.answered_elsewhere']).toBeUndefined();
     expect(de['decision.outcome.answered_elsewhere']).toBeUndefined();
   });
+
+  it('agrees on the German term for the epic waiting text', () => {
+    const de = loadMessages('de');
+    expect(de['control.epic.next_waiting']).toBe(
+      'Das Epic wird noch gelesen; der nächste Plan kann noch nicht starten.',
+    );
+  });
 });
