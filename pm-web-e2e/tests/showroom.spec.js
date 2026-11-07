@@ -168,7 +168,7 @@ test.describe('Fully onboarded showroom', () => {
   });
 
   test('verifies the machine settings and the paired devices', async ({ page }) => {
-    await page.getByRole('button', { name: 'Machine settings' }).click();
+    await page.getByRole('button', { name: 'Settings' }).click();
     await expect(page.getByTestId('settings-view')).toBeVisible();
     await expect(page.getByTestId('devices-table')).toBeVisible();
     await expect(page.getByText('Primary Desktop Browser')).toBeVisible();
