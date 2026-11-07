@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 240" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <!-- Theme handling: theme-neutral. The picture paints its own surface, as every component picture of components.adoc does, so it reads the same on a light and a dark page. -->
+  <title id="t">Field</title>
+  <desc id="d">A form of two fields and its footer. The first field "Pull request (optional)" with an example value as its placeholder and a one-sentence hint under it. The second field "Path of the checkout", invalid: a danger border and the error under it in place of the hint. The footer: the form status "Saved" on the left, then the ghost act "Cancel" and the primary act "Save" on the right.</desc>
+  <rect width="360" height="240" fill="#F7F7F5"/>
+  <text x="24" y="28" font-size="12" fill="#16181D" font-weight="500">Pull request <tspan fill="#5F6672" font-weight="400">(optional)</tspan></text>
+  <rect x="24" y="36" width="312" height="34" rx="8" fill="#FFFFFF" stroke="#CFCFC8"/>
+  <text x="34" y="57" font-size="12" fill="#5F6672">#214 or URL</text>
+  <text x="24" y="86" font-size="11" fill="#5F6672">The plan lands into it.</text>
+  <text x="24" y="114" font-size="12" fill="#16181D" font-weight="500">Path of the checkout</text>
+  <rect x="24" y="122" width="312" height="34" rx="8" fill="#FFFFFF" stroke="#C0362F" stroke-width="1.5"/>
+  <text x="34" y="143" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#16181D">~/git/my service</text>
+  <circle cx="32" cy="170" r="6.5" stroke="#C0362F" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M32 166.5v4.5" stroke="#C0362F" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="32" cy="173.5" r=".9" fill="#C0362F"/>
+  <text x="44" y="174" font-size="11" fill="#C0362F">The path has a space. Choose one without.</text>
+  <line x1="24" y1="190" x2="336" y2="190" stroke="#E3E3DE"/>
+  <text x="24" y="214" font-size="11" fill="#3E4450">Saved</text>
+  <text x="214" y="214" font-size="12" fill="#3E4450" text-anchor="middle">Cancel</text>
+  <rect x="250" y="197" width="86" height="28" rx="8" fill="#5B4BDB"/>
+  <text x="293" y="216" font-size="12" fill="#FFFFFF" text-anchor="middle">Save</text>
+</svg>

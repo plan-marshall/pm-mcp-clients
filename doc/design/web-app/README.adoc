@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App]_
 
-Status: `AGREED`. The design of the web app, the specification its implementation follows (work packages `web-app-foundation` and `web-onboarding`); the work package `web-design` works it out. Its parts:
+Status: `DRAFT`. The design of the web app, the specification its implementation follows (work packages `web-app-foundation` and `web-onboarding`); the work package `web-design` works it out. Its parts:
 
 * link:entry.adoc[Entry]: the pairing page, the page a revoked device lands on, the page of a device whose network listener was turned off, and where the app opens after pairing.
 * link:onboarding.adoc[Onboarding]: one screen per choice state of the onboarding, the consent screen (the pattern shared with the terminal is link:../shared/consents.adoc[Consents]), the automatic run, and the keys of the web app; in three parts with link:onboarding-steps-4-7.adoc[Steps ④ to ⑦] and link:onboarding-texts.adoc[Texts].
@@ -18,7 +18,7 @@ Status: `AGREED`. The design of the web app, the specification its implementatio
 * link:workflow-visual-language.adoc[Workflow Visual Language]: one original icon per workflow unit, phase, axis, and recipe; the visual grammar, the SVG contract, the licence gate, the accessible use beside text, the icon catalogue, and the update checklist.
 * link:view-density-and-filtering.adoc[View Density and Filtering]: the three layout modes of the list views, their breakpoint, the shared filter-as-you-type contract, the per-view field matrices, and the adoption rule for future list surfaces.
 * link:interaction-affordances.adoc[Interaction Affordances]: the hover advisory of a control: the `X` → `X.title` key convention, what an advisory may say, the classes it is owed to, and the deterministic check that keeps a tooltip from repeating its label.
-* link:components.adoc[Components]: every control, container and data component of design system v2 (`VD-P-05`) with its specification and one picture each, the rules every component keeps, and the source and test that deliver it.
+* link:components.adoc[Components]: the closed vocabulary every view is built from, with its specification and one picture per component, the rules every component keeps, and the source and test that deliver it; in three parts with link:components-tags.adoc[Tags and Kinds] (state, reason, count, id, pull request, kind and its tints, phase, markers) and link:components-fields.adoc[Fields and Forms].
 * link:brand-mark.adoc[Brand Mark]: the project's own `24 × 24` mark: construction, the brand colour, meaning of the parts, provenance, delivery as an inline `currentColor` drawing and as the two tab copies, the uses (rail head, pairing page, empty states, favicon with the attention dot), theme, accessibility, and usage.
 * link:theme-readability.adoc[Theme Readability]: the design token contract, WCAG 2.1 AA contrast compliance, the audit allowlist, and automated verification across light and dark themes.
 * link:process-designer.adoc[Process Designer] with link:process-designer-texts.adoc[its Texts]: designing a workflow unit, the one part only the web app offers: the input (an uploaded file, a pasted text, an installed unit), the text and the structure side by side, the building blocks, the unit's frontmatter, validating with the composed process, placing on the machine or in the project with the difference first, removing.
@@ -117,7 +117,7 @@ How the app is organised and how one moves from one part to another and back. Un
 |link:brand-mark.adoc[Brand Mark]: the project's own original `24 × 24` vector, its three ascending plan sheets, baton, and runtime node, its provenance, its delivery as an inline `currentColor` drawing in the app and as the two baked tab copies, the uses of the mark (rail head, pairing page, empty states, favicon with the attention dot), and its usage rules
 
 |The components
-|link:components.adoc[Components]: the specification of `VD-P-05` with one picture per component, the controls of `PLAN-25`, the containers of `PLAN-31` and the data components of `PLAN-35`
+|link:components.adoc[Components]: the closed vocabulary of the app with one picture per component — the tags and the kinds (link:components-tags.adoc[Tags and Kinds]), the interaction elements, the fields and forms (link:components-fields.adoc[Fields and Forms]), the containers and the data components
 
 |Texts
 |link:../shared/texts-and-languages.adoc[Texts and Languages]; the keys of the area `web` are listed with the design that uses them (link:onboarding-texts.adoc#texts-web[Onboarding], link:entry.adoc#texts[Entry], link:machine-settings.adoc#texts[Machine Settings]); the area `designer` with link:process-designer-texts.adoc#texts[Process Designer]
@@ -138,7 +138,7 @@ One frame holds every view: a rail on the left, a top bar above the view, and �
 |`232 px` wide, collapsible to `64 px` (icons with their labels as tooltips); this browser keeps the choice (`pm_rail_collapsed`). The head carries the `BrandMark` on its `28 px` brand square and the project's name, the mark and the name opening the start page. Three groups, in this order: *Work* (Running work, Projects, Decisions), *Records* (Reports), *Machine* (System, Process Designer, Settings). A destination that carries a count shows it beside its label: the open decisions and the unread reports. The tab title and the tab icon carry only the open decisions. A detail page keeps the destination it belongs to selected: a plan and an epic are Work, the cleanup is part of System, and the machine settings are Settings. The foot carries the language switch (`EN`/`DE`), the theme choice, and the control that collapses the rail.
 
 |Top bar
-|The path of the page — its group and its title, with the cleanup as `Machine › System › Cleanup` — the search trigger of the command palette, the live indicator (<<live-state>>), and the machine's name in a neutral pill. The pill is neutral in both modes: the machine's name is a fact, never a warning, and the connection mode travels in its title.
+|The path of the page — its group and its title, with the cleanup as `Machine › System › Cleanup` — the search trigger of the command palette, the live indicator (<<live-state>>), and the machine's name as a `Chip` (link:components-tags.adoc#chip[Tags and Kinds, Chip]). The chip is neutral in both modes: the machine's name is a fact, never a warning, and the connection mode travels in its title.
 
 |Bottom bar
 |Below `768 px` the rail has no room, so the four destinations a person opens most stand at the foot of the page: Running work, Decisions, Reports, and *More*. *More* opens a sheet with every destination of the three groups — the same list the rail carries — and with the language switch and the theme choice the rail's foot offers on a desktop. Each item keeps a visible label: a phone has no hover for a tooltip. The top bar still carries the path and the search trigger.
@@ -177,7 +177,7 @@ rail      ▣ plan-marshall        │ top bar   path › path › title   [sear
 ----
 
 * *Rail*: the three groups of destinations (<<shell>>), their counts, the brand in the head and the language, theme and collapse controls in the foot. It stays while the person moves between views; only a phone hides it.
-* *Top bar*: the path of the page, the search trigger, the live indicator, and the machine's name in a neutral pill. The path is the frame's trail; a view that has a path of its own inside its body (the plan view) keeps it, and the two say the same thing.
+* *Top bar*: the path of the page, the search trigger, the live indicator, and the machine's name as a `Chip`. The path is the frame's trail; a view that has a path of its own inside its body (the plan view) keeps it, and the two say the same thing.
 * *Notices*: at most one line per kind, above the view and below the top bar, never over the body. The progress line of a drain or an upgrade is on every paired device (link:../shared/system.adoc[System]); the arrival line names what arrived and holds the one step to it (link:../shared/reports.adoc#arrival[Reports, On Start], link:../shared/decisions.adoc#announce[Decisions, Announcing a Decision]). The connection state is not a notice: the live indicator of the top bar carries it (<<live-state>>).
 * *Context*: the view's title, its breadcrumb where it has a path, its actions on the right, and its filter, sort, or grouping controls directly below the title. A dialogue is never a tier of the frame: it opens over the body and keeps the rail and the top bar in place.
 * *Body*: one scroll container. The page itself does not scroll sideways; a wide table scrolls inside its own wrapper.
@@ -201,11 +201,41 @@ rail      ▣ plan-marshall        │ top bar   path › path › title   [sear
 
 |`--radius-sm` … `--radius-full`
 |`6px`, `8px`, `12px`, `9999px`
-|Controls and chips take `--radius-sm`; buttons `--radius-md`; cards and dialogues `--radius-lg`; counts and pills `--radius-full`. A badge is never a card and a card never a pill.
+|Chips and pull request chips take `--radius-sm`; buttons and fields `--radius-md` (<<control-tokens>>); cards and dialogues `--radius-lg`; the two boxed tags, `CountBadge` and `ReasonBadge`, `--radius-full`. Only the tag family draws a tag (link:components-tags.adoc[Tags and Kinds]): a tag is never a card and a card never a pill.
 
 |`--shadow-1`, `--shadow-2`, `--shadow-overlay`
 |three steps
 |A card at rest takes `--shadow-1`; a popover takes `--shadow-2`; a dialogue takes `--shadow-overlay`. In dark, elevation is the surface step and the shadows stay faint.
+|===
+
+[#control-tokens]
+==== Control Tokens
+
+Every field and every button draws its frame from the same tokens, so a field and the button beside it stand on one line (link:components-fields.adoc#form-shape[Fields and Forms, One Form Shape]):
+
+[cols="1,1,2",options="header"]
+|===
+|Token |Value |Use
+
+|`--control-height`
+|`34px`; `44px` below `768px`
+|The height of a field and of a `md` `Button`.
+
+|`--control-radius`
+|`--radius-md`
+|The corner of a field and of a button.
+
+|`--control-bg`
+|`--color-bg-surface`
+|The ground of a field.
+
+|`--control-border`
+|`--color-border-strong`
+|The edge of a field at rest; `--color-danger` while it is invalid.
+
+|`--layer-sticky`, `--layer-bar`, `--layer-menu`, `--layer-toast`, `--layer-dialog`
+|`1`, `20`, `30`, `90`, `100`
+|What lies above what (link:components.adoc#layers[Components, Layers]).
 |===
 
 The content column is centred and bounded by the page template a view sits on
@@ -294,7 +324,7 @@ Each size carries its line height as `--line-height-xs` to `--line-height-3xl` a
 
 `--font-sans` is the face of every word of the interface. `--font-mono` (at `0.9em`) is the face of every identifier, path, digest, branch, commit, model id, version, count of tokens, diff line, and log line: anything the operator may compare character by character or copy. A view switches the face, never the words: a value is not translated, an identifier is never emphasised by a colour alone.
 
-Text does not fall below `--text-xs`, and a line of copy is at most `72ch` wide. A label is short and in sentence case; a button is labelled with what it does ("Enrol 2 harnesses", never "Next"); a heading is a statement, not a question. Numerals are tabular in a table and a figure.
+Text does not fall below `--text-xs`, and a line of copy is at most `72ch` wide. A label is short and in sentence case. A button is labelled with what it does, an imperative with its object ("Enrol 2 harnesses", never "Next"), in German the _du_ imperative ("Speichere"); a link names its destination as a noun (link:components.adoc#labels[Components, Labels]). A field's label names its value as a noun phrase, without a colon and without an instruction, and an optional field says `(optional)` after it (link:components-fields.adoc#field-texts[Fields and Forms, Labels, Hints, Placeholders]). A heading is a statement, not a question. Numerals are tabular in a table and a figure.
 
 [#colour]
 === Semantic Colour Tokens
@@ -319,7 +349,7 @@ The palette is semantic: a view names the role, not the hue. The tokens are defi
 
 |Brand
 |`--color-brand`, `--color-brand-hover`, `--color-brand-subtle`
-|The one action of a view, a link, the selected row, the brand mark.
+|The one primary act of a screen, the focus ring, the selected item (its row, its tab, the chosen option of a segmented control), the brand mark. Never an id, a count, a marker, a tag, a kind, or a link.
 
 |Attention
 |`--color-attention`, `--color-attention-subtle`, `--color-attention-text`
@@ -330,8 +360,8 @@ The palette is semantic: a view names the role, not the hue. The tokens are defi
 |The dot of running work and a progress bar.
 
 |Success
-|`--color-success`
-|The dot of a finished check, a ready project, a plan that landed.
+|`--color-success`, `--color-success-subtle`
+|The dot of a finished check, a ready project, a plan that landed; the subtle step has a value of its own in both themes, never an alias of `--color-bg-subtle`.
 
 |Danger
 |`--color-danger`, `--color-danger-subtle`
@@ -341,14 +371,14 @@ The palette is semantic: a view names the role, not the hue. The tokens are defi
 |`--color-neutral`
 |The dot of planned, paused or staged work.
 
-|Epic
-|`--color-epic`
-|The epic glyph, never a fill.
+|Kind
+|`--color-kind-project`, `--color-kind-epic`, `--color-kind-plan`
+|The icon of a project's, an epic's and a plan's `KindMark`, never a fill, a row or a word; the other kinds are neutral. They replace `--color-epic` and keep a measured distance from every colour above and from the mascot (link:components-tags.adoc#kind-tints[Tags and Kinds, The Three Kind Tints]).
 |===
 
 The names of design system v1 (`--color-primary`, `--color-warning`, `--color-bg-inset` and the rest) stay declared as aliases of these tokens until link:../../claude_review/visual-design/plan.adoc#VD-S-08[VD-S-08] removes them; a view may still name one, and it renders the v2 value of its theme.
 
-A colour never carries a meaning alone: every state also has its word and, where it stands in a row, its badge glyph or icon. `--color-brand` marks exactly one primary action per screen; every other action is secondary or a plain link. A danger control is filled only for the irreversible act of its dialogue; the entry that opens the dialogue is a plain danger-coloured link.
+A colour never carries a meaning alone: every state also has its word and, where it stands in a row, its dot or icon. One colour has one meaning (link:components-tags.adoc#tag-colour[Tags and Kinds, One Meaning per Colour]). `--color-brand` marks exactly one primary act per screen, the act of the object shown; every other act is secondary or ghost, and a link is a link, never brand-coloured. A danger control is filled only as the confirming button of a `ConfirmDialog`; the act that opens it is an entry of the overflow menu in the danger text colour, with `…`, never a visible danger button or a red link at rest (link:components.adoc#hierarchy[Components, Hierarchy]).
 
 [#states]
 === States and Attention
@@ -358,31 +388,31 @@ A colour never carries a meaning alone: every state also has its word and, where
 |State |Shown as |Example
 
 |Neutral
-|A muted badge or plain text
-|`planned`, `not taken`, `none`
+|A `StatusLabel` with the neutral dot, or plain text
+|`staged`, `paused`, `not taken`, `none`
 
 |In progress
-|A spinner and a line that names the act
-|`Checking the premise …`, `drafting w3`
+|A `StatusLabel` with the running dot for an object; a spinner and a line that names the act for a check
+|`running`, `Checking the premise …`
 
 |Done
-|A success badge with its word, never a bare colour
+|A `StatusLabel` with the success dot and its word, never a bare colour
 |`done`, `merged`, `ready`
 
 |Waiting for the operator
-|A warning badge that starts with `!` and its count, plus its word in the row's detail
-|`! 2`, `waiting for you`, `setup needs you`
+|A `StatusLabel` with the attention dot, and a `ReasonBadge` that starts with `!` and names why (`! 2 · decision` when it is more than one); in a group head a `CountBadge` with `! n`
+|`waiting for you`, `! decision`, `! 2`
 
 |Failed
-|A danger badge and the reason beside it
-|`failed`, `the start failed: …`
+|A `StatusLabel` with the danger dot, and the reason as a `ReasonBadge` where the runtime lists one, or in the detail line
+|`failed`, `! landing failed`, `the start failed: …`
 
 |Held or stalled
-|A warning or danger badge on the row that holds, with the hold's kind
-|`held`, `stalled`, `integrity hold`
+|A `StatusLabel` with the attention dot, and the hold as a `ReasonBadge` (danger for an integrity hold)
+|`held`, `! stalled`, `! integrity hold`
 |===
 
-A badge is at most one per kind per row; a row that carries both a state and a hold shows the hold first. The overview's `! n` badge is the operator's one count of what needs them (link:../shared/plan-overview.adoc#item-rows[Plan Overview, A Plan, an Epic]); the reports entry's count is unread reports only and never mixes with it. A check that has not run says so; nothing is shown as done that was not checked.
+A row carries at most one tag of each type; its reason stands first in its right-hand group, before its phase and its state (link:components-tags.adoc#tag-places[Tags and Kinds, One Fixed Place]). The `! n` in a group head is the operator's one count of what needs them (link:../shared/plan-overview.adoc#item-rows[Plan Overview, A Plan, an Epic]); the reports entry's count is unread reports only, neutral, and never mixes with it. A check that has not run says so; nothing is shown as done that was not checked.
 
 [#themes]
 === Light and Dark Themes
@@ -414,7 +444,7 @@ body      pm-mcp-clients
 
 * The subject is the report's own text from the catalogue with its parameters; the relative time is the only figure the client adds, and `--font-mono` is used only for the identifiers of the path.
 * An unread row leads with a dot and sets its subject in the semibold weight; a row read by opening its detail stays beside the detail until the detail closes, without the dot and in the normal weight, and names its state _read_ in words.
-* The row menu stands at the end of the row: the word _Report actions_ beside the glyph from the tablet width up, its accessible name carrying the row's subject. It holds _Mark read_ for that one report; _Show the details_ opens the detail and marks the report read; _Mark all shown read_ acts on the list as shown.
+* The row menu stands at the end of the row: an icon-only `⋯` (link:components.adoc#icon-button[Components, IconButton]), its accessible name _Report actions_ carrying the row's subject. It holds _Mark read_ for that one report; _Show the details_ opens the detail and marks the report read; _Mark all shown read_ acts on the list as shown.
 * A report of the machine (`system.*`) stands in the group _This machine_ of its own, whatever project the wire also names (link:../shared/reports.adoc#list[Reports, The List]).
 * An empty list says that nothing is new and that read reports are not shown again (link:../shared/reports.adoc#read[Reports, Reading a Report]).
 
@@ -445,7 +475,7 @@ body      Runtime   pm-mcpd 0.9.1 · build 2026-10-02 (a1b2c3d)   0.10.0 availab
 ----
 
 * The three acts are buttons in the context tier, not in the body; each opens its confirmation as a dialogue over the view. A figure that leads to what it counts is a link; a figure that is not measured says so and never shows a zero.
-* Grouping and window switches are segmented controls of the part they belong to (`--color-primary-subtle` for the chosen one), not a global filter.
+* Grouping and window switches are each a `SegmentedControl` of the part they belong to (link:components.adoc#segmented-control[Components, SegmentedControl]: a radio group, the chosen option on `--color-brand-subtle`, never a solid brand fill), not a global filter.
 * The stopped state replaces the body with the page that says the runtime is stopped and how to start it; the header and the frame stay, and the page connects again by itself.
 * Width: the dashboard template (at most `1440px`, link:view-density-and-filtering.adoc#templates[Page Templates Replace the Layout Modes]); the parts stack in the same order on the tablet and the phone, and a figure's unit stays with its number.
 

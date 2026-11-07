@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 120" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <!-- Theme handling: theme-neutral. The picture paints its own surface, as every component picture of components.adoc does, so it reads the same on a light and a dark page. -->
+  <title id="t">The slots of a row</title>
+  <desc id="d">One row: on the left the kind mark "plan", the title "Fix Relay Transport" and the id chip "fix-relay"; on the right, in this order, the reason badge "! decision", the phase "execute", the state dot with "waits", the time "2 h" and the row menu.</desc>
+  <rect width="560" height="120" fill="#F7F7F5"/>
+  <rect x="12" y="34" width="536" height="40" rx="6" fill="#FFFFFF" stroke="#E3E3DE"/>
+  <path d="M25 47h7l3 3v11h-10z" stroke="#007785" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M28 54h4M28 57h4" stroke="#007785" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="42" y="58" font-size="12" fill="#16181D">plan</text>
+  <text x="74" y="58" font-size="13" fill="#16181D" font-weight="500">Fix Relay Transport</text>
+  <rect x="206" y="45" width="72" height="18" rx="6" fill="#F0F0EC"/>
+  <text x="214" y="58" font-size="10" font-family="ui-monospace, Menlo, monospace" fill="#3E4450">fix-relay</text>
+  <rect x="290" y="43" width="80" height="22" rx="11.0" fill="#FFF4E0"/>
+  <text x="330.0" y="58" font-size="12" fill="#8A5200" text-anchor="middle">! decision</text>
+  <path d="M386 48l9 6-9 6z" stroke="#3E4450" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="400" y="58" font-size="11" fill="#3E4450">execute</text>
+  <circle cx="456" cy="54" r="4" fill="#B86E00"/>
+  <text x="464" y="58" font-size="11" fill="#3E4450">waits</text>
+  <text x="500" y="58" font-size="11" fill="#5F6672">2 h</text>
+  <circle cx="528" cy="54" r="1.4" fill="#3E4450"/>
+  <circle cx="534" cy="54" r="1.4" fill="#3E4450"/>
+  <circle cx="540" cy="54" r="1.4" fill="#3E4450"/>
+  <g font-size="10" fill="#5F6672">
+    <text x="22" y="24">KindMark · title · Chip</text>
+    <text x="290" y="24">reason · phase · state · time · acts</text>
+    <text x="12" y="98">one shape for every kind; at most one tag of each type;</text>
+    <text x="12" y="112">the reason first in the right group, the row menu always last</text>
+  </g>
+</svg>

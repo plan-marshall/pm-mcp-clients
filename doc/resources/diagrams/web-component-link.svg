@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 150" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <!-- Theme handling: theme-neutral. The picture paints its own surface, as every component picture of components.adoc does, so it reads the same on a light and a dark page. -->
+  <title id="t">Link and ExternalLink</title>
+  <desc id="d">Three links: a head link "Completion report" in the text colour without an underline at rest; a link inside a sentence, underlined in the colour of the text; and an external link "Documentation" with the external-link glyph after it.</desc>
+  <rect width="360" height="150" fill="#F7F7F5"/>
+  <text x="24" y="40" font-size="13" fill="#16181D">Completion report</text>
+  <text x="160" y="40" font-size="11" fill="#5F6672">a head link: underlined on hover</text>
+  <text x="24" y="72" font-size="13" fill="#3E4450">Read the <tspan fill="#16181D" text-decoration="underline">completion report</tspan> before you start again.</text>
+  <text x="24" y="104" font-size="13" fill="#16181D">Documentation</text>
+  <path d="M129 94h5v5M134 94l-7 7M132 102v4h-10v-10h4" stroke="#16181D" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="144" y="104" font-size="11" fill="#5F6672">external: a new tab, said in its name</text>
+  <text x="24" y="136" font-size="11" fill="#5F6672">a link names its destination; never brand-coloured, never a button</text>
+</svg>

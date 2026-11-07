@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 140" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <!-- Theme handling: theme-neutral. The picture paints its own surface, as every component picture of components.adoc does, so it reads the same on a light and a dark page. -->
+  <title id="t">Marker</title>
+  <desc id="d">Two option rows with a marker after the label: "Keep the old API for one release" with a neutral check icon and "recommended", and "Primary desktop" with a neutral dot icon and "this one".</desc>
+  <rect width="360" height="140" fill="#F7F7F5"/>
+  <rect x="24" y="24" width="312" height="32" rx="8" fill="#FFFFFF" stroke="#E3E3DE"/>
+  <text x="36" y="44" font-size="12" fill="#16181D">Keep the old API for one release</text>
+  <circle cx="244" cy="40" r="6" stroke="#5F6672" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M241 40l2 2 4-4" stroke="#5F6672" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="256" y="44" font-size="11" fill="#3E4450">recommended</text>
+  <rect x="24" y="64" width="312" height="32" rx="8" fill="#FFFFFF" stroke="#E3E3DE"/>
+  <text x="36" y="84" font-size="12" fill="#16181D">Primary desktop</text>
+  <circle cx="244" cy="80" r="6" stroke="#5F6672" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><circle cx="244" cy="80" r="2" fill="#5F6672"/>
+  <text x="256" y="84" font-size="11" fill="#3E4450">this one</text>
+  <text x="24" y="122" font-size="11" fill="#5F6672">a neutral icon and its word; never a brand-coloured pill</text>
+</svg>

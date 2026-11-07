@@ -11,7 +11,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#i18n[Module Structure, Languages and Internationalisation]_
 
-Status: `AGREED`.
+Status: `DRAFT`.
 
 How the texts of the web app and the command-line binaries are written, kept, and translated. The architecture (one catalogue in `pm-api`, served to the web app, packs checked at build time) is specified in the section linked above; this document is about the texts themselves.
 
@@ -87,10 +87,29 @@ A word not in the glossary is translated. A new domain word is added here before
 * *German addresses the operator with _du_*, throughout and in every client; the imperative of a button follows it ("Suche nach Harnesses", "Prüfe erneut").
 * *Arguments, not concatenation.* Every variable part is an argument of the message (`{harness}`, `{count, plural, one {# role} other {# roles}}`), so that a translation can reorder it.
 
+[#acts-and-links]
+=== Acts and Links
+
+* *An act is an imperative with its object*, short, in sentence case ("Start the plan", "End the plan…"; German "Starte den Plan", "Beende den Plan…"); without an object only where the object is obvious ("Save", "Speichere"). *A link names its destination as a noun* ("Completion report", "Abschlussbericht"). A noun never labels an act, and a question never labels a button.
+* *The acts that leave without acting* keep their one short word in German, the word every dialogue of the operating system uses: "Zurück", "Abbrechen", "Schließen", "Später". Every other act takes the _du_ imperative; _Retry_ is "Try again" / "Versuche es erneut" everywhere, and reconnecting is an act of its own.
+* *`…`* ends the label of an act if and only if a dialogue follows that asks for more: every confirmation, a rename, an upgrade ("End the plan…", "Release the project…"). A link never ends with `…`.
+* *One label, one act.* Two acts never share a label, and an act carries the same label in every view and in both clients. The end of a plan is "End the plan…" and the end of an epic "End the epic…", so "Cancel" / "Abbrechen" in a dialogue means only "close without acting".
+* *No glyph as a label* (`↑ ↓ ↻ × +`): an icon with its accessible name from the catalogue. No literal: every word is a key.
+
+[#field-texts]
+=== Labels, Hints, Placeholders, Errors
+
+* *A label names the value* as a noun phrase, in sentence case, without a colon and without an instruction ("Note", "Reason", "Path of the checkout"; never "Add a note"). An optional field says `(optional)` after its label (`common.field.optional`); a required field carries no mark.
+* *A hint is one sentence* under the field, with the format or the consequence ("Moving deletes the files in the checkout."). It is never repeated in the placeholder.
+* *A placeholder is only an example value* (`KXQB-MRTN`, `~/git/my-service`), never the label and never the hint.
+* *A unit is a word beside the field* ("[30] days"), and a sentence is never split around a field: German word order does not survive it.
+* *No machine id is a label*: an aspect, a recipe parameter or a setting has a catalogue name.
+* *An error says what is wrong and what to do*, in one wording per rule ("Give a reason." for every missing reason, `common.field.reason_required`). It never is a raw exception message and never the label of a button.
+
 [#keys]
 == Keys and Packs
 
-* *Key*: `<area>.<use case or view>.<state or element>[.<part>]`, at least three parts, for example `onboard.harness.choose.title`, `onboard.harness.choose.action.check`, `common.consent.no`. The area is the pack the key lives in. Two families are exempt, because both clients read them everywhere and neither belongs to one view: `state.<kind>.<value>`, the display word of a server value, and `unit.<id>`, a workflow unit's plain name (<<titles>>). They live in `common`, their leading parts name a kind and a value rather than a view, a display word carries no argument because it is a chip, and a unit id with no dot of its own keeps the two-part key (`unit.epic`).
+* *Key*: `<area>.<use case or view>.<state or element>[.<part>]`, at least three parts, for example `onboard.harness.choose.title`, `onboard.harness.choose.action.check`, `common.consent.no`. The area is the pack the key lives in. Four families are exempt, because both clients read them everywhere and none belongs to one view: `state.<kind>.<value>`, the display word of a server value; `unit.<id>`, a workflow unit's plain name (<<titles>>); and `phase.name.<phase>` and `role.name.<role>`, the word of a phase and of a role (<<phases>>). They live in `common`, their leading parts name a kind and a value rather than a view, a display word carries no argument because it is a tag, and a unit id with no dot of its own keeps the two-part key (`unit.epic`).
 * *Areas*, each a pack; a client loads only the areas it shows, and the web app loads `common` and `web` at start and every other area when it first opens a view of it:
 ** `common`: texts every view uses, among them the texts of the consent states (link:consents.adoc#texts[Consents, Texts]) and of a setting changed meanwhile (link:work-actions-texts.adoc#texts-conflict[Changed Meanwhile]);
 ** `error`: the texts of every error code of the local API, a title, a cause and a fix per code, and the unknown fallback both clients show for a code they do not know;
@@ -109,9 +128,56 @@ A word not in the glossary is translated. A new domain word is added here before
 ** `operator`: the verbs of `pm-operator`;
 ** `relay`: `pm-mcp`.
 * *Files*: `messages/<area>.<locale>.properties`, UTF-8, ICU message syntax (arguments, `plural` with `one`, `other`, exact `=n` cases and `#`, `select` with `other`), which `pm-api` evaluates itself; no formatting library is used. English (`en`) is complete and the base; German (`de`) ships from the start.
-* *One word per value*: where an area pack still carries its own word for a value the shared `state.*` family names, the shared key is the authority. The area key stays only until the view that reads it moves to the shared key, and is removed then — except a variant that gives the state a point the chip cannot carry (`overview.state.pausing` names the task or the phase it stops after); that one stays an area key beside the shared word.
+* *One word per value*: where an area pack still carries its own word for a value the shared `state.*` family names, the shared key is the authority. The area key stays only until the view that reads it moves to the shared key, and is removed then — except a variant that gives the state a point the chip cannot carry (`overview.state.pausing` names the task or the phase it stops after); that one stays an area key beside the shared word. A value has one word in each language: _held_ is "aufgehalten" in German wherever it stands, a state or a reason.
+* *One key per concept*, in both clients (link:../web-app/components-tags.adoc#tag-words[Web App, Tags and Kinds, One Word per Value]); a second key for one of these is merged into the one named here and removed, in English and in German alike:
+** *a state* through `state.*` only;
+** *a reason* (what needs the operator) through one `overview.needs.<reason>` key per reason. Where the contract accepts two spellings of one reason, `pm-api` first normalises it to the specification's (`waiver` to `waiver_request`, `waits_for_you` to `operator_wait`), so one key remains for both clients: `overview.needs.waiver_request` and `overview.needs.operator_wait`;
+** *a kind* through `common.kind.<kind>` (`project`, `epic`, `plan`, `side_job`, `decision`, `report`, `machine`), the only kind word of both clients: what an item blocks, the kind of a match, and the path of a machine's item read it;
+** *a shared act* through one key each, in `common`: `common.back`, `common.close`, `common.cancel`, `common.save`, `common.retry`, `common.later`; the link to a plan's completion report through `report.completion.link`; a filter's label through `common.filter.label` with the list's name as its argument;
+** *one act of one view* through one family: the acts of the decomposition through `decomposition.*`, whichever view shows it.
 * *Build checks*: a pack that lacks a key of the English pack fails the build, as does a key that exists in a pack but not in English, an argument that differs from the English one, and a glossary term translated in a German text (checked against the glossary above).
 * *Delivery*: the command-line binaries carry the packs as resources of `pm-api`; the runtime serves `GET /api/v1/messages/{locale}/{area}` with an entity tag, so a browser keeps a loaded pack until the release changes it, and `GET /api/v1/messages` with the locales that have a pack and their areas; both without a device secret, so the pairing page has its texts. The pack shown is that of the machine's interface language; the locale the client sends counts only while none is set. *Retention*: once the runtime version is known, a browser keeps one catalogue per locale, keyed by that version (`pm_i18n_messages_<locale>@<version>`), and a pack of another version is dropped rather than rendered. Before the version is known — the offline first paint — the newest cached pack of the locale is rendered, and the first write after the version is known replaces it. A pack that is missing is fetched from the runtime; no older catalogue is kept as a rollback copy — that is the operator's decision of 2026-11-05, because a read costs a request and no staleness.
+
+[#phases]
+== Phases and Roles
+
+The six phases of a plan and the roles that ask are product terms: they keep their English word in both languages, as the glossary words do, and the catalogue owns them.
+
+[cols="2,1,1",options="header"]
+|===
+|Key |English |German
+
+|`phase.name.init` |init |init
+|`phase.name.refine` |refine |refine
+|`phase.name.outline` |outline |outline
+|`phase.name.plan` |plan |plan
+|`phase.name.execute` |execute |execute
+|`phase.name.finalize` |finalize |finalize
+|===
+
+* *The word, not the token.* A client shows a phase through its `phase.name.<phase>` key, never the token the runtime sends, so the guard on texts finds no wire value on screen. A role the runtime names (the role that asks a decision) is shown through `role.name.<role>` the same way, its German value equal to its English one. `phase.<phase>` is the phase's icon id and is no text (link:../web-app/workflow-visual-language.adoc#mapping[Web App, Workflow Visual Language, Unit and Phase Map]).
+* *Lowercase in both languages*, as the runtime's own words are: `execute`, never "Execute" or "Ausführen".
+* *Never with its kind*: a phase's node is `init`, never `Phase init` or `Phase phase init`.
+
+[#kinds]
+== Kinds
+
+Every object the operator sees has one kind, from a closed set, and one word for it in both clients (link:../web-app/components-tags.adoc#kind-mark[Web App, KindMark]). The word is a noun: lowercase in English, capitalised in German.
+
+[cols="2,1,1",options="header"]
+|===
+|Key |English |German
+
+|`common.kind.project` |project |Projekt
+|`common.kind.epic` |epic |Epic
+|`common.kind.plan` |plan |Plan
+|`common.kind.side_job` |side job |Nebenarbeit
+|`common.kind.decision` |decision |Entscheidung
+|`common.kind.report` |report |Bericht
+|`common.kind.machine` |machine |Maschine
+|===
+
+They replace `overview.kind.*`, `overview.find.kind.*` and `overview.needs.machine`, which named the same kinds a second time.
 
 [#titles]
 == Titles and Ids

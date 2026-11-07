@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 160" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <!-- Theme handling: theme-neutral. The picture paints its own surface, as every component picture of components.adoc does, so it reads the same on a light and a dark page. -->
+  <title id="t">RowLink</title>
+  <desc id="d">A row on the hover surface with a focus ring around the whole row: the title is the link and its target covers the row; the favourite star on the left and the row menu on the right are separate targets above it.</desc>
+  <rect width="360" height="160" fill="#F7F7F5"/>
+  <rect x="24" y="40" width="312" height="40" rx="6" fill="#F0F0EC"/>
+  <rect x="21" y="37" width="318" height="46" rx="8" fill="none" stroke="#5B4BDB" stroke-width="2"/>
+  <path d="M42 53.5l2 4.2 4.6.6-3.3 3.2.8 4.6-4.1-2.2-4.1 2.2.8-4.6-3.3-3.2 4.6-.6z" stroke="#3E4450" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M59 56h5l2 2h7v8h-14z" stroke="#606700" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="80" y="64" font-size="13" fill="#16181D" font-weight="500">pm-mcp-clients</text>
+  <circle cx="246" cy="60" r="4" fill="#1E7A4E"/><text x="254" y="64" font-size="11" fill="#3E4450">ready</text>
+  <rect x="300" y="46" width="28" height="28" rx="8" fill="#FFFFFF"/>
+  <circle cx="308" cy="60" r="1.4" fill="#3E4450"/>
+  <circle cx="314" cy="60" r="1.4" fill="#3E4450"/>
+  <circle cx="320" cy="60" r="1.4" fill="#3E4450"/>
+  <g font-size="10" fill="#5F6672">
+    <text x="24" y="24">the whole row opens the project</text>
+    <text x="24" y="104">hover, pointer and the focus ring on the whole row;</text>
+    <text x="24" y="118">the star and the row menu lie above the link and never open it;</text>
+    <text x="24" y="132">the selected row: aria-current and the brand-subtle ground</text>
+  </g>
+</svg>

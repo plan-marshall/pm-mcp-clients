@@ -7,40 +7,40 @@ link:../README.adoc[Design] » link:work-actions.adoc[Actions on Plans and Epics
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5]_
 
-Status: `AGREED`. The texts of link:work-actions.adoc[Actions on Plans and Epics]; those of the reviews and the holds are link:work-actions-review-texts.adoc[Reviews and Holds, Texts], those of the chat link:work-actions-chat-texts.adoc[Chatting with the Planning Role, Texts], and the outcomes of ended work are `overview.ended.*` (link:plan-overview.adoc#texts[Plan Overview, Texts]). How texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
+Status: `DRAFT`. The texts of link:work-actions.adoc[Actions on Plans and Epics]; those of the reviews and the holds are link:work-actions-review-texts.adoc[Reviews and Holds, Texts], those of the chat link:work-actions-chat-texts.adoc[Chatting with the Planning Role, Texts], and the outcomes of ended work are `overview.ended.*` (link:plan-overview.adoc#texts[Plan Overview, Texts]). How texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
 
 [#texts]
 == Texts
 
-Keys of the area `control`, shared by both clients (link:texts-and-languages.adoc#keys[Keys and Packs]).
+Keys of the area `control`, shared by both clients (link:texts-and-languages.adoc#keys[Keys and Packs]). The end of a plan and of an epic is labelled _End_ / _Beende_, so that _Cancel_ / _Abbrechen_ in a dialogue means only closing it; the outcome of that end keeps its name, `cancelled` (link:plan-overview.adoc#texts[Plan Overview, Texts]). An act that opens a dialogue which asks for more ends with `…` (link:texts-and-languages.adoc#acts-and-links[Texts and Languages, Acts and Links]). The settings dialogue closes with `common.close`, the epic's end dialogue cancels with `common.cancel`.
 
 [cols="3,3,3",options="header"]
 |===
 |Key |English |German
 
 |`control.plan.pause`
-|Pause
-|Halte den Plan an
+|Pause…
+|Halte den Plan an…
 
 |`control.plan.start`
 |Start
 |Starte den Plan
 
 |`control.plan.cancel`
-|Cancel
-|Brich den Plan ab
+|End the plan…
+|Beende den Plan…
 
 |`control.plan.abandon`
-|Abandon
-|Gib den Plan auf
+|Abandon…
+|Gib den Plan auf…
 
 |`control.plan.chat`
 |Chat
 |Chat
 
 |`control.plan.settings`
-|Settings
-|Einstellungen
+|Plan settings
+|Plan-Einstellungen
 
 |`control.plan.state.paused`
 |paused since {time}
@@ -91,8 +91,8 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Lass ihn weiterlaufen
 
 |`control.end.title`
-|{action, select, cancel {Cancel} abandon {Abandon} other {Abort}} {plan}?
-|{plan} {action, select, cancel {abbrechen} abandon {aufgeben} other {wegen der Integritätssperre abbrechen}}?
+|{action, select, cancel {End} abandon {Abandon} other {Abort}} {plan}?
+|{plan} {action, select, cancel {beenden} abandon {aufgeben} other {wegen der Integritätssperre abbrechen}}?
 
 |`control.end.label.what_ends`
 |What ends
@@ -135,12 +135,12 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |{action, select, cancel {Lass ihn weiterlaufen} abandon {Lass ihn angehalten} other {Lass ihn aufgehalten}}
 
 |`control.end.action`
-|{action, select, cancel {Cancel the plan} abandon {Abandon the plan} other {Abort the plan}}
-|{action, select, cancel {Brich den Plan ab} abandon {Gib den Plan auf} other {Brich den Plan wegen der Integritätssperre ab}}
+|{action, select, cancel {End the plan} abandon {Abandon the plan} other {Abort the plan}}
+|{action, select, cancel {Beende den Plan} abandon {Gib den Plan auf} other {Brich den Plan wegen der Integritätssperre ab}}
 
 |`control.settings.title`
-|Settings · {plan}
-|Einstellungen · {plan}
+|Plan settings · {plan}
+|Plan-Einstellungen · {plan}
 
 |`control.settings.group`
 |{group, select, plan_defaults {Plan defaults} roles {Roles} integrations {Integrations} other {Providers}}
@@ -169,10 +169,6 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |`control.settings.epic_told`
 |{epic} is told of a change
 |{epic} wird über eine Änderung informiert
-
-|`control.settings.close`
-|Close
-|Schließe die Einstellungen
 
 |`control.epic.next`
 |Next plan: {plan}
@@ -255,16 +251,16 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Chat
 
 |`control.epic.archive`
-|Archive
-|Archiviere das Epic
+|Archive…
+|Archiviere das Epic…
 
 |`control.epic.archive_landing`
 |the ledger is landing
 |das Ledger wird gerade gelandet
 
 |`control.epic.cancel`
-|Cancel
-|Brich das Epic ab
+|End the epic…
+|Beende das Epic…
 
 |`control.archive.title`
 |Archive {epic}?
@@ -311,16 +307,16 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Archiviere das Epic
 
 |`control.cancel_epic.title`
-|Cancel {epic}?
-|{epic} abbrechen?
+|End {epic}?
+|{epic} beenden?
 
 |`control.cancel_epic.label.plans`
 |Its plans
 |Seine Pläne
 
 |`control.cancel_epic.plans_too`
-|Cancel them too
-|Brich sie mit ab
+|End them too
+|Beende sie mit
 
 |`control.cancel_epic.plans_on`
 |Let them run on without the epic
@@ -334,13 +330,9 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |the epic is archived as cancelled
 |das Epic wird als abgebrochen archiviert
 
-|`control.cancel_epic.keep`
-|Keep it
-|Behalte es
-
 |`control.cancel_epic.action`
-|Cancel the epic
-|Brich das Epic ab
+|End the epic
+|Beende das Epic
 |===
 
 [#texts-conflict]

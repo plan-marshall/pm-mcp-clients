@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue/04-plan-finalize-terminal.adoc#running-work[Running Work], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#needs-operator[What Needs the Operator, at a Glance], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#overview-resource[The Overview Resource and Its Events], link:../../../../pm-mcp-core/doc/specification/store-schemas/02-workflow-state-store.adoc#titles[Titles and Names], link:../../../../pm-mcp-core/doc/specification/store-schemas/02-workflow-state-store.adoc#phase-start[The Start of the Current Phase], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#event-streams[Events per Scope], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work]_
 
-Status: `AGREED`. Shared by both clients: link:../terminal-client/15-overview.adoc[Terminal Client, The Overview], link:../web-app/README.adoc[Web App].
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/15-overview.adoc[Terminal Client, The Overview], link:../web-app/README.adoc[Web App].
 
 `PM-MCP` runs many plans and epics over many projects. The overview is where the operator sees what runs and what needs attention, in two dimensions: the projects, and in a project its plans and epics. This document is what both clients show; how each draws it is its own design.
 
@@ -62,12 +62,12 @@ Order: as the runtime serves it, projects that need the operator first, then by 
 |Element |Plan |Epic
 
 |Kind
-|its icon, colour, and the word `plan`
-|its icon, colour, and the word `epic`
+|its kind mark: the plan's icon in its tint and the word `plan` (`common.kind.plan`); in the web app a `KindMark` (link:../web-app/components-tags.adoc#kind-mark[Web App, KindMark])
+|its kind mark: the epic's icon in its tint and the word `epic` (`common.kind.epic`)
 
 |Needs the operator
-|the marker with the count and the kind of the first, from one closed list: `decision`, `waiver`, `waits for you` (any other operator wait), the holds `stalled`, `needs a fix` (a condition), `integrity hold`, `held`, `landing failed`, and `setup` (`! 2 · decision`, `! stalled`); the machine's own items, `credential` and `cleanup due`, belong to no plan and show in the list of everything that waits and in the terminal's badges
-|the same, counting its plans' items too, and `new findings` of its own
+|the marker: `!`, the count where there is more than one, and the reason of the first, from one closed list: `decision`, `waiver`, `waits for you` (any other operator wait), the holds `stalled`, `needs a fix` (a condition), `integrity hold`, `held`, `landing failed`, and `setup` (`! 2 · decision`, `! stalled`); in the web app a `ReasonBadge`, the first of the row's right-hand group (link:../web-app/components-tags.adoc#reason-badge[Web App, ReasonBadge]); the machine's own items, `credential` and `cleanup due`, belong to no plan and show in the list of everything that waits and in the terminal's badges
+|the same, counting its plans' items too, and `new findings` of its own; an epic whose completion review waits for the operator shows `completion review`
 
 |Title
 |the plan's title
@@ -107,7 +107,7 @@ Order: as the runtime serves it, projects that need the operator first, then by 
 [#distinction]
 == Telling Them Apart
 
-A plan and an epic differ by three things at once, so that none carries the meaning alone: an icon, a colour, and a word. The web app takes its icons from the icon set of its design system (`web-design`, under a permissive licence such as Apache-2.0, MIT, or ISC); the terminal uses a glyph, with ASCII where UTF-8 is missing:
+A plan and an epic differ by three things at once, so that none carries the meaning alone: an icon, a colour, and a word. The web app draws them as a `KindMark`, the icon in the kind's tint beside its word (link:../web-app/components-tags.adoc#kind-mark[Web App, KindMark]); the terminal uses a glyph, with ASCII where UTF-8 is missing:
 
 [cols="1,1,1,2",options="header"]
 |===
@@ -116,12 +116,12 @@ A plan and an epic differ by three things at once, so that none carries the mean
 |Plan
 |`▸`
 |`>`
-|the plan colour of the design system (terminal: cyan)
+|the plan's tint, `--color-kind-plan` (terminal: cyan)
 
 |Epic
 |`◇`
 |`<>`
-|the epic colour (terminal: magenta)
+|the epic's tint, `--color-kind-epic` (terminal: magenta)
 
 |Needs the operator
 |`!`
@@ -171,7 +171,7 @@ A remembered plan that has ended falls back to its project; a project that no lo
 [#texts]
 == Texts
 
-Keys of the area `overview`, shared by both clients (link:texts-and-languages.adoc#keys[Keys and Packs]).
+Keys of the area `overview`, shared by both clients (link:texts-and-languages.adoc#keys[Keys and Packs]). The word of a kind is `common.kind.<kind>` (link:texts-and-languages.adoc#keys[Keys and Packs, One Key per Concept]); the reason's badge and the completion review are `overview.needs.badge` and `overview.needs.completion_review` (link:needs-and-find.adoc#texts[What Waits, Texts]).
 
 [cols="3,3,3",options="header"]
 |===
@@ -204,14 +204,6 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |`overview.view.by_epic`
 |by epic
 |nach Epic
-
-|`overview.kind.plan`
-|plan
-|Plan
-
-|`overview.kind.epic`
-|epic
-|Epic
 
 |`overview.group.without_epic`
 |without epic
@@ -247,7 +239,7 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 
 |`overview.needs.held`
 |held
-|zurückgehalten
+|aufgehalten
 
 |`overview.needs.landing_failed`
 |landing failed

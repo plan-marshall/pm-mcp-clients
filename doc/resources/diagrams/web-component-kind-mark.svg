@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 196" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <!-- Theme handling: theme-neutral. The picture paints its own surface, as every component picture of components.adoc does, so it reads the same on a light and a dark page. -->
+  <title id="t">KindMark</title>
+  <desc id="d">The seven kind marks, each an icon and a word, in the light theme above and the dark theme below. Project (olive), epic (magenta) and plan (teal) carry their tint on the icon only; side job, decision, report and machine are neutral and told apart by shape and word.</desc>
+  <rect width="360" height="196" fill="#F7F7F5"/>
+  <rect x="0" y="0" width="360" height="86" fill="#FFFFFF"/>
+  <text x="16" y="16" font-size="10" fill="#5F6672">light</text>
+  <path d="M17 30h5l2 2h7v8h-14z" stroke="#606700" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="38" y="38" font-size="12" fill="#16181D">project</text>
+  <path d="M110 28l7 3.5-7 3.5-7-3.5z" stroke="#BB2D8C" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M103 35l7 3.5 7-3.5" stroke="#BB2D8C" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="124" y="38" font-size="12" fill="#16181D">epic</text>
+  <path d="M191 27h7l3 3v11h-10z" stroke="#007785" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M194 34h4M194 37h4" stroke="#007785" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="210" y="38" font-size="12" fill="#16181D">plan</text>
+  <path d="M276 31h11l-3-3M288 37h-11l3 3" stroke="#3E4450" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="296" y="38" font-size="12" fill="#16181D">side job</text>
+  <path d="M24 55l7 7-7 7-7-7z" stroke="#3E4450" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="38" y="66" font-size="12" fill="#16181D">decision</text>
+  <rect x="104" y="56" width="12" height="12" rx="2" stroke="#3E4450" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M107 60h6M107 63h6M107 66h3" stroke="#3E4450" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="124" y="66" font-size="12" fill="#16181D">report</text>
+  <rect x="189" y="56" width="14" height="9" rx="1.5" stroke="#3E4450" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M193 69h6M196 65v4" stroke="#3E4450" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="210" y="66" font-size="12" fill="#16181D">machine</text>
+  <rect x="0" y="86" width="360" height="86" fill="#161B22"/>
+  <text x="16" y="102" font-size="10" fill="#8B95A7">dark</text>
+  <path d="M17 116h5l2 2h7v8h-14z" stroke="#ADCD4A" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="38" y="124" font-size="12" fill="#E6EAF2">project</text>
+  <path d="M110 114l7 3.5-7 3.5-7-3.5z" stroke="#EF8BC5" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M103 121l7 3.5 7-3.5" stroke="#EF8BC5" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="124" y="124" font-size="12" fill="#E6EAF2">epic</text>
+  <path d="M191 113h7l3 3v11h-10z" stroke="#3BCDDC" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M194 120h4M194 123h4" stroke="#3BCDDC" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="210" y="124" font-size="12" fill="#E6EAF2">plan</text>
+  <path d="M276 117h11l-3-3M288 123h-11l3 3" stroke="#AEB6C4" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="296" y="124" font-size="12" fill="#E6EAF2">side job</text>
+  <path d="M24 141l7 7-7 7-7-7z" stroke="#AEB6C4" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="38" y="152" font-size="12" fill="#E6EAF2">decision</text>
+  <rect x="104" y="142" width="12" height="12" rx="2" stroke="#AEB6C4" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M107 146h6M107 149h6M107 152h3" stroke="#AEB6C4" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="124" y="152" font-size="12" fill="#E6EAF2">report</text>
+  <rect x="189" y="142" width="14" height="9" rx="1.5" stroke="#AEB6C4" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M193 155h6M196 151v4" stroke="#AEB6C4" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="210" y="152" font-size="12" fill="#E6EAF2">machine</text>
+  <text x="16" y="188" font-size="10" fill="#5F6672">colour on the icon only; three tints, the other kinds neutral</text>
+</svg>
