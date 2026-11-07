@@ -7,7 +7,6 @@
   import Spinner from '../components/Spinner.svelte';
   import ChatPanel from '../components/ChatPanel.svelte';
   import FilterInput from '../components/FilterInput.svelte';
-  import ViewLayoutToggle from '../components/ViewLayoutToggle.svelte';
   import {
     apiClient,
     type ChatReadBack,
@@ -16,7 +15,6 @@
     type DecisionInterpretation,
   } from '../api/client';
   import { runtimeStore, refreshDecisionsCount } from '../stores/runtime';
-  import { createViewLayout, VIEW_LAYOUTS } from '../stores/viewLayout';
   import { buildHaystack, matchesHaystack, tokenize } from '../utils/filterText';
 
   const NOTIFY_KEY = 'pm_decision_notify';
@@ -25,11 +23,9 @@
   let isLoading = $state(true);
   let errorMessage = $state('');
 
-  /** The layout choice, remembered per view. */
-  const layout = createViewLayout('decisions', 'comfortable');
   /** The filter query; it runs over the loaded decisions only. */
   let query = $state('');
-  /** The decision the split layout shows on the right. */
+  /** The decision a command-palette match named; its card is marked in the column. */
   let selectedDecisionId = $state<string | null>(null);
 
   let showEvidence = $state<Record<string, boolean>>({});
@@ -96,14 +92,11 @@
     );
   });
 
-  /** The decision the split layout shows, where it still matches the filter. */
-  const selectedDecision = $derived(
-    matchingDecisions.find((dec) => dec.id === selectedDecisionId) ?? null,
-  );
-
-  // A selection the filter hides is no longer the decision the detail pane shows.
+  // A marked decision the filter hides loses its mark, so it does not come back marked once the
+  // filter changes again.
   $effect(() => {
-    if (selectedDecisionId !== null && selectedDecision === null) {
+    const selected = selectedDecisionId;
+    if (selected !== null && !matchingDecisions.some((dec) => dec.id === selected)) {
       selectedDecisionId = null;
     }
   });
@@ -123,19 +116,20 @@
   });
   $effect(() => {
     const requested = requestedDecisionId;
-    if (!requested || !decisions.some((decision) => decision.id === requested)) {
+    // While a read is in flight the spinner stands in for the column, so no card could be scrolled
+    // to: the request stays pending until the read completes and the column is mounted again.
+    if (!requested || isLoading || !decisions.some((decision) => decision.id === requested)) {
       return;
     }
-    // A filter that hides the requested decision would consume the request and leave the detail
-    // pane empty, so the filter is cleared first.
+    // A filter that hides the requested decision would consume the request with no card to land
+    // on, so the filter is cleared first.
     if (!matchingDecisions.some((decision) => decision.id === requested)) {
       query = '';
     }
     selectedDecisionId = requested;
     requestedDecisionId = null;
-    // Every layout renders the decision's card; the request brings it into view and leaves the
-    // layout the operator chose untouched. In the split layout the card mounts only after the
-    // selection changes, so the query waits for that update.
+    // The request marks the decision's card and brings it into view. A card the cleared filter
+    // hid mounts only with the next update, so the query waits for it.
     void tick().then(() => {
       const card = Array.from(document.querySelectorAll<HTMLElement>('[data-decision-id]')).find(
         (element) => element.dataset.decisionId === requested,
@@ -786,7 +780,12 @@
 </script>
 
 {#snippet decisionCard(dec: DecisionEnvelope)}
-  <article class="decision-card" data-decision-id={dec.id}>
+  <article
+    class="decision-card"
+    class:decision-card--selected={selectedDecisionId === dec.id}
+    aria-current={selectedDecisionId === dec.id ? 'true' : undefined}
+    data-decision-id={dec.id}
+  >
     {#if dec.is_waiver || dec.id.startsWith('WR-')}
       <!-- Waiver Request View -->
       <div class="waiver-card">
@@ -1227,28 +1226,15 @@
   </article>
 {/snippet}
 
-<div
-  class="decisions-view"
-  class:layout-split={$layout === 'split'}
-  class:layout-compact={$layout === 'compact'}
-  data-layout={$layout}
->
+<div class="decisions-view">
   <div class="decisions-container">
     <header class="decisions-header">
-      <div class="decisions-header__row">
-        <h1 class="decisions-heading">
-          {$t('decisions.list.title')}
-          {#if decisions.length > 0}
-            <span class="unread-pill">{$t('decisions.list.open', { count: decisions.length })}</span
-            >
-          {/if}
-        </h1>
-        <ViewLayoutToggle
-          layout={$layout}
-          modes={VIEW_LAYOUTS}
-          onchange={(mode) => layout.set(mode)}
-        />
-      </div>
+      <h1 class="decisions-heading">
+        {$t('decisions.list.title')}
+        {#if decisions.length > 0}
+          <span class="unread-pill">{$t('decisions.list.open', { count: decisions.length })}</span>
+        {/if}
+      </h1>
     </header>
 
     {#if notifyState === 'default' && !notifyAsked && sawDecisionEvent && decisions.length > 0}
@@ -1327,48 +1313,6 @@
         <div class="empty-state" data-testid="decisions-filter-empty">
           <p class="empty-title">{$t('decisions.filter.no_matches')}</p>
         </div>
-      {:else if $layout === 'split'}
-        <div class="decisions-split" class:decisions-split--has-detail={selectedDecision !== null}>
-          <div class="decisions-split__list">
-            {#each matchingDecisions as dec (dec.id)}
-              <button
-                type="button"
-                class="decision-summary"
-                class:decision-summary--active={selectedDecisionId === dec.id}
-                aria-current={selectedDecisionId === dec.id ? 'true' : undefined}
-                data-testid="decision-summary-{dec.id}"
-                onclick={() => (selectedDecisionId = dec.id)}
-              >
-                <span class="decision-summary__title">{dec.title}</span>
-                <span class="decision-summary__badges">
-                  <span class="badge badge-subject">{dec.subject}</span>
-                  <span class="badge">{$t(`decision.blocks.${dec.blocks}`)}</span>
-                  <span class="badge badge-reversibility badge-{dec.reversibility}">
-                    {$t(`decision.reversibility.${dec.reversibility}`)}
-                  </span>
-                </span>
-                {#if dec.delivered_at}
-                  <span class="waiting-time">
-                    {$t('decision.waiting', {
-                      subject: dec.scope || 'plan',
-                      time: formatTime(dec.delivered_at, 'short', $currentLocale),
-                    })}
-                  </span>
-                {/if}
-              </button>
-            {/each}
-          </div>
-          <div
-            class="decisions-split__detail"
-            class:decisions-split__detail--empty={selectedDecision === null}
-          >
-            {#if selectedDecision}
-              {@render decisionCard(selectedDecision)}
-            {:else}
-              <p class="split-placeholder">{$t('decisions.split.select')}</p>
-            {/if}
-          </div>
-        </div>
       {:else}
         <div class="decisions-list">
           {#each matchingDecisions as dec (dec.id)}
@@ -1393,95 +1337,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-  }
-
-  /* The split layout uses the window; the single-column modes keep a readable measure. */
-  .decisions-view.layout-split .decisions-container {
-    max-width: none;
-  }
-
-  .decisions-header__row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-    flex-wrap: wrap;
-  }
-
-  .decisions-split {
-    display: grid;
-    grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
-    gap: var(--space-6);
-    align-items: start;
-  }
-
-  .decisions-split__list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    min-width: 0;
-    max-height: calc(100vh - var(--space-8));
-    overflow-y: auto;
-    position: sticky;
-    top: var(--space-4);
-  }
-
-  .decisions-split__detail {
-    min-width: 0;
-  }
-
-  .decision-summary {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-    width: 100%;
-    padding: var(--space-3);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background-color: var(--color-bg-surface);
-    text-align: left;
-  }
-
-  .decision-summary:hover {
-    background-color: var(--color-bg-subtle);
-  }
-
-  .decision-summary--active {
-    border-color: var(--color-primary);
-    box-shadow: inset 3px 0 0 var(--color-primary);
-  }
-
-  .decision-summary__title {
-    font-size: var(--text-sm);
-    font-weight: 600;
-    color: var(--color-text-primary);
-  }
-
-  .decision-summary__badges {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-1);
-  }
-
-  .split-placeholder {
-    padding: var(--space-10) var(--space-4);
-    border: 1px dashed var(--color-border);
-    border-radius: var(--radius-lg);
-    color: var(--color-text-muted);
-    text-align: center;
-  }
-
-  /* Compact: tighter cards and gaps; the evidence stays behind its disclosure. */
-  .decisions-view.layout-compact .decisions-list {
-    gap: var(--space-3);
-  }
-
-  .decisions-view.layout-compact .decision-card {
-    padding: var(--space-3);
-  }
-
-  .decisions-view.layout-compact .card-header {
-    margin-bottom: var(--space-2);
   }
 
   .decisions-header {
@@ -1538,6 +1393,15 @@
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-sm);
     padding: var(--space-5);
+    scroll-margin-top: var(--space-4);
+  }
+
+  /* The decision a command-palette match named: a primary left border marks it in the column. */
+  .decision-card--selected {
+    border-color: var(--color-primary);
+    box-shadow:
+      inset 3px 0 0 var(--color-primary),
+      var(--shadow-sm);
   }
 
   .card-header {
@@ -1982,27 +1846,6 @@
     margin: var(--space-2) 0 0 0;
     font-size: var(--text-xs);
     color: var(--color-text-secondary);
-  }
-
-  @media (max-width: 959px) {
-    /* Below the split breakpoint the view is one column again: list or detail, never both. */
-    .decisions-split {
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .decisions-split__list {
-      position: static;
-      max-height: none;
-      overflow-y: visible;
-    }
-
-    .decisions-split--has-detail .decisions-split__list {
-      display: none;
-    }
-
-    .decisions-split__detail--empty {
-      display: none;
-    }
   }
 
   @media (max-width: 640px) {
