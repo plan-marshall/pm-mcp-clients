@@ -48,7 +48,7 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/visual-design/plan.adoc#CLI-VD-S-04`, `doc/claude_review/cli/visual-design/proposals.adoc#CLI-VD-P-03` — read at `doc/claude_review/cli/visual-design/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-mcp-clients main 94bbefe1: doc/claude_review/cli/visual-design/plan.adoc:40-41 [#CLI-VD-S-04] The Column Grid and the Repeats; proposals.adoc:76-77 [#CLI-VD-P-03] One Column Grid for Rows
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/visual-design/plan.adoc:40-41 [#CLI-VD-S-04], proposals.adoc:76-77 [#CLI-VD-P-03] exist
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): RowLayout still not created: operator/layout/ holds only OperatorLayout.java and package-info; system/ now has SystemView, SystemLevel, SystemFormatting from PLAN-26 (spec's system view grid work must start from those); transcript/ resources now include console-settings, plan-view, status etc. already updated by PLAN-26/PLAN-91.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
@@ -61,12 +61,17 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/reports/` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/system/` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/test/resources/transcript/` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/tui/TuiLayout.java` — present at HEAD aa3a9be3
 
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-44` (`cli-colour-roles-and-brand`)
 - Overlaps with: none known at staging
 - Adjacent to: none
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. `RowLayout` appears nowhere (`operator/layout/` holds `OperatorLayout` and `package-info` only). The epic and projects rows (`epicview/`, `projects/`) also use the grid beyond the four views the Objective lists; the `*FullScreenTest` classes exist.
 
 ## Hand-Off Command
 

@@ -88,16 +88,22 @@ is changed and checked with it. Code and catalogue only: no design session.
   `icon: 'nav.settings'`; `common.de.properties:100` is "Einstellungen der Maschine" and `common.en.properties:100`
   "Machine settings"; `nav-settings.svg` is a circle with eight rays; `uiIcons.ts:44,69` registers it — verified by a
   read-only check at HEAD 60b4bfa5 on 2026-11-06
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: nav.ts:103-109 labelKey web.frame.settings icon nav.settings; common.de:100 / common.en:100 Einstellungen der Maschine / Machine settings; nav-settings.svg circle with 8 rays; uiIcons.ts:44,69 register it
 - OBSERVED: `control.plan.settings` is "Settings" / "Einstellungen" in `control.{en,de}.properties:16`; `ActionMenus.java:248`
   reads it; the only other consumer is `byState.ts` (six sites, key unchanged) — verified at HEAD 60b4bfa5 on 2026-11-06
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: control.{en,de}.properties:16 Settings/Einstellungen; ActionMenus.java:248 reads the key; byState.ts six sites (67,73,79,87,93,98)
 - OBSERVED: `web.frame.settings` has no consumer outside the web rail and `onboarding-texts.adoc:91-93` — verified at HEAD
   60b4bfa5 on 2026-11-06
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: only nav.ts and onboarding-texts.adoc:91-93 use web.frame.settings
 - OBSERVED: no snapshot files exist (`__snapshots__`, `.snap`); the terminal asserts the plan-menu label in plain tests, not in
   transcript captures — verified at HEAD 60b4bfa5 on 2026-11-06 (the message said "transcript captures": refuted)
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: no __snapshots__ or .snap files in pm-web-app
 - HYPOTHESIS: `devices.spec.js:20` and `onboarding.spec.js:178` (`/Settings/i`) match more than one button once the rail entry
   is "Settings" (strict-mode violation) — inferred, not run; confirm/refute by running both specs (verify-at-outline)
+  - verdict: unverifiable | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: the strict-mode clash of devices.spec:20 and onboarding.spec:178 needs a Playwright run
 - HYPOTHESIS: `uiIcons.test.ts` checks asset names against the registry only, not SVG content — confirm/refute at
   `pm-web-app/src/lib/icons/uiIcons.test.ts` (verify-at-outline)
+  - verdict: contradicted | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: yes | evidence: uiIcons.test.ts checks SVG content (24 grid, 1.5 stroke, currentColor, round caps, forbidden tags): the new cog must satisfy it; work-actions-texts.adoc:41-43, work-actions.adoc:26-50 and 19-actions.adoc:59,75-76 already say Plan settings (PLAN-112), so the doc edits for the plan act are dropped
 - Verify-first clause: re-read the named lines at the current HEAD before editing; `PLAN-106` (running) and `PLAN-60`/`PLAN-85`
   (staged) edit neighbouring files.
 
@@ -118,8 +124,6 @@ is changed and checked with it. Code and catalogue only: no design session.
 - OBSERVED: `pm-web-e2e/tests/devices.spec.js` — present at HEAD 60b4bfa5 (check only)
 - OBSERVED: `pm-web-e2e/tests/onboarding.spec.js` — present at HEAD 60b4bfa5 (check only)
 - OBSERVED: `doc/design/web-app/onboarding-texts.adoc` — present at HEAD 60b4bfa5
-- OBSERVED: `doc/design/shared/work-actions-texts.adoc` — present at HEAD 60b4bfa5
-- OBSERVED: `doc/design/shared/work-actions.adoc` — present at HEAD 60b4bfa5 (optional touch)
 
 ## Dependencies and Sequencing
 
@@ -128,6 +132,10 @@ is changed and checked with it. Code and catalogue only: no design session.
   (`theme-readability.spec.js`; staged and gated), `PLAN-60` (owns the settings pages and merges `/settings` and
   `/settings/machine`; starts after this plan), `PLAN-97` (`terminal-client/19-actions.adoc`, optional touch only)
 - Adjacent to: `PLAN-112` (D1 changes `control.plan.settings` only if this plan has not landed it)
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. The shared documents are DONE by PLAN-112 (D1): `work-actions-texts.adoc:41-43` reads "Plan settings…" / "Plan-Einstellungen…", `work-actions.adoc:26-50` and `19-actions.adoc:59,75-76` already say "Plan settings…": drop those doc edits and the PLAN-97 restriction on `19-actions.adoc`. Still to do: the catalogue keys, the web rail (`nav.ts:103-109`, `nav-settings.svg`, `uiIcons.ts`), the two Java tests, `onboarding-texts.adoc:91-93` (`web.frame.settings`), the six `byState.ts` sites. The new cog must satisfy `uiIcons.test.ts` (24 grid, 1.5 stroke, `currentColor`, round caps, no forbidden tags). The strict-mode clash of `devices.spec:20` and `onboarding.spec:178` needs a run (unverifiable by reading).
 
 ## Hand-Off Command
 

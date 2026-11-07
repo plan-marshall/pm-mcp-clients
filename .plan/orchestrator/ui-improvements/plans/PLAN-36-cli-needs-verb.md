@@ -57,7 +57,7 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/ux/plan.adoc#CLI-UX-S-04`, `doc/claude_review/cli/ux/proposals.adoc#CLI-UX-P-01` — read at `doc/claude_review/cli/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/cli/ux/plan.adoc:37 [#CLI-UX-S-04]; ux/proposals.adoc:9-10 [#CLI-UX-P-01] Needs You in Every Surface
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:37 [#CLI-UX-S-04], ux/proposals.adoc:9 [#CLI-UX-P-01] exist at aa3a9be3
 - Re-grounded at HEAD 07104678 (2026-10-30) after PR #278 and `plan-marshall-documentation` PR #135 (ThinkRail): UC-PLN-7 is `AGREED` and now reads "see in one place everything that waits, across all projects": decisions, holds, failed landings, setup questions, findings and watches, a credential that expires or failed, a cleanup that is due, any other operator wait. The machine has its own `needs_operator` summary with the kinds `credential` and `cleanup_due`, and the runtime serves the list in its order (blocking first, then oldest). The package `needs-and-find` (`doc/plans/needs-and-find.adoc`) designs the two views; this plan is its terminal "what waits" half and `PLAN-84` its terminal "find" half. `doc/design/shared/plan-overview.adoc` (kinds `credential` and `cleanup due`) and `terminal-client/04-console.adoc` (the machine as a source) are already updated.
 - Re-grounded note at HEAD a07a09b6 (2026-10-30): `cli-actions-by-state` (PLAN-20, shipped, PR #273) made `!` the key of the `Decide` entry in the `a` menu of a waiting plan and tests it unique in every menu (`ActionsCatalogueTest`). The `!` that this plan gives the prompt and the overview root ("`!` opens the act of the wait", "jumps to the next waiting row") is the same key with the same meaning: keep one rule, the one the catalogue key `operator.actions.key.decide` already states, and do not bind `!` to anything else. `OverviewFullScreenApp` changed (it now opens the waiting plan's decision).
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): NeedsCommand, NeedsCommandTest, NeedsIT still absent (created by this plan, correct). '!' is already bound to TuiKeyAction.WAITS in TuiKeyRegistry (project/epic levels) and is the Decide key of the a menu; PLAN-91 changed OverviewFullScreenApp, PmConsole and PmOperator again (dialogues run for exit code, 130 path).
@@ -80,6 +80,9 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-api/src/main/resources/messages/overview.de.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/operator.en.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/operator.de.properties` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/overview/OverviewFullScreenApp.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/tui/TuiKeyRegistry.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/test/resources/screen-captures/PLAN-36.txt` — absent; created by this plan at HEAD aa3a9be3
 
 ## Dependencies and Sequencing
 
@@ -98,6 +101,10 @@ clients). The needs-spelling normalisation is one pull request, **the terminal p
 landed), staged after D1 and started after the running `PLAN-104` has landed. If this plan lands first, the terminal package
 updates its `NeedsCommand`; if the terminal package lands first, this plan reads the normalised spelling. Re-read at the
 restart; no Expected Surface change is made now.
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. `NeedsCommand`, `NeedsCommandTest` and `NeedsIT` are absent; `pm-operator` never uses `MachineApiPaths.NEEDS_OPERATOR`; `!` is bound to WAITS (`TuiKeyRegistry` ~595/643, `OverviewFullScreenApp` ~1969 `openWhatWaits`): deliverable 2 builds on that binding and adds none. The `overview.needs.*` keys exist, there is no "Needs you" group and no `credential`/`cleanup_due` badge; PLAN-97 gave the command tree no `needs` row, and PLAN-112 (D1) renamed the console badge words in the shared design (the terminal package aligns `operator.console.badge.*`). PLAN-34 (dependency) has no landing record.
 
 ## Hand-Off Command
 

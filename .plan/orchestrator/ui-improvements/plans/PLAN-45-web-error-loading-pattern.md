@@ -72,7 +72,7 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/ux/plan.adoc (UX-S-06)`, `doc/claude_review/ux/proposals.adoc#UX-P-08` — read at `doc/claude_review/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/ux/plan.adoc:47 UX-S-06 -> UX-P-08; ux/proposals.adoc:314-315 UX-P-08 One Error Pattern, One Loading Pattern
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:47 UX-S-06 and ux/proposals.adoc:314-315 UX-P-08 exist
 - Re-grounded note at HEAD 5f9e60da (2026-10-31): `web-display-layer` (PLAN-09, shipped, PR #287) landed `displayError(code)` (tested, both languages, the unknown fallback) and the enum guard, and `shared-error-texts` (PLAN-86, shipped) the `error.<code>.*` texts; `displayError` has no production caller yet, so `ErrorState` is its first one. The loading texts (`<area>.loading`) are this plan's, not PLAN-09's. The enum guard fails on a field of `enumFields.ts` printed without `displayState`: an error view must not print a code any other way.
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): ErrorState.svelte and Skeleton.svelte now exist (PLAN-35, #302); ErrorState does not yet call displayError (grep: only lib/display/index.ts and its test), so D1 adapts an existing component and is its first caller. PLAN-90/#291 touched every view and client.ts (time format, e2e baseline): re-read.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
@@ -86,6 +86,11 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/test/java/de/planmarshall/api/resource/ErrorTextsTest.java` — present at HEAD 1b6c6ae3 (created by `PLAN-86`, which owns the completeness check of the error texts: every `ApiErrorCode` member has title, cause and fix in both languages); this plan builds no second one
+- OBSERVED: `pm-web-app/src/lib/components/ErrorState.svelte` — present at HEAD aa3a9be3
+- OBSERVED: `pm-web-app/src/lib/components/Skeleton.svelte` — present at HEAD aa3a9be3
+- OBSERVED: `pm-web-app/src/lib/views/SettingsView.svelte` — present at HEAD aa3a9be3
+- OBSERVED: `pm-web-app/src/routes/+layout.svelte` — present at HEAD aa3a9be3
+- OBSERVED: `pm-web-app/src/lib/display/index.ts` — present at HEAD aa3a9be3
 
 ## Dependencies and Sequencing
 
@@ -99,6 +104,10 @@ Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructi
 new**; queue status stays `staged`. Field, form and chat errors use the same `displayError` codes (PLAN-09) as this plan's
 load errors, so the codes this plan settles are the ones the field system (`Field` … `FormStatus`) and the `Chat`
 component consume; keep the code set closed and documented where those later plans can import it. No Expected Surface change.
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. Deliverable 5's list of six time-limit constants needs correcting: `STATE_REFRESH_TIMEOUT_MS` in `+layout.svelte:80` is 5 s, not 15 s, and is not one of them; the 15 s limits are `client.ts:2810,2975`, `SettingsView:41`, `+layout.svelte:121,148`. `ErrorState.svelte` has no `displayError` call; `lib/api/client.ts` has no `timeout` code; `ReportsView.svelte:900-901` still swaps the whole list for a `Skeleton` while `isLoading` (the spec's ~67-70 is outdated, `loadReports` is at :386); `revokeTimedOut` (`SettingsView:171`) still omits `network_offline`. PLAN-111 and PLAN-106 touched `+layout.svelte` and the withdraw paths: re-read before outline.
 
 ## Hand-Off Command
 

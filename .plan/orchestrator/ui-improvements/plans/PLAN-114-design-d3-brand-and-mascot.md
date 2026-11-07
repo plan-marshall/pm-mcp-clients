@@ -80,15 +80,19 @@ ui-improvements`; read, never write):
 
 - OBSERVED: `doc/design/web-app/brand-mark.adoc`, `entry.adoc`, `onboarding.adoc`, `workflow-visual-language.adoc`,
   `components.adoc`, `README.adoc` exist — listed at HEAD 60b4bfa5
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: all six documents named exist on main
 - HYPOTHESIS: the brand mark is used in four places (rail head 24 px in a 28 px violet plate, pairing page 64 px, empty
   states muted, favicon `static/brand-mark.svg` and `brand-mark-attention.svg` applied by `src/favicon.ts`) — confirm/refute
   at `pm-web-app/src/lib/shell/NavRail.svelte` § brand block, `pm-web-app/src/lib/views/PairingView.svelte` §
   `plan-marshall-mark` and `pm-web-app/src/lib/favicon.ts` (verify-at-outline)
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: NavRail.svelte:91,96 BrandMark size 24 with plate; BrandMark.svelte:5,64-65 28 px plate; PairingView.svelte:91 and EmptyState.svelte:30 at 64; favicon.ts:12,15 use static/brand-mark*.svg
 - HYPOTHESIS: the daemon CSP admits `img-src 'self' blob:` only and `vite.config.ts:122-125` sets `assetsInlineLimit: 0`, so
   every mascot image is a file of the app's own origin — confirm/refute at `pm-web-app/vite.config.ts` §
   `assetsInlineLimit` and the CSP in `plan-marshall/plan-marshall-mcp` `cli-and-security/03-web-server.adoc` (verify-at-outline)
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: vite.config.ts:124 assetsInlineLimit 0; plan-marshall-documentation 03-web-server.adoc:66 img-src 'self' blob:
 - HYPOTHESIS: `EmptyState.svelte` is used only by Reports today — confirm/refute at `pm-web-app/src/lib/components/EmptyState.svelte`
   § usages by a repo-wide search (verify-at-outline)
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: EmptyState is used in production only by ReportsView.svelte (besides the dev showroom and its test)
 - Verify-first clause: re-read each cited range at the current HEAD before writing the rule it supports.
 
 ## Expected Surface
@@ -108,6 +112,10 @@ ui-improvements`; read, never write):
 - Overlaps with: `PLAN-113` (D2: `README.adoc`, `components.adoc`; D3's merge is after D2's), `PLAN-115` (D4 edits
   `onboarding.adoc` after D3)
 - Adjacent to: none
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. The gate "after the running PLAN-104" is satisfied (#357 landed); D2 (PLAN-113) is still unlanded for `README.adoc` and `components.adoc` (PLAN-112 landed). No mascot or pose assets and no `WaitingMark` exist yet. The claims name no HEAD later than 60b4bfa5; the production users of `EmptyState` are `ReportsView` only.
 
 ## Hand-Off Command
 

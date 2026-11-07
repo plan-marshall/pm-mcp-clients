@@ -83,14 +83,19 @@ ui-improvements`; read, never write):
 
 - OBSERVED: the sibling checkouts `../plan-marshall-documentation` and the engine repository are expected next to this one
   (`CLAUDE.md` § Project); `../plan-marshall-documentation` was listed at HEAD 60b4bfa5
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: ../plan-marshall-documentation and ../pm-mcp-core present next to the checkout
 - HYPOTHESIS: PM-WF-24 is at `plan-marshall-documentation/doc/requirements/02-workflow.adoc:384` and says chat content is
   "sent nowhere else" — confirm/refute at that file § PM-WF-24 (verify-at-outline)
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: PM-WF-24 at 02-workflow.adoc:377, send-it-nowhere-else bullet at :384
 - HYPOTHESIS: `ChatTurnResource` in `pm-api` has no `id`, `kind`, `status`, `format`, `refs[]` or `model` today (an asserted
   absence) — confirm/refute at `pm-api/src/main/java/**/ChatTurnResource.java` § record components (verify-at-outline)
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: ChatTurnResource.java:32 has only role, text, at, untrusted
 - HYPOTHESIS: `marked` 18.1.3 is MIT with zero dependencies and `svelte-exmarkdown` renders raw HTML as literal text — taken
   from the review's npm research of 2026-11-06 — confirm/refute at the npm registry entries and, for the second claim,
   `svelte-exmarkdown` `Renderer.svelte` § `raw` (verify-at-outline; bundle sizes were not measured)
+  - verdict: unverifiable | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: npm registry and svelte-exmarkdown not readable; pm-web-app/package.json has no marked
 - Verify-first clause: re-read each cited range at the current HEAD of each repository before writing the rule it supports.
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: runtime-model 01/05/06 docs, 03-web-server.adoc, pm-mcp-core state-catalogue.adoc and open-questions.adoc exist
 
 ## Expected Surface
 
@@ -107,6 +112,7 @@ ui-improvements`; read, never write):
 - HYPOTHESIS: the sibling-repository files named in deliverables 1 and 2 (`plan-marshall-documentation` requirements, runtime
   model and web-server specification; `pm-mcp-core` state catalogue) are outside this repository's checkout and are not read
   by this spec — confirm each exists at the start of the session (verify-at-outline)
+- OBSERVED: `doc/design/shared/starting-work.adoc` — present (has a #chat section) at HEAD aa3a9be3
 
 ## Dependencies and Sequencing
 
@@ -115,6 +121,10 @@ ui-improvements`; read, never write):
   55, 58, 59, 65; PLAN-70 (chat in both themes), PLAN-72 / PLAN-73 (renderer guard, `control.chat.*`)
 - Overlaps with: `PLAN-114` (D3: `onboarding.adoc`), `PLAN-113` (D2: §10)
 - Adjacent to: none
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. `chat.adoc` is absent. Besides the listed files the deliverable also names the terminal onboarding-roles transcript and consent listing under `doc/design/terminal-client/` and `shared/starting-work.adoc`; `pm-web-app/package.json` has no `marked` yet (the lexer is approved by the operator, not yet a dependency; the npm registry could not be read). Files outside this repository are HYPOTHESIS until read.
 
 ## Hand-Off Command
 

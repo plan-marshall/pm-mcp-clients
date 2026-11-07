@@ -46,8 +46,11 @@ The web half is `PLAN-46` (the command palette behind the top bar's search butto
 ## Claim Labels
 
 - OBSERVED: the package states "one terminal command" for find and the web app's search behind the top bar's search button — read at `doc/plans/needs-and-find.adoc` at HEAD 07104678
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: in substance: doc/plans/needs-and-find.adoc task 3 'Going to work by name, in both clients'; the terminal find <text> is defined in shared/needs-and-find.adoc:89, the web search button in web-app/needs-and-find.adoc:44 (the phrase 'one terminal command' is not literal)
 - OBSERVED: no `find` command exists in `pm-operator` — searched at HEAD 07104678 (`FindCommand` absent)
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: no FindCommand file; PmOperator registers 22 verbs, none is find
 - HYPOTHESIS: the console key and the verb mode of `find` are fixed by the design of `PLAN-82` (deliverable 1), and `PLAN-42` (verb modes and help) lists every verb in one table — confirm/refute at the accepted design and `01-commands.adoc` (verify-at-outline)
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: shared/needs-and-find.adoc:89-90 fixes find <text>, --print and / at the empty prompt; 01-commands.adoc has no find or needs row and no verb-mode table (partly)
 - Re-grounded at HEAD 1651554b (2026-10-31), after `PLAN-82` landed: the texts the shared design names for find
   (`doc/design/shared/needs-and-find.adoc` § Texts: every `overview.find.*` row) are NOT in the catalogues at this head
   (grep of `pm-api/src/main/resources/messages/*.properties`), and no staged spec owned them. `PLAN-46` (web command palette)
@@ -72,12 +75,17 @@ The web half is `PLAN-46` (the command palette behind the top bar's search butto
 - OBSERVED: `doc/design/terminal-client/04-console.adoc` — present at HEAD 07104678
 - OBSERVED: `doc/plans/README.adoc` — present at HEAD 07104678
 - OBSERVED: `pm-operator/src/test/resources/screen-captures/` — present at HEAD 07104678
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/OperatorActs.java` — present at HEAD aa3a9be3
 
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-82` (`needs-and-find-contract`), `PLAN-14` (`cli-gate-scope`, shipped), `PLAN-76` (`shared-port-assignment`, shipped)
 - Overlaps with: `PLAN-46` (`overview.{en,de}.properties`, the find texts), `PLAN-36` (`PmOperator`, `PmConsole`, the catalogue pair), `PLAN-42` (`PmConsole`, `01-commands.adoc`), `PLAN-48` (`01-commands.adoc`), `PLAN-30` (`01-commands.adoc`, catalogue): run one after the other
 - Adjacent to: `PLAN-46` (the web half)
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. The `overview.find.*` rows exist in `overview.{en,de}.properties` (PLAN-46, #296): the "NOT in the catalogues" note is satisfied. `GET /api/v1/find` (`MachineApiPaths.FIND`) and `FindMatch` exist in `pm-api` (PLAN-82). This plan adds `find` to `PmOperator` and to `01-commands.adoc` after PLAN-97's tree (22 verbs, none is `find`); the `needs` row belongs to PLAN-36, not here.
 
 ## Hand-Off Command
 

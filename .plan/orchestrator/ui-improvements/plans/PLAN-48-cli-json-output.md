@@ -53,7 +53,7 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/ux/plan.adoc#CLI-UX-S-06`, `doc/claude_review/cli/ux/proposals.adoc#CLI-UX-P-07` — read at `doc/claude_review/cli/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/cli/ux/plan.adoc:56 [#CLI-UX-S-06] JSON Output; ux/proposals.adoc:125-126 [#CLI-UX-P-07] JSON for Scripts
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/ux/plan.adoc:56-57 [#CLI-UX-S-06], proposals.adoc:125-126 [#CLI-UX-P-07] exist; PlansCommand:44 declares --json
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): --json already exists on StatusCommand, PlansCommand and SystemCommand; NeedsCommand and the json/ test dir are still absent (created by this plan, correct). PLAN-26 put 'system' on one SystemView model with exit 1 on refused read: the system --json schema should be built from it.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
@@ -61,7 +61,6 @@ Source of this plan (read before scoping):
 
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/PlansCommand.java` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/StatusCommand.java` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/NeedsCommand.java` — absent at HEAD c4dc9bb4; created by this plan
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/QuestionsCommand.java` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ReportsCommand.java` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ProjectsCommand.java` — present at HEAD c4dc9bb4
@@ -70,12 +69,19 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/PlanCommand.java` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/json/` — absent at HEAD c4dc9bb4; created by this plan
 - OBSERVED: `doc/design/terminal-client/01-commands.adoc` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/PmOperator.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/OperatorActs.java` — present at HEAD aa3a9be3
+- OBSERVED: `doc/design/terminal-client/01-commands.adoc` — present at HEAD aa3a9be3
 
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-42` (`cli-verb-modes-and-help`)
 - Overlaps with: none known at staging
 - Adjacent to: none
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. `NeedsCommand` is PLAN-36's alone (created there); `needs --json` belongs here only after PLAN-36 has landed: this plan depends on PLAN-36 for it, or drops it. `--json` exists on `StatusCommand` and `SystemCommand` only; `PlansCommand:44` declares it ("Prints the status as JSON"); there is no `operator/json/` test directory; the 22-verb tree has no `needs` verb.
 
 ## Hand-Off Command
 

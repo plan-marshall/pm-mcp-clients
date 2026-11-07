@@ -83,14 +83,18 @@ ui-improvements`; read, never write):
 - OBSERVED: `doc/design/web-app/view-density-and-filtering.adoc` carries the section `Page Templates Replace the Layout
   Modes` (UX-P-03, :17-44) and `[#layouts] Layout Modes` (:46-73) — quoted by message 004 at its HEAD; present as a file at
   HEAD 60b4bfa5
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: view-density-and-filtering.adoc:17 Page Templates Replace the Layout Modes and :45-46 [#layouts] Layout Modes present; intro :12 still says the modes remain
 - HYPOTHESIS: only `DecisionView.svelte` still uses the layout toggle, so the design text can say the template's split is the
   only layout without contradicting a shipped view — confirm/refute at `pm-web-app/src/lib/views/DecisionView.svelte` §
   `ViewLayoutToggle` import and a repo-wide search for `viewLayout` (verify-at-outline; PLAN-111 removes the code, and the
   design sentence must be true by the time PLAN-111 has merged)
+  - verdict: contradicted | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: yes | evidence: no ViewLayoutToggle or viewLayout under pm-web-app/src (PLAN-111): the design sentence is now true
 - HYPOTHESIS: `goBack()` / `navigationStack` live in `pm-web-app/src/lib/stores/runtime.ts` (~890-915) and the route-param
   `pushState` in `routes/+layout.svelte:228-241` — confirm/refute at those two symbols (verify-at-outline)
+  - verdict: contradicted | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: yes | evidence: navigationStack at runtime.ts:777, goBack :869 (EpicView still uses it); pushState moved from +layout.svelte to runtime.ts:915 (replace/push chosen there)
 - HYPOTHESIS: `activeNavRoute` (`pm-web-app/src/lib/shell/nav.ts:136-152`) maps plan/epic onto Running work always —
   confirm/refute at that symbol (verify-at-outline)
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: nav.ts activeNavRoute maps plan/epic to overview, the Running work rail item
 - Verify-first clause: re-read each cited range at the current HEAD before writing the rule it supports; PLAN-97, 104, 106
   and 107 land code while this session runs.
 
@@ -110,6 +114,8 @@ ui-improvements`; read, never write):
 - OBSERVED: `doc/design/shared/project-explorer.adoc` — present at HEAD 60b4bfa5
 - OBSERVED: `doc/plans/web-moving-between-plans.adoc` — present at HEAD 60b4bfa5 (named by message 010; listing of `doc/plans/` is cut at three entries here, existence of this file is quoted from the message, not listed)
 - OBSERVED: `doc/plans/README.adoc` — present at HEAD 60b4bfa5 (its index row for PLAN-83 is updated)
+- OBSERVED: `doc/design/shared/reports.adoc` — present (:124 "keeps no layout mode") at HEAD aa3a9be3
+- OBSERVED: `doc/design/web-app/README.adoc` — present (lines 19, 242, 429, 480 link the "Layout Modes" heading) at HEAD aa3a9be3
 
 ## Dependencies and Sequencing
 
@@ -124,6 +130,10 @@ ui-improvements`; read, never write):
 ## Amendment 2026-11-07 (PLAN-111 landing)
 
 PLAN-111 merged (`bb30d71e`): the layout modes are gone from the code, the Decisions view is one column. The design text to rewrite also holds: `web-app/needs-and-find.adoc:57` ("selected and its detail pane shows it rather than the placeholder" is false: the card is scrolled to and marked, a hiding filter is cleared), the `web-app/view-density-and-filtering.adoc` "Layout Modes" section (~46-73) and the rollback paragraph (~151), and `web-app/README.adoc:19`. The text at ~:64 ("aria-current and a primary left border") now matches the code and stays.
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. PLAN-111 removed `ViewLayoutToggle`/`viewLayout`: the design sentence is now true. `navigationStack` is at `runtime.ts:777`, `goBack` at `:869` (EpicView still uses it); the replace/push `pushState` moved from `+layout.svelte` to `runtime.ts:915`. `navigation.adoc` is absent. The layout-mode text (`view-density-and-filtering.adoc` intro :12 and [#layouts] :45-46, README :19, `needs-and-find.adoc:57`) remains for this plan to rewrite.
 
 ## Hand-Off Command
 

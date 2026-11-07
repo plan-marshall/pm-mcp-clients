@@ -59,7 +59,7 @@ Run the presentation checks and the key-task walk of the terminal client against
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cli/visual-design/verification.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main: doc/claude_review/cli/visual-design/verification.adoc exists (61 lines); the checks are read there
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/visual-design/verification.adoc exists (CLI-VD-V-01..07), ux CLI-UX-V-01..07, cross-cutting CLI-CC-V-01..08
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
 
 ## Expected Surface
@@ -75,6 +75,10 @@ Run the presentation checks and the key-task walk of the terminal client against
 - Depends on: `PLAN-07` (`cli-terminal-design-docs`), `PLAN-44` (`cli-colour-roles-and-brand`, with the style and glyph classes of the former `PLAN-38`), `PLAN-50` (`cli-column-grid`), and, from the former `PLAN-40` and `PLAN-56` (superseded), `PLAN-14` (shipped), `PLAN-30`, `PLAN-34`, `PLAN-05` (shipped), `PLAN-24`, `PLAN-15` (shipped), `PLAN-36`, `PLAN-42`, `PLAN-48`, `PLAN-84`, `PLAN-86`, `PLAN-76` (`shared-port-assignment`)
 - Overlaps with: other verification plans may update the same analysis matrix (one shared file)
 - Adjacent to: the plans verified; their code stays untouched
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. Keep HELD until PLAN-34, 44, 48, 50, 84 and 36 have landed (the checks would be `not verified`). CLI-UX-V-04 (`needs`, `NeedsCommandTest`) and V-06 (`--json` on every listing verb) assume verbs that do not exist yet (`needs`, `find`); the text of CLI-UX-V-05 ("help lists every verb") predates PLAN-97's 22-verb tree: re-read it against the tree. `doc/claude_review/verification-results/verify-cli-presentation.adoc` is created by this plan.
 
 ## Hand-Off Command
 

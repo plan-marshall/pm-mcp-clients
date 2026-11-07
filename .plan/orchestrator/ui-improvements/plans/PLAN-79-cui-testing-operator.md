@@ -41,8 +41,11 @@ Convert the tests of `pm-operator` to the `pm-dev-java-cui:cui-testing` standard
 ## Claim Labels
 
 - OBSERVED: no `pm-operator` test class uses `Generators` or `@EnableGeneratorController` (0 of 116 `*Test.java` and `*IT.java`) although `pm-operator/pom.xml` declares `cui-test-generator` and `cui-test-juli-logger` — read at HEAD 7e2b4b61
+  - verdict: contradicted | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: yes | evidence: 23 of 132 test classes (111 *Test + 21 *IT) now carry @EnableGeneratorController (PLAN-26/91/92/94, #357, #358): the 0 of 116 count is stale; the HOLD on PLAN-97 is cleared
 - OBSERVED: `pm-operator` main code has no logger (`CuiLogger`, `java.util.logging`, SLF4J: none) — read by a repository-wide search at HEAD 7e2b4b61
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: no CuiLogger, JUL or SLF4J in pm-operator/src/main
 - HYPOTHESIS: most `pm-operator` tests assert catalogue texts and screen text, so the share of classes that can use generated input is small — confirm/refute by the before count (verify-at-outline); a finding that fewer than a third of the classes take incidental input is reported to the operator, not forced
+  - verdict: unverifiable | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: an outline-time count; for reference 23/132 converted and pom.xml:92,97 declares cui-test-generator and cui-test-juli-logger
 - Re-grounded note at HEAD e83a9ee2 (2026-10-31): `cui-standards-foundation` (PLAN-77, shipped, PR #282) landed the rule in `CLAUDE.md` and converted the two small modules as the pilot; `pm-operator` already declared the CUI test artifacts. Follow the pilot's pattern: draw `Generators` values inside the test or a `@BeforeEach`, not in field initialisers (flagged as not seed-controlled); a class whose values are the contract is listed input-free, not converted; expected values that derive from a generated input are re-derived from it, and contract values (catalogue texts, screen text, scripted answers) stay literal. All 11 `package-info.java` of this module carry `@NullMarked` since PLAN-77.
 - Pull request size (PLAN-78's run, 2026-10-31): the required reviewer CodeRabbit refuses a pull request of more than 100 files (it refused PLAN-78's 197-file first PR, and the optional Sourcery refuses above 150,000 diff characters), and a pull request it never reviewed cannot be merged. This plan converts about 116 test classes: its set will exceed 100 files. The `pre-commit` gate also rewrites the import grouping of main sources that drifted on `main` (171 `pm-api` files in PLAN-78's run): such a rewrite is not part of this plan and is restored from `origin/main` before the pull request (the operator authorised exactly that in PLAN-78). If the converted set still passes 100 files, stop and ask the operator to split the plan in two (unit tests; integration and transcript tests, which are this spec's two deliverables) before opening the pull request.
 - HOLD (design audit 2026-11-02): it rewrites the tests of Drain, AcceptEdit, Start, Onboard and Enrol, which the D25 (drain: signal the pid of state/runtime.json, withdraw as 'runtime stop --withdraw'), D26 and R7-7 (accept-edit enrolment <project_id>) package changes. Sequence it after that package; also sequence it with PLAN-92 (shared handler tests).
@@ -59,6 +62,10 @@ Convert the tests of `pm-operator` to the `pm-dev-java-cui:cui-testing` standard
 - Depends on: `PLAN-77` (`cui-standards-foundation`)
 - Overlaps with: every terminal plan that edits a `pm-operator` test (PLAN-14, 17, 20, 21, 22, 23, 30, 34, 36, 38, 42, 44, 48, 50 among them): runs when none of them is running
 - Adjacent to: `PLAN-78` (`pm-api` tests)
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. The before-count is 23 of 132 test classes (111 `*Test` + 21 `*IT`) carrying `@EnableGeneratorController` (added by PLAN-26/91/92/94, #357, #358), not 0 of 116; about 109 remain. The HOLD on PLAN-97 is cleared (#358 landed) and PLAN-92 shipped. PR 362 also swept `nonEmptyStrings` to `nonBlankStrings` in the `pm-api` tests: use `nonBlankStrings`.
 
 ## Hand-Off Command
 

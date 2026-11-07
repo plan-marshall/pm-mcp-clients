@@ -43,7 +43,7 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/use-cases/plan.adoc#CLI-UC-S-07`, `doc/claude_review/cli/use-cases/proposals.adoc#CLI-UC-P-05` — read at `doc/claude_review/cli/use-cases/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/cli/use-cases/plan.adoc:73 [#CLI-UC-S-07] The Cleanup Dialogue; proposals.adoc:96-97 [#CLI-UC-P-05]
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: plan.adoc:73 [#CLI-UC-S-07], proposals.adoc:96 [#CLI-UC-P-05] exist at aa3a9be3
 - Re-grounded note at HEAD 5348e89e (2026-10-30): `cli-gate-scope` (PLAN-14, shipped, PR #277) decided on the
   operator's word that the whole `cleanup` verb is an operator act, refused with exit `4` under a host marker, and
   rewrote `26-cleanup.adoc` and the command listing to say so (`cleanup` and `--kept` marked `[op]`; `--release` joined
@@ -57,18 +57,23 @@ Source of this plan (read before scoping):
 
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/CleanupCommand.java` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/CleanupCommandTest.java` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/CleanupDialogueIT.java` — absent at HEAD c4dc9bb4; created by this plan
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/CleanupDialogueIT.java` — present at HEAD aa3a9be3 (`@Disabled` for this plan; this plan enables it)
 - OBSERVED: `doc/design/terminal-client/26-cleanup.adoc` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/system.en.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/system.de.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/operator.en.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/operator.de.properties` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/test/resources/screen-captures/PLAN-23.txt` — absent; created by this plan at HEAD aa3a9be3
 
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-10` (`cli-choice-prompt-pause`), `PLAN-76` (`shared-port-assignment`)
 - Overlaps with: none known at staging
 - Adjacent to: none
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. `CleanupCommand` has no `ChoicePrompt` (only `ActionSupport` uses it); its one confirmation is `Needs a choice: --yes` (:289). The Objective names `cleanup --list`, an option the command does not have (options: `--delete`, `--exclude`, `--yes`, `--remind`, `--ignore`, `--kept`, `--release`, `--all`, `--no-input`): read it as the plain `cleanup` / `--kept` printed form. `CleanupDialogueIT` exists and is `@Disabled`: this plan enables it. The "ended ended" text is not a literal; `CleanupCommand.java:360` prepends "ended " to `item.endedAt()` (recheck the mock data at outline).
 
 ## Hand-Off Command
 

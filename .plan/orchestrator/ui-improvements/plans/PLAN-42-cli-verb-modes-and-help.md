@@ -53,7 +53,7 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/ux/plan.adoc#CLI-UX-S-05`, `doc/claude_review/cli/ux/proposals.adoc#CLI-UX-P-04` — read at `doc/claude_review/cli/ux/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/cli/ux/plan.adoc:47 [#CLI-UX-S-05] Verb Modes and Help; ux/proposals.adoc:81-82 [#CLI-UX-P-04] One Rule for Verb Modes
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: ux/plan.adoc:47 [#CLI-UX-S-05], ux/proposals.adoc:81 [#CLI-UX-P-04] and CLI-UX-P-06 at :115 exist
 - Re-grounded note at HEAD 5348e89e (2026-10-30): `cli-gate-scope` (PLAN-14, shipped, PR #277) added a minimal
   `--print` to `plan` on the operator's decision (its terminal check needed `plan fix-relay --print`) and documented
   it in `01-commands`, `16-plan-view` and the `pm-operator` README. Treat `plan <id> --print` as present; the other
@@ -78,12 +78,24 @@ Source of this plan (read before scoping):
 - OBSERVED: `doc/design/terminal-client/01-commands.adoc` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/operator.en.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/operator.de.properties` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/StatusCommand.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/PlansCommand.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/QuestionsCommand.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/DrainCommand.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/AcceptEditCommand.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ConfigCommand.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WebCommand.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/test/resources/screen-captures/PLAN-42.txt` — absent; created by this plan at HEAD aa3a9be3
 
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-30` (`cli-texts-and-errors`), `PLAN-36` (`cli-needs-verb`)
 - Overlaps with: `cli-texts-and-errors` and `cli-needs-verb` touch `PmOperator.java`: runs after them
 - Adjacent to: none
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. The HOLD's condition (PLAN-97 deliverable 3, the command tree) is met: 22 verbs, no `start`/`onboard`. Design conflict to resolve at outline: `01-commands.adoc:142` says `help` exists only inside the console and is not a shell verb and that `epic <id>` prints, while the deliverables ask for `help` in the shell and the console and `epic <id>` opening full screen; line 122 lists `help [<verb>]`. `HelpCommand` is absent, `--print` exists only on `PlanCommand` (:118). PLAN-30 and PLAN-36 (dependencies) are still open.
 
 ## Hand-Off Command
 
