@@ -102,7 +102,7 @@ Source and surface: `pm-web-app/src/lib/components/` (`Field.svelte`, `TextField
 [#validation]
 == Checking and Errors
 
-* *Required and empty*: the submit button is disabled with its reason (`disabledReason`), for example _Give a reason._, and the same reason stands in the form's `FormStatus` line, so it is read and seen without reaching the button, which a keyboard cannot focus while it is disabled. Every form follows this; none waits for the click to say a field is empty.
+* *Required and empty*: the submit button is disabled with its reason (`disabledReason`), for example _Give a reason._, and the same reason stands in the form's `FormStatus` line, so it is read and seen without reaching the button, which a keyboard cannot focus while it is disabled. The empty required field carries the reason too, in its described-by text (`aria-describedby`, beside its hint), so a screen reader names it on the field itself and does not depend on a live region announcing text that was already there. Every form follows this; none waits for the click to say a field is empty.
 * *Format and range* (a code, a number, a reference, a path) are checked when the field is left and on submit, never while typing. The error goes as soon as the value is valid. The field takes `aria-invalid` and its `FieldError`, and on submit the focus moves to the first invalid field.
 * *An error of the runtime* is mapped through the shared error codes of the display layer (`displayError`), as a load error is. An error that belongs to one field stands under it; any other stands in the form's `FormStatus`. Never at the top of the page, never a raw exception message, never in a button's label.
 * *One wording per rule*, from the catalogue.
