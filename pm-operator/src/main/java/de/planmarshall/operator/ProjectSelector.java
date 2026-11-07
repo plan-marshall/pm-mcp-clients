@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -170,22 +171,27 @@ public final class ProjectSelector {
         for (int index = 0; index < args.length; index++) {
             var arg = args[index];
             if ("--".equals(arg)) {
-                break;
+                return false;
             }
-            if (OPTION.equals(arg)) {
-                if (index + 1 >= args.length) {
-                    return true;
-                }
-                var value = args[index + 1];
-                if (value.isBlank() || QUESTION.equals(value) || value.startsWith("-")) {
-                    return true;
-                }
-            } else if (arg.startsWith(OPTION_PREFIX)) {
-                var value = arg.substring(OPTION_PREFIX.length());
-                if (value.isBlank() || QUESTION.equals(value)) {
-                    return true;
-                }
+            if (isOptionAsking(args, index)) {
+                return true;
             }
+        }
+        return false;
+    }
+
+    private static boolean isOptionAsking(String[] args, int index) {
+        var arg = args[index];
+        if (OPTION.equals(arg)) {
+            if (index + 1 >= args.length) {
+                return true;
+            }
+            var value = args[index + 1];
+            return value.isBlank() || QUESTION.equals(value) || value.startsWith("-");
+        }
+        if (arg.startsWith(OPTION_PREFIX)) {
+            var value = arg.substring(OPTION_PREFIX.length());
+            return value.isBlank() || QUESTION.equals(value);
         }
         return false;
     }
@@ -196,10 +202,7 @@ public final class ProjectSelector {
         while (index < args.length) {
             var arg = args[index];
             if ("--".equals(arg)) {
-                while (index < args.length) {
-                    resolved.add(args[index]);
-                    index++;
-                }
+                resolved.addAll(Arrays.asList(args).subList(index, args.length));
                 break;
             }
             if (OPTION.equals(arg)) {

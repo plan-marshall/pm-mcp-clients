@@ -77,6 +77,8 @@ public final class StateDialogue {
     private static final String CHECKOUT_STEP = "checkout";
     private static final String UNKNOWN = "onboard.state.unknown";
     private static final String LABEL = "label";
+    private static final String TOTAL_STEPS_FIELD = "total_steps";
+    private static final String STEP_FIELD = "step";
     private static final int CONTENT_WIDTH = 76;
     private static final Set<String> BARE_FIELDS = Set.of(
                         NAME, SUMMARY, VALUE, REASON, "model_id", "role", "effort",
@@ -701,9 +703,9 @@ public final class StateDialogue {
         var envelope = JsonTree.asObject(map.get(OPERATOR));
         var source = envelope != null ? envelope : map;
         var stateId = stateIdOf(source, map);
-        var reportedTotal = JsonTree.integer(source, "total_steps");
+        var reportedTotal = JsonTree.integer(source, TOTAL_STEPS_FIELD);
         if (reportedTotal == null) {
-            reportedTotal = JsonTree.integer(map, "total_steps");
+            reportedTotal = JsonTree.integer(map, TOTAL_STEPS_FIELD);
         }
         int effectiveTotal = reportedTotal != null && reportedTotal > 0 ? reportedTotal : totalSteps;
         return new Frame(stateId, kindOf(source), stepOf(source, map, stateId, effectiveTotal, project),
@@ -719,9 +721,9 @@ public final class StateDialogue {
                         int totalSteps, boolean project) {
         var completed = JsonTree.integer(map, "completed_steps");
         int step = completed != null ? Math.min(completed + 1, totalSteps) : 0;
-        var reportedStep = JsonTree.integer(source, "step");
+        var reportedStep = JsonTree.integer(source, STEP_FIELD);
         if (reportedStep == null) {
-            reportedStep = JsonTree.integer(map, "step");
+            reportedStep = JsonTree.integer(map, STEP_FIELD);
         }
         if (reportedStep != null) {
             step = reportedStep;
