@@ -39,7 +39,7 @@ The actions of the plan's state (`plan.actions`):
 |`waiting for you`; the decision first (link:decisions.adoc[Decisions])
 
 |held
-|Pause…, End the plan…, Chat, Plan settings, and the acts of its hold
+|Pause…, End the plan… (on an integrity hold _Abort the plan…_, the same act), Chat, Plan settings, and the acts of its hold
 |`held` with the hold's kind (`holds: a condition`); the hold first (<<holds>>)
 
 |ended

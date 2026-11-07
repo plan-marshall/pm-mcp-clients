@@ -97,12 +97,12 @@ Source and surface: `pm-web-app/src/lib/components/` (`Field.svelte`, `TextField
 * *A placeholder is only an example value* (`KXQB-MRTN`, `~/git/my-service`, `#214 or URL`), never the label and never the hint.
 * *A unit stands beside the field* (`[30] days`). A sentence is never split around a field, because German word order does not survive it.
 * *No machine id is a label*: an aspect, a recipe parameter or a setting is named by its catalogue name.
-* *One key per concept*: one _Save_ (`common.save`), one text for a missing reason (`common.field.reason_required`, _Give a reason._), one label for a secret (`common.field.token`, _Token_), and one key pattern for a filter's label (`common.filter.label` with the list's name as its argument).
+* *One key per concept*: one _Save_ (`common.action.save`), one text for a missing reason (`common.field.reason_required`, _Give a reason._), one label for a secret (`common.field.token`, _Token_), and one key pattern for a filter's label (`common.filter.label` with the list's name as its argument).
 
 [#validation]
 == Checking and Errors
 
-* *Required and empty*: the submit button is disabled with its reason (`disabledReason`), for example _Give a reason._ Every form follows this; none waits for the click to say a field is empty.
+* *Required and empty*: the submit button is disabled with its reason (`disabledReason`), for example _Give a reason._, and the same reason stands in the form's `FormStatus` line, so it is read and seen without reaching the button, which a keyboard cannot focus while it is disabled. Every form follows this; none waits for the click to say a field is empty.
 * *Format and range* (a code, a number, a reference, a path) are checked when the field is left and on submit, never while typing. The error goes as soon as the value is valid. The field takes `aria-invalid` and its `FieldError`, and on submit the focus moves to the first invalid field.
 * *An error of the runtime* is mapped through the shared error codes of the display layer (`displayError`), as a load error is. An error that belongs to one field stands under it; any other stands in the form's `FormStatus`. Never at the top of the page, never a raw exception message, never in a button's label.
 * *One wording per rule*, from the catalogue.

@@ -497,11 +497,11 @@ body      Summary   12 plans · 2 epics · 40 logs · 1.8 GB        [Check all]
                     [ ] Logs of ended work  14 days     0.1 GB
                     Unchecked items are kept for good.
 ──────────────────────────────────────────────────────────────────────────
-                                 [Ask me again in 3 days] [Ignore] [Delete…]
+                                       [Ask me again in 3 days] [Ignore] [⋯]
 ----
 
 * The summary and the details are two cards; each item is a checkbox with its kind, its duration, and its size. An unchecked item is kept for good and the line says so.
-* _Delete_ opens the confirmation as a dialogue over the view; the confirmation repeats what is freed and what stays (branches, pull requests, the remote, the checkout, the epic's ledger). _Back_ leaves everything as it is.
+* _Delete…_ is an entry of the overflow menu `⋯`, in the danger text colour, never a visible danger button (link:components.adoc#hierarchy[Components, Hierarchy]); it opens the confirmation as a dialogue over the view, whose confirming button is the one filled danger control; the confirmation repeats what is freed and what stays (branches, pull requests, the remote, the checkout, the epic's ledger). _Back_ leaves everything as it is.
 * The items kept for good are a separate list below the details, with their release actions. The technical residue is a read-only figure, never an item.
 * Width: `1000px` on the desktop; the checklist becomes a list of labelled rows on the phone, and the acts stack at the foot of the body.
 

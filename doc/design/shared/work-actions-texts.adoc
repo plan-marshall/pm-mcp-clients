@@ -12,7 +12,7 @@ Status: `DRAFT`. The texts of link:work-actions.adoc[Actions on Plans and Epics]
 [#texts]
 == Texts
 
-Keys of the area `control`, shared by both clients (link:texts-and-languages.adoc#keys[Keys and Packs]). The end of a plan and of an epic is labelled _End_ / _Beende_, so that _Cancel_ / _Abbrechen_ in a dialogue means only closing it; the outcome of that end keeps its name, `cancelled` (link:plan-overview.adoc#texts[Plan Overview, Texts]). An act that opens a dialogue which asks for more ends with `…` (link:texts-and-languages.adoc#acts-and-links[Texts and Languages, Acts and Links]). The settings dialogue closes with `common.close`, the epic's end dialogue cancels with `common.cancel`.
+Keys of the area `control`, shared by both clients (link:texts-and-languages.adoc#keys[Keys and Packs]). The end of a plan and of an epic is labelled _End_ / _Beende_, so that _Cancel_ / _Abbrechen_ in a dialogue means only closing it; the outcome of that end keeps its name, `cancelled` (link:plan-overview.adoc#texts[Plan Overview, Texts]). An act that opens a dialogue which asks for more ends with `…` (link:texts-and-languages.adoc#acts-and-links[Texts and Languages, Acts and Links]). The settings dialogue closes with `common.action.close`, the epic's end dialogue cancels with `common.action.cancel`.
 
 [cols="3,3,3",options="header"]
 |===
