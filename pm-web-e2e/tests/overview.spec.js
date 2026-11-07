@@ -168,19 +168,4 @@ test.describe('Overview View (UC-PLN-4)', () => {
     await expect(page).toHaveURL(/\/reports\?plan=fix-relay-v1$/);
     await expect(page.locator('.completion-report')).toBeVisible();
   });
-
-  test('remembers Running Work as the browser start page across a reload', async ({ page }) => {
-    const toggle = page.locator('[data-testid="start-page-toggle"]');
-    await expect(toggle).toHaveText('Set as browser start page');
-    await toggle.click();
-
-    await expect(toggle).toHaveText('Default start page');
-    expect(await page.evaluate(() => localStorage.getItem('pm_start_route'))).toBe('overview');
-
-    await page.reload();
-    await expect(page.locator('.overview')).toBeVisible();
-    await expect(page.locator('[data-testid="start-page-toggle"]')).toHaveText(
-      'Default start page',
-    );
-  });
 });

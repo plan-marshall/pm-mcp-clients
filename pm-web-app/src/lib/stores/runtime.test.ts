@@ -6,6 +6,7 @@ import {
   checkUrlHashForCode,
   handleRuntimeEvent,
   initRuntime,
+  landingRoute,
   openStartPage,
   pairBrowser,
   replaceDesignerProject,
@@ -357,5 +358,49 @@ describe('the runtime store', () => {
 
     // Assert
     expect(params.onboardingStep).toBe(6);
+  });
+
+  it('lands by the rule alone when localStorage holds a stale start route', async () => {
+    // Arrange: a stale start route in localStorage must be ignored.
+    const staleStartRouteKey = ['pm', 'start', 'route'].join('_');
+    localStorage.setItem(staleStartRouteKey, 'projects');
+
+    // Act & Assert 1: landingRoute lands on overview when work is running, despite stale start route
+    expect(landingRoute(null, true, true)).toBe('overview');
+
+    // Act & Assert 2: fresh paired browser lands on overview by the rule
+    vi.spyOn(apiClient, 'pair').mockResolvedValue({
+      device_secret: 'pmw_fresh',
+      device_id: 'dev-1',
+      label: 'Chrome',
+    });
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue(PAIRED_STATUS);
+    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({
+      projects: [
+        {
+          project_id: 'p-1',
+          display_name: 'Project 1',
+          active_plans_count: 1,
+          active_epics_count: 0,
+          needs_operator_count: 0,
+          setup_needs_operator: false,
+        },
+      ],
+    });
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue(EMPTY_REPORTS);
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
+
+    await pairBrowser('KXQB-MRTN');
+    expect(get(runtimeStore).currentRoute).toBe('overview');
+
+    // Act & Assert 3: brand click lands on projects when no work runs, despite stale start route
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    localStorage.setItem(staleStartRouteKey, 'overview');
+    runtimeStore.set(makeRuntimeState({ currentRoute: 'overview', isPaired: true, isOnboarded: true }));
+    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
+
+    await openStartPage();
+    expect(get(runtimeStore).currentRoute).toBe('projects');
   });
 });

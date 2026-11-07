@@ -350,23 +350,6 @@ describe('OverviewView component', () => {
     });
   });
 
-  it('remembers Running Work as the browser start page and forgets it again', async () => {
-    render(OverviewView);
-
-    const toggle = await screen.findByTestId('start-page-toggle');
-    expect(toggle).toHaveAttribute('aria-pressed', 'false');
-    expect(toggle).toHaveTextContent('Set as browser start page');
-
-    await fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute('aria-pressed', 'true');
-    expect(toggle).toHaveTextContent('Default start page');
-    expect(localStorage.getItem('pm_start_route')).toBe('overview');
-
-    await fireEvent.click(toggle);
-    expect(toggle).toHaveAttribute('aria-pressed', 'false');
-    expect(localStorage.getItem('pm_start_route')).toBeNull();
-  });
-
   it('opens an ended plan as it ended and its completion report in one step', async () => {
     render(OverviewView);
 
