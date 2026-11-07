@@ -46,7 +46,7 @@ public final class RuntimeCommand implements Callable<Integer> {
 
     private static final String DRAIN = "drain";
 
-    /** The operator's stop of the runtime, and the withdrawal of its drain. */
+    /** The operator's stop of the runtime (its drain request included), and the withdrawal of its drain. */
     private static final String OPERATOR_STOP = "/api/v1/operator/runtime/stop";
 
     /** The line of a withdrawal refused because a signal started the drain. */
@@ -187,7 +187,7 @@ public final class RuntimeCommand implements Callable<Integer> {
                 body.put("then", "exit");
 
                 var response = context.runtime(false).send(
-                                    HttpRequest.json("POST", "/api/v1/runtime/stop", JsonTree.write(body)));
+                                    HttpRequest.json("POST", OPERATOR_STOP, JsonTree.write(body)));
                 if (response.status() != 202 && response.status() != 200) {
                     throw new OperatorRefusedException("runtime stop", response);
                 }

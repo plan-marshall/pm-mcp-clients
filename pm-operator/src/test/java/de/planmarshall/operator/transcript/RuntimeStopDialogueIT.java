@@ -94,7 +94,7 @@ class RuntimeStopDialogueIT {
 
             assertTrue(session.screenText().contains("runtime   draining"), session.screenText());
             assertEquals(0, session.exitCode(), session.rawOutput());
-            harness.assertAct("POST", "/api/v1/runtime/stop");
+            harness.assertAct("POST", "/api/v1/operator/runtime/stop");
         }
     }
 
@@ -110,7 +110,7 @@ class RuntimeStopDialogueIT {
 
             assertTrue(session.screenText().contains("runtime   draining"), session.screenText());
             assertEquals(0, session.exitCode(), session.rawOutput());
-            harness.assertAct("POST", "/api/v1/runtime/stop");
+            harness.assertAct("POST", "/api/v1/operator/runtime/stop");
         }
     }
 

@@ -11,6 +11,8 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -85,13 +87,78 @@ class AbortCommandTest {
 
         int code = execute("plan", "cancel", planId, "--reason", reason);
 
-        var request = server.awaitRequest(Duration.ofSeconds(1));
+        var request = post(server);
         assertAll(
                             () -> assertEquals(0, code, err.toString()),
                             () -> assertTrue(request.bodyText().contains("\"reason\":\"" + reason + "\""),
                                                 request.bodyText()),
                             () -> assertTrue(out.toString().contains("✓ " + planId + " cancelled and archived"),
                                                 out.toString()));
+    }
+
+    @Test
+    @DisplayName("plan cancel of a plan held by an integrity hold prints the aborted outcome without a consent prompt")
+    void planCancelOfAnIntegrityHoldIsAnAbort() throws Exception {
+        var planId = Generators.letterStrings(4, 12).next();
+        var server = fixture.start((request, response) -> {
+            var target = request.target();
+            if ("GET".equals(request.method()) && ("/api/v1/plans/" + planId + "/actions").equals(target)) {
+                response.json(200, heldActions(planId));
+            } else if ("POST".equals(request.method()) && ("/api/v1/plans/" + planId + "/cancel").equals(target)) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("plan", "cancel", planId, "--reason", Generators.letterStrings(4, 24).next());
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertNotNull(post(server), "the cancel was sent"),
+                            () -> assertTrue(out.toString().contains("✓ " + planId + " aborted and archived"),
+                                                out.toString()),
+                            () -> assertFalse(out.toString().contains("cancelled and archived"), out.toString()),
+                            () -> assertFalse(out.toString().contains("Abort the plan?"), out.toString()));
+    }
+
+    @Test
+    @DisplayName("plan cancel prints the outcome the runtime's answer names")
+    void planCancelTakesTheOutcomeOfTheAnswer() throws Exception {
+        var planId = Generators.letterStrings(4, 12).next();
+        var server = fixture.start((request, response) -> {
+            if ("POST".equals(request.method())
+                    && ("/api/v1/plans/" + planId + "/cancel").equals(request.target())) {
+                response.json(200, "{\"outcome\":\"aborted\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("plan", "cancel", planId, "--reason", Generators.letterStrings(4, 24).next());
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertNotNull(post(server), "the cancel was sent"),
+                            () -> assertTrue(out.toString().contains("✓ " + planId + " aborted and archived"),
+                                                out.toString()));
+    }
+
+    private static String heldActions(String planId) {
+        return """
+                {"subject_id":"%s","subject_kind":"plan","state":"held",
+                 "hold_kind":"integrity_pause","actions":[
+                   {"action":"cancel","available":true},{"action":"chat","available":true}]}
+                """.formatted(planId);
+    }
+
+    /**
+     * @param server the fake runtime
+     * @return the first {@code POST} it received; the act is read before it is sent
+     */
+    private static FakeRuntimeServer.Request post(FakeRuntimeServer server) {
+        return server.requests().stream().filter(request -> "POST".equals(request.method()))
+                            .findFirst().orElseThrow();
     }
 
     @Test

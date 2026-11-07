@@ -514,7 +514,9 @@ class PlanCommandTest {
             var server = serveEnd("cancel");
 
             int code = execute("plan", "cancel", planId, "--reason", reason, "--close-pr");
-            var body = server.requests().getFirst().bodyText();
+            // The act is read before the cancel is sent; the cancel is the request that carries the body.
+            var body = server.requests().stream().filter(request -> "POST".equals(request.method()))
+                                .findFirst().orElseThrow().bodyText();
             assertAll(
                                 () -> assertEquals(0, code, err.toString()),
                                 () -> assertTrue(body.contains("\"close_pr\":true"), body)

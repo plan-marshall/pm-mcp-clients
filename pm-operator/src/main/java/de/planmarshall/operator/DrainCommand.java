@@ -14,10 +14,12 @@ import java.io.PrintWriter;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.function.LongFunction;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonTree;
@@ -57,6 +59,7 @@ public final class DrainCommand implements Callable<Integer> {
 
     private final OperatorContext context;
     private final @Nullable Duration bound;
+    private final LongFunction<Optional<ProcessHandle>> processes;
 
     @Spec
     CommandSpec spec = CommandSpec.create();
@@ -74,15 +77,27 @@ public final class DrainCommand implements Callable<Integer> {
      *                configuration
      */
     DrainCommand(OperatorContext context, @Nullable Duration bound) {
+        this(context, bound, ProcessHandle::of);
+    }
+
+    /**
+     * @param context   the operator context
+     * @param bound     the bound of the wait for the exit, or {@code null} for the one of the machine
+     *                  configuration
+     * @param processes the lookup of a process by its id, the operating system's outside a test
+     */
+    DrainCommand(OperatorContext context, @Nullable Duration bound,
+            LongFunction<Optional<ProcessHandle>> processes) {
         this.context = Objects.requireNonNull(context, "context");
         this.bound = bound;
+        this.processes = Objects.requireNonNull(processes, "processes");
     }
 
     @Override
     public Integer call() throws IOException {
         var out = spec.commandLine().getOut();
         var runtimeRecord = context.directFiles().readRuntimeRecord().filter(RuntimeRecord::processAlive);
-        var handle = runtimeRecord.flatMap(alive -> ProcessHandle.of(alive.pid()));
+        var handle = runtimeRecord.flatMap(alive -> processes.apply(alive.pid()));
         if (handle.isEmpty() || handle.get().pid() == ProcessHandle.current().pid()) {
             out.println(text("operator.drain.not_running", Map.of()));
             out.flush();
@@ -92,6 +107,12 @@ public final class DrainCommand implements Callable<Integer> {
         // the process id is an identifier, never a number to group
         var pid = Map.of(PID, String.valueOf(runtime.pid()));
         if (!runtime.destroy()) {
+            if (!runtime.isAlive()) {
+                // The runtime exited between the lookup and the signal: it is not running any more.
+                out.println(text("operator.drain.not_running", Map.of()));
+                out.flush();
+                return 0;
+            }
             var err = spec.commandLine().getErr();
             err.println(text("operator.drain.signal_failed", pid));
             err.flush();

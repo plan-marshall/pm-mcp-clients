@@ -24,7 +24,11 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.LongFunction;
+import java.util.stream.Stream;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -59,8 +63,12 @@ class DrainCommandTest {
     private StringWriter err;
     private final List<Process> children = new ArrayList<>();
 
+    /** Where the fixtures write their ready and witness files; a test may move it below a directory with a space. */
+    private Path workDir;
+
     @BeforeEach
     void setUp() throws IOException {
+        workDir = tempDir;
         fixture = RuntimeFixture.create();
         out = new StringWriter();
         err = new StringWriter();
@@ -92,17 +100,29 @@ class DrainCommandTest {
         return commandLine.execute();
     }
 
+    private int drainWith(LongFunction<Optional<ProcessHandle>> processes) {
+        var commandLine = new CommandLine(new DrainCommand(context(), GENEROUS, processes));
+        commandLine.setOut(new PrintWriter(out));
+        commandLine.setErr(new PrintWriter(err));
+        return commandLine.execute();
+    }
+
     /**
      * Starts a shell fixture that sets its trap, says so, and loops, and records it as the runtime in
      * {@code state/runtime.json} once its trap is set: a signal sent earlier would end the shell
-     * untrapped.
+     * untrapped. The ready file is the script's {@code "$1"} and the witness its {@code "$2"}, passed as
+     * arguments and quoted where they expand, so a path with a space names the right file.
      *
-     * @param trap the trap command the fixture sets first
+     * @param trap the trap command the fixture sets first; it names the witness as {@code "$2"}
      * @return the fixture process
      */
     private Process recordedRuntime(String trap) throws IOException {
-        var ready = tempDir.resolve("ready-" + children.size());
-        var child = start(trap + "; : > " + ready + "; while :; do sleep 0.05; done");
+        return recordedRuntime(trap, workDir.resolve("witness-" + children.size()));
+    }
+
+    private Process recordedRuntime(String trap, Path witness) throws IOException {
+        var ready = workDir.resolve("ready-" + children.size());
+        var child = start(trap + "; : > \"$1\"; while :; do sleep 0.05; done", ready.toString(), witness.toString());
         var deadline = System.nanoTime() + GENEROUS.toNanos();
         while (!Files.exists(ready)) {
             assertTrue(child.isAlive(), "the fixture ended before its trap was set");
@@ -113,8 +133,10 @@ class DrainCommandTest {
         return child;
     }
 
-    private Process start(String script) throws IOException {
-        var child = new ProcessBuilder("/bin/sh", "-c", script).start();
+    private Process start(String script, String... arguments) throws IOException {
+        var command = new ArrayList<>(List.of("/bin/sh", "-c", script, "drain-fixture"));
+        command.addAll(List.of(arguments));
+        var child = new ProcessBuilder(command).start();
         children.add(child);
         return child;
     }
@@ -131,8 +153,8 @@ class DrainCommandTest {
     @DisplayName("the signal reaches the recorded process")
     void signalReachesTheProcess() throws Exception {
         var marker = Generators.letterStrings(8, 16).next();
-        var witness = tempDir.resolve("signalled");
-        recordedRuntime("trap 'echo " + marker + " > " + witness + "; exit 0' TERM");
+        var witness = workDir.resolve("signalled");
+        recordedRuntime("trap 'echo " + marker + " > \"$2\"; exit 0' TERM", witness);
 
         var code = drainWithin(GENEROUS);
 
@@ -140,6 +162,110 @@ class DrainCommandTest {
                             () -> assertEquals(0, code, err.toString()),
                             () -> assertTrue(Files.exists(witness), "the fixture never saw the signal"),
                             () -> assertEquals(marker, Files.readString(witness).strip()));
+    }
+
+    @Test
+    @DisplayName("the fixture paths hold in a directory whose name has a space")
+    void signalReachesTheProcessFromADirectoryWithASpace() throws Exception {
+        workDir = Files.createDirectories(tempDir.resolve("drain " + Generators.letterStrings(3, 8).next()));
+        var marker = Generators.letterStrings(8, 16).next();
+        var witness = workDir.resolve("signalled");
+        recordedRuntime("trap 'echo " + marker + " > \"$2\"; exit 0' TERM", witness);
+
+        var code = drainWithin(GENEROUS);
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(Files.exists(witness), "the fixture never saw the signal"),
+                            () -> assertEquals(marker, Files.readString(witness).strip()));
+    }
+
+    @Test
+    @DisplayName("a runtime that exited before the signal is reported not running with exit 0")
+    void exitedBeforeTheSignalIsNotRunning() throws Exception {
+        var child = recordedRuntime("trap 'exit 0' TERM");
+
+        var code = drainWith(_ -> Optional.of(new FailedSignal(child.pid(), false)));
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertEquals("The runtime is not running; there is nothing to drain.",
+                                                out.toString().strip()),
+                            () -> assertFalse(err.toString().contains("could not be signalled"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("a live runtime the signal does not reach is reported with exit 1")
+    void liveRuntimeTheSignalMissesFails() throws Exception {
+        var child = recordedRuntime("trap 'exit 0' TERM");
+
+        var code = drainWith(_ -> Optional.of(new FailedSignal(child.pid(), true)));
+
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code),
+                            () -> assertTrue(err.toString().contains(
+                                                "The runtime (PID " + child.pid() + ") could not be signalled."),
+                                                err.toString()));
+    }
+
+    /**
+     * A process whose signal fails: {@code destroy()} answers {@code false}, and the process is still
+     * alive or has exited, as the test needs.
+     *
+     * @param pid   the process id it reports
+     * @param alive whether it is still alive after the failed signal
+     */
+    private record FailedSignal(long pid, boolean alive) implements ProcessHandle {
+
+        @Override
+        public Optional<ProcessHandle> parent() {
+            return Optional.empty();
+        }
+
+        @Override
+        public Stream<ProcessHandle> children() {
+            return Stream.empty();
+        }
+
+        @Override
+        public Stream<ProcessHandle> descendants() {
+            return Stream.empty();
+        }
+
+        @Override
+        public Info info() {
+            return ProcessHandle.current().info();
+        }
+
+        @Override
+        public CompletableFuture<ProcessHandle> onExit() {
+            return new CompletableFuture<>();
+        }
+
+        @Override
+        public boolean supportsNormalTermination() {
+            return true;
+        }
+
+        @Override
+        public boolean destroy() {
+            return false;
+        }
+
+        @Override
+        public boolean destroyForcibly() {
+            return false;
+        }
+
+        @Override
+        public boolean isAlive() {
+            return alive;
+        }
+
+        @Override
+        public int compareTo(ProcessHandle other) {
+            return Long.compare(pid, other.pid());
+        }
     }
 
     @Test

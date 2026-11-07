@@ -702,7 +702,10 @@ class PmOperatorTest {
 
             var request = server.awaitRequest(Duration.ofSeconds(1));
             assertEquals("POST", request.method());
-            assertEquals("/api/v1/runtime/stop", request.target());
+            assertEquals("/api/v1/operator/runtime/stop", request.target());
+            assertTrue(server.requests().stream()
+                                                    .noneMatch(recorded -> "/api/v1/runtime/stop".equals(recorded.target())),
+                                "no stop request goes to the legacy path");
             assertEquals("runtime   stopping", out.toString().strip());
         }
 
@@ -713,6 +716,7 @@ class PmOperatorTest {
 
             assertEquals(0, run("runtime", "stop", "--drain"));
             var req = server.awaitRequest(Duration.ofSeconds(1));
+            assertEquals("/api/v1/operator/runtime/stop", req.target(), "the drain request takes the operator path");
             assertTrue(req.bodyText().contains("\"drain\":true"));
             assertEquals("runtime   draining", out.toString().strip());
         }
@@ -761,7 +765,7 @@ class PmOperatorTest {
                                                     "runtime stop needs the choice of when; answer it with --when-done or --now."),
                                 out.toString());
             assertTrue(server.requests().stream()
-                                                    .noneMatch(recorded -> "/api/v1/runtime/stop".equals(recorded.target())),
+                                                    .noneMatch(recorded -> recorded.target().endsWith("/runtime/stop")),
                                 "no stop request before the missing-input guidance");
         }
 

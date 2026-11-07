@@ -230,6 +230,7 @@ final class ActionSupport {
         var out = spec.commandLine().getOut();
         var id = options.id != null ? options.id : "";
         String effectiveReason = options.reason;
+        @Nullable String act = null;
         if (effectiveReason == null || effectiveReason.isBlank()) {
             if (options.noInput) {
                 var label = CANCEL.equalsIgnoreCase(actionVerb) ? "Cancellation" : "Abandon";
@@ -248,7 +249,8 @@ final class ActionSupport {
                         return 1;
                     }
                     effectiveReason = reason;
-                    if (!confirmEnd(context, prompt, kind, id, actionVerb, leaveLabel)) {
+                    act = endOutcome(context, kind, id, actionVerb);
+                    if (!confirmEnd(prompt, act, leaveLabel)) {
                         return 0;
                     }
                 } catch (StartPrompt.InterruptException _) {
@@ -262,6 +264,14 @@ final class ActionSupport {
             }
         }
 
+        if (act == null) {
+            // Without the dialogue the act is still the one the runtime performs in the plan's state,
+            // read before the plan ends and its hold is gone: only a plan's cancel can be an abort.
+            act = "plan".equals(kind) && CANCEL.equalsIgnoreCase(actionVerb)
+                    ? endOutcome(context, kind, id, actionVerb)
+                    : actionVerb;
+        }
+
         var payload = new LinkedHashMap<String, Object>();
         payload.put("reason", effectiveReason);
         payload.put("close_pr", !options.keepPr);
@@ -269,19 +279,49 @@ final class ActionSupport {
         var endpoint = "/api/v1/" + kind + "s/" + OperatorUrlUtil.encodePathSegment(id) + "/" + actionVerb;
         var response = context.runtime(true).send(HttpRequest.json("POST", endpoint, JsonTree.write(payload)));
         if (response.status() == 200 || response.status() == 202) {
-            var past = CANCEL.equalsIgnoreCase(actionVerb) ? "cancelled" : "abandoned";
-            out.printf("✓ %s %s and archived%n", id, past);
+            out.println("✓ " + MessageCatalogue.format(context.clientEnvironment().locale(),
+                                "operator.actions.result.ended",
+                                Map.of("plan", id, "outcome", endedOutcome(response.bodyText(), act))));
             out.flush();
             return 0;
         }
         throw new OperatorRefusedException(kind + " " + actionVerb, response);
     }
 
-    private static boolean confirmEnd(OperatorContext context, StartPrompt prompt, String kind, String id,
-                        String actionVerb, String leaveLabel) {
+    /**
+     * The outcome the ended work has: the runtime's answer names it where it carries an
+     * {@code outcome}; otherwise it is the outcome of the act the runtime performed in the subject's
+     * state ({@link #endOutcome}), never only the verb the operator typed.
+     *
+     * @param answer the runtime's answer to the act
+     * @param act    the act the runtime performs in the subject's state
+     * @return {@code cancelled}, {@code abandoned} or {@code aborted}
+     */
+    static String endedOutcome(String answer, String act) {
+        if (!answer.isBlank()) {
+            try {
+                var body = JsonTree.asObject(JsonTree.parse(answer));
+                var outcome = body != null ? JsonTree.string(body, "outcome") : null;
+                if (outcome != null && ENDED_OUTCOMES.contains(outcome)) {
+                    return outcome;
+                }
+            } catch (IOException | IllegalArgumentException _) {
+                // an answer that is no JSON object names no outcome; the act names it
+            }
+        }
+        return switch (act.toLowerCase(Locale.ROOT)) {
+            case CANCEL -> "cancelled";
+            case "abandon" -> "abandoned";
+            default -> "aborted";
+        };
+    }
+
+    private static final List<String> ENDED_OUTCOMES = List.of("cancelled", "abandoned", "aborted");
+
+    private static boolean confirmEnd(StartPrompt prompt, String act, String leaveLabel) {
         var consent = new ChoicePrompt(prompt, "control.action").leaveLabel(leaveLabel);
         consent.title(MessageCatalogue.format(prompt.locale(), "operator.actions.cancel.confirm",
-                            Map.of("action", endOutcome(context, kind, id, actionVerb))) + "?");
+                            Map.of("action", act)) + "?");
         consent.explanation(MessageCatalogue.format(prompt.locale(), "operator.actions.end.consent_explain",
                             Map.of()));
         try {
