@@ -169,6 +169,9 @@ public final class ProjectSelector {
     private static boolean asksForProject(String[] args) {
         for (int index = 0; index < args.length; index++) {
             var arg = args[index];
+            if ("--".equals(arg)) {
+                break;
+            }
             if (OPTION.equals(arg)) {
                 if (index + 1 >= args.length) {
                     return true;
@@ -192,6 +195,13 @@ public final class ProjectSelector {
         int index = 0;
         while (index < args.length) {
             var arg = args[index];
+            if ("--".equals(arg)) {
+                while (index < args.length) {
+                    resolved.add(args[index]);
+                    index++;
+                }
+                break;
+            }
             if (OPTION.equals(arg)) {
                 resolved.add(OPTION);
                 resolved.add(projectId);

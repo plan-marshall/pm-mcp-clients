@@ -118,6 +118,10 @@ class OnboardingCatalogueTest {
     void shouldFormatProgress() {
         assertEquals("Step 3 of 7",
                 MessageCatalogue.format("en", "onboard.frame.progress", Map.of("step", 3, "total", 7)));
+        assertEquals("Step 3 of 8",
+                MessageCatalogue.format("en", "onboard.frame.progress", Map.of("step", 3, "total", 8)));
+        assertEquals("Schritt 3 von 8",
+                MessageCatalogue.format("de", "onboard.frame.progress", Map.of("step", 3, "total", 8)));
         assertEquals("Modelle", MessageCatalogue.format("de", "onboard.step.models", Map.of()));
     }
 }

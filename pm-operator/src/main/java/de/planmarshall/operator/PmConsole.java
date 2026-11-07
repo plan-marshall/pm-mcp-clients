@@ -288,7 +288,8 @@ public final class PmConsole {
         try {
             // The address travels as an argument, never through a command line the console would
             // have to quote and parse back: an id with a quote or a backslash reaches the verb as it is.
-            runOperatorVerb(List.of("project", "setup", "--entry", address), out, reader, terminal);
+            // Passing -- ensures that an entry id starting with -- is never read as an option or project selector.
+            runOperatorVerb(List.of("project", "setup", "--entry", "--", address), out, reader, terminal);
         } finally {
             try {
                 context.clearTerminal(terminal);

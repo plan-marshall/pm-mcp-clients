@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
@@ -58,6 +59,8 @@ class EntryFlowStaticsTest {
         }, Duration.ofSeconds(1), "throwing-read"));
 
         assertTrue(failure.getMessage().contains("throwing-read"), failure.getMessage());
+        assertInstanceOf(IllegalStateException.class, failure.getCause());
+        assertEquals("boom", failure.getCause().getMessage());
     }
 
     @Test

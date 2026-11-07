@@ -69,5 +69,17 @@ class ConsoleSettingsTranscriptTest {
 
         assertNotEquals(atBaseInstant.withoutMachineRoot(), oneHundredTwentyDaysLater.withoutMachineRoot(),
                             "a console reading the system clock prints the same ages for both clocks");
+        assertTrue(atBaseInstant.rendered().contains("Firefox on mbp-oliver")
+                            && atBaseInstant.rendered().contains("last used 1 d ago"));
+        assertTrue(atBaseInstant.rendered().contains("Safari on iPad")
+                            && atBaseInstant.rendered().contains("last used 5 d ago"));
+        assertTrue(atBaseInstant.rendered().contains("Chrome on build-box")
+                            && atBaseInstant.rendered().contains("last used 5 weeks ago"));
+        assertTrue(oneHundredTwentyDaysLater.rendered().contains("Firefox on mbp-oliver")
+                            && oneHundredTwentyDaysLater.rendered().contains("last used 16 Oct 14:02"));
+        assertTrue(oneHundredTwentyDaysLater.rendered().contains("Safari on iPad")
+                            && oneHundredTwentyDaysLater.rendered().contains("last used 13 Oct 10:00"));
+        assertTrue(oneHundredTwentyDaysLater.rendered().contains("Chrome on build-box")
+                            && oneHundredTwentyDaysLater.rendered().contains("last used 8 Sep 10:00"));
     }
 }

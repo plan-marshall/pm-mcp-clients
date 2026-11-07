@@ -474,6 +474,58 @@ class PmConsoleBehaviourTest {
     }
 
     @Test
+    @DisplayName("Enter on a being-added project badge succeeds with a choice and continues")
+    void enterOnABeingAddedProjectBadgeSucceeds() throws Exception {
+        var entryId = "ent-step-choice";
+        var checkout = "/work/my-project";
+        var entry = new BeingAddedProject(checkout, "Identity", 3, 10,
+                            "/api/v1/entries/" + entryId + "/continue", "/api/v1/entries/" + entryId + "/abandon");
+        var postTarget = new AtomicReference<String>();
+        fixture.start((request, response) -> {
+            if (("/api/v1/entries/" + entryId).equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                    {
+                      "state": {"state_id": "identity", "kind": "operator_wait"},
+                      "step": 3,
+                      "total_steps": 10,
+                      "summary": "Project Identity",
+                      "links": [{"id": "next", "rel": "next", "preselected": true}]
+                    }
+                    """);
+            } else if (("/api/v1/entries/" + entryId + "/links/next").equals(request.target()) && "POST".equals(request.method())) {
+                postTarget.set(request.target());
+                response.json(200, """
+                    {
+                      "state": {"state_id": "project.completed", "kind": "completed"},
+                      "step": 10,
+                      "total_steps": 10,
+                      "summary": "Completed"
+                    }
+                    """);
+            } else if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[" + entry.toJson() + "]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var input = new ByteArrayInputStream("1\n".getBytes(StandardCharsets.UTF_8));
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(input, rendered)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            console.refreshSetupBadge("en", terminal);
+            console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
+            assertEquals("/api/v1/entries/" + entryId + "/links/next", postTarget.get(),
+                                "Enter on being-added badge must post the chosen link to the entry endpoint");
+        }
+    }
+
+    @Test
     @DisplayName("an entry id with a plus reaches the runtime as a plus")
     void entryIdWithAPlusReachesTheRuntimeAsAPlus() throws Exception {
         var entry = new BeingAddedProject("/work/plus-dir-name", "Identity", 3, 10,
@@ -534,6 +586,38 @@ class PmConsoleBehaviourTest {
             console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
             assertEquals("/api/v1/entries/ent-%22q%22%5Cb", exactEntryTarget.get(),
                                 "an id with a quote or a backslash must reach the command unaltered");
+        }
+    }
+
+    @Test
+    @DisplayName("an entry id starting with --project reaches the runtime unaltered")
+    void entryIdStartingWithProjectReachesTheRuntimeUnaltered() throws Exception {
+        var entry = new BeingAddedProject("/work/project-dir-name", "Identity", 3, 10,
+                            "/api/v1/entries/--project-xyz/continue", "/api/v1/entries/--project-xyz/abandon");
+        var exactEntryTarget = new AtomicReference<String>();
+        fixture.start((request, response) -> {
+            if (request.target().startsWith("/api/v1/entries/")) {
+                exactEntryTarget.set(request.target());
+                response.send(404, null, "");
+            } else if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[" + entry.toJson() + "]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            console.refreshSetupBadge("en", terminal);
+            console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
+            assertEquals("/api/v1/entries/--project-xyz", exactEntryTarget.get(),
+                                "an entry id starting with --project reaches project setup --entry unaltered");
         }
     }
 

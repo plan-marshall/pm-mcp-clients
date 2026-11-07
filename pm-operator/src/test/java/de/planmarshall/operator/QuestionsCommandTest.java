@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
@@ -391,6 +392,43 @@ class QuestionsCommandTest {
                             () -> assertEquals(1, code),
                             () -> assertTrue(out.toString().contains("Error reading interactive input: terminal is gone"),
                                                 out.toString()));
+    }
+
+    @Test
+    @DisplayName("an unchecked exception from opening the terminal is not treated as an input I/O error")
+    void answerInteractiveUncheckedTerminalFailure() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "id": "Q-001",
+                                      "revision": 1,
+                                      "title": "Select merge strategy",
+                                      "subject": "fix-relay",
+                                      "scope": "plan",
+                                      "asking_phase": "refine",
+                                      "asking_role": "outline",
+                                      "blocks": "plan",
+                                      "reversibility": "reversible",
+                                      "description": "Preserve clean history"
+                                    }
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        OperatorContext.TerminalProvider failingTerminal = () -> {
+            throw new IllegalStateException("terminal cannot be created");
+        };
+        var context = new OperatorContext(fixture.environment(), tempDir, true,
+                            ClientEnvironment.capture(fixture.environment()), failingTerminal, null);
+
+        var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "answer", "Q-001", "-i");
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().contains("terminal cannot be created"), err.toString()),
+                            () -> assertFalse(out.toString().contains("Error reading interactive input"), out.toString()));
     }
 
     @Test
