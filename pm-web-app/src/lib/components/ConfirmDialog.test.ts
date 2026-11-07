@@ -146,8 +146,9 @@ describe('ConfirmDialog', () => {
   });
 
   it('ignores a confirm that reaches the handler past the disabled button', async () => {
-    // Arrange: the act runs, so the button is disabled — and the handler is still reached by a
-    // click dispatched on it, which the browser's own disabled handling does not stop.
+    // Arrange: the act runs, so the button is disabled — in jsdom, a dispatched click event still
+    // reaches the element's handler (unlike a real browser, which swallows clicks on disabled buttons),
+    // and the handler itself refuses the call while busy.
     const onConfirm = vi.fn();
     render(ConfirmDialog, {
       props: {

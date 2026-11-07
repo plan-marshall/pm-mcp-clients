@@ -7,6 +7,7 @@ import {
   handleRuntimeEvent,
   initRuntime,
   openStartPage,
+  pairBrowser,
   replaceDesignerProject,
   routeParamsOf,
   runtimeStore,
@@ -131,6 +132,60 @@ describe('the runtime store', () => {
     expect(get(runtimeStore).isDraining).toBe(true);
     expect(get(runtimeStore).drainInfo?.who).toBe('the console');
     expect(get(runtimeStore).drainInfo?.count).toBe(2);
+  });
+
+  it('applies the draining lifecycle fields when pairing', async () => {
+    // Arrange
+    vi.spyOn(apiClient, 'pair').mockResolvedValue({
+      device_secret: 'pmw_fresh',
+      device_id: 'dev-2',
+      label: 'Firefox',
+    });
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...PAIRED_STATUS,
+      lifecycle_state: 'draining',
+      draining_by: 'the console',
+      drain_remaining_count: 2,
+    });
+    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue(EMPTY_REPORTS);
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
+
+    // Act
+    await pairBrowser('KXQB-MRTN');
+
+    // Assert: lifecycle fields are preserved in the store upon pairing
+    expect(get(runtimeStore).isDraining).toBe(true);
+    expect(get(runtimeStore).drainInfo).toEqual({
+      who: 'the console',
+      count: 2,
+      items: undefined,
+    });
+  });
+
+  it('preserves the drain count when status reports empty items array beside a positive count', async () => {
+    // Arrange
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...PAIRED_STATUS,
+      lifecycle_state: 'draining',
+      draining_by: 'the console',
+      drain_remaining_count: 3,
+      drain_remaining_items: [],
+    });
+    vi.spyOn(apiClient, 'getProjects').mockResolvedValue({ projects: [] });
+    vi.spyOn(apiClient, 'subscribeEvents').mockReturnValue(() => {});
+    vi.spyOn(apiClient, 'getReports').mockResolvedValue(EMPTY_REPORTS);
+    vi.spyOn(apiClient, 'getDecisions').mockResolvedValue([]);
+
+    // Act
+    await initRuntime();
+
+    // Assert: count is preserved from drain_remaining_count rather than collapsed to empty list length
+    expect(get(runtimeStore).isDraining).toBe(true);
+    expect(get(runtimeStore).drainInfo?.who).toBe('the console');
+    expect(get(runtimeStore).drainInfo?.count).toBe(3);
   });
 
   it('shows the stopped lifecycle the status reports', async () => {

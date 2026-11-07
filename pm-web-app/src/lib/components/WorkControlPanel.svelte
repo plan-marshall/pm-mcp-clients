@@ -9,7 +9,7 @@
   import ChatPanel from './ChatPanel.svelte';
   import Icon from './Icon.svelte';
   import { uniqueId } from '../utils/uniqueId';
-  import { actsFor, type ActSpec } from '../actions/byState';
+  import { actsFor, handledActIds, type ActSpec } from '../actions/byState';
   import {
     apiClient,
     type ArchiveCheck,
@@ -126,35 +126,10 @@
   let commonFiles = $derived(actions?.overlap_max_files ?? 0);
 
   /**
-   * The plan acts the panel handles: the runtime's own acts, and the three it routes itself
-   * (`resolve_hold`, `report`, `follow_up`). `decision` is the plan page's, so it is not here.
+   * The acts of the subject's kind the panel runs, derived from the action tables with the plan
+   * page's `decision` act excluded; anything else a runtime offers is dropped.
    */
-  const PLAN_ACTS_HANDLED = new Set([
-    'pause',
-    'start',
-    'cancel',
-    'abandon',
-    'chat',
-    'settings',
-    'resolve_hold',
-    'report',
-    'follow_up',
-  ]);
-  /** The epic acts the panel handles. */
-  const EPIC_ACTS_HANDLED = new Set([
-    'next',
-    'findings',
-    'watches',
-    'decompose',
-    'chat',
-    'auto',
-    'common_files',
-    'archive',
-    'cancel',
-  ]);
-
-  /** The acts of the subject's kind the panel runs; anything else a runtime offers is dropped. */
-  let handledActs = $derived(subjectKind === 'epic' ? EPIC_ACTS_HANDLED : PLAN_ACTS_HANDLED);
+  let handledActs = $derived(handledActIds(subjectKind === 'epic' ? 'epic' : 'plan'));
 
   /** The state the acts of this panel are derived from. */
   let actState = $derived(planState());

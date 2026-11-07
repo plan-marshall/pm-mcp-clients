@@ -168,7 +168,7 @@ describe('SettingsView component', () => {
     await waitFor(() => expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument());
   });
 
-  it('refuses a confirm that reaches the revoke handler past the busy button', async () => {
+  it('ignores a second confirm through the dialog’s busy prop while revoke runs', async () => {
     // Arrange: the revoke runs, so the confirm button is disabled while the guard is what refuses.
     let settle: () => void = () => {};
     const pending = new Promise<void>((resolve) => {
@@ -187,11 +187,12 @@ describe('SettingsView component', () => {
     await fireEvent.click(confirm);
     expect(revokeSpy).toHaveBeenCalledOnce();
 
-    // A click dispatched on the disabled button still reaches the view's handler.
+    // In jsdom, a dispatched click event reaches the element's handler. ConfirmDialog
+    // ignores it because busy is true; the view's own handler is not reached a second time.
     confirm.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
 
-    // The revoke is sent once: the dialog's busy prop and the view's own guard both stand against
-    // a second send, and either alone must keep the request single.
+    // The revoke is sent once: ConfirmDialog's busy prop keeps the request single while
+    // revoke is in flight.
     expect(revokeSpy).toHaveBeenCalledOnce();
     settle();
   });

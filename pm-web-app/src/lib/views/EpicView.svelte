@@ -580,7 +580,7 @@
             </span>
             <span class="badge badge--counts" data-testid="epic-scope">
               {$t('overview.epic.at_once', {
-                running: resource.running,
+                running: resource.running ?? '?',
                 scope: resource.scope,
               })}
             </span>
