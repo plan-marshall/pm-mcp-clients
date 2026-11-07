@@ -910,6 +910,32 @@ describe('DecisionView component', () => {
       expect(cardOf('dec-101')).toHaveAttribute('aria-current', 'true');
     });
 
+    it('waits for a reload in flight before it scrolls to the decision', async () => {
+      // Arrange: a reload is in flight, so the spinner stands in for the column while the
+      // previous list is still held.
+      const emit = captureEventHandler();
+      const scrolled = recordScrolls();
+      render(DecisionView);
+      await screen.findByText('Select merge strategy');
+      let finishReload: (decisions: DecisionEnvelope[]) => void = () => {};
+      vi.mocked(apiClient.getDecisions).mockImplementationOnce(
+        () => new Promise((resolve) => (finishReload = resolve)),
+      );
+      emit('decision.opened', {});
+      await waitFor(() => expect(document.querySelector('.decisions-list')).toBeNull());
+
+      // Act: the palette names dec-101 during the reload, then the reload completes.
+      await act(() =>
+        runtimeStore.update((state) => ({ ...state, selectedDecisionId: 'dec-101' })),
+      );
+      expect(document.querySelector('.decisions-list')).toBeNull();
+      await act(() => finishReload([mockDecision, mockWaiver]));
+
+      // Assert: the request lands on the card the completed reload mounts.
+      await waitFor(() => expect(scrolled).toContain(cardOf('dec-101')));
+      expect(cardOf('dec-101')).toHaveAttribute('aria-current', 'true');
+    });
+
     it('drops a pending decision when the route stops naming one', async () => {
       // Arrange: the first read does not hold dec-101, so its request stays pending.
       vi.mocked(apiClient.getDecisions).mockResolvedValueOnce([mockWaiver]);

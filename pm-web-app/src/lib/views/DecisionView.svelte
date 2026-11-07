@@ -116,7 +116,9 @@
   });
   $effect(() => {
     const requested = requestedDecisionId;
-    if (!requested || !decisions.some((decision) => decision.id === requested)) {
+    // While a read is in flight the spinner stands in for the column, so no card could be scrolled
+    // to: the request stays pending until the read completes and the column is mounted again.
+    if (!requested || isLoading || !decisions.some((decision) => decision.id === requested)) {
       return;
     }
     // A filter that hides the requested decision would consume the request with no card to land
