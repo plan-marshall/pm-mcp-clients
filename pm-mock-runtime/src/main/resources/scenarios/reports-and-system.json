@@ -2776,7 +2776,9 @@
             "rel": "submit",
             "method": "POST",
             "href": "/api/v1/operator/runtime/stop",
-            "params": {},
+            "params": {
+              "when": "now"
+            },
             "preselected": false
           }
         ],
@@ -2865,7 +2867,9 @@
             "rel": "submit",
             "method": "POST",
             "href": "/api/v1/operator/runtime/stop",
-            "params": {},
+            "params": {
+              "when": "now"
+            },
             "preselected": false
           }
         ],

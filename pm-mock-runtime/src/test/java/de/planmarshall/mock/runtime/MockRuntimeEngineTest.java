@@ -1504,8 +1504,236 @@ class MockRuntimeEngineTest {
                 () -> assertEquals(beforeKept, afterKept.body(), "the kept items of the act survive the refused switch"));
     }
 
+    @Test
+    @EnabledOnOs({OS.MAC, OS.LINUX})
+    @DisplayName("a decision opened through /mock/broadcast is closed for the clients by a jump to a state without it")
+    void broadcastDecisionIsClosedByJump() throws Exception {
+        var decisionId = "Q-" + Generators.integers(1000, 9999).next();
+        var latches = Map.of(EVENT_DECISION_CLOSED, new CountDownLatch(1));
+
+        try (var runtime = startRuntime()) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            try (var exchange = client.open(HttpRequest.get("/api/v1/events")
+                         .withHeader("Authorization", "Bearer " + runtime.token()))) {
+                assertTrue(exchange.isEventStream());
+                var events = new CopyOnWriteArrayList<SseEvent>();
+                readFullEvents(exchange.events(), events, latches);
+                var live = runtime.engine();
+                var opened = send(live, "POST", "/mock/broadcast", Map.of(),
+                        decisionOpenedBody(decisionId).getBytes(StandardCharsets.UTF_8), false);
+                assertEquals(200, opened.status(), opened.body());
+
+                live.goToState(STATE_SYSTEM_RUNNING);
+
+                assertTrue(latches.get(EVENT_DECISION_CLOSED).await(5, TimeUnit.SECONDS),
+                        "the jump must close the broadcast decision: " + events);
+                var closed = events.stream().filter(event -> EVENT_DECISION_CLOSED.equals(event.event()))
+                        .map(event -> JsonTree.asObject(parseJson(event.data())))
+                        .findFirst().orElseThrow();
+                var closedText = JsonTree.write(closed);
+                // The envelope carries the payload either flat or under data, as the catalogue shapes it.
+                assertAll(
+                        () -> assertTrue(closedText.contains("\"" + decisionId + "\""), closedText),
+                        () -> assertTrue(closedText.contains("\"withdrawn\""), closedText),
+                        () -> assertTrue(closedText.contains("\"state_left\""), closedText));
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("a drain event racing a withdrawal never leaves a running runtime with drain items")
+    void drainEventRacingWithdrawalRestoresNoItem() throws Exception {
+        var items = drainItems(Generators.integers(2, 4).next());
+        var stateId = drainStateId();
+        registerSystemState(stateId, drainingFacts(items, THEN_EXIT), List.of());
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        var rounds = Generators.integers(60, 120).next();
+        var lateItem = Generators.letterStrings(5, 10).next();
+
+        var executor = Executors.newVirtualThreadPerTaskExecutor();
+        try {
+            for (var round = 0; round < rounds; round++) {
+                engine.goToState(stateId);
+                var start = new CountDownLatch(1);
+                Future<?> event = executor.submit(() -> {
+                    start.await();
+                    engine.broadcast(EVENT_DRAINING, Map.of(
+                            "lifecycle_state", "draining",
+                            "remaining_items", List.of(lateItem),
+                            "remaining_work_count", 1));
+                    return null;
+                });
+                Future<?> withdraw = executor.submit(() -> {
+                    start.await();
+                    return send("DELETE", PATH_STOP, auth, new byte[0], false).status();
+                });
+                start.countDown();
+                awaitBounded(event, "the drain event");
+                awaitBounded(withdraw, "the withdrawal");
+
+                assertEquals(RuntimeLifecycleState.RUNNING, engine.lifecycleState(), "round " + round);
+                assertTrue(remainingItems(engine, auth).isEmpty(),
+                        "round " + round + ": a withdrawn drain runs nothing, whatever event raced it");
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    @EnabledOnOs({OS.MAC, OS.LINUX})
+    @DisplayName("after a jump to a running state a reconnecting stream replays no drain frame but every other event")
+    void jumpDropsBufferedDrainFrames() throws Exception {
+        var items = drainItems(Generators.integers(2, 4).next());
+        var stateId = drainStateId();
+        registerSystemState(stateId, drainingFacts(items, THEN_EXIT), List.of());
+        var anchor = markerEvent();
+        var unrelated = markerEvent();
+        var boundary = markerEvent();
+        var latches = Map.of(unrelated, new CountDownLatch(1));
+        var replayLatches = Map.of(boundary, new CountDownLatch(1));
+
+        try (var runtime = startRuntime()) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var bearer = "Bearer " + runtime.token();
+            var live = runtime.engine();
+            String anchorId;
+            try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", bearer))) {
+                var events = new CopyOnWriteArrayList<SseEvent>();
+                readFullEvents(exchange.events(), events, latches);
+                live.goToState(stateId);
+                live.broadcast(anchor, Map.of());
+                live.broadcast(EVENT_DRAINING, Map.of(
+                        "lifecycle_state", "draining",
+                        "remaining_items", items,
+                        "remaining_work_count", items.size()));
+                live.broadcast(unrelated, Map.of());
+                assertTrue(latches.get(unrelated).await(5, TimeUnit.SECONDS), "the events arrive: " + events);
+                anchorId = events.stream().filter(event -> anchor.equals(event.event())).findFirst()
+                        .orElseThrow().id();
+                assertTrue(events.stream().anyMatch(event -> EVENT_DRAINING.equals(event.event())),
+                        "the drain frame was delivered and buffered: " + events);
+            }
+
+            live.goToState(STATE_SYSTEM_RUNNING);
+
+            try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", bearer)
+                    .withHeader("Last-Event-ID", anchorId))) {
+                var replayed = new CopyOnWriteArrayList<SseEvent>();
+                readFullEvents(exchange.events(), replayed, replayLatches);
+                live.broadcast(boundary, Map.of());
+                assertTrue(replayLatches.get(boundary).await(5, TimeUnit.SECONDS), "the boundary arrives: " + replayed);
+                var names = replayed.stream().map(SseEvent::event).toList();
+                var beforeBoundary = names.subList(0, names.indexOf(boundary));
+                assertAll(
+                        () -> assertTrue(beforeBoundary.contains(unrelated),
+                                "an unrelated buffered event is still replayed: " + names),
+                        () -> assertFalse(beforeBoundary.contains(EVENT_DRAINING),
+                                "a drain of the state left must not be replayed: " + names));
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("a drain event that leaves no item ends the drain through the lifecycle transition")
+    void emptyDrainEventEndsTheDrain() throws Exception {
+        var items = drainItems(Generators.integers(2, 4).next());
+        var stateId = drainStateId();
+        registerSystemState(stateId, drainingFacts(items, THEN_EXIT), List.of());
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        engine.goToState(stateId);
+        assertEquals(RuntimeLifecycleState.DRAINING, engine.lifecycleState());
+
+        engine.broadcast(EVENT_DRAINING, Map.of(
+                "lifecycle_state", "draining",
+                "remaining_items", List.of(),
+                "remaining_work_count", 0));
+
+        assertAll(
+                () -> assertEquals(RuntimeLifecycleState.STOPPED, engine.lifecycleState(),
+                        "a drain with nothing left ends as its last step does"),
+                () -> assertTrue(remainingItems(engine, auth).isEmpty()));
+    }
+
+    @Test
+    @EnabledOnOs({OS.MAC, OS.LINUX})
+    @DisplayName("a scenario drain event of a withdrawn drain does not overwrite the items of the replacement drain")
+    void scheduledDrainEventOfWithdrawnDrainIsDropped() throws Exception {
+        var items = drainItems(Generators.integers(2, 4).next());
+        var staleItem = Generators.letterStrings(5, 10).next() + "-stale";
+        var stateId = drainStateId();
+        var marker = markerEvent();
+        var afterMs = Generators.integers(300, 500).next();
+        registerSystemState(stateId, drainingFacts(items, THEN_EXIT), List.of(
+                new EventDefinition(afterMs, EVENT_DRAINING, Map.of(
+                        "lifecycle_state", "draining",
+                        "remaining_items", List.of(staleItem),
+                        "remaining_work_count", 1)),
+                new EventDefinition(afterMs + 100, marker, Map.of())));
+        var latches = Map.of(marker, new CountDownLatch(1));
+
+        try (var runtime = startRuntime()) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var bearer = Map.of("Authorization", "Bearer " + runtime.token());
+            try (var exchange = client.open(HttpRequest.get("/api/v1/events")
+                         .withHeader("Authorization", "Bearer " + runtime.token()))) {
+                var names = new CopyOnWriteArrayList<String>();
+                readEvents(exchange.events(), names, latches);
+                var live = runtime.engine();
+                live.goToState(stateId);
+
+                assertEquals(200, send(live, "DELETE", PATH_STOP, bearer, new byte[0], false).status());
+                var restarted = send(live, "POST", PATH_STOP, bearer, drainBody(THEN_EXIT), false);
+                assertEquals(200, restarted.status(), restarted.body());
+
+                assertTrue(latches.get(marker).await(5, TimeUnit.SECONDS), "the state's events are due: " + names);
+                assertFalse(remainingItems(live, bearer).contains(staleItem),
+                        "the withdrawn drain's event must not overwrite the replacement drain");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("a repeated stop during a drain of a signal keeps the drain non-withdrawable")
+    void repeatedStopKeepsSignalDrainNonWithdrawable() throws Exception {
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        engine.goToState(STATE_DRAINING_SIGNAL);
+
+        var repeated = send("POST", PATH_STOP, auth, drainBody(THEN_EXIT), false);
+        var withdraw = send("DELETE", PATH_STOP, auth, new byte[0], false);
+
+        assertAll(
+                () -> assertEquals(200, repeated.status(), repeated.body()),
+                () -> assertEquals(Boolean.FALSE, repeated.json().get("can_withdraw")),
+                () -> assertEquals(409, withdraw.status(), withdraw.body()),
+                () -> assertEquals("not_withdrawable", withdraw.json().get("error")),
+                () -> assertEquals(RuntimeLifecycleState.DRAINING, engine.lifecycleState()));
+    }
+
+    @Test
+    @DisplayName("a cleanup delete after an exit drain ended the runtime is rejected and the job stays open")
+    void cleanupDeleteAfterExitDrainIsRejected() throws Exception {
+        var stateId = drainStateId();
+        registerSystemState(stateId, drainingFacts(drainItems(1), THEN_EXIT), List.of());
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        engine.goToState(stateId);
+        engine.shrinkDrain();
+        assertEquals(RuntimeLifecycleState.STOPPED, engine.lifecycleState());
+
+        var delete = send("POST", "/api/v1/system/cleanup/cln-0012/delete", auth, new byte[0], false);
+        var cleanup = send("GET", "/api/v1/system/cleanup", auth, new byte[0], false);
+
+        assertAll(
+                () -> assertEquals(409, delete.status(), delete.body()),
+                () -> assertEquals("runtime_stopping", delete.json().get("error")),
+                () -> assertEquals(200, cleanup.status(), cleanup.body()),
+                () -> assertNotEquals(Boolean.FALSE, cleanup.json().get("open"), "the job stays open"));
+    }
+
     private static final String PATH_STOP = "/api/v1/operator/runtime/stop";
     private static final String STATE_SYSTEM_RUNNING = "system.running";
+    private static final String STATE_DRAINING_SIGNAL = "system.draining-signal";
+    private static final String EVENT_DECISION_CLOSED = "decision.closed";
     private static final String EVENT_DRAINING = "runtime.draining";
     private static final String THEN_EXIT = "exit";
 
@@ -1695,6 +1923,64 @@ class MockRuntimeEngineTest {
         assertEquals(200, status.status(), status.body());
         var items = JsonTree.asArray(status.json().get("drain_remaining_items"));
         return items == null ? List.of() : items;
+    }
+
+    private static String decisionOpenedBody(String decisionId) {
+        return """
+                {
+                  "event": "decision.opened",
+                  "data": {
+                    "id": "%s",
+                    "question": {
+                      "revision": 1,
+                      "title": "Broadcast question",
+                      "header": "Broadcast",
+                      "subject": "plan broadcast-plan",
+                      "scope": "plan",
+                      "asking_phase": "execute",
+                      "asking_role": "implement",
+                      "blocks": "plan",
+                      "reversibility": "reversible",
+                      "description": "A question opened through the control endpoint.",
+                      "parts": []
+                    }
+                  }
+                }
+                """.formatted(decisionId);
+    }
+
+    private static Object parseJson(String text) {
+        try {
+            return JsonTree.parse(text);
+        } catch (IOException e) {
+            throw new AssertionError("not JSON: " + text, e);
+        }
+    }
+
+    /**
+     * Reads the events of a stream on a daemon thread, opening each latch when its event arrives.
+     *
+     * @param sse     the stream
+     * @param events  receives the events in arrival order
+     * @param latches the latch per awaited event name
+     */
+    private static void readFullEvents(SseReader sse, List<SseEvent> events, Map<String, CountDownLatch> latches) {
+        var reader = new Thread(() -> {
+            try {
+                SseEvent event;
+                while ((event = sse.next()) != null) {
+                    events.add(event);
+                    var latch = latches.get(String.valueOf(event.event()));
+                    if (latch != null) {
+                        latch.countDown();
+                    }
+                }
+            } catch (IOException _) {
+                // the stream closed
+            }
+        });
+        reader.setDaemon(true);
+        reader.start();
     }
 
     /**

@@ -223,6 +223,44 @@ class SystemScenarioTest {
     }
 
     @Test
+    @DisplayName("the stop_now act of a drain of a signal stops the runtime now and starts no withdrawable drain")
+    void stopNowOfSignalDrainStopsImmediately() throws Exception {
+        try (var runtime = MockRuntime.start(StandardScenarios.SYSTEM)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+            runtime.goToState("system.draining-signal");
+            var stopNow = stopNowLinkOf(runtime, "system.draining-signal");
+            var params = JsonTree.object(stopNow, "params");
+            assertEquals("now", JsonTree.string(params, "when"), "the advertised act stops now");
+
+            var stopped = client.send(HttpRequest.post(JsonTree.string(stopNow, "href"))
+                    .withHeader("Authorization", auth).withBody(JsonTree.write(params)));
+            assertEquals(200, stopped.status(), stopped.bodyText());
+            var stoppedBody = JsonTree.asObject(JsonTree.parse(stopped.bodyText()));
+            assertEquals("stopping", stoppedBody.get("state"));
+            assertEquals(RuntimeLifecycleState.STOPPING, runtime.engine().lifecycleState());
+            assertEquals("system.stopped", runtime.currentStateName(), "the scenario follows the act's next state");
+
+            var withdraw = client.send(HttpRequest.delete("/api/v1/operator/runtime/stop").withHeader("Authorization", auth));
+            assertEquals(409, withdraw.status(), withdraw.bodyText());
+            var withdrawBody = JsonTree.asObject(JsonTree.parse(withdraw.bodyText()));
+            assertEquals("not_withdrawable", withdrawBody.get("error"), "no drain was started that could be withdrawn");
+            assertEquals(RuntimeLifecycleState.STOPPING, runtime.engine().lifecycleState());
+        }
+    }
+
+    private static Map<String, Object> stopNowLinkOf(MockRuntime runtime, String stateId) {
+        var state = runtime.engine().currentScenario().state(stateId);
+        assertNotNull(state, stateId);
+        var representation = JsonTree.asObject(state.representation());
+        var links = JsonTree.asArray(representation.get("links"));
+        assertNotNull(links, "the state offers acts");
+        return links.stream().map(JsonTree::asObject)
+                .filter(link -> link != null && "stop_now".equals(JsonTree.string(link, "id")))
+                .findFirst().orElseThrow();
+    }
+
+    @Test
     @DisplayName("manages cleanup job: get open job, postpone, ignore, delete, and kept items")
     void shouldManageCleanupJob() throws Exception {
         try (var runtime = MockRuntime.start(StandardScenarios.SYSTEM)) {
