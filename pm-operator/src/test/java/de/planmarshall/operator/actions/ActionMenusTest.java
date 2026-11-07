@@ -55,7 +55,7 @@ class ActionMenusTest {
         assertEquals("\u2026", labels.get(0).substring(labels.get(0).length() - 1));
         assertTrue(labels.get(1).startsWith("Cancel"));
         assertTrue(labels.get(2).startsWith("Chat"));
-        assertTrue(labels.get(3).startsWith("Settings"));
+        assertTrue(labels.get(3).startsWith("Plan settings"));
         assertEquals("p", menu.entries().get(0).trigger());
         assertEquals("x", menu.entries().get(1).trigger());
         assertEquals("h", menu.entries().get(2).trigger());
@@ -75,7 +75,7 @@ class ActionMenusTest {
         assertEquals("x", paused.entries().get(1).trigger());
         assertTrue(labels.get(1).startsWith("Abandon"));
         assertTrue(labels.get(2).startsWith("Chat"), labels.toString());
-        assertTrue(labels.get(3).startsWith("Settings"), labels.toString());
+        assertTrue(labels.get(3).startsWith("Plan settings"), labels.toString());
     }
 
     @Test
@@ -102,7 +102,7 @@ class ActionMenusTest {
         assertEquals("p", menu.entries().get(1).trigger());
         assertTrue(labels.get(2).startsWith("Cancel"), labels.toString());
         assertTrue(labels.get(3).startsWith("Chat"), labels.toString());
-        assertTrue(labels.get(4).startsWith("Settings"), labels.toString());
+        assertTrue(labels.get(4).startsWith("Plan settings"), labels.toString());
         assertTrue(menu.droppedActions().isEmpty(), menu.droppedActions().toString());
     }
 

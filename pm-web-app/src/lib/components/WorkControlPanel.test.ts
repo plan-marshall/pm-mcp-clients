@@ -99,6 +99,7 @@ describe('WorkControlPanel component', () => {
 
     const menu = await openOverflow();
     expect(within(menu).getByTestId('action-settings')).toBeInTheDocument();
+    expect(within(menu).getByTestId('action-settings')).toHaveTextContent('Plan settings');
     expect(within(menu).getByTestId('action-cancel')).toBeInTheDocument();
   });
 
