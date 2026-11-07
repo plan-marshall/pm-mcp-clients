@@ -80,6 +80,9 @@ PLAN-105 made the web "Mark all shown read" post exactly the shown ids, but the 
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD f5ab6dd2
 - OBSERVED: `doc/design/terminal-client/24-reports.adoc` — present at HEAD f5ab6dd2
 - OBSERVED: `doc/design/shared/completion-report.adoc` — present at HEAD f5ab6dd2
+- OBSERVED: `pm-web-app/src/lib/components/RowMenu.svelte` — present at HEAD ddcab793
+- OBSERVED: `pm-web-app/src/lib/display/format.test.ts` — present at HEAD ddcab793
+- OBSERVED: `pm-web-e2e/tests/row-menu.spec.js` — present at HEAD ddcab793
 
 ## Dependencies and Sequencing
 
@@ -87,6 +90,10 @@ PLAN-105 made the web "Mark all shown read" post exactly the shown ids, but the 
 - Overlaps with: `PLAN-97` (running: `MockRuntimeEngine.java`, `reports-and-system.json`, `OperatorGateScopeTest.java`, `PmOperatorProcessIT.java`; start this plan after it has landed), `PLAN-106` (running: `client.ts` is on its list, the lines near `:2881` do not overlap; merge main before landing), `PLAN-45` (deliverable 4 there keeps the rows across a reload: whichever starts second reads the other's landing)
 - Should land before: `PLAN-42`, `PLAN-45`, `PLAN-72`, `PLAN-73`, `PLAN-75` (same files)
 - Adjacent to: `PLAN-74` (deliverable 3 owns the `RowMenu` popup against the sticky bottom navigation at ≤767 px, the `components.adoc` leftovers and the shared filter rule)
+
+## Amendment 2026-11-07 (PLAN-108 landing)
+
+PLAN-108 merged (`ddcab793`), so this plan may now touch `RowMenu.test.ts`. Add to the reports-and-menu work: (a) a test that a scroll event INSIDE a capped `RowMenu` (not on `window`) keeps its `scrollTop` (`RowMenu.svelte` `place()` clears and re-applies `max-block-size` on every capturing `scroll`: HYPOTHESIS, confirm or refute); (b) `row-menu.spec.js` waits for the condition the menu needs (the report row rendered), not only the `unread-count` element; (c) a `format.test.ts` case for the 30-59 day age (`last month` / `letzten Monat`); (d) the `reports.spec.js` expectation `6 unread reports` fails at base (7 vs 6, PLAN-105 defect 13, reported by the PLAN-108 session): fix the test or the scenario. Surfaces added (same act): `pm-web-app/src/lib/components/RowMenu.svelte`, `pm-web-app/src/lib/display/format.test.ts`, `pm-web-e2e/tests/row-menu.spec.js`.
 
 ## Hand-Off Command
 

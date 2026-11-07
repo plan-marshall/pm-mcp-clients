@@ -128,6 +128,10 @@ has an answer where the reviewer reads it and the tests can fail.
 - Should land before: PLAN-21, 23, 30, 36, 42, 44, 50, 79, 84
 - Adjacent to: none
 
+## Amendment 2026-11-07 (PLAN-108 landing)
+
+The race of the unresolved PR 357 thread `EntryFlowStaticsTest.java:116` is already fixed by PR 362 (`629e33ce`: a `workerLeft` latch is awaited before the assertions; the line numbers of this file moved by about 5): deliverable 1(a) reduces to the reply in the thread citing `629e33ce` and resolving it; the nitpick `EntryFlowStaticsTest` ~58 (assert the worker cause) stays. `ActionSupportTest` now repeats Ctrl+C every 20 ms until the dialogue leaves and 309 `nonEmptyStrings` calls became `nonBlankStrings` across `pm-api` tests (use `nonBlankStrings`). Add a note to the pull request on a possible product window: `StartPrompt.ask`/`askRaw`/`askInline` (~123-146) and `ChoicePrompt.renderFrame()` print the question before `readLine` starts and `pm-operator/src/main` has no `Signal.INT` handler, so a Ctrl+C in that gap takes the JVM default (exit 130) instead of leaving the dialogue (HYPOTHESIS, microseconds wide; confirm or refute at those lines, never fix inside this plan unless a test reproduces it).
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode) — a small plan (operator rule 2026-11-07: small plans go to the runbook lane, design work to direct Claude Code sessions). Start it after `PLAN-97` has landed. 

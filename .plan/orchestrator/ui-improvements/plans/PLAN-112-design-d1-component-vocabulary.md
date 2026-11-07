@@ -115,6 +115,10 @@ ui-improvements`; read the files, never write them):
   used), `PLAN-109` (`control.plan.settings` text)
 - Adjacent to: none
 
+## Amendment 2026-11-07 (PLAN-108 landing)
+
+PLAN-108 merged (`ddcab793`): `components.adoc` is the base. D1 also (a) corrects the stacking wording in `#row-menu-placement`: the document says dialogs sit at z-index 50, but `Dialog.svelte`, `CommandPalette` and `LanListenerModal` use 100 — state the layers once (bar 20, menu 30, dialogs) and bind them; (b) decides whether `RowMenu` gains a `disabledReason` (today the ActionBar reaches disabled entries with their reason and `RowMenu` skips them, a divergence PLAN-108 named); (c) takes the age rule as decided in `texts-and-languages.adoc#time` (months and years from the language's relative-time data, no weeks).
+
 ## Hand-Off Command
 
 Lane: none — a direct Claude Code session (operator instruction 2026-11-06). Start it in its own worktree and branch of

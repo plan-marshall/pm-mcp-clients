@@ -66,7 +66,7 @@ is changed and checked with it. Code and catalogue only: no design session.
 - Frontend standards (`CLAUDE.md`, `PLAN-80`): text reaches the DOM through text-treating sinks only; a test waits on a
   condition, never on a timer.
 - Every changed text exists in both languages (`de` / `en`); catalogue parity is kept.
-- Ports of this plan: mock web port `21080`, app port `21081` (`AGENTS.md` § Ports, `PLAN-76`). Pass them to every mock, app
+- Ports of this plan: mock web port `21090`, app port `21091` (`AGENTS.md` § Ports formula `20000 + 10 × 109`; corrected 2026-11-07, the staged value was one block too low and PLAN-110 runs on this block by its own spec: start this plan only after PLAN-110 has merged). Pass them to every mock, app
   and e2e start; other plans run at the same time, so never stop or reuse a process this worktree did not start.
 - Browser check of the rendered output following `AGENTS.md` § Browser checks (the session's browser tool; if none is
   available the browser Done-when clause is NOT met — a blocker reported as such, never replaced by a unit test). Check `de`
