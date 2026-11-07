@@ -33,7 +33,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.LockSupport;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
@@ -484,24 +483,24 @@ class PmConsoleBehaviourTest {
         fixture.start((request, response) -> {
             if (("/api/v1/entries/" + entryId).equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, """
-                    {
-                      "state": {"state_id": "identity", "kind": "operator_wait"},
-                      "step": 3,
-                      "total_steps": 10,
-                      "summary": "Project Identity",
-                      "links": [{"id": "next", "rel": "next", "preselected": true}]
-                    }
-                    """);
+                                    {
+                                      "state": {"state_id": "identity", "kind": "operator_wait"},
+                                      "step": 3,
+                                      "total_steps": 10,
+                                      "summary": "Project Identity",
+                                      "links": [{"id": "next", "rel": "next", "preselected": true}]
+                                    }
+                                    """);
             } else if (("/api/v1/entries/" + entryId + "/links/next").equals(request.target()) && "POST".equals(request.method())) {
                 postTarget.set(request.target());
                 response.json(200, """
-                    {
-                      "state": {"state_id": "project.completed", "kind": "completed"},
-                      "step": 10,
-                      "total_steps": 10,
-                      "summary": "Completed"
-                    }
-                    """);
+                                    {
+                                      "state": {"state_id": "project.completed", "kind": "completed"},
+                                      "step": 10,
+                                      "total_steps": 10,
+                                      "summary": "Completed"
+                                    }
+                                    """);
             } else if ("/api/v1/status".equals(request.target())) {
                 response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
             } else if ("/api/v1/project-onboardings".equals(request.target())) {
