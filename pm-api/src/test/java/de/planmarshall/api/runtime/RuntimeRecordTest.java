@@ -9,6 +9,7 @@
  */
 package de.planmarshall.api.runtime;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -17,6 +18,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -59,8 +61,21 @@ class RuntimeRecordTest {
         var self = ProcessHandle.current().pid();
 
         assertFalse(new RuntimeRecord(self, Instant.parse("2001-01-01T00:00:00Z"), null).processAlive());
-        assertTrue(new RuntimeRecord(self, null, null).processAlive());
+        assertFalse(new RuntimeRecord(self, null, null).processAlive(), "a record without a start instant identifies nothing");
         assertFalse(new RuntimeRecord(Integer.MAX_VALUE - 1L, null, null).processAlive());
+    }
+
+    @Test
+    @DisplayName("identifies a process only by a start instant equal to the second")
+    void identifiesOnlyAnEqualStartInstant() {
+        var self = ProcessHandle.current();
+        var start = self.info().startInstant().orElseThrow().truncatedTo(ChronoUnit.SECONDS);
+
+        assertAll(
+                () -> assertTrue(new RuntimeRecord(self.pid(), start, null).identifies(self)),
+                () -> assertTrue(new RuntimeRecord(self.pid(), start.plusMillis(400), null).identifies(self)),
+                () -> assertFalse(new RuntimeRecord(self.pid(), start.plusSeconds(1), null).identifies(self)),
+                () -> assertFalse(new RuntimeRecord(self.pid(), null, null).identifies(self)));
     }
 
     @ParameterizedTest

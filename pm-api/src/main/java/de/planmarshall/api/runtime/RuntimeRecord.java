@@ -24,7 +24,8 @@ import de.planmarshall.api.json.JsonTree;
 /**
  * Read-only codec of the runtime record {@code <PM_MCP_BASE>/state/runtime.json}, one of the files
  * the client binaries read directly. It serves only the "not running" answer: a record whose
- * process is gone, or whose start instant differs (PID reuse), names no live runtime.
+ * process is gone, whose start instant it does not carry, or whose start instant differs (PID reuse)
+ * names no live runtime.
  *
  * @param pid           the runtime's process id
  * @param startInstant  the process start instant, {@code null} when not recorded
@@ -60,13 +61,26 @@ public record RuntimeRecord(long pid, Instant startInstant, String version) {
     }
 
     /**
-     * @return {@code true} if the recorded process is alive and, where recorded, started at the
-     *         recorded instant
+     * @return {@code true} if the record names a live process that it can identify by its start
+     *         instant; a record with no start instant, or a process that reports none, names no live
+     *         runtime
      */
     public boolean processAlive() {
-        return ProcessHandle.of(pid).filter(ProcessHandle::isAlive).map(handle -> startInstant == null
-                || handle.info().startInstant().map(actual -> actual.truncatedTo(ChronoUnit.SECONDS)
-                .equals(startInstant.truncatedTo(ChronoUnit.SECONDS))).orElse(true))
+        return ProcessHandle.of(pid).filter(ProcessHandle::isAlive).map(this::identifies).orElse(false);
+    }
+
+    /**
+     * The record identifies a process only when it carries a start instant and the process reports an
+     * equal one, to the second. A reused process id is a different process: nothing else is proof
+     * enough to signal it.
+     *
+     * @param handle the process the record's process id names
+     * @return {@code true} if the process is the one the record names
+     */
+    public boolean identifies(ProcessHandle handle) {
+        return startInstant != null && handle.info().startInstant()
+                .map(actual -> actual.truncatedTo(ChronoUnit.SECONDS)
+                        .equals(startInstant.truncatedTo(ChronoUnit.SECONDS)))
                 .orElse(false);
     }
 }
