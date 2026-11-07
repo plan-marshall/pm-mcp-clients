@@ -8893,6 +8893,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         // Only systemLock is taken here: the drain's steps live in drainTasks, so the stop never
         // takes the engine monitor while it holds systemLock (see systemLock's lock order).
         var stopNow = "now".equalsIgnoreCase(when);
+        Map<String, Object> stopNowBody = null;
         synchronized (systemLock) {
             if (stopNow) {
                 // Stopping now ends a running drain: its steps and its events stop with it.
@@ -8906,11 +8907,13 @@ public final class MockRuntimeEngine implements AutoCloseable {
                         KEY_LIFECYCLE_STATE, LIFECYCLE_STOPPING,
                         KEY_THEN, thenVal
                 ));
-                response.json(200, Map.of(
+                // Answered after the scenario has moved on (below), so a client that reads the
+                // scenario's state on the answer finds the state the act declares.
+                stopNowBody = Map.of(
                         KEY_STATUS, LIFECYCLE_STOPPING,
                         KEY_STATE, LIFECYCLE_STOPPING,
                         KEY_THEN, thenVal
-                ));
+                );
             } else {
                 // A new drain replaces a running one; the state's own events and auto transition
                 // keep running, only the earlier drain's steps end. A repeated request on a running
@@ -8962,9 +8965,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 scheduleDrainShrink(drainItems.size());
             }
         }
-        if (stopNow) {
+        if (stopNowBody != null) {
             // Outside systemLock: the scenario's move takes the engine monitor (see the lock order).
             followStopNowLink(request);
+            response.json(200, stopNowBody);
         }
     }
 
