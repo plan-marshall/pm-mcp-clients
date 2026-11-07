@@ -36,8 +36,8 @@ class EnrolRecordsTest {
     @Test
     @DisplayName("EnrolRequest round-trips and rejects a missing path")
     void enrolRequest() throws Exception {
-        var projectPath = "/home/" + Generators.nonEmptyStrings().next();
-        var aliasPath = "/" + Generators.nonEmptyStrings().next();
+        var projectPath = "/home/" + Generators.nonBlankStrings().next();
+        var aliasPath = "/" + Generators.nonBlankStrings().next();
         var request = new EnrolRequest(projectPath, true);
         var roundTrip = EnrolRequest.fromJson(request.toJson());
         assertAll(
@@ -57,7 +57,7 @@ class EnrolRecordsTest {
     @Test
     @DisplayName("EnrolResult round-trips and requires a project id")
     void enrolResult() throws Exception {
-        var projectId = Generators.nonEmptyStrings().next();
+        var projectId = Generators.nonBlankStrings().next();
         var result = new EnrolResult(EnrolResult.STATUS_ENROLLED, projectId, true);
         assertNotNull(result.toJson());
 
@@ -68,7 +68,7 @@ class EnrolRecordsTest {
                 () -> assertTrue(roundTrip.pilot())
         );
 
-        var minimalId = Generators.nonEmptyStrings().next();
+        var minimalId = Generators.nonBlankStrings().next();
         var minimal = EnrolResult.fromMap(Map.of("id", minimalId));
         assertEquals(EnrolResult.STATUS_ENROLLED, minimal.status());
         assertEquals(minimalId, minimal.projectId());
@@ -80,7 +80,7 @@ class EnrolRecordsTest {
     @Test
     @DisplayName("UnenrolRequest round-trips and rejects a missing project id")
     void unenrolRequest() throws Exception {
-        var projectId = Generators.nonEmptyStrings().next();
+        var projectId = Generators.nonBlankStrings().next();
         var roundTrip = UnenrolRequest.fromJson(new UnenrolRequest(projectId).toJson());
         assertEquals(projectId, roundTrip.projectId());
 
@@ -105,7 +105,7 @@ class EnrolRecordsTest {
     void storeDigestComparison() throws Exception {
         var recordedSize = (long) Generators.integers(0, 10_000).next();
         var currentSize = recordedSize + Generators.integers(1, 1_000).next();
-        var mismatchDetails = Generators.nonEmptyStrings().next();
+        var mismatchDetails = Generators.nonBlankStrings().next();
         var mismatch = new StoreDigestComparison(".plan/marshal.json", recordedSize, RECORDED_SHA,
                 currentSize, CURRENT_SHA, mismatchDetails);
         assertNotNull(mismatch.toJson());

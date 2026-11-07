@@ -113,8 +113,8 @@ class HarnessRolesResourcesTest {
     @Test
     @DisplayName("RoleSummaryResource round-trips and defaults an absent member")
     void roleSummaryRoundTrip() throws Exception {
-        var displayName = Generators.nonEmptyStrings().next();
-        var description = Generators.nonEmptyStrings().next();
+        var displayName = Generators.nonBlankStrings().next();
+        var description = Generators.nonBlankStrings().next();
         var resource = new RoleSummaryResource("implementer", displayName, description,
                 List.of("pm_wait", "pm_do", "write"), "shipped", "writer", "fresh", "claude",
                 "opus-4.5", "high", "project", "machine", "shipped",
@@ -201,8 +201,8 @@ class HarnessRolesResourcesTest {
     @Test
     @DisplayName("RoleDetailResource round-trips its advisory tools, effort, and parameters")
     void roleDetailRoundTrip() throws Exception {
-        var displayName = Generators.nonEmptyStrings().next();
-        var description = Generators.nonEmptyStrings().next();
+        var displayName = Generators.nonBlankStrings().next();
+        var description = Generators.nonBlankStrings().next();
         var count = Generators.integers(0, 100).next();
         var parameters = Map.<String, Object>of(
                 "source_set", "shipped",

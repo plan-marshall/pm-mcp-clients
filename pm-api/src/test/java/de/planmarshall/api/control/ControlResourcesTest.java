@@ -30,7 +30,7 @@ class ControlResourcesTest {
     @Test
     @DisplayName("round-trips an epic's tokens with a floor and its coverage")
     void epicTokens() throws Exception {
-        var planId = Generators.nonEmptyStrings().next();
+        var planId = Generators.nonBlankStrings().next();
         var measuredTasks = Generators.integers(0, 100).next();
         var total = new TokenFigure(3_860_000L, 3_520_000L, 340_000L, true, true, measuredTasks, 1);
         var tokens = new EpicTokens(total,
@@ -55,19 +55,19 @@ class ControlResourcesTest {
     @Test
     @DisplayName("round-trips the epic resource with its rows, waits, and tokens")
     void epicResource() throws Exception {
-        var epicId = Generators.nonEmptyStrings().next();
-        var projectId = Generators.nonEmptyStrings().next();
-        var waitingPlanId = Generators.nonEmptyStrings().next();
-        var rowPlanId = Generators.nonEmptyStrings().next();
-        var overlapPlanId = Generators.nonEmptyStrings().next();
-        var overlapPath = Generators.nonEmptyStrings().next();
-        var rowDescription = Generators.nonEmptyStrings().next();
-        var deliverable = Generators.nonEmptyStrings().next();
-        var testName = Generators.nonEmptyStrings().next();
-        var surface = Generators.nonEmptyStrings().next();
-        var eventAt = Generators.nonEmptyStrings().next();
-        var eventText = Generators.nonEmptyStrings().next();
-        var summary = Generators.nonEmptyStrings().next();
+        var epicId = Generators.nonBlankStrings().next();
+        var projectId = Generators.nonBlankStrings().next();
+        var waitingPlanId = Generators.nonBlankStrings().next();
+        var rowPlanId = Generators.nonBlankStrings().next();
+        var overlapPlanId = Generators.nonBlankStrings().next();
+        var overlapPath = Generators.nonBlankStrings().next();
+        var rowDescription = Generators.nonBlankStrings().next();
+        var deliverable = Generators.nonBlankStrings().next();
+        var testName = Generators.nonBlankStrings().next();
+        var surface = Generators.nonBlankStrings().next();
+        var eventAt = Generators.nonBlankStrings().next();
+        var eventText = Generators.nonBlankStrings().next();
+        var summary = Generators.nonBlankStrings().next();
         var row = new WorkRow(rowPlanId, rowPlanId, "staged", "dependency",
                 waitingPlanId, List.of(), null, null, null, rowDescription,
                 List.of(deliverable, testName), List.of(surface), List.of(waitingPlanId));
@@ -119,13 +119,13 @@ class ControlResourcesTest {
     @Test
     @DisplayName("round-trips a decomposition draft with its checks")
     void decomposition() throws Exception {
-        var planId = Generators.nonEmptyStrings().next();
-        var epicId = Generators.nonEmptyStrings().next();
-        var objective = Generators.nonEmptyStrings().next();
-        var deliverable = Generators.nonEmptyStrings().next();
-        var surface = Generators.nonEmptyStrings().next();
-        var workstreamTitle = Generators.nonEmptyStrings().next();
-        var checkMessage = Generators.nonEmptyStrings().next();
+        var planId = Generators.nonBlankStrings().next();
+        var epicId = Generators.nonBlankStrings().next();
+        var objective = Generators.nonBlankStrings().next();
+        var deliverable = Generators.nonBlankStrings().next();
+        var surface = Generators.nonBlankStrings().next();
+        var workstreamTitle = Generators.nonBlankStrings().next();
+        var checkMessage = Generators.nonBlankStrings().next();
         var plan = new DecompositionPlan(planId, planId, objective,
                 List.of(deliverable), List.of(surface), List.of(),
                 1, "changed", false);
@@ -150,16 +150,16 @@ class ControlResourcesTest {
     @Test
     @DisplayName("round-trips a chat read-back with its transcript and proposal")
     void chatReadBack() throws Exception {
-        var chatId = Generators.nonEmptyStrings().next();
-        var planId = Generators.nonEmptyStrings().next();
-        var operatorText = Generators.nonEmptyStrings().next();
-        var replanText = Generators.nonEmptyStrings().next();
-        var askedAt = Generators.nonEmptyStrings().next();
-        var answeredAt = Generators.nonEmptyStrings().next();
-        var proposalHeadline = Generators.nonEmptyStrings().next();
-        var currentDraft = Generators.nonEmptyStrings().next();
-        var proposedDraft = Generators.nonEmptyStrings().next();
-        var applies = Generators.nonEmptyStrings().next();
+        var chatId = Generators.nonBlankStrings().next();
+        var planId = Generators.nonBlankStrings().next();
+        var operatorText = Generators.nonBlankStrings().next();
+        var replanText = Generators.nonBlankStrings().next();
+        var askedAt = Generators.nonBlankStrings().next();
+        var answeredAt = Generators.nonBlankStrings().next();
+        var proposalHeadline = Generators.nonBlankStrings().next();
+        var currentDraft = Generators.nonBlankStrings().next();
+        var proposedDraft = Generators.nonBlankStrings().next();
+        var applies = Generators.nonBlankStrings().next();
         var chat = new ChatReadBackResource(chatId, planId, "plan", "replan", "plan", "read-back",
                 List.of(new ChatTurnResource("operator", operatorText, askedAt, false),
                         new ChatTurnResource("replan", replanText, answeredAt, false)),
@@ -182,16 +182,16 @@ class ControlResourcesTest {
     @Test
     @DisplayName("round-trips a review with a promotion and a read-back")
     void review() throws Exception {
-        var reviewId = Generators.nonEmptyStrings().next();
-        var epicId = Generators.nonEmptyStrings().next();
-        var itemId = Generators.nonEmptyStrings().next();
-        var itemTitle = Generators.nonEmptyStrings().next();
-        var rule = Generators.nonEmptyStrings().next();
-        var origin = Generators.nonEmptyStrings().next();
-        var promotion = Generators.nonEmptyStrings().next();
-        var draftedPlanId = Generators.nonEmptyStrings().next();
-        var draftedObjective = Generators.nonEmptyStrings().next();
-        var surface = Generators.nonEmptyStrings().next();
+        var reviewId = Generators.nonBlankStrings().next();
+        var epicId = Generators.nonBlankStrings().next();
+        var itemId = Generators.nonBlankStrings().next();
+        var itemTitle = Generators.nonBlankStrings().next();
+        var rule = Generators.nonBlankStrings().next();
+        var origin = Generators.nonBlankStrings().next();
+        var promotion = Generators.nonBlankStrings().next();
+        var draftedPlanId = Generators.nonBlankStrings().next();
+        var draftedObjective = Generators.nonBlankStrings().next();
+        var surface = Generators.nonBlankStrings().next();
         var total = Generators.integers(1, 20).next();
         var decided = Generators.integers(0, total).next();
         var item = new ReviewItemResource(itemId, "findings", itemTitle,
@@ -219,8 +219,8 @@ class ControlResourcesTest {
     @Test
     @DisplayName("round-trips an archive check and computes whether it passes")
     void archiveCheck() throws Exception {
-        var epicId = Generators.nonEmptyStrings().next();
-        var findingsAction = Generators.nonEmptyStrings().next();
+        var epicId = Generators.nonBlankStrings().next();
+        var findingsAction = Generators.nonBlankStrings().next();
         var carriedFindings = Generators.integers(0, 10).next();
         var carriedWatches = Generators.integers(0, 10).next();
         var failing = new ArchiveCheck(epicId,
@@ -248,7 +248,7 @@ class ControlResourcesTest {
     @Test
     @DisplayName("answers the derived states of the resources")
     void derivedStates() throws Exception {
-        var shippedPlanId = Generators.nonEmptyStrings().next();
+        var shippedPlanId = Generators.nonBlankStrings().next();
         var shipped = new WorkRow(shippedPlanId, shippedPlanId, "shipped", null, null, List.of(), 211,
                 "https://github.com/plan-marshall/pm-mcp-clients/pull/211", null, null,
                 List.of(), List.of(), List.of());

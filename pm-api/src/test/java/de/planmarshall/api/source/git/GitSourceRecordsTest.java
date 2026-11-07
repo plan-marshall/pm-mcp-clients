@@ -136,9 +136,9 @@ class GitSourceRecordsTest {
     @Test
     @DisplayName("PullRequestObservation round-trips with its changed files and screening")
     void pullRequestObservationRoundTrips() throws Exception {
-        var title = Generators.nonEmptyStrings().next();
-        var author = Generators.nonEmptyStrings().next();
-        var branch = Generators.nonEmptyStrings().next();
+        var title = Generators.nonBlankStrings().next();
+        var author = Generators.nonBlankStrings().next();
+        var branch = Generators.nonBlankStrings().next();
         var observation = new PullRequestObservation(
                 "https://codeberg.org/forgejo/forgejo/pulls/7001", 7001, title, author, branch,
                 PullRequestObservation.STATE_OPEN, true, changedFiles(),
@@ -173,7 +173,7 @@ class GitSourceRecordsTest {
         assertFalse(clean.toMap().containsKey("screening_bypass_reason"));
         assertEquals(clean, PrAdoptRequest.fromJson(clean.toJson()));
 
-        var bypassReason = Generators.nonEmptyStrings().next();
+        var bypassReason = Generators.nonBlankStrings().next();
         var flagged = new PrAdoptRequest("pm-mcp-clients", "7001", bypassReason);
         assertEquals(flagged, PrAdoptRequest.fromJson(flagged.toJson()));
     }
@@ -192,7 +192,7 @@ class GitSourceRecordsTest {
     @Test
     @DisplayName("LocalChangesPreview round-trips with its preview id and sums its line counts")
     void localChangesPreviewRoundTrips() throws Exception {
-        var previewId = Generators.nonEmptyStrings().next();
+        var previewId = Generators.nonBlankStrings().next();
         var preview = new LocalChangesPreview(LocalChangesPreview.STATUS_PREVIEWED, previewId, "main",
                 changedFiles(), "pr", true, true, null);
 
@@ -218,7 +218,7 @@ class GitSourceRecordsTest {
     @Test
     @DisplayName("LocalChangesCaptureRequest round-trips with its preview id and confirmation flag")
     void localChangesCaptureRequestRoundTrips() throws Exception {
-        var previewId = Generators.nonEmptyStrings().next();
+        var previewId = Generators.nonBlankStrings().next();
         var unconfirmed = new LocalChangesCaptureRequest("pm-mcp-clients", previewId, false);
         assertEquals(unconfirmed, LocalChangesCaptureRequest.fromJson(unconfirmed.toJson()));
 

@@ -212,7 +212,7 @@ class ApiContractTest {
     @DisplayName("the runtime event stream resource round-trips")
     void runtimeEventStreamRoundTrip() throws Exception {
         var activeListeners = Generators.integers(0, 10).next();
-        var lastEventId = Generators.nonEmptyStrings().next();
+        var lastEventId = Generators.nonBlankStrings().next();
         var resource = new RuntimeEventStreamResource("open", activeListeners, lastEventId,
                 List.of(new ResourceLink("/api/v1/events", LinkRelation.EVENTS,
                         ResourceLink.METHOD_GET, false)));

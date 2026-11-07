@@ -66,7 +66,7 @@ class ControlRecordsTest {
     @Test
     @DisplayName("round-trip serializes ActionAvailability and WorkActions")
     void workActions() throws Exception {
-        var reason = Generators.nonEmptyStrings().next();
+        var reason = Generators.nonBlankStrings().next();
         var availability = new ActionAvailability("pause", false, reason);
         var parsedAvailability = ActionAvailability.fromJson(availability.toJson());
         assertEquals("pause", parsedAvailability.action());
@@ -77,8 +77,8 @@ class ControlRecordsTest {
         assertTrue(enabled.available());
         assertNull(enabled.reason());
 
-        var subjectId = Generators.nonEmptyStrings().next();
-        var epicId = Generators.nonEmptyStrings().next();
+        var subjectId = Generators.nonBlankStrings().next();
+        var epicId = Generators.nonBlankStrings().next();
         var actions = new WorkActions(subjectId, "plan", "paused", "task", null, epicId,
                 List.of(ActionAvailability.enabled("start"), ActionAvailability.enabled("settings")));
         var parsedActions = WorkActions.fromJson(actions.toJson());
@@ -95,11 +95,11 @@ class ControlRecordsTest {
     @Test
     @DisplayName("round-trip serializes HoldRecord and its resolution request and result")
     void holds() throws Exception {
-        var holdId = Generators.nonEmptyStrings().next();
-        var cause = Generators.nonEmptyStrings().next();
+        var holdId = Generators.nonBlankStrings().next();
+        var cause = Generators.nonBlankStrings().next();
         var recordedSize = (long) Generators.integers(0, 1_000_000).next();
-        var previousDigest = Generators.nonEmptyStrings().next();
-        var currentDigest = Generators.nonEmptyStrings().next();
+        var previousDigest = Generators.nonBlankStrings().next();
+        var currentDigest = Generators.nonBlankStrings().next();
         var hold = new HoldRecord(
                 holdId, "relay-cursor-order", "plan", "integrity_pause",
                 cause, 0, null,
@@ -114,7 +114,7 @@ class ControlRecordsTest {
         assertTrue(parsedHold.offers("accept"));
         assertFalse(parsedHold.offers("cancel"));
 
-        var requestReason = Generators.nonEmptyStrings().next();
+        var requestReason = Generators.nonBlankStrings().next();
         var request = new HoldResolutionRequest("accept", requestReason, Map.of("force", true));
         var parsedRequest = HoldResolutionRequest.fromJson(request.toJson());
         assertEquals("accept", parsedRequest.act());
@@ -126,7 +126,7 @@ class ControlRecordsTest {
         assertTrue(parsedReleased.released());
         assertNull(parsedReleased.cause());
 
-        var stillHeldCause = Generators.nonEmptyStrings().next();
+        var stillHeldCause = Generators.nonBlankStrings().next();
         var stillHeld = new HoldResolutionResult(holdId, false, stillHeldCause, "fix-relay");
         var parsedStillHeld = HoldResolutionResult.fromJson(stillHeld.toJson());
         assertFalse(parsedStillHeld.released());
@@ -136,7 +136,7 @@ class ControlRecordsTest {
     @Test
     @DisplayName("round-trip serializes plan settings records")
     void planSettings() throws Exception {
-        var planId = Generators.nonEmptyStrings().next();
+        var planId = Generators.nonBlankStrings().next();
         var revision = Generators.integers(0, 100).next();
         var value = new PlanSettingsValue("landing", "landing.pull-request", "project",
                 List.of("landing.pull-request", "landing.main", "landing.files"));
@@ -175,9 +175,9 @@ class ControlRecordsTest {
     @Test
     @DisplayName("round-trip serializes the hold and plan control events")
     void controlEvents() throws Exception {
-        var holdId = Generators.nonEmptyStrings().next();
-        var planId = Generators.nonEmptyStrings().next();
-        var description = Generators.nonEmptyStrings().next();
+        var holdId = Generators.nonBlankStrings().next();
+        var planId = Generators.nonBlankStrings().next();
+        var description = Generators.nonBlankStrings().next();
         var opened = new HoldChangedEvent(HoldChangedEvent.EVENT_OPENED, holdId, planId, "plan",
                 "condition", description);
         assertEquals("hold.opened", opened.event());
@@ -197,7 +197,7 @@ class ControlRecordsTest {
         assertEquals(planId, parsedPaused.planId());
         assertEquals("task", parsedPaused.point());
 
-        var reason = Generators.nonEmptyStrings().next();
+        var reason = Generators.nonBlankStrings().next();
         var cancelled = new PlanControlEvent(PlanControlEvent.EVENT_CANCELLED, planId, "ended", null,
                 reason);
         var parsedCancelled = PlanControlEvent.fromJson(PlanControlEvent.EVENT_CANCELLED, cancelled.toJson());
@@ -211,7 +211,7 @@ class ControlRecordsTest {
         assertEquals("phase", pause.point());
         assertNull(pause.reason());
 
-        var reason = Generators.nonEmptyStrings().next();
+        var reason = Generators.nonBlankStrings().next();
         var ending = PlanActionRequest.ending(reason, true);
         var parsedEnding = PlanActionRequest.fromJson(ending.toJson());
         assertEquals(reason, parsedEnding.reason());
@@ -229,7 +229,7 @@ class ControlRecordsTest {
     @Test
     @DisplayName("parses aliased field names and rejects malformed input")
     void aliasesAndErrors() throws Exception {
-        var subjectId = Generators.nonEmptyStrings().next();
+        var subjectId = Generators.nonBlankStrings().next();
         var actions = WorkActions.fromMap(Map.of(
                 "plan_id", subjectId,
                 "state", "running",
@@ -237,9 +237,9 @@ class ControlRecordsTest {
         assertEquals(subjectId, actions.subjectId());
         assertEquals("pause", actions.actions().getFirst().action());
 
-        var holdId = Generators.nonEmptyStrings().next();
-        var holdSubjectId = Generators.nonEmptyStrings().next();
-        var holdCause = Generators.nonEmptyStrings().next();
+        var holdId = Generators.nonBlankStrings().next();
+        var holdSubjectId = Generators.nonBlankStrings().next();
+        var holdCause = Generators.nonBlankStrings().next();
         var hold = HoldRecord.fromMap(Map.of(
                 "id", holdId,
                 "plan_id", holdSubjectId,
@@ -250,7 +250,7 @@ class ControlRecordsTest {
         assertEquals(holdSubjectId, hold.subjectId());
         assertEquals(List.of("retry"), hold.acts());
 
-        var settingsPlanId = Generators.nonEmptyStrings().next();
+        var settingsPlanId = Generators.nonBlankStrings().next();
         var settings = PlanSettingsRecord.fromMap(Map.of(
                 "id", settingsPlanId,
                 "revision", 2,

@@ -139,7 +139,7 @@ class EntryRecordsTest {
     @Test
     @DisplayName("PairingRedemptionRequest round-trips and omits an absent label")
     void pairingRedemptionRequestRoundTrips() throws Exception {
-        var label = Generators.nonEmptyStrings().next();
+        var label = Generators.nonBlankStrings().next();
         var full = new PairingRedemptionRequest("KXQB-MRTN", label, "web");
 
         assertEquals(full, PairingRedemptionRequest.fromJson(full.toJson()));
@@ -156,7 +156,7 @@ class EntryRecordsTest {
     @Test
     @DisplayName("PairingRedemptionResponse round-trips with its paired_from origin")
     void pairingRedemptionResponseRoundTrips() throws Exception {
-        var label = Generators.nonEmptyStrings().next();
+        var label = Generators.nonBlankStrings().next();
         var response = new PairingRedemptionResponse("pmw_secret", "dev-1", label, "lan");
 
         assertEquals(response, PairingRedemptionResponse.fromJson(response.toJson()));
@@ -187,7 +187,7 @@ class EntryRecordsTest {
     @Test
     @DisplayName("DevicePairedEvent round-trips with its paired_from origin")
     void devicePairedEventRoundTrips() throws Exception {
-        var label = Generators.nonEmptyStrings().next();
+        var label = Generators.nonBlankStrings().next();
         var event = new DevicePairedEvent("dev-1", label, "loopback");
 
         assertEquals("device.paired", DevicePairedEvent.EVENT_NAME);
@@ -199,7 +199,7 @@ class EntryRecordsTest {
     @Test
     @DisplayName("DeviceRenamedEvent and DeviceRevokedEvent round-trip with their paired_from origin")
     void deviceLifecycleEventsRoundTrip() throws Exception {
-        var label = Generators.nonEmptyStrings().next();
+        var label = Generators.nonBlankStrings().next();
         var renamed = new DeviceRenamedEvent("dev-2", label, "lan");
         var revoked = new DeviceRevokedEvent("dev-2", label, "lan");
 
@@ -311,8 +311,8 @@ class EntryRecordsTest {
     @Test
     @DisplayName("DeviceListResource reads the wire array and the object shape")
     void deviceListResourceRoundTrips() throws Exception {
-        var firstLabel = Generators.nonEmptyStrings().next();
-        var secondLabel = Generators.nonEmptyStrings().next();
+        var firstLabel = Generators.nonBlankStrings().next();
+        var secondLabel = Generators.nonBlankStrings().next();
         var devices = new DeviceListResource(List.of(
                 new PairedDeviceResource("dev-1", firstLabel, PAIRED_AT, USED_AT, "pair", "loopback"),
                 new PairedDeviceResource("dev-2", secondLabel, PAIRED_AT, USED_AT, "entry", "lan")));

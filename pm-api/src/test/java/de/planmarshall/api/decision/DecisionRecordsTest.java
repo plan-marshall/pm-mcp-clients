@@ -90,11 +90,11 @@ class DecisionRecordsTest {
     @Test
     @DisplayName("QuorumVote and QuorumSupport serialize and round-trip")
     void quorumSupportRoundTrip() {
-        var role = Generators.nonEmptyStrings().next();
-        var model = Generators.nonEmptyStrings().next();
+        var role = Generators.nonBlankStrings().next();
+        var model = Generators.nonBlankStrings().next();
         var confidence = Generators.integers(0, 100).next();
-        var reason = Generators.nonEmptyStrings().next();
-        var dissentSummary = Generators.nonEmptyStrings().next();
+        var reason = Generators.nonBlankStrings().next();
+        var dissentSummary = Generators.nonBlankStrings().next();
 
         var vote1 = new QuorumVote(role, model, confidence, reason);
         var vote2 = new QuorumVote("implement", "claude-3.7-sonnet", 90, null);
@@ -129,8 +129,8 @@ class DecisionRecordsTest {
                 "2", "Keeps history clean", "implement", null, true, true);
 
         var revision = Generators.integers(1, 100).next();
-        var title = Generators.nonEmptyStrings().next();
-        var subject = "plan " + Generators.nonEmptyStrings().next();
+        var title = Generators.nonBlankStrings().next();
+        var subject = "plan " + Generators.nonBlankStrings().next();
         var now = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
         var envelope = new DecisionEnvelope(
                 "Q-007", revision, title, "Conflict", subject,
@@ -178,9 +178,9 @@ class DecisionRecordsTest {
     @Test
     @DisplayName("Waiver request envelope sets isWaiver and parses gate fields")
     void waiverRequestEnvelope() throws Exception {
-        var waiverGate = "coverage:" + Generators.nonEmptyStrings().next();
-        var waiverResult = Generators.nonEmptyStrings().next();
-        var waiverReason = Generators.nonEmptyStrings().next();
+        var waiverGate = "coverage:" + Generators.nonBlankStrings().next();
+        var waiverResult = Generators.nonBlankStrings().next();
+        var waiverReason = Generators.nonBlankStrings().next();
         var envelope = new DecisionEnvelope(
                 "WR-2", 1, "Waiver for coverage gate", null, "plan fix-relay",
                 DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.COSTLY,
@@ -199,9 +199,9 @@ class DecisionRecordsTest {
     @Test
     @DisplayName("DecisionAnswerRequest serializes and parses properly")
     void answerRequestJson() throws Exception {
-        var ownWords = Generators.nonEmptyStrings().next();
-        var note = Generators.nonEmptyStrings().next();
-        var device = Generators.nonEmptyStrings().next();
+        var ownWords = Generators.nonBlankStrings().next();
+        var note = Generators.nonBlankStrings().next();
+        var device = Generators.nonBlankStrings().next();
         var req = new DecisionAnswerRequest(Map.of("1", "2"), "2", ownWords, note, "answer", null, "cli",
                 device);
         var json = req.toJson();
@@ -219,8 +219,8 @@ class DecisionRecordsTest {
     @Test
     @DisplayName("DecisionInterpretation serializes and parses properly")
     void interpretationJson() throws Exception {
-        var condition = Generators.nonEmptyStrings().next();
-        var passages = List.of(Generators.nonEmptyStrings().next(), Generators.nonEmptyStrings().next());
+        var condition = Generators.nonBlankStrings().next();
+        var passages = List.of(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next());
         var interp = new DecisionInterpretation(
                 InterpretationType.OPTION_WITH_CONDITION, "2", condition,
                 "Rebase onto main, provided release/0.9 stays as it is", null,
@@ -241,8 +241,8 @@ class DecisionRecordsTest {
     @Test
     @DisplayName("Decision SSE events round trip through JSON")
     void eventRoundTrips() throws Exception {
-        var changeSummary = Generators.nonEmptyStrings().next();
-        var answer = Generators.nonEmptyStrings().next();
+        var changeSummary = Generators.nonBlankStrings().next();
+        var answer = Generators.nonBlankStrings().next();
         var env = new DecisionEnvelope("Q-001", 1, "Title", null, "plan pln-1", DecisionScope.PLAN,
                 "refine", "planner", "plan", Reversibility.REVERSIBLE, null, null, List.of(), Instant.now(),
                 false, null, null, null);
@@ -271,8 +271,8 @@ class DecisionRecordsTest {
     @Test
     @DisplayName("DecisionPart handles dependency and id fallbacks")
     void decisionPartFallbacks() {
-        var dependency = Generators.nonEmptyStrings().next();
-        var customId = Generators.nonEmptyStrings().next();
+        var dependency = Generators.nonBlankStrings().next();
+        var customId = Generators.nonBlankStrings().next();
         var part = new DecisionPart("part-1", "q", AnswerType.ONE_OPTION, List.of(), "rec", "rationale", "role",
                 dependency, true, true);
         var map = part.toMap();

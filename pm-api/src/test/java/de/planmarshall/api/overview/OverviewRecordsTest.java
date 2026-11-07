@@ -77,7 +77,7 @@ class OverviewRecordsTest {
     @Test
     @DisplayName("round-trip serializes AlongsideLanding")
     void alongsideLanding() throws Exception {
-        var unit = Generators.nonEmptyStrings().next();
+        var unit = Generators.nonBlankStrings().next();
         var landing = new AlongsideLanding(unit, "failed", null, "unit", "landing_failed");
         var map = landing.toMap();
         var parsed = AlongsideLanding.fromMap(map);
@@ -103,8 +103,8 @@ class OverviewRecordsTest {
     @DisplayName("round-trip serializes ProjectSummary and ProjectOverviewResponse")
     void projectSummaryAndOverviewResponse() throws Exception {
         var now = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
-        var projectId = Generators.nonEmptyStrings().next();
-        var displayName = Generators.nonEmptyStrings().next();
+        var projectId = Generators.nonBlankStrings().next();
+        var displayName = Generators.nonBlankStrings().next();
         var activePlansCount = Generators.integers(0, 100).next();
         var activeEpicsCount = Generators.integers(0, 100).next();
         var needsOperatorCount = Generators.integers(0, 100).next();
@@ -150,10 +150,10 @@ class OverviewRecordsTest {
     void activePlanSummary() throws Exception {
         var entered = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
         var running = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
-        var planId = Generators.nonEmptyStrings().next();
-        var title = Generators.nonEmptyStrings().next();
-        var epicId = Generators.nonEmptyStrings().next();
-        var epicTitle = Generators.nonEmptyStrings().next();
+        var planId = Generators.nonBlankStrings().next();
+        var title = Generators.nonBlankStrings().next();
+        var epicId = Generators.nonBlankStrings().next();
+        var epicTitle = Generators.nonBlankStrings().next();
         var tasksDone = Generators.integers(0, 50).next();
         var tasksTotal = Generators.integers(51, 100).next();
         var pullRequestNumber = Generators.integers(1, 1000).next();
@@ -201,10 +201,10 @@ class OverviewRecordsTest {
     @DisplayName("round-trip serializes ActiveEpicSummary and ProjectDetailResponse")
     void activeEpicAndProjectDetail() throws Exception {
         var running = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
-        var planId = Generators.nonEmptyStrings().next();
-        var planTitle = Generators.nonEmptyStrings().next();
-        var epicId = Generators.nonEmptyStrings().next();
-        var epicTitle = Generators.nonEmptyStrings().next();
+        var planId = Generators.nonBlankStrings().next();
+        var planTitle = Generators.nonBlankStrings().next();
+        var epicId = Generators.nonBlankStrings().next();
+        var epicTitle = Generators.nonBlankStrings().next();
         var runningPlansCount = Generators.integers(0, 100).next();
         var plan = new ActivePlanSummary(
                 planId,
@@ -245,9 +245,9 @@ class OverviewRecordsTest {
         assertEquals(runningPlansCount, parsedEpic.runningPlansCount());
         assertEquals(1, parsedEpic.plans().size());
 
-        var unit = Generators.nonEmptyStrings().next();
+        var unit = Generators.nonBlankStrings().next();
         var landing = new AlongsideLanding(unit, "failed", null, "unit", "landing_failed");
-        var projectId = Generators.nonEmptyStrings().next();
+        var projectId = Generators.nonBlankStrings().next();
         var detail = new ProjectDetailResponse(
                 projectId,
                 projectId,
@@ -269,10 +269,10 @@ class OverviewRecordsTest {
     @DisplayName("round-trip serializes EndedWorkItem and EndedWorkPage")
     void endedWork() throws Exception {
         var ended = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
-        var itemId = Generators.nonEmptyStrings().next();
-        var title = Generators.nonEmptyStrings().next();
+        var itemId = Generators.nonBlankStrings().next();
+        var title = Generators.nonBlankStrings().next();
         var pullRequestNumber = Generators.integers(1, 1000).next();
-        var reason = Generators.nonEmptyStrings().next();
+        var reason = Generators.nonBlankStrings().next();
         var item = new EndedWorkItem(
                 itemId,
                 "plan",
@@ -295,7 +295,7 @@ class OverviewRecordsTest {
         assertEquals(reason, parsed.reason());
         assertEquals(ended, parsed.endedAt());
 
-        var projectId = Generators.nonEmptyStrings().next();
+        var projectId = Generators.nonBlankStrings().next();
         var page = new EndedWorkPage(projectId, List.of(item), 1, 3, false, true);
         var pageJson = page.toJson();
         var parsedPage = EndedWorkPage.fromJson(pageJson);
@@ -311,7 +311,7 @@ class OverviewRecordsTest {
     @Test
     @DisplayName("round-trip serializes overview SSE events")
     void overviewEvents() throws Exception {
-        var projectId = Generators.nonEmptyStrings().next();
+        var projectId = Generators.nonBlankStrings().next();
         var activePlansCount = Generators.integers(0, 100).next();
         var activeEpicsCount = Generators.integers(0, 100).next();
         var needsOperatorCount = Generators.integers(0, 100).next();
@@ -326,7 +326,7 @@ class OverviewRecordsTest {
         assertEquals(needsOperatorCount, parsedPChanged.needsOperatorCount());
 
         var phaseEnteredAt = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
-        var planId = Generators.nonEmptyStrings().next();
+        var planId = Generators.nonBlankStrings().next();
         var phChanged = new PhaseChangedEvent(planId, "outline", "execute", phaseEnteredAt);
         assertEquals("phase.changed", PhaseChangedEvent.EVENT_NAME);
         var parsedPhChanged = PhaseChangedEvent.fromJson(phChanged.toJson());
@@ -352,7 +352,7 @@ class OverviewRecordsTest {
         assertEquals("decision", parsedNeedsChanged.kind());
         assertEquals(needsCount, parsedNeedsChanged.count());
 
-        var taskId = Generators.nonEmptyStrings().next();
+        var taskId = Generators.nonBlankStrings().next();
         var offTrack = new TaskOffTrackEvent(planId, taskId, "repeating", true);
         assertEquals("task.off_track", TaskOffTrackEvent.EVENT_NAME);
         var parsedOffTrack = TaskOffTrackEvent.fromJson(offTrack.toJson());
@@ -366,8 +366,8 @@ class OverviewRecordsTest {
     @DisplayName("tests fallback fields and parsing from arrays")
     void recordAliasesAndFallbacks() throws Exception {
         // ProjectSummary aliases (id, name, plans_count, epics_count, setupNeedsOperator)
-        var projectId = Generators.nonEmptyStrings().next();
-        var displayName = Generators.nonEmptyStrings().next();
+        var projectId = Generators.nonBlankStrings().next();
+        var displayName = Generators.nonBlankStrings().next();
         var plansCount = Generators.integers(0, 100).next();
         var epicsCount = Generators.integers(0, 100).next();
         var pSummaryMap = Map.<String, Object>of(
@@ -385,7 +385,7 @@ class OverviewRecordsTest {
         assertTrue(parsedSummary.setupNeedsOperator());
 
         // Null display name defaults to projectId
-        var rawId = Generators.nonEmptyStrings().next();
+        var rawId = Generators.nonBlankStrings().next();
         var nullNameSummary = new ProjectSummary(rawId, null, 0, 0, 0, null, false, null);
         assertEquals(rawId, nullNameSummary.displayName());
 
@@ -395,8 +395,8 @@ class OverviewRecordsTest {
         assertEquals("p-arr", arrayResponse.projects().getFirst().projectId());
 
         // ActivePlanSummary aliases (id, phase, state, created_at, off_track, needs_operator)
-        var planAliasId = Generators.nonEmptyStrings().next();
-        var planAliasTitle = Generators.nonEmptyStrings().next();
+        var planAliasId = Generators.nonBlankStrings().next();
+        var planAliasTitle = Generators.nonBlankStrings().next();
         var planAliasMap = Map.<String, Object>of(
                 "id", planAliasId,
                 "title", planAliasTitle,
@@ -415,8 +415,8 @@ class OverviewRecordsTest {
         assertEquals("stalled", parsedPlan.needsOperatorKind());
 
         // ActiveEpicSummary aliases (id, created_at, needs_operator)
-        var epicAliasId = Generators.nonEmptyStrings().next();
-        var epicAliasTitle = Generators.nonEmptyStrings().next();
+        var epicAliasId = Generators.nonBlankStrings().next();
+        var epicAliasTitle = Generators.nonBlankStrings().next();
         var epicAliasMap = Map.<String, Object>of(
                 "id", epicAliasId,
                 "title", epicAliasTitle,
@@ -436,8 +436,8 @@ class OverviewRecordsTest {
         assertEquals("pln-ended-arr", parsedEndedPage.items().getFirst().id());
 
         // EndedWorkItem terminal_reason alias
-        var endedItemId = Generators.nonEmptyStrings().next();
-        var endedItemTitle = Generators.nonEmptyStrings().next();
+        var endedItemId = Generators.nonBlankStrings().next();
+        var endedItemTitle = Generators.nonBlankStrings().next();
         var endedItemMap = Map.<String, Object>of(
                 "id", endedItemId,
                 "kind", "epic",
