@@ -2,10 +2,10 @@
   "id": "PLAN-106",
   "slug": "web-acts-third-residue",
   "workstream": "WS-03",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "106-web-acts-third-residue",
+  "pr": "360",
+  "landing": "landings/PLAN-106.md",
   "seq": 106
 }
