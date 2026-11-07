@@ -401,6 +401,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String KEY_METHOD = "method";
     private static final String KEY_LINKS = "links";
     private static final String KEY_HREF = "href";
+    private static final String KEY_PARAMS = "params";
     private static final String KEY_TEXT = "text";
     private static final String KEY_ASKING = "asking";
     private static final String KEY_POSTURE = "posture";
@@ -6347,7 +6348,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             method = JsonTree.string(message, "method");
         }
         var id = message.get("id");
-        var params = JsonTree.object(message, "params");
+        var params = JsonTree.object(message, KEY_PARAMS);
 
         if (method == null || method.isBlank()) {
             response.json(200, jsonRpcError(id, -32600, "invalid_request"));
@@ -6375,7 +6376,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     events.send(null, JsonTree.write(Map.of(
                             "jsonrpc", "2.0",
                             "method", "notifications/progress",
-                            "params", Map.of("progress", 1, "total", 1))));
+                            KEY_PARAMS, Map.of("progress", 1, "total", 1))));
                     events.send("message", JsonTree.write(jsonRpcResult(id, Map.of(
                             "tools", List.of(Map.of(
                                     "name", "pm_wait",
@@ -8991,7 +8992,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
             for (var element : links) {
                 var link = JsonTree.asObject(element);
                 var linkId = link != null ? JsonTree.string(link, "id") : null;
-                var params = link != null ? JsonTree.object(link, "params") : null;
+                var params = link != null ? JsonTree.object(link, KEY_PARAMS) : null;
                 if (linkId == null || params == null
                         || !request.method().equalsIgnoreCase(JsonTree.string(link, KEY_METHOD))
                         || !request.path().equals(JsonTree.string(link, KEY_HREF))
@@ -8999,7 +9000,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
                     continue;
                 }
                 var declared = state.links().get(linkId);
-                if (declared != null && declared.next() != null) {
+                if (declared != null) {
                     transitionTo(declared.next());
                 }
                 return;

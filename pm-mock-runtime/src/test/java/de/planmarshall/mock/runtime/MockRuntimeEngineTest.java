@@ -1636,7 +1636,7 @@ class MockRuntimeEngineTest {
 
     @Test
     @DisplayName("a drain event that leaves no item ends the drain through the lifecycle transition")
-    void emptyDrainEventEndsTheDrain() throws Exception {
+    void emptyDrainEventEndsTheDrain() {
         var items = drainItems(Generators.integers(2, 4).next());
         var stateId = drainStateId();
         registerSystemState(stateId, drainingFacts(items, THEN_EXIT), List.of());
