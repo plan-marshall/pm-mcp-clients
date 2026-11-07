@@ -12,6 +12,8 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-contro
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role: `chat`]_
 
+Status: `DRAFT`.
+
 The texts the terminal adds to the shared ones in xref:19-actions.adoc[Actions on Plans and Epics], of the area `operator`.
 
 [#actions-texts]
@@ -84,8 +86,8 @@ The texts of the actions, the dialogues, the settings, the review, and the holds
 |#{number} {url} ist offen
 
 |`operator.actions.cancel.confirm`
-|{action, select, cancel {Cancel the plan} abandon {Abandon the plan} other {Abort the plan}}
-|{action, select, cancel {Brich den Plan ab} abandon {Gib den Plan auf} other {Brich den Plan wegen der Integritätssperre ab}}
+|{action, select, cancel {End the plan} abandon {Abandon the plan} other {Abort the plan}}
+|{action, select, cancel {Beende den Plan} abandon {Gib den Plan auf} other {Brich den Plan wegen der Integritätssperre ab}}
 
 |`operator.actions.keep`
 |{action, select, cancel {no, keep it running} abandon {no, keep it paused} other {no, keep it held}}

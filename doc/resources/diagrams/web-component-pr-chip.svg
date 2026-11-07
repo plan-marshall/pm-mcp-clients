@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 140" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <!-- Theme handling: theme-neutral. The picture paints its own surface, as every component picture of components.adoc does, so it reads the same on a light and a dark page. -->
+  <title id="t">PrChip</title>
+  <desc id="d">A pull request chip "PR #214" in the monospace face on the subtle surface with an external-link glyph, and beside it a square copy icon button.</desc>
+  <rect width="360" height="140" fill="#F7F7F5"/>
+  <rect x="24" y="44" width="96" height="26" rx="6" fill="#F0F0EC"/>
+  <text x="34" y="61" font-size="12" font-family="ui-monospace, Menlo, monospace" fill="#3E4450">PR #214</text>
+  <path d="M107 51h5v5M112 51l-7 7M110 59v4h-10v-10h4" stroke="#3E4450" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="130" y="43" width="28" height="28" rx="8" fill="none" stroke="#E3E3DE" stroke-width="0"/>
+  <rect x="141" y="54" width="9" height="9" rx="1.5" stroke="#3E4450" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M138 60v-8a1 1 0 0 1 1-1h8" stroke="#3E4450" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="176" y="61" font-size="11" fill="#3E4450">copy act beside it</text>
+  <text x="24" y="100" font-size="11" fill="#5F6672">a link in the chip look: it opens the pull request in a new tab</text>
+  <text x="24" y="116" font-size="11" fill="#5F6672">and copies nothing; without a URL it is text</text>
+</svg>

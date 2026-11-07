@@ -448,32 +448,32 @@ Resolution rules:
 |`init`
 |`phase.init`
 |`phaseIconId`
-|Phase badge carrying the bare runtime token
+|`PhaseLabel` beside the phase word of the catalogue (`phase.name.<phase>`), never the bare runtime token (link:components-tags.adoc#phase-label[Tags and Kinds, PhaseLabel])
 
 |`refine`
 |`phase.refine`
 |`phaseIconId`
-|Phase badge carrying the bare runtime token
+|`PhaseLabel` beside the phase word of the catalogue (`phase.name.<phase>`), never the bare runtime token (link:components-tags.adoc#phase-label[Tags and Kinds, PhaseLabel])
 
 |`outline`
 |`phase.outline`
 |`phaseIconId`
-|Phase badge carrying the bare runtime token
+|`PhaseLabel` beside the phase word of the catalogue (`phase.name.<phase>`), never the bare runtime token (link:components-tags.adoc#phase-label[Tags and Kinds, PhaseLabel])
 
 |`plan`
 |`phase.plan`
 |`phaseIconId`
-|Phase badge carrying the bare runtime token
+|`PhaseLabel` beside the phase word of the catalogue (`phase.name.<phase>`), never the bare runtime token (link:components-tags.adoc#phase-label[Tags and Kinds, PhaseLabel])
 
 |`execute`
 |`phase.execute`
 |`phaseIconId`
-|Phase badge carrying the bare runtime token
+|`PhaseLabel` beside the phase word of the catalogue (`phase.name.<phase>`), never the bare runtime token (link:components-tags.adoc#phase-label[Tags and Kinds, PhaseLabel])
 
 |`finalize`
 |`phase.finalize`
 |`phaseIconId`
-|Phase badge carrying the bare runtime token
+|`PhaseLabel` beside the phase word of the catalogue (`phase.name.<phase>`), never the bare runtime token (link:components-tags.adoc#phase-label[Tags and Kinds, PhaseLabel])
 
 |`land`
 |`flow.land`
