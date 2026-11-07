@@ -89,8 +89,8 @@ Every `onboard` key named above has its texts in the pack link:https://github.co
 |Maschine: {name}
 
 |`web.frame.settings`
-|Machine settings
-|Einstellungen der Maschine
+|Settings
+|Einstellungen
 
 |`web.frame.help`
 |What is this step for?

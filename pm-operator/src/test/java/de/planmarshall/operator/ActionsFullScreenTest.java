@@ -56,12 +56,12 @@ class ActionsFullScreenTest {
             select(virtual, "Fix Relay Transport");
             virtual.type("a");
             ControlFixture.await(() -> ControlFixture.shows(virtual, "Pause\u2026")
-                                && ControlFixture.shows(virtual, "Settings\u2026"));
+                                && ControlFixture.shows(virtual, "Plan settings\u2026"));
             var screen = virtual.screen().lines();
             assertTrue(screen.stream().anyMatch(line -> line.startsWith("      p  Pause\u2026")), screen.toString());
             assertTrue(screen.stream().anyMatch(line -> line.contains("Cancel\u2026")), screen.toString());
             assertTrue(screen.stream().anyMatch(line -> line.contains("Chat\u2026")), screen.toString());
-            assertTrue(screen.stream().anyMatch(line -> line.contains("Settings\u2026")), screen.toString());
+            assertTrue(screen.stream().anyMatch(line -> line.contains("Plan settings\u2026")), screen.toString());
             // While the menu is open the view's keys do not act: Esc closes the menu, not the level.
             virtual.type("\u001b");
             ControlFixture.await(() -> !ControlFixture.shows(virtual, "Pause\u2026"));

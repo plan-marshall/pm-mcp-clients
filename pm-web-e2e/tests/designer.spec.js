@@ -16,7 +16,7 @@ test.describe('Process Designer Flow (UC-PLN-3)', () => {
     await expect(page.locator('.app-header__machine')).toContainText('Machine:');
 
     // Open the designer from the machine settings
-    await page.getByRole('button', { name: 'Machine settings' }).click();
+    await page.getByRole('button', { name: 'Settings' }).click();
     await page.getByTestId('machine-settings-button').click();
     await expect(page.getByTestId('machine-settings-view')).toBeVisible();
     await page.getByTestId('open-designer-btn').click();
@@ -132,7 +132,7 @@ test.describe('Process Designer: intake, draft, frontmatter, and phone width (UC
     await page.evaluate(() => localStorage.clear());
     await page.goto('/#code=KXQB-MRTN');
     await expect(page.locator('.app-header__machine')).toContainText('Machine:');
-    await page.getByRole('button', { name: 'Machine settings' }).click();
+    await page.getByRole('button', { name: 'Settings' }).click();
     await page.getByTestId('machine-settings-button').click();
     await page.getByTestId('open-designer-btn').click();
     await expect(page.getByTestId('process-designer')).toBeVisible();
