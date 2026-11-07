@@ -210,5 +210,24 @@ describe('tableActIds and handledActIds', () => {
     expect(handledActIds('plan')).toEqual(planIdsMinusDecision);
     expect(handledActIds('epic')).toEqual(tableActIds(EPIC_ACTS, ['decision']));
     expect(handledActIds('epic')).toEqual(tableActIds(EPIC_ACTS));
+
+    const decisionAct: ActSpec = {
+      id: 'decision',
+      labelKey: 'control.plan.decision',
+      advisoryKey: 'control.plan.decision.title',
+      role: 'primary',
+      order: 1,
+      placement: 'button',
+    };
+    EPIC_ACTS.running.push(decisionAct);
+    try {
+      const epicIdsWithDecision = tableActIds(EPIC_ACTS);
+      expect(epicIdsWithDecision.has('decision')).toBe(true);
+      const filtered = handledActIds('epic');
+      expect(filtered.has('decision')).toBe(false);
+      expect(filtered.size).toBe(epicIdsWithDecision.size - 1);
+    } finally {
+      EPIC_ACTS.running.pop();
+    }
   });
 });

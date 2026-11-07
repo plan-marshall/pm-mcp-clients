@@ -159,7 +159,7 @@
       stopNowConfirm = false;
       advanceLifecycleEpoch();
       // The stop ends the drain; the lifecycle event may be missed on a dropped stream.
-      runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null }));
+      runtimeStore.update((s) => ({ ...s, isDraining: false, drainInfo: null, isStopped: true }));
     } catch (err: unknown) {
       // The refusal belongs in the banner; the short confirmation has done its work.
       stopNowConfirm = false;

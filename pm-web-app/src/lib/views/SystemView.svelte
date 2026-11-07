@@ -11,7 +11,7 @@
     type ModelMetric,
     type EnrolledProject,
   } from '../api/client';
-  import { runtimeStore, navigateTo } from '../stores/runtime';
+  import { runtimeStore, navigateTo, advanceLifecycleEpoch } from '../stores/runtime';
   import { displayState } from '../display';
   import {
     hasUnsentInput,
@@ -278,6 +278,7 @@
     try {
       if (activeModal === 'stop') {
         await apiClient.stopRuntime(modalWhen);
+        advanceLifecycleEpoch();
         if (modalWhen === 'drain') {
           runtimeStore.update((s) => ({ ...s, isDraining: true }));
         } else {
@@ -285,6 +286,7 @@
         }
       } else {
         await apiClient.stopRuntime(modalWhen, 'restart');
+        advanceLifecycleEpoch();
       }
       closeModal();
       void loadSnapshot(false);

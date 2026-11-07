@@ -443,6 +443,10 @@ describe('the app shell', () => {
   });
 
   it('shows the unknown withdraw notice on timeout or connection loss in de', async () => {
+    localStorage.setItem('pm_locale', 'de');
+    vi.spyOn(apiClient, 'getMessages').mockImplementation(async (locale) =>
+      loadMessages(locale ?? 'de'),
+    );
     messagesStore.set(loadMessages('de'));
     localStorage.setItem('pm_device_secret', 'pmw_valid');
     vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
@@ -473,6 +477,37 @@ describe('the app shell', () => {
 
     expect(await screen.findByTestId('draining-failure')).toHaveTextContent(
       'Die Rücknahme wurde gesendet, aber nicht bestätigt; prüfe den Zustand der Runtime.',
+    );
+  });
+
+  it('shows the unknown withdraw notice when connection is offline', async () => {
+    localStorage.setItem('pm_device_secret', 'pmw_valid');
+    vi.spyOn(apiClient, 'getStatus').mockResolvedValue({
+      ...STATUS,
+      lifecycle_state: 'draining',
+      draining_by: 'the console',
+      drain_remaining_items: ['build of fix-relay'],
+    });
+    vi.spyOn(apiClient, 'getConnectionStatus').mockResolvedValue({
+      loopback_open: true,
+      lan_enabled: false,
+      paired_devices_count: 1,
+      onboarded: true,
+    });
+    runtimeStore.set(
+      makeRuntimeState({
+        isDraining: true,
+        drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
+      }),
+    );
+    vi.spyOn(apiClient, 'withdrawStop').mockRejectedValue(new Error('network_offline'));
+
+    render(Layout);
+    const banner = await screen.findByTestId('draining-banner');
+    await fireEvent.click(within(banner).getByRole('button', { name: 'Withdraw the stop' }));
+
+    expect(await screen.findByTestId('draining-failure')).toHaveTextContent(
+      'The withdrawal was sent but not confirmed; check the runtime state.',
     );
   });
 
