@@ -45,7 +45,7 @@ class ActionMenusTest {
     }
 
     @Test
-    @DisplayName("a running plan offers Pause, Cancel, Chat, and Settings, in that order")
+    @DisplayName("a running plan offers Pause, Cancel, Chat, and Plan settings, in that order")
     void runningPlan() {
         var menu = ActionMenus.plan("en", actions("plan", "running", null, "pause", "cancel", "chat",
                             "settings"), null, null, "row");
@@ -64,7 +64,7 @@ class ActionMenusTest {
     }
 
     @Test
-    @DisplayName("a paused plan offers Start, Abandon, Chat, and Settings")
+    @DisplayName("a paused plan offers Start, Abandon, Chat, and Plan settings")
     void pausedPlan() {
         var paused = ActionMenus.plan("en", actions("plan", "paused", null, "start", "abandon", "chat",
                             "settings"), null, null, null);
@@ -88,7 +88,7 @@ class ActionMenusTest {
     }
 
     @Test
-    @DisplayName("a waiting plan offers the decision it waits for first, then Pause, Cancel, Chat, Settings")
+    @DisplayName("a waiting plan offers the decision it waits for first, then Pause, Cancel, Chat, Plan settings")
     void waitingPlan() {
         var menu = ActionMenus.plan("en", actions("plan", "waiting", null, "pause", "cancel", "chat",
                             "settings"), null, "Q-009", "row");
