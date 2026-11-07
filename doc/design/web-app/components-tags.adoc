@@ -137,7 +137,7 @@ image::../../resources/diagrams/web-component-chip.svg[A chip with an identifier
 
 For ids, branches, versions and a machine's name: `--text-xs` in the monospace face on `--color-bg-subtle`, `--radius-sm`, copied on click. Anything a person compares character by character or copies is a chip, not a sentence. A chip is a button (it acts: it copies); its advisory names the act. An id is never coloured to stand out: the decision's subject, a task's id and a workstream's id are chips like every other id.
 
-Source and surface: `pm-web-app/src/lib/components/Chip.svelte`, tests in `Chip.test.ts`; the prop is `value`, which is both the visible label and what the chip copies, with the act named by its advisory.
+Source and surface: `pm-web-app/src/lib/components/Chip.svelte`, tests in `Chip.test.ts`; the prop is `value`, which is both the visible label and what the chip copies. Its accessible name names the act with the value, `common.chip.copy` (_Copy {value}_), so a keyboard, touch or screen-reader user learns that it copies without the hover advisory.
 
 [#pr-chip]
 === PrChip
@@ -257,7 +257,7 @@ image::../../resources/diagrams/web-component-phase-label.svg[Phase labels for e
 
 The phase the object is in: the phase's icon (link:workflow-visual-language.adoc#mapping[Workflow Visual Language, Unit and Phase Map]) and its word, no box, in `--color-text-secondary`. Where a decision names the role that asks, the role's word follows after `·` (`execute · implement`).
 
-* *The words are product terms*, the same in both languages: `init`, `refine`, `outline`, `plan`, `execute`, `finalize`. They come from the keys `phase.name.<phase>`, whose German value equals the English one, so the catalogue owns them and no wire token reaches the screen. The role's word comes from `role.name.<role>` the same way. `phase.<phase>` stays the icon id and is no text.
+* *The words are product terms*, the same in both languages, as link:../shared/texts-and-languages.adoc#phases[Texts and Languages, Phases and Roles] lists them. They come from the keys `phase.name.<phase>`, whose German value equals the English one, so the catalogue owns them and no wire token reaches the screen. The role's word comes from `role.name.<role>` the same way. `phase.<phase>` stays the icon id and is no text.
 * *Never twice*: the kind of a node is not repeated before its name (the phase tree shows `init` with the phase icon, never `Phase phase init`), and a row that shows the phase in its `PhaseLabel` does not repeat it in its time (`2 h 10 min`, not `in execute 25 min`).
 * *The decision's phase* is shown in its row and in its detail alike.
 

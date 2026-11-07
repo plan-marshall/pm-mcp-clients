@@ -23,23 +23,23 @@ The actions of the plan's state (`plan.actions`):
 |State |Actions |Shown as
 
 |running
-|Pause…, End the plan…, Chat, Plan settings
+|Pause…, End the plan…, Chat, Plan settings…
 |`running`; _Pause_ first
 
 |pausing
-|Start, End the plan…, Chat, Plan settings
+|Start, End the plan…, Chat, Plan settings…
 |`pausing after the task` or `after the phase`; _Start_ withdraws the pause
 
 |paused
-|Start, Abandon…, Chat, Plan settings
+|Start, Abandon…, Chat, Plan settings…
 |`paused` since when, by the operator
 
 |waiting for you
-|Pause…, End the plan…, Chat, Plan settings, beside the decision it waits for
+|Pause…, End the plan…, Chat, Plan settings…, beside the decision it waits for
 |`waiting for you`; the decision first (link:decisions.adoc[Decisions])
 
 |held
-|Pause…, End the plan… (on an integrity hold _Abort the plan…_, the same act), Chat, Plan settings, and the acts of its hold
+|Pause…, End the plan… (on an integrity hold _Abort the plan…_, the same act), Chat, Plan settings…, and the acts of its hold
 |`held` with the hold's kind (`holds: a condition`); the hold first (<<holds>>)
 
 |ended
@@ -47,7 +47,7 @@ The actions of the plan's state (`plan.actions`):
 |its outcome (<<outcomes>>); its plan view, read-only (link:plan-view.adoc#ended[An Ended Plan]); a chat about it (<<chat-ended>>)
 |===
 
-* *Plan settings* opens the plan's own values (<<settings>>) in every state until the plan has ended.
+* *Plan settings…* opens the plan's own values (<<settings>>) in every state until the plan has ended.
 * *Chat* opens a chat with the plan's planning role about the whole plan (<<chat>>), in every state of a plan that has not ended: running, pausing, paused, waiting for you, and held alike. An ended plan offers it alone, read-only, about its archived record (<<chat-ended>>).
 * *Pause* asks where the plan holds, _after the current task_ preselected (`plan.pause-when`, <<pause>>); *Start* acts at once (`plan.start`): a paused plan runs on from where it rests, a pausing one has its pause withdrawn. Neither needs a confirmation: each is undone by the other.
 * A plan always runs once it exists: a plan an epic starts is created and run in one act, so there is no state of a plan that waits to be started.

@@ -39,8 +39,8 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |Chat
 
 |`control.plan.settings`
-|Plan settings
-|Plan-Einstellungen
+|Plan settings…
+|Plan-Einstellungen…
 
 |`control.plan.state.paused`
 |paused since {time}

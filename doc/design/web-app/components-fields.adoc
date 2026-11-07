@@ -121,7 +121,7 @@ Source and surface: `pm-web-app/src/lib/components/` (`Field.svelte`, `TextField
 
 image::../../resources/diagrams/web-component-choice.svg[A radio group of option cards with the recommended marker, and a check group,360,align=center]
 
-* *Two to five short options*: `RadioGroup`. *Option cards* (the options of a decision, recipes) are `RadioGroup` cards, the whole card the target. *More or dynamic options*: `SelectField`. *An independent yes or no*: `CheckField`. *Several of a list* (the file picker, the cleanup's items): `CheckGroup`.
+* *Two to five short options*: `RadioGroup`. *Option cards* (the options of a decision, recipes) are `RadioGroup` cards, the whole card the target; a part of a decision that accepts several options takes `CheckGroup` cards instead, so the control follows the answer the part asks for (link:../shared/decisions.adoc#parts[Decisions, In Parts]). *More or dynamic options*: `SelectField`. *An independent yes or no*: `CheckField`. *Several of a list* (the file picker, the cleanup's items): `CheckGroup`.
 * *One question, one control everywhere*: the documents mode is the same `RadioGroup` in the machine settings and in a start.
 * *Durations* follow link:machine-settings.adoc[Machine Settings]: one `NumberField` per category, with _never_ where that design offers it.
 

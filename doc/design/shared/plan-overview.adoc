@@ -217,11 +217,11 @@ Keys of the area `overview`, shared by both clients (link:texts-and-languages.ad
 |decision
 |Entscheidung
 
-|`overview.needs.waiver_request`
+|`overview.needs.waiver`
 |waiver
 |Waiver
 
-|`overview.needs.operator_wait`
+|`overview.needs.waits_for_you`
 |waits for you
 |wartet auf dich
 
