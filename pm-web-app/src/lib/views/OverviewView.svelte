@@ -26,8 +26,6 @@
     openEpicView,
     openEndedPlanView,
     openCompletionReport,
-    rememberedStartRoute,
-    setRememberedStartRoute,
   } from '../stores/runtime';
   import { openStartWork, openStartEntry } from '../stores/start';
   import { openGitSource } from '../stores/gitSource';
@@ -40,7 +38,6 @@
   let showEnded = false;
   let endedPage: EndedWorkPage | null = null;
   let currentEndedPage = 1;
-  let startPageIsOverview = false;
   let detailRequestGeneration = 0;
   let endedRequestGeneration = 0;
 
@@ -191,7 +188,6 @@
 
   onMount(async () => {
     if (typeof window !== 'undefined') {
-      startPageIsOverview = rememberedStartRoute() === 'overview';
       const savedMode = localStorage.getItem('pm_overview_view_mode');
       if (savedMode === 'plan' || savedMode === 'epic') {
         viewMode = savedMode;
@@ -357,14 +353,6 @@
       localStorage.setItem('pm_overview_show_ended', showEnded ? '1' : '0');
       localStorage.setItem('pm_overview_ended_page', String(currentEndedPage));
     }
-  }
-
-  /**
-   * Remembers or forgets Running Work as the browser's start page.
-   */
-  function toggleStartPage() {
-    startPageIsOverview = !startPageIsOverview;
-    setRememberedStartRoute(startPageIsOverview ? 'overview' : null);
   }
 
   /**
@@ -586,17 +574,6 @@
         {#if isLoadingProjects}
           <Spinner size="1rem" label={$t('overview.projects.loading')} />
         {/if}
-        <button
-          class="start-page-toggle"
-          class:start-page-toggle--active={startPageIsOverview}
-          aria-pressed={startPageIsOverview}
-          on:click={toggleStartPage}
-          data-testid="start-page-toggle"
-        >
-          {startPageIsOverview
-            ? $t('overview.start_page.is_default')
-            : $t('overview.start_page.set')}
-        </button>
       </div>
     </div>
 
@@ -1239,28 +1216,6 @@
     gap: var(--space-2);
     flex-wrap: wrap;
     justify-content: flex-end;
-  }
-
-  .start-page-toggle {
-    padding: var(--space-1) var(--space-2);
-    font-size: var(--text-xs);
-    font-weight: 500;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-sm);
-    background: var(--color-bg-surface);
-    color: var(--color-text-secondary);
-    cursor: pointer;
-  }
-
-  .start-page-toggle:hover {
-    background: var(--color-bg-subtle);
-    color: var(--color-text-primary);
-  }
-
-  .start-page-toggle--active {
-    background: var(--color-primary-subtle);
-    border-color: var(--color-primary);
-    color: var(--color-primary);
   }
 
   .sidebar-empty {

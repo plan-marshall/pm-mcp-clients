@@ -282,16 +282,16 @@ function machineNameOf(status: StatusResponse): string {
 /**
  * The route the app opens on for a paired browser.
  *
- * A paired browser never lands on the pairing page or the entry: it opens where the operator
- * left it (`pm_start_route`), or the overview when work is running or waiting and the explorer
- * otherwise. The onboarding comes first while the machine is not onboarded.
+ * A paired browser never lands on the pairing page or the entry: it opens on the overview when
+ * work is running or waiting and the explorer otherwise. The onboarding comes first while the
+ * machine is not onboarded.
  *
  * @param requested the route the address bar named, if it named one
  * @param onboarded whether the machine is onboarded
  * @param workRunning whether the machine reports running work or work that waits for the operator
  * @returns the route to open
  */
-function landingRoute(
+export function landingRoute(
   requested: PathMatch | null,
   onboarded: boolean,
   workRunning: boolean,
@@ -305,43 +305,7 @@ function landingRoute(
   if (requested && requested.route !== 'pair' && requested.route !== 'entry') {
     return requested.route;
   }
-  const remembered = rememberedStartRoute();
-  if (remembered) {
-    return remembered;
-  }
   return workRunning ? 'overview' : 'projects';
-}
-
-/**
- * The start point the operator last chose, if it is one of the landing routes.
- *
- * Only an explicit choice is remembered; a browser that never chose one lands by the rule of
- * `landingRoute`, on the overview while work runs or waits and on the projects otherwise.
- *
- * @returns `overview` or `projects`, or `null` when nothing was remembered
- */
-export function rememberedStartRoute(): 'overview' | 'projects' | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-  const saved = localStorage.getItem('pm_start_route');
-  return saved === 'overview' || saved === 'projects' ? saved : null;
-}
-
-/**
- * Remembers the operator's chosen start point, or clears it to land by the rule again.
- *
- * @param route `overview` or `projects`, or `null` to forget the choice
- */
-export function setRememberedStartRoute(route: 'overview' | 'projects' | null): void {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  if (route) {
-    localStorage.setItem('pm_start_route', route);
-  } else {
-    localStorage.removeItem('pm_start_route');
-  }
 }
 
 /**
@@ -365,9 +329,8 @@ function hasWork(summary: ProjectOverviewResponse | null): boolean {
 /**
  * Opens the operator's start page by the same rule as a first visit.
  *
- * The remembered start route wins; otherwise the overview while work runs or waits and the
- * projects otherwise. A route already shown is not pushed again, so the brand click adds no
- * duplicate history entry.
+ * Opens the overview while work runs or waits and the projects otherwise. A route already shown
+ * is not pushed again, so the brand click adds no duplicate history entry.
  */
 export async function openStartPage(): Promise<void> {
   if (!apiClient.isPaired()) {
