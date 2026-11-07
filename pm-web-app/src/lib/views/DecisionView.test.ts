@@ -873,7 +873,7 @@ describe('DecisionView component', () => {
 
     it('scrolls to and marks the decision in the single column', async () => {
       // Arrange: the browser holds no stored choice of any kind; the view shows its one column.
-      expect(localStorage.length).toBe(0);
+      expect(localStorage).toHaveLength(0);
       const scrolled = recordScrolls();
       render(DecisionView);
       await screen.findByText('Select merge strategy');
@@ -890,7 +890,7 @@ describe('DecisionView component', () => {
       expect(cardOf('WR-001')).not.toHaveAttribute('aria-current');
       expect(cardOf('WR-001')).not.toHaveClass('decision-card--selected');
       expect(document.querySelectorAll('.decisions-list .decision-card')).toHaveLength(2);
-      expect(localStorage.length).toBe(0);
+      expect(localStorage).toHaveLength(0);
     });
 
     it('lands on a decision that arrives after the request', async () => {
