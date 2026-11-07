@@ -15,6 +15,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.StandardProtocolFamily;
 import java.net.UnixDomainSocketAddress;
+import java.time.Duration;
 import java.nio.channels.Channels;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
@@ -25,6 +26,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
 /**
@@ -48,6 +50,7 @@ final class StallingSocketProxy implements AutoCloseable {
     private final Path upstream;
     private final Path listenPath;
     private final Predicate<String> stalled;
+    private final CountDownLatch holding = new CountDownLatch(1);
     private final CountDownLatch released = new CountDownLatch(1);
     private final Set<SocketChannel> active = ConcurrentHashMap.newKeySet();
     private final Thread acceptor;
@@ -89,6 +92,15 @@ final class StallingSocketProxy implements AutoCloseable {
     /** Lets every held exchange continue. */
     void release() {
         released.countDown();
+    }
+
+    /**
+     * @param timeout how long to wait for the proxy to hold a stalled exchange
+     * @return true if an exchange reached the stall within the timeout
+     * @throws InterruptedException if interrupted while waiting
+     */
+    boolean awaitHolding(Duration timeout) throws InterruptedException {
+        return holding.await(timeout.toNanos(), TimeUnit.NANOSECONDS);
     }
 
     /**
@@ -140,6 +152,7 @@ final class StallingSocketProxy implements AutoCloseable {
                 return;
             }
             if (stalled.test(targetOf(head))) {
+                holding.countDown();
                 released.await();
             }
             try (var toRuntimeChannel = SocketChannel.open(StandardProtocolFamily.UNIX)) {

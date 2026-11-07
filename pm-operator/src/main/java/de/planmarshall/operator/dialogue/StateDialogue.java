@@ -701,8 +701,13 @@ public final class StateDialogue {
         var envelope = JsonTree.asObject(map.get(OPERATOR));
         var source = envelope != null ? envelope : map;
         var stateId = stateIdOf(source, map);
-        return new Frame(stateId, kindOf(source), stepOf(source, map, stateId, totalSteps, project),
-                            totalSteps, summaryOf(source), factsOf(source), linksOf(source));
+        var reportedTotal = JsonTree.integer(source, "total_steps");
+        if (reportedTotal == null) {
+            reportedTotal = JsonTree.integer(map, "total_steps");
+        }
+        int effectiveTotal = reportedTotal != null && reportedTotal > 0 ? reportedTotal : totalSteps;
+        return new Frame(stateId, kindOf(source), stepOf(source, map, stateId, effectiveTotal, project),
+                            effectiveTotal, summaryOf(source), factsOf(source), linksOf(source));
     }
 
     private static @Nullable String kindOf(Map<String, Object> source) {
@@ -715,6 +720,9 @@ public final class StateDialogue {
         var completed = JsonTree.integer(map, "completed_steps");
         int step = completed != null ? Math.min(completed + 1, totalSteps) : 0;
         var reportedStep = JsonTree.integer(source, "step");
+        if (reportedStep == null) {
+            reportedStep = JsonTree.integer(map, "step");
+        }
         if (reportedStep != null) {
             step = reportedStep;
         }

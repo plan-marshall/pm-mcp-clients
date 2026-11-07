@@ -289,7 +289,7 @@ public final class EntryFlow {
      */
     private void runOnboardingDialogue(RuntimeClient runtime, PrintWriter out, LineReader reader,
                         String locale) {
-        var dialogue = new StateDialogue(new OnboardingSource(runtime, context.gate()), out, locale,
+        var dialogue = new StateDialogue(new OnboardingSource(runtime, context.gate(), this.aspects), out, locale,
                             stateId -> new ChoicePrompt(reader, out, locale, stateId));
         try {
             dialogue.run();

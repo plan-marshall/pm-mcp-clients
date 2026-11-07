@@ -10,6 +10,7 @@
 package de.planmarshall.operator.dialogue;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -34,19 +35,36 @@ public final class OnboardingSource implements StateDialogue.Source {
     /** The path a chosen link is sent to. */
     public static final String STEP_PATH = "/api/v1/onboarding/step";
 
-    /** The step count of the onboarding dialogue is the aspect list the runtime runs. */
-    private static final int TOTAL_STEPS = OnboardingAspect.values().length;
-
     private final RuntimeClient runtime;
     private final OperatorGate gate;
+    private final int totalSteps;
 
     /**
      * @param runtime the runtime client
      * @param gate    the operator gate an answer is sent through
      */
     public OnboardingSource(RuntimeClient runtime, OperatorGate gate) {
+        this(runtime, gate, List.of(OnboardingAspect.values()));
+    }
+
+    /**
+     * @param runtime the runtime client
+     * @param gate    the operator gate an answer is sent through
+     * @param aspects the machine onboarding aspects
+     */
+    public OnboardingSource(RuntimeClient runtime, OperatorGate gate, List<OnboardingAspect> aspects) {
+        this(runtime, gate, Objects.requireNonNull(aspects, "aspects").size());
+    }
+
+    /**
+     * @param runtime    the runtime client
+     * @param gate       the operator gate an answer is sent through
+     * @param totalSteps the total steps of the onboarding run
+     */
+    public OnboardingSource(RuntimeClient runtime, OperatorGate gate, int totalSteps) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.gate = Objects.requireNonNull(gate, "gate");
+        this.totalSteps = totalSteps;
     }
 
     @Override
@@ -55,7 +73,7 @@ public final class OnboardingSource implements StateDialogue.Source {
         if (response.status() != 200) {
             throw new IOException("the onboarding state answered HTTP " + response.status());
         }
-        return StateDialogue.fromJson(response.bodyText(), TOTAL_STEPS, false);
+        return StateDialogue.fromJson(response.bodyText(), totalSteps, false);
     }
 
     @Override
@@ -66,6 +84,6 @@ public final class OnboardingSource implements StateDialogue.Source {
         if (response.status() != 200) {
             throw new IOException("the onboarding step answered HTTP " + response.status());
         }
-        return StateDialogue.fromJson(response.bodyText(), TOTAL_STEPS, false);
+        return StateDialogue.fromJson(response.bodyText(), totalSteps, false);
     }
 }

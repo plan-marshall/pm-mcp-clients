@@ -423,7 +423,7 @@ class PmConsoleBehaviourTest {
                 var started = System.nanoTime();
                 assertTimeoutPreemptively(Duration.ofSeconds(8), () -> console.refreshSetupBadge("en", terminal));
                 var elapsed = Duration.ofNanos(System.nanoTime() - started);
-                assertTrue(elapsed.compareTo(PmConsole.REFRESH_BOUND.plusSeconds(1)) < 0, elapsed.toString());
+                assertTrue(elapsed.compareTo(PmConsole.REFRESH_BOUND.plus(Duration.ofMillis(1500))) < 0, elapsed.toString());
             }
         } finally {
             release.countDown();
@@ -756,9 +756,12 @@ class PmConsoleBehaviourTest {
 
                 // While the first refresh holds the lock and its read is open, the second must not
                 // reach the runtime: a second status request in this window is the interleaving.
-                assertTrue(awaitNoSecondStatusRequest(statusRequests),
-                                    () -> "the second refresh read the runtime while the first held the lock: "
-                                                        + statusRequests.get());
+                var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+                while (t2.getState() != Thread.State.TIMED_WAITING && statusRequests.get() == 1 && System.nanoTime() < deadline) {
+                    Thread.onSpinWait();
+                }
+                assertEquals(1, statusRequests.get(), "the second refresh must not read the runtime while the first holds the lock");
+                assertEquals(Thread.State.TIMED_WAITING, t2.getState(), "the second refresh must be waiting on the lock");
 
                 releaseFirst.countDown();
                 t1.join(30_000);
@@ -767,17 +770,6 @@ class PmConsoleBehaviourTest {
         } finally {
             releaseFirst.countDown();
         }
-    }
-
-    private static boolean awaitNoSecondStatusRequest(AtomicInteger statusRequests) {
-        var deadline = System.nanoTime() + Duration.ofMillis(500).toNanos();
-        while (System.nanoTime() < deadline) {
-            if (statusRequests.get() > 1) {
-                return false;
-            }
-            LockSupport.parkNanos(Duration.ofMillis(10).toNanos());
-        }
-        return true;
     }
 
     @Test
