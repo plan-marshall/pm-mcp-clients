@@ -195,15 +195,15 @@ class PmOperatorTest {
             var verbs = new TreeSet<String>();
             var inConsoleBlock = false;
             for (var line : Files.readAllLines(designDocument())) {
-                if (line.startsWith("pm-operator")) {
+                if (line.startsWith("pm-operator ") && !line.startsWith("pm-operator  ")) {
                     addVerbs(verbs, line.substring("pm-operator".length()));
                 } else if (line.startsWith("In the console and as direct verbs:")
                                     || line.startsWith("In the console only:")) {
                     inConsoleBlock = true;
                 } else if (inConsoleBlock) {
-                    if (line.isBlank()) {
+                    if (line.isBlank() || line.startsWith("----")) {
                         inConsoleBlock = false;
-                    } else {
+                    } else if (line.startsWith("  ") && !line.startsWith("   ")) {
                         addVerbs(verbs, line);
                     }
                 }
@@ -218,7 +218,7 @@ class PmOperatorTest {
             }
             var first = stripped.split("\\s+")[0];
             for (var verb : first.split("\\|")) {
-                if (!verb.isEmpty()) {
+                if (verb.matches("[a-z][a-z-]*")) {
                     verbs.add(verb);
                 }
             }
