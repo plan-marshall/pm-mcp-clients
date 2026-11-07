@@ -70,15 +70,15 @@ public record RuntimeRecord(long pid, Instant startInstant, String version) {
     }
 
     /**
-     * The record identifies a process only when it carries a start instant and the process reports an
-     * equal one, to the second. A reused process id is a different process: nothing else is proof
-     * enough to signal it.
+     * The record identifies a process only when the handle names the recorded process id and the
+     * record carries a start instant the process reports equal to the second. A reused process id is
+     * a different process: nothing else is proof enough to signal it.
      *
      * @param handle the process the record's process id names
      * @return {@code true} if the process is the one the record names
      */
     public boolean identifies(ProcessHandle handle) {
-        return startInstant != null && handle.info().startInstant()
+        return handle.pid() == pid && startInstant != null && handle.info().startInstant()
                 .map(actual -> actual.truncatedTo(ChronoUnit.SECONDS)
                         .equals(startInstant.truncatedTo(ChronoUnit.SECONDS)))
                 .orElse(false);

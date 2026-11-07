@@ -75,6 +75,7 @@ class RuntimeRecordTest {
                 () -> assertTrue(new RuntimeRecord(self.pid(), start, null).identifies(self)),
                 () -> assertTrue(new RuntimeRecord(self.pid(), start.plusMillis(400), null).identifies(self)),
                 () -> assertFalse(new RuntimeRecord(self.pid(), start.plusSeconds(1), null).identifies(self)),
+                () -> assertFalse(new RuntimeRecord(self.pid() + 1, start, null).identifies(self)),
                 () -> assertFalse(new RuntimeRecord(self.pid(), null, null).identifies(self)));
     }
 
