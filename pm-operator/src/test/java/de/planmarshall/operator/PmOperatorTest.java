@@ -23,6 +23,7 @@ import java.io.StringWriter;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -30,7 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.TreeSet;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.MachinePaths;
@@ -49,6 +50,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -185,22 +187,70 @@ class PmOperatorTest {
     @DisplayName("command tree")
     class CommandTree {
 
-        /** The verbs of the design's command tree (01-commands.adoc#command-tree), the contract. */
-        private static final Set<String> DESIGN_VERBS = Set.of(
-                            "config", "projects", "project", "plan", "epic", "recipe", "lesson", "web", "status",
-                            "reports", "system", "runtime", "drain", "client", "enrol-harness", "cleanup",
-                            "credentials", "roles", "accept-edit", "plans", "questions", "answer");
+        /**
+         * The verbs the design's command tree (01-commands.adoc#command-tree) declares, read from the
+         * document itself: the top-level {@code pm-operator} lines and the two console blocks.
+         */
+        private Set<String> designVerbs() throws IOException {
+            var verbs = new TreeSet<String>();
+            var inConsoleBlock = false;
+            for (var line : Files.readAllLines(designDocument())) {
+                if (line.startsWith("pm-operator")) {
+                    addVerbs(verbs, line.substring("pm-operator".length()));
+                } else if (line.startsWith("In the console and as direct verbs:")
+                                    || line.startsWith("In the console only:")) {
+                    inConsoleBlock = true;
+                } else if (inConsoleBlock) {
+                    if (line.isBlank()) {
+                        inConsoleBlock = false;
+                    } else {
+                        addVerbs(verbs, line);
+                    }
+                }
+            }
+            return verbs;
+        }
+
+        private void addVerbs(Set<String> verbs, String line) {
+            var stripped = line.strip();
+            if (stripped.isEmpty()) {
+                return;
+            }
+            var first = stripped.split("\\s+")[0];
+            for (var verb : first.split("\\|")) {
+                if (!verb.isEmpty()) {
+                    verbs.add(verb);
+                }
+            }
+        }
+
+        private Path designDocument() {
+            for (var dir = Path.of("").toAbsolutePath(); dir != null; dir = dir.getParent()) {
+                var candidate = dir.resolve("doc/design/terminal-client/01-commands.adoc");
+                if (Files.exists(candidate)) {
+                    return candidate;
+                }
+            }
+            throw new IllegalStateException(
+                                "doc/design/terminal-client/01-commands.adoc is not above "
+                                                    + Path.of("").toAbsolutePath());
+        }
+
+        private List<String> registeredVerbs() {
+            return Arrays.stream(PmOperator.class.getAnnotation(Command.class).subcommands())
+                                .map(type -> type.getAnnotation(Command.class).name())
+                                .toList();
+        }
 
         @Test
-        @DisplayName("registers the verbs of the design's command tree and nothing else")
-        void registersTheDesignVerbsOnly() {
-            var declared = PmOperator.class.getAnnotation(Command.class);
+        @DisplayName("registers only verbs the design's command tree declares")
+        void registersOnlyDesignVerbs() throws Exception {
+            var design = designVerbs();
 
-            var registered = Arrays.stream(declared.subcommands())
-                                .map(type -> type.getAnnotation(Command.class).name())
-                                .collect(Collectors.toSet());
-
-            assertEquals(DESIGN_VERBS, registered);
+            assertAll(registeredVerbs().stream()
+                                .map(verb -> (Executable) () -> assertTrue(design.contains(verb),
+                                                    verb + " is registered but not in 01-commands.adoc: " + design))
+                                .toList());
         }
 
         @ParameterizedTest(name = "{0}")
@@ -215,18 +265,27 @@ class PmOperatorTest {
         }
 
         @Test
-        @DisplayName("--help lists the design's verbs and none of the folded ones")
+        @DisplayName("--help lists every registered verb and none of the folded ones")
         void helpListsTheDesignVerbs() {
             assertEquals(0, run("--help"));
 
             var help = out.toString();
-            assertAll(
-                                () -> assertTrue(help.contains("project"), help),
-                                () -> assertTrue(help.contains("accept-edit"), help),
-                                () -> assertFalse(help.contains("git-source"), help),
-                                () -> assertFalse(help.contains("onboard "), help),
-                                () -> assertFalse(help.lines().anyMatch(line -> line.strip().startsWith("start ")),
-                                                    help));
+            var listed = help.lines().map(String::strip).toList();
+            var assertions = new ArrayList<Executable>();
+            for (var verb : registeredVerbs()) {
+                assertions.add(() -> assertTrue(listed.stream().anyMatch(line -> namesVerb(line, verb)),
+                                    verb + " is not listed: " + help));
+            }
+            assertions.add(() -> assertFalse(help.contains("git-source"), help));
+            assertions.add(() -> assertFalse(help.contains("onboard "), help));
+            assertions.add(() -> assertFalse(listed.stream().anyMatch(line -> line.startsWith("start ")), help));
+
+            assertAll(assertions);
+        }
+
+        private boolean namesVerb(String line, String verb) {
+            return line.startsWith(verb) && line.length() > verb.length()
+                                && Character.isWhitespace(line.charAt(verb.length()));
         }
     }
 

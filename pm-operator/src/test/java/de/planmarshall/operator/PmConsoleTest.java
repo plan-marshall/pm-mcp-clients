@@ -19,6 +19,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
@@ -51,6 +53,21 @@ class PmConsoleTest {
         if (fixture != null) {
             fixture.close();
         }
+    }
+
+    /**
+     * @param output the console's whole output
+     * @return the words of the line that names the verbs of {@code help}, tokenized so a missing one
+     *         cannot hide inside another
+     */
+    private static List<String> helpVerbs(String output) {
+        var line = output.lines()
+                            .filter(candidate -> candidate.contains("without the program name"))
+                            .findFirst()
+                            .orElseThrow(() -> new AssertionError("no help verb line in: " + output));
+        return Arrays.stream(line.split("[^a-z-]+"))
+                            .filter(word -> !word.isBlank())
+                            .toList();
     }
 
     @Test
@@ -142,6 +159,8 @@ class PmConsoleTest {
         assertAll(
                             () -> assertEquals(0, exitCode),
                             () -> assertTrue(output.contains("Commands:"), "Should show help list"),
+                            () -> assertTrue(helpVerbs(output).containsAll(OperatorVerbs.registered()),
+                                                "help names every registered verb, got: " + helpVerbs(output)),
                             () -> assertTrue(output.contains("Help for status:"), "Should show help for status"),
                             () -> assertTrue(output.contains("plan fix-relay (running)"), "Should list running plan"),
                             () -> assertTrue(output.contains("\"id\":\"fix-relay\""), "Should show plan details"),
