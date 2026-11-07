@@ -11,23 +11,29 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
 
+import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.mock.StandardScenarios;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 @DisplayName("EpicCommand")
+@EnableGeneratorController
 class EpicCommandTest {
 
     @TempDir
@@ -53,8 +59,55 @@ class EpicCommandTest {
     }
 
     private int execute(String... args) {
+        return execute(new PrintWriter(out), args);
+    }
+
+    private int execute(PrintWriter console, String... args) {
         var context = new OperatorContext(fixture.environment(), tempDir, true);
-        return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+        return PmOperator.execute(context, console, new PrintWriter(err), args);
+    }
+
+    private void serveEpicProcess(String epicId, String body) throws IOException {
+        var processPath = "/api/v1/epics/" + epicId + "/process";
+        fixture.start((request, response) -> {
+            if (processPath.equals(request.target())) {
+                response.json(200, body);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    @Test
+    @DisplayName("epic <id> prints a malformed process body as it came")
+    void malformedProcessBodyFallsBack() throws Exception {
+        var epicId = Generators.letterStrings(6, 12).next();
+        var body = "{\"epic_id\":\"" + epicId + "\",\"running_plans\":[";
+        serveEpicProcess(epicId, body);
+
+        int code = execute("epic", epicId);
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(out.toString().contains(body), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("epic <id> does not hide a failure of the process view behind the raw body")
+    void processViewFailureIsNotSwallowed() throws Exception {
+        var epicId = Generators.letterStrings(6, 12).next();
+        var failure = Generators.letterStrings(8, 16).next();
+        var body = "{\"epic_id\":\"" + epicId + "\",\"running_plans\":[]}";
+        serveEpicProcess(epicId, body);
+        var console = new FailingOnceWriter(out, epicId, failure);
+
+        int code = execute(console, "epic", epicId);
+        var accepted = console.accepted();
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code, accepted),
+                            () -> assertTrue(err.toString().contains(failure), err.toString()),
+                            () -> assertFalse(accepted.contains(body), accepted)
+        );
     }
 
     private static final String EPIC_RESOURCE = """
@@ -313,5 +366,80 @@ class EpicCommandTest {
                             () -> assertEquals(0, code),
                             () -> assertTrue(out.toString().contains("✓ ep-001 cancelled"))
         );
+    }
+
+    @Nested
+    @DisplayName("epic cancel with contradictory flags")
+    class CancelFlags {
+
+        private final String epicId = Generators.letterStrings(6, 12).next();
+        private final String reason = Generators.letterStrings(8, 16).next();
+
+        private FakeRuntimeServer serveCancel() throws IOException {
+            var path = "/api/v1/epics/" + epicId + "/cancel";
+            return fixture.start((request, response) -> {
+                if (path.equals(request.target()) && "POST".equals(request.method())) {
+                    response.json(200, "{\"ok\":true}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+        }
+
+        @Test
+        @DisplayName("--with-plans with --without-plans is a usage error and sends nothing")
+        void plansFlagsRejected() throws Exception {
+            var server = serveCancel();
+
+            int code = execute("epic", "cancel", epicId, "--reason", reason, "--with-plans", "--without-plans");
+            assertAll(
+                                () -> assertEquals(2, code, err.toString()),
+                                () -> assertTrue(err.toString().contains(
+                                                                        "--with-plans and --without-plans are mutually exclusive."),
+                                                    err.toString()),
+                                () -> assertTrue(server.requests().isEmpty(), server.requests().toString())
+            );
+        }
+
+        @Test
+        @DisplayName("--close-pr with --keep-pr is a usage error and sends nothing")
+        void pullRequestFlagsRejected() throws Exception {
+            var server = serveCancel();
+
+            int code = execute("epic", "cancel", epicId, "--reason", reason, "--close-pr", "--keep-pr");
+            assertAll(
+                                () -> assertEquals(2, code, err.toString()),
+                                () -> assertTrue(err.toString().contains(
+                                                                        "--close-pr and --keep-pr are mutually exclusive."),
+                                                    err.toString()),
+                                () -> assertTrue(server.requests().isEmpty(), server.requests().toString())
+            );
+        }
+
+        @Test
+        @DisplayName("--with-plans alone cancels the epic's plans as well")
+        void withPlansAlone() throws Exception {
+            var server = serveCancel();
+
+            int code = execute("epic", "cancel", epicId, "--reason", reason, "--with-plans");
+            var body = server.requests().getFirst().bodyText();
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(body.contains("\"with_plans\":true"), body)
+            );
+        }
+
+        @Test
+        @DisplayName("--without-plans alone leaves the epic's plans running")
+        void withoutPlansAlone() throws Exception {
+            var server = serveCancel();
+
+            int code = execute("epic", "cancel", epicId, "--reason", reason, "--without-plans");
+            var body = server.requests().getFirst().bodyText();
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(body.contains("\"with_plans\":false"), body)
+            );
+        }
     }
 }

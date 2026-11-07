@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -21,8 +23,13 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import org.jline.terminal.impl.DumbTerminal;
 
+import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.resource.EnrolResult;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -31,6 +38,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+@EnableGeneratorController
 @DisplayName("ProjectCommand and ProjectsCommand")
 class ProjectCommandTest {
 
@@ -58,6 +66,15 @@ class ProjectCommandTest {
 
     private int execute(String... args) {
         var context = new OperatorContext(fixture.environment(), tempDir, true);
+        return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    }
+
+    private int executeGerman(String... args) {
+        var environment = new HashMap<>(fixture.environment());
+        environment.put("LANG", "de_DE.UTF-8");
+        environment.remove("LC_ALL");
+        environment.remove("LC_MESSAGES");
+        var context = new OperatorContext(environment, tempDir, true, ClientEnvironment.capture(environment));
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
 
@@ -123,7 +140,7 @@ class ProjectCommandTest {
 
         var code = executeWithInput("", "project", "setup", "cui-parent");
 
-        assertEquals(OnboardCommand.EXIT_NEEDS_INPUT, code, out.toString());
+        assertEquals(ProjectCommand.EXIT_NEEDS_INPUT, code, out.toString());
     }
 
     @Test
@@ -283,21 +300,151 @@ class ProjectCommandTest {
     }
 
     @Test
-    @DisplayName("project add starts onboarding for a path")
-    void projectAdd() throws Exception {
+    @DisplayName("project <id> renders its texts in a German client locale")
+    void projectInspectGerman() throws Exception {
+        var projectId = Generators.letterStrings(4, 12).next();
         fixture.start((request, response) -> {
-            if ("/api/v1/projects".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(201, "{\"ok\":true}");
+            if (("/api/v1/projects/" + projectId).equals(request.target())) {
+                response.json(200, "{\"project_id\":\"" + projectId + "\",\"display_name\":\"" + projectId
+                                    + "\",\"readiness\":\"ready\",\"needs_operator_count\":0,"
+                                    + "\"active_plans_count\":0,\"active_epics_count\":0,"
+                                    + "\"is_favourite\":false,\"is_released\":true}");
             } else {
                 response.send(404, null, "");
             }
         });
 
-        int code = execute("project", "add", "/git/new-app");
+        int code = executeGerman("project", projectId);
+        var output = out.toString();
         assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ Project onboarding started for /git/new-app"))
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains("Projekt:      " + projectId + " (" + projectId + ")"),
+                                                output),
+                            () -> assertTrue(output.contains("Bereitschaft: bereit"), output),
+                            () -> assertTrue(output.contains("Favorit:      nein"), output),
+                            () -> assertTrue(output.contains("Abgegeben:    ja"), output)
         );
+    }
+
+    @Test
+    @DisplayName("project <id> not found is reported in a German client locale")
+    void projectInspectNotFoundGerman() throws Exception {
+        var projectId = Generators.letterStrings(4, 12).next();
+        fixture.start((request, response) -> response.send(404, null, ""));
+
+        int code = executeGerman("project", projectId);
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(out.toString().contains("Projekt " + projectId + " nicht gefunden."),
+                                                out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("project favourite confirms in a German client locale")
+    void projectFavouriteGerman() throws Exception {
+        var projectId = Generators.letterStrings(4, 12).next();
+        fixture.start((request, response) -> {
+            if (("/api/v1/projects/" + projectId + "/favourite").equals(request.target())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeGerman("project", "favourite", projectId);
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(out.toString().contains("✓ Projekt " + projectId + " Favorit: an (★)"),
+                                                out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("project add enrols the checkout through the enrolment and reports the project")
+    void projectAdd() throws Exception {
+        var projectId = Generators.letterStrings(4, 12).next();
+        var path = "/git/" + Generators.letterStrings(4, 12).next();
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/enrol".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, new EnrolResult(EnrolResult.STATUS_ENROLLED, projectId, false).toJson());
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("project", "add", path);
+
+        var request = server.awaitRequest(Duration.ofSeconds(1));
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(request.bodyText().contains("\"path\":\"" + path + "\""), request.bodyText()),
+                            () -> assertTrue(request.bodyText().contains("\"pilot\":false"), request.bodyText()),
+                            () -> assertTrue(out.toString().contains("✓ Enrolled " + projectId + " (standard mode)"),
+                                                out.toString()));
+    }
+
+    @Test
+    @DisplayName("project add --pilot enrols the project in pilot mode")
+    void projectAddPilot() throws Exception {
+        var projectId = Generators.letterStrings(4, 12).next();
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/enrol".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, new EnrolResult(EnrolResult.STATUS_ENROLLED, projectId, true).toJson());
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("project", "add", "--pilot");
+
+        var request = server.awaitRequest(Duration.ofSeconds(1));
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(request.bodyText().contains("\"path\":\".\""), request.bodyText()),
+                            () -> assertTrue(request.bodyText().contains("\"pilot\":true"), request.bodyText()),
+                            () -> assertTrue(out.toString().contains("✓ Enrolled " + projectId + " (pilot mode)"),
+                                                out.toString()));
+    }
+
+    @Test
+    @DisplayName("project add reports the root conflict of another enrolment")
+    void projectAddRootConflict() throws Exception {
+        var path = "/git/" + Generators.letterStrings(4, 12).next();
+        fixture.start((request, response) -> response.json(409,
+                            JsonTree.write(Map.of("error", "enrolment_root_conflict"))));
+
+        int code = execute("project", "add", path, "--pilot");
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(out.toString().contains("✗ Another enrolment already names " + path),
+                                                out.toString()));
+    }
+
+    @Test
+    @DisplayName("project add reports a project store that names another checkout root")
+    void projectAddStoreRootMismatch() throws Exception {
+        fixture.start((request, response) -> response.json(409,
+                            JsonTree.write(Map.of("reason", "project_store_root_mismatch"))));
+
+        int code = execute("project", "add", "/git/" + Generators.letterStrings(4, 12).next());
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(out.toString().contains("names a different checkout root"), out.toString()));
+    }
+
+    @Test
+    @DisplayName("project add reports any other refusal with its status")
+    void projectAddOtherRefusal() throws Exception {
+        fixture.start((request, response) -> response.json(400, "{\"error\":\"invalid_arguments\"}"));
+
+        int code = execute("project", "add", "/git/" + Generators.letterStrings(4, 12).next());
+
+        assertAll(
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(err.toString().contains("HTTP 400"), err.toString()));
     }
 
     @Test
@@ -410,20 +557,29 @@ class ProjectCommandTest {
     }
 
     @Test
+    @DisplayName("project unenrol --no-input without --yes stops with exit 3 and sends nothing")
+    void projectUnenrolNeedsConfirmation() throws Exception {
+        var server = fixture.start((request, response) -> response.json(200, "{}"));
+
+        int code = execute("project", "unenrol", Generators.letterStrings(4, 12).next(), "--no-input");
+
+        assertAll(
+                            () -> assertEquals(3, code),
+                            () -> assertTrue(err.toString().contains("Unenrol confirmation required (--yes)"),
+                                                err.toString()),
+                            () -> assertTrue(server.requests().isEmpty(), "no request may be sent"));
+    }
+
+    @Test
     @DisplayName("output safety strips control sequences")
     void outputSafetySanitizesUntrustedInput() throws Exception {
-        fixture.start((request, response) -> {
-            if ("/api/v1/projects".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(201, "{\"ok\":true}");
-            } else {
-                response.send(404, null, "");
-            }
-        });
+        fixture.start((request, response) -> response.json(409,
+                            JsonTree.write(Map.of("error", "enrolment_root_conflict"))));
 
         int code = execute("project", "add", "\u001B[31m/malicious/path\u001B[0m");
         assertAll(
-                            () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ Project onboarding started for /malicious/path")),
+                            () -> assertEquals(1, code),
+                            () -> assertTrue(out.toString().contains("/malicious/path"), out.toString()),
                             () -> assertFalse(out.toString().contains("\u001B[31m"))
         );
     }

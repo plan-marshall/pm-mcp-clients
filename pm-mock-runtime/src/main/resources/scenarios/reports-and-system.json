@@ -2776,7 +2776,9 @@
             "rel": "submit",
             "method": "POST",
             "href": "/api/v1/operator/runtime/stop",
-            "params": {},
+            "params": {
+              "when": "now"
+            },
             "preselected": false
           }
         ],
@@ -2848,6 +2850,51 @@
           }
         }
       ]
+    },
+    "system.draining-signal": {
+      "representation": {
+        "scope": {
+          "kind": "workspace",
+          "project_id": "pm-mcp-clients"
+        },
+        "state": {
+          "state_id": "system.draining-signal",
+          "kind": "operator_wait"
+        },
+        "links": [
+          {
+            "id": "stop_now",
+            "rel": "submit",
+            "method": "POST",
+            "href": "/api/v1/operator/runtime/stop",
+            "params": {
+              "when": "now"
+            },
+            "preselected": false
+          }
+        ],
+        "facts": {
+          "lifecycle_state": "draining",
+          "draining_by": "a signal",
+          "can_withdraw_stop": false,
+          "blockers": [
+            {
+              "kind": "plan",
+              "id": "fix-relay",
+              "name": "execute task of fix-relay",
+              "summary": "1 task still running"
+            }
+          ],
+          "summary": "The runtime drains after a signal; the drain cannot be withdrawn"
+        }
+      },
+      "links": {
+        "stop_now": {
+          "method": "POST",
+          "href": "/api/v1/operator/runtime/stop",
+          "next": "system.stopped"
+        }
+      }
     },
     "system.stopped": {
       "representation": {

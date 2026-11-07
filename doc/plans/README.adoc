@@ -377,19 +377,19 @@ The status of a package is `open`, `blocked`, `done` or `dropped`; a `dropped` r
 
 |link:operator-drain-signal.adoc[`operator-drain-signal`]
 |`pm-operator drain` as the signal of the recorded runtime process with its bounded wait; withdrawing a drain only as `runtime stop --withdraw`
-|`open`
+|`done`
 |`cli-system`
 |client work
 
 |link:operator-command-tree.adoc[`operator-command-tree`]
 |`pm-operator` registers the command tree of the design: the verbs it does not have folded into their design verbs or removed, a verb without a counterpart reported
-|`open`
+|`done`
 |`command-tree`; `operator-enrolment-verbs`
 |client work
 
 |link:accept-edit-enrolment.adoc[`accept-edit-enrolment`]
 |`pm-operator accept-edit` in the forms of the specification, `enrolment <project_id>` among them
-|`open`
+|`done`
 |`operator-enrolment-verbs`
 |client work
 

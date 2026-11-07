@@ -9,242 +9,200 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.time.Duration;
-import java.util.List;
+import java.nio.file.Path;
+import java.util.HashMap;
+import org.jspecify.annotations.Nullable;
 
-import de.planmarshall.api.source.git.ChangedFile;
-import de.planmarshall.api.source.git.LocalChangesCaptureResult;
-import de.planmarshall.api.source.git.LocalChangesPreview;
-import de.planmarshall.api.source.git.PrAdoptResult;
-import de.planmarshall.api.source.git.PullRequestObservation;
-import de.planmarshall.api.source.git.RateLimitStatus;
-import de.planmarshall.api.source.git.ScreeningOutcome;
-import de.planmarshall.api.source.git.SourceLane;
-import de.planmarshall.api.testsupport.FakeRuntimeServer;
-import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.mock.MockRuntime;
+import de.planmarshall.mock.MockRuntimeConfig;
+import de.planmarshall.mock.StandardScenarios;
+import de.planmarshall.operator.transcript.TerminalTestDriver;
 
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledOnOs;
-import org.junit.jupiter.api.condition.OS;
 
-@DisplayName("GitSourceCommand")
-@EnabledOnOs({OS.MAC, OS.LINUX})
+/**
+ * The acts of the folded verb {@code git-source} through their design verb: a pull request is
+ * adopted and the local changes are captured as sources of {@code plan add}
+ * ({@code --pull-request}, {@code --local-changes}; 18-starting.adoc), against the start entry of
+ * the mock runtime. Its observation, screening and acceptance are states of the start, never
+ * options of a verb.
+ */
+@EnableGeneratorController
+@DisplayName("Git sources through plan add --pull-request and --local-changes")
 class GitSourceCommandTest {
 
-    private RuntimeFixture fixture;
-    private StringWriter out;
-    private StringWriter err;
+    private static final String PROJECT = "pm-mcp-clients";
+    private static final String ENTRY = "ent-3f9a2c41";
 
-    @BeforeEach
-    void setUp() throws IOException {
-        fixture = RuntimeFixture.create();
-        out = new StringWriter();
-        err = new StringWriter();
+    /**
+     * @return the number of a pull request; the case state decides what the runtime observes
+     */
+    private static String pullRequestNumber() {
+        return String.valueOf(Generators.integers(1, 99_999).next());
     }
 
-    @AfterEach
-    void tearDown() throws IOException {
-        fixture.close();
+    /**
+     * @param stateId a case state of the projects-and-start scenario
+     * @return the scenario reference that starts the mock runtime at that state
+     */
+    private static String caseOf(String stateId) {
+        return StandardScenarios.PROJECTS_AND_START + "#" + stateId;
     }
 
-    private int run(String... args) {
-        var context = new OperatorContext(fixture.environment(), fixture.base().getParent());
-        return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    @Test
+    @DisplayName("plan add --pull-request stores the pull request with its changed files untrusted and starts")
+    void pullRequestAdopted() throws Exception {
+        var outcome = run(StandardScenarios.START_PULL_REQUEST, null,
+                            "plan", "add", "--project", PROJECT, "--pull-request", "214", "--no-input");
+
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("untrusted"), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("has started"), outcome.rendered()));
     }
 
-    private FakeRuntimeServer runtime(FakeRuntimeServer.Handler handler) throws IOException {
+    @Test
+    @DisplayName("plan add --local-changes where the landing commits nothing stops with exit 3")
+    void localChangesWithheld() throws Exception {
+        var outcome = run(StandardScenarios.START_LOCAL_CHANGES, null,
+                            "plan", "add", "--project", PROJECT, "--local-changes", "--no-input");
+
+        assertAll(
+                            () -> assertEquals(StartDialogue.EXIT_MISSING_INPUT, outcome.code()),
+                            () -> assertTrue(outcome.rendered().contains("landing.files"), outcome.rendered()));
+    }
+
+    @Test
+    @DisplayName("a flagged external source is accepted with the operator's reason and the plan starts")
+    void flaggedSourceAccepted() throws Exception {
+        var reason = Generators.letterStrings(8, 24).next();
+
+        var outcome = run(StandardScenarios.START_ISSUE_FAILED, "r\nu\n" + reason + "\nr\n\n\n",
+                            "plan", "add", "--project", PROJECT, "--entry", ENTRY);
+
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("flagged"), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains(reason), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("has started"), outcome.rendered()));
+    }
+
+    @Test
+    @DisplayName("a flagged external source stops a --no-input start with exit 3")
+    void flaggedSourceStopsNoInput() throws Exception {
+        var outcome = run(StandardScenarios.START_ISSUE_FAILED, null,
+                            "plan", "add", "--project", PROJECT, "--entry", ENTRY, "--no-input");
+
+        assertEquals(StartDialogue.EXIT_MISSING_INPUT, outcome.code(), outcome.rendered());
+    }
+
+    @Test
+    @DisplayName("plan add --pull-request whose pull request is not open stops a --no-input start with exit 3")
+    void pullRequestNotOpen() throws Exception {
+        var outcome = run(caseOf("start.pull-request-not-open"), null,
+                            "plan", "add", "--project", PROJECT, "--entry", ENTRY, "--pull-request", pullRequestNumber(),
+                            "--no-input");
+
+        assertAll(
+                            () -> assertEquals(StartDialogue.EXIT_MISSING_INPUT, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("not open"), outcome.rendered()),
+                            () -> assertFalse(outcome.rendered().contains("has started"), outcome.rendered()));
+    }
+
+    @Test
+    @DisplayName("plan add --pull-request whose pull request is flagged is accepted with the operator's reason")
+    void flaggedPullRequestAccepted() throws Exception {
+        var reason = Generators.letterStrings(8, 24).next();
+
+        var outcome = run(caseOf("start.pull-request-flagged"), "u\n" + reason + "\n\n\n\n",
+                            "plan", "add", "--project", PROJECT, "--entry", ENTRY, "--pull-request", pullRequestNumber());
+
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("flagged"), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains(reason), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("has started"), outcome.rendered()));
+    }
+
+    @Test
+    @DisplayName("plan add --pull-request whose pull request is flagged stops a --no-input start with exit 3")
+    void flaggedPullRequestStopsNoInput() throws Exception {
+        var outcome = run(caseOf("start.pull-request-flagged"), null,
+                            "plan", "add", "--project", PROJECT, "--entry", ENTRY, "--pull-request", pullRequestNumber(),
+                            "--no-input");
+
+        assertAll(
+                            () -> assertEquals(StartDialogue.EXIT_MISSING_INPUT, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("flagged"), outcome.rendered()),
+                            () -> assertFalse(outcome.rendered().contains("has started"), outcome.rendered()));
+    }
+
+    @Test
+    @DisplayName("plan add --local-changes where the landing commits captures the local changes and starts")
+    void localChangesCaptured() throws Exception {
+        var outcome = run(caseOf("start.local-changes-captured"), null,
+                            "plan", "add", "--project", PROJECT, "--entry", ENTRY, "--local-changes", "--no-input");
+
+        assertAll(
+                            () -> assertEquals(0, outcome.code(), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("2 files changed"), outcome.rendered()),
+                            () -> assertFalse(outcome.rendered().contains("landing.files"), outcome.rendered()),
+                            () -> assertTrue(outcome.rendered().contains("has started"), outcome.rendered()));
+    }
+
+    @Test
+    @DisplayName("git-source is no verb: it is reported with the usage exit code")
+    void gitSourceIsUnknown() {
+        var out = new StringWriter();
+        var err = new StringWriter();
+        var context = new OperatorContext(new HashMap<>(), Path.of("."));
+
+        var code = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), "git-source",
+                            "adopt-pr", "214");
+
+        assertEquals(2, code, err.toString());
+    }
+
+    private static Outcome run(String scenario, @Nullable String input, String... args) throws Exception {
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).build());
+             var driver = TerminalTestDriver.create()) {
+            recordLiveRuntime(runtime);
+            var environment = new HashMap<>(runtime.environment());
+            environment.put("LANG", "en_US.UTF-8");
+            environment.put("USER", "operator");
+            driver.project(environment, runtime.base().getParent());
+            if (input == null) {
+                driver.endOfInput();
+            } else {
+                driver.type(input);
+            }
+            var code = TranscriptVerbRunner.run(driver.context(), driver.writer(), driver.writer(), args);
+            return new Outcome(code, driver.render());
+        }
+    }
+
+    private static void recordLiveRuntime(MockRuntime runtime) throws IOException {
         var self = ProcessHandle.current();
-        Files.createDirectories(fixture.paths().stateDir());
-        Files.writeString(fixture.paths().runtimeRecord(), "{\"pid\":" + self.pid() + ",\"start_instant\":\""
-                            + self.info().startInstant().orElseThrow() + "\"}");
-        return fixture.start(handler);
+        var start = self.info().startInstant().orElseThrow();
+        Files.createDirectories(runtime.paths().stateDir());
+        Files.writeString(runtime.paths().runtimeRecord(),
+                            "{\"pid\":" + self.pid() + ",\"start_instant\":\"" + start + "\"}",
+                            StandardCharsets.UTF_8);
     }
 
-    private static List<ChangedFile> files() {
-        return List.of(new ChangedFile("doc/concepts/forgejo.adoc", 12, 3, true, false));
-    }
-
-    private static String observation(int number, String state, boolean writable, ScreeningOutcome screening) {
-        return new PullRequestObservation("https://codeberg.org/plan-marshall/pm-mcp-clients/pulls/" + number,
-                            number, "Add a Codeberg provider for issues", "octocat", "codeberg-provider",
-                            state, writable, files(), screening, RateLimitStatus.unlimited()).toJson();
-    }
-
-    private static String eligiblePreview() {
-        return new LocalChangesPreview(null, "preview-1", "main", files(), "pr", true, true, null).toJson();
-    }
-
-    private static String ineligiblePreview() {
-        return new LocalChangesPreview(null, null, "main", files(), "landing.files", false, false,
-                            "landing.files").toJson();
-    }
-
-    private static String adoptResult() {
-        return new PrAdoptResult("adopt-pr-4711", SourceLane.ADOPT, "codeberg-provider", null).toJson();
-    }
-
-    private static String captureResult() {
-        return new LocalChangesCaptureResult("capture-local-changes-my-proj", SourceLane.LAND,
-                            "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678", null).toJson();
-    }
-
-    private static FakeRuntimeServer.Handler gitSourceHandler(String preview) {
-        return (request, response) -> {
-            var target = request.target();
-            if (target.endsWith("/sources/pr/observe")) {
-                var flagged = request.bodyText().contains("6677");
-                response.json(200, observation(4711, PullRequestObservation.STATE_OPEN, true,
-                                    flagged ? ScreeningOutcome.FLAGGED : ScreeningOutcome.CLEAN));
-            } else if (target.endsWith("/sources/pr/adopt")) {
-                response.json(201, adoptResult());
-            } else if (target.endsWith("/sources/local-changes/preview")) {
-                response.json(200, preview);
-            } else if (target.endsWith("/sources/local-changes/capture")) {
-                response.json(201, captureResult());
-            } else {
-                response.send(404, null, "");
-            }
-        };
-    }
-
-    @Test
-    @DisplayName("git-source without subcommands prints usage")
-    void usage() {
-        assertEquals(0, run("git-source"));
-        assertTrue(out.toString().contains("Usage: pm-operator git-source"), out.toString());
-    }
-
-    @Test
-    @DisplayName("adopt-pr observes, adopts, and reports the created plan")
-    void adoptCleanPullRequest() throws Exception {
-        var server = runtime(gitSourceHandler(eligiblePreview()));
-
-        assertEquals(0, run("git-source", "adopt-pr", "4711", "--project", "my-proj", "--yes"));
-        assertTrue(out.toString().contains("adopt-pr-4711 adopted the pull request"), out.toString());
-        assertTrue(out.toString().contains("adopt lane"), out.toString());
-
-        var recorded = server.awaitRequest(Duration.ofSeconds(1));
-        assertTrue(recorded.bodyText().contains("\"pr_url\":\"4711\""), recorded.bodyText());
-    }
-
-    @Test
-    @DisplayName("adopt-pr needs an answer for a flagged pull request and refuses --no-input")
-    void adoptFlaggedNeedsAcceptance() throws Exception {
-        runtime(gitSourceHandler(eligiblePreview()));
-
-        assertEquals(GitSourceCommand.EXIT_NEEDS_INPUT,
-                            run("git-source", "adopt-pr", "6677", "--project", "my-proj", "--no-input"));
-        assertTrue(out.toString().contains("Adopt it anyway"), out.toString());
-        assertTrue(out.toString().contains("Confirmation required (--yes)."), out.toString());
-    }
-
-    @Test
-    @DisplayName("adopt-pr accepts a flagged pull request with an explicit screening acceptance")
-    void adoptFlaggedWithAcceptance() throws Exception {
-        var server = runtime(gitSourceHandler(eligiblePreview()));
-
-        assertEquals(0, run("git-source", "adopt-pr", "6677", "--project", "my-proj",
-                            "--accept-screening", "I read the flagged text"));
-        assertTrue(out.toString().contains("adopted the pull request"), out.toString());
-
-        var observe = server.awaitRequest(Duration.ofSeconds(1));
-        assertTrue(observe.bodyText().contains("\"pr_url\":\"6677\""));
-        var adopt = server.awaitRequest(Duration.ofSeconds(1));
-        assertTrue(adopt.bodyText().contains("\"screening_bypass_reason\""), adopt.bodyText());
-    }
-
-    @Test
-    @DisplayName("adopt-pr reports a pull request that is not open")
-    void adoptClosedPullRequest() throws Exception {
-        runtime((request, response) -> response.json(200,
-                            observation(7001, PullRequestObservation.STATE_CLOSED, true, ScreeningOutcome.CLEAN)));
-
-        assertEquals(1, run("git-source", "adopt-pr", "7001", "--project", "my-proj", "--yes"));
-        assertTrue(out.toString().contains("not open"), out.toString());
-    }
-
-    @Test
-    @DisplayName("local-changes previews, captures, and reports the snapshot commit")
-    void captureLocalChanges() throws Exception {
-        var server = runtime(gitSourceHandler(eligiblePreview()));
-
-        assertEquals(0, run("git-source", "local-changes", "--project", "my-proj", "--yes"));
-        assertTrue(out.toString().contains("captured the local changes"), out.toString());
-        assertTrue(out.toString().contains("snapshot commit a1b2c3d4"), out.toString());
-        assertTrue(out.toString().contains("land lane"), out.toString());
-
-        var preview = server.awaitRequest(Duration.ofSeconds(1));
-        assertEquals("GET", preview.method());
-        var capture = server.awaitRequest(Duration.ofSeconds(1));
-        assertTrue(capture.bodyText().contains("\"confirmed\":true"), capture.bodyText());
-        assertTrue(capture.bodyText().contains("\"preview_id\":\"preview-1\""), capture.bodyText());
-    }
-
-    @Test
-    @DisplayName("local-changes needs the confirmation and refuses --no-input")
-    void captureNeedsConfirmation() throws Exception {
-        runtime(gitSourceHandler(eligiblePreview()));
-
-        assertEquals(GitSourceCommand.EXIT_NEEDS_INPUT,
-                            run("git-source", "local-changes", "--project", "my-proj", "--no-input"));
-        assertTrue(out.toString().contains("Confirmation required (--yes)."), out.toString());
-    }
-
-    @Test
-    @DisplayName("local-changes refuses where the landing is landing.files (PM-WF-25)")
-    void captureRefusesLandingFiles() throws Exception {
-        runtime(gitSourceHandler(ineligiblePreview()));
-
-        assertEquals(1, run("git-source", "local-changes", "--project", "my-proj", "--yes"));
-        assertTrue(out.toString().contains("cannot land"), out.toString());
-        assertTrue(out.toString().contains("PM-WF-25"), out.toString());
-    }
-
-    @Test
-    @DisplayName("start plan --adopt-pr delegates to the git source flow")
-    void startPlanAdoptDelegates() throws Exception {
-        var server = runtime(gitSourceHandler(eligiblePreview()));
-
-        assertEquals(0, run("start", "plan", "my-proj", "--adopt-pr", "4711", "--yes"));
-        assertTrue(out.toString().contains("adopt-pr-4711 adopted the pull request"), out.toString());
-
-        var recorded = server.awaitRequest(Duration.ofSeconds(1));
-        assertTrue(recorded.target().endsWith("/api/v1/projects/my-proj/sources/pr/observe"),
-                            recorded.target());
-    }
-
-    @Test
-    @DisplayName("start plan --local-changes delegates to the git source flow")
-    void startPlanLocalChangesDelegates() throws Exception {
-        runtime(gitSourceHandler(eligiblePreview()));
-
-        assertEquals(0, run("start", "plan", "my-proj", "--local-changes", "--yes"));
-        assertTrue(out.toString().contains("captured the local changes"), out.toString());
-    }
-
-    @Test
-    @DisplayName("adopt-pr reports a runtime refusal with the reason")
-    void adoptRefused() throws Exception {
-        runtime((request, response) -> {
-            if (request.target().endsWith("/sources/pr/observe")) {
-                response.json(200, observation(7002, PullRequestObservation.STATE_OPEN, true,
-                                    ScreeningOutcome.CLEAN));
-            } else {
-                response.json(409, "{\"error\":\"start_refused\",\"reason\":\"rate_limited\"}");
-            }
-        });
-
-        assertEquals(1, run("git-source", "adopt-pr", "7002", "--project", "my-proj", "--yes"));
-        assertTrue(out.toString().contains("rate limited"), out.toString());
+    private record Outcome(int code, String rendered) {
     }
 }

@@ -7,7 +7,7 @@
 ## Capabilities & Architecture
 
 - **Interactive Console (`pm-operator`)**: Built on JLine 4 with terminal capability detection, command completion, history persistence, styled prompts (`pm ›`, `pm [setup 3/7] ›`), and asynchronous notifications (`ConsoleNotice`).
-- **Direct CLI Verbs**: Command tree implemented via Picocli (`status`, `runtime`, `config`, `project`, `projects`, `plan`, `epic`, `recipe`, `questions`, `answer`, `reports`, `web`, `client`, `drain`, `abort`).
+- **Direct CLI Verbs**: The design's command tree (`doc/design/terminal-client/01-commands.adoc`) implemented via Picocli (`config`, `projects`, `project`, `plan`, `epic`, `recipe`, `lesson`, `web`, `status`, `reports`, `system`, `runtime`, `drain`, `client`, `enrol-harness`, `cleanup`, `credentials`, `roles`, `accept-edit`, and the console commands `plans`, `questions`, `answer` as direct verbs). There is no verb `start` and no verb `onboard`: `pm-operator` without a verb follows the state of the machine, and `config <aspect>` runs one step of the onboarding again.
 - **Operator Gate (`PM-SEC-3`)**: Verifies interactive terminal attachment (`System.console() != null && System.console().isTerminal()`) and refuses each operator act (exit code 4) if harness signals (`ANTIGRAVITY_AGENT`, `CLAUDE_CODE`, `OPENCODE_CLIENT`, `CODEX_*`) are present. The gate covers acts only: the read-only verbs and the console entry run without it, and the console checks each act it dispatches.
 - **Unix Domain Socket Client**: Communicates with the daemon exclusively over local Unix domain sockets via `pm-api` (`UnixSocketHttpClient`), authenticated with `run/runtime.token`.
 - **QR Code Pairing**: Generates ASCII and ANSI terminal QR codes (`QrCodeRenderer`) for pairing browsers and mobile devices with the runtime's web listener.
@@ -159,7 +159,7 @@ If you run an operator act from an environment where AI assistant signals are ex
 ```text
 pm-operator: Operator acts are refused here: this terminal belongs to a coding agent (CLAUDECODE is set). Run pm-operator in a terminal of your own.
 ```
-The read-only verbs (`questions`, `reports`, `projects --list`, the `roles`, `config`, `settings`, `plan` and `epic` views, `credentials status`, `lesson check`) and the console itself run without the gate.
+The read-only verbs (`questions`, `reports`, `projects --list`, the `roles`, `config`, `plan` and `epic` views, `credentials status`, `lesson check`) and the console itself run without the gate.
 To run the act that was refused, launch it in an environment of your own, with the agent's markers unset:
 ```bash
 env -u CLAUDECODE -u CLAUDE_CODE -u OPENCODE -u OPENCODE_CLIENT -u ANTIGRAVITY_AGENT -u GEMINI_CLI java -jar pm-operator/target/pm-operator-0.1.0-SNAPSHOT.jar runtime stop

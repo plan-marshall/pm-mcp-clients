@@ -46,12 +46,10 @@ class LiteralTextGuardTest {
                         "ConsoleNotice.java",
                         "EntryFlow.java",
                         "ConfigCommand.java",
-                        "SettingsCommand.java",
                         "WebCommand.java",
                         "CredentialsCommand.java",
                         "SecretReader.java",
                         "TerminalTitle.java",
-                        "OnboardCommand.java",
                         "StartDialogue.java",
                         "StartPrompt.java",
                         "StartRenderer.java",
@@ -62,7 +60,8 @@ class LiteralTextGuardTest {
                         "ReviewDialogue.java",
                         "WorkChatDialogue.java",
                         "PlanSettingsDialogue.java",
-                        "OperatorActions.java");
+                        "OperatorActions.java",
+                        "ProjectCommand.java");
 
     /** A call that renders text to the operator. */
     private static final Pattern RENDER_CALL = Pattern.compile(

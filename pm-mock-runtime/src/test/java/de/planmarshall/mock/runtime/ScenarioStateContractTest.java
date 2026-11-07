@@ -30,6 +30,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import de.cuioss.test.generator.Generators;
@@ -166,6 +167,31 @@ class ScenarioStateContractTest {
         }
     }
 
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+            "start.pull-request-not-open, add_pull_request, failed",
+            "start.pull-request-flagged, add_pull_request, flagged",
+            "start.local-changes-captured, add_local_changes, stored"})
+    @DisplayName("a git source case state adds its source in the state it declares")
+    void gitSourceCaseStateAddsItsSource(String stateId, String linkId, String expectedState) throws Exception {
+        var registry = new ScenarioRegistry();
+        try (var engine = new MockRuntimeEngine(registry,
+                     registry.resolve(StandardScenarios.PROJECTS_AND_START), runtimeToken, deviceSecret)) {
+            engine.goToState(stateId);
+
+            var answer = post(engine, "/api/v1/entries/ent-3f9a2c41/links/" + linkId);
+
+            assertEquals(200, answer.status(), stateId + " " + linkId);
+            var start = answer.json() != null ? JsonTree.object(answer.json(), "start") : null;
+            var entry = start != null ? JsonTree.object(start, "entry") : null;
+            var sources = entry != null ? JsonTree.asArray(entry.get("sources")) : null;
+            assertNotNull(sources, stateId + " answers the entry's sources");
+            assertEquals(1, sources.size(), stateId + " adds one source");
+            assertEquals(expectedState, JsonTree.string(JsonTree.asObject(sources.getFirst()), "state"),
+                    stateId + " source state");
+        }
+    }
+
     @Test
     @DisplayName("the plan list answers in every primary scenario")
     void everyScenarioAnswersThePlanList() throws Exception {
@@ -254,7 +280,28 @@ class ScenarioStateContractTest {
      * @throws IOException on write failure
      */
     private Answer get(MockRuntimeEngine engine, String path) throws IOException {
-        var raw = answer(engine, path);
+        return parse(answer(engine, path));
+    }
+
+    private record Answer(int status, @Nullable Map<String, Object> json) {
+    }
+
+    /**
+     * @param engine the engine
+     * @param path   the act
+     * @return the answer's status and JSON body
+     * @throws IOException on write failure
+     */
+    private Answer post(MockRuntimeEngine engine, String path) throws IOException {
+        var request = new MockHttpRequest("POST", path,
+                Map.of("Authorization", auth, "Content-Type", "application/json"),
+                "{}".getBytes(StandardCharsets.UTF_8), System.nanoTime());
+        var out = new ByteArrayOutputStream();
+        engine.dispatch(request, new MockHttpResponse(out), false);
+        return parse(out.toString(StandardCharsets.UTF_8));
+    }
+
+    private static Answer parse(String raw) throws IOException {
         var split = raw.indexOf("\r\n\r\n");
         var body = split >= 0 ? raw.substring(split + 4) : "";
         var status = -1;
@@ -263,9 +310,6 @@ class ScenarioStateContractTest {
             status = Integer.parseInt(firstLine[1]);
         }
         return new Answer(status, body.isBlank() ? null : JsonTree.asObject(JsonTree.parse(body)));
-    }
-
-    private record Answer(int status, @Nullable Map<String, Object> json) {
     }
 
     /**
@@ -307,6 +351,9 @@ class ScenarioStateContractTest {
         }
         if (stateId.startsWith("reports.")) {
             return "/api/v1/reports";
+        }
+        if ("enrol.enrolment-tampered".equals(stateId)) {
+            return "/api/v1/projects/pm-mcp-clients";
         }
         if (stateId.startsWith("system.")) {
             return "system.running".equals(stateId) ? "/api/v1/system" : "/api/v1/status";

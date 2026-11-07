@@ -11,24 +11,30 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Path;
 import java.time.Duration;
 
+import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.mock.StandardScenarios;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 @DisplayName("PlanCommand")
+@EnableGeneratorController
 class PlanCommandTest {
 
     @TempDir
@@ -159,8 +165,99 @@ class PlanCommandTest {
     }
 
     private int execute(String... args) {
+        return execute(new PrintWriter(out), args);
+    }
+
+    private int execute(PrintWriter console, String... args) {
         var context = new OperatorContext(fixture.environment(), tempDir, true);
-        return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+        return PmOperator.execute(context, console, new PrintWriter(err), args);
+    }
+
+    private void serve(String path, String body) throws IOException {
+        fixture.start((request, response) -> {
+            if (path.equals(request.target())) {
+                response.json(200, body);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+    }
+
+    @Nested
+    @DisplayName("plan <id> --task <task> on its activity body")
+    class ActivityBody {
+
+        private final String planId = Generators.letterStrings(6, 12).next();
+        private final String taskId = Generators.letterStrings(6, 12).next();
+        private final String path = "/api/v1/plans/" + planId + "/tasks/" + taskId + "/activity";
+
+        @Test
+        @DisplayName("prints a malformed activity body as it came")
+        void malformedBodyFallsBack() throws Exception {
+            var body = "{\"task_id\":\"" + taskId + "\",\"entries\":[";
+            serve(path, body);
+
+            int code = execute("plan", planId, "--task", taskId);
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(out.toString().contains(body), out.toString())
+            );
+        }
+
+        @Test
+        @DisplayName("does not hide a failure of the activity view behind the raw body")
+        void viewFailureIsNotSwallowed() throws Exception {
+            var failure = Generators.letterStrings(8, 16).next();
+            var body = "{\"task_id\":\"" + taskId + "\",\"entries\":[]}";
+            serve(path, body);
+            var console = new FailingOnceWriter(out, taskId, failure);
+
+            int code = execute(console, "plan", planId, "--task", taskId);
+            var accepted = console.accepted();
+            assertAll(
+                                () -> assertEquals(PmOperator.EXIT_FAILURE, code, accepted),
+                                () -> assertTrue(err.toString().contains(failure), err.toString()),
+                                () -> assertFalse(accepted.contains(body), accepted)
+            );
+        }
+    }
+
+    @Nested
+    @DisplayName("plan <id> on its process body")
+    class ProcessBody {
+
+        private final String planId = Generators.letterStrings(6, 12).next();
+        private final String path = "/api/v1/plans/" + planId + "/process";
+
+        @Test
+        @DisplayName("prints a malformed process body as it came")
+        void malformedBodyFallsBack() throws Exception {
+            var body = "{\"plan_id\":\"" + planId + "\",\"nodes\":[";
+            serve(path, body);
+
+            int code = execute("plan", planId, "--print");
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(out.toString().contains(body), out.toString())
+            );
+        }
+
+        @Test
+        @DisplayName("does not hide a failure of the process view behind the raw body")
+        void viewFailureIsNotSwallowed() throws Exception {
+            var failure = Generators.letterStrings(8, 16).next();
+            var body = "{\"plan_id\":\"" + planId + "\",\"nodes\":[]}";
+            serve(path, body);
+            var console = new FailingOnceWriter(out, planId, failure);
+
+            int code = execute(console, "plan", planId, "--print");
+            var accepted = console.accepted();
+            assertAll(
+                                () -> assertEquals(PmOperator.EXIT_FAILURE, code, accepted),
+                                () -> assertTrue(err.toString().contains(failure), err.toString()),
+                                () -> assertFalse(accepted.contains(body), accepted)
+            );
+        }
     }
 
     @Test
@@ -363,6 +460,81 @@ class PlanCommandTest {
                             () -> assertEquals(0, code),
                             () -> assertTrue(out.toString().contains("✓ p-001 abandoned and archived"))
         );
+    }
+
+    @Nested
+    @DisplayName("plan cancel|abandon with --close-pr and --keep-pr")
+    class PullRequestFlags {
+
+        private static final String EXCLUSIVE = "--close-pr and --keep-pr are mutually exclusive.";
+
+        private final String planId = Generators.letterStrings(6, 12).next();
+        private final String reason = Generators.letterStrings(8, 16).next();
+
+        private FakeRuntimeServer serveEnd(String verb) throws IOException {
+            var path = "/api/v1/plans/" + planId + "/" + verb;
+            return fixture.start((request, response) -> {
+                if (path.equals(request.target()) && "POST".equals(request.method())) {
+                    response.json(200, "{\"ok\":true}");
+                } else {
+                    response.send(404, null, "");
+                }
+            });
+        }
+
+        @Test
+        @DisplayName("plan cancel with both flags is a usage error and sends nothing")
+        void cancelRejectsBoth() throws Exception {
+            var server = serveEnd("cancel");
+
+            int code = execute("plan", "cancel", planId, "--reason", reason, "--close-pr", "--keep-pr");
+            assertAll(
+                                () -> assertEquals(2, code, err.toString()),
+                                () -> assertTrue(err.toString().contains(EXCLUSIVE), err.toString()),
+                                () -> assertTrue(server.requests().isEmpty(), server.requests().toString())
+            );
+        }
+
+        @Test
+        @DisplayName("plan abandon with both flags is a usage error and sends nothing")
+        void abandonRejectsBoth() throws Exception {
+            var server = serveEnd("abandon");
+
+            int code = execute("plan", "abandon", planId, "--reason", reason, "--keep-pr", "--close-pr");
+            assertAll(
+                                () -> assertEquals(2, code, err.toString()),
+                                () -> assertTrue(err.toString().contains(EXCLUSIVE), err.toString()),
+                                () -> assertTrue(server.requests().isEmpty(), server.requests().toString())
+            );
+        }
+
+        @Test
+        @DisplayName("plan cancel --close-pr alone closes the pull request")
+        void closePrAlone() throws Exception {
+            var server = serveEnd("cancel");
+
+            int code = execute("plan", "cancel", planId, "--reason", reason, "--close-pr");
+            // The act is read before the cancel is sent; the cancel is the request that carries the body.
+            var body = server.requests().stream().filter(request -> "POST".equals(request.method()))
+                                .findFirst().orElseThrow().bodyText();
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(body.contains("\"close_pr\":true"), body)
+            );
+        }
+
+        @Test
+        @DisplayName("plan abandon --keep-pr alone keeps the pull request")
+        void keepPrAlone() throws Exception {
+            var server = serveEnd("abandon");
+
+            int code = execute("plan", "abandon", planId, "--reason", reason, "--keep-pr");
+            var body = server.requests().getFirst().bodyText();
+            assertAll(
+                                () -> assertEquals(0, code, err.toString()),
+                                () -> assertTrue(body.contains("\"close_pr\":false"), body)
+            );
+        }
     }
 
     @Test

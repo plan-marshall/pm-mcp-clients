@@ -13,9 +13,11 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.util.List;
 
 
 import org.junit.jupiter.api.DisplayName;
@@ -26,6 +28,7 @@ import org.junit.jupiter.api.condition.OS;
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.resource.AcceptEditRequest;
@@ -34,6 +37,8 @@ import de.planmarshall.api.resource.EnrolRequest;
 import de.planmarshall.api.resource.EnrolResult;
 import de.planmarshall.api.resource.StoreDigestComparison;
 import de.planmarshall.api.resource.UnenrolResult;
+import de.planmarshall.mock.scenario.ScenarioLoader;
+import de.planmarshall.mock.scenario.ScenarioRegistry;
 
 @DisplayName("EnrolScenario")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -43,6 +48,8 @@ class EnrolScenarioTest {
     private static final String SCENARIO = StandardScenarios.PROJECTS_AND_START;
     private static final String ENROLMENT = SCENARIO + "#enrol.digest-mismatch";
     private static final String ENROL_SCAN = SCENARIO + "#enrol.scan";
+    private static final String TAMPERED = SCENARIO + "#enrol.enrolment-tampered";
+    private static final String TAMPERED_PROJECT = "pm-mcp-clients";
 
     private static final String RECORDED_SHA =
             "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
@@ -221,5 +228,193 @@ class EnrolScenarioTest {
             assertEquals(200, response.status());
             assertEquals(scanProject, EnrolResult.fromJson(response.bodyText()).projectId());
         }
+    }
+
+    @Test
+    @DisplayName("refuses a project request with enrolment_tampered naming the accept-edit enrolment command")
+    void shouldRefuseATamperedEnrolment() throws Exception {
+        try (var runtime = MockRuntime.start(TAMPERED)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var refused = client.send(HttpRequest.get("/api/v1/projects/" + TAMPERED_PROJECT)
+                    .withHeader("Authorization", auth));
+            assertEquals(409, refused.status(), refused.bodyText());
+            var body = JsonTree.asObject(JsonTree.parse(refused.bodyText()));
+            assertAll(
+                    () -> assertEquals("enrolment_tampered", body.get("error")),
+                    () -> assertEquals("pm-operator accept-edit enrolment " + TAMPERED_PROJECT, body.get("command")),
+                    () -> assertTrue(String.valueOf(body.get("message"))
+                            .contains("pm-operator accept-edit enrolment " + TAMPERED_PROJECT), refused.bodyText()));
+
+            var untouched = client.send(HttpRequest.get("/api/v1/projects/plan-marshall")
+                    .withHeader("Authorization", auth));
+            assertEquals(200, untouched.status(), "another project's enrolment is intact: " + untouched.bodyText());
+        }
+    }
+
+    @Test
+    @DisplayName("serves the enrolment digest of a tampered enrolment file")
+    void shouldServeTheEnrolmentDigest() throws Exception {
+        try (var runtime = MockRuntime.start(TAMPERED)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var comparison = enrolmentDigest(client, auth, TAMPERED_PROJECT);
+            assertAll(
+                    () -> assertEquals("enrolments/" + TAMPERED_PROJECT + ".json", comparison.storePath()),
+                    () -> assertTrue(comparison.mismatch()),
+                    () -> assertNotNull(comparison.mismatchDetails()));
+            assertFalse(enrolmentDigest(client, auth, "plan-marshall").mismatch(),
+                    "an intact enrolment file matches its sidecar");
+        }
+    }
+
+    @Test
+    @DisplayName("refuses a stale confirmation of the enrolment file and keeps the refusal")
+    void shouldRefuseAStaleEnrolmentConfirmation() throws Exception {
+        try (var runtime = MockRuntime.start(TAMPERED)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+            var comparison = enrolmentDigest(client, auth, TAMPERED_PROJECT);
+            var stale = Generators.fixedValues(comparison.recordedSha256(), "0".repeat(64)).next();
+
+            var refused = client.send(HttpRequest.json("POST", enrolmentAccept(TAMPERED_PROJECT),
+                    new AcceptEditRequest(comparison.storePath(), stale).toJson()).withHeader("Authorization", auth));
+            assertEquals(409, refused.status(), refused.bodyText());
+            assertEquals("confirmation_mismatch", JsonTree.asObject(JsonTree.parse(refused.bodyText())).get("error"));
+
+            var still = client.send(HttpRequest.get("/api/v1/projects/" + TAMPERED_PROJECT)
+                    .withHeader("Authorization", auth));
+            assertEquals(409, still.status(), "a refused confirmation leaves the enrolment tampered");
+        }
+    }
+
+    @Test
+    @DisplayName("accepts the confirmed enrolment file, re-baselines it and serves the project again")
+    void shouldAcceptTheEnrolmentAndServeTheProject() throws Exception {
+        try (var runtime = MockRuntime.start(TAMPERED)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+            var comparison = enrolmentDigest(client, auth, TAMPERED_PROJECT);
+
+            var accepted = client.send(HttpRequest.json("POST", enrolmentAccept(TAMPERED_PROJECT),
+                    new AcceptEditRequest(comparison.storePath(), comparison.currentSha256()).toJson())
+                    .withHeader("Authorization", auth));
+            assertEquals(200, accepted.status(), accepted.bodyText());
+            assertEquals(comparison.currentSha256(), AcceptEditResult.fromJson(accepted.bodyText()).newSha256());
+
+            assertFalse(enrolmentDigest(client, auth, TAMPERED_PROJECT).mismatch(), "the sidecar is re-baselined");
+            var served = client.send(HttpRequest.get("/api/v1/projects/" + TAMPERED_PROJECT)
+                    .withHeader("Authorization", auth));
+            assertEquals(200, served.status(), served.bodyText());
+        }
+    }
+
+    @Test
+    @DisplayName("refuses the designer's project routes of a tampered enrolment")
+    void shouldRefuseTheWorkflowsOfATamperedEnrolment() throws Exception {
+        try (var runtime = MockRuntime.start(TAMPERED)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+
+            var refused = client.send(HttpRequest.get("/api/v1/projects/" + TAMPERED_PROJECT + "/workflows")
+                    .withHeader("Authorization", auth));
+
+            assertEquals(409, refused.status(), refused.bodyText());
+            assertEquals("enrolment_tampered", JsonTree.asObject(JsonTree.parse(refused.bodyText())).get("error"));
+            assertEquals(200, enrolmentDigestResponse(client, auth, TAMPERED_PROJECT).status(),
+                    "the enrolment routes stay reachable");
+        }
+    }
+
+    @Test
+    @DisplayName("reports the accepted enrolment file on the digest read after accept-edit")
+    void shouldReportTheAcceptedEnrolmentDigest() throws Exception {
+        try (var runtime = MockRuntime.start(TAMPERED)) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+            var tampered = enrolmentDigest(client, auth, TAMPERED_PROJECT);
+            var accepted = client.send(HttpRequest.json("POST", enrolmentAccept(TAMPERED_PROJECT),
+                    new AcceptEditRequest(tampered.storePath(), tampered.currentSha256()).toJson())
+                    .withHeader("Authorization", auth));
+            assertEquals(200, accepted.status(), accepted.bodyText());
+
+            var after = enrolmentDigest(client, auth, TAMPERED_PROJECT);
+
+            assertAll(
+                    () -> assertEquals(tampered.currentSize(), after.recordedSize(), "the accepted size is recorded"),
+                    () -> assertEquals(tampered.currentSha256(), after.recordedSha256(), "the accepted hash is recorded"),
+                    () -> assertEquals(tampered.currentSize(), after.currentSize()),
+                    () -> assertEquals(tampered.currentSha256(), after.currentSha256()),
+                    () -> assertFalse(after.mismatch()));
+            var served = client.send(HttpRequest.get("/api/v1/projects/" + TAMPERED_PROJECT)
+                    .withHeader("Authorization", auth));
+            assertEquals(200, served.status(), served.bodyText());
+        }
+    }
+
+    @Test
+    @DisplayName("rejects a malformed enrolment_tampered fact and leaves the previous scenario")
+    void shouldRejectAMalformedTamperedFact() throws Exception {
+        var registry = new ScenarioRegistry();
+        var asString = brokenTamperedScenario(registry, "\"" + TAMPERED_PROJECT + "\"");
+        var withNumber = brokenTamperedScenario(registry, "[ \"" + TAMPERED_PROJECT + "\", "
+                + Generators.integers(1, 999).next() + " ]");
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder().registry(registry).scenario(TAMPERED).build())) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var auth = "Bearer " + runtime.token();
+            var engine = runtime.engine();
+
+            for (var broken : List.of(asString, withNumber)) {
+                var failure = assertThrows(IllegalStateException.class, () -> engine.switchScenario(broken));
+                assertTrue(failure.getMessage().contains("enrolment_tampered"), failure.getMessage());
+                assertEquals(SCENARIO, runtime.currentScenarioName(), "the refused switch keeps the scenario");
+                var still = client.send(HttpRequest.get("/api/v1/projects/" + TAMPERED_PROJECT)
+                        .withHeader("Authorization", auth));
+                assertEquals(409, still.status(), "the previous state's tampered enrolment stays: " + broken);
+            }
+        }
+    }
+
+    private static String brokenTamperedScenario(ScenarioRegistry registry, String fact) {
+        var name = "tampered-" + Generators.letterStrings(4, 10).next().toLowerCase();
+        var state = "s" + Generators.letterStrings(3, 6).next().toLowerCase();
+        registry.register(ScenarioLoader.load("""
+                {
+                  "format_version": 1,
+                  "name": "%1$s",
+                  "start": "%2$s",
+                  "states": {
+                    "%2$s": {
+                      "representation": {
+                        "scope": { "kind": "machine" },
+                        "state": { "state_id": "%2$s" },
+                        "facts": { "enrolment_tampered": %3$s },
+                        "links": []
+                      }
+                    }
+                  }
+                }
+                """.formatted(name, state, fact), name));
+        return name;
+    }
+
+    private static HttpResponse enrolmentDigestResponse(UnixSocketHttpClient client, String auth, String projectId)
+            throws IOException {
+        return client.send(HttpRequest.get("/api/v1/projects/" + projectId + "/enrolment/digest")
+                .withHeader("Authorization", auth));
+    }
+
+    private static StoreDigestComparison enrolmentDigest(UnixSocketHttpClient client, String auth, String projectId)
+            throws IOException {
+        var response = client.send(HttpRequest.get("/api/v1/projects/" + projectId + "/enrolment/digest")
+                .withHeader("Authorization", auth));
+        assertEquals(200, response.status(), response.bodyText());
+        return StoreDigestComparison.fromJson(response.bodyText());
+    }
+
+    private static String enrolmentAccept(String projectId) {
+        return "/api/v1/projects/" + projectId + "/enrolment/accept-edit";
     }
 }

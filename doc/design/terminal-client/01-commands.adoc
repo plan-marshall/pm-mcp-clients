@@ -36,7 +36,8 @@ pm-operator config <aspect> [<level>] [<choices>]         [op]  one aspect of th
     consents       the remembered consents, to withdraw one (08-transcripts-later)
     documents      [--mode copy|move|ask]   how documents are taken into a plan (UC-ONB-10)
 pm-operator projects [--list]                                  the explorer of the machine's projects; full screen in the console (17-projects)
-pm-operator project add [<path>]                          [op]  onboard a project; the working directory is the proposed checkout
+pm-operator project add [<path>] [--pilot]                [op]  onboard a project; the working directory is the proposed checkout;
+                                                                --pilot enrols it in pilot mode (17-projects)
 pm-operator project setup <project_id> [<step>]           [op]  a later run of a project's onboarding, or the open one continued
 pm-operator project setup --entry <entry_id>              [op]  the same for a run that has no project id yet (17-projects)
 pm-operator project favourite <project_id> [--off]        [op]  mark or unmark a favourite
@@ -49,6 +50,8 @@ pm-operator epic add [--project <project_id>|.] [<source>]... [--title <title>] 
                                                           [op]  start an epic from its sources, or adopt one of the ledger (18-starting)
 pm-operator recipe run [<recipe_key>] [--project <project_id>|.] [<source>]... [--param <name>=<value>]... [--title <title>]
                                                           [op]  run a recipe of the project (18-starting)
+pm-operator lesson check <lesson_id> [--project <project_id>]
+                                                                a lesson's premise against the repository, before a plan starts from it (UC-STA-8, 18-starting)
 pm-operator plan pause <plan_id> [--now|--after-task|--after-phase]
 pm-operator plan start <plan_id>
 pm-operator plan cancel|abandon <plan_id> [--reason <text>] [--close-pr|--keep-pr]
@@ -87,13 +90,15 @@ pm-operator runtime upgrade [<version>|--check|--withdraw|--notes] [--when-done|
                                                                 read and run without the checks
 pm-operator drain                                               signal the runtime to stop by its drain
 pm-operator runtime start|install|uninstall                     start the runtime on demand; write or remove its per-user service unit
-pm-operator harness install|update|remove|status ...      [op]  the harness bundles; `install`, `update` and `remove` are acts, `status` is a read (Harness Bundle Installer)
 pm-operator cleanup [--delete|--remind|--ignore|--exclude <item>...|--kept|--release <item>...] [--yes]
                                                           [op]  the cleanup job of work history (UC-SYS-3, 26-cleanup)
 pm-operator config cleanup [--project <project_id>|.] [<duration options>]
                                                           [op]  how long ended work is kept (UC-ONB-10, UC-SYS-3, 26-cleanup)
 pm-operator credentials|roles|profile|decision-log|waive|grant-access|accept-edit|sweep ...
-                                                          [op]  the other operator verbs of the specification, with its options
+pm-operator client install|update|remove|status ...
+pm-operator enrol-harness <client>
+                                                          [op]  the other operator verbs of the specification, with its options; `client status`
+                                                                is a read
 
 <level>:   --machine (the default) | --project <project_id>|.|? | --plan <plan_id>|?
 <source>:  --description <text>|-   --document <path>   --issue <number>|<url>   --pull-request <number>|<url>
@@ -102,7 +107,7 @@ common:    --no-input   never ask; stop at the first choice not given (exit code
            --yes        accept the confirmations of the displayed changes (never a consent)
            --consent <kind>   the operator's yes to one consent kind for this run (never remembered)
 
-In the console only:
+In the console and as direct verbs:
   plans                       the overview of running work, full screen (15-overview); E shows the ended work, R the reports
   plan <plan_id> [--print] [--all|--depth <n>] [--tokens [--components]] [--activity <task_id> [--watch]]
                               a plan's process as a tree, its tokens so far, what a task's worker does;
@@ -110,13 +115,15 @@ In the console only:
   epic <epic_id> [--tokens]   an epic's view as a tree, with its tokens per plan (19-actions)
   questions                   the open decisions and waiver requests, with what they block and the recommendation
   answer <id> [<option>]      open a decision or a waiver request as a dialogue, or answer a decision with an option
+
+In the console only:
   web [qr|copy [ssh]]         the ways into the web app; the code's QR code again; copy the URL or the ssh command
                               (a new code is the verb web pair, other devices the verb web enable --lan)
   help [<verb>]               the verbs and console commands
   exit                        leave the console (as Ctrl+D)
 ----
 
-* *`pm-operator`* without a verb opens the console without the operator checks (a read of the questions, the reports and the views is not an act; every act typed in it is checked, xref:04-console.adoc#console-security[The Operator Checks]); it starts the runtime on demand, as every verb that needs the runtime does (the exceptions that never start it: `status`, `system`, `drain`, `harness status`, and `runtime stop`; link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[Runtime Access & On-Demand Start], link:../shared/system.adoc#channels[System, Who May]), and then follows the state of the machine:
+* *`pm-operator`* without a verb opens the console without the operator checks (a read of the questions, the reports and the views is not an act; every act typed in it is checked, xref:04-console.adoc#console-security[The Operator Checks]); it starts the runtime on demand, as every verb that needs the runtime does (the exceptions that never start it: `status`, `system`, `drain`, `client status`, and `runtime stop`; link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#cli-daemon-access[Runtime Access & On-Demand Start], link:../shared/system.adoc#channels[System, Who May]), and then follows the state of the machine:
 ** *Not fully onboarded* (`entry.check-onboarded` finds that the onboarding has not reached `onboard.completed`): `entry.where-to-onboard` asks where to go on, here or in the web app (xref:05-transcripts-entry.adoc#t-entry-first[Not Fully Onboarded]). _In the web app_ connects the web app as the flow of link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1] does, and the web app shows the onboarding where it stands; the console stays open beside it. _Here_ runs the onboarding dialogue from where it stands: the first run from `onboard.mode`, an interrupted run from the state it stopped in. Left before it completes, the prompt shows the step it stopped at (`pm [setup 3/7] ›`), and `Enter` on the empty prompt continues it.
 ** *Onboarded*, or once the onboarding run here completes (`onboard.completed`, as for a ready machine): it connects the web app as the flow of link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1] does, without waiting: the web listener is opened, the browser is opened with a pairing code only when no browser of this machine is paired yet, otherwise the URL is printed, and over SSH the ways in are printed (xref:05-transcripts-entry.adoc#t-entry-desktop[Onboarded, on the Desktop], xref:05-transcripts-entry.adoc#t-entry-ssh[Onboarded, over SSH]). Opening the listener and issuing a code are acts, so where the checks refuse them the console opens without the web app and the refusal appears when an act is typed. Then the prompt, with what is pending. `entry.wait` is the console itself: a pairing is reported above the prompt, and `web` shows the ways in again. The terminal client's own views are reached by its verbs, typed at that prompt or given as a shell command (`plans`, the overview of running work; `projects`; `status`); the command without a verb never opens one of them, it connects the web app.
 ** `pm-operator --help` prints the verbs, as every picocli command does; it opens no console.
@@ -132,7 +139,7 @@ In the console only:
 * *`reports`* lists the unread reports and *`plan report`* renders a plan's completion report; both read. `reports read` marks them read, and `reports open` opens a report's detail, which reads it (xref:24-reports.adoc[Reports]; link:../shared/reports.adoc[Reports] is what both clients show). Those two are operator acts because reading changes the state every client shows; the console prints the count of unread reports when it opens.
 * *The flags of the actions* on plans and epics are those of xref:19-actions.adoc[Actions on Plans and Epics], which says what each does; the listing above repeats them, 19 is the reference.
 * *No designer*: designing a plan's process (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-3[UC-PLN-3]) is offered in the web app only (link:../web-app/process-designer.adoc[Web App, Process Designer]); `help` says so in one line (`operator.help.designer`, link:../web-app/process-designer-texts.adoc#texts[its text]) and offers no verb for it.
-* *The console commands* (`plans`, `plan`, `epic`, `questions`, `answer`, `web` without a verb of the specification, `help`, `exit`) exist only inside the console; they are not shell verbs. `web qr` prints the QR code of the open pairing code again, with its URL, and `web pair` replaces the code (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#fresh-code[A Fresh Code after a Redemption]).
+* *The console commands* `plans`, `plan <plan_id>`, `epic <epic_id>`, `questions` and `answer` run inside the console and as direct verbs (`pm-operator questions`, `pm-operator epic <epic_id>`, which prints the epic's view); `web` without a verb of the specification, `help` and `exit` exist only inside the console and are not shell verbs. `web qr` prints the QR code of the open pairing code again, with its URL, and `web pair` replaces the code (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#fresh-code[A Fresh Code after a Redemption]).
 
 [#one-surface]
 === One Surface in Every Language

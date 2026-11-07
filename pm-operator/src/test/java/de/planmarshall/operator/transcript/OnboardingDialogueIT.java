@@ -22,13 +22,17 @@ import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 
 /**
- * The machine onboarding dialogue on a real pseudo-terminal (CLI-CC-S-01, CLI-UC-S-06): {@code q}
- * sends nothing, an unknown input re-asks, the guided path steps through every state to
- * {@code onboard.completed}, and {@code --auto --yes} prints the automatic run to its result table.
+ * The machine onboarding dialogue on a real pseudo-terminal (CLI-CC-S-01, CLI-UC-S-06), entered as
+ * the design has it: the bare {@code pm-operator} on a machine that is not set up, answered with
+ * {@code h} (here, in the terminal). {@code q} leaves the dialogue with nothing sent, an unknown
+ * input re-asks, and the guided path steps through every state to {@code onboard.completed}; the
+ * console stays open after each, and {@code exit} leaves it with {@code 0}.
  */
 @DisplayName("pm-operator onboarding dialogue on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
 class OnboardingDialogueIT {
+
+    private static final String WHERE = "Where do you want to set it up?";
 
     private static final String PROMPT = "Set up this machine for plan-marshall";
 
@@ -51,19 +55,32 @@ class OnboardingDialogueIT {
                         "Review the setup of this machine",
                         "This machine is ready");
 
+    /**
+     * Opens the bare {@code pm-operator} and answers the entry's choice with {@code h}, so the
+     * onboarding dialogue runs here.
+     *
+     * @param session the running session
+     * @throws Exception if the entry or the dialogue's first frame is never drawn
+     */
+    private static void enterHere(PtySession session) throws Exception {
+        assertTrue(session.awaitText(WHERE, DialogueHarness.TIMEOUT), session.rawOutput());
+        DialogueHarness.type(session, "h\n");
+        assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
+        assertTrue(session.awaitText("Begin with step 1", DialogueHarness.TIMEOUT), session.rawOutput());
+    }
+
     @Test
     @DisplayName("q first: the dialogue leaves and sends nothing")
     void qFirstSendsNothing() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.ONBOARDING);
-             var session = harness.open("onboard")) {
-            assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
-            assertTrue(session.awaitText("Begin with step 1", DialogueHarness.TIMEOUT),
-                                session.rawOutput());
+             var session = harness.open()) {
+            enterHere(session);
 
             DialogueHarness.type(session, "q\n");
+            assertTrue(session.awaitText("Nothing was sent.", DialogueHarness.TIMEOUT), session.rawOutput());
+            DialogueHarness.type(session, "exit\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
-            assertTrue(session.screenText().contains("Nothing was sent."), session.screenText());
             assertEquals(0, session.exitCode(), session.rawOutput());
             harness.assertNoAct();
         }
@@ -73,21 +90,18 @@ class OnboardingDialogueIT {
     @DisplayName("an unknown input re-asks and sends nothing")
     void unknownInputReAsks() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.ONBOARDING);
-             var session = harness.open("onboard")) {
-            assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
-            assertTrue(session.awaitText("Begin with step 1", DialogueHarness.TIMEOUT),
-                                session.rawOutput());
+             var session = harness.open()) {
+            enterHere(session);
 
             DialogueHarness.type(session, "zzz\nq\n");
+            assertTrue(session.awaitText("Nothing was sent.", DialogueHarness.TIMEOUT), session.rawOutput());
+            DialogueHarness.type(session, "exit\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             // The re-ask is the dialogue's answer to the input it did not offer, drawn once. A
             // title redraw can repeat the frame title; only a re-ask says the input was rejected.
             assertEquals(1, DialogueHarness.times(session.rawOutput(), "zzz is not offered here"),
                                 session.rawOutput());
-            // The rejection was followed by the re-prompt, which kept asking until the `q`
-            // left: the dialogue then exited and printed the leave line.
-            assertTrue(session.screenText().contains("Nothing was sent."), session.screenText());
             harness.assertNoAct();
         }
     }
@@ -96,10 +110,8 @@ class OnboardingDialogueIT {
     @DisplayName("the guided path: every state is rendered and the run completes")
     void mainPathCompletes() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.ONBOARDING);
-             var session = harness.open("onboard")) {
-            assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
-            assertTrue(session.awaitText("Begin with step 1", DialogueHarness.TIMEOUT),
-                                session.rawOutput());
+             var session = harness.open()) {
+            enterHere(session);
 
             for (var title : GUIDED_PATH) {
                 DialogueHarness.type(session, "\n");
@@ -107,22 +119,21 @@ class OnboardingDialogueIT {
                                     title + " never reached:\n" + session.rawOutput());
             }
 
+            DialogueHarness.type(session, "exit\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
             harness.assertAct("POST", "/api/v1/onboarding/step");
         }
     }
 
     @Test
-    @DisplayName("the automatic path: --auto --yes prints one line per state to the result table")
-    void automaticPathPrintsTheResult() throws Exception {
+    @DisplayName("onboard is no verb: the binary reports it as unknown with exit 2")
+    void onboardIsUnknown() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.ONBOARDING);
-             var session = harness.open("onboard", "--auto", "--yes")) {
-            assertTrue(session.awaitText("Everything is decided.", DialogueHarness.TIMEOUT),
-                                session.rawOutput());
-            assertTrue(session.awaitText("Deutsch, models too", DialogueHarness.TIMEOUT),
-                                session.rawOutput());
+             var session = harness.open("onboard")) {
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
-            harness.assertAct("POST", "/api/v1/onboarding/auto");
+
+            assertEquals(2, session.exitCode(), session.rawOutput());
+            harness.assertNoAct();
         }
     }
 }

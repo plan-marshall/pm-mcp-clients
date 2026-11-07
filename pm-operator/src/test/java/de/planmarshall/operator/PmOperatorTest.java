@@ -26,8 +26,11 @@ import java.nio.file.Files;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.MachinePaths;
@@ -46,6 +49,10 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import picocli.CommandLine.Command;
 
 @DisplayName("pm-operator command line")
 @EnabledOnOs({OS.MAC, OS.LINUX})
@@ -172,6 +179,55 @@ class PmOperatorTest {
 
         int exitCode = PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err));
         assertEquals(0, exitCode);
+    }
+
+    @Nested
+    @DisplayName("command tree")
+    class CommandTree {
+
+        /** The verbs of the design's command tree (01-commands.adoc#command-tree), the contract. */
+        private static final Set<String> DESIGN_VERBS = Set.of(
+                            "config", "projects", "project", "plan", "epic", "recipe", "lesson", "web", "status",
+                            "reports", "system", "runtime", "drain", "client", "enrol-harness", "cleanup",
+                            "credentials", "roles", "accept-edit", "plans", "questions", "answer");
+
+        @Test
+        @DisplayName("registers the verbs of the design's command tree and nothing else")
+        void registersTheDesignVerbsOnly() {
+            var declared = PmOperator.class.getAnnotation(Command.class);
+
+            var registered = Arrays.stream(declared.subcommands())
+                                .map(type -> type.getAnnotation(Command.class).name())
+                                .collect(Collectors.toSet());
+
+            assertEquals(DESIGN_VERBS, registered);
+        }
+
+        @ParameterizedTest(name = "{0}")
+        @ValueSource(strings = {"start", "onboard", "abort", "unenrol", "enrol", "settings", "git-source"})
+        @DisplayName("reports a folded verb as an unknown verb with the usage exit code")
+        void foldedVerbIsUnknown(String verb) {
+            var code = run(verb);
+
+            assertAll(
+                                () -> assertEquals(2, code),
+                                () -> assertTrue(err.toString().contains(verb), err.toString()));
+        }
+
+        @Test
+        @DisplayName("--help lists the design's verbs and none of the folded ones")
+        void helpListsTheDesignVerbs() {
+            assertEquals(0, run("--help"));
+
+            var help = out.toString();
+            assertAll(
+                                () -> assertTrue(help.contains("project"), help),
+                                () -> assertTrue(help.contains("accept-edit"), help),
+                                () -> assertFalse(help.contains("git-source"), help),
+                                () -> assertFalse(help.contains("onboard "), help),
+                                () -> assertFalse(help.lines().anyMatch(line -> line.strip().startsWith("start ")),
+                                                    help));
+        }
     }
 
     @Nested
@@ -646,7 +702,10 @@ class PmOperatorTest {
 
             var request = server.awaitRequest(Duration.ofSeconds(1));
             assertEquals("POST", request.method());
-            assertEquals("/api/v1/runtime/stop", request.target());
+            assertEquals("/api/v1/operator/runtime/stop", request.target());
+            assertTrue(server.requests().stream()
+                                                    .noneMatch(recorded -> "/api/v1/runtime/stop".equals(recorded.target())),
+                                "no stop request goes to the legacy path");
             assertEquals("runtime   stopping", out.toString().strip());
         }
 
@@ -657,6 +716,7 @@ class PmOperatorTest {
 
             assertEquals(0, run("runtime", "stop", "--drain"));
             var req = server.awaitRequest(Duration.ofSeconds(1));
+            assertEquals("/api/v1/operator/runtime/stop", req.target(), "the drain request takes the operator path");
             assertTrue(req.bodyText().contains("\"drain\":true"));
             assertEquals("runtime   draining", out.toString().strip());
         }
@@ -705,7 +765,7 @@ class PmOperatorTest {
                                                     "runtime stop needs the choice of when; answer it with --when-done or --now."),
                                 out.toString());
             assertTrue(server.requests().stream()
-                                                    .noneMatch(recorded -> "/api/v1/runtime/stop".equals(recorded.target())),
+                                                    .noneMatch(recorded -> recorded.target().endsWith("/runtime/stop")),
                                 "no stop request before the missing-input guidance");
         }
 
@@ -728,10 +788,10 @@ class PmOperatorTest {
         }
 
         @Test
-        @DisplayName("stop with --withdraw withdraws drain")
+        @DisplayName("stop --withdraw withdraws the drain on the operator's path")
         void stopWithdraw() throws Exception {
-            runtime((request, response) -> {
-                if ("/api/v1/runtime/stop".equals(request.target()) && "DELETE".equals(request.method())) {
+            var server = runtime((request, response) -> {
+                if ("/api/v1/operator/runtime/stop".equals(request.target()) && "DELETE".equals(request.method())) {
                     response.send(200, null, "");
                 } else {
                     response.send(404, null, "");
@@ -739,16 +799,56 @@ class PmOperatorTest {
             });
 
             assertEquals(0, run("runtime", "stop", "--withdraw"));
-            assertEquals("runtime   drain withdrawn", out.toString().strip());
+
+            var request = server.awaitRequest(Duration.ofSeconds(1));
+            assertAll(
+                                () -> assertEquals("DELETE", request.method()),
+                                () -> assertEquals("/api/v1/operator/runtime/stop", request.target()),
+                                () -> assertEquals("The runtime keeps running; the stop was withdrawn.",
+                                                    out.toString().strip()));
         }
 
         @Test
-        @DisplayName("stop with --withdraw reports error on failure")
+        @DisplayName("stop --withdraw of a drain of a signal prints its refusal")
+        void stopWithdrawSignalDrain() throws Exception {
+            runtime((request, response) -> response.json(409,
+                                "{\"error\":\"not_withdrawable\",\"detail\":{\"key\":\"operator.system.signal_drain\",\"args\":{}}}"));
+
+            assertEquals(1, run("runtime", "stop", "--withdraw"));
+            assertAll(
+                                () -> assertEquals("The drain was started by a signal; it cannot be withdrawn.",
+                                                    err.toString().strip()),
+                                () -> assertFalse(err.toString().contains("HTTP"), err.toString()));
+        }
+
+        @Test
+        @DisplayName("stop --withdraw too late prints its refusal")
+        void stopWithdrawTooLate() throws Exception {
+            runtime((request, response) -> response.json(409,
+                                "{\"error\":\"not_withdrawable\",\"detail\":{\"key\":\"system.stopping.too_late\",\"args\":{}}}"));
+
+            assertEquals(1, run("runtime", "stop", "--withdraw"));
+            assertEquals("Too late to keep it running; the runtime is stopping.", err.toString().strip());
+        }
+
+        @Test
+        @DisplayName("stop --withdraw refused without a detail is too late")
+        void stopWithdrawNotWithdrawable() throws Exception {
+            runtime((request, response) -> response.json(409, "{\"error\":\"not_withdrawable\"}"));
+
+            assertEquals(1, run("runtime", "stop", "--withdraw"));
+            assertEquals("Too late to keep it running; the runtime is stopping.", err.toString().strip());
+        }
+
+        @Test
+        @DisplayName("stop --withdraw reports every other refusal as refused by the runtime")
         void stopWithdrawFailed() throws Exception {
             runtime((request, response) -> response.send(500, null, ""));
 
             assertEquals(1, run("runtime", "stop", "--withdraw"));
-            assertTrue(err.toString().contains("Failed to withdraw drain: HTTP 500"));
+            assertAll(
+                                () -> assertTrue(err.toString().contains("refused by the runtime (HTTP 500)"), err.toString()),
+                                () -> assertFalse(err.toString().contains("Failed to withdraw"), err.toString()));
         }
 
         @Test

@@ -19,7 +19,7 @@ import de.planmarshall.api.json.JsonTree;
 
 /**
  * Request payload of {@code POST /api/v1/projects/{project_id}/unenrol}: the removal of a project's
- * enrolment ({@code pm-operator unenrol <project_id>}, PM-EXEC-2).
+ * enrolment ({@code pm-operator project unenrol <project_id>}, PM-EXEC-2).
  *
  * @param projectId identifier of the project to unenrol
  */

@@ -32,7 +32,7 @@ import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
 
 /**
- * Shared action execution and formatting support for plan, epic, and abort verbs.
+ * Shared action execution and formatting support for the plan and epic verbs.
  */
 final class ActionSupport {
 
@@ -86,6 +86,48 @@ final class ActionSupport {
     }
 
     static final String CANCEL = "cancel";
+
+    /** Exit code of two flags that contradict each other. */
+    static final int EXIT_USAGE = 2;
+
+    /**
+     * Two flags of one verb that contradict each other when given together.
+     *
+     * @param first  the first flag, as the operator types it
+     * @param second the second flag, as the operator types it
+     */
+    record FlagPair(String first, String second) {
+
+        /** What happens to the open pull request of an ended plan. */
+        static final FlagPair PULL_REQUEST = new FlagPair("--close-pr", "--keep-pr");
+
+        /** What happens to the running plans of a cancelled epic. */
+        static final FlagPair PLANS = new FlagPair("--with-plans", "--without-plans");
+    }
+
+    /**
+     * Rejects two flags given together that contradict each other, such as {@code --close-pr} with
+     * {@code --keep-pr}: the usage error is written to the error stream in the context's locale and the
+     * caller returns {@link #EXIT_USAGE} before any request is sent.
+     *
+     * @param context the operator context, whose locale renders the text
+     * @param spec    the picocli command specification
+     * @param first   whether the first flag was given
+     * @param second  whether the second flag was given
+     * @param pair    the names of the two flags, as the operator types them
+     * @return {@code true} when both flags were given and the usage error was written
+     */
+    static boolean contradicts(OperatorContext context, CommandSpec spec, boolean first, boolean second,
+                        FlagPair pair) {
+        if (!first || !second) {
+            return false;
+        }
+        var err = spec.commandLine().getErr();
+        err.println(MessageCatalogue.format(context.clientEnvironment().locale(), "operator.actions.flags.exclusive",
+                            Map.of("first", pair.first(), "second", pair.second())));
+        err.flush();
+        return true;
+    }
 
     /**
      * Builds the pause choice of both entry points: the console's {@code pause} act and the direct
@@ -175,15 +217,20 @@ final class ActionSupport {
      * @param kind       "plan" or "epic"
      * @param options    the termination options
      * @param actionVerb "cancel" or "abandon"
-     * @return exit code (0 on success, 3 on missing input, 130 when the operator interrupted)
+     * @return exit code (0 on success, 2 for {@code --close-pr} with {@code --keep-pr}, 3 on missing
+     *         input, 130 when the operator interrupted)
      * @throws IOException on network or runtime error
      */
     static int endWork(OperatorContext context, CommandSpec spec, String kind,
                         TerminationOptions options, String actionVerb) throws IOException {
         context.gate().verify();
+        if (contradicts(context, spec, options.closePr, options.keepPr, FlagPair.PULL_REQUEST)) {
+            return EXIT_USAGE;
+        }
         var out = spec.commandLine().getOut();
         var id = options.id != null ? options.id : "";
         String effectiveReason = options.reason;
+        @Nullable String act = null;
         if (effectiveReason == null || effectiveReason.isBlank()) {
             if (options.noInput) {
                 var label = CANCEL.equalsIgnoreCase(actionVerb) ? "Cancellation" : "Abandon";
@@ -202,7 +249,8 @@ final class ActionSupport {
                         return 1;
                     }
                     effectiveReason = reason;
-                    if (!confirmEnd(context, prompt, kind, id, actionVerb, leaveLabel)) {
+                    act = endOutcome(context, kind, id, actionVerb);
+                    if (!confirmEnd(prompt, act, leaveLabel)) {
                         return 0;
                     }
                 } catch (StartPrompt.InterruptException _) {
@@ -216,6 +264,14 @@ final class ActionSupport {
             }
         }
 
+        if (act == null) {
+            // Without the dialogue the act is still the one the runtime performs in the plan's state,
+            // read before the plan ends and its hold is gone: only a plan's cancel can be an abort.
+            act = "plan".equals(kind) && CANCEL.equalsIgnoreCase(actionVerb)
+                                ? endOutcome(context, kind, id, actionVerb)
+                                : actionVerb;
+        }
+
         var payload = new LinkedHashMap<String, Object>();
         payload.put("reason", effectiveReason);
         payload.put("close_pr", !options.keepPr);
@@ -223,19 +279,49 @@ final class ActionSupport {
         var endpoint = "/api/v1/" + kind + "s/" + OperatorUrlUtil.encodePathSegment(id) + "/" + actionVerb;
         var response = context.runtime(true).send(HttpRequest.json("POST", endpoint, JsonTree.write(payload)));
         if (response.status() == 200 || response.status() == 202) {
-            var past = CANCEL.equalsIgnoreCase(actionVerb) ? "cancelled" : "abandoned";
-            out.printf("✓ %s %s and archived%n", id, past);
+            out.println("✓ " + MessageCatalogue.format(context.clientEnvironment().locale(),
+                                "operator.actions.result.ended",
+                                Map.of("plan", id, "outcome", endedOutcome(response.bodyText(), act))));
             out.flush();
             return 0;
         }
         throw new OperatorRefusedException(kind + " " + actionVerb, response);
     }
 
-    private static boolean confirmEnd(OperatorContext context, StartPrompt prompt, String kind, String id,
-                        String actionVerb, String leaveLabel) {
+    /**
+     * The outcome the ended work has: the runtime's answer names it where it carries an
+     * {@code outcome}; otherwise it is the outcome of the act the runtime performed in the subject's
+     * state ({@link #endOutcome}), never only the verb the operator typed.
+     *
+     * @param answer the runtime's answer to the act
+     * @param act    the act the runtime performs in the subject's state
+     * @return {@code cancelled}, {@code abandoned} or {@code aborted}
+     */
+    static String endedOutcome(String answer, String act) {
+        if (!answer.isBlank()) {
+            try {
+                var body = JsonTree.asObject(JsonTree.parse(answer));
+                var outcome = body != null ? JsonTree.string(body, "outcome") : null;
+                if (outcome != null && ENDED_OUTCOMES.contains(outcome)) {
+                    return outcome;
+                }
+            } catch (IOException | IllegalArgumentException _) {
+                // an answer that is no JSON object names no outcome; the act names it
+            }
+        }
+        return switch (act.toLowerCase(Locale.ROOT)) {
+            case CANCEL -> "cancelled";
+            case "abandon" -> "abandoned";
+            default -> "aborted";
+        };
+    }
+
+    private static final List<String> ENDED_OUTCOMES = List.of("cancelled", "abandoned", "aborted");
+
+    private static boolean confirmEnd(StartPrompt prompt, String act, String leaveLabel) {
         var consent = new ChoicePrompt(prompt, "control.action").leaveLabel(leaveLabel);
         consent.title(MessageCatalogue.format(prompt.locale(), "operator.actions.cancel.confirm",
-                            Map.of("action", endOutcome(context, kind, id, actionVerb))) + "?");
+                            Map.of("action", act)) + "?");
         consent.explanation(MessageCatalogue.format(prompt.locale(), "operator.actions.end.consent_explain",
                             Map.of()));
         try {

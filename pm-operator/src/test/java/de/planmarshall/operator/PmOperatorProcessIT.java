@@ -180,7 +180,7 @@ class PmOperatorProcessIT {
     void inspectionVerbsRunWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
         fixture.start((request, response) -> response.json(200, "{}"));
-        for (var verb : List.of("config", "questions", "settings")) {
+        for (var verb : List.of("config", "questions")) {
             try (var process = operator(environment(), verb)) {
                 assertEquals(0, process.awaitExit(WAIT), verb + " stderr: " + process.stderr());
                 assertNotEquals(0, process.stdout().length, verb + " printed nothing");
@@ -503,38 +503,16 @@ class PmOperatorProcessIT {
         }
     }
 
-    @Test
-    @DisplayName("onboard refuses execution without an interactive terminal (PM-SEC-3)")
-    void onboardRefusesWithoutTerminal() throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        try (var process = operator(environment(), "onboard")) {
-            assertEquals(4, process.awaitExit(WAIT));
-            var stderr = process.stderr();
-            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
-                                "stderr: " + stderr);
-        }
-
-        try (var process = operator(environment(), "onboard", "--auto", "--yes")) {
-            assertEquals(4, process.awaitExit(WAIT));
-            var stderr = process.stderr();
-            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
-                                "stderr: " + stderr);
-        }
-    }
-
-    @Test
-    @DisplayName("start refuses execution without an interactive terminal (PM-SEC-3)")
-    void startRefusesWithoutTerminal() throws Exception {
-        PmOperatorTest.writeLiveRecord(fixture);
-        try (var process = operator(environment(), "start", "plan", "pm-mcp-clients", "--prompt", "x")) {
-            assertEquals(4, process.awaitExit(WAIT));
-            var stderr = process.stderr();
-            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
-                                "stderr: " + stderr);
-        }
-
-        try (var process = operator(environment(), "start", "epic", "pm-mcp-clients", "--prompt", "x")) {
-            assertEquals(4, process.awaitExit(WAIT));
+    /**
+     * Runs an act verb in a process without an interactive terminal and asserts the operator gate's
+     * refusal: exit code 4 and the refusal on standard error.
+     *
+     * @param args the act verb with its arguments
+     * @throws Exception if the process cannot be run
+     */
+    private void assertRefusedWithoutTerminal(String... args) throws Exception {
+        try (var process = operator(environment(), args)) {
+            assertEquals(4, process.awaitExit(WAIT), String.join(" ", args));
             var stderr = process.stderr();
             assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
                                 "stderr: " + stderr);
@@ -542,7 +520,24 @@ class PmOperatorProcessIT {
     }
 
     @Test
-    @DisplayName("lesson check runs without an interactive terminal; start still refuses (PM-SEC-3)")
+    @DisplayName("config <aspect> refuses execution without an interactive terminal (PM-SEC-3)")
+    void configAspectRefusesWithoutTerminal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+
+        assertRefusedWithoutTerminal("config", "language", "--interface", "de");
+    }
+
+    @Test
+    @DisplayName("plan add and epic add refuse execution without an interactive terminal (PM-SEC-3)")
+    void startingRefusesWithoutTerminal() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+
+        assertRefusedWithoutTerminal("plan", "add", "--project", "pm-mcp-clients", "--description", "x");
+        assertRefusedWithoutTerminal("epic", "add", "--project", "pm-mcp-clients", "--description", "x");
+    }
+
+    @Test
+    @DisplayName("lesson check runs without an interactive terminal; plan add --lesson still refuses (PM-SEC-3)")
     void lessonCheckRunsWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
         var requests = new CopyOnWriteArrayList<String>();
@@ -558,55 +553,41 @@ class PmOperatorProcessIT {
             assertFalse(requests.isEmpty(), "the check never reached the runtime");
         }
 
-        try (var process = operator(environment(), "start", "plan", "pm-mcp-clients", "--lesson", "les-0007")) {
-            assertEquals(4, process.awaitExit(WAIT));
-            var stderr = process.stderr();
-            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
-                                "stderr: " + stderr);
-        }
+        assertRefusedWithoutTerminal("plan", "add", "--project", "pm-mcp-clients", "--lesson", "les-0007");
     }
 
     @Test
-    @DisplayName("git-source and start plan --adopt-pr refuse execution without an interactive terminal (PM-SEC-3)")
-    void gitSourceRefusesWithoutTerminal() throws Exception {
+    @DisplayName("plan add --pull-request and --local-changes refuse execution without an interactive terminal (PM-SEC-3)")
+    void gitSourcesRefuseWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        try (var process = operator(environment(), "git-source", "adopt-pr", "4711", "--project",
-                                 "pm-mcp-clients")) {
-            assertEquals(4, process.awaitExit(WAIT));
-            var stderr = process.stderr();
-            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
-                                "stderr: " + stderr);
-        }
 
-        try (var process = operator(environment(), "start", "plan", "pm-mcp-clients", "--local-changes")) {
-            assertEquals(4, process.awaitExit(WAIT));
-            var stderr = process.stderr();
-            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
-                                "stderr: " + stderr);
-        }
+        assertRefusedWithoutTerminal("plan", "add", "--project", "pm-mcp-clients", "--pull-request", "4711");
+        assertRefusedWithoutTerminal("plan", "add", "--project", "pm-mcp-clients", "--local-changes");
     }
 
     @Test
-    @DisplayName("enrol refuses execution without an interactive terminal (PM-SEC-3)")
-    void enrolRefusesWithoutTerminal() throws Exception {
+    @DisplayName("project add refuses execution without an interactive terminal (PM-SEC-3)")
+    void projectAddRefusesWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        try (var process = operator(environment(), "enrol", "--pilot", ".")) {
-            assertEquals(4, process.awaitExit(WAIT));
-            var stderr = process.stderr();
-            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
-                                "stderr: " + stderr);
-        }
+
+        assertRefusedWithoutTerminal("project", "add", ".", "--pilot");
     }
 
     @Test
-    @DisplayName("unenrol refuses execution without an interactive terminal (PM-SEC-3)")
-    void unenrolRefusesWithoutTerminal() throws Exception {
+    @DisplayName("project unenrol refuses execution without an interactive terminal (PM-SEC-3)")
+    void projectUnenrolRefusesWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        try (var process = operator(environment(), "unenrol", "pm-mcp-clients", "--yes")) {
-            assertEquals(4, process.awaitExit(WAIT));
-            var stderr = process.stderr();
-            assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),
-                                "stderr: " + stderr);
+
+        assertRefusedWithoutTerminal("project", "unenrol", "pm-mcp-clients", "--yes");
+    }
+
+    @Test
+    @DisplayName("a folded verb is an unknown verb of the packaged binary (exit 2)")
+    void foldedVerbIsUnknown() throws Exception {
+        for (var verb : List.of("start", "onboard", "abort", "unenrol", "enrol", "settings", "git-source")) {
+            try (var process = operator(environment(), verb)) {
+                assertEquals(2, process.awaitExit(WAIT), verb + " stderr: " + process.stderr());
+            }
         }
     }
 
@@ -614,8 +595,7 @@ class PmOperatorProcessIT {
     @DisplayName("accept-edit refuses execution without an interactive terminal (PM-SEC-3)")
     void acceptEditRefusesWithoutTerminal() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
-        try (var process = operator(environment(), "accept-edit", ".plan/marshal.json",
-                                 "--project", "pm-mcp-clients", "--force")) {
+        try (var process = operator(environment(), "accept-edit", "enrolment", "pm-mcp-clients")) {
             assertEquals(4, process.awaitExit(WAIT));
             var stderr = process.stderr();
             assertTrue(stderr.contains(MessageCatalogue.format("en", OperatorGate.TERMINAL_REFUSED_KEY, Map.of())),

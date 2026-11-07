@@ -103,10 +103,8 @@ public final class EpicCommand implements Callable<Integer> {
                         var epic = EpicProcess.fromJson(body);
                         printEpicProcess(out, epic);
                         return 0;
-                    }
-                    /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-                    catch (Exception ignored) {
-                        // Fall through to print bodyText
+                    } catch (IOException _) {
+                        // Not an epic process the parser can read: fall through to print bodyText
                     }
                 }
                 out.println(body);
@@ -610,6 +608,12 @@ public final class EpicCommand implements Callable<Integer> {
         @Override
         public Integer call() throws IOException {
             context.gate().verify();
+            if (ActionSupport.contradicts(context, spec, options.closePr, options.keepPr,
+                                ActionSupport.FlagPair.PULL_REQUEST)
+                                || ActionSupport.contradicts(context, spec, withPlans, withoutPlans,
+                                ActionSupport.FlagPair.PLANS)) {
+                return ActionSupport.EXIT_USAGE;
+            }
             var out = spec.commandLine().getOut();
             var effectiveReason = options.reason;
             if (effectiveReason == null || effectiveReason.isBlank()) {

@@ -17,27 +17,51 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InterruptedIOException;
+import java.io.OutputStream;
+import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.SseEvent;
+import de.planmarshall.api.http.SseReader;
+import de.planmarshall.api.http.UnixSocketHttpClient;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.system.RuntimeLifecycleState;
+import de.planmarshall.mock.MockRuntime;
+import de.planmarshall.mock.MockRuntimeConfig;
 import de.planmarshall.mock.StandardScenarios;
 import de.planmarshall.mock.http.MockHttpRequest;
 import de.planmarshall.mock.http.MockHttpResponse;
+import de.planmarshall.mock.scenario.EventDefinition;
 import de.planmarshall.mock.scenario.LinkDefinition;
 import de.planmarshall.mock.scenario.RouteDefinition;
 import de.planmarshall.mock.scenario.Scenario;
@@ -990,6 +1014,10 @@ class MockRuntimeEngineTest {
         try (var live = new MockRuntimeEngine(registry, running, runtimeToken, deviceSecret)) {
             var beforeScenario = live.currentScenario().name();
             var beforeState = live.currentStateId();
+            // An act before the switch: the refused switch must leave it recorded.
+            var paused = send(live, "POST", "/api/v1/plans/fix-relay/pause", auth,
+                    "{\"point\":\"now\"}".getBytes(StandardCharsets.UTF_8), false);
+            assertEquals(200, paused.status(), paused.body());
 
             var brokenJobScenarioJson = """
                     {
@@ -1022,6 +1050,12 @@ class MockRuntimeEngineTest {
             var switchRes = send(live, "POST", "/mock/scenario?name=broken-job-scenario", Map.of(), new byte[0], false);
             assertEquals(500, switchRes.status());
             assertEquals("scenario_fixture_invalid", switchRes.json().get("error"));
+
+            var acts = send(live, "GET", "/mock/acts", Map.of(), new byte[0], false);
+            assertTrue(acts.json().get("acts") instanceof List<?> recorded && recorded.size() == 1,
+                    "the act before the refused switch is still recorded: " + acts.json());
+            var actions = send(live, "GET", "/api/v1/plans/fix-relay/actions", auth, new byte[0], false);
+            assertEquals(200, actions.status(), actions.body());
         }
     }
 
@@ -1134,27 +1168,36 @@ class MockRuntimeEngineTest {
         engine.switchScenario(StandardScenarios.PROJECTS_AND_START);
         var running = new AtomicBoolean(true);
         var errors = new CopyOnWriteArrayList<Throwable>();
+        var completedFinds = new AtomicInteger();
+        var enrols = Generators.integers(30, 60).next();
+        var projectPrefix = Generators.letterStrings(4, 8).next().toLowerCase();
 
         var findThread = new Thread(() -> {
-            while (running.get()) {
+            // At least one find runs, so the count below never passes on a thread that never ran.
+            do {
                 try {
-                    send("GET", "/api/v1/find?q=pm", auth, new byte[0], false);
+                    var found = send("GET", "/api/v1/find?q=pm", auth, new byte[0], false);
+                    if (found.status() == 200) {
+                        completedFinds.incrementAndGet();
+                    }
                 } catch (Exception e) {
                     errors.add(e);
                     break;
                 }
-            }
+            } while (running.get());
         });
 
         findThread.start();
-        for (int i = 0; i < 50; i++) {
-            send("POST", "/api/v1/projects/new-project-" + i + "/enrol", auth,
-                    ("{\"path\":\"/path/to/p" + i + "\"}").getBytes(StandardCharsets.UTF_8), false);
+        for (int i = 0; i < enrols; i++) {
+            send("POST", "/api/v1/projects/" + projectPrefix + "-" + i + "/enrol", auth,
+                    ("{\"path\":\"/path/to/" + projectPrefix + i + "\"}").getBytes(StandardCharsets.UTF_8), false);
         }
         running.set(false);
         findThread.join(5000);
 
+        assertFalse(findThread.isAlive(), "the find thread ends once the enrols are done");
         assertTrue(errors.isEmpty(), "find must not throw concurrently: " + errors);
+        assertTrue(completedFinds.get() > 0, "the finds must have completed while the enrols ran");
     }
 
     @Test
@@ -1243,5 +1286,727 @@ class MockRuntimeEngineTest {
         assertEquals("Custom Question Title", JsonTree.string(dec, "title"));
         assertEquals("plan custom-plan", JsonTree.string(dec, "subject"));
         assertEquals("Custom question description.", JsonTree.string(dec, "description"));
+    }
+
+    @Test
+    @DisplayName("a stop holding the system lock while a reset holds the engine monitor, and a stop racing resets, do not deadlock")
+    void stopRacingResetDoesNotDeadlock() throws Exception {
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        engine.goToState(STATE_SYSTEM_RUNNING);
+        var rounds = Generators.integers(150, 300).next();
+        var drain = drainBody(THEN_EXIT);
+
+        // The one interleaving a lock-order inversion deadlocks on, forced rather than hoped for.
+        assertEquals(200, forceStopHoldingSystemLockAgainstReset(drain));
+
+        // Then the free race of many stops, withdrawals and resets.
+        var acceptedStops = new AtomicInteger();
+        var start = new CountDownLatch(1);
+        var executor = Executors.newVirtualThreadPerTaskExecutor();
+        try {
+            Future<?> stops = executor.submit(() -> {
+                start.await();
+                for (var round = 0; round < rounds; round++) {
+                    if (send("POST", PATH_STOP, auth, drain, false).status() == 200) {
+                        acceptedStops.incrementAndGet();
+                    }
+                    send("DELETE", PATH_STOP, auth, new byte[0], false);
+                }
+                return null;
+            });
+            Future<?> resets = executor.submit(() -> {
+                start.await();
+                for (var round = 0; round < rounds; round++) {
+                    engine.reset();
+                    engine.goToState(STATE_SYSTEM_RUNNING);
+                }
+                return null;
+            });
+            start.countDown();
+
+            awaitBounded(stops, "the stops");
+            awaitBounded(resets, "the resets");
+        } finally {
+            executor.shutdownNow();
+        }
+
+        assertTrue(acceptedStops.get() > 0, "a stop must have reached the drain while the resets ran");
+        var afterwards = send("POST", PATH_STOP, auth, drain, false);
+        assertEquals(200, afterwards.status(), afterwards.body());
+        assertEquals(RuntimeLifecycleState.DRAINING, engine.lifecycleState());
+    }
+
+    @Test
+    @EnabledOnOs({OS.MAC, OS.LINUX})
+    @DisplayName("a stale runtime.draining event is rejected by its generation")
+    void staleDrainingEventIsRejectedByItsGeneration() throws Exception {
+        var items = drainItems(Generators.integers(2, 4).next());
+        var stateId = drainStateId();
+        registerSystemState(stateId, drainingFacts(items, THEN_EXIT), List.of());
+        var staleMarker = markerEvent();
+        var freshMarker = markerEvent();
+        var latches = Map.of(staleMarker, new CountDownLatch(1), freshMarker, new CountDownLatch(1));
+
+        try (var runtime = startRuntime()) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var bearer = Map.of("Authorization", "Bearer " + runtime.token());
+            try (var exchange = client.open(HttpRequest.get("/api/v1/events")
+                         .withHeader("Authorization", "Bearer " + runtime.token()))) {
+                assertTrue(exchange.isEventStream());
+                var names = new CopyOnWriteArrayList<String>();
+                readEvents(exchange.events(), names, latches);
+                var live = runtime.engine();
+                live.goToState(stateId);
+
+                // Arrange a drain event of an earlier drain: its generation is not the running one.
+                var staleItem = Generators.letterStrings(5, 10).next();
+                var staleGeneration = Generators.integers(1_000_000, 2_000_000).next();
+                live.broadcast(EVENT_DRAINING, Map.of(
+                        "lifecycle_state", "draining",
+                        "remaining_items", List.of(staleItem),
+                        "remaining_work_count", 1,
+                        "drain_generation", staleGeneration));
+                live.broadcast(staleMarker, Map.of());
+                assertTrue(latches.get(staleMarker).await(5, TimeUnit.SECONDS), "the boundary arrives: " + names);
+
+                assertFalse(names.subList(0, names.indexOf(staleMarker)).contains(EVENT_DRAINING),
+                        "a stale drain event must reach no client: " + names);
+                assertEquals(items, remainingItems(live, bearer), "a stale drain event must not change the status");
+
+                // Control: an event of the running drain, which names no generation, does arrive.
+                var freshItems = List.of(items.getLast());
+                live.broadcast(EVENT_DRAINING, Map.of(
+                        "lifecycle_state", "draining",
+                        "remaining_items", freshItems,
+                        "remaining_work_count", 1));
+                live.broadcast(freshMarker, Map.of());
+                assertTrue(latches.get(freshMarker).await(5, TimeUnit.SECONDS), "the boundary arrives: " + names);
+                assertTrue(names.subList(names.indexOf(staleMarker), names.indexOf(freshMarker))
+                        .contains(EVENT_DRAINING), "an event of the running drain reaches the client: " + names);
+                assertEquals(freshItems, remainingItems(live, bearer));
+            }
+        }
+    }
+
+    @Test
+    @EnabledOnOs({OS.MAC, OS.LINUX})
+    @DisplayName("a state's own scheduled event survives a drain start")
+    void stateScheduledEventSurvivesDrainStart() throws Exception {
+        var stateId = drainStateId();
+        var marker = markerEvent();
+        var afterMs = Generators.integers(400, 800).next();
+        registerSystemState(stateId, Map.of(), List.of(new EventDefinition(afterMs, marker, Map.of())));
+        var latches = Map.of(marker, new CountDownLatch(1));
+
+        try (var runtime = startRuntime()) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var bearer = "Bearer " + runtime.token();
+            try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", bearer))) {
+                assertTrue(exchange.isEventStream());
+                var names = new CopyOnWriteArrayList<String>();
+                readEvents(exchange.events(), names, latches);
+                runtime.engine().goToState(stateId);
+
+                var stop = client.send(HttpRequest.post(PATH_STOP).withHeader("Authorization", bearer)
+                        .withBody(new String(drainBody(THEN_EXIT), StandardCharsets.UTF_8)));
+                assertEquals(200, stop.status(), stop.bodyText());
+
+                assertTrue(latches.get(marker).await(5, TimeUnit.SECONDS),
+                        "the state's own event must still arrive after the drain started: " + names);
+                assertTrue(names.indexOf(EVENT_DRAINING) >= 0 && names.indexOf(EVENT_DRAINING) < names.indexOf(marker),
+                        "the drain started before the state's event was due: " + names);
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("a four-item drain leaves draining on its last step, for stopped when it ends in an exit")
+    void fourItemDrainEndsStoppedOnItsLastStep() throws Exception {
+        var items = drainItems(4);
+        var stateId = drainStateId();
+        registerSystemState(stateId, drainingFacts(items, THEN_EXIT), List.of());
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        engine.goToState(stateId);
+        assertEquals(items, remainingItems(engine, auth));
+
+        for (var step = 1; step < items.size(); step++) {
+            engine.shrinkDrain();
+            assertEquals(RuntimeLifecycleState.DRAINING, engine.lifecycleState(), "step " + step + " still drains");
+            assertEquals(items.subList(step, items.size()), remainingItems(engine, auth),
+                    "step " + step + " ends the first item it still runs");
+        }
+
+        engine.shrinkDrain();
+
+        var status = send("GET", "/api/v1/status", auth, new byte[0], false);
+        assertAll(
+                () -> assertEquals(RuntimeLifecycleState.STOPPED, engine.lifecycleState()),
+                () -> assertEquals("stopped", status.json().get("lifecycle_state")),
+                () -> assertTrue(remainingItems(engine, auth).isEmpty(), "an ended drain runs nothing"));
+    }
+
+    @Test
+    @DisplayName("a drain that ends in a restart is running again after its last step")
+    void drainEndingInRestartRunsAgain() throws Exception {
+        var items = drainItems(2);
+        var stateId = drainStateId();
+        registerSystemState(stateId, drainingFacts(items, "restart"), List.of());
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        engine.goToState(stateId);
+
+        engine.shrinkDrain();
+        assertEquals(RuntimeLifecycleState.DRAINING, engine.lifecycleState(), "one item left still drains");
+        assertEquals(List.of(items.getLast()), remainingItems(engine, auth));
+
+        engine.shrinkDrain();
+        assertEquals(RuntimeLifecycleState.RUNNING, engine.lifecycleState());
+        assertTrue(remainingItems(engine, auth).isEmpty(), "an ended drain runs nothing");
+    }
+
+    @Test
+    @DisplayName("a malformed facts.kept leaves the previous scenario untouched")
+    void malformedKeptFactLeavesThePreviousScenario() throws Exception {
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        engine.goToState(STATE_SYSTEM_RUNNING);
+        // An act before the switch: the refused switch must keep what it changed.
+        var kept = send("PUT", "/api/v1/system/cleanup/kept", auth,
+                "{\"item_ids\":[\"token-usage\",\"relay-auth\"]}".getBytes(StandardCharsets.UTF_8), false);
+        assertEquals(200, kept.status(), kept.body());
+        var beforeKept = send("GET", "/api/v1/system/cleanup/kept", auth, new byte[0], false).body();
+
+        var brokenScenario = "kept-" + brokenName;
+        registry.register(ScenarioLoader.load("""
+                {
+                  "format_version": 1,
+                  "name": "%1$s",
+                  "start": "%2$s",
+                  "states": {
+                    "%2$s": {
+                      "representation": {
+                        "scope": { "kind": "machine" },
+                        "state": { "state_id": "%2$s" },
+                        "facts": { "kept": [ "%3$s" ] },
+                        "links": []
+                      }
+                    }
+                  }
+                }
+                """.formatted(brokenScenario, brokenState, Generators.letterStrings(4, 10).next()), brokenScenario));
+
+        var failure = assertThrows(IllegalStateException.class, () -> engine.switchScenario(brokenScenario));
+
+        var afterKept = send("GET", "/api/v1/system/cleanup/kept", auth, new byte[0], false);
+        assertAll(
+                () -> assertTrue(failure.getMessage().contains("facts.kept"), failure.getMessage()),
+                () -> assertEquals(StandardScenarios.REPORTS_AND_SYSTEM, engine.currentScenario().name()),
+                () -> assertEquals(STATE_SYSTEM_RUNNING, engine.currentStateId()),
+                () -> assertEquals(200, afterKept.status(), afterKept.body()),
+                () -> assertEquals(beforeKept, afterKept.body(), "the kept items of the act survive the refused switch"));
+    }
+
+    @Test
+    @EnabledOnOs({OS.MAC, OS.LINUX})
+    @DisplayName("a decision opened through /mock/broadcast is closed for the clients by a jump to a state without it")
+    void broadcastDecisionIsClosedByJump() throws Exception {
+        var decisionId = "Q-" + Generators.integers(1000, 9999).next();
+        var latches = Map.of(EVENT_DECISION_CLOSED, new CountDownLatch(1));
+
+        try (var runtime = startRuntime()) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            try (var exchange = client.open(HttpRequest.get("/api/v1/events")
+                         .withHeader("Authorization", "Bearer " + runtime.token()))) {
+                assertTrue(exchange.isEventStream());
+                var events = new CopyOnWriteArrayList<SseEvent>();
+                readFullEvents(exchange.events(), events, latches);
+                var live = runtime.engine();
+                var opened = send(live, "POST", "/mock/broadcast", Map.of(),
+                        decisionOpenedBody(decisionId).getBytes(StandardCharsets.UTF_8), false);
+                assertEquals(200, opened.status(), opened.body());
+
+                live.goToState(STATE_SYSTEM_RUNNING);
+
+                assertTrue(latches.get(EVENT_DECISION_CLOSED).await(5, TimeUnit.SECONDS),
+                        "the jump must close the broadcast decision: " + events);
+                var closed = events.stream().filter(event -> EVENT_DECISION_CLOSED.equals(event.event()))
+                        .map(event -> JsonTree.asObject(parseJson(event.data())))
+                        .findFirst().orElseThrow();
+                var closedText = JsonTree.write(closed);
+                // The envelope carries the payload either flat or under data, as the catalogue shapes it.
+                assertAll(
+                        () -> assertTrue(closedText.contains("\"" + decisionId + "\""), closedText),
+                        () -> assertTrue(closedText.contains("\"withdrawn\""), closedText),
+                        () -> assertTrue(closedText.contains("\"state_left\""), closedText));
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("a drain event racing a withdrawal never leaves a running runtime with drain items")
+    void drainEventRacingWithdrawalRestoresNoItem() throws Exception {
+        var items = drainItems(Generators.integers(2, 4).next());
+        var stateId = drainStateId();
+        registerSystemState(stateId, drainingFacts(items, THEN_EXIT), List.of());
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        var rounds = Generators.integers(60, 120).next();
+        var lateItem = Generators.letterStrings(5, 10).next();
+
+        var executor = Executors.newVirtualThreadPerTaskExecutor();
+        try {
+            for (var round = 0; round < rounds; round++) {
+                engine.goToState(stateId);
+                var start = new CountDownLatch(1);
+                Future<?> event = executor.submit(() -> {
+                    start.await();
+                    engine.broadcast(EVENT_DRAINING, Map.of(
+                            "lifecycle_state", "draining",
+                            "remaining_items", List.of(lateItem),
+                            "remaining_work_count", 1));
+                    return null;
+                });
+                Future<?> withdraw = executor.submit(() -> {
+                    start.await();
+                    return send("DELETE", PATH_STOP, auth, new byte[0], false).status();
+                });
+                start.countDown();
+                awaitBounded(event, "the drain event");
+                awaitBounded(withdraw, "the withdrawal");
+
+                assertEquals(RuntimeLifecycleState.RUNNING, engine.lifecycleState(), "round " + round);
+                assertTrue(remainingItems(engine, auth).isEmpty(),
+                        "round " + round + ": a withdrawn drain runs nothing, whatever event raced it");
+            }
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    @EnabledOnOs({OS.MAC, OS.LINUX})
+    @DisplayName("after a jump to a running state a reconnecting stream replays no drain frame but every other event")
+    void jumpDropsBufferedDrainFrames() throws Exception {
+        var items = drainItems(Generators.integers(2, 4).next());
+        var stateId = drainStateId();
+        registerSystemState(stateId, drainingFacts(items, THEN_EXIT), List.of());
+        var anchor = markerEvent();
+        var unrelated = markerEvent();
+        var boundary = markerEvent();
+        var latches = Map.of(unrelated, new CountDownLatch(1));
+        var replayLatches = Map.of(boundary, new CountDownLatch(1));
+
+        try (var runtime = startRuntime()) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var bearer = "Bearer " + runtime.token();
+            var live = runtime.engine();
+            String anchorId;
+            try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", bearer))) {
+                var events = new CopyOnWriteArrayList<SseEvent>();
+                readFullEvents(exchange.events(), events, latches);
+                live.goToState(stateId);
+                live.broadcast(anchor, Map.of());
+                live.broadcast(EVENT_DRAINING, Map.of(
+                        "lifecycle_state", "draining",
+                        "remaining_items", items,
+                        "remaining_work_count", items.size()));
+                live.broadcast(unrelated, Map.of());
+                assertTrue(latches.get(unrelated).await(5, TimeUnit.SECONDS), "the events arrive: " + events);
+                anchorId = events.stream().filter(event -> anchor.equals(event.event())).findFirst()
+                        .orElseThrow().id();
+                assertTrue(events.stream().anyMatch(event -> EVENT_DRAINING.equals(event.event())),
+                        "the drain frame was delivered and buffered: " + events);
+            }
+
+            live.goToState(STATE_SYSTEM_RUNNING);
+
+            try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", bearer)
+                         .withHeader("Last-Event-ID", anchorId))) {
+                var replayed = new CopyOnWriteArrayList<SseEvent>();
+                readFullEvents(exchange.events(), replayed, replayLatches);
+                live.broadcast(boundary, Map.of());
+                assertTrue(replayLatches.get(boundary).await(5, TimeUnit.SECONDS), "the boundary arrives: " + replayed);
+                var names = replayed.stream().map(SseEvent::event).toList();
+                var beforeBoundary = names.subList(0, names.indexOf(boundary));
+                assertAll(
+                        () -> assertTrue(beforeBoundary.contains(unrelated),
+                                "an unrelated buffered event is still replayed: " + names),
+                        () -> assertFalse(beforeBoundary.contains(EVENT_DRAINING),
+                                "a drain of the state left must not be replayed: " + names));
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("a drain event that leaves no item ends the drain through the lifecycle transition")
+    void emptyDrainEventEndsTheDrain() {
+        var items = drainItems(Generators.integers(2, 4).next());
+        var stateId = drainStateId();
+        registerSystemState(stateId, drainingFacts(items, THEN_EXIT), List.of());
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        engine.goToState(stateId);
+        assertEquals(RuntimeLifecycleState.DRAINING, engine.lifecycleState());
+
+        engine.broadcast(EVENT_DRAINING, Map.of(
+                "lifecycle_state", "draining",
+                "remaining_items", List.of(),
+                "remaining_work_count", 0));
+
+        assertAll(
+                () -> assertEquals(RuntimeLifecycleState.STOPPED, engine.lifecycleState(),
+                        "a drain with nothing left ends as its last step does"),
+                () -> assertTrue(remainingItems(engine, auth).isEmpty()));
+    }
+
+    @Test
+    @EnabledOnOs({OS.MAC, OS.LINUX})
+    @DisplayName("a scenario drain event of a withdrawn drain does not overwrite the items of the replacement drain")
+    void scheduledDrainEventOfWithdrawnDrainIsDropped() throws Exception {
+        var items = drainItems(Generators.integers(2, 4).next());
+        var staleItem = Generators.letterStrings(5, 10).next() + "-stale";
+        var stateId = drainStateId();
+        var marker = markerEvent();
+        var afterMs = Generators.integers(300, 500).next();
+        registerSystemState(stateId, drainingFacts(items, THEN_EXIT), List.of(
+                new EventDefinition(afterMs, EVENT_DRAINING, Map.of(
+                        "lifecycle_state", "draining",
+                        "remaining_items", List.of(staleItem),
+                        "remaining_work_count", 1)),
+                new EventDefinition(afterMs + 100, marker, Map.of())));
+        var latches = Map.of(marker, new CountDownLatch(1));
+
+        try (var runtime = startRuntime()) {
+            var client = new UnixSocketHttpClient(runtime.socketPath());
+            var bearer = Map.of("Authorization", "Bearer " + runtime.token());
+            try (var exchange = client.open(HttpRequest.get("/api/v1/events")
+                         .withHeader("Authorization", "Bearer " + runtime.token()))) {
+                var names = new CopyOnWriteArrayList<String>();
+                readEvents(exchange.events(), names, latches);
+                var live = runtime.engine();
+                live.goToState(stateId);
+
+                assertEquals(200, send(live, "DELETE", PATH_STOP, bearer, new byte[0], false).status());
+                var restarted = send(live, "POST", PATH_STOP, bearer, drainBody(THEN_EXIT), false);
+                assertEquals(200, restarted.status(), restarted.body());
+
+                assertTrue(latches.get(marker).await(5, TimeUnit.SECONDS), "the state's events are due: " + names);
+                assertFalse(remainingItems(live, bearer).contains(staleItem),
+                        "the withdrawn drain's event must not overwrite the replacement drain");
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("a repeated stop during a drain of a signal keeps the drain non-withdrawable")
+    void repeatedStopKeepsSignalDrainNonWithdrawable() throws Exception {
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        engine.goToState(STATE_DRAINING_SIGNAL);
+
+        var repeated = send("POST", PATH_STOP, auth, drainBody(THEN_EXIT), false);
+        var withdraw = send("DELETE", PATH_STOP, auth, new byte[0], false);
+
+        assertAll(
+                () -> assertEquals(200, repeated.status(), repeated.body()),
+                () -> assertEquals(Boolean.FALSE, repeated.json().get("can_withdraw")),
+                () -> assertEquals(409, withdraw.status(), withdraw.body()),
+                () -> assertEquals("not_withdrawable", withdraw.json().get("error")),
+                () -> assertEquals(RuntimeLifecycleState.DRAINING, engine.lifecycleState()));
+    }
+
+    @Test
+    @DisplayName("a cleanup delete after an exit drain ended the runtime is rejected and the job stays open")
+    void cleanupDeleteAfterExitDrainIsRejected() throws Exception {
+        var stateId = drainStateId();
+        registerSystemState(stateId, drainingFacts(drainItems(1), THEN_EXIT), List.of());
+        engine.switchScenario(StandardScenarios.REPORTS_AND_SYSTEM);
+        engine.goToState(stateId);
+        engine.shrinkDrain();
+        assertEquals(RuntimeLifecycleState.STOPPED, engine.lifecycleState());
+
+        var delete = send("POST", "/api/v1/system/cleanup/cln-0012/delete", auth, new byte[0], false);
+        var cleanup = send("GET", "/api/v1/system/cleanup", auth, new byte[0], false);
+
+        assertAll(
+                () -> assertEquals(409, delete.status(), delete.body()),
+                () -> assertEquals("runtime_stopping", delete.json().get("error")),
+                () -> assertEquals(200, cleanup.status(), cleanup.body()),
+                () -> assertNotEquals(Boolean.FALSE, cleanup.json().get("open"), "the job stays open"));
+    }
+
+    private static final String PATH_STOP = "/api/v1/operator/runtime/stop";
+    private static final String STATE_SYSTEM_RUNNING = "system.running";
+    private static final String STATE_DRAINING_SIGNAL = "system.draining-signal";
+    private static final String EVENT_DECISION_CLOSED = "decision.closed";
+    private static final String EVENT_DRAINING = "runtime.draining";
+    private static final String THEN_EXIT = "exit";
+
+    /**
+     * Forces the interleaving a lock-order inversion between a stop and a reset deadlocks on: the stop
+     * holds {@code systemLock} while its answer waits on a slow client, a reset takes the engine
+     * monitor and waits on {@code systemLock}, then the client reads on. Under the single lock order
+     * the stop needs nothing beyond {@code systemLock} after that point and both end; a stop that takes
+     * the engine monitor after {@code systemLock}, as the drain's step scheduling did before the single
+     * lock order, never ends. Both run on platform threads so their lock waits can be observed.
+     *
+     * @param drain the body of the stop
+     * @return the status the stop answered
+     */
+    private int forceStopHoldingSystemLockAgainstReset(byte[] drain) throws Exception {
+        var subject = engine;
+        var client = new SlowClient();
+        var request = new MockHttpRequest("POST", PATH_STOP, auth, drain, System.nanoTime());
+        var stop = new FutureTask<>(() -> {
+            subject.dispatch(request, new MockHttpResponse(client), false);
+            return parseStatus(client.text());
+        });
+        var stopThread = Thread.ofPlatform().daemon().name("stop").start(stop);
+        assertTrue(client.awaitWriting(), "the stop must reach its answer");
+
+        var reset = new FutureTask<>(() -> {
+            subject.reset();
+            subject.goToState(STATE_SYSTEM_RUNNING);
+            return null;
+        });
+        var resetThread = Thread.ofPlatform().daemon().name("reset").start(reset);
+        awaitBlockedBy(resetThread, stopThread);
+        client.readOn();
+
+        if (!endsWithinBound(stop) || !endsWithinBound(reset)) {
+            // A deadlocked engine holds its monitor for good and cannot be closed; tear down a fresh one.
+            engine = new MockRuntimeEngine(registry, registry.resolve(StandardScenarios.STATUS_ONLY),
+                    runtimeToken, deviceSecret);
+            fail("the stop and the reset did not end within the bound: they deadlocked");
+        }
+        return stop.get();
+    }
+
+    /**
+     * Waits until {@code waiter} is blocked on a lock {@code owner} holds.
+     */
+    private static void awaitBlockedBy(Thread waiter, Thread owner) {
+        var threads = ManagementFactory.getThreadMXBean();
+        var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+        while (true) {
+            var info = threads.getThreadInfo(waiter.threadId());
+            if (info != null && info.getThreadState() == Thread.State.BLOCKED
+                    && info.getLockOwnerId() == owner.threadId()) {
+                return;
+            }
+            if (System.nanoTime() > deadline) {
+                fail(waiter.getName() + " never waited on a lock " + owner.getName() + " holds");
+            }
+            Thread.onSpinWait();
+        }
+    }
+
+    private static boolean endsWithinBound(Future<?> task) throws Exception {
+        try {
+            task.get(20, TimeUnit.SECONDS);
+            return true;
+        } catch (TimeoutException _) {
+            return false;
+        }
+    }
+
+    /**
+     * A client that takes an answer only once the test lets it read on, as a slow client's socket
+     * does: the writer waits inside its first write until then.
+     */
+    private static final class SlowClient extends OutputStream {
+
+        private final ByteArrayOutputStream received = new ByteArrayOutputStream();
+        private final CountDownLatch writing = new CountDownLatch(1);
+        private final CountDownLatch reading = new CountDownLatch(1);
+
+        @Override
+        public void write(int value) throws IOException {
+            write(new byte[]{(byte) value}, 0, 1);
+        }
+
+        @Override
+        public void write(byte[] bytes, int offset, int length) throws IOException {
+            writing.countDown();
+            try {
+                if (!reading.await(20, TimeUnit.SECONDS)) {
+                    throw new InterruptedIOException("the client never read on");
+                }
+            } catch (InterruptedException _) {
+                Thread.currentThread().interrupt();
+                throw new InterruptedIOException("interrupted while the client waited to read");
+            }
+            received.write(bytes, offset, length);
+        }
+
+        boolean awaitWriting() throws InterruptedException {
+            return writing.await(20, TimeUnit.SECONDS);
+        }
+
+        void readOn() {
+            reading.countDown();
+        }
+
+        String text() {
+            return received.toString(StandardCharsets.UTF_8);
+        }
+    }
+
+    private static void awaitBounded(Future<?> task, String what) throws Exception {
+        try {
+            task.get(20, TimeUnit.SECONDS);
+        } catch (TimeoutException _) {
+            fail(what + " did not end within the bound: the stop and the reset deadlocked");
+        }
+    }
+
+    private static byte[] drainBody(String then) {
+        return JsonTree.write(Map.of("when", "drain", "then", then)).getBytes(StandardCharsets.UTF_8);
+    }
+
+    private static List<String> drainItems(int count) {
+        var items = new ArrayList<String>();
+        for (var index = 0; index < count; index++) {
+            items.add(Generators.letterStrings(4, 10).next() + "-" + index);
+        }
+        return List.copyOf(items);
+    }
+
+    private static String drainStateId() {
+        return "drain." + Generators.letterStrings(4, 8).next().toLowerCase();
+    }
+
+    private static String markerEvent() {
+        return "mock.marker." + Generators.letterStrings(4, 8).next().toLowerCase();
+    }
+
+    private static Map<String, Object> drainingFacts(List<String> items, String then) {
+        return Map.of(
+                "lifecycle_state", "draining",
+                "draining_by", "the console",
+                "can_withdraw_stop", true,
+                "then", then,
+                "blockers", items.stream().map(item -> Map.of("name", item)).toList());
+    }
+
+    /**
+     * Registers the reports-and-system scenario with one more state: the facts of
+     * {@code system.running} overlaid with the given facts, and the given scheduled events.
+     *
+     * @param stateId the new state
+     * @param facts   the facts overlaid on those of {@code system.running}
+     * @param events  the state's own scheduled events
+     */
+    private void registerSystemState(String stateId, Map<String, Object> facts, List<EventDefinition> events) {
+        var base = registry.resolve(StandardScenarios.REPORTS_AND_SYSTEM);
+        var running = Objects.requireNonNull(base.state(STATE_SYSTEM_RUNNING));
+        var representation = new LinkedHashMap<String, Object>(
+                Objects.requireNonNull(JsonTree.asObject(running.representation())));
+        var mergedFacts = new LinkedHashMap<String, Object>();
+        var baseFacts = JsonTree.asObject(representation.get("facts"));
+        if (baseFacts != null) {
+            mergedFacts.putAll(baseFacts);
+        }
+        mergedFacts.putAll(facts);
+        representation.put("facts", mergedFacts);
+        var states = new LinkedHashMap<>(base.states());
+        states.put(stateId, new StateDefinition(representation, running.links(), events, null));
+        registry.register(new Scenario(base.formatVersion(), base.name(), base.description(), base.start(),
+                base.pairingCode(), base.routes(), states));
+    }
+
+    private MockRuntime startRuntime() throws IOException {
+        return MockRuntime.start(MockRuntimeConfig.builder()
+                .registry(registry)
+                .scenario(StandardScenarios.REPORTS_AND_SYSTEM)
+                .build());
+    }
+
+    private static List<Object> remainingItems(MockRuntimeEngine target, Map<String, String> headers)
+            throws IOException {
+        var status = send(target, "GET", "/api/v1/status", headers, new byte[0], false);
+        assertEquals(200, status.status(), status.body());
+        var items = JsonTree.asArray(status.json().get("drain_remaining_items"));
+        return items == null ? List.of() : items;
+    }
+
+    private static String decisionOpenedBody(String decisionId) {
+        return """
+                {
+                  "event": "decision.opened",
+                  "data": {
+                    "id": "%s",
+                    "question": {
+                      "revision": 1,
+                      "title": "Broadcast question",
+                      "header": "Broadcast",
+                      "subject": "plan broadcast-plan",
+                      "scope": "plan",
+                      "asking_phase": "execute",
+                      "asking_role": "implement",
+                      "blocks": "plan",
+                      "reversibility": "reversible",
+                      "description": "A question opened through the control endpoint.",
+                      "parts": []
+                    }
+                  }
+                }
+                """.formatted(decisionId);
+    }
+
+    private static Object parseJson(String text) {
+        try {
+            return JsonTree.parse(text);
+        } catch (IOException e) {
+            throw new AssertionError("not JSON: " + text, e);
+        }
+    }
+
+    /**
+     * Reads the events of a stream on a daemon thread, opening each latch when its event arrives.
+     *
+     * @param sse     the stream
+     * @param events  receives the events in arrival order
+     * @param latches the latch per awaited event name
+     */
+    private static void readFullEvents(SseReader sse, List<SseEvent> events, Map<String, CountDownLatch> latches) {
+        var reader = new Thread(() -> {
+            try {
+                SseEvent event;
+                while ((event = sse.next()) != null) {
+                    events.add(event);
+                    var latch = latches.get(String.valueOf(event.event()));
+                    if (latch != null) {
+                        latch.countDown();
+                    }
+                }
+            } catch (IOException _) {
+                // the stream closed
+            }
+        });
+        reader.setDaemon(true);
+        reader.start();
+    }
+
+    /**
+     * Reads the event names of a stream on a daemon thread, opening each latch when its event arrives.
+     *
+     * @param sse     the stream
+     * @param names   receives the event names in arrival order
+     * @param latches the latch per awaited event name
+     */
+    private static void readEvents(SseReader sse, List<String> names, Map<String, CountDownLatch> latches) {
+        var reader = new Thread(() -> {
+            try {
+                SseEvent event;
+                while ((event = sse.next()) != null) {
+                    var name = String.valueOf(event.event());
+                    names.add(name);
+                    var latch = latches.get(name);
+                    if (latch != null) {
+                        latch.countDown();
+                    }
+                }
+            } catch (IOException _) {
+                // the stream closed
+            }
+        });
+        reader.setDaemon(true);
+        reader.start();
     }
 }
