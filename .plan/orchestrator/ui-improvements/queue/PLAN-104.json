@@ -2,10 +2,10 @@
   "id": "PLAN-104",
   "slug": "cli-console-third-residue",
   "workstream": "WS-04",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "104-cli-console-third-residue",
+  "pr": "357",
+  "landing": "landings/PLAN-104.md",
   "seq": 104
 }

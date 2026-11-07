@@ -565,10 +565,23 @@ plan spec names the plan, proposal and finding documents it comes from.
   entangled with the command-palette deep-link, three palette tests pre-set the layout and `decisions.spec.js:217-235` clicks
   `layout-compact`; 002 — fully corroborated. Order: PLAN-108 → D1 → D2 and D3 → D4; the code runbooks wait for PLAN-106
   (109, 110), PLAN-111 is independent and not parallel with 109.
+- 2026-11-07 — PLAN-104 LANDED AND ANALYSED (PR #357 `7902d577`, whitespace follow-up PR #361 `14a6f7c0`; `landings/PLAN-104.md`;
+  row `shipped`, lane message archived). Merge-rule verdict PARTLY SATISFIED: Sonar gate green (0 new issues; the rule list
+  `unknown`), but PR 357 is merged with ONE unresolved thread (`EntryFlowStaticsTest:116`, review `5806743402`, posted 18 minutes
+  before the merge, never answered although the lane's last comment says "every thread … resolved"), seven body nitpicks of review
+  `5804837268` unanswered, PR 341's five body items without any reply, and a stale reply on PR 332's `EntryFlow:712` thread. The
+  code side is largely met (Enter addresses by `continue_link`, no `ForTest` surface, `bounded` has its error path, no generic
+  catch outside `EpicCommand`/`PlanCommand`, German row through the catalogue, designs say "7 steps."), with the gaps listed as
+  defects 1-12 there. Orchestrator choices, open to the operator: (1) the residue is staged as **PLAN-116 cli-console-fourth-residue**
+  (WS-04, direct Claude Code session, ports 21160/21161), started after PLAN-97 lands because both rewrite `pm-operator` files
+  (declared surfaces are disjoint; the sequence is a judgement); (2) the free slot goes to **PLAN-111** (drop the layout modes:
+  determinate surface, 0 overlap with PLAN-97, 106, 108); (3) the daemon surface `/api/v1/entries/{id}` that makes Enter on a
+  being-added badge work is an outside-repo request (Watch). Fourth consecutive lane to report "done" for items GitHub does not
+  show; the operator may decide whether the standing emit-by-size rule keeps routing the small plans to the runbook lane.
 
 ## Open Defects
 
-- 2026-11-06 — OPEN OUTSIDE THIS REPOSITORY (owner `plan-marshall/plan-marshall-mcp`, no plan there): (1) the real `pm-mcpd` accepting `{with_plans, reason}` on an epic cancel and sending `drain_remaining_items` was not checkable by PLAN-100; (2) a runtime that serves an id or route per drain item (`doc/design/shared/system.adoc` `<<one-step>>` says an item is a name, not a step, until it does); (3) `pm-mcpd` accepting the cleanup record `cleanup_durations` (PLAN-60 D4). The operator may open ledger items there.
+- 2026-11-06 — OPEN OUTSIDE THIS REPOSITORY (owner `plan-marshall/plan-marshall-mcp`, no plan there): (1) the real `pm-mcpd` accepting `{with_plans, reason}` on an epic cancel and sending `drain_remaining_items` was not checkable by PLAN-100; (2) a runtime that serves an id or route per drain item (`doc/design/shared/system.adoc` `<<one-step>>` says an item is a name, not a step, until it does); (3) `pm-mcpd` accepting the cleanup record `cleanup_durations` (PLAN-60 D4); (4) 2026-11-07 (PLAN-104 landing): the state and act surface `/api/v1/entries/{id}` of a pre-enrolment run, without which Enter on a being-added badge in the console only reports the run as unreadable (`04-console.adoc` "Addressing a Being-Added Project"). The operator may open ledger items there.
 - 2026-11-06 — DECIDED by the operator (option A): the unfiltered "Mark all shown read" of the reports page marks the reports the list shows by their ids, never everything, as `doc/design/shared/reports.adoc` 182/184 and the label say; PLAN-102 D1c (`{ all: true }`, merged in PR #340) is amended by PLAN-105 deliverable 1 (`landings/PLAN-102.md` defect 1). PLAN-105 is emittable.
 - 2026-11-06 — LOW defect 17 of PLAN-102 (`landings/PLAN-102.md`): `RowMenu.svelte` 216-232 `:focus` and `:focus-visible` rules are identical, a mouse open draws the focus ring; folded into PLAN-105 deliverable 2 (decide and test).
 - 2026-11-05 — Two LOW defects of PLAN-101 (`landings/PLAN-101.md` 5, 6) have no staged plan touching their files: `check-build-output.mjs` `deriveDevMarkers`/`devPageRoute` guards only the first dev page below the prefix and the plugin's `DEV_PAGE_IMPORT` regex (`devRouteExclusion.ts`) hard-codes `src/routes/dev/`; the block-comment strip of `strictPortIsBound` (`guard-ports.js` 94-96) has no test case. Re-check at the next plan that touches the build check or the port guard.
