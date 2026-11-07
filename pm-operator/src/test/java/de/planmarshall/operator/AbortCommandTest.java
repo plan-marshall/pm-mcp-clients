@@ -128,7 +128,7 @@ class AbortCommandTest {
         var planId = Generators.letterStrings(4, 12).next();
         var server = fixture.start((request, response) -> {
             if ("POST".equals(request.method())
-                    && ("/api/v1/plans/" + planId + "/cancel").equals(request.target())) {
+                                && ("/api/v1/plans/" + planId + "/cancel").equals(request.target())) {
                 response.json(200, "{\"outcome\":\"aborted\"}");
             } else {
                 response.send(404, null, "");
@@ -146,10 +146,10 @@ class AbortCommandTest {
 
     private static String heldActions(String planId) {
         return """
-                {"subject_id":"%s","subject_kind":"plan","state":"held",
-                 "hold_kind":"integrity_pause","actions":[
-                   {"action":"cancel","available":true},{"action":"chat","available":true}]}
-                """.formatted(planId);
+                            {"subject_id":"%s","subject_kind":"plan","state":"held",
+                             "hold_kind":"integrity_pause","actions":[
+                               {"action":"cancel","available":true},{"action":"chat","available":true}]}
+                            """.formatted(planId);
     }
 
     /**

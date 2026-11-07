@@ -268,8 +268,8 @@ final class ActionSupport {
             // Without the dialogue the act is still the one the runtime performs in the plan's state,
             // read before the plan ends and its hold is gone: only a plan's cancel can be an abort.
             act = "plan".equals(kind) && CANCEL.equalsIgnoreCase(actionVerb)
-                    ? endOutcome(context, kind, id, actionVerb)
-                    : actionVerb;
+                                ? endOutcome(context, kind, id, actionVerb)
+                                : actionVerb;
         }
 
         var payload = new LinkedHashMap<String, Object>();

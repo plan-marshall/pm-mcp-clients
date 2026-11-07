@@ -1618,7 +1618,7 @@ class MockRuntimeEngineTest {
             live.goToState(STATE_SYSTEM_RUNNING);
 
             try (var exchange = client.open(HttpRequest.get("/api/v1/events").withHeader("Authorization", bearer)
-                    .withHeader("Last-Event-ID", anchorId))) {
+                         .withHeader("Last-Event-ID", anchorId))) {
                 var replayed = new CopyOnWriteArrayList<SseEvent>();
                 readFullEvents(exchange.events(), replayed, replayLatches);
                 live.broadcast(boundary, Map.of());

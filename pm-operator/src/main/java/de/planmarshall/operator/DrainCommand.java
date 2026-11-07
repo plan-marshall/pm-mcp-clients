@@ -87,7 +87,7 @@ public final class DrainCommand implements Callable<Integer> {
      * @param processes the lookup of a process by its id, the operating system's outside a test
      */
     DrainCommand(OperatorContext context, @Nullable Duration bound,
-            LongFunction<Optional<ProcessHandle>> processes) {
+                        LongFunction<Optional<ProcessHandle>> processes) {
         this.context = Objects.requireNonNull(context, "context");
         this.bound = bound;
         this.processes = Objects.requireNonNull(processes, "processes");

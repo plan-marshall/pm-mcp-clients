@@ -204,7 +204,7 @@ class DrainCommandTest {
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
                             () -> assertTrue(err.toString().contains(
-                                                "The runtime (PID " + child.pid() + ") could not be signalled."),
+                                                                    "The runtime (PID " + child.pid() + ") could not be signalled."),
                                                 err.toString()));
     }
 
