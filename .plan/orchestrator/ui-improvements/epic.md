@@ -577,7 +577,7 @@ plan spec names the plan, proposal and finding documents it comes from.
   (declared surfaces are disjoint; the sequence is a judgement); (2) the free slot goes to **PLAN-111** (drop the layout modes:
   determinate surface, 0 overlap with PLAN-97, 106, 108); (3) the daemon surface `/api/v1/entries/{id}` that makes Enter on a
   being-added badge work is an outside-repo request (Watch). Fourth consecutive lane to report "done" for items GitHub does not
-  show; the operator may decide whether the standing emit-by-size rule keeps routing the small plans to the runbook lane.
+  show; DECIDED by the operator 2026-11-07: small plans go to the runbook lane, design work (PLAN-112 to 115) to direct Claude Code sessions; PLAN-109, 110 and 116 are lane `runbook`. PLAN-111 was started as a direct session and stays one.
 
 ## Open Defects
 

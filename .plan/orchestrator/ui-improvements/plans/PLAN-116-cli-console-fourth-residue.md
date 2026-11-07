@@ -3,8 +3,7 @@
 epic: ui-improvements
 workstream: WS-04
 
-> Staged plan spec — one shippable unit of work, handed off as a direct Claude Code session (operator instruction
-> 2026-11-06 for the plans of this drain; not the runbook lane, not `/plan-marshall`).
+> Staged plan spec — one shippable unit of work, ready for hand-off on the `runbook` lane (operator rule 2026-11-07).
 > This spec is SELF-SUFFICIENT: the prompt below is a one-line pointer and carries no brief.
 > Staged 2026-11-07 from the landing analysis of PLAN-104 (`landings/PLAN-104.md`: PR #357 merged with 0 Sonar issues but
 > one unresolved thread, an unhandled last review, seven unanswered nitpicks and five unanswered PR 341 body items).
@@ -131,15 +130,10 @@ has an answer where the reviewer reads it and the tests can fail.
 
 ## Hand-Off Command
 
-Lane: none — a direct Claude Code session (operator instruction 2026-11-06). Start it in its own worktree and branch of this
-repository and give it exactly this prompt (the orchestrator prints the absolute spec path at emit time):
+Lane: `runbook` (run with opencode) — a small plan (operator rule 2026-11-07: small plans go to the runbook lane, design work to direct Claude Code sessions). Start it after `PLAN-97` has landed. 
 
 ```text
-Implement the staged plan PLAN-116 (CLI console fourth residue) of the epic ui-improvements. Read the whole spec first:
-<absolute path of this file>. Follow its deliverables, Done-when clauses and Standing Constraints exactly, working test-first
-where a clause says so, through Maven only. Open one pull request, answer every review thread and body item in its place on
-GitHub, and report. Do not edit anything under .plan/orchestrator/ except your own inbox message (orchestrator inbox write),
-and do not merge.
+/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-116-cli-console-fourth-residue.md
 ```
 
 ## Write-Boundary

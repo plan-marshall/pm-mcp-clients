@@ -3,8 +3,7 @@
 epic: ui-improvements
 workstream: WS-03
 
-> Staged plan spec — one shippable unit of work, handed off as a direct Claude Code session (operator instruction
-> 2026-11-06; not the runbook lane, not `/plan-marshall`). No design session is needed: the change is code plus one agreed
+> Staged plan spec — one shippable unit of work, ready for hand-off on the `runbook` lane (operator rule 2026-11-07). No design session is needed: the change is code plus one agreed
 > shared text.
 > This spec is SELF-SUFFICIENT: the prompt below is a one-line pointer and carries no brief.
 
@@ -132,16 +131,10 @@ is changed and checked with it. Code and catalogue only: no design session.
 
 ## Hand-Off Command
 
-Lane: none — a direct Claude Code session (operator instruction 2026-11-06). Start it in its own worktree and branch of
-this repository, after `PLAN-106` has landed, and give it exactly this prompt (the orchestrator prints the absolute spec path
-at emit time):
+Lane: `runbook` (run with opencode) — a small plan (operator rule 2026-11-07: small plans go to the runbook lane, design work to direct Claude Code sessions). Start it after `PLAN-106` has landed. 
 
 ```text
-Implement the staged plan PLAN-109 (web rail settings label and icon) of the epic ui-improvements. Read the whole spec
-first: <absolute path of this file>. Follow its deliverables, Done-when clauses and Standing Constraints exactly, working
-test-first where a clause says so, through Maven and npm only. Run the browser check it names. Open one pull request, answer
-its review comments, and report. Do not edit anything under .plan/orchestrator/ except your own inbox message
-(orchestrator inbox write), and do not merge.
+/plan-marshall-runbook-lane plan=.plan/orchestrator/ui-improvements/plans/PLAN-109-web-rail-settings-label-and-icon.md
 ```
 
 ## Write-Boundary
