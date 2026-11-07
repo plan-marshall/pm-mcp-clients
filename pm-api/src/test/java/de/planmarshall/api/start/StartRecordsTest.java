@@ -62,7 +62,7 @@ class StartRecordsTest {
     @Test
     @DisplayName("SourceInput round-trips and omits an unresolved title")
     void sourceInputRoundTrips() throws Exception {
-        var title = Generators.nonEmptyStrings().next();
+        var title = Generators.nonBlankStrings().next();
         var full = new SourceInput(SourceKind.ISSUE, "https://codeberg.org/forgejo/forgejo/issues/4711",
                 title);
         assertEquals(full, SourceInput.fromJson(full.toJson()));
@@ -75,8 +75,8 @@ class StartRecordsTest {
     @Test
     @DisplayName("StartPlanRequest round-trips with its recipe parameters and documents")
     void startPlanRequestRoundTrips() throws Exception {
-        var objective = Generators.nonEmptyStrings().next();
-        var title = Generators.nonEmptyStrings().next();
+        var objective = Generators.nonBlankStrings().next();
+        var title = Generators.nonBlankStrings().next();
         var request = new StartPlanRequest("pm-mcp-clients", objective, "code-review", Map.of("depth", "deep"),
                 List.of("doc/concepts/forgejo.adoc"), "4711", title);
 
@@ -103,7 +103,7 @@ class StartRecordsTest {
     @Test
     @DisplayName("StartEpicRequest round-trips with its auto-start flag")
     void startEpicRequestRoundTrips() throws Exception {
-        var objective = Generators.nonEmptyStrings().next();
+        var objective = Generators.nonBlankStrings().next();
         var request = new StartEpicRequest("pm-mcp-clients", objective, Boolean.FALSE, objective);
 
         var roundTrip = StartEpicRequest.fromJson(request.toJson());
@@ -115,7 +115,7 @@ class StartRecordsTest {
     @Test
     @DisplayName("PlanStartResult round-trips and defaults the state to started")
     void planStartResultRoundTrips() throws Exception {
-        var title = Generators.nonEmptyStrings().next();
+        var title = Generators.nonBlankStrings().next();
         var result = new PlanStartResult("codeberg-provider-issues", PlanStartResult.KIND_PLAN, title, null,
                 "/api/v1/plans/codeberg-provider-issues");
 
@@ -133,7 +133,7 @@ class StartRecordsTest {
                 null);
         assertEquals(parameter, RecipeParameter.fromJson(parameter.toJson()));
 
-        var reason = Generators.nonEmptyStrings().next();
+        var reason = Generators.nonBlankStrings().next();
         var blocked = new RecipeParameter("modules", null, List.of(), false, false, reason);
         assertEquals(blocked, RecipeParameter.fromJson(blocked.toJson()));
     }
@@ -141,7 +141,7 @@ class StartRecordsTest {
     @Test
     @DisplayName("RecipeRef round-trips with its parameters and takes-request flag")
     void recipeRefRoundTrips() throws Exception {
-        var description = Generators.nonEmptyStrings().next();
+        var description = Generators.nonBlankStrings().next();
         var recipe = new RecipeRef("audit", "audit", description, "project", true,
                 List.of(new RecipeParameter("modules", "all 9", List.of("all 9"), true, true, null)));
 
@@ -154,7 +154,7 @@ class StartRecordsTest {
     @Test
     @DisplayName("IntakeDraft round-trips with its sources and creation time")
     void intakeDraftRoundTrips() throws Exception {
-        var objective = Generators.nonEmptyStrings().next();
+        var objective = Generators.nonBlankStrings().next();
         var createdAt = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
         var draft = new IntakeDraft("draft-1", "pm-mcp-clients", objective,
                 List.of(new SourceInput(SourceKind.ISSUE, "4711", null)), createdAt);

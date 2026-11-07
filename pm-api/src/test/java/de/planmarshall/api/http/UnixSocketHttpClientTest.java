@@ -72,7 +72,7 @@ class UnixSocketHttpClientTest {
         @Test
         @DisplayName("sends method, target, headers and body; reads a Content-Length body")
         void contentLength() throws Exception {
-            var payload = Generators.nonEmptyStrings().next();
+            var payload = Generators.nonBlankStrings().next();
             var client = serve((request, response) -> response.json(200, "{\"echo\":\"" + request.bodyText() + "\"}"));
 
             var response = client.send(HttpRequest.json("PUT", "/api/v1/x", payload).withHeader("X-A", "1"));

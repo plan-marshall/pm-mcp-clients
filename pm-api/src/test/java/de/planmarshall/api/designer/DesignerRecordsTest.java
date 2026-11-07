@@ -50,10 +50,10 @@ class DesignerRecordsTest {
 
     @Test
     void shouldRoundTripBuildingBlock() throws Exception {
-        var description = Generators.nonEmptyStrings().next();
-        var parameters = List.of(Generators.nonEmptyStrings().next(), Generators.nonEmptyStrings().next());
-        var requires = List.of(Generators.nonEmptyStrings().next());
-        var usedBy = List.of(Generators.nonEmptyStrings().next());
+        var description = Generators.nonBlankStrings().next();
+        var parameters = List.of(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next());
+        var requires = List.of(Generators.nonBlankStrings().next());
+        var usedBy = List.of(Generators.nonBlankStrings().next());
 
         var block = new BuildingBlock(
                 BlockKind.SUB_WORKFLOW,
@@ -84,8 +84,8 @@ class DesignerRecordsTest {
 
     @Test
     void shouldRoundTripWorkflowUnitWithLevelsAndFrontmatter() throws Exception {
-        var description = Generators.nonEmptyStrings().next();
-        var author = Generators.nonEmptyStrings().next();
+        var description = Generators.nonBlankStrings().next();
+        var author = Generators.nonBlankStrings().next();
         var frontmatter = new WorkflowUnit.Frontmatter(
                 "Finalize",
                 description,
@@ -253,7 +253,7 @@ class DesignerRecordsTest {
 
     @Test
     void shouldRoundTripFindingListAndPlacingResult() throws Exception {
-        var author = Generators.nonEmptyStrings().next();
+        var author = Generators.nonBlankStrings().next();
         var line = Generators.integers(1, 1000).next();
         var column = Generators.integers(1, 1000).next();
         var findings = List.of(

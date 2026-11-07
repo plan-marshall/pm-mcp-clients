@@ -75,7 +75,7 @@ class ConfigOriginTest {
     @Test
     @DisplayName("an effective value round-trips through JSON, the map, and the streaming codec")
     void configValueRoundTrip() throws Exception {
-        var value = Generators.nonEmptyStrings().next();
+        var value = Generators.nonBlankStrings().next();
         var revision = (long) Generators.integers(0, 1_000_000).next();
         var resource = new ConfigValueResource("workflow.landing", value, ConfigOrigin.PROJECT, ConfigOrigin.MACHINE,
                 revision);

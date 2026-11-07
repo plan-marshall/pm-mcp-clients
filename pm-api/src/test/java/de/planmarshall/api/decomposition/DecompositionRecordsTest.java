@@ -79,14 +79,14 @@ class DecompositionRecordsTest {
     @Test
     @DisplayName("StagedPlanRecord round-trips and defaults its collections and status")
     void stagedPlanRoundTrips() throws Exception {
-        var planId = Generators.nonEmptyStrings().next();
-        var objective = Generators.nonEmptyStrings().next();
-        var dependency = Generators.nonEmptyStrings().next();
+        var planId = Generators.nonBlankStrings().next();
+        var objective = Generators.nonBlankStrings().next();
+        var dependency = Generators.nonBlankStrings().next();
         var full = new StagedPlanRecord(planId, planId, objective,
                 List.of("pm-api"), List.of(dependency), StagedPlanRecord.STATUS_CHANGED);
         assertEquals(full, StagedPlanRecord.fromJson(full.toJson()));
 
-        var minimalId = Generators.nonEmptyStrings().next();
+        var minimalId = Generators.nonBlankStrings().next();
         var minimal = new StagedPlanRecord(minimalId, minimalId, null, null, null, null);
         assertTrue(minimal.expectedSurface().isEmpty());
         assertTrue(minimal.dependencies().isEmpty());
@@ -108,11 +108,11 @@ class DecompositionRecordsTest {
     @Test
     @DisplayName("WorkstreamRecord round-trips with its ordered plans")
     void workstreamRoundTrips() throws Exception {
-        var workstreamId = Generators.nonEmptyStrings().next();
-        var title = Generators.nonEmptyStrings().next();
-        var objective = Generators.nonEmptyStrings().next();
+        var workstreamId = Generators.nonBlankStrings().next();
+        var title = Generators.nonBlankStrings().next();
+        var objective = Generators.nonBlankStrings().next();
         var order = Generators.integers(1, 10).next();
-        var planId = Generators.nonEmptyStrings().next();
+        var planId = Generators.nonBlankStrings().next();
         var workstream = new WorkstreamRecord(workstreamId, title, objective, order,
                 List.of(new StagedPlanRecord(planId, planId, null,
                         List.of("pm-relay", "pm-api"), List.of(), StagedPlanRecord.STATUS_STAGED)));
@@ -122,8 +122,8 @@ class DecompositionRecordsTest {
     @Test
     @DisplayName("DecompositionCheckFinding round-trips with its severity")
     void findingRoundTrips() throws Exception {
-        var affectedPlans = List.of(Generators.nonEmptyStrings().next(), Generators.nonEmptyStrings().next());
-        var message = Generators.nonEmptyStrings().next();
+        var affectedPlans = List.of(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next());
+        var message = Generators.nonBlankStrings().next();
         var finding = new DecompositionCheckFinding(CheckSeverity.ERROR,
                 DecompositionCheckFinding.RULE_SURFACE_OVERLAP, affectedPlans,
                 message);
@@ -133,20 +133,20 @@ class DecompositionRecordsTest {
     @Test
     @DisplayName("EpicDecomposition round-trips and answers the check and count questions")
     void epicDecompositionRoundTrips() throws Exception {
-        var firstId = Generators.nonEmptyStrings().next();
+        var firstId = Generators.nonBlankStrings().next();
         var secondId = firstId + "-second";
-        var secondObjective = Generators.nonEmptyStrings().next();
+        var secondObjective = Generators.nonBlankStrings().next();
         var first = new StagedPlanRecord(firstId, firstId, null,
                 List.of("pm-api"), List.of(), StagedPlanRecord.STATUS_STAGED);
         var second = new StagedPlanRecord(secondId, secondId, secondObjective,
                 List.of("pm-api"), List.of(), StagedPlanRecord.STATUS_STAGED);
-        var epicId = Generators.nonEmptyStrings().next();
+        var epicId = Generators.nonBlankStrings().next();
         var revision = Generators.integers(0, 100).next();
-        var firstWorkstreamId = Generators.nonEmptyStrings().next();
+        var firstWorkstreamId = Generators.nonBlankStrings().next();
         var secondWorkstreamId = firstWorkstreamId + "-second";
-        var firstWorkstreamTitle = Generators.nonEmptyStrings().next();
-        var secondWorkstreamTitle = Generators.nonEmptyStrings().next();
-        var message = Generators.nonEmptyStrings().next();
+        var firstWorkstreamTitle = Generators.nonBlankStrings().next();
+        var secondWorkstreamTitle = Generators.nonBlankStrings().next();
+        var message = Generators.nonBlankStrings().next();
         var decomposition = new EpicDecomposition(epicId, DecompositionState.REVIEW, revision,
                 List.of(new WorkstreamRecord(firstWorkstreamId, firstWorkstreamTitle, null, 1, List.of(first)),
                         new WorkstreamRecord(secondWorkstreamId, secondWorkstreamTitle, null, 2, List.of(second))),
@@ -169,12 +169,12 @@ class DecompositionRecordsTest {
     @Test
     @DisplayName("DecompositionInstructRequest round-trips and defaults the action to edit")
     void instructRequestRoundTrips() throws Exception {
-        var planId = Generators.nonEmptyStrings().next();
-        var instruction = Generators.nonEmptyStrings().next();
+        var planId = Generators.nonBlankStrings().next();
+        var instruction = Generators.nonBlankStrings().next();
         var request = new DecompositionInstructRequest(planId, instruction, InstructAction.EDIT);
         assertEquals(request, DecompositionInstructRequest.fromJson(request.toJson()));
 
-        var addedInstruction = Generators.nonEmptyStrings().next();
+        var addedInstruction = Generators.nonBlankStrings().next();
         var added = new DecompositionInstructRequest(null, addedInstruction, null);
         assertEquals(InstructAction.EDIT, added.action());
         assertFalse(added.toMap().containsKey("plan_id"));

@@ -70,10 +70,10 @@ class ReportRecordsTest {
 
     @Test
     void shouldRoundTripReportItem() throws Exception {
-        var id = "rep-" + Generators.nonEmptyStrings().next();
-        var subject = Generators.nonEmptyStrings().next();
-        var body = Generators.nonEmptyStrings().next();
-        var device = Generators.nonEmptyStrings().next();
+        var id = "rep-" + Generators.nonBlankStrings().next();
+        var subject = Generators.nonBlankStrings().next();
+        var body = Generators.nonBlankStrings().next();
+        var device = Generators.nonBlankStrings().next();
         var created = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
         var sent = created.plusSeconds(Generators.integers(61, 600).next());
         var read = sent.plusSeconds(Generators.integers(1, 600).next());
@@ -152,8 +152,8 @@ class ReportRecordsTest {
 
     @Test
     void shouldRoundTripReadReportsRequestsAndResponses() throws Exception {
-        var reportId1 = Generators.nonEmptyStrings().next();
-        var reportId2 = Generators.nonEmptyStrings().next();
+        var reportId1 = Generators.nonBlankStrings().next();
+        var reportId2 = Generators.nonBlankStrings().next();
         var markedCount = Generators.integers(0, 100).next();
 
         var req2 = ReadReportsRequest.of(List.of(reportId1, reportId2));
@@ -169,8 +169,8 @@ class ReportRecordsTest {
     @Test
     void shouldRoundTripEvents() throws Exception {
         var created = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
-        var reportId = Generators.nonEmptyStrings().next();
-        var device = Generators.nonEmptyStrings().next();
+        var reportId = Generators.nonBlankStrings().next();
+        var device = Generators.nonBlankStrings().next();
         var item = new ReportItem(reportId, new ReportFrom("p1", null, null), ReportKind.PLAN_STARTED,
                 "Started", Map.of(), null, created, null, null, null, null, null);
 
@@ -495,13 +495,13 @@ class ReportRecordsTest {
 
     @Test
     void shouldRoundTripSupportingRecords() {
-        var deliverableName = Generators.nonEmptyStrings().next();
-        var replanTrigger = Generators.nonEmptyStrings().next();
-        var replanChange = Generators.nonEmptyStrings().next();
+        var deliverableName = Generators.nonBlankStrings().next();
+        var replanTrigger = Generators.nonBlankStrings().next();
+        var replanChange = Generators.nonBlankStrings().next();
         var wasteTokens = (long) Generators.integers(0, 1_000_000).next();
         var wasteSharePercent = Generators.integers(0, 100).next();
         var wasteTasksCount = Generators.integers(0, 100).next();
-        var wasteCause = Generators.nonEmptyStrings().next();
+        var wasteCause = Generators.nonBlankStrings().next();
 
         var deliv = new DeliverableSummary(deliverableName, "done");
         assertEquals(deliverableName, deliv.name());

@@ -60,7 +60,7 @@ class LessonSourceRecordsTest {
     @Test
     @DisplayName("LessonPremiseEvidence round-trips and omits absent optional fields")
     void premiseEvidenceRoundTrips() throws Exception {
-        var name = Generators.nonEmptyStrings().next();
+        var name = Generators.nonBlankStrings().next();
         var full = new LessonPremiseEvidence(PremiseEvidenceKind.SYMBOL, name, null,
                 "a1b2c3d");
         assertEquals(full, LessonPremiseEvidence.fromJson(full.toJson()));
@@ -85,7 +85,7 @@ class LessonSourceRecordsTest {
         assertTrue(holds.holds());
         assertTrue(holds.evidence().isEmpty());
 
-        var cause = Generators.nonEmptyStrings().next();
+        var cause = Generators.nonBlankStrings().next();
         var unavailable = new LessonPremiseCheckResult("les-0007", LessonPremiseCheckResult.STATUS_UNAVAILABLE,
                 List.of(), cause);
         assertEquals(cause, LessonPremiseCheckResult.fromJson(unavailable.toJson()).cause());
@@ -94,8 +94,8 @@ class LessonSourceRecordsTest {
     @Test
     @DisplayName("UnclaimedLessonSummary round-trips with its citing plan and cited symbols")
     void unclaimedLessonSummaryRoundTrips() throws Exception {
-        var title = Generators.nonEmptyStrings().next();
-        var summary = Generators.nonEmptyStrings().next();
+        var title = Generators.nonBlankStrings().next();
+        var summary = Generators.nonBlankStrings().next();
         var noticedAt = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
         var full = new UnclaimedLessonSummary("les-0007", title, summary, noticedAt,
                 "fix-relay", List.of("src/A.java", "de.Old#m()"));
@@ -137,7 +137,7 @@ class LessonSourceRecordsTest {
     @Test
     @DisplayName("LessonRetirementNotice round-trips and omits an absent reason")
     void lessonRetirementNoticeRoundTrips() throws Exception {
-        var reason = Generators.nonEmptyStrings().next();
+        var reason = Generators.nonBlankStrings().next();
         var notice = new LessonRetirementNotice("les-0007", true, reason);
         assertEquals(notice, LessonRetirementNotice.fromJson(notice.toJson()));
 

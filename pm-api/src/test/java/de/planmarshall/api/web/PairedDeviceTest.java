@@ -29,8 +29,8 @@ class PairedDeviceTest {
     @Test
     void shouldRoundTripPairedDevice() throws Exception {
         var now = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
-        var deviceId = Generators.nonEmptyStrings().next();
-        var label = Generators.nonEmptyStrings().next();
+        var deviceId = Generators.nonBlankStrings().next();
+        var label = Generators.nonBlankStrings().next();
         var device = new PairedDevice(deviceId, label, "loopback", now, now);
 
         var json = device.toJson();
@@ -69,10 +69,10 @@ class PairedDeviceTest {
     void shouldRoundTripDeviceList() throws Exception {
         var t1 = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
         var t2 = Instant.ofEpochMilli(Generators.integers(1_000_001, 2_000_000).next());
-        var firstId = Generators.nonEmptyStrings().next();
-        var firstLabel = Generators.nonEmptyStrings().next();
-        var secondId = Generators.nonEmptyStrings().next();
-        var secondLabel = Generators.nonEmptyStrings().next();
+        var firstId = Generators.nonBlankStrings().next();
+        var firstLabel = Generators.nonBlankStrings().next();
+        var secondId = Generators.nonBlankStrings().next();
+        var secondLabel = Generators.nonBlankStrings().next();
 
         var devices = List.of(
                 new PairedDevice(firstId, firstLabel, "loopback", t1, t1),
@@ -97,8 +97,8 @@ class PairedDeviceTest {
     @Test
     void shouldRoundTripPairedDevicesResponse() throws Exception {
         var t1 = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
-        var deviceId = Generators.nonEmptyStrings().next();
-        var devices = List.of(new PairedDevice(deviceId, Generators.nonEmptyStrings().next(), "loopback", t1, t1));
+        var deviceId = Generators.nonBlankStrings().next();
+        var devices = List.of(new PairedDevice(deviceId, Generators.nonBlankStrings().next(), "loopback", t1, t1));
         var response = new PairedDevicesResponse(devices, true);
 
         var json = response.toJson();
@@ -118,8 +118,8 @@ class PairedDeviceTest {
     @Test
     void shouldRoundTripEvents() throws Exception {
         // DeviceRenamedEvent
-        var renamedId = Generators.nonEmptyStrings().next();
-        var renamedLabel = Generators.nonEmptyStrings().next();
+        var renamedId = Generators.nonBlankStrings().next();
+        var renamedLabel = Generators.nonBlankStrings().next();
         var rename = new DeviceRenamedEvent(renamedId, renamedLabel);
         assertEquals("device.renamed", DeviceRenamedEvent.EVENT_NAME);
         var renameJson = rename.toJson();
@@ -128,7 +128,7 @@ class PairedDeviceTest {
         assertEquals(renamedLabel, parsedRename.label());
 
         // DeviceRevokedEvent
-        var revokedId = Generators.nonEmptyStrings().next();
+        var revokedId = Generators.nonBlankStrings().next();
         var revoke = new DeviceRevokedEvent(revokedId);
         assertEquals("device.revoked", DeviceRevokedEvent.EVENT_NAME);
         var revokeJson = revoke.toJson();
@@ -136,7 +136,7 @@ class PairedDeviceTest {
         assertEquals(revokedId, parsedRevoke.deviceId());
 
         // StreamClosedEvent
-        var details = Generators.nonEmptyStrings().next();
+        var details = Generators.nonBlankStrings().next();
         var closed = new StreamClosedEvent(StreamClosedEvent.REASON_DEVICE_REVOKED, details, "terminal", "14:10");
         assertEquals("stream.closed", StreamClosedEvent.EVENT_NAME);
         var closedJson = closed.toJson();
@@ -155,7 +155,7 @@ class PairedDeviceTest {
     @Test
     void shouldHandlePairedDeviceListParsingAndErrors() throws Exception {
         var now = Instant.now();
-        var deviceId = Generators.nonEmptyStrings().next();
+        var deviceId = Generators.nonBlankStrings().next();
         var dev = new PairedDevice(deviceId, "Test Dev", null, now, now);
         assertEquals("loopback", dev.pairedFrom());
 

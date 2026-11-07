@@ -77,12 +77,13 @@ The layout choice survives that collapse: a view left in `split` on a desktop is
 One utility (`filterText.ts`) and one component (`FilterInput.svelte`) power every adopted view.
 
 * *Normalized substring matching*: text is decomposed (NFD), stripped of combining marks, lower-cased, and its whitespace collapsed. `Ärger` therefore matches `arger`.
-* *Tokens are ANDed, fields are ORed*: the query is split on whitespace; every token must appear as a substring of at least one visible field. A token may not be assembled from the end of one field and the start of the next.
+* *A token holds a letter or a digit*: the query is split on whitespace, and a word that holds no letter and no digit in any script (`...`, `-`, `…`) is dropped. `fix ...` filters on `fix`; `...` alone filters on nothing. `tokenize` in `filterText.ts` applies this rule for every adopted view, and a view asks whether a filter is active by whether any token is left, never by whether the query text is blank.
+* *Tokens are ANDed, fields are ORed*: every token must appear as a substring of at least one visible field. A token may not be assembled from the end of one field and the start of the next.
 * *Loaded data only*: the filter runs synchronously over the items the view already holds. Typing never fetches. Reports are paginated, so the view says so while `has_older` is true and "Show older" widens the loaded set without clearing the query.
 * *Served order*: matching keeps the order the runtime served; nothing is re-ranked.
 * *No fuzzy matching, stemming, regex, or highlighting*: substring over normalized text is the whole contract.
 * *One haystack per item*: each view builds a normalized haystack when the item list changes, not on every keystroke.
-* *Empty query matches everything*: an empty or whitespace-only query is not a filter.
+* *Empty query matches everything*: a query that leaves no token — empty, whitespace only, or punctuation only — is not a filter: every item shows and no fold opens.
 
 [#filter-control]
 === The control

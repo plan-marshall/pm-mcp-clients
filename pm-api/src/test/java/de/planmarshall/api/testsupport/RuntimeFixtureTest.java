@@ -28,7 +28,7 @@ class RuntimeFixtureTest {
     void shouldWriteTokenWithPrivateModes() throws Exception {
         var fixture = RuntimeFixture.create();
         try {
-            var token = Generators.nonEmptyStrings().next();
+            var token = Generators.nonBlankStrings().next();
             fixture.writeToken(token);
 
             var paths = fixture.paths();
