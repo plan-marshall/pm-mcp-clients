@@ -83,6 +83,9 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ProjectsCommand.java` — present at HEAD 14a6f7c0
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/StatusCommand.java` — present at HEAD 14a6f7c0
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WebCommand.java` — present at HEAD 14a6f7c0
 
 ## Dependencies and Sequencing
 
@@ -98,7 +101,11 @@ Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructi
 wireframes (`work-actions.adoc:332`, `paired-devices.adoc:24`, `project-explorer.adoc:26,31,71`, `plan-overview.adoc:141`).
 This plan's deliverable 4 then only applies the decided rule to the client designs (`terminal-client/08`, `15`, `17`, `18`,
 `19`) and to `ProjectsCommand` / the display layer; `19-actions.adoc` is `PLAN-97`'s until it lands. Re-read the decided rule
-at restart (start after `PLAN-108` has merged); no Expected Surface change is made now.
+at restart (start after `PLAN-108` has merged).
+
+**Added 2026-11-07 (CodeRabbit thread left open on PR 362, `texts-and-languages.adoc:181`, declined in PLAN-108 as this plan's scope):** the terminal's own age formatters still print their own English forms: `ProjectsCommand.java:~317` (`formatRelativeTime`: `yesterday`, `N week(s) ago`, `N month(s) ago`, `just now`), `StatusCommand.java:~478` (`N min ago` / `just now`, English-only in a German session) and `WebCommand.java:~623` (`just now`) — verified by grep at `origin/main` `14a6f7c0`. Deliverable 4 also covers them: they render ages through `Display.time` / the rule PLAN-108 decided (`common.time.*` catalogue keys, `en` and `de`, months and `just now` from the language's relative-time data, no weeks, no bare `yesterday` as an age), with a test per formatter in a German session. Done when: `git grep -nE "just now|weeks? ago|yesterday" -- pm-operator/src/main` names none outside the catalogue (evidence order: `none`), and a German-session test for `status` and `projects` prints `gerade eben` / `vor N …` (evidence order: `test-first`). The open CodeRabbit thread on PR 362 is answered by this pointer when the PLAN-108 landing is analysed.
+
+Expected Surface addition (same act): `pm-operator/src/main/java/de/planmarshall/operator/ProjectsCommand.java`, `pm-operator/src/main/java/de/planmarshall/operator/StatusCommand.java` and `pm-operator/src/main/java/de/planmarshall/operator/WebCommand.java` (present at HEAD 14a6f7c0; they sit beside the `projects/` package entry above, not inside it).
 
 ## Hand-Off Command
 
