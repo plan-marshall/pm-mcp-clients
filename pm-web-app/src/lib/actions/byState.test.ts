@@ -216,8 +216,6 @@ describe('tableActIds and handledActIds', () => {
       labelKey: 'control.plan.decision',
       advisoryKey: 'control.plan.decision.title',
       role: 'primary',
-      order: 1,
-      placement: 'button',
     };
     EPIC_ACTS.running.push(decisionAct);
     try {
