@@ -63,6 +63,15 @@ The two other parts of that package were moved by the structure review of 2026-1
 - Overlaps with: `PLAN-52` (`OverviewView.svelte`), `PLAN-55` (`PlanView.svelte`), `PLAN-58` (`EpicView.svelte`), `PLAN-09` (`OverviewView.svelte`): run one after the other
 - Adjacent to: `PLAN-59` D4 and `PLAN-51` D3 (the other two parts of the package)
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (PLAN-83), message 003. **Superseded in
+substance:** this plan's only deliverable (the work list beside a plan) is **folded into the D2 navigation engine** (the
+column chain replaces it). "Add a plan" on a project's row is already `PLAN-59` deliverable 4; "one notification for a burst"
+is already `PLAN-51` deliverable 5 and waits with `PLAN-51`. `doc/plans/web-moving-between-plans.adoc` (its anchors are
+updated by D2, `PLAN-113`) is set `done` by the last of the D2 engine, `PLAN-51` and `PLAN-59`. Queue status: `parked` — it
+becomes `superseded` (naming the D2 navigation engine row) when that package is staged; it is never emitted.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

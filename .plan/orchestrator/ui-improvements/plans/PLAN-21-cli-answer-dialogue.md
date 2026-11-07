@@ -58,9 +58,9 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/use-cases/plan.adoc#CLI-UC-S-04`, `doc/claude_review/cli/use-cases/proposals.adoc#CLI-UC-P-03` — read at `doc/claude_review/cli/use-cases/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: main doc/claude_review/cli/use-cases/plan.adoc:41 [#CLI-UC-S-04] The Answer Dialogue; proposals.adoc:61-62 [#CLI-UC-P-03] A Working Answer Dialogue (unchanged since anchor)
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/cli/use-cases/plan.adoc:41 [#CLI-UC-S-04], proposals.adoc:61 [#CLI-UC-P-03], findings-plans-control.adoc:12 [#CLI-UC-F-10] exist at origin/main aa3a9be3
 - HYPOTHESIS: `AnswerCommand` closes the console's terminal through try-with-resources and swallows the error — confirm/refute at `pm-operator/src/main/java/de/planmarshall/operator/AnswerCommand.java` (verify-at-outline)
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: AnswerCommand.java:228 try (var terminal = context.createTerminal()) and :241 catch (IOException | RuntimeException) print+return 1; OperatorContext.java:220-222 returns scopedTerminal; neither file changed since cc5794c9, cause still present
+  - verdict: contradicted | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: yes | evidence: AnswerCommand.java:231 now try (var lease = context.openTerminal()); OperatorContext.TerminalLease.close() (:289-306) closes only a terminal it owns (PLAN-92); catch is IOException only and rethrows InterruptException (:243-246), so the terminal ownership and the 130 point are done; D1 rescoped to the error string and catalogue
 - Re-grounded note at HEAD a07a09b6 (2026-10-30): `cli-actions-by-state` (PLAN-20, shipped, PR #273) put a `!  Decide Q-009…` entry first in the `a` menu of a waiting plan (key `!`, one character, unique in every menu; `operator.actions.key.decide` and `operator.actions.decide`, in both languages). Its `decide` dispatch re-enters `PmOperator.execute` into the answer dialogue and has no unit test: the PTY path of that dispatch is this plan's (`AnswerDialogueIT`, still `@Disabled` for this plan). `ActionMenus`, `ActionsMenu`, `WorkActionsClient` and `OverviewFullScreenApp` (the full-screen overview opens the decision) changed.
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): PLAN-91 (94bbefe1) moved the Ctrl+C interrupt to StartPrompt.InterruptException -> exit 130 in eight handlers; AnswerCommand is not among them (readLineSafe still returns null -> exit 0 on Ctrl+C/EOF), so the rewrite of AnswerCommand should adopt that mechanism. AnswerDialogueIT is still @Disabled.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
@@ -70,18 +70,24 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/AnswerCommand.java` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/Answers.java` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/AnswersTest.java` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/AnswerDialogueIT.java` — absent at HEAD c4dc9bb4; created by this plan
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/AnswerDialogueIT.java` — present at HEAD aa3a9be3 (`@Disabled` for this plan; this plan enables it)
 - OBSERVED: `doc/design/terminal-client/14-transcripts-decisions.adoc` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/operator.en.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/operator.de.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/decisions.en.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/decisions.de.properties` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/DialogueHarness.java` — present (only if the harness needs a helper) at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/test/resources/screen-captures/PLAN-21.txt` — absent; created by this plan at HEAD aa3a9be3
 
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-10` (`cli-choice-prompt-pause`), `PLAN-76` (`shared-port-assignment`)
 - Overlaps with: none known at staging
 - Adjacent to: none
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `origin/main` `aa3a9be3` by the cleanup pass. The terminal ownership and the exit 130 point of the Re-grounded note are DONE: `AnswerCommand.java:231` opens `context.openTerminal()` as a lease whose `close()` closes only a terminal it owns (PLAN-92), the catch is `IOException` only and rethrows `InterruptException` (:243-246). Deliverable 1 is rescoped to the error string and the catalogue (`AnswerCommand` still prints English literals: "Reason (required): › ", "Correct?…", "Question %s not found."; the direct form prints "✓ Answered Q-007 with option 2." where the design says "✓ Q-007 answered: <label>"). `AnswerDialogueIT` exists and is `@Disabled`: this plan enables it, it does not create it. `withdraw` exists (PLAN-106).
 
 ## Hand-Off Command
 

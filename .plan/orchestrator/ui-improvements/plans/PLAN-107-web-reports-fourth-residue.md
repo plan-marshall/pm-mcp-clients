@@ -56,7 +56,9 @@ PLAN-105 made the web "Mark all shown read" post exactly the shown ids, but the 
 ## Claim Labels
 
 - OBSERVED: `ReportsCommand.java:210` posts `{"all":true}`; `24-reports.adoc:28` says `--all` marks by the ids of the last listing; `MockRuntimeEngine.paginateUnread` (~5331, `pm-mock-runtime/src/main/java/de/planmarshall/mock/runtime/`) pages the unread list by offset; `client.test.ts` holds no `markAllReportsRead` or `report_ids` test; `ReportsView.svelte` ~545 calls `refreshReportsCount()` only; PR 348 has 6 threads, 0 unresolved, PR 340 and PR 325 10 each, 0 unresolved; SonarCloud 0 new issues — read by the orchestrator at `f5ab6dd2` through git, GraphQL and the bot comment on 2026-11-06
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReportsCommand.java:208-210 still posts {all:true}; 24-reports.adoc:28,31 match; ReportsView.svelte:545 calls only refreshReportsCount(); no markAllReportsRead/report_ids test in client.test.ts; paginateUnread now at MockRuntimeEngine.java:5504 (was ~5331); PR thread/Sonar counts not re-read
 - HYPOTHESIS: the real `pm-mcpd` pages the unread list by offset the same way (not readable: another repository, `plan-marshall/plan-marshall-mcp`; the first-page reload does not depend on it); a reload in flight double-subtracts, a deep-linked unread report is never counted, the rollback after a `report.read` deletes a counted marker, `reports.spec.js` ~189-211 fails at the head, the product `RowMenu` popup can open under the sticky `BottomBar` at ≤767 px (PLAN-74 deliverable 3 owns that), the loading branch is announced twice — by a read-only analysing agent's reading at `f5ab6dd2`, not run
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: ReportsView.svelte:529 still filters !retainedReadIds[id], :548 deletes the marker unconditionally; reports.spec.js:61,188 still expect 6 unread reports; CompletionReportView.svelte:109/111 print the loading text twice; real daemon paging unreadable (unverifiable part)
 - Source: `landings/PLAN-105.md`, `landings/PLAN-102.md`.
 - Verify-first clause: before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
 
@@ -80,6 +82,16 @@ PLAN-105 made the web "Mark all shown read" post exactly the shown ids, but the 
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD f5ab6dd2
 - OBSERVED: `doc/design/terminal-client/24-reports.adoc` — present at HEAD f5ab6dd2
 - OBSERVED: `doc/design/shared/completion-report.adoc` — present at HEAD f5ab6dd2
+- OBSERVED: `pm-web-app/src/lib/components/RowMenu.svelte` — present at HEAD ddcab793
+- OBSERVED: `pm-web-app/src/lib/display/format.test.ts` — present at HEAD ddcab793
+- OBSERVED: `pm-web-e2e/tests/row-menu.spec.js` — present at HEAD ddcab793
+- OBSERVED: `pm-web-e2e/tests/port-guard.spec.js` — present at HEAD bb30d71e
+- OBSERVED: `pm-web-e2e/tests/theme-readability.spec.js` — present at HEAD bb30d71e
+- OBSERVED: `pm-api/src/main/resources/messages/reports.en.properties` — present (the `mark_all_read.title` key lives here) at HEAD aa3a9be3
+- OBSERVED: `pm-api/src/main/resources/messages/reports.de.properties` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/PmOperatorProcessIT.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/OperatorGateScopeTest.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-mock-runtime/src/main/resources/scenarios/reports-and-system.json` — present at HEAD aa3a9be3
 
 ## Dependencies and Sequencing
 
@@ -87,6 +99,18 @@ PLAN-105 made the web "Mark all shown read" post exactly the shown ids, but the 
 - Overlaps with: `PLAN-97` (running: `MockRuntimeEngine.java`, `reports-and-system.json`, `OperatorGateScopeTest.java`, `PmOperatorProcessIT.java`; start this plan after it has landed), `PLAN-106` (running: `client.ts` is on its list, the lines near `:2881` do not overlap; merge main before landing), `PLAN-45` (deliverable 4 there keeps the rows across a reload: whichever starts second reads the other's landing)
 - Should land before: `PLAN-42`, `PLAN-45`, `PLAN-72`, `PLAN-73`, `PLAN-75` (same files)
 - Adjacent to: `PLAN-74` (deliverable 3 owns the `RowMenu` popup against the sticky bottom navigation at ≤767 px, the `components.adoc` leftovers and the shared filter rule)
+
+## Amendment 2026-11-07 (PLAN-108 landing)
+
+PLAN-108 merged (`ddcab793`), so this plan may now touch `RowMenu.test.ts`. Add to the reports-and-menu work: (a) a test that a scroll event INSIDE a capped `RowMenu` (not on `window`) keeps its `scrollTop` (`RowMenu.svelte` `place()` clears and re-applies `max-block-size` on every capturing `scroll`: HYPOTHESIS, confirm or refute); (b) `row-menu.spec.js` waits for the condition the menu needs (the report row rendered), not only the `unread-count` element; (c) a `format.test.ts` case for the 30-59 day age (`last month` / `letzten Monat`); (d) the `reports.spec.js` expectation `6 unread reports` fails at base (7 vs 6, PLAN-105 defect 13, reported by the PLAN-108 session): fix the test or the scenario. Surfaces added (same act): `pm-web-app/src/lib/components/RowMenu.svelte`, `pm-web-app/src/lib/display/format.test.ts`, `pm-web-e2e/tests/row-menu.spec.js`.
+
+## Amendment 2026-11-07 (PLAN-111 landing)
+
+Also: (e) the two now-vacuous absence asserts of the removed layout test ids, `ReportsView.test.ts:650-651` and `reports.spec.js:309`, are deleted; (f) the pre-existing prettier drift of `pm-web-e2e/tests/port-guard.spec.js` (lines 2, 24) and `theme-readability.spec.js` (~1159), which fails `pm-web-e2e`'s `quality` (`format:check`), is fixed by running the formatter. Surfaces added (same act): `pm-web-e2e/tests/port-guard.spec.js`, `pm-web-e2e/tests/theme-readability.spec.js`.
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. The sequencing "start after PLAN-97" is obsolete (PLAN-97 landed) and `paginateUnread` is now at `MockRuntimeEngine.java:5504`; `ReportsView.svelte:545` calls only `refreshReportsCount()`; the mock ignores the `all` form and answers 200 with `marked_count` 0 (`MockRuntimeEngine.java:5577-5598`); `CompletionReportView.svelte:109/111` print the loading text twice. Re-read the RowMenu items against D1 (PLAN-112: `disabledReason`, layer tokens z-index 1/20/30/90/100) before emitting.
 
 ## Hand-Off Command
 

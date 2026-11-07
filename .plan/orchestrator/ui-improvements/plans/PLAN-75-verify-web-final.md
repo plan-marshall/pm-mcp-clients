@@ -63,6 +63,12 @@ Run the closing checks of the web review: the guard in failing mode, the visual 
 - Overlaps with: other verification plans may update the same analysis matrix (one shared file)
 - Adjacent to: the plans verified; their code stays untouched
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions. **Hold.** It is re-grounded after D1–D4
+(its checks are rewritten against the AGREED documents of the design review and the shipped packages). Queue status:
+`parked`; the Expected Surface above is NOT widened now (a parked row is not in the disjointness gate population).
+
 ## Hand-Off Command
 
 Lane: `plan-marshall` (verification plans run in the plan lifecycle, separate from the implementation runs).

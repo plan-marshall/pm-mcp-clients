@@ -59,6 +59,14 @@ Run the design-system checks against the merged code and record the result. Ever
 - Overlaps with: other verification plans may update the same analysis matrix (one shared file)
 - Adjacent to: the plans verified; their code stays untouched
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions. **Hold.** This plan would verify the
+component set that design session D1 replaces; it is re-grounded after D1–D3 (the verification checks are rewritten against
+the AGREED `components.adoc`, tag family, interaction set and field system). Queue status: `parked` — not emitted until D1,
+D2 and D3 have merged; the Expected Surface above is NOT widened now (a parked row is not in the disjointness gate
+population).
+
 ## Hand-Off Command
 
 Lane: `plan-marshall` (verification plans run in the plan lifecycle, separate from the implementation runs).

@@ -85,6 +85,23 @@ Source of this plan (read before scoping):
 - Overlaps with: none known at staging
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 003, 006, 007, 009). **Hold.
+Gate: D1 and D2 merged** (documents `AGREED`) and the D2 navigation engine; the chat column waits for the D4 web chat
+package. Queue status: `parked`; the orchestrator re-grounds this spec when it is restarted. The Expected Surface above is NOT
+widened now (a parked row is not in the disjointness gate population). When restarted:
+
+- The plan page becomes the **object column** with its head and tabs. **Deliverable 1's head path is dropped** (the top-bar
+  breadcrumb is the only path) and so is its rule that a waiting plan's primary act opens the decision (it is a head link,
+  007 §3) (003).
+- Head slots: `KindMark` · title / `Chip` · `PrChip` · head links · `PhaseLabel` · `StatusLabel` (006).
+- One `ActionBar` with the primary; "Prozess gestalten" and "Abschlussbericht" as head links; the plan's `decision` act is a
+  head link that opens the decision in place; "Spring dorthin" in the phase-tree head; no "Zurück" (007).
+- The chat as a side column (009).
+- `PlanSettingsModal` belongs to this plan (fields per 008; `control.plan.settings` is "Plan-Einstellungen" after `PLAN-109`).
+- Running `PLAN-106` rewrites `WorkControlPanel` act lists; line references into it in messages 007 and 009 are re-read when used.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

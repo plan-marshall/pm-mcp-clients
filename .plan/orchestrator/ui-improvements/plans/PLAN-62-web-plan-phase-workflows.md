@@ -78,6 +78,19 @@ Source of this plan (read before scoping):
 - Overlaps with: `web-plan-page` (same view): runs after it
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 003, 006, 007). **Gate: D1 and
+D2 merged** (documents `AGREED`) and the D1 foundation / D2 navigation engine packages. Queue status: `parked`; the
+orchestrator re-grounds this spec when it is restarted. The Expected Surface above is NOT widened now (a parked row is not in
+the disjointness gate population). When restarted:
+
+- The phase tree is a **column of the plan**; its tree icons must not clash with the kind marks (the icons of this plan stay
+  the phase / task icons; `KindMark` icons are D1's) (003).
+- `PhaseLabel` and `StatusLabel`; no "Phase phase …" in a node row (the node shows "init" with the phase icon) (006).
+- A node row = `RowLink` + a disclosure button with `aria-current` for the selected node; **plain arrows stay with the tree**,
+  `Ctrl+←/→` move between columns (007, 003 §7).
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

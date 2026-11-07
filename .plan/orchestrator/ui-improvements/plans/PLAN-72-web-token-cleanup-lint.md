@@ -67,6 +67,21 @@ Source of this plan (read before scoping):
 - Overlaps with: none known at staging
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 003, 004, 005, 006, 007, 008, 009).
+**Gate: D1, D3 and D4 merged and the per-view packages landed, including "views no staged plan owns".** Queue status:
+`parked`; the orchestrator re-grounds this spec when it is restarted. The Expected Surface above is NOT widened now (a parked
+row is not in the disjointness gate population). When restarted:
+
+- Tokens: the kind tints (Project, Epic, Plan only), `--color-success-subtle` with a value of its own, the diff tokens
+  (`--color-diff-removed` / `--color-diff-added`, valid only inside a proposal diff), the `--color-mascot-*` tokens (003, 006,
+  009, 005). The layout-mode spacing rules go away with `PLAN-111`'s CSS; nothing else to do for 004.
+- **Lints that fail on:** `.badge` and ad-hoc tag classes; raw `<button>` / `<a>` / `<input>` / `<textarea>` / `<select>`;
+  ad-hoc button classes; `href="#"`; `outline: none` outside `lib/components` (006, 007, 008). The D1 foundation adds them as
+  **warnings**; this plan, after the per-view packages, switches them to **errors** and keeps its token and stylelint work.
+- No `{@html}` in the markdown renderer (009).
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

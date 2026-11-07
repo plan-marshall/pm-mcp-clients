@@ -71,6 +71,17 @@ Run the checks of the inbox, running work, start, epic, projects, reports, desig
 - Overlaps with: other verification plans may update the same analysis matrix (one shared file)
 - Adjacent to: the plans verified; their code stays untouched
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 003, 007, 009). **Gate: D1 and
+D2 merged, and the held PLAN-52, PLAN-58 and PLAN-59 landed**; its chat check waits for the D4 web chat package. Queue
+status: `parked`; the orchestrator re-grounds this spec when it is restarted. The Expected Surface above is NOT widened now
+(a parked row is not in the disjointness gate population). When restarted:
+
+- Its `doc/claude_review` checks (e.g. UX-V-01 bottom bar, UX-V-09 ended table, UX-V-12 settings redirect) are **re-grounded
+  against `navigation.adoc` and the D1 `components.adoc` before it runs**.
+- It then checks hover, focus and the danger dialog (007) and the read-only chat (009).
+
 ## Hand-Off Command
 
 Lane: `plan-marshall` (verification plans run in the plan lifecycle, separate from the implementation runs).

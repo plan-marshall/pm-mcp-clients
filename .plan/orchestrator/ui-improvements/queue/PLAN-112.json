@@ -1,0 +1,11 @@
+{
+  "id": "PLAN-112",
+  "slug": "design-d1-component-vocabulary",
+  "workstream": "WS-06",
+  "status": "shipped",
+  "lane": "plan-marshall",
+  "plan_marshall_plan_id": "112-design-d1-component-vocabulary",
+  "pr": "365",
+  "landing": "landings/PLAN-112.md",
+  "seq": 112
+}

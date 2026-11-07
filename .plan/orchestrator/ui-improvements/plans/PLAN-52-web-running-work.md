@@ -81,6 +81,19 @@ Source of this plan (read before scoping):
 - Overlaps with: none known at staging
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 003, 006, 007, 009). **Hold.
+Gate: D1 and D2 merged** (documents `AGREED`) and the D2 navigation engine; its ended-work chat waits for the D4 web chat
+package. Queue status: `parked`; the orchestrator re-grounds this spec when it is restarted. The Expected Surface above is NOT
+widened now (a parked row is not in the disjointness gate population). When restarted:
+
+- Running work goes onto the D2 engine: project list column, running / ended and by plan / by epic as URL modes, follow mode
+  (003). **Its filter chip row (deliverable 1) and its ended-work `DataTable` tab (deliverable 3) are dropped** — the
+  "project sidebar becomes a filter chip row" contradicts the project list column.
+- Row slots (006), `RowLink` and `RowMenu` at the row (007), the ended-work chat read-only (009).
+- Message 002: the start-page toggle is gone (`PLAN-110`); this plan never reintroduces it.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

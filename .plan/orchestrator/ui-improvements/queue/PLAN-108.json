@@ -1,0 +1,11 @@
+{
+  "id": "PLAN-108",
+  "slug": "web-design-docs-residue",
+  "workstream": "WS-06",
+  "status": "shipped",
+  "lane": "plan-marshall",
+  "plan_marshall_plan_id": "108-web-design-docs-residue",
+  "pr": "362",
+  "landing": "landings/PLAN-108.md",
+  "seq": 108
+}

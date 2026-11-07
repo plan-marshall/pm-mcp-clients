@@ -1,0 +1,11 @@
+{
+  "id": "PLAN-111",
+  "slug": "web-drop-layout-modes",
+  "workstream": "WS-03",
+  "status": "shipped",
+  "lane": "plan-marshall",
+  "plan_marshall_plan_id": "111-web-drop-layout-modes",
+  "pr": "363",
+  "landing": "landings/PLAN-111.md",
+  "seq": 111
+}

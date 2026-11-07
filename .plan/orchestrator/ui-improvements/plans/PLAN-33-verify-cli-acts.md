@@ -48,7 +48,7 @@ Run the checks of answering, notices, onboarding, cleanup, the system model and 
 ## Claim Labels
 
 - OBSERVED: the checks are stated in the verification documents of the review — read at `doc/claude_review/cli/use-cases/verification.adoc`
-  - verdict: corroborated | checked_at: cc5794c9 | by: ui-improvements/cleanup | rescoped: n/a | evidence: origin/main: doc/claude_review/cli/use-cases/verification.adoc has CLI-UC-V-04 (l.46) to V-09 (l.78), the six checks the plan names
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: doc/claude_review/cli/use-cases/verification.adoc has CLI-UC-V-04 (:46) to V-09 (:78) and V-10 (:84)
 - Verify-first clause: before running, confirm that every plan named under Depends on has landed on `main`; a dependency that has not landed makes its checks `not verified`.
 
 ## Expected Surface
@@ -61,6 +61,10 @@ Run the checks of answering, notices, onboarding, cleanup, the system model and 
 - Depends on: `PLAN-21` (`cli-answer-dialogue`), `PLAN-13` (`cli-event-contract`, shipped), `PLAN-22` (`cli-state-dialogue-onboarding`, shipped), `PLAN-23` (`cli-cleanup-dialogue`), `PLAN-26` (`cli-system-model`), `PLAN-11` (`mock-cli-fixes`, shipped), `PLAN-76` (`shared-port-assignment`, shipped), and, from the former `PLAN-28` (superseded), `PLAN-02` (`cli-pty-dialogue-harness`, shipped), `PLAN-10` (`cli-choice-prompt-pause`, shipped), `PLAN-17` (`cli-runtime-act-confirm`), `PLAN-20` (`cli-actions-by-state`)
 - Overlaps with: other verification plans may update the same analysis matrix (one shared file)
 - Adjacent to: the plans verified; their code stays untouched
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. Do not emit before PLAN-21 and PLAN-23 land (their dialogue ITs are `@Disabled`, so the answer and cleanup checks would be `not verified`). The Objective says "six checks" but `verification.adoc` now holds CLI-UC-V-04 to V-10 (seven): pin the check ids at outline. `doc/claude_review/verification-results/` holds only `verify-shared-foundation.adoc`; `verify-cli-acts.adoc` is created by this plan.
 
 ## Hand-Off Command
 

@@ -82,6 +82,19 @@ Source of this plan (read before scoping):
 - Overlaps with: none known at staging
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 005, 007, 008, 009). **Gate: D1
+and D3 merged** (documents `AGREED`) and the D1 foundation / D3 brand assets packages; `web-app/onboarding.adoc` is edited by
+D3 and D4 only after the running `PLAN-104` has landed. Queue status: `parked`; the orchestrator re-grounds this spec when it
+is restarted. The Expected Surface above is NOT widened now (a parked row is not in the disjointness gate population). When
+restarted (together with `PLAN-66`):
+
+- Welcome and done figures (the full mascot figure; on "done" the ticked clipboard), the chosen brand icon in the header (005).
+- "Abandon" in the overflow through `ConfirmDialog`; dialogs via `Dialog` (007).
+- `SecretField`, `TextField`, `RadioGroup` / `CheckGroup`; the stray `/>` in `HarnessChoice.svelte:151-152` goes (008).
+- The role `transcribe` in the roles step belongs to the D4 voice package, not to this plan.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

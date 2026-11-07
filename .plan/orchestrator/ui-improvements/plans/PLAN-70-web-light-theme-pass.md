@@ -62,6 +62,17 @@ Source of this plan (read before scoping):
 - Overlaps with: none known at staging
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 001–009). **Gate: D1–D4 merged
+and their implementation packages landed** (the pass checks the final visuals). Queue status: `parked`; the orchestrator
+re-grounds this spec when it is restarted. The Expected Surface above is NOT widened now (a parked row is not in the
+disjointness gate population). When restarted it checks **every visual of messages 001–009 in both themes**: kind tints, state
+tones, reason colours, field look, the mascot (pairing page, empty states, rail foot — the rail-foot opacity against the text
+above it), the chat (including the diff tokens), the new cog icon (`PLAN-109`, in its rail evidence) and the Running-work
+heading without the start-page button (`PLAN-110`). The kind tints exist in both themes and fall under the token lint. **The
+route baselines are re-taken after the views move** (003).
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

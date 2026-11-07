@@ -63,11 +63,11 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/cross-cutting/plan.adoc#CLI-CC-S-03`, `doc/claude_review/cli/ux/plan.adoc#CLI-UX-S-03` — read at `doc/claude_review/cli/cross-cutting/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-mcp-clients main 94bbefe1: doc/claude_review/cli/cross-cutting/plan.adoc:31-32 [#CLI-CC-S-03] Catalogue Completeness; doc/claude_review/cli/ux/plan.adoc:28-29 [#CLI-UX-S-03] The Error Pattern and Exit Codes
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: cross-cutting/plan.adoc:31 [#CLI-CC-S-03], ux/plan.adoc:28 [#CLI-UX-S-03], proposals CC-P-01:9, CC-P-04:87, UX-P-05:93 exist
 - OBSERVED: `LiteralTextGuardTest` exists in `pm-operator` — read at `pm-operator/src/test/java/de/planmarshall/operator/LiteralTextGuardTest.java`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-mcp-clients main 94bbefe1: pm-operator/src/test/java/de/planmarshall/operator/LiteralTextGuardTest.java exists, unchanged since cc5794c9 (no commit touches it)
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: LiteralTextGuardTest.java exists at origin/main aa3a9be3
 - HYPOTHESIS: `LiteralTextGuardTest` does not cover dialogues and `askRaw` — confirm/refute at its source (verify-at-outline)
-  - verdict: contradicted | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: yes | evidence: pm-mcp-clients main 94bbefe1: hypothesis still refuted, unchanged file: LiteralTextGuardTest.java:68-70 RENDER_CALL includes prompt.askRaw; GUARDED (43-65) lists StartDialogue, ChatDialogue, WorkActionDialogue, HoldDialogue, OnboardCommand and more; AnswerCommand, CleanupCommand, RuntimeCommand still absent, so D1 extension (add those three) remains the right scope; rescoping already in spec
+  - verdict: contradicted | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: yes | evidence: RENDER_CALL (~68) includes prompt.askRaw; GUARDED lists StartDialogue, ChatDialogue, WorkActionDialogue, HoldDialogue but not AnswerCommand, CleanupCommand, RuntimeCommand (17-23 English literals each): the rescope to extending the list stands; OnboardCommand is gone (PLAN-97)
 - Exit codes (structure review, 2026-10-30): this plan owns the check of the one table in `01-commands.adoc#exit-codes` for every verb (`ExitCodesTest`); `PLAN-17` (exit `3` for `--no-input`) and `PLAN-26` (exit `1` on a failed read) implement their verbs from the same table before this plan runs, and this plan fails on a verb that breaks it.
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Stale: ExitCodes table in doc/design/terminal-client/01-commands.adoc#exit-codes now has 0,1,2,3,4 and 130 (spec names 1/2/3 only); RefusalRenderer, RefusalRendererTest and ExitCodesTest are still absent (only ReadVerbExitCodesTest exists from PLAN-26); ErrorTexts of PLAN-86 exists at pm-api/.../api/resource/ErrorTexts.java; 03-dialogues.adoc passage on common.error.<code> is now at line 269 (spec says 266) and 09-texts-common.adoc still lists common.error.* (lines 169-208), so the planned rewrite is still due. WebCommand/WorkChatDialogue exist and are guarded.
 - RESCOPE at outline (design audit 2026-11-02): drop the table edits in 09/13 (R4-14: the terminal text tables 09-13 are replaced by links to the implemented .properties packs); move the OnboardCommand strings after D26 (top-level onboard is folded in or removed).
@@ -78,7 +78,6 @@ Source of this plan (read before scoping):
 ## Expected Surface
 
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/AnswerCommand.java` — present at HEAD c4dc9bb4
-- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/OnboardCommand.java` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WorkActionDialogue.java` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/CleanupCommand.java` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/RuntimeCommand.java` — present at HEAD c4dc9bb4
@@ -94,12 +93,22 @@ Source of this plan (read before scoping):
 - OBSERVED: `doc/design/terminal-client/03-dialogues.adoc` — present at HEAD 1b6c6ae3; line 266 says the same: this plan corrects it (added after the landing of `PLAN-86`)
 - OBSERVED: `pm-api/src/main/resources/messages/operator.en.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/operator.de.properties` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/DrainCommand.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/AcceptEditCommand.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ConfigCommand.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WebCommand.java` — present at HEAD aa3a9be3
+- OBSERVED: `pm-api/src/main/java/de/planmarshall/api/resource/ErrorTexts.java` — present (read) at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/test/resources/screen-captures/PLAN-30.txt` — absent; created by this plan at HEAD aa3a9be3
 
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-21` (`cli-answer-dialogue`), `PLAN-22` (`cli-state-dialogue-onboarding`, shipped), `PLAN-23` (`cli-cleanup-dialogue`), `PLAN-17` (`cli-runtime-act-confirm`), `PLAN-86` (`shared-error-texts`)
 - Overlaps with: touches the dialogue classes of WS-04: runs after them
 - Adjacent to: none
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. `OnboardCommand.java` is gone (PLAN-97 folded it; only `OnboardCommandTest.java` remains): its strings in deliverable 1 are void. `GUARDED` in `LiteralTextGuardTest` lists StartDialogue, ChatDialogue, WorkActionDialogue and HoldDialogue but not AnswerCommand, CleanupCommand or RuntimeCommand (17-23 English literals each): the rescope to extending the list stands. `RefusalRenderer`, `RefusalRendererTest` and `ExitCodesTest` are absent (`ReadVerbExitCodesTest` exists); `ErrorTexts` exists in `pm-api` (PLAN-86) but `pm-operator` never uses it; `OperatorRefusedException` has no error code. `01-commands.adoc#exit-codes` now lists 0, 1, 2, 3, 4, 130: the "every verb" `ExitCodesTest` covers the PLAN-97 verbs (`drain`, `accept-edit`, `config`) and the codes 4 and 130. PLAN-21 and PLAN-23 (dependencies) are not landed.
 
 ## Hand-Off Command
 

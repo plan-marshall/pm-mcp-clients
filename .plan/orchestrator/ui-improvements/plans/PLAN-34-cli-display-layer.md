@@ -65,7 +65,7 @@ Source of this plan (read before scoping):
 ## Claim Labels
 
 - OBSERVED: the review of 2026-10-25 states this work in `doc/claude_review/cli/cross-cutting/plan.adoc#CLI-CC-S-04`, `doc/claude_review/cli/cross-cutting/proposals.adoc#CLI-CC-P-02` — read at `doc/claude_review/cli/cross-cutting/plan.adoc`
-  - verdict: corroborated | checked_at: 94bbefe18f62a0b8132821374b3fe4f3b86c852c | by: ui-improvements/cleanup | rescoped: n/a | evidence: pm-mcp-clients main 94bbefe1: doc/claude_review/cli/cross-cutting/plan.adoc:40-41 [#CLI-CC-S-04]; proposals.adoc:22-23 [#CLI-CC-P-02] and :40-41 [#CLI-CC-P-03] unchanged
+  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: cli/cross-cutting/plan.adoc:40-41 [#CLI-CC-S-04], proposals.adoc:22-23 [#CLI-CC-P-02], :40-41 [#CLI-CC-P-03] exist at aa3a9be3
 - Re-grounded note at HEAD 07104678 (2026-10-30): the former `PLAN-81` (superseded) moved its terminal half here: deliverable 1 removes the sort of projects and plans by last activity from `OverviewFormatting` (running work is shown in the order the runtime serves) and shows the plan's size of change in the plan view and the completion level of the terminal client; `PLAN-82` builds the served order and the size in the contract and the mock and adds records to the `overview/` package of `pm-api`, so this plan waits for it. Re-read `OverviewFormatting` at HEAD before the first deliverable.
 - Re-grounded note at HEAD 94bbefe1 (cleanup 2026-11-02): Still not created: pm-api .../api/display/ (no Display). OverviewFormatting.java still sorts by lastActivityAt (sortProjects/sortPlans/sortEpics), so deliverable 1 is still open; PLAN-26 reshaped operator/system (SystemView, SystemLevel, SystemFormatting, package-info) and PLAN-91 added transcript ITs, so re-read before scoping.
 - Verify-first clause: the review was written against HEAD `c4dc9bb4` and read code only to confirm causes. Before each deliverable, re-read the named files at the current HEAD and confirm or refute every HYPOTHESIS above; a refuted cause re-scopes the deliverable and is reported, never silently worked around.
@@ -83,12 +83,46 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/common.en.properties` — present at HEAD c4dc9bb4
 - OBSERVED: `pm-api/src/main/resources/messages/common.de.properties` — present at HEAD c4dc9bb4
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/ProjectsCommand.java` — present at HEAD 14a6f7c0
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/StatusCommand.java` — present at HEAD 14a6f7c0
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WebCommand.java` — present at HEAD 14a6f7c0
+- OBSERVED: `doc/design/terminal-client/08-transcripts-later.adoc` — present at HEAD aa3a9be3
+- OBSERVED: `doc/design/terminal-client/15-overview.adoc` — present at HEAD aa3a9be3
+- OBSERVED: `doc/design/terminal-client/16-plan-view.adoc` — present at HEAD aa3a9be3
+- OBSERVED: `doc/design/terminal-client/17-projects.adoc` — present at HEAD aa3a9be3
+- OBSERVED: `doc/design/terminal-client/18-starting.adoc` — present at HEAD aa3a9be3
+- OBSERVED: `doc/design/terminal-client/19-actions.adoc` — present at HEAD aa3a9be3
+- OBSERVED: `doc/design/shared/plan-view.adoc` — present at HEAD aa3a9be3
+- OBSERVED: `doc/design/shared/completion-report.adoc` — present at HEAD aa3a9be3
+- OBSERVED: `pm-api/src/main/resources/messages/plan_view.en.properties` — present at HEAD aa3a9be3
+- OBSERVED: `pm-api/src/main/resources/messages/plan_view.de.properties` — present at HEAD aa3a9be3
+- OBSERVED: `pm-api/src/main/resources/messages/operator.en.properties` — present at HEAD aa3a9be3
+- OBSERVED: `pm-api/src/main/resources/messages/operator.de.properties` — present at HEAD aa3a9be3
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/transcript/TuiCapabilityIT.java` — present at HEAD aa3a9be3
 
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-06` (`shared-display-vocabulary`, shipped), `PLAN-26` (`cli-system-model`), `PLAN-76` (`shared-port-assignment`, shipped), `PLAN-82` (the served order and the size in the contract and the mock)
 - Overlaps with: `cli-system-model` touches `system/`: runs after it
 - Adjacent to: none
+
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions and `PLAN-108`. Queue status stays
+`staged`. **Deliverable 4 (the rule for ages) is reduced:** because this plan has not landed, `PLAN-108`
+(`web-design-docs-residue`) decides the rule in `doc/design/shared/texts-and-languages.adoc#time` and rewrites the shared
+wireframes (`work-actions.adoc:332`, `paired-devices.adoc:24`, `project-explorer.adoc:26,31,71`, `plan-overview.adoc:141`).
+This plan's deliverable 4 then only applies the decided rule to the client designs (`terminal-client/08`, `15`, `17`, `18`,
+`19`) and to `ProjectsCommand` / the display layer; `19-actions.adoc` is `PLAN-97`'s until it lands. Re-read the decided rule
+at restart (start after `PLAN-108` has merged).
+
+**Added 2026-11-07 (CodeRabbit thread left open on PR 362, `texts-and-languages.adoc:181`, declined in PLAN-108 as this plan's scope):** the terminal's own age formatters still print their own English forms: `ProjectsCommand.java:~317` (`formatRelativeTime`: `yesterday`, `N week(s) ago`, `N month(s) ago`, `just now`), `StatusCommand.java:~478` (`N min ago` / `just now`, English-only in a German session) and `WebCommand.java:~623` (`just now`) — verified by grep at `origin/main` `14a6f7c0`. Deliverable 4 also covers them: they render ages through `Display.time` / the rule PLAN-108 decided (`common.time.*` catalogue keys, `en` and `de`, months and `just now` from the language's relative-time data, no weeks, no bare `yesterday` as an age), with a test per formatter in a German session. Done when: `git grep -nE "just now|weeks? ago|yesterday" -- pm-operator/src/main` names none outside the catalogue (evidence order: `none`), and a German-session test for `status` and `projects` prints `gerade eben` / `vor N …` (evidence order: `test-first`). The open CodeRabbit thread on PR 362 is answered by this pointer when the PLAN-108 landing is analysed.
+
+Expected Surface addition (same act): `pm-operator/src/main/java/de/planmarshall/operator/ProjectsCommand.java`, `pm-operator/src/main/java/de/planmarshall/operator/StatusCommand.java` and `pm-operator/src/main/java/de/planmarshall/operator/WebCommand.java` (present at HEAD 14a6f7c0; they sit beside the `projects/` package entry above, not inside it).
+
+## Re-grounding 2026-11-07 (cleanup)
+
+Checked at `aa3a9be3`. No `Display` class in `pm-api`; `OverviewFormatting` still sorts by `lastActivityAt` (:124-176); the English-only age strings stand in `ProjectsCommand:317-327`, `StatusCommand:478-485`, `WebCommand:623-643`; the decided age rule is in `texts-and-languages.adoc` (~:243: no weeks, no bare yesterday). The client designs still show the old forms (`08-transcripts-later:314`, `15-overview:569-585`, `17-projects:54-58,368-371`, `18-starting:209`). PLAN-97 landed, so the note on `19-actions.adoc` is satisfied (PLAN-112 already rewrote its act texts).
 
 ## Hand-Off Command
 

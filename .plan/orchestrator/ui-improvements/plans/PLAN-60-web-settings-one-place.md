@@ -104,6 +104,21 @@ Source of this plan (read before scoping):
 - Overlaps with: `PLAN-100` (`SettingsView.svelte`, `SettingsView.test.ts`: the settings reads); `PLAN-101` landed (`MachineSettingsView.svelte`: the cleanup record) and its residue is deliverable 4; lands after `PLAN-100`
 - Adjacent to: none
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 001, 003, 008, 009). **Gate: D1
+and D2 merged** (its tabs follow D2's address scheme and routes table) and the D1 foundation package. It **starts after
+`PLAN-109`** (the rail label "Einstellungen" / "Settings" and the cog). Queue status: `parked`; the orchestrator re-grounds
+this spec when it is restarted. The Expected Surface above is NOT widened now (a parked row is not in the disjointness gate
+population). When restarted:
+
+- It owns merging `/settings` and `/settings/machine` into one `/settings` with tabs; under the short rail label
+  "Einstellungen" the two page names are settled once: the rail entry leads to `/settings`, and `activeNavRoute` maps
+  `machine-settings` onto it (001).
+- Its form rule becomes the general settings-form rule: "Speichere" disabled until a change, changed marks, reset; device
+  rename as an inline edit (008). It builds on `Field`, `RadioGroup`, `NumberField`, `SecretField`.
+- The `transcribe` setting and the speech-consent withdrawal belong to the D4 voice package, not to this plan.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

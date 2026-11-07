@@ -255,6 +255,22 @@ plan spec names the plan, proposal and finding documents it comes from.
   message is named as a claim to compare against after the agent has read the diff. The agent writes nothing. The orchestrator verifies every
   finding it records against git or the CI read side, and keeps all ledger writes, the merge-rule check and the decision what to emit.
 
+- WS-06 and the design-review rows (2026-11-06) — PLAN-108 (residue, runs before D1), PLAN-112 (D1 component vocabulary),
+  PLAN-113 (D2 navigation), PLAN-114 (D3 brand and mascot), PLAN-115 (D4 chat and voice) are design sessions: documents only,
+  `Status: DRAFT`, one pull request each (D4: one per repository), no auto-merge, the operator sets `AGREED` as the last commit
+  and the merge on the operator's word. Gate for a waiting plan = the merge of its session's pull request, not the status a
+  document has today. Order: PLAN-108 → D1 → D2 and D3 (D3's pull request merges after D2's) → D4. Hand-off for these rows and
+  for PLAN-109/110/111 is a direct Claude Code session with the absolute spec path in the prompt (operator instruction
+  2026-11-06); the row's `lane` field carries the default and has no meaning for them.
+- PLAN-109 (rail "Settings" label, cog, `control.plan.settings`) and PLAN-110 (drop the start-page toggle) start after the
+  running PLAN-106 lands (`control.*` properties and `runtime.ts`); PLAN-111 (drop the layout modes) shares nothing with a
+  running plan, but not in parallel with PLAN-109 (`common.*.properties`); PLAN-107 (staged) starts after PLAN-97 lands and not in
+  parallel with PLAN-108 (`RowMenu.test.ts`).
+- Parked for the design review (2026-11-06): PLAN-29, 41, 49, 51, 52, 53, 55, 58, 59, 60, 62, 64, 65, 66, 70, 71, 72, 73, 74,
+  75, 83, 85, 88 — each carries a `## Design Review 2026-11-06 (Amendment)` section with its gate. Hold-class (re-ground
+  after D1–D3/D4): 41, 52, 55, 58, 59, 71, 75; PLAN-83 is folded into the D2 engine. Unparked by the merge of the named session
+  and its implementation package, by the orchestrator, with a re-grounding of the spec.
+
 ## Decisions
 
 - 2026-10-25 — Parallelization scope 3, stated by the operator in the invocation.
@@ -516,10 +532,61 @@ plan spec names the plan, proposal and finding documents it comes from.
   theme (same two places, `pm_locale` stays in local storage), so PLAN-85 owns every browser-only setting and its view
   is their one home; PLAN-16 keeps only how the switch refreshes the texts. The rail's collapse button stays on the rail
   (a layout toggle, not a preference). Orchestrator choices open to the operator: the view is called "This browser".
+- 2026-11-06 — DESIGN REVIEW DRAINED (inbox `design-review-001` … `010`, ten `finding` messages from the operator's browser
+  review against the mock runtime; archived under `inbox/archive/design-review/`). The operator's instruction for this drain:
+  analyse thoroughly, re-ground the remaining plans, cover the design aspects first, and emit as direct Claude Code commands,
+  not the runbook lane and not `/plan-marshall`. Message 010 is the index (process, order, document ownership, merged per-plan
+  instructions); 001–009 are its sources. Dispositions (each also a `decision.log` line): **001** Stage PLAN-109; **002** Stage
+  PLAN-110 (and fold into PLAN-49); **003** Stage PLAN-113 (D2) and fold into PLAN-49, 51, 52, 55, 58, 59, 62, 70, 72, 83;
+  **004** Stage PLAN-111 (code) and its design text into PLAN-113; **005** Stage PLAN-114 (D3) and fold into PLAN-49, 64, 66, 70,
+  72, 85; **006/007/008** Stage PLAN-112 (D1) and fold into the plans of 010; **009** Stage PLAN-115 (D4) and fold; **010** folded
+  into every plan it names and into the staging of PLAN-108. Orchestrator choices, open to the operator: (1) The design sessions
+  are staged as ordinary rows in a new workstream **WS-06 design-review** (PLAN-112 to PLAN-115) with the residue package
+  PLAN-108 first; their `lane` field carries the default and means nothing — they run as direct Claude Code sessions with the
+  spec path in the prompt, no auto-merge, the operator sets `AGREED` and the merge word. (2) **Every plan that waits on a design
+  session is `parked`** (23 rows: 29, 41, 49, 51, 52, 53, 55, 58, 59, 60, 62, 64, 65, 66, 70, 71, 72, 73, 74, 75, 83, 85, 88),
+  not left `staged`: `next` never reads "Depends on", so a staged row waiting for design would be emitted by the first free slot;
+  a parked row is also outside the disjointness gate population, so the specs' now-outdated Expected Surface does not mislead the
+  gate while the new component names do not exist. Each parked spec carries a `## Design Review 2026-11-06 (Amendment)`
+  section (gate, instructions, re-ground at restart) and its Expected Surface is deliberately not widened (the fold's surface
+  obligation is discharged by this decision line: the surface is the design sessions' output; the row is parked; re-ground at
+  restart). Still `staged` with an amendment note only: PLAN-34 (the rule for ages moves to PLAN-108 because PLAN-34 has not
+  landed), PLAN-36, PLAN-45. (3) PLAN-74 is cut: its deliverable 1 is dropped, 3 and 4 become PLAN-108, it keeps deliverable 2
+  and `FINAL`. (4) PLAN-83 is parked and becomes `superseded` (naming the D2 navigation engine row) when that package is staged.
+  (5) The new implementation packages — the terminal package (needs-spelling normalisation, D1's shared-text renames; after D1
+  and the running PLAN-104), the D1 foundation, the D2 navigation engine, the D3 brand assets, the D4 contract + mock, the D4 web
+  chat, the D4 voice package, and the package for the views no staged plan owns (System, Cleanup, CompletionReport, Reports,
+  decomposition, Pairing, `HoldResolutionModal`, `FindingsReviewModal`, `ConfinedFilePicker`, `PrAdoptPanel`, `RecipeSelector`) —
+  are NOT staged now; each is staged after its design session has merged, from the AGREED documents (a spec written now would
+  name components that do not exist). See the Watch "Design review 2026-11-06". (6) Verification of the three code-only messages
+  by a read-only sub-agent at HEAD 60b4bfa5 found scope the messages missed, now in the specs: 001 — four e2e specs click the rail
+  entry by its old name, `theme-readability.spec.js:159` matches it, `onboarding-texts.adoc:91-93` is the catalogue row of the
+  key, the terminal asserts the plan-menu label in plain tests (there are no transcript files); 004 — the split state is
+  entangled with the command-palette deep-link, three palette tests pre-set the layout and `decisions.spec.js:217-235` clicks
+  `layout-compact`; 002 — fully corroborated. Order: PLAN-108 → D1 → D2 and D3 → D4; the code runbooks wait for PLAN-106
+  (109, 110), PLAN-111 is independent and not parallel with 109.
+- 2026-11-07 — PLAN-104 LANDED AND ANALYSED (PR #357 `7902d577`, whitespace follow-up PR #361 `14a6f7c0`; `landings/PLAN-104.md`;
+  row `shipped`, lane message archived). Merge-rule verdict PARTLY SATISFIED: Sonar gate green (0 new issues; the rule list
+  `unknown`), but PR 357 is merged with ONE unresolved thread (`EntryFlowStaticsTest:116`, review `5806743402`, posted 18 minutes
+  before the merge, never answered although the lane's last comment says "every thread … resolved"), seven body nitpicks of review
+  `5804837268` unanswered, PR 341's five body items without any reply, and a stale reply on PR 332's `EntryFlow:712` thread. The
+  code side is largely met (Enter addresses by `continue_link`, no `ForTest` surface, `bounded` has its error path, no generic
+  catch outside `EpicCommand`/`PlanCommand`, German row through the catalogue, designs say "7 steps."), with the gaps listed as
+  defects 1-12 there. Orchestrator choices, open to the operator: (1) the residue is staged as **PLAN-116 cli-console-fourth-residue**
+  (WS-04, direct Claude Code session, ports 21160/21161), started after PLAN-97 lands because both rewrite `pm-operator` files
+  (declared surfaces are disjoint; the sequence is a judgement); (2) the free slot goes to **PLAN-111** (drop the layout modes:
+  determinate surface, 0 overlap with PLAN-97, 106, 108); (3) the daemon surface `/api/v1/entries/{id}` that makes Enter on a
+  being-added badge work is an outside-repo request (Watch). Fourth consecutive lane to report "done" for items GitHub does not
+  show; DECIDED by the operator 2026-11-07: small plans go to the runbook lane, design work (PLAN-112 to 115) to direct Claude Code sessions; PLAN-109, 110 and 116 are lane `runbook`. PLAN-111 was started as a direct session and stays one.
+- 2026-11-07 — PLAN-106 LANDED AND ANALYSED (PR #360 `3bdd02a2`, merge queue 09:04Z; `landings/PLAN-106.md`; row `shipped`, lane message archived). Merge rule SATISFIED: one substantive CodeRabbit review (3 items, 4 nitpicks) fixed in `07dfee88` and confirmed by the bot in the threads; threads 0 of 3 (PR 360), 0 of 10 (PR 331), 0 of 16 (PR 320); Sonar gate green, 0 new issues, rules none. Nitpicks answered only by the commit. Gaps (defects 1-9 there): two of the PR's own review fixes (the SystemView epoch advance, `isStopped` after stop-now) are pinned by no test; the unknown running count was kept without a daemon check or design text; the PR 331 correcting reply lost its code spans; the gate cited is four commits old. Orchestrator choices, open to the operator: (1) the residue is staged as **PLAN-117 web-acts-fourth-residue** (WS-03, runbook lane), started after PLAN-110 and PLAN-109 have landed (`runtime.ts`, `work-actions.adoc`, `+layout.svelte`); (2) PLAN-109 and PLAN-110 are unblocked; PLAN-110 goes into the free slot now (disjoint from PLAN-97, 108, 111), PLAN-109 waits for PLAN-111 (`common.*.properties`) and for PLAN-108 to merge (`work-actions.adoc`); (3) PLAN-111 must merge `origin/main` after `d7ee5789` before its pull request is final.
+- 2026-11-07 — PLAN-108 LANDED AND ANALYSED (PR #362 `ddcab793`, merged 10:25Z; `landings/PLAN-108.md`; row `shipped`, inbox message archived). Merge rule SATISFIED: threads 0 of 4 (the declined StatusCommand thread was resolved by the operator's account with the PLAN-34 pointer), Sonar gate green 0 issues, CI green. The product diff is small (RowMenu clear of the bottom bar with a 390 px e2e, one shared `tokenize` rule, the age rule with rows for months and years); 28 of 45 files are test-only flake fixes at the operator's word (309 `nonEmptyStrings`→`nonBlankStrings` swaps in pm-api, `ActionSupportTest` Ctrl+C repeat, `EntryFlowStaticsTest` worker latch, which also fixes PLAN-104's unresolved thread race). Gaps: Playwright is not run in CI (`skipPlaywrightTests=true`), so the 390 px proof is session-local; the capped-menu scroll behaviour, the 30-59 day age row and the dialog z-index wording (50 vs 100) are untested or wrong; `reports.spec.js` (PLAN-105 defect 13) still fails; the terminal code (`ProjectsCommand`, `StatusCommand`, `WebCommand`) contradicts the new age rule until PLAN-34 deliverable 4. Orchestrator choices, open to the operator: (1) the residues are folded into PLAN-116 (thread reply, Ctrl+C note), PLAN-107 (scroll, wait, 30-59 day row, defect 13) and PLAN-112 (z-index wording, `disabledReason`); (2) the free slot goes to **D1 = PLAN-112** as a direct Claude Code session in worktree `112-design-d1-component-vocabulary` (it edits `terminal-client/19-actions.adoc` last, after PLAN-97 has landed); (3) the Ctrl+C window between a drawn question and `readLine` is a recorded hypothesis, not a staged bug. PLAN-111's session reports PR #363 open and green, all Done-when met except the browser check (Claude in Chrome was not connected): the operator decides whether to run the check or waive it before the merge word.
+- 2026-11-07 — PLAN-110 AND PLAN-111 LANDED AND ANALYSED (PR #364 `1d8c6197`, runbook lane; PR #363 `bb30d71e`, direct session; `landings/PLAN-110.md`, `landings/PLAN-111.md`; rows `shipped`). PLAN-110: merge rule satisfied on thin evidence (no CodeRabbit review object, one clean check run; 0 threads; Sonar gate green); the spec contradicted itself (DW1 grep of the stale key vs DW2 test that must write it) and the lane split the key string. SPEC-AUTHORING RULE: a grep Done-when and a test that has to write the same literal are reconciled in the spec (exclude the test file or name the allowed literal). PLAN-111: merge rule satisfied (1 thread, fixed test-first, resolved; Sonar 0); the BROWSER CHECK was waived by the operator (Claude in Chrome was never connected; unverified: scroll position, left border); design text of `needs-and-find.adoc:57` and the layout-modes sections is false until PLAN-113 (amended, with PLAN-51 and PLAN-107). My staging error: the ports of PLAN-109/110/111 were one block below the `AGENTS.md` formula (found by the PLAN-111 session; PLAN-109 corrected, the others ran on free ports). Process finding (not this epic): `sonar_rest search` lists fixed issues (no `resolved=false`), `read_open_issues` filters correctly.
+- 2026-11-07 — PLAN-97 LANDED AND ANALYSED (PR #358 `d8efe35f`, merged 14:38Z through the merge queue; `landings/PLAN-97.md`; row `shipped`, seven inbox messages archived). Merge rule MET ON THE LETTER: one CodeRabbit review, threads 0 of 24, Sonar gate green 0 new issues (86.8% coverage on new code); but the review's BODY holds twelve items beyond the threads that no reply answers (the same class of miss as PLAN-104), the first PR #356 was closed unreviewed at the operator's request, three reviews (functional, code, simplify) were closed by operator override with 13 advisory findings open in the plan's decision log, and the landing facts lack the three required lines. HIGH defect: `drain` can signal an unrelated process (`RuntimeRecord.processAlive` returns true without a start instant; `DrainCommand` then SIGTERMs a reused pid). Also: the machine-derived drain bound and the `help` verb list are untested (one verb list in three places), D4(f)/D4(i) not done, `project add` is only the old `enrol`, `project release`/`unenrol` have no interactive prompt, the design's Q1/Q3 decisions sit only in the PR body. Orchestrator choices, open to the operator: (1) the residue is staged as **PLAN-118 cli-command-tree-residue** (WS-04, runbook lane, ports 21180/21181) with the drain identity first; PLAN-116 keeps the formatting residue; (2) the three free slots go to PLAN-109 (rail Settings label; its one shared file with D1, `work-actions-texts.adoc`, does not block), PLAN-116 and PLAN-118 (they share `PmConsole.java` only); PLAN-107 waits for D1 (RowMenu `disabledReason` is D1's decision and PLAN-107 shares three files with PLAN-109), PLAN-117 waits for PLAN-109. Rule candidate: a landing whose review BODY items are unanswered is not 'handled'; the next specs state it in the Standing Constraints (already done for 116, 117, 118).
+- 2026-11-07 — PLAN-112 (DESIGN D1) MERGED AND RECORDED (PR #365 `aa3a9be3`, 16:13Z, on the operator's word; `landings/PLAN-112.md`; row `shipped`, message archived). 29 threads, 0 unresolved; the session's first resolve pass closed 12 new CodeRabbit comments before reading them, it reopened and fixed or answered them in `836cf806` before the merge. THE GATE IS OPEN: the documents merged at `Status: DRAFT`; the specs of D2, D3, D4 and the waiting web plans gate on the merge WITH the documents at `AGREED`. D2 (PLAN-113) and D3 (PLAN-114) are not emitted until the operator sets `AGREED` (a small status-only pull request, which the D1 session offered) or records a waiver. Hand-offs: the terminal package (console badge words `question`/`waiver request` → `decision`/`waiver`, `PmConsole.java:741`, `OverviewFormatting.java:197-199`, `ConsolePrompt.java`) and the catalogue clean-up package (deferred reload may fetch a missing locale from a newer runtime) are to be staged from the AGREED documents.
 
 ## Open Defects
 
-- 2026-11-06 — OPEN OUTSIDE THIS REPOSITORY (owner `plan-marshall/plan-marshall-mcp`, no plan there): (1) the real `pm-mcpd` accepting `{with_plans, reason}` on an epic cancel and sending `drain_remaining_items` was not checkable by PLAN-100; (2) a runtime that serves an id or route per drain item (`doc/design/shared/system.adoc` `<<one-step>>` says an item is a name, not a step, until it does); (3) `pm-mcpd` accepting the cleanup record `cleanup_durations` (PLAN-60 D4). The operator may open ledger items there.
+- 2026-11-06 — OPEN OUTSIDE THIS REPOSITORY (owner `plan-marshall/plan-marshall-mcp`, no plan there): (1) the real `pm-mcpd` accepting `{with_plans, reason}` on an epic cancel and sending `drain_remaining_items` was not checkable by PLAN-100; (2) a runtime that serves an id or route per drain item (`doc/design/shared/system.adoc` `<<one-step>>` says an item is a name, not a step, until it does); (3) `pm-mcpd` accepting the cleanup record `cleanup_durations` (PLAN-60 D4); (4) 2026-11-07 (PLAN-104 landing): the state and act surface `/api/v1/entries/{id}` of a pre-enrolment run, without which Enter on a being-added badge in the console only reports the run as unreadable (`04-console.adoc` "Addressing a Being-Added Project"). The operator may open ledger items there. (5) 2026-11-07 (PLAN-108 landing, in this repository): the Playwright suite (`pm-web-e2e`) is not run in CI (`skipPlaywrightTests=true` by default), so every e2e Done-when is session-local evidence; `reports.spec.js` "marks all shown reports read" fails at base (PLAN-105 defect 13, folded into PLAN-107). (6) 2026-11-07 (PLAN-97 landing): the real `pm-mcpd` answers the withdraw `DELETE /api/v1/operator/runtime/stop` with 405 and whether it serves the operator stop route that `runtime stop` POST moved to (from `/api/v1/runtime/stop`) is unverified; the web app still posts the legacy path (owner `plan-marshall/plan-marshall-mcp`).
 - 2026-11-06 — DECIDED by the operator (option A): the unfiltered "Mark all shown read" of the reports page marks the reports the list shows by their ids, never everything, as `doc/design/shared/reports.adoc` 182/184 and the label say; PLAN-102 D1c (`{ all: true }`, merged in PR #340) is amended by PLAN-105 deliverable 1 (`landings/PLAN-102.md` defect 1). PLAN-105 is emittable.
 - 2026-11-06 — LOW defect 17 of PLAN-102 (`landings/PLAN-102.md`): `RowMenu.svelte` 216-232 `:focus` and `:focus-visible` rules are identical, a mouse open draws the focus ring; folded into PLAN-105 deliverable 2 (decide and test).
 - 2026-11-05 — Two LOW defects of PLAN-101 (`landings/PLAN-101.md` 5, 6) have no staged plan touching their files: `check-build-output.mjs` `deriveDevMarkers`/`devPageRoute` guards only the first dev page below the prefix and the plugin's `DEV_PAGE_IMPORT` regex (`devRouteExclusion.ts`) hard-codes `src/routes/dev/`; the block-comment strip of `strictPortIsBound` (`guard-ports.js` 94-96) has no test case. Re-check at the next plan that touches the build check or the port guard.
@@ -917,3 +984,19 @@ plan spec names the plan, proposal and finding documents it comes from.
   to be left out, so the overview and the activity (whole footer fits) do not end with it. — PLAN-56
   (`verify-cli-interaction`, `CLI-UX-V-02`) takes the design, not the clause, as its criterion; check the clause
   before emitting it.
+- Design review 2026-11-06 (opened by the drain of `design-review-001` … `010`): (1) After each design pull request merges,
+  stage the packages it unlocks from the AGREED documents and re-ground the parked plans it gates — the terminal package (after D1
+  and PLAN-104), D1 foundation (components, catalogue clean-up, lints as warnings), D2 navigation engine (supersede PLAN-83 naming
+  it), D3 brand assets and icon, D4 contract + mock, D4 web chat, D4 voice package, and the package for the views no staged plan
+  owns; PLAN-72 later switches the lints to errors. (2) Open points the sessions settle with the operator: the D2 width table
+  (from the column-window prototype), the D3 icon (A bear head or B star clipboard, on the review sheet) and the pose artwork
+  (operator or a named image tool), the D4 staging-window entry in the roadmap. Decided already: kind tints only for Project,
+  Epic and Plan; German buttons in the du-imperative; bottom bar What waits · Running work · Decisions · More; the mascot is the
+  operator's own work; the rail-foot bear is a reversible test; `marked` is approved for `pm-web-app` (to be recorded in
+  `chat.adoc`); syntax highlighting is a later, separate dependency decision. (3) D4 files requests outside this repository:
+  `plan-marshall/pm-mcp-core` (streaming `chat.reply`, the `transcribe` role) and `plan-marshall/plan-marshall-mcp` (routes,
+  events, `Permissions-Policy`), and changes requirements and specification in `plan-marshall-documentation` first. (4) The sender
+  may amend a drained message no more (archived messages are frozen): further review points arrive as new messages. (5) Recheck
+  at each landing: the line references in the messages into `WorkControlPanel` are re-read (PLAN-106 rewrites its act lists),
+  and `terminal-client/19-actions.adoc` (PLAN-97) and `web-app/onboarding.adoc` (PLAN-104) are not edited by D1/D3/D4 before those
+  plans land.

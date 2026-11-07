@@ -60,6 +60,16 @@ Source of this plan (read before scoping):
 - Overlaps with: none known
 - Adjacent to: `PLAN-54` (reports; the other half of the former plan)
 
+## Design Review 2026-11-06 (Amendment)
+
+Source: `inbox/archive/design-review/design-review-010.md` § Per-plan instructions (messages 007, 008). **Gate: D1 merged**
+(document `AGREED`) and the D1 foundation package. Queue status: `parked`; the orchestrator re-grounds this spec when it is
+restarted. The Expected Surface above is NOT widened now (a parked row is not in the disjointness gate population). When
+restarted:
+
+- `.intake-mode` → `SegmentedControl`, hand-rolled dialogs → `Dialog`, the two "Open" labels named apart (007).
+- Frontmatter via `Field`, the file and paste inputs, the project as `SelectField` (008).
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).
