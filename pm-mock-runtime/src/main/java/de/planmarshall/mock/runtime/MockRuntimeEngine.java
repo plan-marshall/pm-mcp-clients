@@ -5942,6 +5942,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * Serves the page of the one list of what waits: the fixture's items, parsed through the
      * contract's own record, in the runtime's order — the items that block running work first, then
      * the oldest.
+     * <p>
+     * Unchanged since the page was introduced (PR #284): the clause PLAN-95 D3 left open asked for
+     * this page or the reason it is not served, and the page is served here. The clause's other
+     * half, an item id, is not carried because the contract's {@link NeedsOperatorItem} has none: an
+     * id is a change of the record and of every client that reads it, not of this route.
      */
     private void serveNeedsOperatorPage(MockHttpResponse response) throws IOException {
         var route = activeRoute("GET", MachineApiPaths.NEEDS_OPERATOR);
