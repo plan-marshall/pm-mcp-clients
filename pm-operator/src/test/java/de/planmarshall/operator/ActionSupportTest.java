@@ -212,7 +212,9 @@ class ActionSupportTest {
                     virtual.type("\n");
                     proposalAccepted = true;
                 }
-                if (proposalAccepted && !interrupted && text.contains(interruptMarker)) {
+                // The reader installs its interrupt handler only once it reads, and a Ctrl+C that comes
+                // before it is dropped, so the interrupt repeats until the dialogue has left.
+                if (proposalAccepted && (interrupted || text.contains(interruptMarker))) {
                     interrupted = true;
                     virtual.terminal().raise(Terminal.Signal.INT);
                     virtual.type("\u0003");
@@ -220,7 +222,8 @@ class ActionSupportTest {
                 LockSupport.parkNanos(Duration.ofMillis(20).toNanos());
             }
             reader.join(TimeUnit.SECONDS.toMillis(5));
-            assertFalse(reader.isAlive(), "the dialogue did not leave after the interrupt: " + out);
+            assertFalse(reader.isAlive(), "the dialogue did not leave after the interrupt: " + out
+                                + "\n" + String.join("\n", virtual.screen().lines()));
             assertNull(failure.get(), "the dialogue failed: " + failure.get());
             assertTrue(interrupted, interruptMarker + " was never reached: " + out);
             return code.get();

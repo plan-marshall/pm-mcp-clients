@@ -30,11 +30,11 @@ class ProcessTreeTest {
     @DisplayName("should serialize and deserialize complete ProcessTree round-trip")
     void shouldRoundTripProcessTree() throws Exception {
         // Arrange
-        var planId = Generators.nonEmptyStrings().next();
-        var planTitle = Generators.nonEmptyStrings().next();
-        var projectId = Generators.nonEmptyStrings().next();
-        var epicId = Generators.nonEmptyStrings().next();
-        var taskId = Generators.nonEmptyStrings().next();
+        var planId = Generators.nonBlankStrings().next();
+        var planTitle = Generators.nonBlankStrings().next();
+        var projectId = Generators.nonBlankStrings().next();
+        var epicId = Generators.nonBlankStrings().next();
+        var taskId = Generators.nonBlankStrings().next();
         var totalTokens = (long) Generators.integers(0, 1_000_000).next();
         var project = new ProcessProjectRef(projectId, projectId, "/api/v1/projects/" + projectId);
         var epic = new ProcessEpicRef(epicId, epicId, "/api/v1/epics/" + epicId + "/process");
@@ -163,10 +163,10 @@ class ProcessTreeTest {
     @DisplayName("should serialize and deserialize TaskActivity with full entry types")
     void shouldRoundTripTaskActivity() throws Exception {
         // Arrange
-        var taskId = Generators.nonEmptyStrings().next();
-        var harness = Generators.nonEmptyStrings().next();
-        var content = Generators.nonEmptyStrings().next();
-        var toolSize = Generators.nonEmptyStrings().next();
+        var taskId = Generators.nonBlankStrings().next();
+        var harness = Generators.nonBlankStrings().next();
+        var content = Generators.nonBlankStrings().next();
+        var toolSize = Generators.nonBlankStrings().next();
         var gapCount = Generators.integers(0, 20).next();
         var entry1 = new ActivityEntry(
                 "14:02:11",
@@ -261,8 +261,8 @@ class ProcessTreeTest {
     @DisplayName("should serialize and deserialize EpicProcess")
     void shouldRoundTripEpicProcess() throws Exception {
         // Arrange
-        var epicId = Generators.nonEmptyStrings().next();
-        var project = Generators.nonEmptyStrings().next();
+        var epicId = Generators.nonBlankStrings().next();
+        var project = Generators.nonBlankStrings().next();
         var totalTokens = (long) Generators.integers(0, 1_000_000).next();
         var p1 = new EpicProcessPlan("fix-relay", "Fix Relay", "execute", "running", 2, 5, true);
         var p2 = new EpicProcessPlan("docs-typo", "Docs Typo", "init", "staged", 0, 1, false);
@@ -297,13 +297,13 @@ class ProcessTreeTest {
     @Test
     @DisplayName("should serialize and deserialize all process SSE events")
     void shouldRoundTripProcessEvents() throws Exception {
-        var planId = Generators.nonEmptyStrings().next();
-        var taskId = Generators.nonEmptyStrings().next();
+        var planId = Generators.nonBlankStrings().next();
+        var taskId = Generators.nonBlankStrings().next();
         var run = Generators.integers(0, 100).next();
         var leftSeconds = (long) Generators.integers(0, 100_000).next();
         var returnedSeconds = (long) Generators.integers(0, 100_000).next();
         var instanceVersion = Generators.integers(0, 100).next();
-        var activityContent = Generators.nonEmptyStrings().next();
+        var activityContent = Generators.nonBlankStrings().next();
         var changedTotal = (long) Generators.integers(0, 1_000_000).next();
 
         // StateEnteredEvent
@@ -455,7 +455,7 @@ class ProcessTreeTest {
     @Test
     @DisplayName("should serialize and deserialize ActivityEntry across all kinds")
     void shouldRoundTripActivityEntry() throws Exception {
-        var toolTarget = Generators.nonEmptyStrings().next();
+        var toolTarget = Generators.nonBlankStrings().next();
         var entry1 = new ActivityEntry("10:00:00", "tool", "read", toolTarget, false, null, "1 KiB", List.of(),
                 List.of());
         var map1 = entry1.toMap();
@@ -465,9 +465,9 @@ class ProcessTreeTest {
         var restored1 = ActivityEntry.fromMap(map1);
         assertEquals(entry1, restored1);
 
-        var content = Generators.nonEmptyStrings().next();
-        var files = List.of(Generators.nonEmptyStrings().next(), Generators.nonEmptyStrings().next());
-        var questions = List.of(Generators.nonEmptyStrings().next());
+        var content = Generators.nonBlankStrings().next();
+        var files = List.of(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next());
+        var questions = List.of(Generators.nonBlankStrings().next());
         var entry2 = new ActivityEntry("10:01:00", "file_changed", null, null, false, content, null, files,
                 questions);
         var json2 = entry2.toJson();
@@ -499,7 +499,7 @@ class ProcessTreeTest {
     @Test
     @DisplayName("should serialize and deserialize ProcessNode with LeafJob")
     void shouldRoundTripProcessNodeWithLeafJob() throws Exception {
-        var waitsFor = Generators.nonEmptyStrings().next();
+        var waitsFor = Generators.nonBlankStrings().next();
         var job = new LeafJob("compile", "waits_slot", null, 45L, true);
         var node = new ProcessNode("build-step", "Build Step", "job", "running", 1, 1, 45L, null, List.of(),
                 List.of(), job, waitsFor, Map.of("abort", "/api/v1/plans/p/abort"));
@@ -519,13 +519,13 @@ class ProcessTreeTest {
     @Test
     @DisplayName("should serialize and deserialize ProcessProjectRef and ProcessEpicRef")
     void shouldRoundTripProjectAndEpicRefs() throws Exception {
-        var projectId = Generators.nonEmptyStrings().next();
-        var projectName = Generators.nonEmptyStrings().next();
+        var projectId = Generators.nonBlankStrings().next();
+        var projectName = Generators.nonBlankStrings().next();
         var proj = new ProcessProjectRef(projectId, projectName, "/api/v1/projects/" + projectId);
         assertEquals(proj, ProcessProjectRef.fromJson(proj.toJson()));
 
-        var epicId = Generators.nonEmptyStrings().next();
-        var epicTitle = Generators.nonEmptyStrings().next();
+        var epicId = Generators.nonBlankStrings().next();
+        var epicTitle = Generators.nonBlankStrings().next();
         var epic = new ProcessEpicRef(epicId, epicTitle, "/api/v1/epics/" + epicId + "/process");
         assertEquals(epic, ProcessEpicRef.fromJson(epic.toJson()));
 

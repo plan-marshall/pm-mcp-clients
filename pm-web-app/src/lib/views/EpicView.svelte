@@ -680,7 +680,7 @@
                   {countsText(workstream.rows)}
                 </span>
               </h3>
-              {#if query.trim().length > 0 || isWorkstreamOpen(workstream)}
+              {#if queryTokens.length > 0 || isWorkstreamOpen(workstream)}
                 <div class="workstream__rows">
                   {#each workstream.rows as row (row.plan_id)}
                     <div class="workstream__row" data-testid={`epic-row-${row.plan_id}`}>

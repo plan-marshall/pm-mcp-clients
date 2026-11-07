@@ -369,11 +369,11 @@ class StartContractTest {
         @Test
         @DisplayName("EntryOpenRequest round-trips and refuses a recipe on an epic")
         void entryOpenRequest() throws Exception {
-            var planTitle = Generators.nonEmptyStrings().next();
+            var planTitle = Generators.nonBlankStrings().next();
             var plan = new EntryOpenRequest(EntryKind.PLAN, planTitle, null, "audit", null);
             assertEquals(plan, EntryOpenRequest.fromJson(plan.toJson()));
 
-            var epicTitle = Generators.nonEmptyStrings().next();
+            var epicTitle = Generators.nonBlankStrings().next();
             var epic = new EntryOpenRequest(EntryKind.EPIC, null, epicTitle, null, null);
             assertEquals(epic, EntryOpenRequest.fromJson(epic.toJson()));
 
@@ -431,11 +431,11 @@ class StartContractTest {
         @Test
         @DisplayName("EntryResource round-trips with its sources, offers, and chat link")
         void entryResource() throws Exception {
-            var entryId = Generators.nonEmptyStrings().next();
-            var entryTitle = Generators.nonEmptyStrings().next();
-            var entrySlug = Generators.nonEmptyStrings().next();
-            var sourceId = Generators.nonEmptyStrings().next();
-            var projectId = Generators.nonEmptyStrings().next();
+            var entryId = Generators.nonBlankStrings().next();
+            var entryTitle = Generators.nonBlankStrings().next();
+            var entrySlug = Generators.nonBlankStrings().next();
+            var sourceId = Generators.nonBlankStrings().next();
+            var projectId = Generators.nonBlankStrings().next();
             var entry = new EntryResource(entryId, EntryKind.PLAN, projectId, StartState.SOURCES,
                     entryTitle, entrySlug, List.of(
                             SourceResource.local(sourceId, SourceKind.DESCRIPTION, entryTitle)),

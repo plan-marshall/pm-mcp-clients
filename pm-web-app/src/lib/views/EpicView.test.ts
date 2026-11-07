@@ -571,6 +571,19 @@ describe('EpicView component', () => {
     expect(screen.getByTestId('epic-row-relay-docs')).toBeInTheDocument();
   });
 
+  it('keeps a folded workstream folded for a query of punctuation alone, which is no filter', async () => {
+    vi.spyOn(apiClient, 'getEpicResource').mockResolvedValue(mockResource);
+    render(EpicView);
+    await screen.findByTestId('workstream-WS-1');
+    await fireEvent.click(screen.getByTestId('workstream-toggle-WS-1'));
+    expect(screen.queryByTestId('epic-row-relay-docs')).not.toBeInTheDocument();
+
+    await typeFilter('...');
+
+    expect(screen.getByTestId('workstream-WS-1')).toBeInTheDocument();
+    expect(screen.queryByTestId('epic-row-relay-docs')).not.toBeInTheDocument();
+  });
+
   it('opens the raise dialogue with the unknown count text when the epic resource omits running', async () => {
     vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue({
       subject_id: 'relay-hardening',

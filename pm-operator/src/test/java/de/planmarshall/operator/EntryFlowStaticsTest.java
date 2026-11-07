@@ -84,6 +84,7 @@ class EntryFlowStaticsTest {
     void anInterruptedWaitInterruptsTheWorker() throws Exception {
         var workerStarted = new CountDownLatch(1);
         var workerInterrupted = new AtomicBoolean();
+        var workerLeft = new CountDownLatch(1);
         var callerFlagKept = new AtomicBoolean();
         var failure = new AtomicReference<IOException>();
         // The caller is interrupted only once the worker blocks, so the interrupt releases a worker
@@ -98,6 +99,7 @@ class EntryFlowStaticsTest {
                         Thread.currentThread().interrupt();
                     }
                     workerInterrupted.set(Thread.currentThread().isInterrupted());
+                    workerLeft.countDown();
                     return "late";
                 }, Duration.ofSeconds(30), "interrupted-read");
             } catch (IOException e) {
@@ -109,6 +111,9 @@ class EntryFlowStaticsTest {
         assertTrue(workerStarted.await(5, TimeUnit.SECONDS), "the worker must have started");
         caller.interrupt();
         caller.join(5_000);
+        // The read interrupts its worker and returns at once, so the worker records what it saw
+        // after the caller has left: the check waits for the worker, never for the caller alone.
+        assertTrue(workerLeft.await(5, TimeUnit.SECONDS), "the worker must have left its wait");
 
         assertAll(
                             () -> assertNotNull(failure.get(), "the read must fail when the caller is interrupted"),

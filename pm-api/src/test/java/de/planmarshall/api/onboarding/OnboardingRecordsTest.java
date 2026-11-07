@@ -37,19 +37,6 @@ import de.planmarshall.api.system.CleanupDurations;
 @EnableGeneratorController
 class OnboardingRecordsTest {
 
-    /**
-     * @return a generated string that is not blank, so a value a record treats as absent is a value
-     */
-    private static String nonBlankString() {
-        for (var attempt = 0; attempt < 100; attempt++) {
-            var value = Generators.nonEmptyStrings().next();
-            if (!value.isBlank()) {
-                return value;
-            }
-        }
-        throw new IllegalStateException("Generators.nonEmptyStrings produced only blank values");
-    }
-
     @Nested
     @DisplayName("OnboardingAspect")
     class AspectTests {
@@ -102,9 +89,9 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("round-trips through JSON with its channel and script count")
         void shouldRoundTrip() throws Exception {
-            var recordedAt = Generators.nonEmptyStrings().next();
-            var channel = Generators.nonEmptyStrings().next();
-            var projectId = Generators.nonEmptyStrings().next();
+            var recordedAt = Generators.nonBlankStrings().next();
+            var channel = Generators.nonBlankStrings().next();
+            var projectId = Generators.nonBlankStrings().next();
             var scriptCount = Generators.integers(0, 100).next();
             var consent = new ConsentRecord(ConsentKind.RUN_CHECKOUT_SCRIPTS, ConsentStatus.REMEMBERED,
                     true, recordedAt, channel, projectId, scriptCount);
@@ -131,11 +118,11 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("round-trips a partial report with its missing figures and default mark")
         void shouldRoundTripPartial() throws Exception {
-            var harnessId = Generators.nonEmptyStrings().next();
-            var name = Generators.nonEmptyStrings().next();
-            var executable = Generators.nonEmptyStrings().next();
-            var version = Generators.nonEmptyStrings().next();
-            var missingFigure = Generators.nonEmptyStrings().next();
+            var harnessId = Generators.nonBlankStrings().next();
+            var name = Generators.nonBlankStrings().next();
+            var executable = Generators.nonBlankStrings().next();
+            var version = Generators.nonBlankStrings().next();
+            var missingFigure = Generators.nonBlankStrings().next();
             var harness = new HarnessScanResult(harnessId, name, executable,
                     version, true, true, true, TokenUsageCoverage.PARTIAL,
                     List.of(missingFigure), true, null);
@@ -164,10 +151,10 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("round-trips and compares by harness and model")
         void shouldRoundTrip() throws Exception {
-            var harnessId = Generators.nonEmptyStrings().next();
-            var modelId = Generators.nonEmptyStrings().next();
-            var source = Generators.nonEmptyStrings().next();
-            var otherSource = Generators.nonEmptyStrings().next();
+            var harnessId = Generators.nonBlankStrings().next();
+            var modelId = Generators.nonBlankStrings().next();
+            var source = Generators.nonBlankStrings().next();
+            var otherSource = Generators.nonBlankStrings().next();
             var entry = new ModelCatalogueEntry(harnessId, modelId, source);
 
             var parsed = ModelCatalogueEntry.fromJson(entry.toJson());
@@ -186,18 +173,18 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("reports an unassigned role")
         void shouldReportUnassigned() throws Exception {
-            var roleId = Generators.nonEmptyStrings().next();
-            var harnessId = nonBlankString();
-            var modelId = nonBlankString();
-            var effort = Generators.nonEmptyStrings().next();
-            var origin = Generators.nonEmptyStrings().next();
+            var roleId = Generators.nonBlankStrings().next();
+            var harnessId = Generators.nonBlankStrings().next();
+            var modelId = Generators.nonBlankStrings().next();
+            var effort = Generators.nonBlankStrings().next();
+            var origin = Generators.nonBlankStrings().next();
             var assigned = new RoleAssignment(roleId, harnessId, modelId, effort, origin);
             var parsed = RoleAssignment.fromJson(assigned.toJson());
             assertEquals(assigned, parsed);
             assertTrue(parsed.assigned());
 
-            var openRoleId = Generators.nonEmptyStrings().next();
-            var openOrigin = Generators.nonEmptyStrings().next();
+            var openRoleId = Generators.nonBlankStrings().next();
+            var openOrigin = Generators.nonBlankStrings().next();
             var open = new RoleAssignment(openRoleId, null, null, null, openOrigin);
             assertFalse(open.assigned());
             assertEquals(open, RoleAssignment.fromJson(open.toJson()));
@@ -237,12 +224,12 @@ class OnboardingRecordsTest {
         @DisplayName("round-trips the whole machine settings record")
         void shouldRoundTrip() throws Exception {
             var revision = Generators.integers(0, 100).next();
-            var aspectLabel = Generators.nonEmptyStrings().next();
-            var aspectLanguage = Generators.nonEmptyStrings().next();
-            var uiLanguage = Generators.nonEmptyStrings().next();
-            var documentsLanguage = Generators.nonEmptyStrings().next();
-            var consentAt = Generators.nonEmptyStrings().next();
-            var consentOrigin = Generators.nonEmptyStrings().next();
+            var aspectLabel = Generators.nonBlankStrings().next();
+            var aspectLanguage = Generators.nonBlankStrings().next();
+            var uiLanguage = Generators.nonBlankStrings().next();
+            var documentsLanguage = Generators.nonBlankStrings().next();
+            var consentAt = Generators.nonBlankStrings().next();
+            var consentOrigin = Generators.nonBlankStrings().next();
             var settings = new MachineSettingsRecord(
                     revision,
                     List.of(new MachineSettingsAspectSummary(OnboardingAspect.LANGUAGE, aspectLabel, aspectLanguage)),
@@ -342,7 +329,7 @@ class OnboardingRecordsTest {
             assertEquals(step, OnboardingStepCompletedEvent.fromJson(step.toJson()));
 
             var revision = Generators.integers(0, 100).next();
-            var origin = Generators.nonEmptyStrings().next();
+            var origin = Generators.nonBlankStrings().next();
             var settings = new MachineSettingsChangedEvent("documents_mode", "copy", revision, origin);
             assertEquals("machine.settings_changed", MachineSettingsChangedEvent.EVENT_NAME);
             assertEquals(settings, MachineSettingsChangedEvent.fromJson(settings.toJson()));
@@ -356,7 +343,7 @@ class OnboardingRecordsTest {
         @Test
         @DisplayName("round-trips an item and its closed list of reasons")
         void shouldRoundTripItem() throws Exception {
-            var summary = Generators.nonEmptyStrings().next();
+            var summary = Generators.nonBlankStrings().next();
             var item = new AutoResultItem(OnboardingAspect.HARNESSES, summary, AutoResultReason.ALL_SUPPORTED);
 
             var parsed = AutoResultItem.fromJson(item.toJson());
@@ -514,10 +501,10 @@ class OnboardingRecordsTest {
         void shouldRoundTripUsage() throws Exception {
             var usage = new HarnessUsageReport(TokenUsageCoverage.PARTIAL,
                     Map.of(UsageFigure.CACHE_WRITE, UsageFigureStatus.NOT_REPORTED));
-            var harnessId = Generators.nonEmptyStrings().next();
-            var name = Generators.nonEmptyStrings().next();
-            var executable = Generators.nonEmptyStrings().next();
-            var version = Generators.nonEmptyStrings().next();
+            var harnessId = Generators.nonBlankStrings().next();
+            var name = Generators.nonBlankStrings().next();
+            var executable = Generators.nonBlankStrings().next();
+            var version = Generators.nonBlankStrings().next();
             var harness = new HarnessScanResult(harnessId, name, executable,
                     version, true, true, true, TokenUsageCoverage.PARTIAL, List.of("cache_write"), true, usage);
 

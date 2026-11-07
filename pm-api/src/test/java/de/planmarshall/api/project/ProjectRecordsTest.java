@@ -65,8 +65,8 @@ class ProjectRecordsTest {
     @Test
     @DisplayName("validates EnrolledProject serialization and deserialization round-trip")
     void enrolledProjectRoundTrip() throws Exception {
-        var projectId = Generators.nonEmptyStrings().next();
-        var displayName = Generators.nonEmptyStrings().next();
+        var projectId = Generators.nonBlankStrings().next();
+        var displayName = Generators.nonBlankStrings().next();
         var needsOperatorCount = Generators.integers(0, 10).next();
         var activePlansCount = Generators.integers(0, 10).next();
         var activeEpicsCount = Generators.integers(0, 10).next();
@@ -104,7 +104,7 @@ class ProjectRecordsTest {
         );
 
         // Fallback checks
-        var minimalId = Generators.nonEmptyStrings().next();
+        var minimalId = Generators.nonBlankStrings().next();
         var minimal = EnrolledProject.fromMap(Map.of("id", minimalId));
         assertEquals(minimalId, minimal.projectId());
         assertEquals(minimalId, minimal.displayName());
@@ -117,11 +117,11 @@ class ProjectRecordsTest {
     @Test
     @DisplayName("validates BeingAddedProject round-trip")
     void beingAddedProjectRoundTrip() throws Exception {
-        var checkoutPath = "/git/" + Generators.nonEmptyStrings().next();
-        var currentStep = Generators.nonEmptyStrings().next();
+        var checkoutPath = "/git/" + Generators.nonBlankStrings().next();
+        var currentStep = Generators.nonBlankStrings().next();
         var stepNumber = Generators.integers(1, 5).next();
         var totalSteps = stepNumber + Generators.integers(1, 5).next();
-        var entryId = Generators.nonEmptyStrings().next();
+        var entryId = Generators.nonBlankStrings().next();
         var beingAdded = new BeingAddedProject(
                 checkoutPath,
                 currentStep,
@@ -151,11 +151,11 @@ class ProjectRecordsTest {
     @Test
     @DisplayName("validates ProjectExplorer round-trip")
     void projectExplorerRoundTrip() throws Exception {
-        var favouriteId = Generators.nonEmptyStrings().next();
-        var recentId = Generators.nonEmptyStrings().next();
-        var favouriteName = Generators.nonEmptyStrings().next();
-        var recentName = Generators.nonEmptyStrings().next();
-        var checkoutPath = "/tmp/" + Generators.nonEmptyStrings().next();
+        var favouriteId = Generators.nonBlankStrings().next();
+        var recentId = Generators.nonBlankStrings().next();
+        var favouriteName = Generators.nonBlankStrings().next();
+        var recentName = Generators.nonBlankStrings().next();
+        var checkoutPath = "/tmp/" + Generators.nonBlankStrings().next();
         var fav = new EnrolledProject(
                 favouriteId, favouriteName, null, ProjectReadiness.READY, null, 0, 1, 0, null, true, false
         );
@@ -194,8 +194,8 @@ class ProjectRecordsTest {
     @Test
     @DisplayName("validates FavouritesUpdateRequest round-trip")
     void favouritesUpdateRequestRoundTrip() throws Exception {
-        var projectIds = List.of(Generators.nonEmptyStrings().next(), Generators.nonEmptyStrings().next(),
-                Generators.nonEmptyStrings().next());
+        var projectIds = List.of(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next(),
+                Generators.nonBlankStrings().next());
         var request = new FavouritesUpdateRequest(projectIds);
         var json = request.toJson();
         assertNotNull(json);
@@ -209,11 +209,11 @@ class ProjectRecordsTest {
     @Test
     @DisplayName("validates ProjectOnboarding round-trip")
     void projectOnboardingRoundTrip() throws Exception {
-        var onboardingId = Generators.nonEmptyStrings().next();
-        var checkoutPath = "/home/" + Generators.nonEmptyStrings().next();
-        var detectedDomains = List.of(Generators.nonEmptyStrings().next(), Generators.nonEmptyStrings().next());
-        var discoveredModules = List.of(Generators.nonEmptyStrings().next(), Generators.nonEmptyStrings().next());
-        var credentialsNeeded = List.of(Generators.nonEmptyStrings().next());
+        var onboardingId = Generators.nonBlankStrings().next();
+        var checkoutPath = "/home/" + Generators.nonBlankStrings().next();
+        var detectedDomains = List.of(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next());
+        var discoveredModules = List.of(Generators.nonBlankStrings().next(), Generators.nonBlankStrings().next());
+        var credentialsNeeded = List.of(Generators.nonBlankStrings().next());
         var onboarding = new ProjectOnboarding(
                 onboardingId,
                 checkoutPath,
@@ -243,8 +243,8 @@ class ProjectRecordsTest {
     @Test
     @DisplayName("validates ProjectReleaseRequest round-trip")
     void projectReleaseRequestRoundTrip() throws Exception {
-        var projectId = Generators.nonEmptyStrings().next();
-        var reason = Generators.nonEmptyStrings().next();
+        var projectId = Generators.nonBlankStrings().next();
+        var reason = Generators.nonBlankStrings().next();
         var request = new ProjectReleaseRequest(projectId, true, false, reason);
         var json = request.toJson();
         assertNotNull(json);
@@ -264,7 +264,7 @@ class ProjectRecordsTest {
     @Test
     @DisplayName("validates ProjectReleaseResult round-trip")
     void projectReleaseResultRoundTrip() throws Exception {
-        var projectId = Generators.nonEmptyStrings().next();
+        var projectId = Generators.nonBlankStrings().next();
         var plansEndedCount = Generators.integers(0, 10).next();
         var epicsEndedCount = Generators.integers(0, 10).next();
         var entriesDeletedCount = Generators.integers(0, 10).next();
@@ -295,10 +295,10 @@ class ProjectRecordsTest {
     @Test
     @DisplayName("validates SSE events round-trip")
     void eventsRoundTrip() throws Exception {
-        var changedId = Generators.nonEmptyStrings().next();
-        var enrolledId = Generators.nonEmptyStrings().next();
-        var releasedId = Generators.nonEmptyStrings().next();
-        var displayName = Generators.nonEmptyStrings().next();
+        var changedId = Generators.nonBlankStrings().next();
+        var enrolledId = Generators.nonBlankStrings().next();
+        var releasedId = Generators.nonBlankStrings().next();
+        var displayName = Generators.nonBlankStrings().next();
         var plansEndedCount = Generators.integers(0, 10).next();
         var epicsEndedCount = Generators.integers(0, 10).next();
         var now = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());

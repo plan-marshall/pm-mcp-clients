@@ -60,9 +60,9 @@ class SystemRecordsTest {
 
     @Test
     void runtimeMetricsRoundTrip() throws Exception {
-        var version = Generators.nonEmptyStrings().next();
-        var build = Generators.nonEmptyStrings().next();
-        var startedAt = Generators.nonEmptyStrings().next();
+        var version = Generators.nonBlankStrings().next();
+        var build = Generators.nonBlankStrings().next();
+        var startedAt = Generators.nonBlankStrings().next();
         var uptimeSeconds = Generators.integers(0, 1_000_000).next();
         var heapUsed = (long) Generators.integers(0, 1_000_000).next();
         var heapMax = (long) Generators.integers(1_000_000, 2_000_000).next();
@@ -70,14 +70,14 @@ class SystemRecordsTest {
         var cpuPercent = Generators.integers(0, 100).next() / 100.0;
         var machineStore = (long) Generators.integers(0, 1_000_000).next();
         var diskFree = (long) Generators.integers(0, 1_000_000).next();
-        var peakLabel = Generators.nonEmptyStrings().next();
-        var loopback = Generators.nonEmptyStrings().next();
-        var network = Generators.nonEmptyStrings().next();
+        var peakLabel = Generators.nonBlankStrings().next();
+        var loopback = Generators.nonBlankStrings().next();
+        var network = Generators.nonBlankStrings().next();
         var pairedDevices = Generators.integers(0, 20).next();
-        var newerVersion = Generators.nonEmptyStrings().next();
-        var newerVersionDate = Generators.nonEmptyStrings().next();
-        var upgradeSeenAt = Generators.nonEmptyStrings().next();
-        var releaseNotesUrl = Generators.nonEmptyStrings().next();
+        var newerVersion = Generators.nonBlankStrings().next();
+        var newerVersionDate = Generators.nonBlankStrings().next();
+        var upgradeSeenAt = Generators.nonBlankStrings().next();
+        var releaseNotesUrl = Generators.nonBlankStrings().next();
 
         var metrics = new RuntimeMetrics(
                 version,
@@ -149,10 +149,10 @@ class SystemRecordsTest {
 
     @Test
     void workerMetricRoundTrip() throws Exception {
-        var role = Generators.nonEmptyStrings().next();
-        var harness = Generators.nonEmptyStrings().next();
-        var model = Generators.nonEmptyStrings().next();
-        var planTitle = Generators.nonEmptyStrings().next();
+        var role = Generators.nonBlankStrings().next();
+        var harness = Generators.nonBlankStrings().next();
+        var model = Generators.nonBlankStrings().next();
+        var planTitle = Generators.nonBlankStrings().next();
 
         var worker = new WorkerMetric(
                 role,

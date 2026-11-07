@@ -161,14 +161,24 @@ Every instant and every duration is shown in one format, defined here and nowher
 |`12 Sep`
 |`12. Sep.`
 
-|Age in a list
-|`9 d ago`
-|`vor 9 T`
+|Age in a list, under a minute
+|`just now`
+|`gerade eben`
+
+|Age in a list, under 30 d
+|`5 min ago`, `3 h ago`, `9 d ago`
+|`vor 5 min`, `vor 3 h`, `vor 9 T`
+
+|Age in a list, 30 d or more
+|`last month`, `2 months ago`, `last year`, `3 years ago`
+|`letzten Monat`, `vor 2 Monaten`, `letztes Jahr`, `vor 3 Jahren`
 |===
+
+* *An age has no week and no yesterday.* An age under 30 days counts minutes, hours, or days, the largest unit that is at least one: three weeks is `21 d ago` and five weeks `last month`, never a count of weeks; a moment of yesterday is `1 d ago` or `20 h ago` as an age, never a bare `yesterday`. _Yesterday_ belongs to the moment (`yesterday 18:40`), not to the age. From 30 days a month is 30 days and a year 365, and their words come from the language's own relative-time data, as the weekday and the month do; the figure counts whole units, so 59 days is `last month`.
 
 * *No ISO string, ever.* No ISO-8601 instant (`2026-10-27T16:18:35Z`), date, or duration (`PT2H10M`) reaches a text, a title, a chip, a hover, or an error message. An ISO string is a transport value: it is read from the server, formatted once, and never shown. The few fields the cleanup contract already ships display-ready — `last_sweep_at`, `next_check_at`, `kept_at`, `ended_at` — are shown as they arrive until they move to an instant, and no new field adds another.
 * *One clock.* The age of a plan comes from its start and the age in its phase from the phase start; both views show the same two values, and neither derives one from the other.
-* *Words are texts, figures are data.* The words that frame a figure — _today_, _since_, _yesterday_, _ago_ — are catalogue texts, so both clients say the same word; the unit marks (`s`, `min`, `h`, and `d`, `T` for the day in German) are fixed in the packs as `k`, `M`, `Tsd.`, and `Mio.` are (<<numbers>>). The weekday, the month, and the figure itself come from the language's own date and number data, never from a table written by hand.
+* *Words are texts, figures are data.* The words that frame a figure — _today_, _since_, _yesterday_, _ago_, _just now_ — are catalogue texts, so both clients say the same word; the unit marks (`s`, `min`, `h`, and `d`, `T` for the day in German) are fixed in the packs as `k`, `M`, `Tsd.`, and `Mio.` are (<<numbers>>). The weekday, the month, the age in months and years, and the figure itself come from the language's own date and number data, never from a table written by hand.
 * *A duration under a minute.* A span shorter than a minute is shown in seconds (`30 s`), as the terminal shows it today; the three duration rows above cover every longer span.
 * *Three styles, one rule.* The web app renders a moment in three styles — `relative`, `short`, and `clock`. They are renderings of this rule, not a second format: each takes its words and its figures from it, and no view writes a moment in two of them at once.
 
@@ -177,7 +187,7 @@ Every instant and every duration is shown in one format, defined here and nowher
 |Style |Renders |Where
 
 |`relative`
-|the distance to now in the unit that distance has — the row _Age in a list_ and the _since_ form of _Moment today_
+|the distance to now in the unit that distance has — the three rows _Age in a list_ and the _since_ form of _Moment today_
 |a list, with the `short` rendering as its hover advisory
 
 |`short`

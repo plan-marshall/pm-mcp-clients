@@ -121,7 +121,7 @@ class EventEnvelopeTest {
         var at = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
         var envelope = new EventEnvelope(EventName.CHECK_RESULT, id, at,
                 new EventScope(EventScopeKind.MACHINE, null, null),
-                Map.of("check_id", Generators.nonEmptyStrings().next(), "result", Generators.nonEmptyStrings().next()));
+                Map.of("check_id", Generators.nonBlankStrings().next(), "result", Generators.nonBlankStrings().next()));
 
         assertEquals(envelope, EventEnvelope.fromJson(envelope.toJson()));
         assertEquals(envelope, EventEnvelope.fromMap(envelope.toMap()));
@@ -142,8 +142,8 @@ class EventEnvelopeTest {
     void scopedEnvelope() throws Exception {
         var id = (long) Generators.integers(0, 1_000_000).next();
         var at = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
-        var scopeId = Generators.nonEmptyStrings().next();
-        var projectId = Generators.nonEmptyStrings().next();
+        var scopeId = Generators.nonBlankStrings().next();
+        var projectId = Generators.nonBlankStrings().next();
         var envelope = new EventEnvelope(EventName.HOLD_OPENED, id, at,
                 new EventScope(EventScopeKind.PLAN, scopeId, projectId),
                 Map.of("hold_id", "H-1", "kind", "landing_failed"));

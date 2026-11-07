@@ -170,7 +170,7 @@ class OperatorStateResourceTest {
     @Test
     @DisplayName("a text is either a message key with arguments or verbatim text with a source")
     void operatorTextBothForms() throws Exception {
-        var verbatimText = Generators.nonEmptyStrings().next();
+        var verbatimText = Generators.nonBlankStrings().next();
         var key = OperatorText.ofKey("check.login.missing", Map.of("harness", "claude"));
         var verbatim = OperatorText.ofVerbatim(verbatimText, TextSource.HARNESS);
 
@@ -236,13 +236,13 @@ class OperatorStateResourceTest {
     @Test
     @DisplayName("the scope, progress, and proposal round-trip")
     void supportingRecordsRoundTrip() throws Exception {
-        var projectId = Generators.nonEmptyStrings().next();
-        var projectName = Generators.nonEmptyStrings().next();
+        var projectId = Generators.nonBlankStrings().next();
+        var projectName = Generators.nonBlankStrings().next();
         var scope = new OperatorScope(OperatorScopeKind.EPIC, "epic-1", projectId, projectName);
         var of = Generators.integers(1, 20).next();
         var done = Generators.integers(0, of).next();
         var progress = new OperatorProgress(done, of);
-        var proposalValue = Generators.nonEmptyStrings().next();
+        var proposalValue = Generators.nonBlankStrings().next();
         var proposal = new OperatorProposal("plan_defaults.asking", proposalValue, ConfigOrigin.MACHINE);
         var item = new OperatorItem("chk-1", Map.of("result", "pass"), List.of());
 

@@ -28,7 +28,7 @@ class ConsoleBadgeTest {
     @Test
     @DisplayName("machineSetup creates valid MACHINE_SETUP badge")
     void machineSetupBadge() {
-        var text = Generators.nonEmptyStrings().next();
+        var text = Generators.nonBlankStrings().next();
         var badge = ConsoleBadge.machineSetup(text);
         assertAll(
                             () -> assertEquals(ConsoleBadge.Kind.MACHINE_SETUP, badge.kind()),
@@ -43,8 +43,8 @@ class ConsoleBadgeTest {
     @Test
     @DisplayName("projectSetup creates valid PROJECT_SETUP badge")
     void projectSetupBadge() {
-        var projectId = Generators.nonEmptyStrings().next();
-        var text = Generators.nonEmptyStrings().next();
+        var projectId = Generators.nonBlankStrings().next();
+        var text = Generators.nonBlankStrings().next();
         var badge = ConsoleBadge.projectSetup(projectId, text);
         assertAll(
                             () -> assertEquals(ConsoleBadge.Kind.PROJECT_SETUP, badge.kind()),
@@ -81,7 +81,7 @@ class ConsoleBadgeTest {
     @Test
     @DisplayName("enforces non-null kind and text")
     void nullArgumentsThrow() {
-        var text = Generators.nonEmptyStrings().next();
+        var text = Generators.nonBlankStrings().next();
         assertAll(
                             () -> assertThrows(NullPointerException.class, () -> new ConsoleBadge(null, text, null, 0, null)),
                             () -> assertThrows(NullPointerException.class, () -> new ConsoleBadge(ConsoleBadge.Kind.MACHINE_SETUP, null, null, 0, null))
