@@ -214,7 +214,7 @@ test.describe('Decisions, Waivers, Own Words & Quorum Voting (UC-PLN-2)', () => 
     await expect(page.getByTestId('decision-notices')).toContainText('Decided: Rebase onto main');
   });
 
-  test('filters decisions by an option phrase and keeps the actions in compact mode', async ({
+  test('filters decisions by an option phrase in one column with the actions reachable', async ({
     page,
   }) => {
     await openDecisions(page);
@@ -227,8 +227,9 @@ test.describe('Decisions, Waivers, Own Words & Quorum Voting (UC-PLN-2)', () => 
     await expect(page.locator('article[data-decision-id="WR-2"]')).not.toBeVisible();
     await expect(page.getByTestId('filter-results')).toContainText('1 match');
 
-    await page.getByTestId('layout-compact').click();
-    await expect(page.locator('.decisions-view')).toHaveAttribute('data-layout', 'compact');
+    // One column: the header offers no layout selector, and the matching card is in the list.
+    await expect(page.locator('.decisions-header').getByRole('button')).toHaveCount(0);
+    await expect(page.locator('.decisions-list article[data-decision-id="Q-007"]')).toBeVisible();
 
     const laterBtn = page
       .locator('article[data-decision-id="Q-007"]')

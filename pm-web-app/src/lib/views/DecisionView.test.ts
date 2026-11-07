@@ -826,64 +826,17 @@ describe('DecisionView component', () => {
     expect(screen.getByTestId('notify-banner')).toBeInTheDocument();
   });
 
-  it('lists summaries in split mode and shows only the selected decision', async () => {
+  it('shows every decision in one column without a layout selector', async () => {
     render(DecisionView);
     await screen.findByText('Select merge strategy');
 
-    await fireEvent.click(screen.getByTestId('layout-split'));
-
-    expect(screen.getByTestId('decision-summary-dec-101')).toBeInTheDocument();
-    expect(screen.getByTestId('decision-summary-WR-001')).toBeInTheDocument();
-    expect(document.querySelectorAll('.decision-card')).toHaveLength(0);
-    expect(screen.getByText('Select a decision to see it here.')).toBeInTheDocument();
-
-    await fireEvent.click(screen.getByTestId('decision-summary-dec-101'));
-
-    expect(document.querySelectorAll('.decision-card')).toHaveLength(1);
-    const detail = document.querySelector('.decisions-split__detail') as HTMLElement;
-    expect(within(detail).getByText('Select merge strategy')).toBeInTheDocument();
-    expect(within(detail).getByText('Rebase onto main')).toBeInTheDocument();
-  });
-
-  it('clears a split selection the filter hides', async () => {
-    render(DecisionView);
-    await screen.findByText('Select merge strategy');
-
-    await fireEvent.click(screen.getByTestId('layout-split'));
-    await fireEvent.click(screen.getByTestId('decision-summary-dec-101'));
-    expect(screen.getByText('Rebase onto main')).toBeInTheDocument();
-
-    await typeFilter('Coverage of pm-relay');
-
-    await waitFor(() => {
-      expect(screen.queryByText('Rebase onto main')).toBeNull();
-      expect(screen.getByText('Select a decision to see it here.')).toBeInTheDocument();
-    });
-    expect(screen.getByTestId('decision-summary-WR-001')).toBeInTheDocument();
-  });
-
-  it('keeps the actions reachable in compact mode', async () => {
-    render(DecisionView);
-    await screen.findByText('Select merge strategy');
-
-    await fireEvent.click(screen.getByTestId('layout-compact'));
-
-    expect(document.querySelector('.decisions-view')).toHaveAttribute('data-layout', 'compact');
-    expect(screen.getByRole('button', { name: 'Decide' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Waive the gate' })).toBeInTheDocument();
-    expect(screen.getByText('refine · outline')).toBeInTheDocument();
-  });
-
-  it('remembers the layout across a remount', async () => {
-    const { unmount } = render(DecisionView);
-    await screen.findByText('Select merge strategy');
-    await fireEvent.click(screen.getByTestId('layout-split'));
-    expect(localStorage.getItem('pm_view_layout_decisions')).toBe('split');
-
-    unmount();
-    render(DecisionView);
-    await screen.findByText('Select merge strategy');
-    expect(document.querySelector('.decisions-view')).toHaveAttribute('data-layout', 'split');
+    const list = document.querySelector('.decisions-list') as HTMLElement;
+    expect(list).not.toBeNull();
+    expect(list.querySelectorAll('.decision-card')).toHaveLength(2);
+    expect(document.querySelector('.decisions-view')).not.toHaveAttribute('data-layout');
+    const header = document.querySelector('.decisions-header') as HTMLElement;
+    expect(within(header).queryAllByRole('button')).toHaveLength(0);
+    expect(within(header).queryByRole('group')).toBeNull();
   });
 
   describe('a decision the command palette named', () => {
@@ -897,9 +850,68 @@ describe('DecisionView component', () => {
       return (event, data) => handler?.(event, data);
     }
 
+    /** @returns the elements the view scrolled into view, in order */
+    function recordScrolls(): Element[] {
+      const scrolled: Element[] = [];
+      Element.prototype.scrollIntoView = vi.fn(function (this: Element) {
+        scrolled.push(this);
+      });
+      return scrolled;
+    }
+
+    /**
+     * @param id the decision id
+     * @returns the card of that decision in the single column
+     */
+    function cardOf(id: string): HTMLElement {
+      const card = document.querySelector<HTMLElement>(
+        `.decisions-list [data-decision-id="${id}"]`,
+      );
+      expect(card).not.toBeNull();
+      return card as HTMLElement;
+    }
+
+    it('scrolls to and marks the decision in the single column', async () => {
+      // Arrange: the browser holds no stored choice of any kind; the view shows its one column.
+      expect(localStorage.length).toBe(0);
+      const scrolled = recordScrolls();
+      render(DecisionView);
+      await screen.findByText('Select merge strategy');
+      expect(cardOf('dec-101')).not.toHaveAttribute('aria-current');
+
+      // Act
+      runtimeStore.update((state) => ({ ...state, selectedDecisionId: 'dec-101' }));
+
+      // Assert: the named card is scrolled to and marked; the other card stays in the column,
+      // unmarked.
+      await waitFor(() => expect(scrolled).toContain(cardOf('dec-101')));
+      expect(cardOf('dec-101')).toHaveAttribute('aria-current', 'true');
+      expect(cardOf('dec-101')).toHaveClass('decision-card--selected');
+      expect(cardOf('WR-001')).not.toHaveAttribute('aria-current');
+      expect(cardOf('WR-001')).not.toHaveClass('decision-card--selected');
+      expect(document.querySelectorAll('.decisions-list .decision-card')).toHaveLength(2);
+      expect(localStorage.length).toBe(0);
+    });
+
+    it('lands on a decision that arrives after the request', async () => {
+      // Arrange: the first read does not hold dec-101, so its request stays pending.
+      vi.mocked(apiClient.getDecisions).mockResolvedValueOnce([mockWaiver]);
+      const emit = captureEventHandler();
+      const scrolled = recordScrolls();
+      runtimeStore.update((state) => ({ ...state, selectedDecisionId: 'dec-101' }));
+      render(DecisionView);
+      await screen.findByText('fix-relay asks for a waiver');
+
+      // Act: the decision arrives in a later event.
+      emit('decision.opened', mockDecision);
+
+      // Assert
+      await waitFor(() => expect(scrolled).toContain(cardOf('dec-101')));
+      expect(cardOf('dec-101')).toHaveAttribute('aria-current', 'true');
+    });
+
     it('drops a pending decision when the route stops naming one', async () => {
       // Arrange: the first read does not hold dec-101, so its request stays pending.
-      localStorage.setItem('pm_view_layout_decisions', 'split');
       vi.mocked(apiClient.getDecisions).mockResolvedValueOnce([mockWaiver]);
       const emit = captureEventHandler();
       runtimeStore.update((state) => ({ ...state, selectedDecisionId: 'dec-101' }));
@@ -910,56 +922,46 @@ describe('DecisionView component', () => {
       runtimeStore.update((state) => ({ ...state, selectedDecisionId: null }));
       emit('decision.opened', mockDecision);
 
-      // Assert: the stale request cannot select it any more.
-      await screen.findByTestId('decision-summary-dec-101');
-      expect(screen.getByTestId('decision-summary-dec-101')).not.toHaveAttribute('aria-current');
+      // Assert: the stale request cannot mark it any more.
+      await screen.findByText('Select merge strategy');
+      expect(cardOf('dec-101')).not.toHaveAttribute('aria-current');
+      expect(cardOf('dec-101')).not.toHaveClass('decision-card--selected');
     });
 
-    it('clears the local filter when it hides the requested decision', async () => {
-      // Arrange: the split layout shows the list beside the detail pane, and the filter keeps
-      // dec-101 out of the list.
-      localStorage.setItem('pm_view_layout_decisions', 'split');
+    it('clears the local filter when it hides the requested decision and scrolls to it', async () => {
+      // Arrange: the filter keeps dec-101 out of the column, so its card is not mounted.
+      const scrolled = recordScrolls();
       render(DecisionView);
-      await screen.findByTestId('decision-summary-dec-101');
+      await screen.findByText('Select merge strategy');
       const filter = (await screen.findByLabelText('Filter decisions')) as HTMLInputElement;
       await fireEvent.input(filter, { target: { value: 'waiver' } });
-      await waitFor(() =>
-        expect(screen.queryByTestId('decision-summary-dec-101')).not.toBeInTheDocument(),
-      );
+      await waitFor(() => expect(screen.queryByText('Select merge strategy')).toBeNull());
 
       // Act: the palette names dec-101, which the filter hides.
       runtimeStore.update((state) => ({ ...state, selectedDecisionId: 'dec-101' }));
 
-      // Assert: the filter is cleared, dec-101 is the selected decision, and its detail pane is
-      // not left empty.
-      const summary = await screen.findByTestId('decision-summary-dec-101');
+      // Assert: the filter is cleared, and the card that mounts again is scrolled to and marked.
+      await waitFor(() => expect(scrolled).toContain(cardOf('dec-101')));
       expect(filter.value).toBe('');
-      expect(summary).toHaveAttribute('aria-current', 'true');
-      const detail = summary.closest('.decisions-split')?.querySelector('.decisions-split__detail');
-      expect(detail).not.toBeNull();
-      expect(detail).toHaveTextContent('How should the branch be updated?');
+      expect(cardOf('dec-101')).toHaveAttribute('aria-current', 'true');
+      expect(cardOf('dec-101')).toHaveTextContent('How should the branch be updated?');
     });
 
-    it('scrolls to a decision whose card mounts after the request', async () => {
-      // Arrange: split layout with nothing selected; the card of a decision mounts only once the
-      // request has been applied, so the scroll must wait for that update.
-      localStorage.setItem('pm_view_layout_decisions', 'split');
-      const scrolled: Element[] = [];
-      Element.prototype.scrollIntoView = vi.fn(function (this: Element) {
-        scrolled.push(this);
-      });
+    it('drops the mark once the filter hides the marked decision', async () => {
+      // Arrange
       render(DecisionView);
       await screen.findByText('Select merge strategy');
-
-      // Act
       runtimeStore.update((state) => ({ ...state, selectedDecisionId: 'dec-101' }));
+      await waitFor(() => expect(cardOf('dec-101')).toHaveAttribute('aria-current', 'true'));
 
-      // Assert
-      await waitFor(() =>
-        expect(scrolled.some((element) => (element as HTMLElement).dataset.decisionId === 'dec-101')).toBe(
-          true,
-        ),
-      );
+      // Act: the operator filters the marked decision away and back again.
+      await typeFilter('Coverage of pm-relay');
+      await waitFor(() => expect(screen.queryByText('Select merge strategy')).toBeNull());
+      await typeFilter('');
+
+      // Assert: the mark does not come back with the card.
+      await screen.findByText('Select merge strategy');
+      expect(cardOf('dec-101')).not.toHaveAttribute('aria-current');
     });
   });
 });
