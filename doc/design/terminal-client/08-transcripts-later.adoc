@@ -309,9 +309,9 @@ Store and check it? [Enter]   b) back   ?   › ⏎
 ----
 pm › web devices
 Paired devices · The browsers that can act on this machine
-    1) Firefox on mbp-oliver     paired 12 May from loopback   last used today 14:02
+    1) Firefox on mbp-oliver     paired 12 May from loopback   last used 5 min ago
     2) Safari on iPad            paired 20 May from network    last used 3 d ago
-    3) Chrome on build-box       paired 2 Jun from loopback    last used 5 weeks ago
+    3) Chrome on build-box       paired 2 Jun from loopback    last used last month
 
   The console needs no pairing and is not listed. Network listener: on.
 

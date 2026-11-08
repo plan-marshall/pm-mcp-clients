@@ -10,7 +10,7 @@ link:README.adoc[Terminal Client] » Projects
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]_
 
-Status: `DRAFT`.
+Status: `AGREED`.
 
 What the explorer and a project's onboarding show is link:../shared/project-explorer.adoc[Project Explorer] and link:../shared/project-onboarding.adoc[Project Onboarding], for both clients (link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc[Use Cases, Projects]). This part is how the console draws them. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
@@ -51,10 +51,10 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
 ▶ ★ pm-mcp-clients    ready      ! 2 · decision   3 plans · 1 epic    2 min ago
   ★ pm-mcp-core       ready            2 plans                     9 min ago
  Recent
-    plan-marshall     setup open ! setup                           yesterday
+    plan-marshall     setup open ! setup                            1 d ago
     cui-http          ready                                        3 d ago
  All projects · by name
-    API-Sheriff       ready                                        5 weeks ago
+    API-Sheriff       ready                                        last month
     legacy-portal     released                                     2 months ago
     …
  ─────────────────────────────────────────────────────────────────────────────
@@ -365,9 +365,9 @@ Favourites
   ★ pm-mcp-clients    ready   needs you: 2 · decision   3 plans · 1 epic   2 min ago
   ★ pm-mcp-core       ready   2 plans   9 min ago
 Recent
-    plan-marshall     setup open   needs you: setup   yesterday
+    plan-marshall     setup open   needs you: setup   1 d ago
 All projects (by name)
-    API-Sheriff       ready   5 weeks ago
+    API-Sheriff       ready   last month
     legacy-portal     released   2 months ago
     …
 pm ›

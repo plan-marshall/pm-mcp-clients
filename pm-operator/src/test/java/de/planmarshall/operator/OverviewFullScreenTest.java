@@ -805,11 +805,13 @@ class OverviewFullScreenTest {
             await(() -> virtual.alternateScreenActive()
                                 && virtual.screen().lines().stream().anyMatch(l -> l.contains("pm-mcp-clients")));
 
-            // Navigate down to second project with 'j'
+            // Navigate down to the third project (served order: clients, core, plan-marshall) with 'j'
+            virtual.type("j");
             virtual.type("j");
             await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("▶") && l.contains("plan-marshall")));
 
-            // Navigate back up to first project with 'k'
+            // Navigate back up to the first project with 'k'
+            virtual.type("k");
             virtual.type("k");
             await(() -> virtual.screen().lines().stream().anyMatch(l -> l.contains("▶") && l.contains("pm-mcp-clients")));
 

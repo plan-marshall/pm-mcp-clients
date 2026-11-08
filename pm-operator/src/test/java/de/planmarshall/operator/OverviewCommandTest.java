@@ -332,7 +332,7 @@ class OverviewCommandTest {
 
         // Alongside landings
         assertTrue(output.contains("alongside"));
-        assertTrue(output.contains("! landing failed   landing remediation.ci-failure"));
+        assertTrue(output.contains("! landing failed   landing CI failure"));
         assertTrue(output.contains("removing 2 moved documents from git"));
     }
 

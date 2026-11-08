@@ -7,7 +7,7 @@ link:../README.adoc[Design] » link:work-actions.adoc[Actions on Plans and Epics
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]_
 
-Status: `DRAFT`. The texts of link:work-actions.adoc#review[Reviewing Findings or Watches] and link:work-actions.adoc#holds[What Holds a Plan]; the other texts of the actions are link:work-actions-texts.adoc[Actions on Plans and Epics, Texts], and how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
+Status: `AGREED`. The texts of link:work-actions.adoc#review[Reviewing Findings or Watches] and link:work-actions.adoc#holds[What Holds a Plan]; the other texts of the actions are link:work-actions-texts.adoc[Actions on Plans and Epics, Texts], and how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
 
 [#texts]
 == Texts

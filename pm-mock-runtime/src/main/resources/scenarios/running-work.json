@@ -637,6 +637,12 @@
           "none_yet": false,
           "not_measured": false
         },
+        "change": {
+          "files": 12,
+          "insertions": 340,
+          "deletions": 27,
+          "unplanned": 2
+        },
         "nodes": [
           {
             "node_id": "init",

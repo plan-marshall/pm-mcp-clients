@@ -12,19 +12,13 @@ package de.planmarshall.operator.overview;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.ActiveEpicSummary;
 import de.planmarshall.api.overview.ActivePlanSummary;
@@ -44,10 +38,6 @@ public final class OverviewFormatting {
     public static final String EPIC_GLYPH = "\u25c7";
 
     private static final String KIND_PAUSED = "paused";
-
-    private static final DateTimeFormatter SHORT_DATE_EN = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH);
-    private static final DateTimeFormatter SHORT_DATE_DE = DateTimeFormatter.ofPattern("d. MMM", Locale.GERMAN);
-    private static final DateTimeFormatter SHORT_TIME = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT);
 
     private OverviewFormatting() {
     }
@@ -115,67 +105,41 @@ public final class OverviewFormatting {
     }
 
     /**
-     * Orders projects with those needing the operator first, then by most recent activity,
-     * preserving original runtime order on ties.
+     * Returns the projects in the order the runtime serves them.
+     *
+     * <p>The runtime already serves running work with those that need the operator first, then the
+     * newest started; a client does not sort again, and activity moves no row
+     * ({@code doc/design/shared/plan-overview.adoc#levels}). The time beside a row only says how
+     * recently it was active.
      *
      * @param projects the input project list
-     * @return sorted copy of projects
+     * @return the same order, as an immutable copy
      */
     public static List<ProjectSummary> sortProjects(List<ProjectSummary> projects) {
         Objects.requireNonNull(projects, "projects");
-        var indexed = new ArrayList<Indexed<ProjectSummary>>(projects.size());
-        for (int i = 0; i < projects.size(); i++) {
-            var project = projects.get(i);
-            indexed.add(new Indexed<>(project, i, needsOperator(project), project.lastActivityAt()));
-        }
-        indexed.sort(OverviewFormatting::compareIndexed);
-        return indexed.stream().map(Indexed::item).toList();
+        return List.copyOf(projects);
     }
 
     /**
-     * Orders plans with those needing the operator first, then by most recent activity,
-     * preserving original runtime order on ties.
+     * Returns the plans in the order the runtime serves them; activity moves no row.
      *
      * @param plans the input plan list
-     * @return sorted copy of plans
+     * @return the same order, as an immutable copy
      */
     public static List<ActivePlanSummary> sortPlans(List<ActivePlanSummary> plans) {
         Objects.requireNonNull(plans, "plans");
-        var indexed = new ArrayList<Indexed<ActivePlanSummary>>(plans.size());
-        for (int i = 0; i < plans.size(); i++) {
-            var plan = plans.get(i);
-            var instant = plan.phaseEnteredAt() != null ? plan.phaseEnteredAt() : plan.runningSince();
-            indexed.add(new Indexed<>(plan, i, needsOperator(plan), instant));
-        }
-        indexed.sort(OverviewFormatting::compareIndexed);
-        return indexed.stream().map(Indexed::item).toList();
+        return List.copyOf(plans);
     }
 
     /**
-     * Orders epics with those needing the operator first, then by start instant descending,
-     * preserving original runtime order on ties.
+     * Returns the epics in the order the runtime serves them; activity moves no row.
      *
      * @param epics the input epic list
-     * @return sorted copy of epics
+     * @return the same order, as an immutable copy
      */
     public static List<ActiveEpicSummary> sortEpics(List<ActiveEpicSummary> epics) {
         Objects.requireNonNull(epics, "epics");
-        var indexed = new ArrayList<Indexed<ActiveEpicSummary>>(epics.size());
-        for (int i = 0; i < epics.size(); i++) {
-            var epic = epics.get(i);
-            boolean needs = needsOperator(epic) || epic.plans().stream().anyMatch(OverviewFormatting::needsOperator);
-            indexed.add(new Indexed<>(epic, i, needs, epic.runningSince()));
-        }
-        indexed.sort(OverviewFormatting::compareIndexed);
-        return indexed.stream().map(Indexed::item).toList();
-    }
-
-    private static <T> int compareIndexed(Indexed<T> a, Indexed<T> b) {
-        return Comparator.<Indexed<T>, Boolean>comparing(i -> !i.needsOperator())
-                            .thenComparing(Indexed::instant,
-                                                Comparator.nullsLast(Comparator.<Instant>reverseOrder()))
-                            .thenComparingInt(Indexed::index)
-                            .compare(a, b);
+        return List.copyOf(epics);
     }
 
     /**
@@ -297,7 +261,7 @@ public final class OverviewFormatting {
     }
 
     /**
-     * Formats a relative activity timestamp from an Instant (e.g. {@code "2 min ago"}).
+     * Formats a relative activity timestamp through the display layer (e.g. {@code "2 min ago"}).
      *
      * @param locale  target locale
      * @param instant activity instant
@@ -305,24 +269,7 @@ public final class OverviewFormatting {
      * @return formatted relative time
      */
     public static String formatRelativeActivity(String locale, @Nullable Instant instant, Clock clock) {
-        if (instant == null) {
-            return "";
-        }
-        long seconds = Math.max(0L, Duration.between(instant, clock.instant()).getSeconds());
-        long minutes = Math.max(1L, seconds / 60L);
-        boolean german = locale.toLowerCase(Locale.ROOT).startsWith("de");
-        if (minutes < 60L) {
-            return german ? "vor " + minutes + " Min." : minutes + " min ago";
-        }
-        long hours = minutes / 60L;
-        if (hours < 24L) {
-            return german ? "vor " + hours + " Std." : hours + " h ago";
-        }
-        long days = hours / 24L;
-        if (days == 1L) {
-            return german ? "vor 1 Tag" : "1 day ago";
-        }
-        return german ? "vor " + days + " Tagen" : days + " days ago";
+        return Display.time(locale, instant, clock);
     }
 
     /**
@@ -345,7 +292,8 @@ public final class OverviewFormatting {
     }
 
     /**
-     * Formats the ended-at timestamp for an ended work item from an Instant.
+     * Formats the ended-at timestamp for an ended work item through the display layer's short
+     * moment style ({@code today 14:02}, {@code Mon 18:40}, {@code 12 Sep, 09:10}).
      *
      * @param locale  target locale
      * @param instant ended instant
@@ -353,29 +301,11 @@ public final class OverviewFormatting {
      * @return formatted ended time
      */
     public static String formatEndedTime(String locale, @Nullable Instant instant, Clock clock) {
-        if (instant == null) {
-            return "";
-        }
-        boolean german = locale.toLowerCase(Locale.ROOT).startsWith("de");
-        LocalDate nowDate = LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC);
-        LocalDate endDate = LocalDate.ofInstant(instant, ZoneOffset.UTC);
-        long daysBetween = ChronoUnit.DAYS.between(endDate, nowDate);
-        if (daysBetween <= 0L) {
-            return formatRelativeActivity(locale, instant, clock);
-        }
-        if (daysBetween == 1L) {
-            var timePart = SHORT_TIME.format(instant.atOffset(ZoneOffset.UTC));
-            return (german ? "gestern " : "yesterday ") + timePart;
-        }
-        if (daysBetween <= 7L) {
-            return german ? "vor " + daysBetween + " Tagen" : daysBetween + " days ago";
-        }
-        return (german ? SHORT_DATE_DE : SHORT_DATE_EN).format(instant.atOffset(ZoneOffset.UTC));
+        return Display.time(locale, instant, Display.TimeStyle.SHORT, clock);
     }
 
     /**
-     * Formats the ended-at timestamp for an ended work item (e.g. {@code "yesterday 18:10"},
-     * {@code "2 days ago"}, {@code "2 Oct"}).
+     * Formats the ended-at timestamp for an ended work item.
      *
      * @param locale       target locale
      * @param timestampIso ISO-8601 timestamp or pre-formatted string
@@ -423,8 +353,5 @@ public final class OverviewFormatting {
         } catch (DateTimeParseException _) {
             return null;
         }
-    }
-
-    private record Indexed<T>(T item, int index, boolean needsOperator, @Nullable Instant instant) {
     }
 }

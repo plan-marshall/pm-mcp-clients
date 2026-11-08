@@ -27,10 +27,7 @@ import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.jline.terminal.impl.DumbTerminal;
@@ -55,7 +52,6 @@ class WebDevicesCommandTest {
     Path tempDir;
 
     private RuntimeFixture fixture;
-    private String todayTimeStr;
 
     @BeforeEach
     void setUp() throws IOException {
@@ -107,9 +103,6 @@ class WebDevicesCommandTest {
         PmOperatorTest.writeLiveRecord(fixture);
         var now = Instant.now();
         var todayInstant = now.minus(Duration.ofMinutes(5));
-        this.todayTimeStr = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH)
-                            .withZone(ZoneId.of("UTC"))
-                            .format(todayInstant);
         var threeDaysAgo = now.minus(Duration.ofDays(3)).minus(Duration.ofMinutes(5));
         var fiveWeeksAgo = now.minus(Duration.ofDays(35)).minus(Duration.ofMinutes(5));
         fixture.start((request, response) -> {
@@ -189,13 +182,13 @@ class WebDevicesCommandTest {
                             () -> assertTrue(output.contains("Paired devices · The browsers that can act on this machine")),
                             () -> assertTrue(output.contains("Firefox on mbp-oliver")),
                             () -> assertTrue(output.contains("paired 12 May from loopback")),
-                            () -> assertTrue(output.contains("last used today " + todayTimeStr)),
+                            () -> assertTrue(output.contains("last used 5 min ago")),
                             () -> assertTrue(output.contains("Safari on iPad")),
                             () -> assertTrue(output.contains("paired 20 May from network")),
                             () -> assertTrue(output.contains("last used 3 d ago")),
                             () -> assertTrue(output.contains("Chrome on build-box")),
                             () -> assertTrue(output.contains("paired 2 Jun from loopback")),
-                            () -> assertTrue(output.contains("last used 5 weeks ago")),
+                            () -> assertTrue(output.contains("last used last month")),
                             () -> assertTrue(output.contains("Network listener: on."))
         );
     }
@@ -783,19 +776,19 @@ class WebDevicesCommandTest {
     }
 
     @Test
-    @DisplayName("formatLastUsed with a fixed clock formats 7 weeks 6 days, exactly 8 weeks, and 20 weeks")
+    @DisplayName("formatLastUsed with a fixed clock renders the age rule, never a count of weeks")
     void formatLastUsedWithFixedClock() {
         var fixedNow = Instant.parse("2026-06-01T12:00:00Z");
         var clock = Clock.fixed(fixedNow, ZoneOffset.UTC);
 
-        var sevenWeeksSixDaysAgo = fixedNow.minus(Duration.ofDays(55));
-        var eightWeeksAgo = fixedNow.minus(Duration.ofDays(56));
-        var twentyWeeksAgo = fixedNow.minus(Duration.ofDays(140));
+        var fiftyFiveDaysAgo = fixedNow.minus(Duration.ofDays(55));
+        var fiftySixDaysAgo = fixedNow.minus(Duration.ofDays(56));
+        var hundredFortyDaysAgo = fixedNow.minus(Duration.ofDays(140));
 
         assertAll(
-                            () -> assertEquals("7 weeks ago", WebCommand.DevicesCommand.formatLastUsed(sevenWeeksSixDaysAgo.toString(), clock)),
-                            () -> assertEquals("6 Apr 12:00", WebCommand.DevicesCommand.formatLastUsed(eightWeeksAgo.toString(), clock)),
-                            () -> assertEquals("12 Jan 12:00", WebCommand.DevicesCommand.formatLastUsed(twentyWeeksAgo.toString(), clock))
+                            () -> assertEquals("last month", WebCommand.DevicesCommand.formatLastUsed("en", fiftyFiveDaysAgo.toString(), clock)),
+                            () -> assertEquals("last month", WebCommand.DevicesCommand.formatLastUsed("en", fiftySixDaysAgo.toString(), clock)),
+                            () -> assertEquals("4 months ago", WebCommand.DevicesCommand.formatLastUsed("en", hundredFortyDaysAgo.toString(), clock))
         );
     }
 }

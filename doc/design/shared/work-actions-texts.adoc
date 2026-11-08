@@ -7,7 +7,7 @@ link:../README.adoc[Design] » link:work-actions.adoc[Actions on Plans and Epics
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5]_
 
-Status: `DRAFT`. The texts of link:work-actions.adoc[Actions on Plans and Epics]; those of the reviews and the holds are link:work-actions-review-texts.adoc[Reviews and Holds, Texts], those of the chat link:work-actions-chat-texts.adoc[Chatting with the Planning Role, Texts], and the outcomes of ended work are `overview.ended.*` (link:plan-overview.adoc#texts[Plan Overview, Texts]). How texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
+Status: `AGREED`. The texts of link:work-actions.adoc[Actions on Plans and Epics]; those of the reviews and the holds are link:work-actions-review-texts.adoc[Reviews and Holds, Texts], those of the chat link:work-actions-chat-texts.adoc[Chatting with the Planning Role, Texts], and the outcomes of ended work are `overview.ended.*` (link:plan-overview.adoc#texts[Plan Overview, Texts]). How texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
 
 [#texts]
 == Texts
