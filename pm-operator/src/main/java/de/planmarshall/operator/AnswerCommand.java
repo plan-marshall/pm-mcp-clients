@@ -122,7 +122,7 @@ public final class AnswerCommand implements Callable<Integer> {
     @Override
     public Integer call() throws IOException {
         context.gate().verify();
-        var out = spec.commandLine().getOut();
+        var out = new SanitizingPrintWriter(spec.commandLine().getOut());
         var runtime = context.runtime(true);
         var locale = MessageCatalogue.normalizeLocale(context.clientEnvironment().locale());
 
@@ -414,7 +414,7 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private static @Nullable String readLineSafe(LineReader reader, String prompt) {
         try {
-            return reader.readLine(prompt);
+            return reader.readLine(TerminalSanitizer.sanitizeLine(prompt));
         } catch (UserInterruptException _) {
             // The interrupt is the exit-code table's 130, never an unanswered question.
             throw new StartPrompt.InterruptException();
