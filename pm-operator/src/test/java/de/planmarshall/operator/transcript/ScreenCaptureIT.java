@@ -160,6 +160,12 @@ class ScreenCaptureIT {
                     // that opened this state from being read together with the exit key.
                     LockSupport.parkNanos(EXIT_PAUSE.toNanos());
                 }
+                if (session.exitCode() != null) {
+                    // An early exit is only a capture when it is the clean one the verb ends with;
+                    // a failure that ended the run is reported, never captured as a state.
+                    assertEquals(0, session.exitCode(),
+                                        capture.name() + " exited with " + session.exitCode() + " before its keys were typed");
+                }
                 if (capture.keys().isEmpty() || session.exitCode() != null) {
                     Files.writeString(output.resolve(capture.name() + ".stdout.txt"),
                                         session.rawOutput(), StandardCharsets.UTF_8);
@@ -273,7 +279,9 @@ class ScreenCaptureIT {
      */
     private static boolean settled(PtySession session, String raw, long start, boolean console) {
         if (session.exitCode() != null) {
-            return true;
+            // A clean exit may be the settled state a capture of a short verb wants; a failure is
+            // not a settled screen, so the capture fails instead of recording the crash.
+            return session.exitCode() == 0;
         }
         if (raw.contains(StartPrompt.SUFFIX) || (console
                             && (raw.contains(CONSOLE_PROMPT) || raw.contains(BADGED_CONSOLE_PROMPT)))) {

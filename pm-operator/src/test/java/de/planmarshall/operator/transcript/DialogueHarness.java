@@ -61,8 +61,9 @@ final class DialogueHarness implements AutoCloseable {
      * @param method the HTTP method
      * @param path   the request path
      * @param state  the state the request was sent in
+     * @param body   the request body, empty when it carried none
      */
-    record Act(String method, String path, String state) {
+    record Act(String method, String path, String state, String body) {
     }
 
     private DialogueHarness(MockRuntime runtime) {
@@ -138,7 +139,7 @@ final class DialogueHarness implements AutoCloseable {
                 var map = JsonTree.asObject(entry);
                 if (map != null) {
                     acts.add(new Act(JsonTree.string(map, "method"), JsonTree.string(map, "path"),
-                                        JsonTree.string(map, "state")));
+                                        JsonTree.string(map, "state"), JsonTree.string(map, "body")));
                 }
             }
         }

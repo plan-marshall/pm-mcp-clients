@@ -9,8 +9,11 @@
  */
 package de.planmarshall.operator.transcript;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.mock.StandardScenarios;
 
 import org.junit.jupiter.api.DisplayName;
@@ -59,22 +62,28 @@ class AnswerDialogueIT {
     }
 
     @Test
-    @DisplayName("the main path: the chosen option sends the answer")
+    @DisplayName("the main path: the screen shows the votes and dissent, and the chosen option is posted")
     void mainPathAnswers() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
              var session = harness.open("answer", "Q-007")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
-            DialogueHarness.type(session, "1\n");
+            DialogueHarness.type(session, "?\n1\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
-            assertTrue(session.screenText().contains("Q-007 answered"), session.screenText());
-            harness.assertAct("POST", "/api/v1/decisions/Q-007/answer");
+            var screen = session.screenText();
+            assertTrue(screen.contains("Evidence details:"), screen);
+            assertTrue(screen.contains("2 of 3 votes"), screen);
+            assertTrue(screen.contains("Against it (quorum-b)"), screen);
+            assertTrue(screen.contains("Q-007 answered"), screen);
+            var sent = JsonTree.asObject(JsonTree.parse(lastBody(harness, "/api/v1/decisions/Q-007/answer")));
+            assertNotNull(sent);
+            assertEquals("1", sent.get("option"), String.valueOf(sent));
         }
     }
 
     @Test
-    @DisplayName("in own words: answering in operator's own words sends the interpreted answer")
+    @DisplayName("in own words: the interpreted words are posted as the answer")
     void ownWordsAnswers() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
              var session = harness.open("answer", "Q-007")) {
@@ -84,12 +93,14 @@ class AnswerDialogueIT {
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             assertTrue(session.screenText().contains("Q-007 answered"), session.screenText());
-            harness.assertAct("POST", "/api/v1/decisions/Q-007/answer");
+            var sent = JsonTree.asObject(JsonTree.parse(lastBody(harness, "/api/v1/decisions/Q-007/answer")));
+            assertNotNull(sent);
+            assertEquals("Rebase onto main", sent.get("words"), String.valueOf(sent));
         }
     }
 
     @Test
-    @DisplayName("waiver request: granting waiver with reason sends answer")
+    @DisplayName("waiver request: the waiver and its reason are posted")
     void waiverAnswers() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK).goTo("decisions.open");
              var session = harness.open("answer", "WR-2")) {
@@ -99,7 +110,24 @@ class AnswerDialogueIT {
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             assertTrue(session.screenText().contains("Waived ci_check:integration-tests for fix-relay"), session.screenText());
-            harness.assertAct("POST", "/api/v1/decisions/WR-2/answer");
+            var sent = JsonTree.asObject(JsonTree.parse(lastBody(harness, "/api/v1/decisions/WR-2/answer")));
+            assertNotNull(sent);
+            assertEquals("waive", sent.get("action"), String.valueOf(sent));
+            assertEquals("covered by CI", sent.get("reason"), String.valueOf(sent));
+        }
+    }
+
+    @Test
+    @DisplayName("a direct later posts the later act instead of printing success blind")
+    void directLaterPostsTheAct() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
+             var session = harness.open("answer", "Q-007", "later")) {
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            assertTrue(session.screenText().contains("Q-007 stays open"), session.screenText());
+            var sent = JsonTree.asObject(JsonTree.parse(lastBody(harness, "/api/v1/decisions/Q-007/answer")));
+            assertNotNull(sent);
+            assertEquals("later", sent.get("action"), String.valueOf(sent));
         }
     }
 
@@ -138,19 +166,33 @@ class AnswerDialogueIT {
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             assertTrue(session.screenText().contains("Q-012 answered"), session.screenText());
-            harness.assertAct("POST", "/api/v1/decisions/Q-012/answer");
+            var sent = JsonTree.asObject(JsonTree.parse(lastBody(harness, "/api/v1/decisions/Q-012/answer")));
+            assertNotNull(sent);
+            var answers = JsonTree.asObject(sent.get("part_answers"));
+            assertNotNull(answers, String.valueOf(sent));
+            assertEquals(3, answers.size(), String.valueOf(sent));
         }
     }
 
     @Test
-    @DisplayName("direct answer sends without dialogue and prints confirmation")
+    @DisplayName("direct answer sends without dialogue, prints the confirmation and posts the option")
     void directAnswerSendsWithoutDialogue() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
              var session = harness.open("answer", "Q-007", "2")) {
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             assertTrue(session.screenText().contains("✓ Q-007 answered: Rebase onto main"), session.screenText());
-            harness.assertAct("POST", "/api/v1/decisions/Q-007/answer");
+            var sent = JsonTree.asObject(JsonTree.parse(lastBody(harness, "/api/v1/decisions/Q-007/answer")));
+            assertNotNull(sent);
+            assertEquals("2", sent.get("option"), String.valueOf(sent));
         }
+    }
+
+    private static String lastBody(DialogueHarness harness, String path) throws Exception {
+        var act = harness.acts().stream()
+                            .filter(recorded -> path.equals(recorded.path()))
+                            .reduce((first, second) -> second)
+                            .orElseThrow(() -> new AssertionError("no act reached " + path));
+        return act.body();
     }
 }

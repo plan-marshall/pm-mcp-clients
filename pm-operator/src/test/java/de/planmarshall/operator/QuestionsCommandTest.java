@@ -21,9 +21,15 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.jline.terminal.impl.DumbTerminal;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -31,8 +37,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @DisplayName("QuestionsCommand and AnswerCommand")
+@EnableGeneratorController
 class QuestionsCommandTest {
 
     @TempDir
@@ -41,6 +51,7 @@ class QuestionsCommandTest {
     private RuntimeFixture fixture;
     private StringWriter out;
     private StringWriter err;
+    private final List<String> answerBodies = new ArrayList<>();
 
     @BeforeEach
     void setUp() throws IOException {
@@ -48,6 +59,7 @@ class QuestionsCommandTest {
         PmOperatorTest.writeLiveRecord(fixture);
         out = new StringWriter();
         err = new StringWriter();
+        answerBodies.clear();
     }
 
     @AfterEach
@@ -311,7 +323,7 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-007", "withdraw");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("you asked the plan to think again") || out.toString().contains("gebeten, neu zu überlegen"));
+        assertTrue(out.toString().contains("you asked the plan to think again"), out.toString());
     }
 
     @Test
@@ -686,14 +698,14 @@ class QuestionsCommandTest {
         int codeWaive = executeInteractive("?\ny\n\nApproved temporary\n", "answer", "WR-1", "-i");
         assertEquals(0, codeWaive);
         var waiveOut = out.toString();
-        assertTrue(waiveOut.contains("Evidence details:") || waiveOut.contains("Beleg-Details:"));
-        assertTrue(waiveOut.contains("Waived coverage >= 80% for fix-relay.") || waiveOut.contains("Gewährt"));
+        assertTrue(waiveOut.contains("Evidence details:"), waiveOut);
+        assertTrue(waiveOut.contains("Waived coverage >= 80% for fix-relay."), waiveOut);
 
         // 3. Decline
         out = new StringWriter();
         int codeDecline = executeInteractive("d\nNot allowed\n", "answer", "WR-1", "-i");
         assertEquals(0, codeDecline);
-        assertTrue(out.toString().contains("Declined WR-1") || out.toString().contains("Abgelehnt WR-1"));
+        assertTrue(out.toString().contains("Declined WR-1"), out.toString());
     }
 
     @Test
@@ -751,6 +763,7 @@ class QuestionsCommandTest {
                                     }
                                     """);
             } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
+                answerBodies.add(request.bodyText());
                 response.json(200, "{\"ok\":true}");
             } else {
                 response.send(404, null, "");
@@ -761,12 +774,14 @@ class QuestionsCommandTest {
         int code = executeInteractive("?\n?r\nm\nurgent\n2\n", "answer", "Q-001", "-i");
         assertEquals(0, code);
         var output = out.toString();
-        assertTrue(output.contains("Evidence details:") || output.contains("Beleg-Details:"));
-        assertTrue(output.contains("Recommended by implement: Rebase. Keeps linear history")
-                            || output.contains("Empfohlen von implement: Rebase. Keeps linear history"));
-        assertTrue(output.contains("Against it (reviewer-a): merge commit preferred")
-                            || output.contains("Dagegen (reviewer-a): merge commit preferred"));
-        assertTrue(output.contains("✓ Q-001 answered: Merge"));
+        assertTrue(output.contains("Evidence details:"), output);
+        assertTrue(output.contains("Recommended by implement: Rebase. Keeps linear history"), output);
+        assertTrue(output.contains("Against it (reviewer-a): merge commit preferred"), output);
+        assertTrue(output.contains("✓ Q-001 answered: Merge"), output);
+        assertEquals(1, answerBodies.size(), answerBodies.toString());
+        var sent = JsonTree.asObject(JsonTree.parse(answerBodies.get(0)));
+        assertEquals("2", sent.get("option"), answerBodies.get(0));
+        assertEquals("urgent", sent.get("note"), answerBodies.get(0));
 
         // 2. Quit
         out = new StringWriter();
@@ -811,30 +826,37 @@ class QuestionsCommandTest {
         int code = executeInteractive("1\n\n", "answer", "Q-002", "-i");
         assertEquals(0, code);
         var output = out.toString();
-        assertTrue(output.contains("cannot be undone") || output.contains("nicht rückgängig machen"));
-        assertTrue(output.contains("Follows: Data will be lost") || output.contains("Folgt: Data will be lost"));
+        assertTrue(output.contains("cannot be undone"), output);
+        assertTrue(output.contains("Follows: Data will be lost"), output);
         assertTrue(output.contains("✓ Q-002 answered: Drop table"));
     }
 
-    @Test
+    @ParameterizedTest(name = "{1}")
+    @MethodSource("evidenceCases")
     @DisplayName("formatEvidenceHint formats diverse evidence payloads")
-    void formatEvidenceHintCoverage() {
+    void formatEvidenceHintCoverage(Map<String, Object> evidence, String expected) {
         assertEquals("", AnswerCommand.formatEvidenceHint(null));
-        assertEquals("", AnswerCommand.formatEvidenceHint(Map.of()));
-        assertEquals("src/Main.java:42 (syntax error)",
-                            AnswerCommand.formatEvidenceHint(Map.of("file", "src/Main.java", "lines", 42, "summary", "syntax error")));
-        assertEquals("src/Main.java:10",
-                            AnswerCommand.formatEvidenceHint(Map.of("file", "src/Main.java", "lines", "10")));
-        assertEquals("src/Main.java (broken)",
-                            AnswerCommand.formatEvidenceHint(Map.of("file", "src/Main.java", "summary", "broken")));
-        assertEquals("src/Main.java",
-                            AnswerCommand.formatEvidenceHint(Map.of("file", "src/Main.java")));
-        assertEquals("testLogin (run-1)",
-                            AnswerCommand.formatEvidenceHint(Map.of("test", "testLogin", "run", "run-1")));
-        assertEquals("all good",
-                            AnswerCommand.formatEvidenceHint(Map.of("summary", "all good")));
-        assertEquals("custom-val",
-                            AnswerCommand.formatEvidenceHint(Map.of("other", "custom-val")));
+        assertEquals(expected, AnswerCommand.formatEvidenceHint(evidence));
+    }
+
+    static Stream<Arguments> evidenceCases() {
+        var file = "src/" + Generators.letterStrings(4, 10).next() + ".java";
+        var lines = String.valueOf(Generators.integers(1, 999).next());
+        var summary = Generators.letterStrings(4, 20).next();
+        var test = Generators.letterStrings(3, 10).next();
+        var run = Generators.letterStrings(3, 10).next();
+        var other = Generators.letterStrings(3, 10).next();
+        return Stream.of(
+                            Arguments.of(Map.of(), ""),
+                            Arguments.of(Map.of("file", file, "lines", lines, "summary", summary),
+                                                file + ":" + lines + " (" + summary + ")"),
+                            Arguments.of(Map.of("file", file, "lines", lines), file + ":" + lines),
+                            Arguments.of(Map.of("file", file, "summary", summary), file + " (" + summary + ")"),
+                            Arguments.of(Map.of("file", file), file),
+                            Arguments.of(Map.of("test", test, "run", run), test + " (" + run + ")"),
+                            Arguments.of(Map.of("summary", summary), summary),
+                            Arguments.of(Map.of("other", other), other)
+        );
     }
 
     @Test
@@ -857,7 +879,7 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-001", "--no-input");
         assertEquals(3, code);
-        assertTrue(out.toString().contains("Choice or option required") || out.toString().contains("Auswahl oder Option erforderlich"));
+        assertTrue(out.toString().contains("Choice or option required"), out.toString());
     }
 
     @Test
@@ -907,7 +929,7 @@ class QuestionsCommandTest {
         out = new StringWriter();
         int codeNoneFitsReject = executeInteractive("x\nb\nl\n", "answer", "Q-001", "-i");
         assertEquals(0, codeNoneFitsReject);
-        assertTrue(out.toString().contains("stays open") || out.toString().contains("bleibt offen"));
+        assertTrue(out.toString().contains("stays open"), out.toString());
 
         // 4. Note prompt with blank input leaves note unchanged, then pick 1
         out = new StringWriter();
@@ -1049,12 +1071,12 @@ class QuestionsCommandTest {
 
         int codeDecline = execute("answer", "WR-1", "--action", "decline", "--reason", "Not approved");
         assertEquals(0, codeDecline);
-        assertTrue(out.toString().contains("Declined WR-1") || out.toString().contains("Abgelehnt WR-1"));
+        assertTrue(out.toString().contains("Declined WR-1"), out.toString());
 
         out = new StringWriter();
         int codeWithdraw = execute("answer", "Q-001", "--action", "withdraw");
         assertEquals(0, codeWithdraw);
-        assertTrue(out.toString().contains("you asked the plan to think again") || out.toString().contains("gebeten, neu zu überlegen"));
+        assertTrue(out.toString().contains("you asked the plan to think again"), out.toString());
     }
 
     @Test
@@ -1109,7 +1131,7 @@ class QuestionsCommandTest {
         int code = executeInteractive("?r\n1\n", "answer", "Q-003", "-i");
         assertEquals(0, code);
         var output = out.toString();
-        assertTrue(output.contains("3 of 4 votes") || output.contains("clear majority"));
+        assertTrue(output.contains("3 of 4 votes"), output);
         assertTrue(output.contains("Against it (reviewer-b): stale data risk")
                             || output.contains("Dagegen (reviewer-b): stale data risk"));
         assertTrue(output.contains("✓ Q-003 answered: In-memory cache"));
@@ -1157,6 +1179,7 @@ class QuestionsCommandTest {
                                         """);
                 }
             } else if ("/api/v1/decisions/Q-004/answer".equals(target)) {
+                answerBodies.add(request.bodyText());
                 response.json(200, "{\"ok\":true}");
             } else {
                 response.send(404, null, "");
@@ -1166,9 +1189,12 @@ class QuestionsCommandTest {
         int code = executeInteractive("w\nvague idea\npostgresql\ny\n", "answer", "Q-004", "-i");
         assertEquals(0, code);
         var output = out.toString();
-        assertTrue(output.contains("Which db engine?"));
-        assertTrue(output.contains("use PostgreSQL 17"));
-        assertTrue(output.contains("✓ Q-004 answered: use PostgreSQL 17"));
+        assertTrue(output.contains("Which db engine?"), output);
+        assertTrue(output.contains("use PostgreSQL 17"), output);
+        assertTrue(output.contains("✓ Q-004 answered: use PostgreSQL 17"), output);
+        assertEquals(1, answerBodies.size(), answerBodies.toString());
+        var sent = JsonTree.asObject(JsonTree.parse(answerBodies.get(0)));
+        assertEquals("use PostgreSQL 17", sent.get("words"), answerBodies.get(0));
     }
 
     @Test
@@ -1176,12 +1202,12 @@ class QuestionsCommandTest {
     void answerDirectActionsRequireReason() {
         int codeWaive = execute("answer", "WR-1", "--action", "waive");
         assertEquals(3, codeWaive);
-        assertTrue(out.toString().contains("A reason is required") || out.toString().contains("Ein Grund ist erforderlich"));
+        assertTrue(out.toString().contains("A reason is required."), out.toString());
 
         out = new StringWriter();
         int codeDecline = execute("answer", "WR-1", "--action", "decline");
         assertEquals(3, codeDecline);
-        assertTrue(out.toString().contains("A reason is required") || out.toString().contains("Ein Grund ist erforderlich"));
+        assertTrue(out.toString().contains("A reason is required."), out.toString());
     }
 
     @Test
