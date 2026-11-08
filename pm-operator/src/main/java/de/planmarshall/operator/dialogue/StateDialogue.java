@@ -704,11 +704,11 @@ public final class StateDialogue {
         var envelope = JsonTree.asObject(map.get(OPERATOR));
         var source = envelope != null ? envelope : map;
         var stateId = stateIdOf(source, map);
-        var reportedTotal = JsonTree.integer(source, TOTAL_STEPS_FIELD);
+        var reportedTotal = JsonTree.positiveInteger(source, TOTAL_STEPS_FIELD);
         if (reportedTotal == null) {
-            reportedTotal = JsonTree.integer(map, TOTAL_STEPS_FIELD);
+            reportedTotal = JsonTree.positiveInteger(map, TOTAL_STEPS_FIELD);
         }
-        int effectiveTotal = reportedTotal != null && reportedTotal > 0 ? reportedTotal : totalSteps;
+        int effectiveTotal = reportedTotal != null ? reportedTotal : totalSteps;
         return new Frame(stateId, kindOf(source), stepOf(source, map, stateId, effectiveTotal, project),
                             effectiveTotal, summaryOf(source), factsOf(source), linksOf(source));
     }
