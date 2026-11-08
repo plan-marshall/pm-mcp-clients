@@ -280,7 +280,7 @@ class ControlResourcesTest {
 
         private String epic(String runningField) {
             return "{\"epic_id\":\"relay-hardening\",\"project_id\":\"pm-mcp-clients\""
-                                + runningField + "}";
+                    + runningField + "}";
         }
 
         @Test
@@ -311,7 +311,7 @@ class ControlResourcesTest {
         @DisplayName("is read when the value is valid")
         void validIsRead() throws Exception {
             assertEquals(Integer.valueOf(2), Integer.valueOf(EpicResource.fromJson(epic(",\"running\":2"))
-                                .running()));
+                    .running()));
         }
     }
 

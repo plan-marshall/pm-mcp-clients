@@ -295,11 +295,11 @@ final class WorkActionDialogue {
         if (epic != null && plan != null && (running == null || running >= epic.scope())) {
             var question = running != null
                                 ? MessageCatalogue.format(prompt.locale(), "control.epic.scope_full",
-                                                    Map.<String, Object>of("epic", id, "running", running,
-                                                                        "scope", epic.scope(), "plan", plan))
+                                Map.<String, Object>of("epic", id, "running", running,
+                                                    "scope", epic.scope(), "plan", plan))
                                 : MessageCatalogue.format(prompt.locale(), "control.epic.scope_unknown",
-                                                    Map.<String, Object>of("epic", id, "scope", epic.scope(),
-                                                                        "plan", plan));
+                                Map.<String, Object>of("epic", id, "scope", epic.scope(),
+                                                    "plan", plan));
             var answer = prompt.askRaw(question
                                 + "   " + MessageCatalogue.format(prompt.locale(),
                                 "operator.actions.key.raise_and_start", Map.of())

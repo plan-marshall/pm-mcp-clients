@@ -115,10 +115,10 @@ class ControlCatalogueTest {
         var params = Map.of("epic", "relay-hardening", "scope", 3, "plan", "relay-token-store");
 
         assertEquals("How many plans run is not known; relay-hardening may run 3 at once, and the next "
-                            + "plan, relay-token-store, waits for a free place.",
+                + "plan, relay-token-store, waits for a free place.",
                 MessageCatalogue.format("en", "control.epic.scope_unknown", params));
         assertEquals("Wie viele Pl\u00e4ne laufen, ist nicht bekannt; relay-hardening darf 3 gleichzeitig "
-                            + "ausf\u00fchren, und der n\u00e4chste Plan, relay-token-store, wartet auf einen freien Platz.",
+                + "ausf\u00fchren, und der n\u00e4chste Plan, relay-token-store, wartet auf einen freien Platz.",
                 MessageCatalogue.format("de", "control.epic.scope_unknown", params));
     }
 

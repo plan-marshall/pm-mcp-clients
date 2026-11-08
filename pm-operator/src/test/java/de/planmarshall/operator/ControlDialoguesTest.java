@@ -717,7 +717,7 @@ class ControlDialoguesTest {
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
                             EpicResource.fromJson(unknown), null));
         assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith("/actions/next")
-                            && request.bodyText().contains("\"raise_scope\":true")),
+                                                && request.bodyText().contains("\"raise_scope\":true")),
                             server.requests().toString());
         assertTrue(out.toString().contains("next-plan started (? of 3 at once)"), out.toString());
     }
