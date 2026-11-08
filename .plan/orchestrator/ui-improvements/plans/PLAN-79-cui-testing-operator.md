@@ -79,6 +79,13 @@ Source: `landings/PLAN-116.md` (layer 2), read at `6c105a86`. Three test gaps in
 2. `PmConsoleBehaviourTest.java:758-763` waits for the second refresh to reach `TIMED_WAITING`, which a lock wait (`PmConsole.java:693` `tryLock(timeout)`) and `EntryFlow.bounded`'s `thread.join(millis)` both produce: without the lock the test can still pass. Make the check discriminate the lock wait (e.g. the lock's queue, `hasQueuedThreads`, or the waiting thread's blocker), and check the negative over the window rather than at one instant.
 3. No test shows the injected aspect list reaches the dialogue through `EntryFlow.java:292` and `PmConsole.java:314` (reverting either fails nothing): add one dialogue-level assertion with a list of another size.
 
+## Fold 2026-11-08 (PLAN-118 landing)
+
+Source: `landings/PLAN-118.md` (layer 2), read at `2fc2c214`. Two test gaps in files this plan rewrites anyway; surface unchanged (all below `pm-operator/src/test/java/`):
+
+1. `DrainCommandTest.java:619-650` builds the expected drain bound from the production constants (`DEFAULT_DRAIN_TIMEOUT_SECONDS`, `GRACE_PERIOD`, `MARGIN`), so a changed constant passes. Assert the contract literally (15 s without config, the configured value + 5 s + 10 s), and cover the String-valued `drain_timeout_seconds` branch (`DrainCommand.java:205-208`) and a non-object `machine-config.json`.
+2. Nothing pins that `PmConsole` builds its completer from `OperatorVerbs.completer()` (`PmConsole.java:137`): a completer reverted to a hand list passes `OperatorVerbsTest`. Add an assertion on the console's own completer.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

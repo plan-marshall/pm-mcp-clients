@@ -87,6 +87,9 @@ Source of this plan (read before scoping):
 - OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/WebCommand.java` — present at HEAD aa3a9be3
 - OBSERVED: `pm-operator/src/test/resources/screen-captures/PLAN-42.txt` — absent; created by this plan at HEAD aa3a9be3
 
+- OBSERVED: `pm-operator/src/main/java/de/planmarshall/operator/OperatorVerbs.java` — present at HEAD 2fc2c214 (fold 2026-11-08)
+- OBSERVED: `pm-operator/src/test/java/de/planmarshall/operator/PmOperatorTest.java` — present at HEAD 2fc2c214 (fold 2026-11-08)
+
 ## Dependencies and Sequencing
 
 - Depends on: `PLAN-30` (`cli-texts-and-errors`), `PLAN-36` (`cli-needs-verb`)
@@ -96,6 +99,10 @@ Source of this plan (read before scoping):
 ## Re-grounding 2026-11-07 (cleanup)
 
 Checked at `aa3a9be3`. The HOLD's condition (PLAN-97 deliverable 3, the command tree) is met: 22 verbs, no `start`/`onboard`. Design conflict to resolve at outline: `01-commands.adoc:142` says `help` exists only inside the console and is not a shell verb and that `epic <id>` prints, while the deliverables ask for `help` in the shell and the console and `epic <id>` opening full screen; line 122 lists `help [<verb>]`. `HelpCommand` is absent, `--print` exists only on `PlanCommand` (:118). PLAN-30 and PLAN-36 (dependencies) are still open.
+
+## Fold 2026-11-08 (PLAN-118 landing)
+
+Source: `landings/PLAN-118.md` (layer 2), read at `2fc2c214`. PLAN-118 derived the completer and `help` from the registered subcommands (`OperatorVerbs`) and compares the design's verb set with the registry (`PmOperatorTest#registersTheDesignsVerbs`). Two console-only sets remain and disagree: `PmOperatorTest.java:268` `{help, exit}` and `OperatorVerbs.java:32` `{exit, quit, help, tui}`; `quit` and `tui` are not named in `01-commands.adoc`. Since this plan rewrites `help` and the verb listing: keep ONE console-only set (in `OperatorVerbs`, read by the test), and name every console-only word in the design. Expected Surface extended in the same act (`OperatorVerbs.java`, `PmOperatorTest.java`).
 
 ## Hand-Off Command
 

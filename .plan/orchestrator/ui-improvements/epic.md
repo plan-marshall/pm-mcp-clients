@@ -635,9 +635,48 @@ plan spec names the plan, proposal and finding documents it comes from.
   and `effort` missing (`plugin_version=0.1.0` beside `executor_version=0.1.2080` looks like a placeholder).
   Recurrence 2026-11-08: `rb-116-cli-console-fourth-residue-001.md` (PLAN-116, opencode), `total_tokens` and
   `plugin_version` missing; the message also carries its envelope header twice (it still validated).
+  Recurrence 2026-11-08: `rb-118-cli-command-tree-residue-001.md` (PLAN-118, opencode), `total_tokens` and
+  `plugin_version` missing. `rb-117-web-acts-fourth-residue-001.md` (PLAN-117, antigravity), `total_tokens`, `model` and
+  `effort` missing (`plugin_version=0.1.0` again).
+- `ci pr edit` does not take a prepared body (found by PLAN-118, 2026-11-08): the `--plan-id`/`--slot` path answers "At least
+  one of --title or a prepared body must be provided", and with `--title` only the title changes. A lane therefore cannot
+  correct its PR body after the fact (PLAN-118's body still says the Sonar read is "to be read"; the read is in
+  `#issuecomment-6715013411`). Owner: plan-marshall (`tools-integration-ci`).
+- The epic resource carries no running count (found at the PLAN-117 landing, 2026-11-08): `GET /api/v1/epics/{epic_id}` in
+  `plan-marshall-documentation` `doc/specification/runtime-model/01-processes-and-transport.adoc:346` lists title, state,
+  automatic mode, `parallelization_scope`, `needs_operator` and the project, no `running`; `plan-marshall-mcp` (`ad5f608`) has
+  no production `running` field. So "N of M at once" is always unknown on the epic: the web shows `?` (PLAN-106/117), the
+  terminal shows 0 (see Watches, PLAN-117). Owner: `plan-marshall-documentation` / `pm-mcpd` — add the count, or the clients
+  drop the figure.
 
 ## Watches
 
+- PLAN-117 landed (PR #370, `bf24091c`, analysed 2026-11-08); see `landings/PLAN-117.md`. Open: (1) Layer 3, MAJOR,
+  reported to the operator 2026-11-08: the terminal reads an unknown running count as 0 — `EpicResource.java:59,164,188-191`
+  (`int running`, absent → 0), `EpicViewFormatting.java:86-89` (`0 of N at once`), `WorkActionDialogue.java:292` (never asks,
+  posts `raise_scope:false`, never prints `control.epic.scope_unknown`). The merged shared design (`epic-view.adoc:82`,
+  `work-actions.adoc:222`) says no screen reads an absent count as none, and per the API spec the count is always absent
+  (Open Defects). Both CodeRabbit threads on #370 said so and were declined as out of scope; the lane reported "Residue: None".
+  (2) The PR's answer to nitpick 1 is partly untrue: no test formats `? von N gleichzeitig`, none names
+  `control.epic.scope_unknown`. (3) D1(a)'s test uses a local copy of the `+layout.svelte:92` guard, relies on microtask order,
+  and leaves the restart branch `SystemView.svelte:289` unpinned — for the next web plan touching `SystemView`. (4) D2's daemon
+  check was skipped with "outside repository root" though the repositories are checked out; the orchestrator did it. (5)
+  `epic-view.adoc:82` puts prose in a catalogue-value cell; `work-actions.adoc:222` repeats the German text of
+  `work-actions-texts.adoc:193-195` — for the D2 design owner.
+- PLAN-118 landed (PR #369, `2fc2c214`, analysed 2026-11-08); see `landings/PLAN-118.md`. Merge rule met (8 threads
+  resolved, 2 review bodies fully answered, Sonar 0). The daemon writes its own `ProcessHandle` start instant
+  (`plan-marshall-mcp` `SocketBinding.java:95`), so `drain` identifies a real runtime. Open: (1) folds — PLAN-79 (literal
+  bound expectations, String/non-object config branches, completer wiring), PLAN-42 (one console-only set, `quit`/`tui` in
+  the design; surface +2), PLAN-30 (exit-code row `1` vs local refusals). (2) The PR body asks the operator two questions:
+  `project add` enrols directly while the design says it onboards; `project release`/`project unenrol` confirm by flag only.
+  (3) Lane residue with owners: the pidfd window, the `SystemScenarioTest` boundary, coverage of `LessonSourceCommandTest`,
+  `MockRuntimeEngineTest`, `AcceptEditCommandTest`, `GitSourceCommandTest`; `ErrorTexts.fix(..., Map)` has no production
+  caller; `profile`, `decision-log`, `waive`, `grant-access`, `sweep` are designed but unregistered; the specification's
+  `enrol` line (`plan-marshall-documentation`). (4) A stale record with a reused PID makes `drain` exit 1 where the read
+  paths say "not running" (spec-intended). (5) `MockRuntime.java:259,273` now records its real start instant, untested.
+  (6) The PLAN-116 formatting watch is CLOSED: PLAN-118 ran `verify -Ppre-commit` on `pm-operator` (at `3d44fab`, `032e23e2`)
+  and `ConsoleBadge.java` and `PmConsole.java:238` are unchanged from `6c105a86` to `bf24091c` — the gate does not want that
+  rewrite; PLAN-116's D3 claim was spurious, not owed.
 - PLAN-116 landed (PR #368, `6c105a86`, analysed 2026-11-08); see `landings/PLAN-116.md`. Open: (1) merge rule not met in
   full: the #368 review-body nitpick (device ages on their own row) was not answered; folded into PLAN-79 with two more
   test gaps (lock-wait vacuity at `PmConsoleBehaviourTest:758`, aspect-list wiring test). (2) `04-console.adoc:26,112`
