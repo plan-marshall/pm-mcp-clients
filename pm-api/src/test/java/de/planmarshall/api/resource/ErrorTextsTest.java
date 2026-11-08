@@ -15,12 +15,16 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 import java.util.TreeSet;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import de.planmarshall.api.message.MessageCatalogue;
 
+@EnableGeneratorController
 @DisplayName("Error texts of the local API")
 class ErrorTextsTest {
 
@@ -133,6 +137,22 @@ class ErrorTextsTest {
             assertEquals(messages.get(key("unknown", "title")), ErrorTexts.title(locale, (String) null));
             assertEquals(messages.get(key("unknown", "cause")), ErrorTexts.cause(locale, (String) null));
             assertEquals(messages.get(key("unknown", "fix")), ErrorTexts.fix(locale, (String) null));
+        }
+    }
+
+    @Test
+    @DisplayName("the enrolment fix takes the project id as a parameter, never a literal placeholder")
+    void enrolmentFixTakesTheProjectId() {
+        var projectId = Generators.letterStrings(4, 12).next();
+
+        for (var locale : LOCALES) {
+            var fix = ErrorTexts.fix(locale, ApiErrorCode.ENROLMENT_TAMPERED, Map.of("project_id", projectId));
+
+            assertTrue(fix.contains("accept-edit enrolment " + projectId), fix);
+            assertFalse(fix.contains("{project_id}"), fix);
+            assertEquals(fix, ErrorTexts.fix(locale, ApiErrorCode.ENROLMENT_TAMPERED.wire(),
+                            Map.of("project_id", projectId)),
+                    "the wire-value overload forwards the arguments");
         }
     }
 

@@ -24,7 +24,6 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
-import de.planmarshall.api.runtime.RuntimeRecord;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -36,7 +35,9 @@ import picocli.CommandLine.Spec;
  * and exits with its drain timeout, and waits for the exit at most the drain timeout plus the grace
  * period plus a fixed {@code 10} seconds (timeouts/02-runtime-leases-operator-web.adoc#drain-timeout).
  * It sends no request to the runtime's API, asks nothing, runs no operator checks, and cannot be
- * withdrawn; a record whose process is gone names no runtime, and nothing is signalled.
+ * withdrawn; a record whose process is gone names no runtime, and nothing is signalled. A process is
+ * signalled only when the record carries a start instant and the process reports an equal one, to
+ * the second: otherwise the runtime is not identifiable, and nothing is signalled either.
  */
 @Command(name = "drain", description = "Signals the runtime to drain and exit; waits for the exit.")
 public final class DrainCommand implements Callable<Integer> {
@@ -96,22 +97,37 @@ public final class DrainCommand implements Callable<Integer> {
     @Override
     public Integer call() throws IOException {
         var out = spec.commandLine().getOut();
-        var runtimeRecord = context.directFiles().readRuntimeRecord().filter(RuntimeRecord::processAlive);
-        var handle = runtimeRecord.flatMap(alive -> processes.apply(alive.pid()));
-        if (handle.isEmpty() || handle.get().pid() == ProcessHandle.current().pid()) {
-            out.println(text("operator.drain.not_running", Map.of()));
-            out.flush();
-            return 0;
+        var stored = context.directFiles().readRuntimeRecord();
+        if (stored.isEmpty()) {
+            return notRunning(out);
+        }
+        var runtimeRecord = stored.get();
+        var handle = processes.apply(runtimeRecord.pid());
+        if (handle.isEmpty() || !handle.get().isAlive()) {
+            return notRunning(out);
         }
         var runtime = handle.get();
         // the process id is an identifier, never a number to group
         var pid = Map.of(PID, String.valueOf(runtime.pid()));
+        if (!runtimeRecord.identifies(runtime)) {
+            // The process can exit between the liveness check and the reading of its start
+            // instant: that is a runtime that is gone, not one that cannot be identified.
+            if (!runtime.isAlive()) {
+                return notRunning(out);
+            }
+            var err = spec.commandLine().getErr();
+            err.println(text("operator.drain.not_identifiable", pid));
+            err.flush();
+            return PmOperator.EXIT_FAILURE;
+        }
+        if (runtime.pid() == ProcessHandle.current().pid()) {
+            // Never signal ourselves, however well the record matches.
+            return notRunning(out);
+        }
         if (!runtime.destroy()) {
             if (!runtime.isAlive()) {
                 // The runtime exited between the lookup and the signal: it is not running any more.
-                out.println(text("operator.drain.not_running", Map.of()));
-                out.flush();
-                return 0;
+                return notRunning(out);
             }
             var err = spec.commandLine().getErr();
             err.println(text("operator.drain.signal_failed", pid));
@@ -123,6 +139,12 @@ public final class DrainCommand implements Callable<Integer> {
         var wait = bound != null ? bound : boundOfMachine(spec.commandLine().getErr());
         out.println(awaitExit(runtime, wait) ? text("operator.drain.ended", Map.of())
                             : text("operator.system.still_draining", pid));
+        out.flush();
+        return 0;
+    }
+
+    private int notRunning(PrintWriter out) {
+        out.println(text("operator.drain.not_running", Map.of()));
         out.flush();
         return 0;
     }
@@ -153,7 +175,7 @@ public final class DrainCommand implements Callable<Integer> {
      * @param err where the warning goes
      * @return the bound of the wait
      */
-    private Duration boundOfMachine(PrintWriter err) {
+    Duration boundOfMachine(PrintWriter err) {
         var file = context.directFiles().machineConfigPath();
         var seconds = DEFAULT_DRAIN_TIMEOUT_SECONDS;
         try {

@@ -133,13 +133,8 @@ public final class PmConsole {
         }
 
         // The console commands and the verbs of the design's command tree (01-commands.adoc), and
-        // nothing else: a verb the tree does not declare is unknown here as on the shell.
-        var completer = new StringsCompleter(
-                            "exit", "quit", "help", "status", PLANS, "tui", "plan", "epic", "questions",
-                            "answer", "web", "runtime", "config", "credentials", "projects", "project",
-                            "client", "drain", "recipe", "lesson", "reports", "system", "cleanup",
-                            "enrol-harness", "roles", "accept-edit"
-        );
+        // nothing else: the completer is the registered registry, never a second copy of it.
+        var completer = new StringsCompleter(OperatorVerbs.completer());
 
         var reader = LineReaderBuilder.builder()
                             .terminal(terminal)
@@ -541,7 +536,7 @@ public final class PmConsole {
         }
         out.println(MessageCatalogue.format(locale, "operator.console.help.title", Map.of()));
         out.println(MessageCatalogue.format(locale, "operator.console.help.body", Map.of()));
-        out.println(MessageCatalogue.format(locale, "operator.console.help.more", Map.of()));
+        out.println(OperatorVerbs.helpMore(locale));
     }
 
     /**

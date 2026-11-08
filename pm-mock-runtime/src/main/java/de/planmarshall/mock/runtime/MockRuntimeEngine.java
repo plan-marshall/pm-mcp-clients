@@ -5942,6 +5942,15 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * Serves the page of the one list of what waits: the fixture's items, parsed through the
      * contract's own record, in the runtime's order — the items that block running work first, then
      * the oldest.
+     * <p>
+     * Unchanged since the page was introduced (PR #284), which is the answer PLAN-95 D3 asked for:
+     * the mock serves a scenario, and the scenario names its needs list in the route's
+     * representation. Answering a decision or resolving a hold changes the scenario's stores, not
+     * that list; a scenario that wants the list to shrink after an answer declares the smaller list
+     * in the state it moves to. Deriving the list from the stores here would make the mock a second
+     * implementation of the runtime's derivation and disagree with the fixtures the tests pin. The
+     * item id is absent as well: the contract's {@link NeedsOperatorItem} has none, and that was the
+     * operator's decision (2026-11-05).
      */
     private void serveNeedsOperatorPage(MockHttpResponse response) throws IOException {
         var route = activeRoute("GET", MachineApiPaths.NEEDS_OPERATOR);
