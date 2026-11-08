@@ -66,7 +66,8 @@ The chat is a side column beside the object it belongs to, never a panel above o
   Dictate with your system: Fn Fn                         34 of 8000
 ----
 
-* *The head*: the subject's `KindMark` and title, _with_ the role, the model the role runs on in muted text, and the scope (`control.chat.scope`). Under it the running state while the role answers (`control.chat.answers`). At the right _Hide the chat_ (`control.chat.hide`, ghost; `Escape`) and _End the chat_ (`control.chat.end`, secondary, because ending drops an open proposal).
+* *The head*: the subject's `KindMark` and title, _with_ the role and the model the role runs on in muted text (`web.chat.with`), and the scope (`control.chat.scope`). Under it the running state while the role answers (`control.chat.answers`). At the right _Hide the chat_ (`control.chat.hide`, ghost; `Escape`) and _End the chat_ (`control.chat.end`, secondary, because ending drops an open proposal).
+* *On a phone* the chat takes the whole screen, the bottom bar included; with the on-screen keyboard open the transcript keeps at least a third of the height, and the pinned proposal folds into the composer's head.
 * *Hiding keeps it running*: the reply goes on, and the act that opened the chat carries a `CountBadge` of the replies that arrived while it was hidden. The scroll position and the draft are kept per chat.
 * *A decision* keeps its own column beside the chat; its answers stay disabled while the chat is open (link:../shared/decisions.adoc#chat[Decisions, A Chat Before Answering]).
 
@@ -76,7 +77,8 @@ The chat is a side column beside the object it belongs to, never a panel above o
 * *Two sides*: the operator's turns are right-aligned on a subtle surface (`--color-bg-subtle`), headed _You_ (`control.chat.you`); the role's turns take the full reading width without a bubble, headed by the role's mark (a round neutral glyph with the role's initial), the role's name and its model in muted text. Consecutive turns of one side are grouped under one head.
 * *Time*: a day line between days (_Today_, _Yesterday_, a date; link:../shared/texts-and-languages.adoc#time[Texts and Languages, Time]); the time of a turn shows on hover and focus and is always in its accessible name.
 * *The role's text* is the Markdown subset of <<markdown>>; the operator's text, a turn from outside the machine and a notice are plain text.
-* *A turn from outside the machine* (`untrusted`) carries a neutral label with its icon, _From outside · not checked_ (`control.chat.untrusted`), never a border alone, and is never passed to the renderer.
+* *A turn from outside the machine* (`untrusted`) stands on the role's side, headed by its source with its time, and carries a neutral label with its icon, _From outside · not checked_ (`control.chat.untrusted`), never a border alone; it is never passed to the renderer.
+* *A turn from another device* stands on the operator's side like every operator turn, its head naming the device in muted text (`You · iPad`, `web.chat.from_device`).
 * *On hover and focus* a turn offers _Copy_ (`common.copy`); the operator's last turn that was not sent offers _Try again_ (`common.action.retry`) and _Edit the message_ (`control.chat.edit`), which puts its text back into the composer.
 * *A page at a time*: the newest page is read when the chat opens; scrolling to the top reads the page before, without moving the turns in view.
 
@@ -85,6 +87,7 @@ The chat is a side column beside the object it belongs to, never a panel above o
 
 * *Before the first word*, the role's line is the `WaitingMark` with its text, `replan is reading the whole plan…` (`control.chat.working`; link:components-brand.adoc#waiting-mark[WaitingMark]). It is the screen's one waiting mark and its own polite status line; the chat adds no live region for it. Another wait on the same screen, and every short one (a send, an accept), takes the `Spinner`.
 * *Steps*: each step the role reports (`chat.turn.progress`, a message key such as `reads TASK-4` or `runs the tests`) is a compact muted line under the working line; once the answer arrives they fold into `3 steps` (`control.chat.steps`), which opens them again.
+* *Stopped before the first word*: the turn shows only its notice, `Stopped; the reply so far is kept.`, with the steps it had.
 * *Streaming*: while the answer is written its text grows in place with a soft caret at its end; the caret is still where reduced motion is asked for. The text is rendered as it arrives, so a list or a code block takes its shape as soon as it is complete.
 * *Without pieces* — a harness that reports no events, or a runtime that does not yet stream the reply — the working line stands until `chat.turn.completed` and the whole reply appears at once; nothing else changes.
 
@@ -110,7 +113,7 @@ A role's reply (`format: markdown`) is rendered as a closed subset (link:../../.
 * lists, and tables, which scroll sideways when wide;
 * code blocks in the mono face with their language as a label, a _Copy_ act, sideways scroll, and no syntax colours;
 * links only with `http` or `https`, as `ExternalLink` (link:components.adoc#external-link[ExternalLink]); an image as a link to it, never loaded;
-* references to a task, a file with its line (`path:line`), a decision or a plan that the turn's `refs` name, as reference chips: a `Link` in the chip look of `PrChip` (link:components-tags.adoc[Tags and Kinds]), opening its target, never a copy `Chip`;
+* references to a task, a file with its line (`path:line`), a decision or a plan that the turn's `refs` name, outside inline code and code blocks, as reference chips (inside code a reference stays code): a `Link` in the chip look of `PrChip` (link:components-tags.adoc[Tags and Kinds]), opening its target, never a copy `Chip`;
 * a fenced Mermaid block as a diagram, drawn as every diagram of a model's text (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-diagrams[Diagrams]).
 
 Raw HTML and every token outside the subset are shown as their source text. The renderer creates Svelte nodes and holds no HTML string, so it needs no sanitizer (<<renderer-decision>>).
@@ -119,7 +122,7 @@ Raw HTML and every token outside the subset are shown as their source text. The 
 == The Change Proposal
 
 * *A card in the transcript* at the turn that proposed it: its title from the proposal's kind (`control.chat.proposal.kind`: _Change to the description_, _Change to the plan_, _Change to the staged plans_, _Proposed answer_, _Follow-up plan_, …), its summary, the line when it applies (`control.chat.at_boundary`, `control.chat.at_start`), and the change as a diff.
-* *The diff*: removed lines with `−`, added lines with `+`, on the diff tokens `--color-diff-removed` and `--color-diff-added`, the changed words marked within a line; collapsed beyond 12 lines with _Show all_ (`control.chat.diff.show_all`). The diff tokens are the one exception to the rule that one colour has one meaning (link:README.adoc#colour[Web App, Colour]), valid only inside a proposal's diff; the signs `−` and `+` carry the meaning without the colour, and both tokens owe the contrast of link:theme-readability.adoc[Theme Readability] in both themes.
+* *The diff*: removed lines with `−`, added lines with `+`, on the diff tokens `--color-diff-removed` and `--color-diff-added`, the changed words marked within a line, words split at spaces and punctuation; collapsed beyond 12 lines with _Show all_ (`control.chat.diff.show_all`). The diff tokens are the one exception to the rule that one colour has one meaning (link:README.adoc#colour[Web App, Colour]), valid only inside a proposal's diff; the signs `−` and `+` carry the meaning without the colour, and both tokens owe the contrast of link:theme-readability.adoc[Theme Readability] in both themes.
 * *Acts*: _Accept_ (`control.chat.accept`) and _Reject_ (`control.chat.reject`), both secondary, _Accept_ first with its check icon: the screen's one primary stays the object column's (link:components.adoc#hierarchy[Components, Hierarchy]); in a decision _Answer in these words_ (`decision.chat.use_words`); for ended work _Start a plan with it_ (`control.chat.follow_up.start`).
 * *It never disappears*: while it is open, a compact copy is pinned above the composer, `1 open proposal: Change to the plan · Show it` (`control.chat.pinned`, `control.chat.pinned.show`), which scrolls to the card; the operator can keep writing. A new proposal replaces the open one only with its notice. After _Accept_ or _Reject_ the card folds into its notice line.
 * *Announced*: a new proposal is announced once, `Proposal: Change to the plan` (`control.chat.proposal.announce`).
@@ -130,12 +133,13 @@ Raw HTML and every token outside the subset are shown as their source text. The 
 The composer is `Compose` (link:components-fields.adoc#compose[Compose]) with what a chat adds:
 
 * *The field*: a text area that grows from one to eight lines and then scrolls, labelled _Your message_ (`control.chat.message`, visually hidden), with a placeholder that is an example for the scope (`control.chat.example`). `Enter` sends, `Shift+Enter` adds a line, and nothing is sent while a composition (an input method, dictation) is open (`isComposing`).
-* *Send and Stop*: _Send_ (`control.chat.send`) is a secondary `Button` with the arrow icon and its label visually hidden. While the role answers it becomes _Stop the reply_ (`control.chat.stop`, the square icon), which stops it and keeps the text so far. The field stays enabled and keeps the focus while the role answers.
+* *Send and Stop*: _Send_ (`control.chat.send`) is a secondary `Button` with the arrow icon and its label visually hidden. While the role answers it becomes _Stop the reply_ (`control.chat.stop`, the square icon), which stops it and keeps the text so far. The field stays enabled and keeps the focus while the role answers; `Enter` then sends nothing and the text stays in the field until the reply has ended or was stopped.
 * *Sent at once*: the operator's turn appears at once, `sending…` (`control.chat.sending`), and is confirmed by the runtime's `202`; a failed send keeps the text in the field and marks the turn _Not sent_ (`control.chat.not_sent`) with _Try again_ and _Edit the message_.
 * *The draft* is kept per chat in the browser's storage until it is sent; it survives hiding, reloading and closing the tab.
 * *Length*: a counter shows from 7000 characters, `7240 of 8000` (`control.chat.counter`); beyond 8000 _Send_ is disabled with its reason (`control.chat.too_long`).
 * *References*: typing `#` offers the subject's tasks, files and decisions in a list under the field (`control.chat.refs.label`; `control.chat.refs.none` where nothing matches); choosing one inserts its id, sent as plain text and rendered as a chip in the transcript.
 * *An empty chat* shows one line, `Ask replan about the whole plan.` (`control.chat.empty`), and two or three starters for its scope as chips (`control.chat.starter.<scope>`; the whole register takes `.register`); a starter fills the field and sends nothing.
+* *Ending*: _End the chat_ closes the column; the act that opened it shows `The chat is kept with fix-relay.` (`control.chat.ended`) once, as a notice beside it.
 * *Ended work* keeps the composer; its acts are the transcript, its questions, and the follow-up proposal.
 * *The microphone* is <<voice>>.
 
@@ -144,7 +148,7 @@ The composer is `Compose` (link:components-fields.adoc#compose[Compose]) with wh
 
 * *Stick to the bottom* while the operator is at the bottom. Scrolled up, the transcript stays where it is and a pill _New reply_ (`web.chat.new_reply`) appears above the composer; it scrolls down.
 * *Other devices*: turns, proposals, a decided proposal and the end of the chat from another device arrive through the `chat.*` events and appear in place; a turn being written is shown with its text so far.
-* *Accessibility*: the transcript is `role="log"`; the turn being written is `aria-busy="true"` until it completes, so a screen reader reads the finished reply once, never word by word. The focus moves into the field when the chat opens and stays there while the role answers. `Escape` hides the chat and returns the focus to the act that opened it. The chat's own key, where a view defines one, opens it.
+* *Accessibility*: the transcript is `role="log"`; the turn being written is `aria-busy="true"` until it completes, so a screen reader reads the finished reply once, never word by word. Visually hidden announcements stay inside the column's positioned box, so they never widen the page. The focus moves into the field when the chat opens and stays there while the role answers. `Escape` hides the chat and returns the focus to the act that opened it. The chat's own key, where a view defines one, opens it.
 
 [#waiting]
 == Waiting and the Brand
@@ -226,6 +230,14 @@ The chat's shared keys, both clients', are `control.chat.*` (link:../shared/work
 |`web.chat.new_reply`
 |New reply
 |Neue Antwort
+
+|`web.chat.with`
+|with {role} · {model}
+|mit {role} · {model}
+
+|`web.chat.from_device`
+|You · {device}
+|Du · {device}
 
 |`web.voice.start`
 |Dictate
