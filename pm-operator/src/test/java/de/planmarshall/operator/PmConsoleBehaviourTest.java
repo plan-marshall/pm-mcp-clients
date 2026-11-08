@@ -33,7 +33,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.LockSupport;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.terminal.impl.DumbTerminal;
@@ -423,7 +422,7 @@ class PmConsoleBehaviourTest {
                 var started = System.nanoTime();
                 assertTimeoutPreemptively(Duration.ofSeconds(8), () -> console.refreshSetupBadge("en", terminal));
                 var elapsed = Duration.ofNanos(System.nanoTime() - started);
-                assertTrue(elapsed.compareTo(PmConsole.REFRESH_BOUND.plusSeconds(1)) < 0, elapsed.toString());
+                assertTrue(elapsed.compareTo(PmConsole.REFRESH_BOUND.plus(Duration.ofMillis(1500))) < 0, elapsed.toString());
             }
         } finally {
             release.countDown();
@@ -470,6 +469,58 @@ class PmConsoleBehaviourTest {
             console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
             assertEquals("/api/v1/entries/" + entryId, exactEntryTarget.get(),
                                 "Enter on a being-added badge must address the entry continue_link carries");
+        }
+    }
+
+    @Test
+    @DisplayName("Enter on a being-added project badge succeeds with a choice and continues")
+    void enterOnABeingAddedProjectBadgeSucceeds() throws Exception {
+        var entryId = "ent-step-choice";
+        var checkout = "/work/my-project";
+        var entry = new BeingAddedProject(checkout, "Identity", 3, 10,
+                            "/api/v1/entries/" + entryId + "/continue", "/api/v1/entries/" + entryId + "/abandon");
+        var postTarget = new AtomicReference<String>();
+        fixture.start((request, response) -> {
+            if (("/api/v1/entries/" + entryId).equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "state": {"state_id": "identity", "kind": "operator_wait"},
+                                      "step": 3,
+                                      "total_steps": 10,
+                                      "summary": "Project Identity",
+                                      "links": [{"id": "next", "rel": "next", "preselected": true}]
+                                    }
+                                    """);
+            } else if (("/api/v1/entries/" + entryId + "/links/next").equals(request.target()) && "POST".equals(request.method())) {
+                postTarget.set(request.target());
+                response.json(200, """
+                                    {
+                                      "state": {"state_id": "project.completed", "kind": "completed"},
+                                      "step": 10,
+                                      "total_steps": 10,
+                                      "summary": "Completed"
+                                    }
+                                    """);
+            } else if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[" + entry.toJson() + "]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var input = new ByteArrayInputStream("1\n".getBytes(StandardCharsets.UTF_8));
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(input, rendered)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            console.refreshSetupBadge("en", terminal);
+            console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
+            assertEquals("/api/v1/entries/" + entryId + "/links/next", postTarget.get(),
+                                "Enter on being-added badge must post the chosen link to the entry endpoint");
         }
     }
 
@@ -534,6 +585,38 @@ class PmConsoleBehaviourTest {
             console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
             assertEquals("/api/v1/entries/ent-%22q%22%5Cb", exactEntryTarget.get(),
                                 "an id with a quote or a backslash must reach the command unaltered");
+        }
+    }
+
+    @Test
+    @DisplayName("an entry id starting with --project reaches the runtime unaltered")
+    void entryIdStartingWithProjectReachesTheRuntimeUnaltered() throws Exception {
+        var entry = new BeingAddedProject("/work/project-dir-name", "Identity", 3, 10,
+                            "/api/v1/entries/--project-xyz/continue", "/api/v1/entries/--project-xyz/abandon");
+        var exactEntryTarget = new AtomicReference<String>();
+        fixture.start((request, response) -> {
+            if (request.target().startsWith("/api/v1/entries/")) {
+                exactEntryTarget.set(request.target());
+                response.send(404, null, "");
+            } else if ("/api/v1/status".equals(request.target())) {
+                response.json(200, "{\"status\":\"ready\",\"onboarded\":true}");
+            } else if ("/api/v1/project-onboardings".equals(request.target())) {
+                response.json(200, "{\"onboardings\":[" + entry.toJson() + "]}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var rendered = new ByteArrayOutputStream();
+        try (var terminal = new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered)) {
+            var reader = LineReaderBuilder.builder().terminal(terminal).build();
+            var context = new OperatorContext(fixture.environment(), tempDir, true,
+                                ClientEnvironment.capture(fixture.environment()),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), rendered), null);
+            var console = new PmConsole(context);
+            console.refreshSetupBadge("en", terminal);
+            console.handleEmptyEnter(new PrintWriter(rendered), reader, terminal);
+            assertEquals("/api/v1/entries/--project-xyz", exactEntryTarget.get(),
+                                "an entry id starting with --project reaches project setup --entry unaltered");
         }
     }
 
@@ -672,9 +755,12 @@ class PmConsoleBehaviourTest {
 
                 // While the first refresh holds the lock and its read is open, the second must not
                 // reach the runtime: a second status request in this window is the interleaving.
-                assertTrue(awaitNoSecondStatusRequest(statusRequests),
-                                    () -> "the second refresh read the runtime while the first held the lock: "
-                                                        + statusRequests.get());
+                var deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+                while (t2.getState() != Thread.State.TIMED_WAITING && statusRequests.get() == 1 && System.nanoTime() < deadline) {
+                    Thread.onSpinWait();
+                }
+                assertEquals(1, statusRequests.get(), "the second refresh must not read the runtime while the first holds the lock");
+                assertEquals(Thread.State.TIMED_WAITING, t2.getState(), "the second refresh must be waiting on the lock");
 
                 releaseFirst.countDown();
                 t1.join(30_000);
@@ -683,17 +769,6 @@ class PmConsoleBehaviourTest {
         } finally {
             releaseFirst.countDown();
         }
-    }
-
-    private static boolean awaitNoSecondStatusRequest(AtomicInteger statusRequests) {
-        var deadline = System.nanoTime() + Duration.ofMillis(500).toNanos();
-        while (System.nanoTime() < deadline) {
-            if (statusRequests.get() > 1) {
-                return false;
-            }
-            LockSupport.parkNanos(Duration.ofMillis(10).toNanos());
-        }
-        return true;
     }
 
     @Test

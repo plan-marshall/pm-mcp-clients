@@ -34,7 +34,6 @@ public final class ProjectOnboardingSource implements StateDialogue.Source {
     private static final String PROJECTS_API = "/api/v1/projects/";
     private static final String ENTRIES_API = "/api/v1/entries/";
     private static final String LINKS = "/links/";
-    private static final int TOTAL_STEPS = 10;
 
     private final RuntimeClient runtime;
     private final OperatorGate gate;
@@ -78,7 +77,7 @@ public final class ProjectOnboardingSource implements StateDialogue.Source {
         if (response.status() != 200) {
             throw new IOException("the project setup answered HTTP " + response.status());
         }
-        return StateDialogue.fromJson(response.bodyText(), TOTAL_STEPS, true);
+        return StateDialogue.fromJson(response.bodyText(), 0, true);
     }
 
     @Override
@@ -92,6 +91,6 @@ public final class ProjectOnboardingSource implements StateDialogue.Source {
         if (response.status() != 200) {
             throw new IOException("the project setup answered HTTP " + response.status());
         }
-        return StateDialogue.fromJson(response.bodyText(), TOTAL_STEPS, true);
+        return StateDialogue.fromJson(response.bodyText(), 0, true);
     }
 }

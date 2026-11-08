@@ -93,6 +93,21 @@ class ProjectSelectorTest {
     }
 
     @Test
+    @DisplayName("an argument after -- is not treated as a project selector")
+    void ignoresArgumentsAfterEndOfOptions() {
+        var context = new OperatorContext(Map.of(), Path.of("."), false);
+        for (var args : List.of(
+                            new String[]{"project", "setup", "--entry", "--", "--project"},
+                            new String[]{"project", "setup", "--entry", "--", "--project=?"})) {
+            var err = new StringWriter();
+            var outcome = ProjectSelector.rewrite(context, new PrintWriter(new StringWriter()),
+                                new PrintWriter(err), args);
+            assertTrue(outcome.proceed(), String.join(" ", args));
+            assertEquals(List.of(args), outcome.args());
+        }
+    }
+
+    @Test
     @DisplayName("a selector that runs on a borrowed terminal leaves it open")
     void borrowedTerminalStaysOpen() throws Exception {
         try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()

@@ -16,9 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 import de.planmarshall.operator.dialogue.OnboardingSource;
 import de.planmarshall.operator.dialogue.ProjectOnboardingSource;
@@ -149,5 +151,42 @@ class DialogueSourceTest {
         assertAll(
                             () -> assertThrows(IOException.class, onboarding::fetch),
                             () -> assertThrows(IOException.class, project::fetch));
+    }
+
+    @Test
+    @DisplayName("an onboarding source constructed with an aspect list follows that size")
+    void onboardingSourceFollowsInjectedAspectList() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/onboarding/state".equals(request.target())) {
+                response.json(200, "{\"state\":\"onboard.mode\",\"completed_steps\":0,\"links\":{}}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var context = context();
+        var aspects = List.of(OnboardingAspect.LANGUAGE, OnboardingAspect.HARNESSES);
+        var source = new OnboardingSource(context.runtime(true), context.gate(), aspects);
+        var frame = source.fetch();
+
+        assertEquals(2, frame.totalSteps());
+    }
+
+    @Test
+    @DisplayName("a project setup with a custom total_steps reports that total")
+    void projectSetupWithCustomTotalStepsReportsThatTotal() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/projects/my-proj/setup".equals(request.target())) {
+                response.json(200, "{\"state\":\"project.identity\",\"total_steps\":12,\"completed_steps\":0,\"links\":{}}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var context = context();
+        var source = new ProjectOnboardingSource(context.runtime(true), context.gate(), "my-proj");
+        var frame = source.fetch();
+
+        assertEquals(12, frame.totalSteps());
     }
 }
