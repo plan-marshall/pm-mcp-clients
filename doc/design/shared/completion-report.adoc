@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work], link:../../../../pm-mcp-core/doc/specification/store-schemas/02-workflow-state-store.adoc#plan-history[The Plan's History]_
 
-Status: `DRAFT`. Shared by both clients: link:../terminal-client/24-reports.adoc#completion[Terminal Client, Reports], link:../web-app/README.adoc#structure[Web App].
+Status: `AGREED`. Shared by both clients: link:../terminal-client/24-reports.adoc#completion[Terminal Client, Reports], link:../web-app/README.adoc#structure[Web App].
 
 How a plan went, on one page: the detail of the report of its end (link:reports.adoc#detail[Reports, The Detail]) and one step from the plan as it ended (link:plan-view.adoc#ended[Plan View, An Ended Plan]). The plan view shows the process node by node; the completion report says what came of it. It is a view of its own, read from the archive and the plan's records (its completion record, its re-planning records, its decisions, its usage records); the client computes nothing in it. It is the resource `GET /api/v1/plans/{plan_id}/completion`.
 

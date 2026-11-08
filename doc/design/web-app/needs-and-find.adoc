@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../shared/needs-and-find.adoc[What Waits, and Going to Work by Name], link:../shared/plan-overview.adoc[Plan Overview], link:../web-app/view-density-and-filtering.adoc[View Density and Filtering], link:../web-app/interaction-affordances.adoc[Interaction Affordances]_
 
-Status: `DRAFT`. The web part of the work package link:../../plans/needs-and-find.adoc[`needs-and-find`]: where the two views of link:../shared/needs-and-find.adoc[What Waits, and Going to Work by Name] live in the app, and how they are reached. What each view shows is the shared design's; this document adds only the route, the rail, the search button, and the start page.
+Status: `AGREED`. The web part of the work package link:../../plans/needs-and-find.adoc[`needs-and-find`]: where the two views of link:../shared/needs-and-find.adoc[What Waits, and Going to Work by Name] live in the app, and how they are reached. What each view shows is the shared design's; this document adds only the route, the rail, the search button, and the start page.
 
 [#start-page]
 == The Start Page Is What Waits
