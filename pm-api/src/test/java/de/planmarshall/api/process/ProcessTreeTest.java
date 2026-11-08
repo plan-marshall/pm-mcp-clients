@@ -120,7 +120,7 @@ class ProcessTreeTest {
                 214,
                 "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
                 7800L,
-                new ChangeSize(12, 340, 27, 2)
+                null
         );
 
         // Act
@@ -138,12 +138,6 @@ class ProcessTreeTest {
         assertEquals(totalTokens, parsed.tokensSoFar().total());
         assertTrue(parsed.tokensSoFar().floor());
         assertEquals(2, parsed.nodes().size());
-        assertTrue(json.contains("\"change\""));
-        assertNotNull(parsed.change());
-        assertEquals(12, parsed.change().files());
-        assertEquals(340, parsed.change().insertions());
-        assertEquals(27, parsed.change().deletions());
-        assertEquals(2, parsed.change().unplanned());
 
         var parsedExec = parsed.nodes().get(0);
         assertEquals("execute", parsedExec.nodeId());
@@ -165,6 +159,22 @@ class ProcessTreeTest {
         assertEquals("refine", parsedPruned.nodeId());
         assertEquals("not_in_plan", parsedPruned.state());
         assertEquals("lane_choice", parsedPruned.pruneReason());
+    }
+
+    @Test
+    @DisplayName("should serialize and deserialize a non-null size of change")
+    void shouldRoundTripChangeSize() throws Exception {
+        var project = new ProcessProjectRef("project", "project", null);
+        var change = new ChangeSize(12, 340, 27, 2);
+        var tree = new ProcessTree("plan", "Plan", project, null, "execute", "running", null,
+                            false, 1, new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false),
+                            List.of(), List.of(), null, null, 0L, change);
+
+        var json = tree.toJson();
+        var parsed = ProcessTree.fromJson(json);
+
+        assertTrue(json.contains("\"change\""));
+        assertEquals(change, parsed.change());
     }
 
     @Test
