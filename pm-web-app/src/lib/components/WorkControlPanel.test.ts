@@ -954,7 +954,7 @@ describe('WorkControlPanel component', () => {
         ],
       });
 
-      render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
+      const { unmount } = render(WorkControlPanel, { props: { subjectId: 'fix-relay', subjectKind: 'plan' } });
 
       const menu = await openOverflow();
       const customButton = within(menu).getByTestId('action-custom_inspect');
@@ -962,10 +962,47 @@ describe('WorkControlPanel component', () => {
 
       await fireEvent.click(customButton);
       expect(apiClient.applyPlanAction).toHaveBeenCalledWith('fix-relay', 'custom_inspect', {});
+      unmount();
     } finally {
       const idx = PLAN_ACTS.running.indexOf(customAct);
       if (idx !== -1) {
         PLAN_ACTS.running.splice(idx, 1);
+      }
+    }
+
+    const customEpicAct = {
+      id: 'custom_epic_inspect',
+      labelKey: 'control.epic.custom_epic_inspect',
+      role: 'overflow' as const,
+    };
+    EPIC_ACTS.running.push(customEpicAct);
+    try {
+      vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue({
+        subject_id: 'relay-hardening',
+        subject_kind: 'epic',
+        state: 'running',
+        actions: [
+          { action: 'next', available: true },
+          { action: 'custom_epic_inspect', available: true },
+        ],
+      });
+      vi.spyOn(apiClient, 'getEpicArchiveCheck').mockResolvedValue(archiveCheck);
+
+      const { unmount } = render(WorkControlPanel, {
+        props: { subjectId: 'relay-hardening', subjectKind: 'epic' },
+      });
+
+      const menu = await openOverflow();
+      const customEpicButton = within(menu).getByTestId('action-custom_epic_inspect');
+      expect(customEpicButton).toBeInTheDocument();
+
+      await fireEvent.click(customEpicButton);
+      expect(apiClient.applyEpicAction).toHaveBeenCalledWith('relay-hardening', 'custom_epic_inspect', {});
+      unmount();
+    } finally {
+      const idx = EPIC_ACTS.running.indexOf(customEpicAct);
+      if (idx !== -1) {
+        EPIC_ACTS.running.splice(idx, 1);
       }
     }
   });

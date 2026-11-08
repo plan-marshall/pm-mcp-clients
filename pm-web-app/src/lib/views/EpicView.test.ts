@@ -611,7 +611,13 @@ describe('EpicView component', () => {
     );
   });
 
-  it('renders unknown count badge when running is undefined', async () => {
+  it('renders unknown count badge when running is undefined and opens the raise dialogue', async () => {
+    vi.spyOn(apiClient, 'getEpicActions').mockResolvedValue({
+      subject_id: 'relay-hardening',
+      subject_kind: 'epic',
+      state: 'running',
+      actions: [{ action: 'next', available: true }],
+    });
     const resourceWithUndefinedRunning: EpicResource = {
       ...mockResource,
     };
@@ -620,5 +626,15 @@ describe('EpicView component', () => {
     render(EpicView);
 
     expect(await screen.findByTestId('epic-scope')).toHaveTextContent('? of 3 at once');
+
+    const next = await screen.findByTestId('action-next');
+    expect(next).not.toBeDisabled();
+
+    await fireEvent.click(next);
+
+    const raise = await screen.findByTestId('raise-scope');
+    expect(raise).toHaveTextContent(
+      'How many plans run is not known; relay-hardening may run 3 at once, and the next plan, relay-reconnect-metrics, waits for a free place.',
+    );
   });
 });
