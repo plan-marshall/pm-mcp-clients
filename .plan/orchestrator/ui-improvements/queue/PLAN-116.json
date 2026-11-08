@@ -2,10 +2,10 @@
   "id": "PLAN-116",
   "slug": "cli-console-fourth-residue",
   "workstream": "WS-04",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-116-cli-console-fourth-residue",
+  "pr": "368",
+  "landing": "landings/PLAN-116.md",
   "seq": 116
 }

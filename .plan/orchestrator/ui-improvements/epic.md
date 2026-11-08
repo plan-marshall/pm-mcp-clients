@@ -633,9 +633,21 @@ plan spec names the plan, proposal and finding documents it comes from.
   Recurrence 2026-11-01: `rb-26-cli-system-model-001.md` (PLAN-26, opencode), same two keys.
   Recurrence 2026-11-08: `rb-109-web-rail-settings-label-and-icon-001.md` (PLAN-109, antigravity), `total_tokens`, `model`
   and `effort` missing (`plugin_version=0.1.0` beside `executor_version=0.1.2080` looks like a placeholder).
+  Recurrence 2026-11-08: `rb-116-cli-console-fourth-residue-001.md` (PLAN-116, opencode), `total_tokens` and
+  `plugin_version` missing; the message also carries its envelope header twice (it still validated).
 
 ## Watches
 
+- PLAN-116 landed (PR #368, `6c105a86`, analysed 2026-11-08); see `landings/PLAN-116.md`. Open: (1) merge rule not met in
+  full: the #368 review-body nitpick (device ages on their own row) was not answered; folded into PLAN-79 with two more
+  test gaps (lock-wait vacuity at `PmConsoleBehaviourTest:758`, aspect-list wiring test). (2) `04-console.adoc:26,112`
+  lack the new `--` in `project setup --entry -- <entry_id>`: folded into PLAN-84. (3) Layer 3, reported to the operator
+  2026-11-08: a project payload without `total_steps` loses its `[n/m]` step line (`ProjectOnboardingSource.java:80,94`
+  fallback 0, was 10); `BeingAddedProject.java:49-51,121` keeps a fixed 10; `OnboardingAspect.values()` remains in
+  `OnboardingSource.java:47` and `StateDialogue.java:411,648`; `total_steps` fractions and over-range longs are accepted.
+  (4) The D3 formatting of `ConsoleBadge.java:28-33` and `PmConsole.java:238` is not in the merge: the next pre-commit run on
+  `pm-operator` should rewrite it — check at that landing. (5) PLAN-116's spec named the wrong `OnboardingCatalogueTest`
+  path (it is in `pm-api`).
 - PLAN-109 landed (PR #367, `56b43a02`, analysed 2026-11-08); see `landings/PLAN-109.md`. Open: (1) the merge rule was not
   met in full: CodeRabbit's first review body carried a nitpick (assert `Plan-Einstellungen`) nobody answered; confirmed by
   reading and folded into PLAN-79. (2) The collapsed rail's tooltip is the short label (`NavRail.svelte:117` reads

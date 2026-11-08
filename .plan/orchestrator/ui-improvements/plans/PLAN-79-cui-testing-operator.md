@@ -71,6 +71,14 @@ Checked at `aa3a9be3`. The before-count is 23 of 132 test classes (111 `*Test` +
 
 Source: `landings/PLAN-109.md` (layer 2), a CodeRabbit nitpick on PR #367 that the lane left unanswered and the three-layer reading confirmed. `control.plan.settings` is `Plan-Einstellungen` in `pm-api/src/main/resources/messages/control.de.properties:16` (at `56b43a02`), but no test asserts the German value: `ActionMenusTest` reads locale `en` (`:58`, `:78`, `:105` assert `startsWith("Plan settings")`) and `ControlCatalogueTest` checks key presence and parity only. A revert to `Einstellungen` would pass and bring back the clash with the rail's "Einstellungen" the rename removed. When this plan rewrites `ActionMenusTest`, add one German-locale assertion that entry 3's label starts with `Plan-Einstellungen` (expected catalogue text stays literal). Surface unchanged: the file lies below the claimed `pm-operator/src/test/java/`.
 
+## Fold 2026-11-08 (PLAN-116 landing)
+
+Source: `landings/PLAN-116.md` (layer 2), read at `6c105a86`. Three test gaps in files this plan rewrites anyway; surface unchanged (all below `pm-operator/src/test/java/`):
+
+1. `transcript/ConsoleSettingsTranscriptTest.java:72-83` checks each device name and each age as separate substrings of the whole render, so swapped Firefox/Safari ages still pass (CodeRabbit nitpick on PR #368, unanswered). Assert each device's age on its own rendered row, for both clocks.
+2. `PmConsoleBehaviourTest.java:758-763` waits for the second refresh to reach `TIMED_WAITING`, which a lock wait (`PmConsole.java:693` `tryLock(timeout)`) and `EntryFlow.bounded`'s `thread.join(millis)` both produce: without the lock the test can still pass. Make the check discriminate the lock wait (e.g. the lock's queue, `hasQueuedThreads`, or the waiting thread's blocker), and check the negative over the window rather than at one instant.
+3. No test shows the injected aspect list reaches the dialogue through `EntryFlow.java:292` and `PmConsole.java:314` (reverting either fails nothing): add one dialogue-level assertion with a list of another size.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

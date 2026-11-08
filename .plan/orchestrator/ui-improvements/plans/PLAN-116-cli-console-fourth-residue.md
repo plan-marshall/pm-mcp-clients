@@ -98,6 +98,7 @@ has an answer where the reviewer reads it and the tests can fail.
   `ConsoleSettingsTranscriptTest` ~70) are undone, `OnboardingSource.TOTAL_STEPS` and `ProjectOnboardingSource.TOTAL_STEPS`
   are as described, `ProjectSelector.asksForProject` misreads an entry id starting `--project` — by a read-only agent's
   reading of `7902d577`, not run; confirm/refute at the files named
+  - verdict: corroborated | checked_at: 6c105a86f9163de6723d5d9fde61ef21f8d8bed9 | by: ui-improvements/analyze | rescoped: n/a | evidence: narrower than stated: ProjectSelector.java:41-42 reads only --project and --project=... as a selector; the -- fix covers them (ProjectSelectorTest:97); TOTAL_STEPS existed as described (6c105a86^ ProjectOnboardingSource:37); ConsoleSettingsTranscriptTest ages still not tied to their row
 - Source: `landings/PLAN-104.md`, `landings/PLAN-103.md`.
 - Verify-first clause: before each deliverable, re-read the named files at the current HEAD (PLAN-97 lands first) and confirm
   or refute every HYPOTHESIS; a refuted cause re-scopes the deliverable and is reported.
