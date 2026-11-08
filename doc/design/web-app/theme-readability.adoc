@@ -41,7 +41,7 @@ The tokens of design system v2 are declared in `pm-web-app/src/styles/tokens.css
 |`--color-text-primary` |`#E6EAF2` |`#16181D` |Titles, body.
 |`--color-text-secondary` |`#AEB6C4` |`#3E4450` |Secondary lines.
 |`--color-text-muted` |`#8B95A7` |`#5F6672` |Meta, time, hints.
-|`--color-brand` |`#8B7EF9` |`#5B4BDB` |Primary act, selection, focus, brand mark.
+|`--color-brand` |`#8B7EF9` |`#5B4BDB` |Primary act, selection, focus.
 |`--color-brand-hover` |`#A093FB` |`#4A3BC4` |Hover of the primary act.
 |`--color-brand-subtle` |`#1E2240` |`#EEEBFF` |Selected row, recommendation block.
 |`--color-attention` |`#F2A93B` |`#B86E00` |Dot and edge for "needs you".

@@ -276,11 +276,11 @@ So the badge's outer shape keeps `3:1` as a graphical object in both themes: on 
 [#implementation]
 == Implementation
 
-The D3 brand assets package delivers this design after it is agreed; the component specifications are in link:components.adoc#supporting[Components, Supporting Pieces].
+The D3 brand assets package delivers this design after it is agreed; the component specifications are in link:components-brand.adoc[Components, Brand Pieces].
 
-* `BrandMark` draws the badge as an inline SVG whose colours come from the `--color-mascot-*` tokens through classes of its own stylesheet, never as literals in `src/lib/`: `rendering` `colour` (default) or `monochrome`, `size` `16`, `20`, `24`, `28` or `64`. The `plate` option goes with the earlier mark. Under `forced-colors: active` it draws the monochrome rendering whatever was asked. `aria-hidden="true"` by default; a `label` turns it into `role="img"` with that name. `data-testid="brand-mark"`.
+* `BrandMark` is redrawn as the badge, in colour from the `--color-mascot-*` tokens and in monochrome, without the plate (link:components-brand.adoc#brand-mark[Brand Pieces, BrandMark]).
 * `static/brand-mark.svg` and `static/brand-mark-attention.svg` are redrawn as the badge (<<favicon>>).
-* `WaitingMark` draws the waiting mark: `size` `20` or `24`, the cycle of <<waiting-motion>>, still under `prefers-reduced-motion: reduce`.
+* `WaitingMark` draws the waiting mark with its text, the cycle of <<waiting-motion>> and its still state under reduced motion (link:components-brand.adoc#waiting-mark[Brand Pieces, WaitingMark]).
 * The `--color-mascot-*` tokens join `tokens.css`; `tokens.test.ts` allows their literals there only, and the kind-tint check reads the fur and the gold from them.
 * The mascot figure and its uses are link:brand-mark-mascot.adoc#implementation[The Mascot, Implementation].
 

@@ -12,7 +12,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:components.adoc#rules[Components, Rules Every Component Keeps], link:README.adoc#colour[Web App, Semantic Colour Tokens], link:theme-readability.adoc[Theme Readability] (the contrast every colour pair owes), link:../shared/texts-and-languages.adoc#keys[Texts and Languages, Keys and Packs], link:../shared/needs-and-find.adoc#waits[What Waits] (the closed list of what needs the operator), link:../shared/plan-overview.adoc#item-rows[Plan Overview, A Plan, an Epic]_
 
-Status: `AGREED`. A part of link:components.adoc[Components]: every tag-like element of the web app — state, reason, count, id, pull request, kind, phase, marker — as one closed set, where each stands, what colour it may take, and where its word comes from; and the kind of an object with its mark and its three tints. Its rules speak of _the object shown_ and _the selected row_; the columns that show them are the navigation design's.
+Status: `DRAFT`. A part of link:components.adoc[Components]: every tag-like element of the web app — state, reason, count, id, pull request, kind, phase, marker — as one closed set, where each stands, what colour it may take, and where its word comes from; and the kind of an object with its mark and its three tints. Its rules speak of _the object shown_ and _the selected row_; the columns that show them are the navigation design's.
 
 [#tag-set]
 == One Closed Set of Tags
@@ -195,7 +195,7 @@ Every object has exactly one kind, from a closed set, and `KindMark` shows it: t
 |`--color-text-secondary`
 |===
 
-* *Phases and tasks are no kinds*: they belong to the plan and take the phase icons and `kind-task` (<<phase-label>>). A workstream groups rows and is no kind either. The kind icons are drawn so that none of them is a clipboard, which the brand candidates of link:brand-mark.adoc[Brand Mark] may use.
+* *Phases and tasks are no kinds*: they belong to the plan and take the phase icons and `kind-task` (<<phase-label>>). A workstream groups rows and is no kind either. The kind icons are drawn so that none of them is a clipboard, which is the waiting mark of link:brand-mark.adoc#waiting-mark[Brand Mark and Mascot], or a star badge, which is the brand icon.
 * *Colour is on the icon only*, never on the row, its edge, its background or its word. The word is in the colour of the text around it.
 * *Only Project, Epic and Plan are tinted* (the operator's decision of 2026-11-06). Side job, Decision, Report and Machine stay neutral and are told apart by shape and word.
 * *The word* is the kind's noun, `common.kind.<kind>` (`common.kind.project`, `.epic`, `.plan`, `.side_job`, `.decision`, `.report`, `.machine`): lowercase in English (`plan`, `side job`), a capitalised noun in German (`Plan`, `Nebenarbeit`). It is the only kind word of both clients: the words of a match of find, of what an item blocks, and of the machine's path are the same keys.
@@ -234,7 +234,7 @@ Each tint is a token in both themes. It replaces `--color-epic` and its aliases 
 . a ΔE~00~ of at least *30* to each of the other two tints;
 . a contrast of at least *3:1* as a non-text graphic against every ground an icon stands on: `--color-bg-app`, `--color-bg-surface`, `--color-bg-raised`, `--color-bg-subtle`, `--color-bg-rail`, and `--color-brand-subtle` under the selected row.
 
-The mascot's orange and gold are taken from the source figure (`#E17512`, `#F2B630`) until its own tokens (`--color-mascot-*`, link:brand-mark.adoc[Brand Mark]) exist; from then on the check reads those tokens. The package that adds the tints adds a test to `src/styles/tokens.test.ts` that computes the four rules in both themes and fails a tint that breaks one, so a later change of a state colour or of the brand cannot move a tint into it unnoticed; until then the values above are the checked ones. The values above reach:
+The mascot's orange and gold are taken from the source figure (`#E17512`, `#F2B630`) until its own tokens (`--color-mascot-*`, link:brand-mark.adoc#palette[Brand Mark and Mascot, The Mascot Palette]) exist; from then on the check reads those tokens. The package that adds the tints adds a test to `src/styles/tokens.test.ts` that computes the four rules in both themes and fails a tint that breaks one, so a later change of a state colour or of the brand cannot move a tint into it unnoticed; until then the values above are the checked ones. The values above reach:
 
 [cols="2,1,1,1",options="header"]
 |===

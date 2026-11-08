@@ -209,9 +209,9 @@ The six poses are reviewed as one set on a pose sheet rendered on the real surfa
 [#implementation]
 == Implementation
 
-The D3 brand assets package delivers the source files and the figure on its surfaces; each pose follows once accepted. The component specifications are in link:components.adoc#supporting[Components, Supporting Pieces] and link:components.adoc#empty-state[Components, EmptyState].
+The D3 brand assets package delivers the source files and the figure on its surfaces; each pose follows once accepted. The component specifications are in link:components-brand.adoc#mascot-figure[Components, Brand Pieces, MascotFigure] and link:components.adoc#empty-state[Components, EmptyState].
 
-* `MascotFigure` draws one figure: `pose` (one of <<poses>>), `crop` `full` or `bust`, `height` from the sizes of <<surfaces>>, `eager` for the pairing hero. It draws the accepted pose's files with a `srcset` of `1×` and `2×`, and the source's files for a pose not yet accepted, so a surface never names a file. It adds the dark-theme halo, the decorative attributes, and the entrance of <<assets>> where asked for.
+* `MascotFigure` draws one figure by pose and crop, from the accepted pose's files or the source's, so a surface never names a file (link:components-brand.adoc#mascot-figure[Brand Pieces, MascotFigure]).
 * `EmptyState` gains `mascot` (a pose id), which draws the bust above the title; it replaces the `brand` option of the earlier mark.
 * The pairing hero, the terminal states and the onboarding figures place a `MascotFigure`; the rail foot is a class of `NavRail` with the hiding rules of <<rail-foot>>.
 * A browser check in German and English, light and dark, at `1280` px and on the phone, covers every surface. For the rail foot and the pairing hero it also takes a desktop height below each one's free-height threshold (both hidden) and one with enough height (both shown), with the rail expanded and collapsed.

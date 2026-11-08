@@ -10,9 +10,9 @@ link:../README.adoc[Design] » link:README.adoc[Web App] » Components
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4] (follow a plan), link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2] (read the system), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (onboard the machine), link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1] (act on a plan)_
 
-_Relies on: link:README.adoc#visual-language[Web App, Visual Language] (the tokens, the grid and the type scale every component draws from), link:theme-readability.adoc[Theme Readability] (the contrast every colour pair owes), link:interaction-affordances.adoc[Interaction Affordances] (the advisory of a control, the acts of a state), link:brand-mark.adoc[Brand Mark] (the mark an empty state carries), link:workflow-visual-language.adoc[Workflow Visual Language] (the icon contract), link:../shared/texts-and-languages.adoc[Texts and Languages] (the words of every label)_
+_Relies on: link:README.adoc#visual-language[Web App, Visual Language] (the tokens, the grid and the type scale every component draws from), link:theme-readability.adoc[Theme Readability] (the contrast every colour pair owes), link:interaction-affordances.adoc[Interaction Affordances] (the advisory of a control, the acts of a state), link:brand-mark.adoc[Brand Mark and Mascot] (the brand icon, the mascot figure an empty state carries, and the waiting mark), link:workflow-visual-language.adoc[Workflow Visual Language] (the icon contract), link:../shared/texts-and-languages.adoc[Texts and Languages] (the words of every label)_
 
-Status: `AGREED`. This document is the authority for the components of the web app: the closed vocabulary every view is built from, the specification of each component with its picture, the rules for using them, and the surface the implementation delivers. Every component it names lives in `pm-web-app/src/lib/components/` with a test beside it and a fixture on the development page `/dev/components` (built only in development); a component marked _new_ is specified here and is built by the package that implements this design. It has two parts: link:components-tags.adoc[Tags and Kinds] (state, reason, count, id, pull request, kind with its tints, phase, markers) and link:components-fields.adoc[Fields and Forms]. Its rules speak of _the object shown_ and _the selected row_; which columns show them is the navigation design's (link:navigation.adoc[Navigation]): the object shown is the object column, and the selected row is the row of a list column that opened the column to its right.
+Status: `DRAFT`. This document is the authority for the components of the web app: the closed vocabulary every view is built from, the specification of each component with its picture, the rules for using them, and the surface the implementation delivers. Every component it names lives in `pm-web-app/src/lib/components/` with a test beside it and a fixture on the development page `/dev/components` (built only in development); a component marked _new_ is specified here and is built by the package that implements this design. It has three parts: link:components-tags.adoc[Tags and Kinds] (state, reason, count, id, pull request, kind with its tints, phase, markers), link:components-fields.adoc[Fields and Forms], and link:components-brand.adoc[Brand Pieces] (`BrandMark`, `MascotFigure`, `WaitingMark`). Its rules speak of _the object shown_ and _the selected row_; which columns show them is the navigation design's (link:navigation.adoc[Navigation]): the object shown is the object column, and the selected row is the row of a list column that opened the column to its right.
 
 The proposal (`doc/claude_review/visual-design/proposals.adoc#VD-P-05`) states what the first components were; this document has since become the authority, and a component it adds is specified here.
 
@@ -58,8 +58,8 @@ The proposal (`doc/claude_review/visual-design/proposals.adoc#VD-P-05`) states w
 |<<data>>
 
 |Supporting
-|`Icon`, `BrandMark`, `Spinner`
-|<<supporting>>
+|`Icon`, `Spinner`; `BrandMark`, `MascotFigure`, `WaitingMark`
+|<<supporting>>; the brand pieces in link:components-brand.adoc[Brand Pieces]
 
 |Templates
 |`TriagePage` (the column engine), `ObjectPage` (the object column), `WizardPage`, `DashboardPage`
@@ -432,11 +432,11 @@ Source and surface: `pm-web-app/src/lib/components/DataTable.svelte`, tests in `
 [#empty-state]
 === EmptyState
 
-image::../../resources/diagrams/web-component-empty-state.svg[An empty state with the mark, a title, a sentence and one act,360,align=center]
+image::../../resources/diagrams/web-component-empty-state.svg[An empty state with the mascot's bust, a title, a sentence and one act,360,align=center]
 
-An icon, or the brand mark in `--color-text-muted`, a title, one sentence and one act. The sentence says what is missing and what the person can do about it; the act is that step. An empty state is not an error, so it carries neither a danger colour nor a retry of its own.
+An icon, or the mascot's bust in a pose (`mascot`, drawn by link:components-brand.adoc#mascot-figure[`MascotFigure`]), a title, one sentence and one act. The bust is for the five calm empty states only — nothing waits, no running work, no open decisions, no unread reports, no projects yet (link:brand-mark-mascot.adoc#surfaces[The Mascot, Surfaces]); an empty filter result keeps an icon. The sentence says what is missing and what the person can do about it; the act is that step. An empty state is not an error, so it carries neither a danger colour nor a retry of its own.
 
-Source and surface: `pm-web-app/src/lib/components/EmptyState.svelte`, tests in `EmptyState.test.ts`; the props are `title`, `message`, `icon`, `brand`, `actionLabel`, `onAct` and `titleLevel`.
+Source and surface: `pm-web-app/src/lib/components/EmptyState.svelte`, tests in `EmptyState.test.ts`; the props are `title`, `message`, `icon`, `mascot` (a pose id, `all-clear` or `start-here`), `actionLabel`, `onAct` and `titleLevel`.
 
 [#error-state]
 === ErrorState
@@ -461,9 +461,9 @@ Source and surface: `pm-web-app/src/lib/components/Skeleton.svelte`, tests in `S
 
 `Icon` (`Icon.svelte`) draws one icon of the delivered set through its alpha mask; a name the set does not deliver draws nothing (link:workflow-visual-language.adoc[Workflow Visual Language]).
 
-`BrandMark` (`BrandMark.svelte`) draws the project's own mark, at `20`, `24` or `64` px, optionally on the rail head's brand-coloured plate (link:brand-mark.adoc[Brand Mark]).
+`BrandMark` (the brand icon), `MascotFigure` (a figure of the mascot) and `WaitingMark` (the long wait beside a text) are specified in link:components-brand.adoc[Brand Pieces].
 
-`Spinner` (`Spinner.svelte`) is the single-line wait of a check that has not answered yet; its label comes from the catalogue.
+`Spinner` (`Spinner.svelte`) is the single-line wait of a check that has not answered yet, and every wait on a screen with a mascot figure; its label comes from the catalogue.
 
 [#new-component]
 == A New Component
