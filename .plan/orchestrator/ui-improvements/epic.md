@@ -531,6 +531,14 @@ plan spec names the plan, proposal and finding documents it comes from.
   only) sets the 17 D1 documents to `Status: AGREED`; when it merges, D2 (PLAN-113) and D3 (PLAN-114) are emittable. (4) The
   settled entries of this Decisions section move to `settled.md` with one-line pointers (the cleanup relocation deferred on
   2026-11-07).
+- 2026-11-08 — D3 SEAMS ROUTED (operator, AskUserQuestion, `landings/PLAN-114.md`). In the D2 seams PR (documents only,
+  `skip-bot-review`, by the orchestrator): S3 (`act.favourite-on` has a centre dot; no citation of the deleted sheet), S4 (colour
+  sizes 16/28/64 in `workflow-visual-language.adoc` and `components-brand.adoc`), S6 (`bmm:43` anchor `#after-pairing`; the
+  revoked figure), S7 (README lists `components-brand.adoc`), S11 (`--color-mascot-*` rows in `theme-readability.adoc`), S13
+  (attention dot inside the grid), C1 (`onboarding.adoc` split verbatim under 500 lines); S5 "an unknown address" dropped from
+  the mascot surfaces; S2/S8 follow the component rule (the state's one main wait shows the `WaitingMark` at 20 px, per-item
+  checks keep the `Spinner`; `onboarding.adoc:45` and `cb:58` reworded, sketches unchanged). Folded: S1 and S9 into PLAN-115;
+  S12 (`kind-plan` vs the clipboard) into the D3 brand assets package, still to be staged. S10 is declared and temporary.
 
 ## Open Defects
 
@@ -586,6 +594,15 @@ plan spec names the plan, proposal and finding documents it comes from.
   Recurrence 2026-11-08: `rb-118-cli-command-tree-residue-001.md` (PLAN-118, opencode), `total_tokens` and
   `plugin_version` missing. `rb-117-web-acts-fourth-residue-001.md` (PLAN-117, antigravity), `total_tokens`, `model` and
   `effort` missing (`plugin_version=0.1.0` again).
+  Recurrence 2026-11-08: `rb-34-cli-display-layer-001.md` (PLAN-34, opencode), `total_tokens` and `plugin_version` missing.
+  Recurrence 2026-11-08: `rb-21-cli-answer-dialogue-001.md` (PLAN-21, antigravity), `total_tokens`, `plugin_version` and
+  `executor_version` unknown.
+- Lane landing reports state false review counts (2026-11-08, PLAN-34 and PLAN-21 in a row): PLAN-34 reported "All threads
+  resolved" with 2 unresolved and unanswered; PLAN-21 reported "zero unresolved review threads, self-review clear" with all 20
+  CodeRabbit threads unresolved and unanswered (none addressed). Both merged. The counts must be read from `ci pr comments`
+  at the merge question, never written from memory; until the runbook-lane change (review-gate) ships, the orchestrator keeps
+  re-reading threads and bodies at every landing, and new specs state the merge rule hard (PLAN-124). Owner: plan-marshall
+  (runbook lane).
 - `ci pr edit` does not take a prepared body (found by PLAN-118, 2026-11-08): the `--plan-id`/`--slot` path answers "At least
   one of --title or a prepared body must be provided", and with `--title` only the title changes. A lane therefore cannot
   correct its PR body after the fact (PLAN-118's body still says the Sonar read is "to be read"; the read is in
@@ -599,6 +616,35 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Watches
 
+- D2 (PLAN-113) landed (PR #380, `95df75bb`, analysed 2026-11-08); see `landings/PLAN-113.md`. Merge rule met; the 13
+  changed documents are AGREED (operator decisions, AGREED commit `467fa02f` by the orchestrator). Seams S1–S11 and C1–C2: the
+  OPERATOR DECIDED 2026-11-08 to have them fixed directly (documents only, one PR labelled `skip-bot-review`, by the
+  orchestrator) AFTER D3's #379 merges, with the rule "an explicit click on a lens opens that lens (`/` = What waits); only a
+  bare app start or `/overview` is filled from the remembered place", plus the `web-app/README.adoc` split under 500 lines.
+  S8 (chat wording) folded into PLAN-115. S4 (`plan-view-interaction.adoc`) stays with PLAN-55/62. The three sibling-repo
+  symlinks in `.plan/local/worktrees/` are removed once D3 finishes.
+- PLAN-21 landed (PR #372, `bedc5927`, analysed 2026-11-08); see `landings/PLAN-21.md`. MERGE RULE NOT MET: 20 CodeRabbit
+  threads, 0 replies, 0 resolved, review body unanswered; all 20 findings real at the merge. Layer 3 major: decision text not
+  sanitised (evidence and more, `AnswerCommand.java:208`), part question never shown, multi-part decisions answered after
+  part 0 (`:596`; `PmConsoleHandoffTest:124` asserts it), advertised `h)` chat unhandled; minors: unchecked responses, false
+  "stays open", German noun grammar, hard-coded project names, `--no-input` without options. Fix plan PLAN-124 staged and
+  EMITTED on the operator's word 2026-11-08; PLAN-123 now waits for it.
+- D3 (PLAN-114) landed (PR #379, `64a18ed1`, analysed 2026-11-08); see `landings/PLAN-114.md`. Merge rule met (1 CodeRabbit
+  body, 6 actionable answered, 5/5 threads resolved; README/components/components-brand/view-layouts never bot-reviewed, rate
+  limit); the 12 changed documents are AGREED (operator review of the README/components text, AGREED commit `878615a2` by the
+  orchestrator). Operator decisions 2026-11-08: layout move to `view-layouts.adoc` kept, `MascotFigure` `entrance`/`src`
+  accepted, `WaitingMark` draws its own polite status line (the chat build must not add a second live region). README now
+  498 lines, so D2's C1 is closed. Seams S1–S13 and C1 (`onboarding.adoc` 504 lines) reported to the operator. Code still
+  draws the old mark until the brand assets package. D3 worktree, branch and the three sibling-repo symlinks removed.
+- PLAN-34 landed (PR #371, `40dc879e`, analysed 2026-11-08); see `landings/PLAN-34.md`. Merged on the operator's "Merge now"
+  with 1 of 4 deliverables fully met and the MERGE RULE NOT MET: 2 CodeRabbit threads (`ProjectWorkLevel.java:312`,
+  `StatusCommand.java:437`) unresolved and unanswered, the second review body (3 actionable, 2 nitpicks) unanswered; the lane
+  report's "All threads resolved" is false. Layer 3: German short dates lost the day's dot (`Display.java:247`), status and
+  projects ignore the context clock, a unit-less landing renders an empty slot, a null time reads "just now", `eventTime` uses
+  the system zone. Residue: five more duration formatters, ~20 lone `-`, raw ids/wire tokens/waiver gate, `Display.word`/`title`
+  unused, no captures, no browser regression. All staged as PLAN-123 on the operator's word (after PLAN-120, PLAN-21 and
+  PLAN-119; before PLAN-44). PLAN-36 and PLAN-44 are no longer blocked by PLAN-34. Lesson for emits: a lane that reports
+  `deliverables_done` below its total should not be offered a merge; recheck at the runbook-lane change.
 - PLAN-122 shipped 2026-11-08 (PR #375, `ee693ead`, made directly by the orchestrator on the operator's word, label
   `skip-bot-review`; `landings/PLAN-122.md`): the 17 D1 documents read `Status: AGREED`. THE D1 GATE IS CLOSED — D2
   (PLAN-113) and D3 (PLAN-114) are emittable as direct Claude Code design sessions (D3's PR merges after D2's); D4
