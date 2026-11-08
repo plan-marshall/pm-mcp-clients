@@ -193,16 +193,16 @@ public final class Display {
         if (hours < HOURS_PER_DAY * 2) {
             long rest = minutes % MINUTES_PER_HOUR;
             return rest > 0L
-                                ? MessageCatalogue.format(locale, "common.time.unit.hour_minute",
-                                                    Map.of("hours", hours, "minutes", rest))
-                                : MessageCatalogue.format(locale, "common.time.unit.hour", Map.of("count", hours));
+                    ? MessageCatalogue.format(locale, "common.time.unit.hour_minute",
+                    Map.of("hours", hours, "minutes", rest))
+                    : MessageCatalogue.format(locale, "common.time.unit.hour", Map.of("count", hours));
         }
         long days = hours / HOURS_PER_DAY;
         long restHours = hours % HOURS_PER_DAY;
         return restHours > 0L
-                            ? MessageCatalogue.format(locale, "common.time.unit.day_hour",
-                                                Map.of("days", days, "hours", restHours))
-                            : MessageCatalogue.format(locale, "common.time.unit.day", Map.of("count", days));
+                ? MessageCatalogue.format(locale, "common.time.unit.day_hour",
+                Map.of("days", days, "hours", restHours))
+                : MessageCatalogue.format(locale, "common.time.unit.day", Map.of("count", days));
     }
 
     private static String age(String locale, long millis) {
@@ -240,11 +240,11 @@ public final class Display {
         }
         if (distance > 1L && distance < 7L) {
             var weekday = DateTimeFormatter.ofPattern("EEE", javaLocale(locale))
-                                .format(instant.atZone(zone));
+                    .format(instant.atZone(zone));
             return weekday.replace(".", "") + " " + time;
         }
         var dayMonth = DateTimeFormatter.ofPattern("d MMM", javaLocale(locale))
-                            .format(instant.atZone(zone));
+                .format(instant.atZone(zone));
         return dayMonth + ", " + time;
     }
 

@@ -16,7 +16,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.stream.Stream;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -31,15 +30,15 @@ class DisplayTest {
 
     static Stream<Arguments> durations() {
         return Stream.of(
-                        Arguments.of(0L, "0 s", "0 s"),
-                        Arguments.of(30L, "30 s", "30 s"),
-                        Arguments.of(1500L, "25 min", "25 min"),
-                        Arguments.of(3600L, "1 h", "1 h"),
-                        Arguments.of(7800L, "2 h 10 min", "2 h 10 min"),
-                        Arguments.of(86400L, "24 h", "24 h"),
-                        Arguments.of(86400L * 2, "2 d", "2 T"),
-                        Arguments.of(86400L * 9, "9 d", "9 T"),
-                        Arguments.of(86400L * 9 + 3600L, "9 d 1 h", "9 T 1 h"));
+                Arguments.of(0L, "0 s", "0 s"),
+                Arguments.of(30L, "30 s", "30 s"),
+                Arguments.of(1500L, "25 min", "25 min"),
+                Arguments.of(3600L, "1 h", "1 h"),
+                Arguments.of(7800L, "2 h 10 min", "2 h 10 min"),
+                Arguments.of(86400L, "24 h", "24 h"),
+                Arguments.of(86400L * 2, "2 d", "2 T"),
+                Arguments.of(86400L * 9, "9 d", "9 T"),
+                Arguments.of(86400L * 9 + 3600L, "9 d 1 h", "9 T 1 h"));
     }
 
     @ParameterizedTest(name = "{0} seconds → {1} / {2}")
@@ -52,16 +51,16 @@ class DisplayTest {
 
     static Stream<Arguments> times() {
         return Stream.of(
-                        Arguments.of(NOW.minusSeconds(30), "just now", "gerade eben"),
-                        Arguments.of(NOW.minusSeconds(300), "5 min ago", "vor 5 min"),
-                        Arguments.of(NOW.minusSeconds(3 * 3600), "3 h ago", "vor 3 h"),
-                        Arguments.of(NOW.minusSeconds(9 * 86400), "9 d ago", "vor 9 T"),
-                        Arguments.of(NOW.minusSeconds(45 * 86400), "last month", "letzten Monat"),
-                        Arguments.of(NOW.minusSeconds(59 * 86400), "last month", "letzten Monat"),
-                        Arguments.of(NOW.minusSeconds(60 * 86400), "2 months ago", "vor 2 Monaten"),
-                        Arguments.of(NOW.minusSeconds(400 * 86400), "last year", "letztes Jahr"),
-                        Arguments.of(NOW.minusSeconds(800 * 86400), "2 years ago", "vor 2 Jahren"),
-                        Arguments.of(NOW.minusSeconds(17 * 3600 + 20 * 60), "17 h ago", "vor 17 h"));
+                Arguments.of(NOW.minusSeconds(30), "just now", "gerade eben"),
+                Arguments.of(NOW.minusSeconds(300), "5 min ago", "vor 5 min"),
+                Arguments.of(NOW.minusSeconds(3 * 3600), "3 h ago", "vor 3 h"),
+                Arguments.of(NOW.minusSeconds(9 * 86400), "9 d ago", "vor 9 T"),
+                Arguments.of(NOW.minusSeconds(45 * 86400), "last month", "letzten Monat"),
+                Arguments.of(NOW.minusSeconds(59 * 86400), "last month", "letzten Monat"),
+                Arguments.of(NOW.minusSeconds(60 * 86400), "2 months ago", "vor 2 Monaten"),
+                Arguments.of(NOW.minusSeconds(400 * 86400), "last year", "letztes Jahr"),
+                Arguments.of(NOW.minusSeconds(800 * 86400), "2 years ago", "vor 2 Jahren"),
+                Arguments.of(NOW.minusSeconds(17 * 3600 + 20 * 60), "17 h ago", "vor 17 h"));
     }
 
     @ParameterizedTest(name = "{0} → {1} / {2}")
@@ -82,7 +81,7 @@ class DisplayTest {
         assertEquals("Sun 12:00", Display.time("en", NOW.minusSeconds(2 * 86400), Display.TimeStyle.SHORT, CLOCK));
         assertEquals("5 Oct, 12:00", Display.time("en", NOW.minusSeconds(15 * 86400), Display.TimeStyle.SHORT, CLOCK));
         assertEquals("14:02:11", Display.time("en", Instant.parse("2026-10-20T14:02:11Z"),
-                            Display.TimeStyle.CLOCK, CLOCK));
+                Display.TimeStyle.CLOCK, CLOCK));
     }
 
     @Test
