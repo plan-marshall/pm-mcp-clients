@@ -337,7 +337,17 @@ class QuestionsCommandTest {
                                             },
                                             {
                                               "key": "merge",
-                                              "label": "Merge main into branch"
+                                              "label": "Merge main into branch",
+                                              "quorum_support": {
+                                                "votes_count": 1,
+                                                "total_votes": 3,
+                                                "models_count": 1,
+                                                "band": "clear_majority",
+                                                "votes": [
+                                                  {"role": "quorum-b", "model": "gpt-4o", "confidence_percent": 70,
+                                                   "reason": "Merge keeps commits"}
+                                                ]
+                                              }
                                             }
                                           ]
                                         }
@@ -456,6 +466,7 @@ class QuestionsCommandTest {
                                           "part_id": "part-1",
                                           "question": "Choose strategy",
                                           "answer_type": "one_option",
+                                          "allow_note": true,
                                           "options": [
                                             {"key": "rebase", "label": "Rebase"},
                                             {"key": "merge", "label": "Merge", "consequences": "Creates merge commit"}
@@ -534,6 +545,7 @@ class QuestionsCommandTest {
                                           "part_id": "part-1",
                                           "question": "How?",
                                           "answer_type": "one_option",
+                                          "allow_own_words": true,
                                           "options": [{"key": "rebase", "label": "Rebase"}]
                                         }
                                       ]
@@ -690,6 +702,7 @@ class QuestionsCommandTest {
                                           "recommendation": "1",
                                           "recommending_role": "implement",
                                           "recommendation_rationale": "Keeps linear history",
+                                          "allow_note": true,
                                           "options": [
                                             {
                                               "key": "1",
@@ -846,6 +859,8 @@ class QuestionsCommandTest {
                                       "parts": [
                                         {
                                           "part_id": "part-1",
+                                          "allow_own_words": true,
+                                          "allow_note": true,
                                           "options": [{"key": "1", "label": "Opt 1"}]
                                         }
                                       ]
@@ -976,6 +991,7 @@ class QuestionsCommandTest {
                                           "part_id": "part-1",
                                           "question": "How?",
                                           "answer_type": "one_option",
+                                          "allow_own_words": true,
                                           "options": [{"key": "rebase", "label": "Rebase"}]
                                         }
                                       ]
@@ -1095,7 +1111,7 @@ class QuestionsCommandTest {
                                       "blocks": "plan",
                                       "reversibility": "reversible",
                                       "parts": [
-                                        {"part_id": "part-1", "options": [{"key": "1", "label": "Postgres"}]}
+                                        {"part_id": "part-1", "allow_own_words": true, "options": [{"key": "1", "label": "Postgres"}]}
                                       ]
                                     }
                                     """);

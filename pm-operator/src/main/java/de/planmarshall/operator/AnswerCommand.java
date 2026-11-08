@@ -12,9 +12,9 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.OptionalInt;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 import org.jline.reader.EndOfFileException;
@@ -23,11 +23,13 @@ import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.decision.AnswerType;
 import de.planmarshall.api.decision.DecisionEnvelope;
 import de.planmarshall.api.decision.DecisionInterpretation;
 import de.planmarshall.api.decision.DecisionOption;
 import de.planmarshall.api.decision.DecisionPart;
 import de.planmarshall.api.decision.InterpretationType;
+import de.planmarshall.api.decision.QuorumBand;
 import de.planmarshall.api.decision.QuorumVote;
 import de.planmarshall.api.decision.Reversibility;
 import de.planmarshall.api.http.HttpRequest;
@@ -328,6 +330,15 @@ public final class AnswerCommand implements Callable<Integer> {
                         @Nullable String effectiveAction, String locale) throws IOException {
         DecisionEnvelope envelope = fetchEnvelopeSafe(runtime, safeQid);
 
+        if (envelope != null && envelope.parts().size() > 1
+                            && option != null && (words == null || words.isBlank())) {
+            out.println(MessageCatalogue.format(locale, "operator.decision.parts_direct_refused", Map.of(
+                                ID_KEY, questionId,
+                                "count", envelope.parts().size())));
+            out.flush();
+            return 3;
+        }
+
         var payload = new LinkedHashMap<String, Object>();
         payload.put(CHANNEL_KEY, CHANNEL_CLI);
         if (effectiveAction != null && (ACTION_WAIVE.equalsIgnoreCase(effectiveAction) || ACTION_DECLINE.equalsIgnoreCase(effectiveAction))) {
@@ -426,7 +437,30 @@ public final class AnswerCommand implements Callable<Integer> {
     private record DialogueSession(RuntimeClient runtime, PrintWriter out, LineReader reader, String locale) {
     }
 
-    private record DecisionCommandResult(OptionalInt exitCode, @Nullable String note, boolean repeat) {
+    private enum DecisionStake {
+        /** Reversible, the votes agree or there is no quorum: the recommendation is preselected. */
+        CONSENSUS,
+        /** Reversible, the votes are split or have no consensus: nothing is preselected. */
+        SPLIT,
+        /** Costly or irreversible: the recommendation waits behind {@code ?r}. */
+        COSTLY
+    }
+
+    private enum PartSignal {
+        ANSWER,
+        NOTE,
+        BACK,
+        REPEAT,
+        DONE
+    }
+
+    private record PartAnswer(String value, boolean ownWords) {
+    }
+
+    private record PartOutcome(PartSignal signal, @Nullable PartAnswer answer, @Nullable String note, int exitCode) {
+    }
+
+    private record ConfirmOutcome(boolean submit, @Nullable Integer reopenIndex, int exitCode) {
     }
 
     private int handleInteractive(RuntimeClient runtime, PrintWriter out, DecisionEnvelope envelope, String locale) {
@@ -593,78 +627,384 @@ public final class AnswerCommand implements Callable<Integer> {
         printQuestionDetail(session.out(), envelope, session.locale());
         session.out().println();
 
-        var part = envelope.parts().isEmpty() ? null : envelope.parts().get(0);
-        DecisionOption recommendedOpt = renderOptionsAndSupport(session.out(), part, session.locale());
-
+        var parts = effectiveParts(envelope);
+        var answers = new LinkedHashMap<Integer, PartAnswer>();
         String currentNote = null;
-        var isReversible = envelope.reversibility() == Reversibility.REVERSIBLE;
-        int optCount = part != null ? part.options().size() : 0;
-        String rangeStr = optCount > 1 ? "1-" + optCount : "1";
+        int index = 0;
 
         while (true) {
-            var prompt = buildDecisionPrompt(recommendedOpt, isReversible, optCount, rangeStr, currentNote, session.locale());
-            var line = readLineSafe(session.reader(), prompt);
-            if (line == null) {
-                return 0;
-            }
-            var choice = line.trim();
+            while (index < parts.size()) {
+                var part = parts.get(index);
+                var stake = stakeOf(envelope, part);
+                var recommended = recommendedOption(part);
+                printPartPosition(session.out(), part, index, parts.size(), session.locale());
+                renderOptions(session.out(), part, stake, session.locale());
 
-            var cmd = handleDecisionCommand(session, envelope, part, recommendedOpt, choice, currentNote);
-            if (cmd.exitCode().isPresent()) {
-                return cmd.exitCode().getAsInt();
-            }
-            if (cmd.repeat()) {
-                currentNote = cmd.note();
-                continue;
-            }
-
-            var result = tryPickOption(session, envelope, choice, currentNote);
-            if (result.isPresent()) {
-                if (result.getAsInt() == -1) {
-                    continue;
+                var outcome = askPart(session, envelope, part, index, parts.size(), stake, recommended, currentNote);
+                switch (outcome.signal()) {
+                    case ANSWER -> {
+                        answers.put(index, outcome.answer());
+                        index++;
+                    }
+                    case NOTE -> currentNote = outcome.note();
+                    case BACK -> {
+                        if (index > 0) {
+                            answers.remove(index - 1);
+                            index--;
+                        }
+                    }
+                    case REPEAT -> {
+                        // the part asks again
+                    }
+                    case DONE -> {
+                        return outcome.exitCode();
+                    }
                 }
-                return result.getAsInt();
             }
-            session.out().println(getMessage(session.locale(), "operator.decision.invalid_choice"));
-            session.out().flush();
+
+            var needsConfirm = parts.size() > 1 || envelope.reversibility() != Reversibility.REVERSIBLE;
+            if (!needsConfirm) {
+                return submitAnswers(session, envelope, parts, answers, currentNote);
+            }
+            var confirm = confirmAnswers(session, envelope, parts, answers);
+            if (confirm.submit()) {
+                return submitAnswers(session, envelope, parts, answers, currentNote);
+            }
+            if (confirm.reopenIndex() == null) {
+                return confirm.exitCode();
+            }
+            index = confirm.reopenIndex();
+            for (var key : List.copyOf(answers.keySet())) {
+                if (key >= index) {
+                    answers.remove(key);
+                }
+            }
         }
     }
 
-    private DecisionCommandResult handleDecisionCommand(DialogueSession session, DecisionEnvelope envelope,
-                        @Nullable DecisionPart part, @Nullable DecisionOption recommendedOpt,
-                        String choice, @Nullable String currentNote) throws IOException {
-        if (choice.isEmpty() && recommendedOpt != null && envelope.reversibility() == Reversibility.REVERSIBLE) {
-            int code = submitChoice(session.runtime(), session.out(), envelope, recommendedOpt.key(), recommendedOpt.label(), currentNote, session.locale());
-            return new DecisionCommandResult(OptionalInt.of(code), currentNote, false);
+    private PartOutcome askPart(DialogueSession session, DecisionEnvelope envelope, DecisionPart part,
+                        int index, int total, DecisionStake stake, @Nullable DecisionOption recommended,
+                        @Nullable String currentNote) throws IOException {
+        var out = session.out();
+        var locale = session.locale();
+        while (true) {
+            var prompt = buildPartPrompt(part, stake, recommended, index, currentNote, locale);
+            var line = readLineSafe(session.reader(), prompt);
+            if (line == null) {
+                return new PartOutcome(PartSignal.DONE, null, currentNote, 0);
+            }
+            var choice = line.trim();
+
+            if ("?".equals(choice)) {
+                printEvidenceDetails(out, envelope.evidence(), locale);
+                continue;
+            }
+            if ("?r".equalsIgnoreCase(choice)) {
+                printRationaleAndDissent(out, part, recommended, locale);
+                continue;
+            }
+            if (isVoteView(choice, part)) {
+                printVotes(out, part, choice.substring(1), locale);
+                continue;
+            }
+            if (index > 0 && isBackChoice(choice, locale)) {
+                return new PartOutcome(PartSignal.BACK, null, currentNote, 0);
+            }
+            if ("m".equalsIgnoreCase(choice) && part.allowNote()) {
+                return new PartOutcome(PartSignal.NOTE, null, promptNote(session.reader(), locale, currentNote), 0);
+            }
+            if ("w".equalsIgnoreCase(choice) && part.allowOwnWords()) {
+                var words = readOwnWords(session, envelope, locale);
+                if (words != null) {
+                    return new PartOutcome(PartSignal.ANSWER, new PartAnswer(words.value(), true), currentNote, 0);
+                }
+                continue;
+            }
+            if (isQuitChoice(choice)) {
+                printLeftDialogue(out, envelope.id(), locale);
+                return new PartOutcome(PartSignal.DONE, null, currentNote, 0);
+            }
+            if (isLaterChoice(choice, locale)) {
+                printLaterDone(out, envelope, locale);
+                return new PartOutcome(PartSignal.DONE, null, currentNote, 0);
+            }
+            if (isNoneFitsChoice(choice, locale)) {
+                boolean done = handleWithdrawChoice(session.runtime(), out, session.reader(), envelope, locale);
+                if (done) {
+                    return new PartOutcome(PartSignal.DONE, null, currentNote, 0);
+                }
+                continue;
+            }
+            if (choice.isEmpty()) {
+                if (stake == DecisionStake.CONSENSUS && recommended != null) {
+                    return new PartOutcome(PartSignal.ANSWER, new PartAnswer(recommended.key(), false), currentNote, 0);
+                }
+                out.println(getMessage(locale, "operator.decision.invalid_choice"));
+                out.flush();
+                continue;
+            }
+            var picked = pickOption(part, choice);
+            if (picked != null) {
+                return new PartOutcome(PartSignal.ANSWER, new PartAnswer(picked.key(), false), currentNote, 0);
+            }
+            out.println(getMessage(locale, "operator.decision.invalid_choice"));
+            out.flush();
         }
-        if (isQuitChoice(choice)) {
-            printLeftDialogue(session.out(), envelope.id(), session.locale());
-            return new DecisionCommandResult(OptionalInt.of(0), currentNote, false);
+    }
+
+    private static void printPartPosition(PrintWriter out, DecisionPart part, int index, int total, String locale) {
+        var question = TerminalSanitizer.sanitizeLine(part.question());
+        if (total > 1) {
+            out.println("[" + MessageCatalogue.format(locale, "decision.part.position",
+                                Map.of("n", index + 1, "total", total)) + "] " + question);
+            if (part.dependency() != null && !part.dependency().isBlank()) {
+                out.println("          " + TerminalSanitizer.sanitizeLine(part.dependency()));
+            }
+        } else if (!question.isBlank()) {
+            out.println("  " + question);
         }
-        if (isLaterChoice(choice, session.locale())) {
-            printLaterDone(session.out(), envelope, session.locale());
-            return new DecisionCommandResult(OptionalInt.of(0), currentNote, false);
+        out.flush();
+    }
+
+    private static void renderOptions(PrintWriter out, DecisionPart part, DecisionStake stake, String locale) {
+        var recommended = recommendedOption(part);
+        for (var opt : part.options()) {
+            var isRec = recommended != null && opt.key().equalsIgnoreCase(recommended.key());
+            var recMark = isRec ? " ←" : "  ";
+            var supportStr = formatOptionSupport(opt, locale);
+            out.printf("    %s) %-25s%s  %s%n", opt.key(), TerminalSanitizer.sanitizeLine(opt.label()), recMark, supportStr);
         }
-        if (isNoneFitsChoice(choice, session.locale())) {
-            boolean done = handleWithdrawChoice(session.runtime(), session.out(), session.reader(), envelope, session.locale());
-            return new DecisionCommandResult(done ? OptionalInt.of(0) : OptionalInt.empty(), currentNote, !done);
+        if (stake == DecisionStake.COSTLY) {
+            if (recommended != null) {
+                out.println("  " + getMessage(locale, "decision.recommendation.on_request"));
+            }
+        } else {
+            printRationaleIfPresent(out, part, recommended, locale);
+            printDissentIfPresent(out, part, recommended, locale);
         }
-        if ("m".equalsIgnoreCase(choice)) {
-            return new DecisionCommandResult(OptionalInt.empty(), promptNote(session.reader(), session.locale(), currentNote), true);
+        out.println();
+        out.flush();
+    }
+
+    private static String formatOptionSupport(DecisionOption opt, String locale) {
+        var qs = opt.quorumSupport();
+        if (qs == null) {
+            return getMessage(locale, "decision.support.not_voted");
         }
-        if ("w".equalsIgnoreCase(choice)) {
-            int code = handleInteractiveOwnWords(session.runtime(), session.out(), session.reader(), envelope, session.locale());
-            return new DecisionCommandResult(OptionalInt.of(code), currentNote, false);
+        var bandKey = "decision.support.band." + qs.band().value();
+        var bandStr = MessageCatalogue.hasKey(bandKey) ? getMessage(locale, bandKey) : qs.band().value().replace('_', ' ');
+        var votesStr = MessageCatalogue.format(locale, "decision.support.votes", Map.of(
+                            "votes", qs.votesCount(),
+                            "total", qs.totalVotes(),
+                            "models", qs.modelsCount()
+        ));
+        return votesStr + "   " + bandStr;
+    }
+
+    private static void printRationaleIfPresent(PrintWriter out, DecisionPart part,
+                        @Nullable DecisionOption recommendedOpt, String locale) {
+        var role = part.recommendingRole();
+        var rationale = part.recommendationRationale();
+        if (role != null && rationale != null) {
+            var rationaleOption = formatRationale(recommendedOpt, rationale);
+            out.println("  " + MessageCatalogue.format(locale, "decision.recommendation.by", Map.of(
+                                ROLE_KEY, role,
+                                OPTION_KEY, TerminalSanitizer.sanitizeLine(rationaleOption)
+            )));
         }
-        if ("?".equalsIgnoreCase(choice)) {
-            printEvidenceDetails(session.out(), envelope.evidence(), session.locale());
-            return new DecisionCommandResult(OptionalInt.empty(), currentNote, true);
+    }
+
+    private static void printDissentIfPresent(PrintWriter out, DecisionPart part,
+                        @Nullable DecisionOption recommendedOpt, String locale) {
+        if (recommendedOpt == null) {
+            return;
         }
-        if ("?r".equalsIgnoreCase(choice) && part != null) {
-            printRationaleAndDissent(session.out(), part, recommendedOpt, session.locale());
-            return new DecisionCommandResult(OptionalInt.empty(), currentNote, true);
+        var role = dissentingRole(part, recommendedOpt);
+        var reason = dissentReason(part, recommendedOpt);
+        if (role == null || reason == null) {
+            return;
         }
-        return new DecisionCommandResult(OptionalInt.empty(), currentNote, false);
+        out.println("  " + MessageCatalogue.format(locale, "decision.dissent", Map.of(
+                            ROLE_KEY, TerminalSanitizer.sanitizeLine(role),
+                            REASON_KEY, TerminalSanitizer.sanitizeLine(reason)
+        )));
+    }
+
+    private static @Nullable String dissentingRole(DecisionPart part, DecisionOption recommendedOpt) {
+        var dissent = dissentReason(part, recommendedOpt);
+        if (dissent != null) {
+            var matching = allVotes(part).stream()
+                                .filter(vote -> vote.reason() != null && vote.reason().trim().equalsIgnoreCase(dissent.trim()))
+                                .map(QuorumVote::role)
+                                .findFirst();
+            if (matching.isPresent()) {
+                return matching.get();
+            }
+        }
+        return part.options().stream()
+                            .filter(opt -> !opt.key().equalsIgnoreCase(recommendedOpt.key()))
+                            .filter(opt -> opt.quorumSupport() != null)
+                            .flatMap(opt -> opt.quorumSupport().votes().stream())
+                            .filter(vote -> vote.reason() != null && !vote.reason().isBlank())
+                            .map(QuorumVote::role)
+                            .findFirst().orElse(null);
+    }
+
+    private static List<QuorumVote> allVotes(DecisionPart part) {
+        return part.options().stream()
+                            .map(DecisionOption::quorumSupport)
+                            .filter(Objects::nonNull)
+                            .flatMap(support -> support.votes().stream())
+                            .toList();
+    }
+
+    private static @Nullable String dissentReason(DecisionPart part, DecisionOption recommendedOpt) {
+        if (recommendedOpt.quorumSupport() != null && recommendedOpt.quorumSupport().dissentSummary() != null) {
+            return recommendedOpt.quorumSupport().dissentSummary();
+        }
+        return part.options().stream()
+                            .filter(opt -> !opt.key().equalsIgnoreCase(recommendedOpt.key()))
+                            .filter(opt -> opt.quorumSupport() != null && opt.quorumSupport().dissentSummary() != null)
+                            .map(opt -> opt.quorumSupport().dissentSummary())
+                            .findFirst().orElse(null);
+    }
+
+    private static void printRationaleAndDissent(PrintWriter out, DecisionPart part,
+                        @Nullable DecisionOption recommendedOpt, String locale) {
+        printRationaleIfPresent(out, part, recommendedOpt, locale);
+        printDissentIfPresent(out, part, recommendedOpt, locale);
+        out.flush();
+    }
+
+    private static void printVotes(PrintWriter out, DecisionPart part, String key, String locale) {
+        var option = pickOption(part, key);
+        if (option == null) {
+            return;
+        }
+        var support = option.quorumSupport();
+        if (support == null || support.votes().isEmpty()) {
+            out.println("  " + MessageCatalogue.format(locale, "operator.decision.vote_none", Map.of(
+                                OPTION_KEY, option.key(), LABEL_KEY, TerminalSanitizer.sanitizeLine(option.label()))));
+            out.flush();
+            return;
+        }
+        out.println("  " + MessageCatalogue.format(locale, "operator.decision.votes_for", Map.of(
+                            OPTION_KEY, option.key(), LABEL_KEY, TerminalSanitizer.sanitizeLine(option.label()))));
+        for (var vote : support.votes()) {
+            var reason = vote.reason() != null ? TerminalSanitizer.sanitizeLine(vote.reason()) : "";
+            out.println(MessageCatalogue.format(locale, "operator.decision.vote_line", Map.of(
+                                ROLE_KEY, TerminalSanitizer.sanitizeLine(vote.role()),
+                                "model", TerminalSanitizer.sanitizeLine(vote.model()),
+                                "reason", reason)));
+            if (vote.confidencePercent() != null) {
+                out.println("    " + MessageCatalogue.format(locale, "decision.support.self_reported",
+                                    Map.of("value", vote.confidencePercent())));
+            }
+        }
+        out.flush();
+    }
+
+    private static boolean isVoteView(String choice, DecisionPart part) {
+        return choice.length() > 1 && choice.charAt(0) == '?'
+                            && !"?r".equalsIgnoreCase(choice)
+                            && pickOption(part, choice.substring(1)) != null;
+    }
+
+    private static boolean isBackChoice(String choice, String locale) {
+        return "b".equalsIgnoreCase(choice) || "back".equalsIgnoreCase(choice)
+                            || ("z".equalsIgnoreCase(choice) && LOCALE_DE.equals(locale))
+                            || ("zurück".equalsIgnoreCase(choice) && LOCALE_DE.equals(locale));
+    }
+
+    private static String buildPartPrompt(DecisionPart part, DecisionStake stake,
+                        @Nullable DecisionOption recommended, int index, @Nullable String currentNote,
+                        String locale) {
+        var rangeStr = optionRange(part);
+        var sb = new StringBuilder();
+        if (stake == DecisionStake.CONSENSUS && recommended != null) {
+            sb.append(TerminalSanitizer.sanitizeLine(recommended.label())).append("? [Enter]");
+            if (part.options().size() > 1) {
+                sb.append("   ").append(MessageCatalogue.format(locale, "operator.decision.prompt.other", Map.of("range", rangeStr)));
+            }
+        } else {
+            sb.append(MessageCatalogue.format(locale, "operator.decision.prompt.choose", Map.of("range", rangeStr)));
+        }
+        if (part.allowOwnWords()) {
+            sb.append("   ").append(getMessage(locale, "operator.decision.prompt.own_words"));
+        }
+        if (part.allowNote()) {
+            sb.append("   ").append(currentNote != null
+                                ? "m) " + getMessage(locale, "operator.decision.note_set")
+                                : getMessage(locale, "operator.decision.prompt.add_note"));
+        }
+        if (index > 0) {
+            sb.append("   ").append(getMessage(locale, "operator.decision.prompt.back"));
+        }
+        sb.append("   ").append(getMessage(locale, "operator.decision.prompt.none_fits"));
+        sb.append("   ").append(getMessage(locale, "operator.decision.prompt.later"));
+        sb.append("   ?   › ");
+        return sb.toString();
+    }
+
+    private static String optionRange(DecisionPart part) {
+        var keys = part.options().stream().map(DecisionOption::key).toList();
+        if (keys.isEmpty()) {
+            return "";
+        }
+        var allNumeric = keys.stream().allMatch(key -> key.matches("\\d+"));
+        if (!allNumeric) {
+            return String.join(", ", keys);
+        }
+        var numbers = keys.stream().map(Integer::parseInt).sorted().toList();
+        var consecutive = true;
+        for (int i = 1; i < numbers.size(); i++) {
+            if (numbers.get(i) != numbers.get(i - 1) + 1) {
+                consecutive = false;
+                break;
+            }
+        }
+        if (consecutive) {
+            return numbers.size() == 1 ? String.valueOf(numbers.get(0))
+                                : numbers.get(0) + "-" + numbers.get(numbers.size() - 1);
+        }
+        return String.join(", ", keys);
+    }
+
+    private static List<DecisionPart> effectiveParts(DecisionEnvelope envelope) {
+        if (!envelope.parts().isEmpty()) {
+            return envelope.parts();
+        }
+        var question = envelope.description() != null ? envelope.description() : envelope.title();
+        return List.of(new DecisionPart("1", question != null ? question : "", AnswerType.ONE_OPTION,
+                            List.of(), null, null, null, null, true, true));
+    }
+
+    private static DecisionStake stakeOf(DecisionEnvelope envelope, DecisionPart part) {
+        if (envelope.reversibility() != Reversibility.REVERSIBLE) {
+            return DecisionStake.COSTLY;
+        }
+        var split = part.options().stream()
+                            .map(DecisionOption::quorumSupport)
+                            .filter(Objects::nonNull)
+                            .anyMatch(support -> support.band() == QuorumBand.SPLIT
+                                                || support.band() == QuorumBand.NO_CONSENSUS);
+        return split ? DecisionStake.SPLIT : DecisionStake.CONSENSUS;
+    }
+
+    private static @Nullable DecisionOption recommendedOption(DecisionPart part) {
+        var key = part.recommendation();
+        if (key == null) {
+            return null;
+        }
+        return part.options().stream()
+                            .filter(opt -> opt.key().equalsIgnoreCase(key))
+                            .findFirst().orElse(null);
+    }
+
+    private static @Nullable DecisionOption pickOption(DecisionPart part, String key) {
+        return part.options().stream()
+                            .filter(opt -> opt.key().equalsIgnoreCase(key))
+                            .findFirst().orElse(null);
     }
 
     private static boolean isNoneFitsChoice(String choice, String locale) {
@@ -680,131 +1020,131 @@ public final class AnswerCommand implements Callable<Integer> {
         return currentNote;
     }
 
-    private OptionalInt tryPickOption(DialogueSession session, DecisionEnvelope envelope,
-                        String choice, @Nullable String currentNote) throws IOException {
-        if (envelope.parts().isEmpty()) {
-            return OptionalInt.empty();
-        }
-        var part = envelope.parts().get(0);
-        var picked = part.options().stream()
-                            .filter(o -> o.key().equalsIgnoreCase(choice))
-                            .findFirst().orElse(null);
-        if (picked != null) {
-            boolean isReversible = envelope.reversibility() == Reversibility.REVERSIBLE;
-            if (!isReversible && !confirmNonReversible(session.reader(), session.out(), envelope, picked, session.locale())) {
-                return OptionalInt.of(-1);
+    private ConfirmOutcome confirmAnswers(DialogueSession session, DecisionEnvelope envelope,
+                        List<DecisionPart> parts, Map<Integer, PartAnswer> answers) throws IOException {
+        var out = session.out();
+        var locale = session.locale();
+        if (parts.size() == 1 && !answers.get(0).ownWords()) {
+            var picked = pickOption(parts.get(0), answers.get(0).value());
+            if (picked == null) {
+                return new ConfirmOutcome(true, null, 0);
             }
-            return OptionalInt.of(submitChoice(session.runtime(), session.out(), envelope, picked.key(), picked.label(), currentNote, session.locale()));
+            if (confirmNonReversible(session.reader(), out, envelope, picked, locale)) {
+                return new ConfirmOutcome(true, null, 0);
+            }
+            return new ConfirmOutcome(false, 0, 0);
         }
-        return OptionalInt.empty();
+        while (true) {
+            printDecisionConfirmation(out, envelope, parts, answers, locale);
+            var prompt = MessageCatalogue.format(locale, "operator.decision.confirm_parts_prompt", Map.of(
+                                "range", optionRange(parts.get(0)).isEmpty() ? "1-" + parts.size() : "1-" + parts.size()));
+            var line = readLineSafe(session.reader(), prompt);
+            if (line == null) {
+                return new ConfirmOutcome(false, null, 0);
+            }
+            var choice = line.trim();
+            if (choice.isEmpty()) {
+                return new ConfirmOutcome(true, null, 0);
+            }
+            if ("?".equals(choice)) {
+                printEvidenceDetails(out, envelope.evidence(), locale);
+                continue;
+            }
+            if (isQuitChoice(choice)) {
+                printLeftDialogue(out, envelope.id(), locale);
+                return new ConfirmOutcome(false, null, 0);
+            }
+            if (parts.size() > 1 && choice.matches("\\d+")) {
+                int reopened = Integer.parseInt(choice);
+                if (reopened >= 1 && reopened <= parts.size()) {
+                    return new ConfirmOutcome(false, reopened - 1, 0);
+                }
+            }
+            out.println(getMessage(locale, "operator.decision.invalid_choice"));
+            out.flush();
+        }
     }
 
-    private static @Nullable DecisionOption renderOptionsAndSupport(PrintWriter out,
-                        @Nullable DecisionPart part,
-                        String locale) {
-        if (part == null) {
-            return null;
-        }
-        DecisionOption recommendedOpt = null;
-        var recKey = part.recommendation();
-        for (var opt : part.options()) {
-            var isRec = opt.key().equals(recKey);
-            if (isRec) {
-                recommendedOpt = opt;
+    private static void printDecisionConfirmation(PrintWriter out, DecisionEnvelope envelope,
+                        List<DecisionPart> parts, Map<Integer, PartAnswer> answers, String locale) {
+        if (parts.size() > 1) {
+            out.println(MessageCatalogue.format(locale, "operator.decision.confirm_title_parts", Map.of(ID_KEY, envelope.id())));
+            for (int i = 0; i < parts.size(); i++) {
+                out.println(MessageCatalogue.format(locale, "operator.decision.part_answer_line", Map.of(
+                                    "n", i + 1,
+                                    "answer", answerLabel(parts.get(i), answers.get(i)))));
             }
-            var recMark = isRec ? " ←" : "  ";
-            var supportStr = formatOptionSupport(opt, isRec, part, locale);
-            out.printf("    %s) %-25s%s  %s%n", opt.key(), OutputSafety.stripControlSequences(opt.label()), recMark, supportStr);
+        } else {
+            out.println(MessageCatalogue.format(locale, "operator.decision.confirm_title", Map.of(ID_KEY, envelope.id())));
+            var answer = answers.get(0);
+            out.println("  " + answerLabel(parts.get(0), answer));
         }
-        printRationaleIfPresent(out, part, recommendedOpt, locale);
-        printDissentIfPresent(out, part, locale);
         out.println();
         out.flush();
-        return recommendedOpt;
     }
 
-    private static String formatOptionSupport(DecisionOption opt, boolean isRec, @Nullable DecisionPart part, String locale) {
-        if (opt.quorumSupport() != null) {
-            var qs = opt.quorumSupport();
-            var bandKey = "decision.support.band." + qs.band().value();
-            var bandStr = MessageCatalogue.hasKey(bandKey) ? getMessage(locale, bandKey) : qs.band().value().replace('_', ' ');
-            var votesStr = MessageCatalogue.format(locale, "decision.support.votes", Map.of(
-                                "votes", qs.votesCount(),
-                                "total", qs.totalVotes(),
-                                "models", qs.modelsCount()
-            ));
-            return votesStr + "   " + bandStr;
+    private static String answerLabel(DecisionPart part, PartAnswer answer) {
+        if (answer.ownWords()) {
+            return TerminalSanitizer.sanitizeLine(answer.value());
         }
-        var role = part != null ? part.recommendingRole() : null;
-        if (isRec && role != null) {
-            return MessageCatalogue.format(locale, "operator.decision.recommended_by", Map.of(ROLE_KEY, role));
-        }
-        return "";
+        var option = pickOption(part, answer.value());
+        return option != null ? TerminalSanitizer.sanitizeLine(option.label())
+                            : TerminalSanitizer.sanitizeLine(answer.value());
     }
 
-    private static void printRationaleIfPresent(PrintWriter out, DecisionPart part,
-                        @Nullable DecisionOption recommendedOpt, String locale) {
-        var role = part.recommendingRole();
-        var rationale = part.recommendationRationale();
-        if (role != null && rationale != null) {
-            var rationaleOption = formatRationale(recommendedOpt, rationale);
-            out.println("  " + MessageCatalogue.format(locale, "decision.recommendation.by", Map.of(
-                                ROLE_KEY, role,
-                                OPTION_KEY, OutputSafety.stripControlSequences(rationaleOption)
-            )));
+    private int submitAnswers(DialogueSession session, DecisionEnvelope envelope,
+                        List<DecisionPart> parts, Map<Integer, PartAnswer> answers,
+                        @Nullable String note) throws IOException {
+        if (parts.size() > 1) {
+            return submitPartAnswers(session, envelope, parts, answers, note);
         }
+        var answer = answers.get(0);
+        if (answer.ownWords()) {
+            return submitOwnWordsAnswer(session, envelope, answer.value());
+        }
+        var option = pickOption(parts.get(0), answer.value());
+        var label = option != null ? option.label() : answer.value();
+        return submitChoice(session.runtime(), session.out(), envelope, answer.value(), label, note, session.locale());
     }
 
-    private static void printDissentIfPresent(PrintWriter out, DecisionPart part, String locale) {
-        for (var opt : part.options()) {
-            if (opt.quorumSupport() != null && opt.quorumSupport().dissentSummary() != null) {
-                var qs = opt.quorumSupport();
-                var dissentRole = qs.votes().stream()
-                                    .filter(v -> v.reason() != null && !v.reason().isBlank())
-                                    .map(QuorumVote::role)
-                                    .findFirst().orElse("quorum-b");
-                out.println("  " + MessageCatalogue.format(locale, "decision.dissent", Map.of(
-                                    ROLE_KEY, dissentRole,
-                                    REASON_KEY, OutputSafety.stripControlSequences(qs.dissentSummary())
-                )));
-                break;
-            }
+    private int submitPartAnswers(DialogueSession session, DecisionEnvelope envelope,
+                        List<DecisionPart> parts, Map<Integer, PartAnswer> answers,
+                        @Nullable String note) throws IOException {
+        var partAnswers = new LinkedHashMap<String, Object>();
+        for (int i = 0; i < parts.size(); i++) {
+            partAnswers.put(parts.get(i).partId(), answers.get(i).value());
         }
+        var payload = new LinkedHashMap<String, Object>();
+        payload.put("part_answers", partAnswers);
+        payload.put(CHANNEL_KEY, CHANNEL_CLI);
+        if (note != null) {
+            payload.put("note", note);
+        }
+        var answerPath = API_V1_DECISIONS + OperatorUrlUtil.encodePathSegment(envelope.id()) + PATH_ANSWER;
+        var response = session.runtime().send(HttpRequest.json("POST", answerPath, JsonTree.write(payload)));
+        if (response.status() == 200 || response.status() == 202 || response.status() == 204) {
+            session.out().println(MessageCatalogue.format(session.locale(), "operator.decision.answered_parts",
+                                Map.of(ID_KEY, envelope.id())));
+            session.out().flush();
+            return 0;
+        }
+        throw new OperatorRefusedException("answer " + envelope.id(), response);
     }
 
-    private static void printRationaleAndDissent(PrintWriter out, DecisionPart part,
-                        @Nullable DecisionOption recommendedOpt, String locale) {
-        printRationaleIfPresent(out, part, recommendedOpt, locale);
-        printDissentIfPresent(out, part, locale);
-        out.flush();
-    }
-
-    private static String buildDecisionPrompt(@Nullable DecisionOption recommendedOpt, boolean isReversible,
-                        int optCount, String rangeStr, @Nullable String currentNote,
-                        String locale) {
-        var ownWordsStr = getMessage(locale, "operator.decision.prompt.own_words");
-        var chatStr = getMessage(locale, "operator.decision.prompt.chat");
-        var noneFitsStr = getMessage(locale, "operator.decision.prompt.none_fits");
-        var laterStr = getMessage(locale, "operator.decision.prompt.later");
-
-        if (recommendedOpt != null && isReversible) {
-            var otherStr = optCount > 1 ? MessageCatalogue.format(locale, "operator.decision.prompt.other", Map.of("range", rangeStr)) : "";
-            var noteStr = currentNote != null
-                                ? "m) " + getMessage(locale, "operator.decision.note_set")
-                                : getMessage(locale, "operator.decision.prompt.add_note");
-            var sb = new StringBuilder();
-            sb.append(recommendedOpt.label()).append("? [Enter]");
-            if (!otherStr.isBlank()) sb.append("   ").append(otherStr);
-            sb.append("   ").append(ownWordsStr);
-            sb.append("   ").append(noteStr);
-            sb.append("   ").append(chatStr);
-            sb.append("   ").append(noneFitsStr);
-            sb.append("   ").append(laterStr);
-            sb.append("   ?   › ");
-            return sb.toString();
+    private int submitOwnWordsAnswer(DialogueSession session, DecisionEnvelope envelope, String words) throws IOException {
+        var payload = new LinkedHashMap<String, Object>();
+        payload.put("words", words);
+        payload.put(CHANNEL_KEY, CHANNEL_CLI);
+        var answerPath = API_V1_DECISIONS + OperatorUrlUtil.encodePathSegment(envelope.id()) + PATH_ANSWER;
+        var response = session.runtime().send(HttpRequest.json("POST", answerPath, JsonTree.write(payload)));
+        if (response.status() == 200 || response.status() == 202 || response.status() == 204) {
+            session.out().println(MessageCatalogue.format(session.locale(), "operator.decision.answered", Map.of(
+                                ID_KEY, envelope.id(),
+                                LABEL_KEY, TerminalSanitizer.sanitizeLine(words))));
+            session.out().flush();
+            return 0;
         }
-        var chooseStr = MessageCatalogue.format(locale, "operator.decision.prompt.choose", Map.of("range", rangeStr));
-        return chooseStr + "   " + ownWordsStr + "   " + chatStr + "   " + noneFitsStr + "   " + laterStr + "   ?   › ";
+        throw new OperatorRefusedException("answer " + envelope.id(), response);
     }
 
     private static boolean handleWithdrawChoice(RuntimeClient runtime, PrintWriter out, LineReader reader,
@@ -842,53 +1182,40 @@ public final class AnswerCommand implements Callable<Integer> {
         return confirm.isBlank() || "y".equalsIgnoreCase(confirm.trim()) || "j".equalsIgnoreCase(confirm.trim());
     }
 
-    private int handleInteractiveOwnWords(RuntimeClient runtime, PrintWriter out, LineReader reader,
-                        DecisionEnvelope envelope, String locale) throws IOException {
+    private @Nullable PartAnswer readOwnWords(DialogueSession session, DecisionEnvelope envelope,
+                        String locale) throws IOException {
+        var out = session.out();
+        var reader = session.reader();
         var wordsPrompt = getMessage(locale, "operator.decision.own_words_prompt") + " › ";
         var wordsInput = readLineSafe(reader, wordsPrompt);
         if (wordsInput == null || wordsInput.isBlank()) {
-            return 0;
+            return null;
         }
 
         var interpPath = API_V1_DECISIONS + OperatorUrlUtil.encodePathSegment(envelope.id()) + PATH_INTERPRET;
-        var interpRes = runtime.send(HttpRequest.json("POST", interpPath, JsonTree.write(Map.of("words", wordsInput.trim()))));
+        var interpRes = session.runtime().send(HttpRequest.json("POST", interpPath, JsonTree.write(Map.of("words", wordsInput.trim()))));
         var interp = DecisionInterpretation.fromJson(interpRes.bodyText());
 
         if (interp.interpretationType() == InterpretationType.UNCLEAR && interp.clarificationQuestion() != null) {
             out.println(MessageCatalogue.format(locale, "decision.clarify.asks", Map.of(
                                 ROLE_KEY, "interpret",
-                                "question", interp.clarificationQuestion()
+                                "question", TerminalSanitizer.sanitizeLine(interp.clarificationQuestion())
             )));
             var reply = readLineSafe(reader, getMessage(locale, "operator.decision.reply_prompt") + " › ");
             var combinedWords = wordsInput.trim() + ". " + (reply != null ? reply.trim() : "");
-            interpRes = runtime.send(HttpRequest.json("POST", interpPath, JsonTree.write(Map.of("words", combinedWords))));
+            interpRes = session.runtime().send(HttpRequest.json("POST", interpPath, JsonTree.write(Map.of("words", combinedWords))));
             interp = DecisionInterpretation.fromJson(interpRes.bodyText());
         }
 
         out.println();
         var reading = interp.readBackText() != null ? interp.readBackText() : wordsInput.trim();
-        out.println(MessageCatalogue.format(locale, "decision.readback.understood", Map.of("reading", reading)));
+        out.println(MessageCatalogue.format(locale, "decision.readback.understood",
+                            Map.of("reading", TerminalSanitizer.sanitizeLine(reading))));
         var confirm = readLineSafe(reader, getMessage(locale, "operator.decision.readback_confirm"));
         if (confirm == null || (!confirm.isBlank() && !"y".equalsIgnoreCase(confirm.trim()) && !"j".equalsIgnoreCase(confirm.trim()))) {
-            return 0;
+            return null;
         }
-
-        var payload = new LinkedHashMap<String, Object>();
-        payload.put("words", wordsInput.trim());
-        payload.put(CHANNEL_KEY, CHANNEL_CLI);
-        var ansPath = API_V1_DECISIONS + OperatorUrlUtil.encodePathSegment(envelope.id()) + PATH_ANSWER;
-        runtime.send(HttpRequest.json("POST", ansPath, JsonTree.write(payload)));
-
-        if (interp.readBackText() != null) {
-            out.println(MessageCatalogue.format(locale, "operator.decision.answered", Map.of(
-                                ID_KEY, envelope.id(),
-                                LABEL_KEY, interp.readBackText()
-            )));
-        } else {
-            out.println(MessageCatalogue.format(locale, "operator.decision.answered_own_words", Map.of(ID_KEY, envelope.id())));
-        }
-        out.flush();
-        return 0;
+        return new PartAnswer(reading, true);
     }
 
     private int submitChoice(RuntimeClient runtime, PrintWriter out, DecisionEnvelope envelope,

@@ -119,6 +119,30 @@ class AnswerDialogueIT {
     }
 
     @Test
+    @DisplayName("the mock's three-part Q-012 asks every part with its question")
+    void threePartDecisionAsksEveryPart() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK).goTo("decisions.open");
+             var session = harness.open("answer", "Q-012")) {
+            assertTrue(session.awaitText("Where does the data live?", DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, "1\n");
+            assertTrue(session.awaitText("How is it migrated?", DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, "2\n");
+            assertTrue(session.awaitText("Which format?", DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, "1\n");
+            assertTrue(session.awaitText("Your decision", DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, "\n");
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            assertTrue(session.screenText().contains("Q-012 answered"), session.screenText());
+            harness.assertAct("POST", "/api/v1/decisions/Q-012/answer");
+        }
+    }
+
+    @Test
     @DisplayName("direct answer sends without dialogue and prints confirmation")
     void directAnswerSendsWithoutDialogue() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
