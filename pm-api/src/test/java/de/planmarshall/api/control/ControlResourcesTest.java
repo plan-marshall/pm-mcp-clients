@@ -310,8 +310,7 @@ class ControlResourcesTest {
         @Test
         @DisplayName("is read when the value is valid")
         void validIsRead() throws Exception {
-            assertEquals(Integer.valueOf(2), Integer.valueOf(EpicResource.fromJson(epic(",\"running\":2"))
-                    .running()));
+            assertEquals(2, EpicResource.fromJson(epic(",\"running\":2")).running().intValue());
         }
     }
 

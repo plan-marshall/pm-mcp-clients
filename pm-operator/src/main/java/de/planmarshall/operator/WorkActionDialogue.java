@@ -42,6 +42,8 @@ final class WorkActionDialogue {
     private static final String STATE_ID = "control.action";
     private static final String PLAN = "plan";
     private static final String EPIC = "epic";
+    private static final String RUNNING = "running";
+    private static final String SCOPE = "scope";
     private static final String WITH_PLANS = "with_plans";
     private static final Set<String> HOLD_ACTS = Set.of("retry", "recycle", "grant", "add_credential",
                         "raise_budget", "accept", "abort", "end_plan", "cancel_epic", "show_pr",
@@ -296,11 +298,11 @@ final class WorkActionDialogue {
         if (epic != null && plan != null && (running == null || running >= epic.scope())) {
             var question = running != null
                                 ? MessageCatalogue.format(prompt.locale(), "control.epic.scope_full",
-                                Map.<String, Object>of("epic", id, "running", running,
-                                                    "scope", epic.scope(), "plan", plan))
+                                Map.<String, Object>of(EPIC, id, RUNNING, running,
+                                                    SCOPE, epic.scope(), PLAN, plan))
                                 : MessageCatalogue.format(prompt.locale(), "control.epic.scope_unknown",
-                                Map.<String, Object>of("epic", id, "scope", epic.scope(),
-                                                    "plan", plan));
+                                Map.<String, Object>of(EPIC, id, SCOPE, epic.scope(),
+                                                    PLAN, plan));
             var answer = prompt.askRaw(question
                                 + "   " + MessageCatalogue.format(prompt.locale(),
                                 "operator.actions.key.raise_and_start", Map.of())
@@ -328,9 +330,9 @@ final class WorkActionDialogue {
         if (plan != null && epic != null) {
             var running = epic.running();
             prompt.line("operator.actions.result.next_started",
-                                Map.<String, Object>of("plan", plan,
-                                                    "running", running != null ? running + 1 : EpicViewFormatting.UNKNOWN_COUNT,
-                                                    "scope", epic.scope()));
+                                Map.<String, Object>of(PLAN, plan,
+                                                    RUNNING, running != null ? running + 1 : EpicViewFormatting.UNKNOWN_COUNT,
+                                                    SCOPE, epic.scope()));
         } else {
             prompt.line("control.epic.next_none",
                                 Map.of("reasons", epic != null ? String.join(", ", waitReasons(epic)) : ""));
