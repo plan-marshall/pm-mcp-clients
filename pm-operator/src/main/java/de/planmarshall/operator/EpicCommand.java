@@ -315,11 +315,20 @@ public final class EpicCommand implements Callable<Integer> {
         if (!epic.alongsideLandings().isEmpty()) {
             out.println("  alongside landings:");
             for (var landing : epic.alongsideLandings()) {
-                out.printf("    ✓ %s%n", OutputSafety.stripControlSequences(landing));
+                out.printf("    ✓ %s%n", landingTitle(landing));
             }
         }
 
         out.flush();
+    }
+
+    private static String landingTitle(String landing) {
+        var parts = landing.split(" \u00b7 ", 2);
+        var key = "unit." + parts[0];
+        var title = MessageCatalogue.hasKey("en", key)
+                            ? MessageCatalogue.format("en", key, Map.of())
+                            : parts[0];
+        return parts.length > 1 ? title + " \u00b7 " + parts[1] : title;
     }
 
     @Command(name = "add", description = "Starts an epic from its sources or adopts one.")
