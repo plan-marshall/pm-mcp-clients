@@ -60,7 +60,7 @@ test.describe('Routing, History & Frame', () => {
   test('navigates to the settings and the machine settings by their own paths', async ({
     page,
   }) => {
-    await page.getByRole('button', { name: 'Machine settings' }).click();
+    await page.getByRole('button', { name: 'Settings' }).click();
     await expect(page).toHaveURL(/\/settings$/);
     await expect(page.locator('.settings-view')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Paired devices' })).toBeVisible();

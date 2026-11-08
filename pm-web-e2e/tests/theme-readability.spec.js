@@ -156,7 +156,7 @@ const LABELS = {
   reports: /^Berichte$|^Reports$/i,
   designer: /Prozess-Designer|Process designer/i,
   system: /^System$/,
-  settings: /Einstellungen der Maschine|Machine settings/i,
+  settings: /^Einstellungen$|^Settings$/i,
   byEpic: /nach Epic|by epic/i,
   review: /Review…|Sieh es dir an…/i,
   startPlan: /Starte den Plan|Start the plan/i,

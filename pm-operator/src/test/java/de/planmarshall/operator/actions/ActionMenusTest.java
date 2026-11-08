@@ -45,7 +45,7 @@ class ActionMenusTest {
     }
 
     @Test
-    @DisplayName("a running plan offers Pause, Cancel, Chat, and Settings, in that order")
+    @DisplayName("a running plan offers Pause, Cancel, Chat, and Plan settings, in that order")
     void runningPlan() {
         var menu = ActionMenus.plan("en", actions("plan", "running", null, "pause", "cancel", "chat",
                             "settings"), null, null, "row");
@@ -55,7 +55,7 @@ class ActionMenusTest {
         assertEquals("\u2026", labels.get(0).substring(labels.get(0).length() - 1));
         assertTrue(labels.get(1).startsWith("Cancel"));
         assertTrue(labels.get(2).startsWith("Chat"));
-        assertTrue(labels.get(3).startsWith("Settings"));
+        assertTrue(labels.get(3).startsWith("Plan settings"));
         assertEquals("p", menu.entries().get(0).trigger());
         assertEquals("x", menu.entries().get(1).trigger());
         assertEquals("h", menu.entries().get(2).trigger());
@@ -64,7 +64,7 @@ class ActionMenusTest {
     }
 
     @Test
-    @DisplayName("a paused plan offers Start, Abandon, Chat, and Settings")
+    @DisplayName("a paused plan offers Start, Abandon, Chat, and Plan settings")
     void pausedPlan() {
         var paused = ActionMenus.plan("en", actions("plan", "paused", null, "start", "abandon", "chat",
                             "settings"), null, null, null);
@@ -75,7 +75,7 @@ class ActionMenusTest {
         assertEquals("x", paused.entries().get(1).trigger());
         assertTrue(labels.get(1).startsWith("Abandon"));
         assertTrue(labels.get(2).startsWith("Chat"), labels.toString());
-        assertTrue(labels.get(3).startsWith("Settings"), labels.toString());
+        assertTrue(labels.get(3).startsWith("Plan settings"), labels.toString());
     }
 
     @Test
@@ -88,7 +88,7 @@ class ActionMenusTest {
     }
 
     @Test
-    @DisplayName("a waiting plan offers the decision it waits for first, then Pause, Cancel, Chat, Settings")
+    @DisplayName("a waiting plan offers the decision it waits for first, then Pause, Cancel, Chat, Plan settings")
     void waitingPlan() {
         var menu = ActionMenus.plan("en", actions("plan", "waiting", null, "pause", "cancel", "chat",
                             "settings"), null, "Q-009", "row");
@@ -102,7 +102,7 @@ class ActionMenusTest {
         assertEquals("p", menu.entries().get(1).trigger());
         assertTrue(labels.get(2).startsWith("Cancel"), labels.toString());
         assertTrue(labels.get(3).startsWith("Chat"), labels.toString());
-        assertTrue(labels.get(4).startsWith("Settings"), labels.toString());
+        assertTrue(labels.get(4).startsWith("Plan settings"), labels.toString());
         assertTrue(menu.droppedActions().isEmpty(), menu.droppedActions().toString());
     }
 
