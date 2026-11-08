@@ -220,7 +220,7 @@ public final class ChoicePrompt {
      * @return this prompt
      */
     public ChoicePrompt keepKey(String label) {
-        this.keepLabel = Objects.requireNonNull(label, "label");
+        this.keepLabel = Objects.requireNonNull(label, "keepLabel");
         return this;
     }
 
@@ -247,7 +247,7 @@ public final class ChoicePrompt {
      * @return this prompt
      */
     public ChoicePrompt leaveKeyLabel(String label) {
-        this.leaveKeyLabel = Objects.requireNonNull(label, "label");
+        this.leaveKeyLabel = Objects.requireNonNull(label, "leaveKeyLabel");
         return this;
     }
 

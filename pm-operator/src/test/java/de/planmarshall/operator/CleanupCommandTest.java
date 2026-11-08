@@ -12,14 +12,21 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.system.CleanupItemEntry;
@@ -28,6 +35,7 @@ import de.planmarshall.api.system.CleanupJobState;
 import de.planmarshall.api.system.CleanupProjectItem;
 import de.planmarshall.api.system.CleanupSummary;
 import de.planmarshall.api.testsupport.RuntimeFixture;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -471,6 +479,183 @@ class CleanupCommandTest {
                             () -> assertEquals(5, preview.reports()),
                             () -> assertEquals(1, preview.projects()),
                             () -> assertEquals(1844654899L, preview.freedBytes())
+        );
+    }
+
+    @Test
+    @DisplayName("the leave-out marks by number, id and kind:id, and puts a marked item back")
+    void leaveOutMarksAndPutsBack() {
+        var items = List.of(
+                            new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged", "12 Sep", 1L, 0, 0, null),
+                            new CleanupItemEntry("relay-auth", "epic", "relay-auth", "completed", "10 Sep", 1L, 0, 0, null)
+        );
+        var leftOut = new LinkedHashSet<String>();
+
+        var unknown = CleanupCommand.toggleLeftOut(items, leftOut, "1 epic:relay-auth");
+        assertAll(
+                            () -> assertTrue(unknown.isEmpty(), unknown.toString()),
+                            () -> assertEquals(Set.of("fix-relay", "relay-auth"), leftOut)
+        );
+
+        var freed = CleanupCommand.toggleLeftOut(items, leftOut, "1");
+        assertAll(
+                            () -> assertTrue(freed.isEmpty(), freed.toString()),
+                            () -> assertEquals(Set.of("relay-auth"), leftOut)
+        );
+
+        var missing = CleanupCommand.toggleLeftOut(items, leftOut, "9 nope");
+        assertAll(
+                            () -> assertEquals(List.of("9", "nope"), missing),
+                            () -> assertEquals(Set.of("relay-auth"), leftOut)
+        );
+    }
+
+    @Test
+    @DisplayName("only a plan and an epic open")
+    void onlyWorkOpens() {
+        var plan = new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged", "12 Sep", 1L, 0, 0, null);
+        var epic = new CleanupItemEntry("relay-auth", "epic", "relay-auth", "completed", "10 Sep", 1L, 0, 0, null);
+        var logs = new CleanupItemEntry("relay-docs", "logs", "relay-docs", null, null, 1L, 3, 0, null);
+
+        assertAll(
+                            () -> assertEquals("plan", CleanupCommand.openTarget(plan)),
+                            () -> assertEquals("epic", CleanupCommand.openTarget(epic)),
+                            () -> assertNull(CleanupCommand.openTarget(logs))
+        );
+    }
+
+    @Test
+    @DisplayName("the printed job marks the items kept for good and shapes each kind")
+    void printJobMarksAndShapesEveryKind() throws Exception {
+        var items = List.of(
+                            new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged", "ended 12 Sep", 1L, 2, 0, null),
+                            new CleanupItemEntry("relay-docs", "logs", "relay-docs", null, null, 2L, 3, 0, "kept until 24 Oct"),
+                            new CleanupItemEntry("3 read reports", "reports", "3 read reports", null, null, 0L, 0, 0, "read before 13 Sep")
+        );
+        var project = new CleanupProjectItem("pm-mcp-clients", 1, 0, 3, 0, 3L, items);
+        var unenrolled = new CleanupProjectItem("unenrolled", 0, 0, 0, 1, 1024L, List.of(
+                            new CleanupItemEntry("legacy-portal", "project", "legacy-portal", null, null, 1024L, 0, 0, null)));
+        var summary = new CleanupSummary(1, 0, 3, 3, 1, 1027L, 0, "today 03:00", "tomorrow 03:00");
+        var job = new CleanupJob("cln-0007", CleanupJobState.OPEN, "today 03:00", summary,
+                            List.of(project, unenrolled), Map.of());
+        var command = new CleanupCommand(new OperatorContext(fixture.environment(), tempDir, true));
+        var writer = new StringWriter();
+
+        var printed = command.printJob(new PrintWriter(writer), job, Set.of("fix-relay"));
+
+        var output = writer.toString();
+        assertAll(
+                            () -> assertEquals(4, printed.size()),
+                            () -> assertTrue(output.contains("ended 12 Sep"), output),
+                            () -> assertFalse(output.contains("ended ended"), output),
+                            () -> assertTrue(output.contains("✎ kept for good"), output),
+                            () -> assertTrue(output.contains("relay-docs"), output),
+                            () -> assertTrue(output.contains("3 read reports"), output),
+                            () -> assertTrue(output.contains("Unenrolled projects"), output),
+                            () -> assertTrue(output.contains("legacy-portal"), output)
+        );
+    }
+
+    @Test
+    @DisplayName("the delete preview names the counts and the kept items")
+    void previewTextNamesTheCounts() {
+        var preview = new CleanupCommand.DeletePreview(11, 2, 29, 5, 1, 1806906163L);
+
+        var text = CleanupCommand.previewText(preview, 1);
+
+        assertAll(
+                            () -> assertTrue(text.contains("Delete 11 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project?"), text),
+                            () -> assertTrue(text.contains("This frees 1.7 GB. It cannot be undone."), text),
+                            () -> assertTrue(text.contains("1 unchecked item is kept for good."), text),
+                            () -> assertTrue(CleanupCommand.consentTitle(preview, 1, "en").endsWith("Delete?"), text)
+        );
+    }
+
+    @Test
+    @DisplayName("the decision bar offers d, r, i, x and o in that order")
+    void decisionChoicesAreTheFiveKeys() {
+        var choices = CleanupCommand.decisionChoices("en");
+
+        assertAll(
+                            () -> assertEquals(List.of("d", "r", "i", "x", "o"),
+                                                choices.stream().map(c -> c.key()).toList()),
+                            () -> assertEquals("delete…", choices.get(0).label()),
+                            () -> assertEquals("leave items out", choices.get(3).label())
+        );
+    }
+
+    @Test
+    @DisplayName("the console dialogue leaves an item out and keeps the delete open")
+    void dialogLeavesAnItemOutThenKeepsIt() throws Exception {
+        var job = sampleJob();
+        var answers = new ArrayDeque<>(List.of("x\n", "q\n"));
+        var freeText = new ArrayDeque<>(List.of("1"));
+        var command = new CleanupCommand(
+                            new OperatorContext(fixture.environment(), tempDir, true),
+                            (state, leave, writer) -> new ChoicePrompt(
+                                                new BufferedReader(new StringReader(answers.peek() == null ? "q\n" : answers.poll())),
+                                                new PrintWriter(out), "en", state).leaveLabel(leave),
+                            (question, state, writer) -> freeText.poll());
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> response.json(200, JsonTree.write(job.toMap())));
+
+        assertThrows(StartPrompt.StartLeftException.class,
+                            () -> command.decide(new PrintWriter(out), new PrintWriter(err), job));
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertTrue(output.contains("✎ kept for good"), output),
+                            () -> assertTrue(output.contains("Left the cleanup. Nothing was sent."), output)
+        );
+    }
+
+    @Test
+    @DisplayName("the dialogue's n returns to the bar and y sends the delete")
+    void dialogConfirmHoldsAndSends() throws Exception {
+        var job = sampleJob();
+        var answers = new ArrayDeque<>(List.of("d\n", "n\n", "d\n", "y\n"));
+        var command = new CleanupCommand(
+                            new OperatorContext(fixture.environment(), tempDir, true),
+                            (state, leave, writer) -> new ChoicePrompt(
+                                                new BufferedReader(new StringReader(answers.peek() == null ? "q\n" : answers.poll())),
+                                                new PrintWriter(out), "en", state).leaveLabel(leave),
+                            (question, state, writer) -> "");
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup/cln-0007/delete".equals(request.target())) {
+                response.json(200, "{\"status\":\"deleted\"}");
+            } else {
+                response.json(200, JsonTree.write(job.toMap()));
+            }
+        });
+
+        int code = command.decide(new PrintWriter(out), new PrintWriter(err), job);
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(output.contains("This frees"), output),
+                            () -> assertTrue(output.contains("✓ Deleted"), output)
+        );
+    }
+
+    @Test
+    @DisplayName("o names the item's view, or refuses a kind that has none")
+    void dialogOpensTheItem() throws Exception {
+        var items = List.of(
+                            new CleanupItemEntry("relay-docs", "logs", "relay-docs", null, null, 1L, 3, 0, null));
+        var command = new CleanupCommand(
+                            new OperatorContext(fixture.environment(), tempDir, true),
+                            (state, leave, writer) -> new ChoicePrompt(
+                                                new BufferedReader(new StringReader("q\n")), new PrintWriter(out), "en", state),
+                            (question, state, writer) -> "1");
+
+        command.openItem(new PrintWriter(out), new PrintWriter(err), items);
+
+        var output = out.toString();
+        assertAll(
+                            () -> assertTrue(output.contains("Only a plan and an epic open"), output),
+                            () -> assertTrue(output.contains("relay-docs"), output)
         );
     }
 }
