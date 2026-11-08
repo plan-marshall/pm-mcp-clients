@@ -52,8 +52,6 @@ public final class CleanupCommand implements Callable<Integer> {
 
     private static final String DECISION_STATE = "cleanup.job";
     private static final String CONFIRM_STATE = "cleanup.confirm";
-    private static final String LEAVE_OUT_STATE = "cleanup.leave_out";
-    private static final String OPEN_STATE = "cleanup.open";
 
     private final OperatorContext context;
 
@@ -581,7 +579,7 @@ public final class CleanupCommand implements Callable<Integer> {
         var locale = context.clientEnvironment().locale();
         var prompt = new StartPrompt(context, out, locale, false);
         var question = MessageCatalogue.format(locale, "operator.cleanup.leave_out", Map.of("items", ""));
-        var answer = prompt.askRaw(question, LEAVE_OUT_STATE, question, null);
+        var answer = prompt.askRaw(question, DECISION_STATE, question, null);
         if (answer.isEmpty() || ChoicePrompt.isLeave(locale, answer)) {
             return;
         }
@@ -611,7 +609,7 @@ public final class CleanupCommand implements Callable<Integer> {
         var locale = context.clientEnvironment().locale();
         var prompt = new StartPrompt(context, out, locale, false);
         var question = MessageCatalogue.format(locale, "operator.cleanup.choose.open_prompt", Map.of());
-        var answer = prompt.askRaw(question, OPEN_STATE, question, null);
+        var answer = prompt.askRaw(question, DECISION_STATE, question, null);
         if (answer.isEmpty() || ChoicePrompt.isLeave(locale, answer)) {
             return;
         }
