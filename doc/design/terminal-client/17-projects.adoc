@@ -10,7 +10,7 @@ link:README.adoc[Terminal Client] » Projects
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-1[UC-PRJ-1], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-3[UC-PRJ-3]_
 
-Status: `DRAFT`.
+Status: `AGREED`.
 
 What the explorer and a project's onboarding show is link:../shared/project-explorer.adoc[Project Explorer] and link:../shared/project-onboarding.adoc[Project Onboarding], for both clients (link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc[Use Cases, Projects]). This part is how the console draws them. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
