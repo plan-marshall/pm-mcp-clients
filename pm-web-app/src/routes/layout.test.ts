@@ -262,6 +262,7 @@ describe('the app shell', () => {
     });
     runtimeStore.set(
       makeRuntimeState({
+        isInitialized: false,
         isDraining: true,
         drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
       }),
@@ -284,7 +285,9 @@ describe('the app shell', () => {
     // The accepted stop ends the drain at once, even before a lifecycle event arrives.
     await waitFor(() => {
       expect(screen.queryByTestId('draining-banner')).not.toBeInTheDocument();
+      expect(get(runtimeStore).isStopped).toBe(true);
     });
+    expect(get(runtimeStore)).toMatchObject({ isDraining: false, isStopped: true });
   });
 
   it('shows the refusal of a withdraw and ignores a second click', async () => {
@@ -303,6 +306,7 @@ describe('the app shell', () => {
     });
     runtimeStore.set(
       makeRuntimeState({
+        isInitialized: false,
         isDraining: true,
         drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
       }),
@@ -339,6 +343,7 @@ describe('the app shell', () => {
     });
     runtimeStore.set(
       makeRuntimeState({
+        isInitialized: false,
         isDraining: true,
         drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
       }),
@@ -377,6 +382,7 @@ describe('the app shell', () => {
     });
     runtimeStore.set(
       makeRuntimeState({
+        isInitialized: false,
         isDraining: true,
         drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
       }),
@@ -425,6 +431,7 @@ describe('the app shell', () => {
     });
     runtimeStore.set(
       makeRuntimeState({
+        isInitialized: false,
         isDraining: true,
         drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
       }),
@@ -463,6 +470,7 @@ describe('the app shell', () => {
     });
     runtimeStore.set(
       makeRuntimeState({
+        isInitialized: false,
         isDraining: true,
         drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
       }),
@@ -496,6 +504,7 @@ describe('the app shell', () => {
     });
     runtimeStore.set(
       makeRuntimeState({
+        isInitialized: false,
         isDraining: true,
         drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
       }),
@@ -538,6 +547,7 @@ describe('the app shell', () => {
     });
     runtimeStore.set(
       makeRuntimeState({
+        isInitialized: false,
         isDraining: true,
         drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
       }),
@@ -597,6 +607,7 @@ describe('the app shell', () => {
     });
     runtimeStore.set(
       makeRuntimeState({
+        isInitialized: false,
         isDraining: true,
         drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
       }),
@@ -638,6 +649,7 @@ describe('the app shell', () => {
     });
     runtimeStore.set(
       makeRuntimeState({
+        isInitialized: false,
         isDraining: true,
         drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
       }),
@@ -672,6 +684,7 @@ describe('the app shell', () => {
     });
     runtimeStore.set(
       makeRuntimeState({
+        isInitialized: false,
         isDraining: true,
         drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
       }),
@@ -752,6 +765,7 @@ describe('the app shell', () => {
     });
     runtimeStore.set(
       makeRuntimeState({
+        isInitialized: false,
         isDraining: true,
         drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
       }),
@@ -789,6 +803,7 @@ describe('the app shell', () => {
     });
     runtimeStore.set(
       makeRuntimeState({
+        isInitialized: false,
         isDraining: true,
         drainInfo: { who: 'the console', count: 1, items: ['build of fix-relay'] },
       }),
