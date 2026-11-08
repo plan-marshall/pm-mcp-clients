@@ -132,6 +132,14 @@ The `WaitingMark` that D3 (PLAN-114) defines is the clipboard whose TODO lines a
 the brand icon choice (the marshal star badge is the brand mark candidate). The chat's working line uses it as D3 defines
 it; this plan neither redraws nor re-specifies it. Expected Surface unchanged.
 
+## Fold 2026-11-08 (PLAN-113 landing, seam S8)
+
+`doc/design/shared/decisions.adoc:132` ("the decision stays visible, its answers disabled while the chat is open"; "panel")
+and `doc/design/shared/work-actions.adoc:382` ("End the chat returns to the view") predate D2's column window: per
+`web-app/navigation.adoc:166,274-285` the chat is a side column (480 / 400 px) that can take the only column at 1024 px,
+*Hide the chat* returns to the object, and ending is the chat's own act. D4 owns these chat texts: align them with
+`navigation.adoc`. Surface unchanged (both files are D4's).
+
 ## Hand-Off Command
 
 Lane: none — a direct Claude Code session (operator instruction 2026-11-06). Start it in its own worktree and branch of

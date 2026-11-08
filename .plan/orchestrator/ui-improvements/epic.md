@@ -608,6 +608,13 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Watches
 
+- D2 (PLAN-113) landed (PR #380, `95df75bb`, analysed 2026-11-08); see `landings/PLAN-113.md`. Merge rule met; the 13
+  changed documents are AGREED (operator decisions, AGREED commit `467fa02f` by the orchestrator). Seams S1–S11 and C1–C2: the
+  OPERATOR DECIDED 2026-11-08 to have them fixed directly (documents only, one PR labelled `skip-bot-review`, by the
+  orchestrator) AFTER D3's #379 merges, with the rule "an explicit click on a lens opens that lens (`/` = What waits); only a
+  bare app start or `/overview` is filled from the remembered place", plus the `web-app/README.adoc` split under 500 lines.
+  S8 (chat wording) folded into PLAN-115. S4 (`plan-view-interaction.adoc`) stays with PLAN-55/62. The three sibling-repo
+  symlinks in `.plan/local/worktrees/` are removed once D3 finishes.
 - PLAN-21 landed (PR #372, `bedc5927`, analysed 2026-11-08); see `landings/PLAN-21.md`. MERGE RULE NOT MET: 20 CodeRabbit
   threads, 0 replies, 0 resolved, review body unanswered; all 20 findings real at the merge. Layer 3 major: decision text not
   sanitised (evidence and more, `AnswerCommand.java:208`), part question never shown, multi-part decisions answered after
