@@ -199,17 +199,21 @@ A shorter chain gives its strip's width to its columns: a plan of a project at `
 |An object opened in place
 |`open={kind}:{id}` on the caller's address (`/system/cleanup?open=plan:fix-relay`, `/plans/fix-relay?open=decision:Q-007`, `/plans/fix-relay?open=completion-report`)
 
+|A node of the plan's phase tree
+|`node={path}`, the node ids from the plan down, joined by `/` (`/plans/fix-relay?node=execute/land`): a phase or a sub-workflow selected in the plan's list column; the tree opens with the path to it expanded and the node selected. A task is a level of its own and takes the path (`/plans/{id}/tasks/{task}`); the follow mode writes no node
+
 |A side column
 |`chat=open` (<<side-columns>>)
 |===
 
 * *Push* only for a change of depth — opening a child, Up, a breadcrumb segment, opening in place — or of lens.
-* *Replace* for a change to a sibling in the same column, for a `j`/`k` move, for a tab, a mode or a scope switched inside the lens, for opening or hiding a side column, and for every selection the app makes on its own (a fallback to the parent, the follow mode moving to the next task, filling a bare lens).
+* *Replace* for a change to a sibling in the same column, for a `j`/`k` move, for a node selected in the phase tree, for a tab, a mode or a scope switched inside the lens, for opening or hiding a side column, and for every selection the app makes on its own (a fallback to the parent, the follow mode moving to the next task, filling a bare lens).
 * *An object in place* is opened by a push and closed by the history's back, so _Back to the job_ is a history back. An address loaded with `open=` has nothing to go back to: its close replaces the address with the caller's.
 * *The follow mode*: following the running task is a mode in the address (`follow=on`), not a task id, until the operator selects a task; selecting one ends it.
 * *The address wins over the remembered place* (link:../shared/plan-overview.adoc#persistence[Plan Overview, Where the Operator Left It]): a full address opens what it names. Only a bare lens (`/overview`) is filled from the remembered place, by `replaceState`.
 * *A pairing code in the fragment* is redeemed before the first write and is never written into the history (link:entry.adoc#after-pairing[Entry, Where the App Opens]).
-* *An old address* of a moved view (`/decisions?decision=`, `/reports?plan=`, `/settings/machine`, `/settings/browser`, `/projects?project=`) is replaced by its address in this scheme when it is opened; pre-1.0, there is no other compatibility.
+* *Objects and workflows never share a path*: an object is `/{kind}s/{id}`, and a workflow that is not an object has a path of its own outside them (`/project-onboarding/{entry}`, `/decomposition`), so no id — a project called `onboard`, an epic called `decompose` — can collide with it.
+* *An old address* of a moved view (`/decisions?decision=`, `/reports?plan=`, `/settings/machine`, `/settings/browser`, `/projects?project=`, `/projects/onboard`, `/epics/decompose`) is replaced by its address in this scheme when it is opened; pre-1.0, there is no other compatibility.
 
 [#kinds]
 == Kinds and the KindMark
@@ -234,6 +238,9 @@ A shorter chain gives its strip's width to its columns: a plan of a project at `
 
 |`j`, `k`
 |The next or the previous row of the focused list column (a replace).
+
+|`/`, `Ctrl+K`
+|`/` focuses the list filter of the view where it has one (link:view-density-and-filtering.adoc#filter-control[View Density and Filtering, The Control]) and opens find elsewhere; `Ctrl+K` always opens find (link:needs-and-find.adoc#search[What Waits and Find, The Search Button]).
 
 |`Enter`
 |Keeps its meaning per widget: it opens a row, and in Decisions it decides a decision with a chosen option.

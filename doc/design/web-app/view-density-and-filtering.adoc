@@ -57,7 +57,7 @@ One utility (`filterText.ts`) and one component (`FilterInput.svelte`) power eve
 `FilterInput` renders a visible label and a labelled `<input type="search">` inside `role="search"`.
 
 * `oninput` emits immediately; there is no debounce because the lists are bounded by what is loaded.
-* `Esc` clears the query and keeps the focus; `/` focuses the field unless the focus is already in an input, textarea, select, or contenteditable element.
+* `Esc` clears the query and keeps the focus; `/` focuses the field unless the focus is already in an input, textarea, select, or contenteditable element. On a view with a filter, `/` is the filter's and does not open find; `Ctrl+K` opens find on every view (link:needs-and-find.adoc#search[What Waits and Find, The Search Button]).
 * A clear button appears while the query is non-empty.
 * The result count sits in an `aria-live="polite"` region, e.g. "3 matches" or "No matches". The region is always in the document, empty while no filter is active, never inserted with the first query: a region added together with its text may not be announced.
 * *One key pattern*: the field's label is `common.filter.label` with the list's name as its argument (_Filter: decisions_), its count `common.filter.results`, its clear control `common.filter.clear` and its empty state `common.filter.empty`; a view keeps a key of its own only for a text that says more than the shared one (`<view>.filter.no_matches`, `report.filter.loaded_only`). The labels `decisions.filter.label` and `report.filter.label` merge into the shared one, and a placeholder is an example value, never a list of the fields (link:components-fields.adoc#field-texts[Fields and Forms, Labels, Hints, Placeholders]).
