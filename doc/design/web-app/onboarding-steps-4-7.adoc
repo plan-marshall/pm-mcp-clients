@@ -441,6 +441,7 @@ Terminal: link:../terminal-client/05-transcripts-entry.adoc#t-auto[Terminal Clie
   [ Machine settings ]                                  [ Add a project ]
 ----
 
+* *The figure*: beside the summary stands the mascot, full figure, about `240` px, in the pose `done`, the clipboard held up with every box ticked (the source figure until that pose is accepted). It enters with one fade and rise of at most `300 ms`, none with reduced motion, and is hidden on a phone (link:brand-mark-mascot.adoc#surfaces[The Mascot, Surfaces]). The project onboarding's done screen carries the same figure.
 * *Add a project* opens the project onboarding (link:../shared/project-onboarding.adoc[Project Onboarding]) from the explorer (link:../shared/project-explorer.adoc[Project Explorer]); *Machine settings* opens link:machine-settings.adoc[Machine Settings].
 
 Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-completed[Terminal Client, transcript].

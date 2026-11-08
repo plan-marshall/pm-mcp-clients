@@ -1,0 +1,92 @@
+= Design: Web App, View Layouts
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:README.adoc[Web App] » View Layouts
+
+_Relies on: link:README.adoc#visual-language[Web App, Visual Language] (the frame, the grid and the tokens every layout uses), link:view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates], link:navigation.adoc[Navigation] (the lenses and the column window)_
+
+Status: `AGREED`. A part of link:README.adoc[Web App]: the layout of three views of the app — Reports, System and Cleanup — each a sketch of its tiers with the rules of its rows, its acts and its width. What each view shows is its shared design (link:../shared/reports.adoc[Reports], link:../shared/system.adoc[System], link:../shared/cleanup.adoc[Cleanup]); this part says how the web app lays it out.
+
+[#reports-layout]
+== Reports View (`/reports`)
+
+The Reports lens sits on the `TriagePage` template (link:view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates]): the list column and, at `/reports/{id}`, the report's detail as the object column beside it, in the column window of link:navigation.adoc#window[Navigation]. It sets no page width of its own.
+
+----
+filters   [Filter reports]
+header    Reports · 5 unread reports                          [Mark all shown read]
+──────────────────────────────────────────────────────────────────────────
+body      pm-mcp-clients
+            ◇ relay-hardening
+              • fix-relay   fix-relay ended: merged (#214)  17 d ago  [Show the details] [⋯ Report actions]
+              • docs-typo   docs-typo ended: no change      17 d ago  [Show the details] [⋯ Report actions]
+          This machine
+            • machine       Cleanup is due: 12 candidates from 3 projects
+──────────────────────────────────────────────────────────────────────────
+          [Show 12 older]
+----
+
+* The subject is the report's own text from the catalogue with its parameters; the relative time is the only figure the client adds, and `--font-mono` is used only for the identifiers of the path.
+* An unread row leads with a dot and sets its subject in the semibold weight; a row read by opening its detail stays beside the detail until the detail closes, without the dot and in the normal weight, and names its state _read_ in words.
+* The row menu stands at the end of the row: an icon-only `⋯` (link:components.adoc#icon-button[Components, IconButton]), its accessible name _Report actions_ carrying the row's subject. It holds _Mark read_ for that one report; _Show the details_ opens the detail and marks the report read; _Mark all shown read_ acts on the list as shown.
+* A report of the machine (`system.*`) stands in the group _This machine_ of its own, whatever project the wire also names (link:../shared/reports.adoc#list[Reports, The List]).
+* An empty list says that nothing is new and that read reports are not shown again (link:../shared/reports.adoc#read[Reports, Reading a Report]).
+
+[#system-layout]
+== System View (`/system`)
+
+The runtime's six parts in a fixed order (link:../shared/system.adoc#view[System, The System View]), each part a card of the same width, each figure one step from what it counts.
+
+----
+header
+──────────────────────────────────────────────────────────────────────────
+context   System                                    [Upgrade…] [Restart…] [Stop…]
+──────────────────────────────────────────────────────────────────────────
+body      Runtime   pm-mcpd 0.9.1 · build 2026-10-02 (a1b2c3d)   0.10.0 available
+                    running since today 08:14 · 6 h 12 min
+                    memory 412 MB in use of 1 GB · CPU 4 %
+                    listeners socket · loopback 127.0.0.1:7420 · network on
+──────────────────────────────────────────────────────────────────────────
+          Work      3 running · 1 waiting for you · 1 held · 2 paused
+                    [All] [Per project]
+──────────────────────────────────────────────────────────────────────────
+          Workers   5 · 3 busy · 2 idle
+          Jobs      build 1 of 2 slots · 1 queued · locks 3 held
+          Models    [Last hour] [Today] [7 days]   [Per model] [Per role]
+──────────────────────────────────────────────────────────────────────────
+          Cleanup   due: 12 plans · 2 epics · 40 logs · frees 1.8 GB  [Review…]
+──────────────────────────────────────────────────────────────────────────
+----
+
+* The three acts are buttons in the context tier, not in the body; each opens its confirmation as a dialogue over the view. A figure that leads to what it counts is a link; a figure that is not measured says so and never shows a zero.
+* Grouping and window switches are each a `SegmentedControl` of the part they belong to (link:components.adoc#segmented-control[Components, SegmentedControl]: a radio group, the chosen option on `--color-brand-subtle`, never a solid brand fill), not a global filter.
+* The stopped state replaces the body with the page that says the runtime is stopped and how to start it; the header and the frame stay, and the page connects again by itself.
+* Width: the dashboard template (at most `1440px`, link:view-density-and-filtering.adoc#templates[Page Templates]); the parts stack in the same order on the tablet and the phone, and a figure's unit stays with its number.
+
+[#cleanup-layout]
+== Cleanup View (`/system/cleanup`)
+
+A part of the system view, reached from its cleanup line and from a cleanup report. It shows a cleanup job: its summary, its items, and the confirmation of a deletion.
+
+----
+header
+──────────────────────────────────────────────────────────────────────────
+context   System › Cleanup
+──────────────────────────────────────────────────────────────────────────
+body      Summary   12 plans · 2 epics · 40 logs · 1.8 GB        [Check all]
+          4 kept for good · last sweep today 03:00
+──────────────────────────────────────────────────────────────────────────
+          Details   [x] Archived plans      30 days     1.2 GB
+                    [x] Archived epics      30 days     0.5 GB
+                    [ ] Logs of ended work  14 days     0.1 GB
+                    Unchecked items are kept for good.
+──────────────────────────────────────────────────────────────────────────
+                                       [Ask me again in 3 days] [Ignore] [⋯]
+----
+
+* The summary and the details are two cards; each item is a checkbox with its kind, its duration, and its size. An unchecked item is kept for good and the line says so.
+* _Delete…_ is an entry of the overflow menu `⋯`, in the danger text colour, never a visible danger button (link:components.adoc#hierarchy[Components, Hierarchy]); it opens the confirmation as a dialogue over the view, whose confirming button is the one filled danger control; the confirmation repeats what is freed and what stays (branches, pull requests, the remote, the checkout, the epic's ledger). _Back_ leaves everything as it is.
+* The items kept for good are a separate list below the details, with their release actions. The technical residue is a read-only figure, never an item.
+* Width: `1000px` on the desktop; the checklist becomes a list of labelled rows on the phone, and the acts stack at the foot of the body.
