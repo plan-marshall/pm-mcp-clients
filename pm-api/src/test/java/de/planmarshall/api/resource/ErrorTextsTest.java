@@ -150,6 +150,9 @@ class ErrorTextsTest {
 
             assertTrue(fix.contains("accept-edit enrolment " + projectId), fix);
             assertFalse(fix.contains("{project_id}"), fix);
+            assertEquals(fix, ErrorTexts.fix(locale, ApiErrorCode.ENROLMENT_TAMPERED.wire(),
+                            Map.of("project_id", projectId)),
+                    "the wire-value overload forwards the arguments");
         }
     }
 

@@ -23,9 +23,10 @@ import de.planmarshall.api.json.JsonTree;
 
 /**
  * Read-only codec of the runtime record {@code <PM_MCP_BASE>/state/runtime.json}, one of the files
- * the client binaries read directly. It serves only the "not running" answer: a record whose
- * process is gone, whose start instant it does not carry, or whose start instant differs (PID reuse)
- * names no live runtime.
+ * the client binaries read directly. It answers two questions: whether a recorded process is alive
+ * ({@link #processAlive()}, what the reads show) and whether it is the process the record names
+ * ({@link #identifies(ProcessHandle)}, the proof a signalling act requires — a reused process id is
+ * a different process).
  *
  * @param pid           the runtime's process id
  * @param startInstant  the process start instant, {@code null} when not recorded
@@ -61,12 +62,14 @@ public record RuntimeRecord(long pid, Instant startInstant, String version) {
     }
 
     /**
-     * @return {@code true} if the record names a live process that it can identify by its start
-     *         instant; a record with no start instant, or a process that reports none, names no live
-     *         runtime
+     * @return {@code true} if the recorded process is alive and, where recorded, started at the
+     *         recorded instant; a read, not proof of identity
      */
     public boolean processAlive() {
-        return ProcessHandle.of(pid).filter(ProcessHandle::isAlive).map(this::identifies).orElse(false);
+        return ProcessHandle.of(pid).filter(ProcessHandle::isAlive).map(handle -> startInstant == null
+                || handle.info().startInstant().map(actual -> actual.truncatedTo(ChronoUnit.SECONDS)
+                .equals(startInstant.truncatedTo(ChronoUnit.SECONDS))).orElse(true))
+                .orElse(false);
     }
 
     /**

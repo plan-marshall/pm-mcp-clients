@@ -61,7 +61,8 @@ class RuntimeRecordTest {
         var self = ProcessHandle.current().pid();
 
         assertFalse(new RuntimeRecord(self, Instant.parse("2001-01-01T00:00:00Z"), null).processAlive());
-        assertFalse(new RuntimeRecord(self, null, null).processAlive(), "a record without a start instant identifies nothing");
+        assertTrue(new RuntimeRecord(self, null, null).processAlive(),
+                "a read of a live pid whose record carries no start instant still says alive");
         assertFalse(new RuntimeRecord(Integer.MAX_VALUE - 1L, null, null).processAlive());
     }
 

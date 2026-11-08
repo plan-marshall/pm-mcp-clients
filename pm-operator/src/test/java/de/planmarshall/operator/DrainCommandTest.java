@@ -266,6 +266,19 @@ class DrainCommandTest {
 
 
     @Test
+    @DisplayName("a runtime that exits while its start instant is read is reported not running")
+    void exitsDuringIdentification() throws Exception {
+        var child = recordedRuntime("trap 'exit 0' TERM");
+
+        var code = drainWith(_ -> Optional.of(new DyingProcess(child.pid())));
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertEquals("The runtime is not running; there is nothing to drain.",
+                                                out.toString().strip()));
+    }
+
+    @Test
     @DisplayName("a record that names the console's own process with another start instant is not identifiable")
     void ownPidWithAnotherStartInstantIsNotIdentifiable() throws Exception {
         var self = ProcessHandle.current();
@@ -393,6 +406,75 @@ class DrainCommandTest {
         @Override
         public int compareTo(ProcessHandle other) {
             return Long.compare(pid, other.pid());
+        }
+    }
+
+    /**
+     * A process that is alive at the first liveness check and gone — reporting no start instant — by
+     * the time its identity is read. A signal never reaches it.
+     */
+    private static final class DyingProcess implements ProcessHandle {
+
+        private final long pid;
+        private final AtomicBoolean checked = new AtomicBoolean();
+
+        DyingProcess(long pid) {
+            this.pid = pid;
+        }
+
+        @Override
+        public Optional<ProcessHandle> parent() {
+            return Optional.empty();
+        }
+
+        @Override
+        public Stream<ProcessHandle> children() {
+            return Stream.empty();
+        }
+
+        @Override
+        public Stream<ProcessHandle> descendants() {
+            return Stream.empty();
+        }
+
+        @Override
+        public Info info() {
+            return new FakeInfo(null);
+        }
+
+        @Override
+        public CompletableFuture<ProcessHandle> onExit() {
+            return new CompletableFuture<>();
+        }
+
+        @Override
+        public boolean supportsNormalTermination() {
+            return true;
+        }
+
+        @Override
+        public boolean destroy() {
+            return false;
+        }
+
+        @Override
+        public boolean destroyForcibly() {
+            return false;
+        }
+
+        @Override
+        public boolean isAlive() {
+            return !checked.getAndSet(true);
+        }
+
+        @Override
+        public int compareTo(ProcessHandle other) {
+            return Long.compare(pid, other.pid());
+        }
+
+        @Override
+        public long pid() {
+            return pid;
         }
     }
 
