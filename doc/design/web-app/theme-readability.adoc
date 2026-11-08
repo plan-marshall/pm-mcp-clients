@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:README.adoc[Web App Overview], link:workflow-visual-language.adoc[Workflow Visual Language]_
 
-Status: `AGREED`. This document is the design authority for theme readability, semantic design tokens, WCAG 2.1 AA contrast compliance, and automated verification across light and dark themes in `pm-web-app`.
+Status: `DRAFT`. This document is the design authority for theme readability, semantic design tokens, WCAG 2.1 AA contrast compliance, and automated verification across light and dark themes in `pm-web-app`.
 
 [#overview]
 == Overview and Problem Statement
@@ -157,7 +157,7 @@ Contrast ratio between two luminances \(L_1\) (lighter) and \(L_2\) (darker) is 
 Two reasoned, functional exceptions carry colour literals; the first sits inside the scanned surface, the second outside it:
 
 * **`PairingQr.svelte`:** SVG QR code modules use `#ffffff` (quiet zone and light modules) and `#000000` (dark modules). QR code optical scanners require strict binary black-on-white module contrast regardless of operating system or browser theme.
-* **The two browser-tab copies** (`pm-web-app/static/brand-mark.svg`, `pm-web-app/static/brand-mark-attention.svg`): a standalone SVG has no page context for `currentColor`, so they bake the light-theme brand colour and the attention dot; link:brand-mark.adoc#theme[Brand Mark, Theme and Contrast] names the values.
+* **The two browser-tab copies** (`pm-web-app/static/brand-mark.svg`, `pm-web-app/static/brand-mark-attention.svg`): a standalone SVG has no page context for `currentColor`, so they bake the mascot palette of the brand icon and the attention dot; link:brand-mark.adoc#favicon[Brand Mark and Mascot, The Browser Tab] names the values.
 
 All other components and views must reference defined tokens in `tokens.css`. Static scans in `tokens.test.ts` enforce zero unexpected color literals across `pm-web-app/src/lib/`; the `static/` copies are outside that scan and are documented in link:brand-mark.adoc[Brand Mark].
 

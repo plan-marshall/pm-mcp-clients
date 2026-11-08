@@ -1,0 +1,216 @@
+= Design: Web App, Brand Mark and Mascot: The Mascot
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:README.adoc[Web App] » link:brand-mark.adoc[Brand Mark and Mascot] » The Mascot
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1] (enter and connect), link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2] (a revoked device, the network listener turned off), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (set up the machine), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7] (see what needs the operator)_
+
+_Relies on: link:brand-mark.adoc#provenance[Brand Mark and Mascot, Provenance], link:README.adoc#shell[Web App, The App Shell] (the rail), link:components.adoc#empty-state[Components, EmptyState], link:theme-readability.adoc[Theme Readability] (the contrast every pair owes), link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App] (the content security policy)_
+
+Status: `DRAFT`. A part of link:brand-mark.adoc[Brand Mark and Mascot]: the mascot as illustration — where it appears and where it never does, how its files are made and delivered, the rail-foot bear, and the closed set of six poses with a brief for each.
+
+[#surfaces]
+== Surfaces
+
+The mascot is *decoration on calm surfaces*: screens with little text, one message, and nothing to read closely. It is *never behind data*: no list, log, form, decision, table, phase tree or code, where a watermark would cost contrast and compete with the state colours.
+
+[cols="2,3,1,1",options="header"]
+|===
+|Surface |How |Pose (<<poses>>) |Size
+
+|*Pairing page* (`PairingView`, link:entry.adoc#pairing[Entry, The Pairing Page])
+|The hero: the full figure beside the pairing card on a wide screen, the first thing a new operator sees. Hidden on a phone and where the page's free height is below the figure's.
+|welcome
+|full figure, `280`–`360` px tall
+
+|*Onboarding welcome* (link:onboarding.adoc#start[Onboarding, Start])
+|The full figure beside the list of the seven steps.
+|welcome
+|full figure, about `240` px
+
+|*Onboarding done*, and the project onboarding's done
+|The full figure beside the summary; the ticks on its clipboard match "this machine is ready" (link:onboarding-steps-4-7.adoc#done[Onboarding, Done]).
+|done
+|full figure, about `240` px
+
+|*Empty states* through `EmptyState` with `mascot`
+|The bust above the title, the sentence and the act. For: nothing waits for the operator, no running work, no open decisions, no unread reports, no projects yet.
+|all clear, or start here
+|bust, `120`–`160` px
+
+|*Terminal states*: `RevokedView`, `ListenerOffView`, the runtime not reachable (link:entry.adoc#revoked[Entry]), an unknown address
+|The full figure, quieter: smaller, beside the text, never above it.
+|access ended, or searching
+|full figure, `160`–`200` px
+
+|*Rail foot* (<<rail-foot>>)
+|The bear peeking up from the bottom edge of the rail, cropped at the chest so the clipboard is hidden; a faint background of the rail column.
+|— (always the source bust)
+|rail width, about `200` px tall
+|===
+
+* *The rail head* carries the brand icon, not the figure (link:brand-mark.adoc#uses[Brand Mark and Mascot, Where the Icon Is Used]).
+* *Never used*: the top bar, object pages, list rows, dialogs, toasts, notices, and the favicon.
+* *An empty state that is not calm* — an empty filter result, a list that failed to load — keeps a UI icon or `ErrorState`; the mascot appears only on the five empty states named above.
+
+[#assets]
+== Asset Rules
+
+* *Derived files*, made once from the source and from each accepted pose, and committed under `pm-web-app/src/lib/assets/mascot/`:
+** `mascot-full` (the whole figure) and `mascot-bust` (head and shoulders, for the empty states and the rail foot) from the source; `mascot-<pose>-full` and `mascot-<pose>-bust` for each accepted pose, with `<pose>` the id of <<poses>>;
+** each as WebP at `1×` and `2×` (`360` / `720` px tall for a full figure, `160` / `320` px for a bust), with a PNG copy only if a supported browser needs one;
+** at most `60 KB` per file.
+* *Delivery*: the files are imported through Vite, so they are emitted as files of the app's own origin. The content security policy admits `img-src 'self' blob:` only, and `assetsInlineLimit: 0` (`pm-web-app/vite.config.ts`) keeps Vite from inlining any of them as a `data:` URL. The rail-foot background is set by a class in a stylesheet, never by a `style` attribute, which the policy blocks.
+* *Loading*: `loading="lazy"` and `decoding="async"`, with the width and the height set, so nothing shifts as an image arrives. The pairing page loads its figure eagerly, because it is the hero there.
+* *Accessibility*: the mascot is decorative: `alt=""` and `aria-hidden="true"` on an image, a CSS background for the rail foot. It never carries a message alone: the title and the sentence beside it say everything.
+* *Themes*: the figure has a transparent background and dark outlines. On a dark surface it sits on a soft radial halo of `--color-bg-subtle`, so the dark brown outline does not sink into the background. No filter recolours it; the illustration is the same in both themes.
+* *Motion*: at most one entrance, on the pairing page and the onboarding done (a fade and rise of at most `300 ms`), none where reduced motion is asked for. The rail foot never moves.
+* *The clipboard text* is baked into the illustration in English (`PLAN · Solution · Implement · Test · Verify · Push · Report`). It stays untranslated as part of the drawing and is never quoted as text of the interface. A later variant with a blank clipboard can replace it without changing anything else.
+
+[#rail-foot]
+== The Rail-Foot Bear
+
+A reversible test (the operator's decision of 2026-11-06): the bear peeking up from the bottom edge of the rail, above the rail's foot controls.
+
+* *Drawing*: `mascot-bust`, cropped at the chest so the clipboard is hidden, as the background of the rail column, anchored to its bottom edge above the foot controls, as wide as the rail.
+* *Fixed opacity*: `0.18` in the light theme, `0.12` in the dark. The bear lies under no text and no control: its box ends `--space-2` above the foot controls and below the last destination of the rail. PLAN-70's light-theme pass checks it in both themes: the nearest label keeps `4.5:1` with the bear present, and the bear stays faint enough not to draw the eye.
+* *Hidden* when the rail is collapsed (`64` px), when the rail's free height below its last destination is below `260` px, on the phone (no rail), and while the view shows a mascot figure or a mascot empty state, so a screen never shows two.
+* *Always the same*: the neutral source bust; it never changes with state or with the view.
+* *Reversible*: one class on the rail and one stylesheet rule with its asset. Removing them touches no other screen.
+
+[#poses]
+== Poses
+
+The mascot comes as a *small, closed set of six poses*. Each belongs to one calm state and echoes it; none of them carries it.
+
+[cols="1,2,2,3",options="header"]
+|===
+|Pose id |Pose |State |Surfaces
+
+|`welcome`
+|Waving, the clipboard under the arm
+|Welcome, not yet paired
+|Pairing page, onboarding welcome
+
+|`done`
+|The clipboard held up, every box ticked
+|Ready, done
+|Onboarding done, project onboarding done
+
+|`all-clear`
+|Relaxed, leaning, the clipboard down
+|Nothing waits, all clear
+|Nothing waits for the operator, no open decisions, no unread reports
+
+|`start-here`
+|Pointing to the side, toward the act
+|Empty, start here
+|No projects yet, no running work (the act _Add a project_ or _Start a plan_ beside it)
+
+|`searching`
+|Looking out under the hat brim, a hand above the eyes
+|Searching, not found, no connection
+|The runtime not reachable, the network listener turned off, an unknown address
+
+|`access-ended`
+|The star badge held out, calm
+|Not allowed, access ended
+|A revoked device
+|===
+
+[#pose-rules]
+=== Rules
+
+These keep the mascot from spoiling the design:
+
+* *Only calm surfaces*: a pose appears only on the surfaces of <<surfaces>>. It never marks running work, a waiting plan, a failure in a list, a decision, a toast or a notice; those keep their state colours, words and icons.
+* *Never the carrier of the state*: the title and the sentence say the state, and the pose only echoes it. Without the image the screen means exactly the same.
+* *One mascot per screen*: never two poses side by side, and never the rail-foot bear beside a figure (<<rail-foot>>). The brand icon is the sign, not a figure, and does not count. A screen with a figure shows no waiting mark (link:brand-mark.adoc#waiting-uses[Brand Mark and Mascot, The Waiting Mark]).
+* *The rail foot and the icon never change with state*: a mascot that changed on every screen would become a second, noisy status indicator.
+* *No humour at the operator's expense*: the searching and the access-ended poses stay calm and friendly, never comic despair.
+* *One consistent set*: the same proportions, line weight, palette and light as the source. The six are made and reviewed together as one sheet before any of them ships; a pose that does not match the set is left out rather than shipped.
+* *Closed*: these six. A new pose needs a change of this design, not just an asset.
+* *Fallback*: until a pose is accepted, its surfaces use the source figure (full or bust). The design works with the single source image alone.
+
+[#pose-briefs]
+=== Pose Briefs
+
+The artwork is supplied by the operator or by an image tool the operator names (the operator's decision of 2026-11-06): raster, in the style of the source image, RGBA on a transparent background, at least the source's height (`1402` px) for a full figure, the bear facing the viewer or turned slightly toward the text it stands beside. Each brief says what the pose shows, where it stands and what it must not do; every pose also keeps <<pose-rules>>.
+
+[#brief-welcome]
+==== `welcome`
+
+* *Shows*: the bear standing, waving with its right paw raised at shoulder height; the clipboard tucked under the left arm, its face turned inward so its text does not read; the hat, the star and the vest as in the source; a friendly, open smile.
+* *Surfaces*: the pairing page's hero (`280`–`360` px), the onboarding welcome (about `240` px). Beside the card or the step list, never behind them.
+* *Must not*: hold anything other than the clipboard, point at the code or the QR code, or look like it is in a hurry.
+* *Until accepted*: the source full figure.
+
+[#brief-done]
+==== `done`
+
+* *Shows*: the source pose, the clipboard held up toward the viewer, with every box ticked: Solution, Implement, Test, Verify, Push and Report.
+* *Surfaces*: the onboarding done and the project onboarding done (about `240` px), beside the summary.
+* *Must not*: celebrate loudly (no confetti, no jump); the screen is a calm "ready".
+* *Until accepted*: the source full figure, whose last two boxes are open.
+
+[#brief-all-clear]
+==== `all-clear`
+
+* *Shows*: the bear relaxed, leaning back against an edge that is not drawn, the clipboard lowered in one paw at its side, the other paw at the vest; content, not asleep.
+* *Surfaces*: the empty states "nothing waits for you", "no open decisions" and "no unread reports", as a bust (`120`–`160` px) above the title.
+* *Must not*: sleep, yawn, or read as idle or bored; nothing is wrong and nothing is missing.
+* *Until accepted*: the source bust.
+
+[#brief-start-here]
+==== `start-here`
+
+* *Shows*: the bear pointing to its side with one paw, toward where the act stands, the clipboard in the other paw; an inviting look toward the viewer.
+* *Surfaces*: the empty states "no projects yet" and "no running work", as a bust above the title; the act (_Add a project_, _Start a plan_) stands below it. The paw points toward the content, never off the screen.
+* *Must not*: point at the viewer, or carry a tool or an object that names a step the act does not take.
+* *Until accepted*: the source bust.
+
+[#brief-searching]
+==== `searching`
+
+* *Shows*: the bear looking out into the distance under the hat brim, one paw raised flat above the eyes, the clipboard held low; attentive and calm.
+* *Surfaces*: the runtime not reachable, the network listener turned off, an unknown address (`160`–`200` px), beside the text.
+* *Must not*: look lost, worried or comic; carry a magnifier, a map or a broken plug.
+* *Until accepted*: the source full figure.
+
+[#brief-access-ended]
+==== `access-ended`
+
+* *Shows*: the bear holding the gold star badge out toward the viewer in one open paw, calm and polite, the clipboard under the other arm; the hat without its star, since the star is in the paw.
+* *Surfaces*: a revoked device (`160`–`200` px), beside the text and the pairing form.
+* *Must not*: look stern, raise a stop hand, or suggest a punishment; the operator may simply pair again.
+* *Until accepted*: the source full figure.
+
+[#pose-sheet]
+=== Review of the Poses
+
+The six poses are reviewed as one set on a pose sheet rendered on the real surfaces on the mock runtime (screenshots, as the icon's review sheet was): each pose on its surfaces, in light and dark, at its sizes, beside the source figure. The operator accepts each pose or leaves it out; an accepted pose gets its derived files (<<assets>>) and its provenance row (<<pose-provenance>>), and its surfaces switch from the source figure to it.
+
+[#pose-provenance]
+=== Provenance of the Poses
+
+[cols="1,2,2,2",options="header"]
+|===
+|Pose |Made by (person or tool) |Accepted by, on |Files
+
+|_none accepted yet_
+|
+|
+|
+|===
+
+[#implementation]
+== Implementation
+
+The D3 brand assets package delivers the source files and the figure on its surfaces; each pose follows once accepted. The component specifications are in link:components.adoc#supporting[Components, Supporting Pieces] and link:components.adoc#empty-state[Components, EmptyState].
+
+* `MascotFigure` draws one figure: `pose` (one of <<poses>>), `crop` `full` or `bust`, `height` from the sizes of <<surfaces>>, `eager` for the pairing hero. It draws the accepted pose's files with a `srcset` of `1×` and `2×`, and the source's files for a pose not yet accepted, so a surface never names a file. It adds the dark-theme halo, the decorative attributes, and the entrance of <<assets>> where asked for.
+* `EmptyState` gains `mascot` (a pose id), which draws the bust above the title; it replaces the `brand` option of the earlier mark.
+* The pairing hero, the terminal states and the onboarding figures place a `MascotFigure`; the rail foot is a class of `NavRail` with the hiding rules of <<rail-foot>>.
+* A browser check in German and English, light and dark, at `1280` px and on the phone, covers every surface.

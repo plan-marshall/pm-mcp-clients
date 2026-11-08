@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-pairing[CLI, Coordination & Security Specification, Pairing Protocol], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-devices[Paired Devices], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#devices[Devices in Both Clients], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#two-listeners[Loopback and LAN Listeners Side by Side], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-open[Open on the Same Machine], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/06-event-catalogue.adoc[Runtime & Interaction Model, Event Catalogue] (`stream.closed`)_
 
-Status: `AGREED`. How a browser gets into the web app: the pairing page, the page a revoked device lands on, and where the app opens after pairing. The entry itself (the runtime, the pairing code, the ways in, another device) runs in the terminal client (link:../terminal-client/05-transcripts-entry.adoc#t-entry[Terminal Client, The Entry]); the web app sees only its end: a URL with a code, or a browser without one. The principles are those of the link:README.adoc#principles[Web App]. Names, times and figures in the sketches are examples.
+Status: `DRAFT`. How a browser gets into the web app: the pairing page, the page a revoked device lands on, and where the app opens after pairing. The entry itself (the runtime, the pairing code, the ways in, another device) runs in the terminal client (link:../terminal-client/05-transcripts-entry.adoc#t-entry[Terminal Client, The Entry]); the web app sees only its end: a URL with a code, or a browser without one. The principles are those of the link:README.adoc#principles[Web App]. Names, times and figures in the sketches are examples.
 
 [#pairing]
 == The Pairing Page (`/pair`)
@@ -26,13 +26,13 @@ The URL the terminal client opens or shows carries the code in its fragment (`ht
 │ plan-marshall                                                                │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
-│                        [mark] plan-marshall                                  │
-│                                                                              │
-│  Pair this browser                                                           │
-│  A paired browser can act on this machine as you do.                         │
-│                                                                              │
-│  Code   [ KXQB-MRTN ]                                                        │
-│                                                                              │
+│  [icon] plan-marshall                                    ┌──────────────┐    │
+│                                                          │              │    │
+│  Pair this browser                                       │  the mascot  │    │
+│  A paired browser can act on this machine as you do.     │   waving,    │    │
+│                                                          │  clipboard   │    │
+│  Code   [ KXQB-MRTN ]                                    │  under arm   │    │
+│                                                          └──────────────┘    │
 │  Get a code in a terminal of the machine:                                    │
 │    on this machine          pm-operator web open --pair          [ Copy ]    │
 │    from another computer    pm-operator web pair                 [ Copy ]    │
@@ -46,8 +46,10 @@ The URL the terminal client opens or shows carries the code in its fragment (`ht
 ----
 
 * The code is accepted with or without the dash and in any case; the button is enabled once eight characters are typed.
-* *The brand block.* Above the heading the page carries the mark at `64` px and the wordmark `plan-marshall`; the card is the first screen a buyer sees (link:brand-mark.adoc#uses[Brand Mark, Where the Mark Is Used]).
-* *The QR code.* Once eight code characters are in the field, the page also shows the same pairing URL as a QR code, drawn locally. Its caption names what the code carries and, on the local address, points at the machine's network address, because a phone cannot reach a loopback page (link:brand-mark.adoc#uses[Brand Mark, Where the Mark Is Used]).
+* *The brand block.* Above the heading the page carries the brand icon at `28` px beside the wordmark `plan-marshall`, as the rail head does; where the hero figure is hidden, the icon stands at `64` px above the wordmark (link:brand-mark.adoc#uses[Brand Mark and Mascot, Where the Icon Is Used]).
+* *The hero figure.* Beside the card stands the mascot, full figure, `280`–`360` px tall, in the pose `welcome` (the source figure until that pose is accepted). The page is the first screen a buyer sees, and the figure is its one large drawing; it is loaded eagerly, enters with one fade and rise of at most `300 ms` (none with reduced motion), and is decorative: the heading and the sentence say everything. It is hidden on a phone and where the page's free height is below the figure's (link:brand-mark-mascot.adoc#surfaces[The Mascot, Surfaces]).
+* *Waits on this page* use the neutral `Spinner` (`Pairing this browser …`), never the waiting mark, because the page shows a figure (link:brand-mark.adoc#waiting-uses[Brand Mark and Mascot, The Waiting Mark]).
+* *The QR code.* Once eight code characters are in the field, the page also shows the same pairing URL as a QR code, drawn locally. Its caption names what the code carries and, on the local address, points at the machine's network address, because a phone cannot reach a loopback page.
 * *A code that does not work* (mistyped, used, expired, replaced by a newer one, or the runtime restarted) gets one answer, since the runtime does not say which: the line under the input `This code does not work. Get a new one in a terminal of the machine.` with the two commands. After too many failed tries the open code stops working even when typed right; the same answer covers it.
 * *On the network listener* (HTTPS) the page also shows the certificate's fingerprint, to compare with the one the terminal printed (`Fingerprint SHA-256  4F:1A:9C:…:E2:07`, _Show in full_).
 
@@ -98,6 +100,7 @@ The reason names what the runtime reported:
 |`Its pairing is no longer accepted.`
 |===
 
+* *The figure*: beside the text stands the mascot, full figure, `160`–`200` px, in the pose `access-ended` (the source figure until that pose is accepted), quieter than the pairing page's hero (link:brand-mark-mascot.adoc#surfaces[The Mascot, Surfaces]).
 * Nothing typed in an open form survives the revocation: the page that was open is replaced, not covered.
 * Revoking the device the operator acts from asks first (link:../shared/paired-devices.adoc[Paired Devices]) and then lands here with `You revoked this browser`.
 
@@ -115,6 +118,7 @@ When the operator turns the network listener off (`devices.listener-off`, link:.
 ----
 
 * *The device that turned it off*, when it is itself on the network, asked first (`devices.listener_off.confirm_title`, link:../shared/paired-devices.adoc#listener-off[Paired Devices]) and lands here as well, not on the pairing page: its pairing stays, and no listener it can reach would take a code.
+* *The figure*: beside the text stands the mascot, full figure, `160`–`200` px, in the pose `searching` (the source figure until that pose is accepted); the page that says the runtime is not reachable (<<after-pairing>>) carries the same figure.
 * The page reconnects on its own when the listener is on again, and opens where the operator was. It cannot tell a listener turned off from a network that is down when the runtime said nothing; then it says `This machine is not reachable over the network.` with the same way back.
 
 [#after-pairing]
