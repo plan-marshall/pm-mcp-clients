@@ -74,7 +74,7 @@ class PlanCompletionLevelTest {
                             .findFirst()
                             .orElse("");
         assertAll(
-                            () -> assertTrue(line.contains("Change"), line),
+                            () -> assertTrue(line.startsWith("  " + String.format("%-16s", "Change")), line),
                             () -> assertTrue(line.contains("12 files"), line),
                             () -> assertTrue(line.contains("+340"), line),
                             () -> assertTrue(line.contains("\u221227"), line),

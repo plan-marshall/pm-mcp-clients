@@ -69,17 +69,17 @@ class ConsoleSettingsTranscriptTest {
 
         assertNotEquals(atBaseInstant.withoutMachineRoot(), oneHundredTwentyDaysLater.withoutMachineRoot(),
                             "a console reading the system clock prints the same ages for both clocks");
-        assertTrue(atBaseInstant.rendered().contains("Firefox on mbp-oliver")
-                            && atBaseInstant.rendered().contains("last used 1 d ago"));
-        assertTrue(atBaseInstant.rendered().contains("Safari on iPad")
-                            && atBaseInstant.rendered().contains("last used 5 d ago"));
-        assertTrue(atBaseInstant.rendered().contains("Chrome on build-box")
-                            && atBaseInstant.rendered().contains("last used last month"));
-        assertTrue(oneHundredTwentyDaysLater.rendered().contains("Firefox on mbp-oliver")
-                            && oneHundredTwentyDaysLater.rendered().contains("last used 4 months ago"));
-        assertTrue(oneHundredTwentyDaysLater.rendered().contains("Safari on iPad")
-                            && oneHundredTwentyDaysLater.rendered().contains("last used 4 months ago"));
-        assertTrue(oneHundredTwentyDaysLater.rendered().contains("Chrome on build-box")
-                            && oneHundredTwentyDaysLater.rendered().contains("last used 5 months ago"));
+        assertTrue(atBaseInstant.rendered().lines().anyMatch(row ->
+                            row.contains("Firefox on mbp-oliver") && row.contains("last used 1 d ago")));
+        assertTrue(atBaseInstant.rendered().lines().anyMatch(row ->
+                            row.contains("Safari on iPad") && row.contains("last used 5 d ago")));
+        assertTrue(atBaseInstant.rendered().lines().anyMatch(row ->
+                            row.contains("Chrome on build-box") && row.contains("last used last month")));
+        assertTrue(oneHundredTwentyDaysLater.rendered().lines().anyMatch(row ->
+                            row.contains("Firefox on mbp-oliver") && row.contains("last used 4 months ago")));
+        assertTrue(oneHundredTwentyDaysLater.rendered().lines().anyMatch(row ->
+                            row.contains("Safari on iPad") && row.contains("last used 4 months ago")));
+        assertTrue(oneHundredTwentyDaysLater.rendered().lines().anyMatch(row ->
+                            row.contains("Chrome on build-box") && row.contains("last used 5 months ago")));
     }
 }

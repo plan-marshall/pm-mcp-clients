@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.overview.ChangeSize;
 
 @DisplayName("ProcessTreeTest")
 @EnableGeneratorController
@@ -119,7 +120,7 @@ class ProcessTreeTest {
                 214,
                 "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
                 7800L,
-                null
+                new ChangeSize(12, 340, 27, 2)
         );
 
         // Act
@@ -137,6 +138,12 @@ class ProcessTreeTest {
         assertEquals(totalTokens, parsed.tokensSoFar().total());
         assertTrue(parsed.tokensSoFar().floor());
         assertEquals(2, parsed.nodes().size());
+        assertTrue(json.contains("\"change\""));
+        assertNotNull(parsed.change());
+        assertEquals(12, parsed.change().files());
+        assertEquals(340, parsed.change().insertions());
+        assertEquals(27, parsed.change().deletions());
+        assertEquals(2, parsed.change().unplanned());
 
         var parsedExec = parsed.nodes().get(0);
         assertEquals("execute", parsedExec.nodeId());

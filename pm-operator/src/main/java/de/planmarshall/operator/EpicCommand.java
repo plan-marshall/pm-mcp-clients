@@ -314,19 +314,20 @@ public final class EpicCommand implements Callable<Integer> {
 
         if (!epic.alongsideLandings().isEmpty()) {
             out.println("  alongside landings:");
+            var locale = context.clientEnvironment().locale();
             for (var landing : epic.alongsideLandings()) {
-                out.printf("    ✓ %s%n", landingTitle(landing));
+                out.printf("    ✓ %s%n", landingTitle(locale, landing));
             }
         }
 
         out.flush();
     }
 
-    private static String landingTitle(String landing) {
+    private static String landingTitle(String locale, String landing) {
         var parts = landing.split(" \u00b7 ", 2);
         var key = "unit." + parts[0];
-        var title = MessageCatalogue.hasKey("en", key)
-                            ? MessageCatalogue.format("en", key, Map.of())
+        var title = MessageCatalogue.hasKey(locale, key)
+                            ? MessageCatalogue.format(locale, key, Map.of())
                             : parts[0];
         return parts.length > 1 ? title + " \u00b7 " + parts[1] : title;
     }
