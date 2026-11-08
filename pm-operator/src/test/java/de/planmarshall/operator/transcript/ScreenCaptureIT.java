@@ -160,6 +160,12 @@ class ScreenCaptureIT {
                     // that opened this state from being read together with the exit key.
                     LockSupport.parkNanos(EXIT_PAUSE.toNanos());
                 }
+                if (session.exitCode() != null) {
+                    // A keys-empty capture never consults `settled`, so an unexpected exit has to
+                    // be rejected here; only the clean exit of a short verb is a capture.
+                    assertEquals(0, session.exitCode(),
+                                        capture.name() + " exited with " + session.exitCode());
+                }
                 if (capture.keys().isEmpty() || session.exitCode() != null) {
                     Files.writeString(output.resolve(capture.name() + ".stdout.txt"),
                                         session.rawOutput(), StandardCharsets.UTF_8);

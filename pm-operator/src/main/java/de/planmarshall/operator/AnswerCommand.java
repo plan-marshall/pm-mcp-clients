@@ -863,7 +863,7 @@ public final class AnswerCommand implements Callable<Integer> {
             return null;
         }
         // The runtime's own dissent summary wins, whichever option carries it; the role is a vote
-        // that disagrees with the recommendation, never the literal "quorum-b".
+        // that disagrees with the recommendation, never an invented placeholder role.
         var recommendedSummary = recommendedOpt.quorumSupport() != null
                             ? recommendedOpt.quorumSupport().dissentSummary() : null;
         if (recommendedSummary != null) {

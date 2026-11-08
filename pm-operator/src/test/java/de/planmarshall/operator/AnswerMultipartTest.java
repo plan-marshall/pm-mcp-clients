@@ -98,12 +98,12 @@ class AnswerMultipartTest {
     void backKeepsEarlierAnswer() throws Exception {
         serve("Q-012", threePartEnvelope(), true);
 
-        var code = run("1\nb\n\n2\n1\n\n", "answer", "Q-012", "-i");
+        var code = run("2\nb\n\n2\n1\n\n", "answer", "Q-012", "-i");
 
         assertEquals(0, code);
         var body = JsonTree.asObject(JsonTree.parse(postedBodies.get(0)));
         var answers = JsonTree.asObject(body.get("part_answers"));
-        assertEquals("1", answers.get("1"), postedBodies.get(0));
+        assertEquals("2", answers.get("1"), postedBodies.get(0));
         assertEquals("2", answers.get("2"), postedBodies.get(0));
         assertEquals("1", answers.get("3"), postedBodies.get(0));
     }
