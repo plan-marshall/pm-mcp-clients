@@ -60,10 +60,11 @@ The mascot is *decoration on calm surfaces*: screens with little text, one messa
 
 * *Derived files*, made once from the source and from each accepted pose, and committed under `pm-web-app/src/lib/assets/mascot/`:
 ** `mascot-full` (the whole figure) and `mascot-bust` (head and shoulders, for the empty states and the rail foot) from the source; `mascot-<pose>-full` and `mascot-<pose>-bust` for each accepted pose, with `<pose>` the id of <<poses>>;
-** each as WebP at `1×` and `2×` (`360` / `720` px tall for a full figure, `160` / `320` px for a bust), with a PNG copy only if a supported browser needs one;
+** each as WebP at `1×` and `2×` (`360` / `720` px tall for a full figure, `200` / `400` px for a bust, so the rail foot's `200` px stays sharp on a `2×` screen and the empty states' `120`–`160` px are drawn from a larger file), with a PNG copy only if a supported browser needs one;
 ** at most `60 KB` per file.
 * *Delivery*: the files are imported through Vite, so they are emitted as files of the app's own origin. The content security policy admits `img-src 'self' blob:` only, and `assetsInlineLimit: 0` (`pm-web-app/vite.config.ts`) keeps Vite from inlining any of them as a `data:` URL. The rail-foot background is set by a class in a stylesheet, never by a `style` attribute, which the policy blocks.
 * *Loading*: `loading="lazy"` and `decoding="async"`, with the width and the height set, so nothing shifts as an image arrives. The pairing page loads its figure eagerly, because it is the hero there.
+* *Figures of the disconnected states*: the runtime not reachable and the network listener turned off are shown when the app can no longer reach its origin, so their figure cannot be fetched then. Once the app has started, it fetches the figure these states use (the `searching` pose, or the source figure until that pose is accepted) and holds it as an object URL (`blob:`, which the content security policy admits); the two states draw it from there. If the fetch did not complete before the connection was lost, the state shows without its figure — its text says everything.
 * *Accessibility*: the mascot is decorative: `alt=""` and `aria-hidden="true"` on an image, a CSS background for the rail foot. It never carries a message alone: the title and the sentence beside it say everything.
 * *Themes*: the figure has a transparent background and dark outlines. On a dark surface it sits on a soft radial halo of `--color-bg-subtle`, so the dark brown outline does not sink into the background. No filter recolours it; the illustration is the same in both themes.
 * *Motion*: at most one entrance, on the pairing page and the onboarding done (a fade and rise of at most `300 ms`), none where reduced motion is asked for. The rail foot never moves.
@@ -107,7 +108,7 @@ The mascot comes as a *small, closed set of six poses*. Each belongs to one calm
 |`start-here`
 |Pointing to the side, toward the act
 |Empty, start here
-|No projects yet, no running work (the act _Add a project_ or _Start a plan_ beside it)
+|No projects yet, no running work (the act _Add a project_ or _Start a plan_ below the title)
 
 |`searching`
 |Looking out under the hat brim, a hand above the eyes
@@ -166,8 +167,8 @@ The artwork is supplied by the operator or by an image tool the operator names (
 [#brief-start-here]
 ==== `start-here`
 
-* *Shows*: the bear pointing to its side with one paw, toward where the act stands, the clipboard in the other paw; an inviting look toward the viewer.
-* *Surfaces*: the empty states "no projects yet" and "no running work", as a bust above the title; the act (_Add a project_, _Start a plan_) stands below it. The paw points toward the content, never off the screen.
+* *Shows*: the bear pointing down and to its side with one paw, toward the title and the act below the bust, the clipboard in the other paw; an inviting look toward the viewer.
+* *Surfaces*: the empty states "no projects yet" and "no running work", as a bust above the title; the act (_Add a project_, _Start a plan_) stands below the title, where the paw points. The paw never points off the screen.
 * *Must not*: point at the viewer, or carry a tool or an object that names a step the act does not take.
 * *Until accepted*: the source bust.
 
@@ -213,4 +214,4 @@ The D3 brand assets package delivers the source files and the figure on its surf
 * `MascotFigure` draws one figure: `pose` (one of <<poses>>), `crop` `full` or `bust`, `height` from the sizes of <<surfaces>>, `eager` for the pairing hero. It draws the accepted pose's files with a `srcset` of `1×` and `2×`, and the source's files for a pose not yet accepted, so a surface never names a file. It adds the dark-theme halo, the decorative attributes, and the entrance of <<assets>> where asked for.
 * `EmptyState` gains `mascot` (a pose id), which draws the bust above the title; it replaces the `brand` option of the earlier mark.
 * The pairing hero, the terminal states and the onboarding figures place a `MascotFigure`; the rail foot is a class of `NavRail` with the hiding rules of <<rail-foot>>.
-* A browser check in German and English, light and dark, at `1280` px and on the phone, covers every surface.
+* A browser check in German and English, light and dark, at `1280` px and on the phone, covers every surface. For the rail foot and the pairing hero it also takes a desktop height below each one's free-height threshold (both hidden) and one with enough height (both shown), with the rail expanded and collapsed.

@@ -84,7 +84,7 @@ The mascot gives two candidates for the icon. Both are drawn, and both are shown
 * *Colour rendering*: the mascot palette (<<palette>>), solid fills with a dark outline. It is the brand's own drawing and a documented exception to the monochrome icon contract (link:workflow-visual-language.adoc#exceptions[Workflow Visual Language, Exceptions]). It stands in the rail head *without* the violet plate of the earlier mark, on the pairing page, and in the browser tab.
 * *Monochrome rendering*: one colour, `currentColor` in every fill, no literal colour, the inner details cut out of the silhouette. It follows the SVG contract of link:workflow-visual-language.adoc#grammar[Workflow Visual Language, Visual Grammar] apart from its solid silhouette, and serves every one-colour use: a muted glyph, forced colours (`@media (forced-colors: active)`, where it takes the system's text colour), and print.
 * *No text in the drawing*: the star carries no `MARSHALL`, the hat no letter.
-* *One sign*: the icon is always the same drawing. Only the browser tab adds the attention dot (<<favicon>>). The icon never marks a state, a kind or a count.
+* *One sign*: the icon is always the same drawing, with two fixed exceptions at the browser tab: the attention dot (<<favicon>>), and candidate A's favicon, which draws the hat with the star alone because the face is too fine at `16` px (<<candidate-a>>). The icon never marks a state, a kind or a count.
 * *The wordmark stays*: the visible word `plan-marshall` stands beside the icon wherever the brand is shown as a block.
 
 [#candidate-a]
