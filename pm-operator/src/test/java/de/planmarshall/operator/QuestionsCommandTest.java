@@ -806,6 +806,83 @@ class QuestionsCommandTest {
     }
 
     @Test
+    @DisplayName("answer command with --no-input returns exit code 3")
+    void answerNoInputChoiceRequired() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target())) {
+                response.json(200, """
+                                    {
+                                      "id": "Q-001",
+                                      "title": "Select strategy",
+                                      "subject": "plan fix-relay",
+                                      "scope": "plan"
+                                    }
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("answer", "Q-001", "--no-input");
+        assertEquals(3, code);
+        assertTrue(out.toString().contains("Choice or option required") || out.toString().contains("Auswahl oder Option erforderlich"));
+    }
+
+    @Test
+    @DisplayName("interactive decision cancel and rejection flows")
+    void answerInteractiveDecisionCancellationFlows() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "id": "Q-001",
+                                      "revision": 1,
+                                      "title": "Select strategy",
+                                      "subject": "plan fix-relay",
+                                      "scope": "plan",
+                                      "blocks": "plan",
+                                      "reversibility": "reversible",
+                                      "parts": [
+                                        {
+                                          "part_id": "part-1",
+                                          "options": [{"key": "1", "label": "Opt 1"}]
+                                        }
+                                      ]
+                                    }
+                                    """);
+            } else if ("/api/v1/decisions/Q-001/interpret".equals(target)) {
+                response.json(200, "{\"words\": \"my words\", \"read_back_text\": \"my words\", \"understood\": true}");
+            } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        // 1. Own words with blank input -> cancels (exits 0)
+        int codeOwnWordsBlank = executeInteractive("w\n\n", "answer", "Q-001", "-i");
+        assertEquals(0, codeOwnWordsBlank);
+
+        // 2. Own words with rejected confirm -> cancels (exits 0)
+        out = new StringWriter();
+        int codeOwnWordsReject = executeInteractive("w\nmy words\nn\n", "answer", "Q-001", "-i");
+        assertEquals(0, codeOwnWordsReject);
+
+        // 3. None-fits reject confirm -> then later
+        out = new StringWriter();
+        int codeNoneFitsReject = executeInteractive("x\nb\nl\n", "answer", "Q-001", "-i");
+        assertEquals(0, codeNoneFitsReject);
+        assertTrue(out.toString().contains("stays open") || out.toString().contains("bleibt offen"));
+
+        // 4. Note prompt with blank input leaves note unchanged, then pick 1
+        out = new StringWriter();
+        int codeNoteBlank = executeInteractive("m\n\n1\n", "answer", "Q-001", "-i");
+        assertEquals(0, codeNoteBlank);
+        assertTrue(out.toString().contains("✓ Q-001 answered: Opt 1"));
+    }
+
+    @Test
     @DisplayName("questions command with project and plan filter, waivers header, and non-map items")
     void questionsComprehensive() throws Exception {
         fixture.start((request, response) -> {
