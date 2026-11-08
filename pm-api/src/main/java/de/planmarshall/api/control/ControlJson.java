@@ -125,7 +125,7 @@ final class ControlJson {
         BigDecimal value;
         try {
             value = switch (map != null ? map.get(key) : null) {
-                case JsonNumber number -> new BigDecimal(number.text());
+                case JsonNumber(String text) -> new BigDecimal(text);
                 case Number number -> new BigDecimal(number.toString());
                 case String text -> new BigDecimal(text.trim());
                 case null, default -> null;

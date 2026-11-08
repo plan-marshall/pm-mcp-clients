@@ -123,7 +123,7 @@ public final class EpicViewFormatting {
         var key = switch (reason.value()) {
             case "dependency" -> "overview.epic.waits.dependency";
             case "lock" -> "overview.epic.waits.lock";
-            case "scope" -> "overview.epic.waits.scope";
+            case SCOPE -> "overview.epic.waits.scope";
             case "overlap" -> "overview.epic.waits.overlap";
             default -> "overview.epic.waits.none";
         };
@@ -145,7 +145,7 @@ public final class EpicViewFormatting {
         var message = switch (key) {
             case "dependency" -> "operator.actions.epic.reason.dependency";
             case "lock" -> "operator.actions.epic.reason.lock";
-            case "scope" -> "operator.actions.epic.reason.scope";
+            case SCOPE -> "operator.actions.epic.reason.scope";
             case "overlap" -> "operator.actions.epic.reason.overlap";
             case "stale" -> "operator.actions.epic.reason.stale";
             case "held" -> "operator.actions.epic.reason.held";
@@ -182,7 +182,7 @@ public final class EpicViewFormatting {
     public static String statusGlyph(WorkRow row) {
         return switch (statusKey(row.status())) {
             case "shipped" -> "\u2713";
-            case "running", "pausing" -> "\u25b6";
+            case RUNNING, "pausing" -> "\u25b6";
             case "paused" -> "\u23f8";
             case "staged" -> "\u25cb";
             case "cancelled", "abandoned", "returned" -> "\u2717";
@@ -215,7 +215,7 @@ public final class EpicViewFormatting {
             figure = TokenFormat.formatSplit(total.total(), total.input(), total.output(), total.floor(), locale);
         }
         return MessageCatalogue.format(locale, "operator.epic.tokens_line",
-                            Map.of("split", figure, "scope", scope));
+                            Map.of("split", figure, SCOPE, scope));
     }
 
     /**
@@ -275,7 +275,7 @@ public final class EpicViewFormatting {
 
     private static @Nullable String countsKey(String status) {
         return switch (status) {
-            case "staged", "running", "pausing", "paused", "waiting", "shipped", "cancelled", "abandoned",
+            case "staged", RUNNING, "pausing", "paused", "waiting", "shipped", "cancelled", "abandoned",
                 "held" -> "overview.epic.counts." + status;
             default -> null;
         };
