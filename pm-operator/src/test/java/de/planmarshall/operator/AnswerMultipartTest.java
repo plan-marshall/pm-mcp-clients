@@ -118,7 +118,11 @@ class AnswerMultipartTest {
         var recommendation = rendered.indexOf("Recommended by implement");
         assertTrue(hint >= 0, rendered);
         assertTrue(recommendation > hint, rendered);
-        assertTrue(rendered.contains("cannot be undone"), rendered);
+        assertFalse(rendered.lines()
+                            .filter(line -> line.contains("1) Delete them"))
+                            .anyMatch(line -> line.contains("←")), rendered);
+        assertTrue(rendered.contains("costly to undo"), rendered);
+        assertFalse(rendered.contains("cannot be undone"), rendered);
     }
 
     @Test
@@ -222,7 +226,7 @@ class AnswerMultipartTest {
         return """
                             {
                               "id": "Q-001", "revision": 1, "title": "Delete the endpoints", "subject": "plan drop-legacy-api",
-                              "scope": "plan", "blocks": "plan", "reversibility": "irreversible",
+                              "scope": "plan", "blocks": "plan", "reversibility": "costly",
                               "parts": [{
                                 "part_id": "1", "question": "Delete them?", "recommendation": "1",
                                 "recommending_role": "implement", "recommendation_rationale": "Keeps the API clean.",

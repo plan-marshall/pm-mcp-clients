@@ -250,7 +250,7 @@ Question Q-014 · plan fix-relay · plan · blocks the plan · can be undone
   …
 ----
 
-* `h) chat` stands with _none fits_ and _later_, for the whole decision; it is no answer, and the plan waits while it runs.
+* While the terminal has a decision chat (PLAN-115), `h)` (German `t)`) stands with _none fits_ and _later_, for the whole decision; it is no answer, and the plan waits while it runs. Without that surface the key is not advertised (the note at the top).
 * The role follows who asked: Q-007 was asked by the task `implement`, so its chat goes to `implement`; Q-016, escalated by a quorum, and Q-014, raised by a server rule, go to the plan's planning role `replan`.
 * A proposed answer is offered only where the part takes own words; `Enter` sends it to `interpret` as the operator's words, and the read-back follows as in <<t-decision-own-words>>. `r) reject` drops it and the chat goes on.
 * A revision accepted in the chat leaves the decision open (`Q-014 stays open; answer it once the chat has ended.`) unless the runtime closes it as withdrawn, as above.

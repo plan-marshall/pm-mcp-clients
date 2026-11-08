@@ -70,18 +70,30 @@ class AnswerSanitizationTest {
     @Test
     @DisplayName("the interactive dialogue shows no control sequence of the envelope")
     void dialogueIsClean() throws Exception {
+        var interpreted = new int[]{0};
         fixture.start((request, response) -> {
             var target = request.target();
             if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
                 response.json(200, hostileEnvelope());
             } else if ("/api/v1/decisions/Q-001/interpret".equals(target)) {
-                response.json(200, """
-                                    {
-                                      "interpretation_type": "unclear",
-                                      "clarification_question": "Which %s branch%s?",
-                                      "understood": false
-                                    }
-                                    """.formatted(CSI, C1_CSI));
+                interpreted[0]++;
+                if (interpreted[0] == 1) {
+                    response.json(200, """
+                                        {
+                                          "interpretation_type": "unclear",
+                                          "clarification_question": "Which %s branch%s?",
+                                          "understood": false
+                                        }
+                                        """.formatted(CSI, C1_CSI));
+                } else {
+                    response.json(200, """
+                                        {
+                                          "interpretation_type": "option",
+                                          "read_back_text": "Rebase %s now%s",
+                                          "understood": true
+                                        }
+                                        """.formatted(OSC, C1_OSC));
+                }
             } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
                 response.json(200, "{\"ok\":true}");
             } else {
@@ -110,6 +122,31 @@ class AnswerSanitizationTest {
         });
 
         var code = execute("answer", "Q-001", "--no-input");
+
+        assertEquals(3, code);
+        assertNoControlSequences(out.toString());
+    }
+
+    @Test
+    @DisplayName("the waiver view shows no control sequence of its gate or reason")
+    void waiverViewIsClean() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/WR-1".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "id": "WR-1", "revision": 1, "title": "Waiver %s",
+                                      "subject": "plan fix-relay", "scope": "plan", "blocks": "plan",
+                                      "reversibility": "costly", "is_waiver": true,
+                                      "waiver_gate": "coverage %s of 80%%",
+                                      "waiver_reason": "generated %s files"
+                                    }
+                                    """.formatted(CSI, CSI + OSC + C1_CSI, C1_OSC));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        var code = execute("answer", "WR-1", "--no-input");
 
         assertEquals(3, code);
         assertNoControlSequences(out.toString());

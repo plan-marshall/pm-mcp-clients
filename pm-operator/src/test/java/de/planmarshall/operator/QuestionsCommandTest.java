@@ -374,7 +374,7 @@ class QuestionsCommandTest {
                                                 "models_count": 1,
                                                 "band": "clear_majority",
                                                 "votes": [
-                                                  {"role": "quorum-b", "model": "gpt-4o", "confidence_percent": 70,
+                                                  {"role": "reviewer-b", "model": "gpt-4o", "confidence_percent": 70,
                                                    "reason": "Merge keeps commits"}
                                                 ]
                                               }
@@ -397,7 +397,7 @@ class QuestionsCommandTest {
         assertTrue(output.contains("Question Q-001"));
         assertTrue(output.contains("Rebase onto main"));
         assertTrue(output.contains("2 of 3 votes · 2 models"));
-        assertTrue(output.contains("Against it (quorum-b): Merge keeps commits"));
+        assertTrue(output.contains("Against it (reviewer-b): Merge keeps commits"), output);
         assertTrue(output.contains("✓ Q-001 answered: Rebase onto main"));
     }
 
@@ -516,8 +516,8 @@ class QuestionsCommandTest {
         int code = executeInteractive("m\nmy note text\nmerge\n\n", "answer", "Q-001", "-i");
         assertEquals(0, code);
         var output = out.toString();
-        assertTrue(output.contains("cannot be undone"));
-        assertTrue(output.contains("✓ Q-001 answered: Merge (with your note)"));
+        assertTrue(output.contains("costly to undo"), output);
+        assertTrue(output.contains("✓ Q-001 answered: Merge (with your note)"), output);
     }
 
     @Test
@@ -776,7 +776,7 @@ class QuestionsCommandTest {
         var output = out.toString();
         assertTrue(output.contains("Evidence details:"), output);
         assertTrue(output.contains("Recommended by implement: Rebase. Keeps linear history"), output);
-        assertTrue(output.contains("Against it (reviewer-a): merge commit preferred"), output);
+        assertTrue(output.contains("Against it (reviewer-a): preserves context"), output);
         assertTrue(output.contains("✓ Q-001 answered: Merge"), output);
         assertEquals(1, answerBodies.size(), answerBodies.toString());
         var sent = JsonTree.asObject(JsonTree.parse(answerBodies.get(0)));
@@ -1132,8 +1132,7 @@ class QuestionsCommandTest {
         assertEquals(0, code);
         var output = out.toString();
         assertTrue(output.contains("3 of 4 votes"), output);
-        assertTrue(output.contains("Against it (reviewer-b): stale data risk")
-                            || output.contains("Dagegen (reviewer-b): stale data risk"));
+        assertTrue(output.contains("Against it (reviewer-b): stale data risk"), output);
         assertTrue(output.contains("✓ Q-003 answered: In-memory cache"));
     }
 
