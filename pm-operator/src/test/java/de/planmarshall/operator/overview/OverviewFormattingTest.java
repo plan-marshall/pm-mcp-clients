@@ -147,17 +147,17 @@ class OverviewFormattingTest {
     }
 
     @Test
-    @DisplayName("formatRelativeActivity formats relative times")
+    @DisplayName("formatRelativeActivity formats relative times through the display rule")
     void relativeActivity() {
         assertEquals("", OverviewFormatting.formatRelativeActivity("en", (Instant) null, clock));
         assertEquals("2 min ago", OverviewFormatting.formatRelativeActivity("en", baseInstant.minusSeconds(120), clock));
-        assertEquals("vor 2 Min.", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(120), clock));
+        assertEquals("vor 2 min", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(120), clock));
         assertEquals("3 h ago", OverviewFormatting.formatRelativeActivity("en", baseInstant.minusSeconds(10800), clock));
-        assertEquals("vor 3 Std.", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(10800), clock));
-        assertEquals("1 day ago", OverviewFormatting.formatRelativeActivity("en", baseInstant.minusSeconds(86400 + 3600), clock));
-        assertEquals("vor 1 Tag", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(86400 + 3600), clock));
-        assertEquals("3 days ago", OverviewFormatting.formatRelativeActivity("en", baseInstant.minusSeconds(86400 * 3), clock));
-        assertEquals("vor 3 Tagen", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(86400 * 3), clock));
+        assertEquals("vor 3 h", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(10800), clock));
+        assertEquals("1 d ago", OverviewFormatting.formatRelativeActivity("en", baseInstant.minusSeconds(86400 + 3600), clock));
+        assertEquals("vor 1 T", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(86400 + 3600), clock));
+        assertEquals("3 d ago", OverviewFormatting.formatRelativeActivity("en", baseInstant.minusSeconds(86400 * 3), clock));
+        assertEquals("vor 3 T", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(86400 * 3), clock));
     }
 
     @Test
@@ -172,19 +172,19 @@ class OverviewFormattingTest {
     }
 
     @Test
-    @DisplayName("formatEndedTime handles today, yesterday, and older dates")
+    @DisplayName("formatEndedTime renders the moment in the short style")
     void endedTime() {
         assertEquals("", OverviewFormatting.formatEndedTime("en", (Instant) null, clock));
 
-        // Same day: relative
+        // Same day: the moment itself
         var today = OverviewFormatting.formatEndedTime("en", baseInstant.minusSeconds(600), clock);
-        assertTrue(today.contains("ago"), today);
+        assertTrue(today.startsWith("today "), today);
 
-        // Yesterday
+        // Yesterday: the moment of yesterday
         var yesterday = OverviewFormatting.formatEndedTime("en", baseInstant.minusSeconds(86400), clock);
         assertTrue(yesterday.startsWith("yesterday "), yesterday);
 
-        // Older (e.g. 15 days ago)
+        // Older (e.g. 15 days ago): day and month
         var older = OverviewFormatting.formatEndedTime("en", baseInstant.minusSeconds(86400 * 15), clock);
         assertTrue(older.contains("Oct"), older);
     }
@@ -256,12 +256,12 @@ class OverviewFormattingTest {
         assertEquals("", OverviewFormatting.formatEndedTime("en", (String) null, clock));
         assertEquals("", OverviewFormatting.formatEndedTime("en", "   ", clock));
         assertEquals("bad-date", OverviewFormatting.formatEndedTime("en", "bad-date", clock));
-        assertEquals("10 min ago", OverviewFormatting.formatEndedTime("en", "2026-10-20T11:50:00Z", clock));
+        assertEquals("today 11:50", OverviewFormatting.formatEndedTime("en", "2026-10-20T11:50:00Z", clock));
 
-        // 3 days ago in EN and DE
+        // 3 days ago in EN and DE: the weekday of the moment
         var threeDaysInstant = baseInstant.minusSeconds(86400 * 3);
-        assertEquals("3 days ago", OverviewFormatting.formatEndedTime("en", threeDaysInstant, clock));
-        assertEquals("vor 3 Tagen", OverviewFormatting.formatEndedTime("de", threeDaysInstant, clock));
+        assertEquals("Sat 12:00", OverviewFormatting.formatEndedTime("en", threeDaysInstant, clock));
+        assertEquals("Sa 12:00", OverviewFormatting.formatEndedTime("de", threeDaysInstant, clock));
 
         // 10 days ago in DE
         var tenDaysInstant = baseInstant.minusSeconds(86400 * 10);

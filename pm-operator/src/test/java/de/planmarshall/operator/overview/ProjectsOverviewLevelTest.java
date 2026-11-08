@@ -102,6 +102,6 @@ class ProjectsOverviewLevelTest {
         assertEquals(1, rows.size());
         var row = rows.getFirst();
         assertTrue(row.line().contains("1 Plan"));
-        assertTrue(row.line().contains("vor 5 Min."));
+        assertTrue(row.line().contains("vor 5 min"));
     }
 }

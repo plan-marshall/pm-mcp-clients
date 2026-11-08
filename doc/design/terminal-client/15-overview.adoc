@@ -566,8 +566,8 @@ What ended work lists is link:../shared/plan-overview.adoc#ended[Plan Overview, 
 ▶ ▸ plan  Relay drops events on reconnect   merged      #211 · 2 d ago
   ▸ plan  Fix the relay's event loss        cancelled   2 d ago
             the approach is replaced by plan relay-v2
-  ◇ epic  client bootstrap                  completed   2 weeks ago
-  ▸ plan  Message catalogue v0              abandoned   3 weeks ago
+  ◇ epic  client bootstrap                  completed   14 d ago
+  ▸ plan  Message catalogue v0              abandoned   21 d ago
             superseded by the shared texts
  ─────────────────────────────────────────────────────────────────────────────
  ↑↓ move   Enter open   Esc back   a actions   ? help   q leave   / filter
@@ -581,8 +581,8 @@ pm-mcp-clients · ended work
         pull request #211 https://github.com/plan-marshall/pm-mcp-clients/pull/211
   plan  Fix the relay's event loss   cancelled · 2 d ago
         reason: the approach is replaced by plan relay-v2
-  epic  client bootstrap   completed · 2 weeks ago
-  plan  Message catalogue v0   abandoned · 3 weeks ago
+  epic  client bootstrap   completed · 14 d ago
+  plan  Message catalogue v0   abandoned · 21 d ago
         reason: superseded by the shared texts
 pm ›
 ----

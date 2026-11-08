@@ -12,17 +12,13 @@ package de.planmarshall.operator.overview;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.LocalDate;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.ActiveEpicSummary;
 import de.planmarshall.api.overview.ActivePlanSummary;
@@ -42,10 +38,6 @@ public final class OverviewFormatting {
     public static final String EPIC_GLYPH = "\u25c7";
 
     private static final String KIND_PAUSED = "paused";
-
-    private static final DateTimeFormatter SHORT_DATE_EN = DateTimeFormatter.ofPattern("d MMM", Locale.ENGLISH);
-    private static final DateTimeFormatter SHORT_DATE_DE = DateTimeFormatter.ofPattern("d. MMM", Locale.GERMAN);
-    private static final DateTimeFormatter SHORT_TIME = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT);
 
     private OverviewFormatting() {
     }
@@ -269,7 +261,7 @@ public final class OverviewFormatting {
     }
 
     /**
-     * Formats a relative activity timestamp from an Instant (e.g. {@code "2 min ago"}).
+     * Formats a relative activity timestamp through the display layer (e.g. {@code "2 min ago"}).
      *
      * @param locale  target locale
      * @param instant activity instant
@@ -277,24 +269,7 @@ public final class OverviewFormatting {
      * @return formatted relative time
      */
     public static String formatRelativeActivity(String locale, @Nullable Instant instant, Clock clock) {
-        if (instant == null) {
-            return "";
-        }
-        long seconds = Math.max(0L, Duration.between(instant, clock.instant()).getSeconds());
-        long minutes = Math.max(1L, seconds / 60L);
-        boolean german = locale.toLowerCase(Locale.ROOT).startsWith("de");
-        if (minutes < 60L) {
-            return german ? "vor " + minutes + " Min." : minutes + " min ago";
-        }
-        long hours = minutes / 60L;
-        if (hours < 24L) {
-            return german ? "vor " + hours + " Std." : hours + " h ago";
-        }
-        long days = hours / 24L;
-        if (days == 1L) {
-            return german ? "vor 1 Tag" : "1 day ago";
-        }
-        return german ? "vor " + days + " Tagen" : days + " days ago";
+        return Display.time(locale, instant, clock);
     }
 
     /**
@@ -317,7 +292,8 @@ public final class OverviewFormatting {
     }
 
     /**
-     * Formats the ended-at timestamp for an ended work item from an Instant.
+     * Formats the ended-at timestamp for an ended work item through the display layer's short
+     * moment style ({@code today 14:02}, {@code Mon 18:40}, {@code 12 Sep, 09:10}).
      *
      * @param locale  target locale
      * @param instant ended instant
@@ -325,29 +301,11 @@ public final class OverviewFormatting {
      * @return formatted ended time
      */
     public static String formatEndedTime(String locale, @Nullable Instant instant, Clock clock) {
-        if (instant == null) {
-            return "";
-        }
-        boolean german = locale.toLowerCase(Locale.ROOT).startsWith("de");
-        LocalDate nowDate = LocalDate.ofInstant(clock.instant(), ZoneOffset.UTC);
-        LocalDate endDate = LocalDate.ofInstant(instant, ZoneOffset.UTC);
-        long daysBetween = ChronoUnit.DAYS.between(endDate, nowDate);
-        if (daysBetween <= 0L) {
-            return formatRelativeActivity(locale, instant, clock);
-        }
-        if (daysBetween == 1L) {
-            var timePart = SHORT_TIME.format(instant.atOffset(ZoneOffset.UTC));
-            return (german ? "gestern " : "yesterday ") + timePart;
-        }
-        if (daysBetween <= 7L) {
-            return german ? "vor " + daysBetween + " Tagen" : daysBetween + " days ago";
-        }
-        return (german ? SHORT_DATE_DE : SHORT_DATE_EN).format(instant.atOffset(ZoneOffset.UTC));
+        return Display.time(locale, instant, Display.TimeStyle.SHORT, clock);
     }
 
     /**
-     * Formats the ended-at timestamp for an ended work item (e.g. {@code "yesterday 18:10"},
-     * {@code "2 days ago"}, {@code "2 Oct"}).
+     * Formats the ended-at timestamp for an ended work item.
      *
      * @param locale       target locale
      * @param timestampIso ISO-8601 timestamp or pre-formatted string

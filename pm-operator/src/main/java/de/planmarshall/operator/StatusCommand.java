@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -21,6 +22,7 @@ import java.util.Objects;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
@@ -222,7 +224,7 @@ final class StatusCommand implements Callable<Integer> {
             var outcome = "epic".equalsIgnoreCase(item.kind())
                                 ? MessageCatalogue.format(locale, "overview.ended.epic_end", Map.of("end", Objects.toString(item.terminalReason(), "ended")))
                                 : MessageCatalogue.format(locale, "overview.ended.outcome", Map.of("outcome", Objects.toString(item.outcome(), "ended")));
-            var time = formatRelativeTime(item.endedAt());
+            var time = formatRelativeTime(locale, item.endedAt());
             out.printf("  %-4s  %-30s   %s \u00b7 %s%n", kind, title, outcome, time);
 
             if (item.pullRequestNumber() != null) {
@@ -354,7 +356,7 @@ final class StatusCommand implements Callable<Integer> {
         var state = stateKey != null
                             ? MessageCatalogue.format(locale, "overview.state." + stateKey, Map.of())
                             : "running";
-        var timeInPhase = formatDuration(plan.phaseEnteredAt());
+        var timeInPhase = formatDuration(locale, plan.phaseEnteredAt());
         var timePart = timeInPhase.isEmpty() ? "" : " \u00b7 " + timeInPhase;
 
         out.printf("%s%splan  %-30s   %s \u00b7 %s%s%n", baseIndent, marker, title, phase, state, timePart);
@@ -442,52 +444,37 @@ final class StatusCommand implements Callable<Integer> {
         }
     }
 
-    private static String formatDuration(@Nullable Object raw) {
-        if (raw == null) {
+    private static String formatDuration(String locale, @Nullable Object raw) {
+        var instant = instantOf(raw);
+        if (instant == null) {
             return "";
         }
-        try {
-            Instant instant = raw instanceof Instant inst ? inst : Instant.parse(raw.toString());
-            var duration = Duration.between(instant, Instant.now());
-            long minutes = Math.max(0, duration.toMinutes());
-            long hours = duration.toHours();
-            if (hours > 0) {
-                long remMins = minutes % 60;
-                return remMins > 0 ? hours + " h " + remMins + " min" : hours + " h";
-            }
-            return minutes + " min";
-        } catch (DateTimeParseException _) {
-            return "";
-        }
+        long seconds = Math.max(0L, Duration.between(instant, Instant.now()).getSeconds());
+        return Display.duration(locale, seconds);
     }
 
-    private static String formatRelativeTime(@Nullable Object raw) {
+    static String formatRelativeTime(String locale, @Nullable Object raw) {
         if (raw == null) {
-            return "recently";
+            return MessageCatalogue.format(locale, "common.time.just_now", Map.of());
+        }
+        var instant = instantOf(raw);
+        if (instant == null) {
+            return raw.toString();
+        }
+        return Display.time(locale, instant, Clock.systemUTC());
+    }
+
+    private static @Nullable Instant instantOf(@Nullable Object raw) {
+        if (raw == null) {
+            return null;
+        }
+        if (raw instanceof Instant instant) {
+            return instant;
         }
         try {
-            Instant instant = raw instanceof Instant inst ? inst : Instant.parse(raw.toString());
-            var diff = Duration.between(instant, Instant.now());
-            long days = diff.toDays();
-            if (days == 0) {
-                long hours = diff.toHours();
-                if (hours > 0) {
-                    return hours + " h ago";
-                }
-                long minutes = diff.toMinutes();
-                return minutes > 0 ? minutes + " min ago" : "just now";
-            }
-            if (days < 7) {
-                return days + " d ago";
-            }
-            long weeks = days / 7;
-            if (weeks < 5) {
-                return weeks + (weeks == 1 ? " week ago" : " weeks ago");
-            }
-            long months = days / 30;
-            return months + (months == 1 ? " month ago" : " months ago");
+            return Instant.parse(raw.toString());
         } catch (DateTimeParseException _) {
-            return raw.toString();
+            return null;
         }
     }
 
