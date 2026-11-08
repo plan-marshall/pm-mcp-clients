@@ -433,7 +433,7 @@ final class StatusCommand implements Callable<Integer> {
                                 : "                   ";
             String desc;
             if (landing.unit() != null) {
-                desc = "landing " + OutputSafety.stripControlSequences(landing.unit());
+                desc = "landing " + unitTitle(locale, landing.unit());
             } else if (landing.count() != null) {
                 desc = "removing " + landing.count() + " moved documents from git";
             } else {
@@ -442,6 +442,14 @@ final class StatusCommand implements Callable<Integer> {
             var state = OutputSafety.stripControlSequences(landing.state());
             out.printf("     %s%-35s   %s%n", marker, desc, state);
         }
+    }
+
+    private static String unitTitle(String locale, String unit) {
+        var key = "unit." + unit;
+        if (MessageCatalogue.hasKey(locale, key)) {
+            return MessageCatalogue.format(locale, key, Map.of());
+        }
+        return OutputSafety.stripControlSequences(unit);
     }
 
     private static String formatDuration(String locale, @Nullable Object raw) {
