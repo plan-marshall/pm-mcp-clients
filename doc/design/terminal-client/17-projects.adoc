@@ -51,10 +51,10 @@ What the explorer and a project's onboarding show is link:../shared/project-expl
 ▶ ★ pm-mcp-clients    ready      ! 2 · decision   3 plans · 1 epic    2 min ago
   ★ pm-mcp-core       ready            2 plans                     9 min ago
  Recent
-    plan-marshall     setup open ! setup                           yesterday
+    plan-marshall     setup open ! setup                            1 d ago
     cui-http          ready                                        3 d ago
  All projects · by name
-    API-Sheriff       ready                                        5 weeks ago
+    API-Sheriff       ready                                        last month
     legacy-portal     released                                     2 months ago
     …
  ─────────────────────────────────────────────────────────────────────────────
@@ -365,9 +365,9 @@ Favourites
   ★ pm-mcp-clients    ready   needs you: 2 · decision   3 plans · 1 epic   2 min ago
   ★ pm-mcp-core       ready   2 plans   9 min ago
 Recent
-    plan-marshall     setup open   needs you: setup   yesterday
+    plan-marshall     setup open   needs you: setup   1 d ago
 All projects (by name)
-    API-Sheriff       ready   5 weeks ago
+    API-Sheriff       ready   last month
     legacy-portal     released   2 months ago
     …
 pm ›

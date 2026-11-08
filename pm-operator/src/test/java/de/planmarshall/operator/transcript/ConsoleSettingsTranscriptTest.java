@@ -47,8 +47,8 @@ class ConsoleSettingsTranscriptTest {
     @DisplayName("the transcript test passes with the clock moved forward by 120 days")
     void machineSettingsClockMovedForward120Days() throws Exception {
         var dialogue = TranscriptDialogues.consoleSettings(FIXED_CLOCK_120_DAYS);
-        assertTrue(dialogue.rendered().contains("last used 16 Oct 14:02"),
-                            () -> "raw output should reflect absolute date with clock 120 days ahead: " + dialogue.rendered());
+        assertTrue(dialogue.rendered().contains("last used 4 months ago"),
+                            () -> "raw output should reflect the age rule with clock 120 days ahead: " + dialogue.rendered());
         dialogue.assertRecorded();
     }
 
@@ -69,17 +69,17 @@ class ConsoleSettingsTranscriptTest {
 
         assertNotEquals(atBaseInstant.withoutMachineRoot(), oneHundredTwentyDaysLater.withoutMachineRoot(),
                             "a console reading the system clock prints the same ages for both clocks");
-        assertTrue(atBaseInstant.rendered().contains("Firefox on mbp-oliver")
-                            && atBaseInstant.rendered().contains("last used 1 d ago"));
-        assertTrue(atBaseInstant.rendered().contains("Safari on iPad")
-                            && atBaseInstant.rendered().contains("last used 5 d ago"));
-        assertTrue(atBaseInstant.rendered().contains("Chrome on build-box")
-                            && atBaseInstant.rendered().contains("last used 5 weeks ago"));
-        assertTrue(oneHundredTwentyDaysLater.rendered().contains("Firefox on mbp-oliver")
-                            && oneHundredTwentyDaysLater.rendered().contains("last used 16 Oct 14:02"));
-        assertTrue(oneHundredTwentyDaysLater.rendered().contains("Safari on iPad")
-                            && oneHundredTwentyDaysLater.rendered().contains("last used 13 Oct 10:00"));
-        assertTrue(oneHundredTwentyDaysLater.rendered().contains("Chrome on build-box")
-                            && oneHundredTwentyDaysLater.rendered().contains("last used 8 Sep 10:00"));
+        assertTrue(atBaseInstant.rendered().lines().anyMatch(row ->
+                            row.contains("Firefox on mbp-oliver") && row.contains("last used 1 d ago")));
+        assertTrue(atBaseInstant.rendered().lines().anyMatch(row ->
+                            row.contains("Safari on iPad") && row.contains("last used 5 d ago")));
+        assertTrue(atBaseInstant.rendered().lines().anyMatch(row ->
+                            row.contains("Chrome on build-box") && row.contains("last used last month")));
+        assertTrue(oneHundredTwentyDaysLater.rendered().lines().anyMatch(row ->
+                            row.contains("Firefox on mbp-oliver") && row.contains("last used 4 months ago")));
+        assertTrue(oneHundredTwentyDaysLater.rendered().lines().anyMatch(row ->
+                            row.contains("Safari on iPad") && row.contains("last used 4 months ago")));
+        assertTrue(oneHundredTwentyDaysLater.rendered().lines().anyMatch(row ->
+                            row.contains("Chrome on build-box") && row.contains("last used 5 months ago")));
     }
 }

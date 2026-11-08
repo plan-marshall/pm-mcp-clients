@@ -142,7 +142,7 @@ public final class ProjectCommand implements Callable<Integer> {
                                                 "epics", String.valueOf(project.activeEpicsCount()))));
         if (project.lastActive() != null) {
             out.println(MessageCatalogue.format(locale, "operator.project.detail.last_seen",
-                                Map.of("when", ProjectsCommand.formatRelativeTime(project.lastActive()))));
+                                Map.of("when", ProjectsCommand.formatRelativeTime(locale, project.lastActive()))));
         }
         out.println(MessageCatalogue.format(locale, "operator.project.detail.favourite", Map.of(PARAM_VALUE,
                             project.isFavourite() ? text(locale, "operator.project.detail.favourite_yes") : no)));
