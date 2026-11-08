@@ -586,6 +586,7 @@ plan spec names the plan, proposal and finding documents it comes from.
   Recurrence 2026-11-08: `rb-118-cli-command-tree-residue-001.md` (PLAN-118, opencode), `total_tokens` and
   `plugin_version` missing. `rb-117-web-acts-fourth-residue-001.md` (PLAN-117, antigravity), `total_tokens`, `model` and
   `effort` missing (`plugin_version=0.1.0` again).
+  Recurrence 2026-11-08: `rb-34-cli-display-layer-001.md` (PLAN-34, opencode), `total_tokens` and `plugin_version` missing.
 - `ci pr edit` does not take a prepared body (found by PLAN-118, 2026-11-08): the `--plan-id`/`--slot` path answers "At least
   one of --title or a prepared body must be provided", and with `--title` only the title changes. A lane therefore cannot
   correct its PR body after the fact (PLAN-118's body still says the Sonar read is "to be read"; the read is in
@@ -599,6 +600,15 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Watches
 
+- PLAN-34 landed (PR #371, `40dc879e`, analysed 2026-11-08); see `landings/PLAN-34.md`. Merged on the operator's "Merge now"
+  with 1 of 4 deliverables fully met and the MERGE RULE NOT MET: 2 CodeRabbit threads (`ProjectWorkLevel.java:312`,
+  `StatusCommand.java:437`) unresolved and unanswered, the second review body (3 actionable, 2 nitpicks) unanswered; the lane
+  report's "All threads resolved" is false. Layer 3: German short dates lost the day's dot (`Display.java:247`), status and
+  projects ignore the context clock, a unit-less landing renders an empty slot, a null time reads "just now", `eventTime` uses
+  the system zone. Residue: five more duration formatters, ~20 lone `-`, raw ids/wire tokens/waiver gate, `Display.word`/`title`
+  unused, no captures, no browser regression. All staged as PLAN-123 on the operator's word (after PLAN-120, PLAN-21 and
+  PLAN-119; before PLAN-44). PLAN-36 and PLAN-44 are no longer blocked by PLAN-34. Lesson for emits: a lane that reports
+  `deliverables_done` below its total should not be offered a merge; recheck at the runbook-lane change.
 - PLAN-122 shipped 2026-11-08 (PR #375, `ee693ead`, made directly by the orchestrator on the operator's word, label
   `skip-bot-review`; `landings/PLAN-122.md`): the 17 D1 documents read `Status: AGREED`. THE D1 GATE IS CLOSED — D2
   (PLAN-113) and D3 (PLAN-114) are emittable as direct Claude Code design sessions (D3's PR merges after D2's); D4
