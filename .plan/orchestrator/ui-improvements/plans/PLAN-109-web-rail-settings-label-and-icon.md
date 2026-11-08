@@ -94,7 +94,7 @@ is changed and checked with it. Code and catalogue only: no design session.
   - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: control.{en,de}.properties:16 Settings/Einstellungen; ActionMenus.java:248 reads the key; byState.ts six sites (67,73,79,87,93,98)
 - OBSERVED: `web.frame.settings` has no consumer outside the web rail and `onboarding-texts.adoc:91-93` — verified at HEAD
   60b4bfa5 on 2026-11-06
-  - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: only nav.ts and onboarding-texts.adoc:91-93 use web.frame.settings
+  - verdict: contradicted | checked_at: 56b43a02404b95023b16dc4304afe6998767f8bd | by: ui-improvements/analyze | rescoped: no | evidence: web.frame.settings also reaches the phone More sheet: BottomBar.svelte:158 renders $t(item.labelKey) for nav.ts:106; harmless, premise incomplete (three-layer analysis of the PLAN-109 landing)
 - OBSERVED: no snapshot files exist (`__snapshots__`, `.snap`); the terminal asserts the plan-menu label in plain tests, not in
   transcript captures — verified at HEAD 60b4bfa5 on 2026-11-06 (the message said "transcript captures": refuted)
   - verdict: corroborated | checked_at: aa3a9be3694ff072e1ffb09be87a5569da274ecc | by: ui-improvements/cleanup | rescoped: n/a | evidence: no __snapshots__ or .snap files in pm-web-app

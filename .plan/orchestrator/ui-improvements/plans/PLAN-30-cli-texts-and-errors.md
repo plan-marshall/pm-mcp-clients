@@ -110,6 +110,10 @@ Source of this plan (read before scoping):
 
 Checked at `aa3a9be3`. `OnboardCommand.java` is gone (PLAN-97 folded it; only `OnboardCommandTest.java` remains): its strings in deliverable 1 are void. `GUARDED` in `LiteralTextGuardTest` lists StartDialogue, ChatDialogue, WorkActionDialogue and HoldDialogue but not AnswerCommand, CleanupCommand or RuntimeCommand (17-23 English literals each): the rescope to extending the list stands. `RefusalRenderer`, `RefusalRendererTest` and `ExitCodesTest` are absent (`ReadVerbExitCodesTest` exists); `ErrorTexts` exists in `pm-api` (PLAN-86) but `pm-operator` never uses it; `OperatorRefusedException` has no error code. `01-commands.adoc#exit-codes` now lists 0, 1, 2, 3, 4, 130: the "every verb" `ExitCodesTest` covers the PLAN-97 verbs (`drain`, `accept-edit`, `config`) and the codes 4 and 130. PLAN-21 and PLAN-23 (dependencies) are not landed.
 
+## Fold 2026-11-08 (PLAN-118 landing)
+
+Source: `landings/PLAN-118.md` (layer 2), read at `2fc2c214`. The exit-code table of `01-commands.adoc:190-191` defines `1` as "refused by the runtime: an error code of `pm-api`", but `drain` now exits `1` for its local refusals `operator.drain.not_identifiable` and `operator.drain.signal_failed` (`DrainCommand.java:119-121`, `25-system.adoc:39`), which are no runtime refusal. Since this plan settles the exit codes (`ExitCodesTest`): extend row `1` to local refusals, or give them a code of their own, and pin it. Surface unchanged (`01-commands.adoc`, `DrainCommand.java`, `ExitCodesTest.java` are listed).
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

@@ -584,6 +584,15 @@ plan spec names the plan, proposal and finding documents it comes from.
 - 2026-11-07 — PLAN-97 LANDED AND ANALYSED (PR #358 `d8efe35f`, merged 14:38Z through the merge queue; `landings/PLAN-97.md`; row `shipped`, seven inbox messages archived). Merge rule MET ON THE LETTER: one CodeRabbit review, threads 0 of 24, Sonar gate green 0 new issues (86.8% coverage on new code); but the review's BODY holds twelve items beyond the threads that no reply answers (the same class of miss as PLAN-104), the first PR #356 was closed unreviewed at the operator's request, three reviews (functional, code, simplify) were closed by operator override with 13 advisory findings open in the plan's decision log, and the landing facts lack the three required lines. HIGH defect: `drain` can signal an unrelated process (`RuntimeRecord.processAlive` returns true without a start instant; `DrainCommand` then SIGTERMs a reused pid). Also: the machine-derived drain bound and the `help` verb list are untested (one verb list in three places), D4(f)/D4(i) not done, `project add` is only the old `enrol`, `project release`/`unenrol` have no interactive prompt, the design's Q1/Q3 decisions sit only in the PR body. Orchestrator choices, open to the operator: (1) the residue is staged as **PLAN-118 cli-command-tree-residue** (WS-04, runbook lane, ports 21180/21181) with the drain identity first; PLAN-116 keeps the formatting residue; (2) the three free slots go to PLAN-109 (rail Settings label; its one shared file with D1, `work-actions-texts.adoc`, does not block), PLAN-116 and PLAN-118 (they share `PmConsole.java` only); PLAN-107 waits for D1 (RowMenu `disabledReason` is D1's decision and PLAN-107 shares three files with PLAN-109), PLAN-117 waits for PLAN-109. Rule candidate: a landing whose review BODY items are unanswered is not 'handled'; the next specs state it in the Standing Constraints (already done for 116, 117, 118).
 - 2026-11-07 — PLAN-112 (DESIGN D1) MERGED AND RECORDED (PR #365 `aa3a9be3`, 16:13Z, on the operator's word; `landings/PLAN-112.md`; row `shipped`, message archived). 29 threads, 0 unresolved; the session's first resolve pass closed 12 new CodeRabbit comments before reading them, it reopened and fixed or answered them in `836cf806` before the merge. THE GATE IS OPEN: the documents merged at `Status: DRAFT`; the specs of D2, D3, D4 and the waiting web plans gate on the merge WITH the documents at `AGREED`. D2 (PLAN-113) and D3 (PLAN-114) are not emitted until the operator sets `AGREED` (a small status-only pull request, which the D1 session offered) or records a waiver. Hand-offs: the terminal package (console badge words `question`/`waiver request` → `decision`/`waiver`, `PmConsole.java:741`, `OverviewFormatting.java:197-199`, `ConsolePrompt.java`) and the catalogue clean-up package (deferred reload may fetch a missing locale from a newer runtime) are to be staged from the AGREED documents.
 
+- 2026-11-08 — DECIDED by the operator (D3, the waiting mark / spinner of `design-review-005.md` §6): both elements of
+  candidate B are kept, in two roles instead of one. The **marshal star badge** is the brand mark/badge (candidate B is now the
+  star badge alone; the icon choice between A bear head and the star badge stays open on the review sheet). The **clipboard** is
+  the waiting mark, independent of the icon choice: its TODO lines are ticked one after another (✓ by ✓, then from the top again),
+  static with reduced motion. The star glint is no longer the waiting animation. Every other rule of §6 stands (always with a
+  text, one per screen, never an object's state, short waits keep the neutral `Spinner`, no waiting mark on a screen with a
+  figure). Folded into PLAN-114 (D3, which defines it) and noted in PLAN-115 (D4, which uses it in the chat's working line);
+  surfaces unchanged.
+
 ## Open Defects
 
 - 2026-11-06 — OPEN OUTSIDE THIS REPOSITORY (owner `plan-marshall/plan-marshall-mcp`, no plan there): (1) the real `pm-mcpd` accepting `{with_plans, reason}` on an epic cancel and sending `drain_remaining_items` was not checkable by PLAN-100; (2) a runtime that serves an id or route per drain item (`doc/design/shared/system.adoc` `<<one-step>>` says an item is a name, not a step, until it does); (3) `pm-mcpd` accepting the cleanup record `cleanup_durations` (PLAN-60 D4); (4) 2026-11-07 (PLAN-104 landing): the state and act surface `/api/v1/entries/{id}` of a pre-enrolment run, without which Enter on a being-added badge in the console only reports the run as unreadable (`04-console.adoc` "Addressing a Being-Added Project"). The operator may open ledger items there. (5) 2026-11-07 (PLAN-108 landing, in this repository): the Playwright suite (`pm-web-e2e`) is not run in CI (`skipPlaywrightTests=true` by default), so every e2e Done-when is session-local evidence; `reports.spec.js` "marks all shown reports read" fails at base (PLAN-105 defect 13, folded into PLAN-107). (6) 2026-11-07 (PLAN-97 landing): the real `pm-mcpd` answers the withdraw `DELETE /api/v1/operator/runtime/stop` with 405 and whether it serves the operator stop route that `runtime stop` POST moved to (from `/api/v1/runtime/stop`) is unverified; the web app still posts the legacy path (owner `plan-marshall/plan-marshall-mcp`).
@@ -631,9 +640,71 @@ plan spec names the plan, proposal and finding documents it comes from.
   Recurrence 2026-11-01: `rb-46-web-command-palette-002.md` (PLAN-46, the landing message, opencode), same two keys.
   Recurrence 2026-11-01: `rb-46-web-command-palette-003.md` (PLAN-46 follow-up) and `rb-37-web-accessibility-baseline-001.md` (PLAN-37, merge_state open), opencode, same two keys each.
   Recurrence 2026-11-01: `rb-26-cli-system-model-001.md` (PLAN-26, opencode), same two keys.
+  Recurrence 2026-11-08: `rb-109-web-rail-settings-label-and-icon-001.md` (PLAN-109, antigravity), `total_tokens`, `model`
+  and `effort` missing (`plugin_version=0.1.0` beside `executor_version=0.1.2080` looks like a placeholder).
+  Recurrence 2026-11-08: `rb-116-cli-console-fourth-residue-001.md` (PLAN-116, opencode), `total_tokens` and
+  `plugin_version` missing; the message also carries its envelope header twice (it still validated).
+  Recurrence 2026-11-08: `rb-118-cli-command-tree-residue-001.md` (PLAN-118, opencode), `total_tokens` and
+  `plugin_version` missing. `rb-117-web-acts-fourth-residue-001.md` (PLAN-117, antigravity), `total_tokens`, `model` and
+  `effort` missing (`plugin_version=0.1.0` again).
+- `ci pr edit` does not take a prepared body (found by PLAN-118, 2026-11-08): the `--plan-id`/`--slot` path answers "At least
+  one of --title or a prepared body must be provided", and with `--title` only the title changes. A lane therefore cannot
+  correct its PR body after the fact (PLAN-118's body still says the Sonar read is "to be read"; the read is in
+  `#issuecomment-6715013411`). Owner: plan-marshall (`tools-integration-ci`).
+- The epic resource carries no running count (found at the PLAN-117 landing, 2026-11-08): `GET /api/v1/epics/{epic_id}` in
+  `plan-marshall-documentation` `doc/specification/runtime-model/01-processes-and-transport.adoc:346` lists title, state,
+  automatic mode, `parallelization_scope`, `needs_operator` and the project, no `running`; `plan-marshall-mcp` (`ad5f608`) has
+  no production `running` field. So "N of M at once" is always unknown on the epic: the web shows `?` (PLAN-106/117), the
+  terminal shows 0 (see Watches, PLAN-117). Owner: `plan-marshall-documentation` / `pm-mcpd` — add the count, or the clients
+  drop the figure.
 
 ## Watches
 
+- PLAN-117 landed (PR #370, `bf24091c`, analysed 2026-11-08); see `landings/PLAN-117.md`. Open: (1) Layer 3, MAJOR,
+  reported to the operator 2026-11-08: the terminal reads an unknown running count as 0 — `EpicResource.java:59,164,188-191`
+  (`int running`, absent → 0), `EpicViewFormatting.java:86-89` (`0 of N at once`), `WorkActionDialogue.java:292` (never asks,
+  posts `raise_scope:false`, never prints `control.epic.scope_unknown`). The merged shared design (`epic-view.adoc:82`,
+  `work-actions.adoc:222`) says no screen reads an absent count as none, and per the API spec the count is always absent
+  (Open Defects). Both CodeRabbit threads on #370 said so and were declined as out of scope; the lane reported "Residue: None".
+  (2) The PR's answer to nitpick 1 is partly untrue: no test formats `? von N gleichzeitig`, none names
+  `control.epic.scope_unknown`. (3) D1(a)'s test uses a local copy of the `+layout.svelte:92` guard, relies on microtask order,
+  and leaves the restart branch `SystemView.svelte:289` unpinned — for the next web plan touching `SystemView`. (4) D2's daemon
+  check was skipped with "outside repository root" though the repositories are checked out; the orchestrator did it. (5)
+  `epic-view.adoc:82` puts prose in a catalogue-value cell; `work-actions.adoc:222` repeats the German text of
+  `work-actions-texts.adoc:193-195` — for the D2 design owner.
+- PLAN-118 landed (PR #369, `2fc2c214`, analysed 2026-11-08); see `landings/PLAN-118.md`. Merge rule met (8 threads
+  resolved, 2 review bodies fully answered, Sonar 0). The daemon writes its own `ProcessHandle` start instant
+  (`plan-marshall-mcp` `SocketBinding.java:95`), so `drain` identifies a real runtime. Open: (1) folds — PLAN-79 (literal
+  bound expectations, String/non-object config branches, completer wiring), PLAN-42 (one console-only set, `quit`/`tui` in
+  the design; surface +2), PLAN-30 (exit-code row `1` vs local refusals). (2) The PR body asks the operator two questions:
+  `project add` enrols directly while the design says it onboards; `project release`/`project unenrol` confirm by flag only.
+  (3) Lane residue with owners: the pidfd window, the `SystemScenarioTest` boundary, coverage of `LessonSourceCommandTest`,
+  `MockRuntimeEngineTest`, `AcceptEditCommandTest`, `GitSourceCommandTest`; `ErrorTexts.fix(..., Map)` has no production
+  caller; `profile`, `decision-log`, `waive`, `grant-access`, `sweep` are designed but unregistered; the specification's
+  `enrol` line (`plan-marshall-documentation`). (4) A stale record with a reused PID makes `drain` exit 1 where the read
+  paths say "not running" (spec-intended). (5) `MockRuntime.java:259,273` now records its real start instant, untested.
+  (6) The PLAN-116 formatting watch is CLOSED: PLAN-118 ran `verify -Ppre-commit` on `pm-operator` (at `3d44fab`, `032e23e2`)
+  and `ConsoleBadge.java` and `PmConsole.java:238` are unchanged from `6c105a86` to `bf24091c` — the gate does not want that
+  rewrite; PLAN-116's D3 claim was spurious, not owed.
+- PLAN-116 landed (PR #368, `6c105a86`, analysed 2026-11-08); see `landings/PLAN-116.md`. Open: (1) merge rule not met in
+  full: the #368 review-body nitpick (device ages on their own row) was not answered; folded into PLAN-79 with two more
+  test gaps (lock-wait vacuity at `PmConsoleBehaviourTest:758`, aspect-list wiring test). (2) `04-console.adoc:26,112`
+  lack the new `--` in `project setup --entry -- <entry_id>`: folded into PLAN-84. (3) Layer 3, reported to the operator
+  2026-11-08: a project payload without `total_steps` loses its `[n/m]` step line (`ProjectOnboardingSource.java:80,94`
+  fallback 0, was 10); `BeingAddedProject.java:49-51,121` keeps a fixed 10; `OnboardingAspect.values()` remains in
+  `OnboardingSource.java:47` and `StateDialogue.java:411,648`; `total_steps` fractions and over-range longs are accepted.
+  (4) The D3 formatting of `ConsoleBadge.java:28-33` and `PmConsole.java:238` is not in the merge: the next pre-commit run on
+  `pm-operator` should rewrite it — check at that landing. (5) PLAN-116's spec named the wrong `OnboardingCatalogueTest`
+  path (it is in `pm-api`).
+- PLAN-109 landed (PR #367, `56b43a02`, analysed 2026-11-08); see `landings/PLAN-109.md`. Open: (1) the merge rule was not
+  met in full: CodeRabbit's first review body carried a nitpick (assert `Plan-Einstellungen`) nobody answered; confirmed by
+  reading and folded into PLAN-79. (2) The collapsed rail's tooltip is the short label (`NavRail.svelte:117` reads
+  `item.labelKey`); `web.frame.settings.title` (long form) is read by no code: a design question for the settings owner
+  (PLAN-60, parked) or D2 navigation. (3) The rewritten e2e locators use `getByRole` name `'Settings'` without
+  `exact: true` (substring match; strict-mode safety is run-only, Playwright not in CI), and `theme-readability.spec.js`
+  `LABELS.settings` is never read. (4) The new cog path matches Lucide's "settings" icon (ISC); no provenance or licence
+  notice is recorded (the icon-licence decision is open in `doc/claude_review`). (5) The lane's "test-first" order is
+  not borne out by the history (production and tests in the same commits `4936c9f3`, `37a70b16`).
 - Fix plans staged 2026-11-01: PLAN-89, PLAN-90, PLAN-91 (see the Decisions entry). PLAN-89 waits for PLAN-37 (the audit helper). PLAN-90's
   seven red e2e tests are the base failures of PLAN-37's third deliverable: when PLAN-90 lands, that gate command can pass. Emit order
   when slots free: PLAN-90 (RUNNING since 2026-11-01; now with deliverable 3, the SystemView words), then PLAN-91
@@ -989,7 +1060,7 @@ plan spec names the plan, proposal and finding documents it comes from.
   and PLAN-104), D1 foundation (components, catalogue clean-up, lints as warnings), D2 navigation engine (supersede PLAN-83 naming
   it), D3 brand assets and icon, D4 contract + mock, D4 web chat, D4 voice package, and the package for the views no staged plan
   owns; PLAN-72 later switches the lints to errors. (2) Open points the sessions settle with the operator: the D2 width table
-  (from the column-window prototype), the D3 icon (A bear head or B star clipboard, on the review sheet) and the pose artwork
+  (from the column-window prototype), the D3 icon (A bear head or B star clipboard, on the review sheet; since 2026-11-08 B is the marshal star badge and the clipboard is the waiting mark, see Decisions) and the pose artwork
   (operator or a named image tool), the D4 staging-window entry in the roadmap. Decided already: kind tints only for Project,
   Epic and Plan; German buttons in the du-imperative; bottom bar What waits · Running work · Decisions · More; the mascot is the
   operator's own work; the rail-foot bear is a reversible test; `marked` is approved for `pm-web-app` (to be recorded in
