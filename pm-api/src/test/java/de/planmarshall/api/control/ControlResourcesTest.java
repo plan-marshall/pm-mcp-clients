@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import de.cuioss.test.generator.Generators;
@@ -271,6 +272,47 @@ class ControlResourcesTest {
 
         var review = new ReviewResource("r", "e", "findings", List.of(), 0, 0, "open", null, null);
         assertNull(review.item("missing"));
+    }
+
+    @Nested
+    @DisplayName("The running count")
+    class RunningCount {
+
+        private String epic(String runningField) {
+            return "{\"epic_id\":\"relay-hardening\",\"project_id\":\"pm-mcp-clients\""
+                                + runningField + "}";
+        }
+
+        @Test
+        @DisplayName("is unknown when the resource omits it")
+        void absentIsUnknown() throws Exception {
+            assertNull(EpicResource.fromJson(epic("")).running());
+        }
+
+        @Test
+        @DisplayName("is unknown when the resource reports null")
+        void nullIsUnknown() throws Exception {
+            assertNull(EpicResource.fromJson(epic(",\"running\":null")).running());
+        }
+
+        @Test
+        @DisplayName("is unknown when the value is negative")
+        void negativeIsUnknown() throws Exception {
+            assertNull(EpicResource.fromJson(epic(",\"running\":-1")).running());
+        }
+
+        @Test
+        @DisplayName("is unknown when the value is fractional")
+        void fractionalIsUnknown() throws Exception {
+            assertNull(EpicResource.fromJson(epic(",\"running\":2.5")).running());
+        }
+
+        @Test
+        @DisplayName("is read when the value is valid")
+        void validIsRead() throws Exception {
+            assertEquals(Integer.valueOf(2), Integer.valueOf(EpicResource.fromJson(epic(",\"running\":2"))
+                                .running()));
+        }
     }
 
     @Test

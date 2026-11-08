@@ -41,6 +41,7 @@ public final class EpicViewFormatting {
 
     private static final String DOT = " \u00b7 ";
     private static final String PULL_REQUEST = "#";
+    private static final String UNKNOWN = "?";
 
     private EpicViewFormatting() {
     }
@@ -79,13 +80,13 @@ public final class EpicViewFormatting {
 
     /**
      * @param locale  the interface locale
-     * @param running how many plans run
+     * @param running how many plans run, or {@code null} when the runtime does not say
      * @param scope   how many may run at once
-     * @return the {@code 3 of 3 at once} phrase
+     * @return the {@code 3 of 3 at once} phrase, or {@code ? of 3 at once} when the count is unknown
      */
-    public static String atOnce(String locale, int running, int scope) {
+    public static String atOnce(String locale, @Nullable Integer running, int scope) {
         return MessageCatalogue.format(locale, "overview.epic.at_once",
-                            Map.of("running", running, "scope", scope));
+                            Map.of("running", running != null ? running : UNKNOWN, "scope", scope));
     }
 
     /**
@@ -101,11 +102,11 @@ public final class EpicViewFormatting {
     /**
      * @param locale   the interface locale
      * @param row      the row
-     * @param running  how many plans run
+     * @param running  how many plans run, or {@code null} when the runtime does not say
      * @param scope    how many may run at once
      * @return what the row waits for, or {@code can start}
      */
-    public static String waitText(String locale, WorkRow row, int running, int scope) {
+    public static String waitText(String locale, WorkRow row, @Nullable Integer running, int scope) {
         var reason = row.waits();
         if (reason == null || "none".equals(reason.value())) {
             return MessageCatalogue.format(locale, "overview.epic.waits.none", Map.of());
@@ -113,7 +114,7 @@ public final class EpicViewFormatting {
         var params = new LinkedHashMap<String, Object>();
         params.put("plan", clean(row.waitPlanId() != null ? row.waitPlanId() : row.planId()));
         params.put("lock", clean(row.waitPlanId() != null ? row.waitPlanId() : ""));
-        params.put("running", running);
+        params.put("running", running != null ? running : UNKNOWN);
         params.put("scope", scope);
         var key = switch (reason.value()) {
             case "dependency" -> "overview.epic.waits.dependency";

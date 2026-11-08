@@ -114,8 +114,8 @@ The texts of the actions, the dialogues, the settings, the review, and the holds
 |{plan} angehalten
 
 |`operator.actions.result.next_started`
-|{plan} started ({running} of {scope} at once)
-|{plan} gestartet ({running} von {scope} gleichzeitig)
+|{plan} started ({running} of {scope} at once) (where `running` is unknown: `? of {scope} at once`)
+|{plan} gestartet ({running} von {scope} gleichzeitig) (wenn `running` unbekannt ist: `? von {scope} gleichzeitig`)
 
 |`operator.actions.result.not_archivable`
 |{epic} cannot be archived yet: decide what the check names first.

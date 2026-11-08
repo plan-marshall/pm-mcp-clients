@@ -110,6 +110,27 @@ final class ControlJson {
     }
 
     /**
+     * Reads the named field of a record as a count: a missing field, a present {@code null}, a
+     * negative value, a fractional value and a value outside the integer range are all unknown and
+     * yield {@code null}, never an assumed zero.
+     *
+     * @param map the object
+     * @param key the field key
+     * @return the count, or {@code null} when the value is not a non-negative integer
+     */
+    static Integer optCount(Map<String, Object> map, String key) {
+        var value = JsonTree.number(map, key);
+        if (value == null) {
+            return null;
+        }
+        var number = value.doubleValue();
+        if (number < 0 || number != Math.rint(number) || number > Integer.MAX_VALUE) {
+            return null;
+        }
+        return (int) number;
+    }
+
+    /**
      * @param map the object
      * @param key the field key
      * @return the boolean value, or {@code false}

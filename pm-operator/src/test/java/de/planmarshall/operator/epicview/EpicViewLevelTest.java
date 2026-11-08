@@ -200,6 +200,34 @@ class EpicViewLevelTest {
     }
 
     @Test
+    @DisplayName("an absent running count shows ? of 3 at once")
+    void unknownRunning() throws Exception {
+        var view = new EpicViewLevel(
+                            EpicResource.fromJson(EPIC.replace("\"scope\":3,\"running\":3", "\"scope\":3")));
+
+        assertTrue(text(view).contains("? of 3 at once"), text(view));
+    }
+
+    @Test
+    @DisplayName("an unknown running count never prints a taken place in a wait text")
+    void unknownWaitText() throws Exception {
+        var unknown = EPIC.replace("\"scope\":3,\"running\":3", "\"scope\":3")
+                            .replace("\"wait_reason\":\"none\"", "\"wait_reason\":\"scope\"");
+        var view = new EpicViewLevel(EpicResource.fromJson(unknown));
+
+        assertTrue(text(view).contains("waits for a free place: ? of 3 taken"), text(view));
+    }
+
+    @Test
+    @DisplayName("a known running count shows 2 of 3 at once")
+    void knownRunning() throws Exception {
+        var view = new EpicViewLevel(EpicResource.fromJson(
+                            EPIC.replace("\"scope\":3,\"running\":3", "\"scope\":3,\"running\":2")));
+
+        assertTrue(text(view).contains("2 of 3 at once"), text(view));
+    }
+
+    @Test
     @DisplayName("an epic whose collection is empty says so")
     void empty() throws Exception {
         var resource = new EpicResource("e-1", "p", "p", null, "running", true, 0, 1, 0,

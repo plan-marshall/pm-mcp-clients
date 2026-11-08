@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -675,6 +676,50 @@ class ControlDialoguesTest {
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
                             EpicResource.fromJson(noWork), null));
         assertTrue(out.toString().contains("No plan can start"), out.toString());
+    }
+
+    @Test
+    @DisplayName("next over an unknown running count asks and sends nothing until answered")
+    void workActionNextUnknownRunning() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if (request.target().endsWith("/actions")) {
+                response.json(200, EPIC_ACTIONS);
+            } else if (request.target().endsWith("/actions/next")) {
+                response.json(200, EPIC_ACTIONS);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("n\n");
+        var unknown = EPIC.replace("\"scope\":3,\"running\":3", "\"scope\":3");
+        assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
+                            EpicResource.fromJson(unknown), null));
+        var text = out.toString();
+        assertTrue(text.contains("How many plans run is not known"), text);
+        assertFalse(server.requests().stream().anyMatch(request -> request.target().endsWith("/actions/next")),
+                            server.requests().toString());
+    }
+
+    @Test
+    @DisplayName("an answered raise over an unknown running count sends raise_scope")
+    void workActionNextUnknownRunningRaise() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if (request.target().endsWith("/actions")) {
+                response.json(200, EPIC_ACTIONS);
+            } else if (request.target().endsWith("/actions/next")) {
+                response.json(200, EPIC_ACTIONS);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("r\n");
+        var unknown = EPIC.replace("\"scope\":3,\"running\":3", "\"scope\":3");
+        assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
+                            EpicResource.fromJson(unknown), null));
+        assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith("/actions/next")
+                            && request.bodyText().contains("\"raise_scope\":true")),
+                            server.requests().toString());
+        assertTrue(out.toString().contains("next-plan started (? of 3 at once)"), out.toString());
     }
 
     @Test
