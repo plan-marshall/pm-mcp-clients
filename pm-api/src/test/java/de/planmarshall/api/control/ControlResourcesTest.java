@@ -308,6 +308,12 @@ class ControlResourcesTest {
         }
 
         @Test
+        @DisplayName("is unknown when the value only rounds to a whole number")
+        void roundedIsUnknown() throws Exception {
+            assertNull(EpicResource.fromJson(epic(",\"running\":2.0000000000000001")).running());
+        }
+
+        @Test
         @DisplayName("is read when the value is valid")
         void validIsRead() throws Exception {
             assertEquals(2, EpicResource.fromJson(epic(",\"running\":2")).running().intValue());

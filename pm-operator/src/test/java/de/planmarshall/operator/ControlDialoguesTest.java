@@ -701,6 +701,28 @@ class ControlDialoguesTest {
     }
 
     @Test
+    @DisplayName("an empty answer over an unknown running count sends nothing")
+    void workActionNextUnknownRunningEmptyAnswer() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if (request.target().endsWith("/actions")) {
+                response.json(200, EPIC_ACTIONS);
+            } else if (request.target().endsWith("/actions/next")) {
+                response.json(200, EPIC_ACTIONS);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        virtual.type("\n");
+        var unknown = EPIC.replace("\"scope\":3,\"running\":3", "\"scope\":3");
+        assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
+                            EpicResource.fromJson(unknown), null));
+        var text = out.toString();
+        assertTrue(text.contains("How many plans run is not known"), text);
+        assertFalse(server.requests().stream().anyMatch(request -> request.target().endsWith("/actions/next")),
+                            server.requests().toString());
+    }
+
+    @Test
     @DisplayName("an answered raise over an unknown running count sends raise_scope")
     void workActionNextUnknownRunningRaise() throws Exception {
         var server = fixture.start((request, response) -> {

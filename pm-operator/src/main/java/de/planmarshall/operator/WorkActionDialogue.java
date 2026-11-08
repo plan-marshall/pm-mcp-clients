@@ -314,8 +314,8 @@ final class WorkActionDialogue {
                                 Map.of()) + StartPrompt.SUFFIX,
                                 STATE_ID, MessageCatalogue.format(prompt.locale(), "control.epic.next_raise",
                                                     Map.of("count", epic.scope() + 1)), id);
-            if (answer.equalsIgnoreCase(MessageCatalogue.format(prompt.locale(),
-                                "operator.actions.key.leave_scope", Map.of()))) {
+            if (!answer.equalsIgnoreCase(MessageCatalogue.format(prompt.locale(),
+                                "operator.actions.key.raise_and_start", Map.of()))) {
                 return 0;
             }
             client.perform(kind, id, "next", Map.of("raise_scope", true));
