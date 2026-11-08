@@ -58,6 +58,14 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |the project
 |das Projekt
 
+|`decision.waiver.plan_fallback`
+|Plan
+|Plan
+
+|`decision.waiver.gate_fallback`
+|Quality gate
+|Qualitätstor
+
 |`decision.interpret.unclear_reason`
 |still unclear
 |weiterhin unklar

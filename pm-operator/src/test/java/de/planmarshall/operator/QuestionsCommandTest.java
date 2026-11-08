@@ -776,7 +776,7 @@ class QuestionsCommandTest {
         var output = out.toString();
         assertTrue(output.contains("Evidence details:"), output);
         assertTrue(output.contains("Recommended by implement: Rebase. Keeps linear history"), output);
-        assertTrue(output.contains("Against it (reviewer-a): preserves context"), output);
+        assertTrue(output.contains("Against it (reviewer-a): merge commit preferred"), output);
         assertTrue(output.contains("✓ Q-001 answered: Merge"), output);
         assertEquals(1, answerBodies.size(), answerBodies.toString());
         var sent = JsonTree.asObject(JsonTree.parse(answerBodies.get(0)));

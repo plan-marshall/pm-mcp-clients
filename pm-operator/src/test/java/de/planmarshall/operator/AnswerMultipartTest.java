@@ -80,6 +80,7 @@ class AnswerMultipartTest {
         assertTrue(out.toString().contains("[part 2 of 3] How is it migrated?"), out.toString());
         assertTrue(out.toString().contains("[part 3 of 3] Which format?"), out.toString());
         assertTrue(out.toString().contains("Q-012 answered."), out.toString());
+        assertTrue(out.toString().contains("Follows: One file per plan is written"), out.toString());
 
         assertEquals(1, postedBodies.size(), postedBodies.toString());
         var body = JsonTree.asObject(JsonTree.parse(postedBodies.get(0)));
@@ -90,6 +91,21 @@ class AnswerMultipartTest {
         assertEquals("1", answers.get("1"));
         assertEquals("2", answers.get("2"));
         assertEquals("1", answers.get("3"));
+    }
+
+    @Test
+    @DisplayName("back keeps the earlier answer and Enter re-confirms it")
+    void backKeepsEarlierAnswer() throws Exception {
+        serve("Q-012", threePartEnvelope(), true);
+
+        var code = run("1\nb\n\n2\n1\n\n", "answer", "Q-012", "-i");
+
+        assertEquals(0, code);
+        var body = JsonTree.asObject(JsonTree.parse(postedBodies.get(0)));
+        var answers = JsonTree.asObject(body.get("part_answers"));
+        assertEquals("1", answers.get("1"), postedBodies.get(0));
+        assertEquals("2", answers.get("2"), postedBodies.get(0));
+        assertEquals("1", answers.get("3"), postedBodies.get(0));
     }
 
     @Test
@@ -208,7 +224,8 @@ class AnswerMultipartTest {
                                 {"part_id": "1", "question": "Where does the data live?", "recommendation": "1",
                                  "recommending_role": "outline", "recommendation_rationale": "Simple isolation.",
                                  "allow_own_words": true,
-                                 "options": [{"key": "1", "label": "A file per plan"}, {"key": "2", "label": "One database for the machine"}]},
+                                 "options": [{"key": "1", "label": "A file per plan", "consequences": "One file per plan is written"},
+                              {"key": "2", "label": "One database for the machine"}]},
                                 {"part_id": "2", "question": "How is it migrated?", "recommendation": "1",
                                  "recommending_role": "outline", "recommendation_rationale": "Automated transition.",
                                  "dependency": "depends on part 1: A file per plan", "allow_own_words": true,

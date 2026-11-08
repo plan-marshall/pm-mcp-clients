@@ -419,6 +419,14 @@ The prompts and result lines only the terminal has; what both clients show is `d
 |Your decision · {id}
 |Deine Entscheidung · {id}
 
+|`operator.decision.confirm_title_costly`
+|Your decision · {id} · costly to undo
+|Deine Entscheidung · {id} · teuer rückgängig zu machen
+
+|`operator.decision.confirm_single_prompt`
+|Decide? [Enter]   ?   › 
+|Entscheiden? [Enter]   ?   › 
+
 |`operator.decision.confirm_parts_prompt`
 |Decide? [Enter]   {range}) change a part   ?   › 
 |Entscheiden? [Enter]   {range}) ändere einen Teil   ?   › 

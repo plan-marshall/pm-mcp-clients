@@ -136,7 +136,7 @@ class DecisionRecordsTest {
                 "Q-007", revision, title, "Conflict", subject,
                 DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.REVERSIBLE,
                 "The change conflicts with main", Map.of("file", "RelayServer.java", "conflict_line", 42),
-                List.of(part1), now, false, null, null, null, null, null
+                List.of(part1), now, false, null, null, null, "pm-mcp-clients", "fix-relay"
         );
 
         var json = envelope.toJson();
@@ -151,6 +151,8 @@ class DecisionRecordsTest {
                 () -> assertEquals(title, parsed.title()),
                 () -> assertEquals(subject, parsed.subject()),
                 () -> assertEquals(DecisionScope.PLAN, parsed.scope()),
+                () -> assertEquals("pm-mcp-clients", parsed.project()),
+                () -> assertEquals("fix-relay", parsed.plan()),
                 () -> assertEquals("execute", parsed.askingPhase()),
                 () -> assertEquals("implement", parsed.askingRole()),
                 () -> assertEquals("plan", parsed.blocks()),

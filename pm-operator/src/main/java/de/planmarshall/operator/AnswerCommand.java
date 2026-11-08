@@ -664,7 +664,7 @@ public final class AnswerCommand implements Callable<Integer> {
                 printPartPosition(session.out(), part, index, parts.size(), session.locale());
                 renderOptions(session.out(), part, stake, session.locale());
 
-                var outcome = askPart(session, envelope, part, index, parts.size(), stake, recommended, currentNote);
+                var outcome = askPart(session, envelope, part, index, stake, recommended, answers.get(index), currentNote);
                 switch (outcome.signal()) {
                     case ANSWER -> {
                         answers.put(index, outcome.answer());
@@ -673,7 +673,6 @@ public final class AnswerCommand implements Callable<Integer> {
                     case NOTE -> currentNote = outcome.note();
                     case BACK -> {
                         if (index > 0) {
-                            answers.remove(index - 1);
                             index--;
                         }
                     }
@@ -704,8 +703,8 @@ public final class AnswerCommand implements Callable<Integer> {
     }
 
     private PartOutcome askPart(DialogueSession session, DecisionEnvelope envelope, DecisionPart part,
-                        int index, int total, DecisionStake stake, @Nullable DecisionOption recommended,
-                        @Nullable String currentNote) throws IOException {
+                        int index, DecisionStake stake, @Nullable DecisionOption recommended,
+                        @Nullable PartAnswer previous, @Nullable String currentNote) throws IOException {
         var out = session.out();
         var locale = session.locale();
         while (true) {
@@ -757,6 +756,9 @@ public final class AnswerCommand implements Callable<Integer> {
                 continue;
             }
             if (choice.isEmpty()) {
+                if (previous != null) {
+                    return new PartOutcome(PartSignal.ANSWER, previous, currentNote, 0);
+                }
                 if (stake == DecisionStake.CONSENSUS && recommended != null) {
                     return new PartOutcome(PartSignal.ANSWER, new PartAnswer(recommended.key(), false), currentNote, 0);
                 }
@@ -860,17 +862,47 @@ public final class AnswerCommand implements Callable<Integer> {
         if (recommendedOpt == null) {
             return null;
         }
-        var support = recommendedOpt.quorumSupport();
-        var summary = support != null ? support.dissentSummary() : null;
-        if (summary != null) {
+        // The runtime's own dissent summary wins, whichever option carries it; the role is a vote
+        // that disagrees with the recommendation, never the literal "quorum-b".
+        var recommendedSummary = recommendedOpt.quorumSupport() != null
+                            ? recommendedOpt.quorumSupport().dissentSummary() : null;
+        if (recommendedSummary != null) {
+            var disagreeing = part.options().stream()
+                                .filter(opt -> !opt.key().equalsIgnoreCase(recommendedOpt.key()))
+                                .filter(opt -> opt.quorumSupport() != null)
+                                .flatMap(opt -> opt.quorumSupport().votes().stream())
+                                .filter(vote -> vote.reason() != null && !vote.reason().isBlank())
+                                .map(QuorumVote::role)
+                                .findFirst();
+            if (disagreeing.isPresent()) {
+                return new Dissent(disagreeing.get(), recommendedSummary);
+            }
             var matching = allVotes(part).stream()
-                                .filter(vote -> vote.reason() != null && vote.reason().trim().equalsIgnoreCase(summary.trim()))
+                                .filter(vote -> vote.reason() != null && vote.reason().trim().equalsIgnoreCase(recommendedSummary.trim()))
+                                .map(QuorumVote::role)
                                 .findFirst();
             if (matching.isPresent()) {
-                return new Dissent(matching.get().role(), summary);
+                return new Dissent(matching.get(), recommendedSummary);
             }
         }
-        // Name the dissenter with the reason that voter actually gave, never a reason of another.
+        for (var option : part.options()) {
+            if (option.key().equalsIgnoreCase(recommendedOpt.key())) {
+                continue;
+            }
+            var support = option.quorumSupport();
+            if (support == null || support.dissentSummary() == null) {
+                continue;
+            }
+            var role = support.votes().stream()
+                                .filter(vote -> vote.reason() != null && !vote.reason().isBlank())
+                                .map(QuorumVote::role)
+                                .findFirst()
+                                .orElse(null);
+            if (role != null) {
+                return new Dissent(role, support.dissentSummary());
+            }
+        }
+        // No summary: name the dissenter with the reason that voter actually gave.
         return part.options().stream()
                             .filter(opt -> !opt.key().equalsIgnoreCase(recommendedOpt.key()))
                             .filter(opt -> opt.quorumSupport() != null)
@@ -1095,6 +1127,14 @@ public final class AnswerCommand implements Callable<Integer> {
                 out.println(MessageCatalogue.format(locale, "operator.decision.part_answer_line", Map.of(
                                     "n", i + 1,
                                     "answer", answerLabel(parts.get(i), answers.get(i)))));
+                var answer = answers.get(i);
+                if (!answer.ownWords()) {
+                    var option = pickOption(parts.get(i), answer.value());
+                    if (option != null && option.consequences() != null) {
+                        out.println("  " + MessageCatalogue.format(locale, "operator.decision.follows",
+                                            Map.of("consequence", TerminalSanitizer.sanitizeLine(option.consequences()))));
+                    }
+                }
             }
         } else {
             out.println(MessageCatalogue.format(locale, confirmTitleKey(envelope), Map.of(ID_KEY, envelope.id())));
