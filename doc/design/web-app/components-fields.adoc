@@ -12,7 +12,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 
 _Relies on: link:components.adoc#rules[Components, Rules Every Component Keeps], link:components.adoc#button[Components, Button] (the height a field takes), link:components.adoc#dialog[Components, Dialog], link:README.adoc#control-tokens[Web App, Control Tokens], link:view-density-and-filtering.adoc[View Density and Filtering] (the filter contract), link:../shared/texts-and-languages.adoc#style[Texts and Languages, How Texts Are Written]_
 
-Status: `DRAFT`. A part of link:components.adoc[Components]: one field system for every input of the web app — the components, the one shape of a form, how a field is labelled, checked and submitted, the choice controls, and the accessibility every field owes. The designs that place a form (link:entry.adoc[Entry], link:machine-settings.adoc[Machine Settings], the shared designs) say which fields it has; this part says how every field is drawn and behaves.
+Status: `AGREED`. A part of link:components.adoc[Components]: one field system for every input of the web app — the components, the one shape of a form, how a field is labelled, checked and submitted, the choice controls, and the accessibility every field owes. The designs that place a form (link:entry.adoc[Entry], link:machine-settings.adoc[Machine Settings], the shared designs) say which fields it has; this part says how every field is drawn and behaves.
 
 [#field-set]
 == One Field System
