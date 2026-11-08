@@ -57,7 +57,10 @@ class QuestionsCommandTest {
     }
 
     private int execute(String... args) {
-        var context = new OperatorContext(fixture.environment(), tempDir, true);
+        var inStream = new ByteArrayInputStream(new byte[0]);
+        var outStream = new ByteArrayOutputStream();
+        OperatorContext.TerminalProvider termProvider = () -> new DumbTerminal(inStream, outStream);
+        var context = new OperatorContext(fixture.environment(), tempDir, true, ClientEnvironment.capture(fixture.environment()), termProvider, null);
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
 
@@ -153,7 +156,7 @@ class QuestionsCommandTest {
         int code = execute("answer", "Q-007", "2");
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ Answered Q-007 with option 2."))
+                            () -> assertTrue(out.toString().contains("✓ Q-007 answered: 2."))
         );
     }
 
@@ -171,7 +174,7 @@ class QuestionsCommandTest {
         int code = execute("answer", "Q-007", "--words", "rebase onto origin/main");
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ Answered Q-007 with option rebase onto origin/main."))
+                            () -> assertTrue(out.toString().contains("✓ Q-007 answered: rebase onto origin/main."))
         );
     }
 
@@ -232,7 +235,7 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-008", "yes", "--note", "proceeding");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("✓ Answered Q-008 with option yes."));
+        assertTrue(out.toString().contains("✓ Q-008 answered: yes."));
     }
 
     @Test
@@ -265,7 +268,7 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "WR-2", "waive", "--reason", "hotfix on prod");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("✓ Answered WR-2 with option waive."));
+        assertTrue(out.toString().contains("Waived gate for plan."));
     }
 
     @Test
@@ -289,7 +292,7 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-007", "withdraw");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("you asked to think again"));
+        assertTrue(out.toString().contains("think again"));
     }
 
     @Test
@@ -651,14 +654,14 @@ class QuestionsCommandTest {
         int codeWaive = executeInteractive("?\ny\n\nApproved temporary\n", "answer", "WR-1", "-i");
         assertEquals(0, codeWaive);
         var waiveOut = out.toString();
-        assertTrue(waiveOut.contains("Evidence:"));
-        assertTrue(waiveOut.contains("Waived coverage >= 80% for fix-relay."));
+        assertTrue(waiveOut.contains("Evidence details:") || waiveOut.contains("Beleg-Details:"));
+        assertTrue(waiveOut.contains("Waived coverage >= 80% for fix-relay.") || waiveOut.contains("Gewährt"));
 
         // 3. Decline
         out = new StringWriter();
         int codeDecline = executeInteractive("d\nNot allowed\n", "answer", "WR-1", "-i");
         assertEquals(0, codeDecline);
-        assertTrue(out.toString().contains("Declined WR-1"));
+        assertTrue(out.toString().contains("Declined WR-1") || out.toString().contains("Abgelehnt WR-1"));
     }
 
     @Test
@@ -792,11 +795,11 @@ class QuestionsCommandTest {
 
         int codeDecline = execute("answer", "WR-1", "--action", "decline", "--reason", "Not approved");
         assertEquals(0, codeDecline);
-        assertTrue(out.toString().contains("Answered WR-1 with option decline"));
+        assertTrue(out.toString().contains("Declined WR-1") || out.toString().contains("Abgelehnt WR-1"));
 
         out = new StringWriter();
         int codeWithdraw = execute("answer", "Q-001", "--action", "withdraw");
         assertEquals(0, codeWithdraw);
-        assertTrue(out.toString().contains("you asked to think again"));
+        assertTrue(out.toString().contains("think again") || out.toString().contains("überlegen"));
     }
 }

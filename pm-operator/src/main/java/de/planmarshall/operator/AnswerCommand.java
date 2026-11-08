@@ -13,17 +13,20 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
-import org.jline.terminal.impl.DumbTerminal;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.decision.DecisionEnvelope;
 import de.planmarshall.api.decision.DecisionInterpretation;
+import de.planmarshall.api.decision.DecisionOption;
 import de.planmarshall.api.decision.InterpretationType;
+import de.planmarshall.api.decision.QuorumVote;
 import de.planmarshall.api.decision.Reversibility;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
@@ -90,6 +93,7 @@ public final class AnswerCommand implements Callable<Integer> {
         context.gate().verify();
         var out = spec.commandLine().getOut();
         var runtime = context.runtime(true);
+        var locale = MessageCatalogue.normalizeLocale(context.clientEnvironment().locale());
 
         if (option == null && (words == null || words.isBlank()) && (action == null || action.isBlank())) {
             var safeQid = OperatorUrlUtil.encodePathSegment(questionId);
@@ -98,75 +102,136 @@ public final class AnswerCommand implements Callable<Integer> {
                                 : "/api/v1/decisions/" + safeQid;
             var qResponse = runtime.send(HttpRequest.get(qPath));
             if (qResponse.status() == 404) {
-                out.printf("Question %s not found.%n", questionId);
+                out.println(MessageCatalogue.format(locale, "operator.decision.not_found", Map.of("id", questionId)));
                 out.flush();
                 return 1;
             }
 
             var envelope = DecisionEnvelope.fromJson(qResponse.bodyText());
             if (noInput) {
-                printDecisionDetail(out, envelope);
-                out.println("Choice or option required (--no-input specified).");
+                printDecisionDetail(out, envelope, locale);
+                out.println(getMessage(locale, "operator.decision.choice_required"));
                 out.flush();
                 return 3;
             }
-            if (interactive && context.isInteractiveTerminal()) {
-                return handleInteractive(runtime, out, envelope);
+            if (interactive || context.isInteractiveTerminal()) {
+                return handleInteractive(runtime, out, envelope, locale);
             }
-            printDecisionDetail(out, envelope);
+            printDecisionDetail(out, envelope, locale);
             out.flush();
             return 0;
         }
 
-        return submitAnswer(runtime, out);
+        return submitAnswer(runtime, out, locale);
     }
 
-    private void printDecisionDetail(PrintWriter out, DecisionEnvelope envelope) {
+    private void printDecisionDetail(PrintWriter out, DecisionEnvelope envelope, String locale) {
         if (envelope.isWaiver()) {
-            out.printf("Waiver request %s · %s · gate %s%n",
-                                envelope.id(), envelope.subject(),
-                                envelope.waiverGate() != null ? envelope.waiverGate() : "gate");
+            out.println(MessageCatalogue.format(locale, "operator.decision.header.waiver", Map.of(
+                                "id", envelope.id(),
+                                "scope", envelope.subject(),
+                                "gate", envelope.waiverGate() != null ? envelope.waiverGate() : "gate"
+            )));
             if (envelope.waiverReason() != null) {
                 out.printf("  %s%n", OutputSafety.stripControlSequences(envelope.waiverReason()));
+            }
+            if (envelope.evidence() != null && !envelope.evidence().isEmpty()) {
+                var hint = formatEvidenceHint(envelope.evidence());
+                if (!hint.isBlank()) {
+                    out.println("  " + MessageCatalogue.format(locale, "operator.decision.evidence_hint", Map.of("hint", hint)));
+                }
             }
         } else {
             var blocksKey = "decision.blocks." + (envelope.blocks() != null ? envelope.blocks().toLowerCase() : "plan");
             var revKey = "decision.reversibility." + (envelope.reversibility() != null ? envelope.reversibility().value() : "reversible");
-            var blocksMsg = MessageCatalogue.hasKey(blocksKey) ? MessageCatalogue.get(blocksKey) : "blocks the plan";
-            var revMsg = MessageCatalogue.hasKey(revKey) ? MessageCatalogue.get(revKey) : "can be undone";
-            out.printf("Question %s · %s · %s · %s · %s%n",
-                                envelope.id(), envelope.subject(),
-                                envelope.askingPhase() != null ? envelope.askingPhase() : "",
-                                blocksMsg, revMsg);
+            var blocksMsg = MessageCatalogue.hasKey(blocksKey) ? getMessage(locale, blocksKey) : "blocks the plan";
+            var revMsg = MessageCatalogue.hasKey(revKey) ? getMessage(locale, revKey) : "can be undone";
+
+            if (envelope.askingPhase() != null && !envelope.askingPhase().isBlank()) {
+                out.println(MessageCatalogue.format(locale, "operator.decision.header.question", Map.of(
+                                    "id", envelope.id(),
+                                    "scope", envelope.subject(),
+                                    "phase", envelope.askingPhase(),
+                                    "blocks", blocksMsg,
+                                    "reversibility", revMsg
+                )));
+            } else {
+                out.println(MessageCatalogue.format(locale, "operator.decision.header.question_short", Map.of(
+                                    "id", envelope.id(),
+                                    "scope", envelope.subject(),
+                                    "blocks", blocksMsg,
+                                    "reversibility", revMsg
+                )));
+            }
+
             var titleOrDesc = envelope.description() != null ? envelope.description() : envelope.title();
             if (titleOrDesc != null && !titleOrDesc.isBlank()) {
                 out.printf("  %s%n", OutputSafety.stripControlSequences(titleOrDesc));
+            }
+            if (envelope.evidence() != null && !envelope.evidence().isEmpty()) {
+                var hint = formatEvidenceHint(envelope.evidence());
+                if (!hint.isBlank()) {
+                    out.println("  " + MessageCatalogue.format(locale, "operator.decision.evidence_hint", Map.of("hint", hint)));
+                }
             }
         }
         out.flush();
     }
 
-    private int submitAnswer(RuntimeClient runtime, PrintWriter out) throws IOException {
+    static String formatEvidenceHint(@Nullable Map<String, Object> evidence) {
+        if (evidence == null || evidence.isEmpty()) {
+            return "";
+        }
+        var file = (String) evidence.get("file");
+        var lines = (String) evidence.get("lines");
+        var summary = (String) evidence.get("summary");
+        if (file != null && lines != null && summary != null) {
+            return file + ":" + lines + " (" + summary + ")";
+        }
+        if (file != null && lines != null) {
+            return file + ":" + lines;
+        }
+        if (file != null && summary != null) {
+            return file + " (" + summary + ")";
+        }
+        var run = (String) evidence.get("run");
+        var test = (String) evidence.get("test");
+        if (run != null && test != null) {
+            return test + " (" + run + ")";
+        }
+        if (file != null) return file;
+        if (summary != null) return summary;
+        return evidence.values().stream()
+                            .filter(Objects::nonNull)
+                            .map(Object::toString)
+                            .filter(s -> !s.isBlank())
+                            .collect(Collectors.joining(", "));
+    }
+
+    private int submitAnswer(RuntimeClient runtime, PrintWriter out, String locale) throws IOException {
         var safeQid = OperatorUrlUtil.encodePathSegment(questionId);
+
         var effectiveAction = action;
         if (effectiveAction == null) {
             if ("waive".equalsIgnoreCase(option) || ("y".equalsIgnoreCase(option) && questionId.startsWith("WR-"))) {
                 effectiveAction = "waive";
             } else if ("decline".equalsIgnoreCase(option) || ("d".equalsIgnoreCase(option) && questionId.startsWith("WR-"))) {
                 effectiveAction = "decline";
-            } else if ("later".equalsIgnoreCase(option) || "l".equalsIgnoreCase(option)) {
+            } else if ("later".equalsIgnoreCase(option) || "l".equalsIgnoreCase(option)
+                                || ("s".equalsIgnoreCase(option) && "de".equals(locale))) {
                 effectiveAction = "later";
-            } else if ("withdraw".equalsIgnoreCase(option) || "none fits".equalsIgnoreCase(option) || "x".equalsIgnoreCase(option)) {
+            } else if ("withdraw".equalsIgnoreCase(option) || "none fits".equalsIgnoreCase(option)
+                                || "x".equalsIgnoreCase(option)) {
                 effectiveAction = "withdraw";
             }
         }
 
         if ("later".equalsIgnoreCase(effectiveAction)) {
-            out.printf(MessageCatalogue.format("operator.decision.later_done", Map.of(
+            out.println(MessageCatalogue.format(locale, "operator.decision.later_done", Map.of(
                                 "id", questionId,
                                 "scope", "plan",
                                 "project", "pm-mcp-clients"
-            )) + "%n");
+            )));
             out.flush();
             return 0;
         }
@@ -175,21 +240,37 @@ public final class AnswerCommand implements Callable<Integer> {
             var withPath = "/api/v1/decisions/" + safeQid + "/withdraw";
             var resp = runtime.send(HttpRequest.json("POST", withPath, "{}"));
             if (resp.status() == 200 || resp.status() == 202 || resp.status() == 204) {
-                out.printf("✓ %s: you asked to think again.%n", questionId);
+                out.println(MessageCatalogue.format(locale, "operator.decision.none_fits_done", Map.of(
+                                    "id", questionId,
+                                    "scope", "plan"
+                )));
                 out.flush();
                 return 0;
             }
             throw new OperatorRefusedException("withdraw " + questionId, resp);
         }
 
-        var payload = new LinkedHashMap<String, Object>();
-        payload.put("channel", "cli");
         if (effectiveAction != null && ("waive".equalsIgnoreCase(effectiveAction) || "decline".equalsIgnoreCase(effectiveAction))) {
             if (reason == null || reason.isBlank()) {
-                out.println(MessageCatalogue.get("operator.decision.reason_required"));
+                out.println(getMessage(locale, "operator.decision.reason_required"));
                 out.flush();
                 return 3;
             }
+        }
+
+        // Fetch envelope to resolve option label if option is specified
+        DecisionEnvelope envelope = null;
+        var qPath = plan != null
+                            ? "/api/v1/plans/" + OperatorUrlUtil.encodePathSegment(plan) + "/decisions/" + safeQid
+                            : "/api/v1/decisions/" + safeQid;
+        var qResponse = runtime.send(HttpRequest.get(qPath));
+        if (qResponse.status() == 200) {
+            envelope = DecisionEnvelope.fromJson(qResponse.bodyText());
+        }
+
+        var payload = new LinkedHashMap<String, Object>();
+        payload.put("channel", "cli");
+        if (effectiveAction != null && ("waive".equalsIgnoreCase(effectiveAction) || "decline".equalsIgnoreCase(effectiveAction))) {
             payload.put("action", effectiveAction);
             payload.put("reason", reason);
         } else {
@@ -207,9 +288,27 @@ public final class AnswerCommand implements Callable<Integer> {
             response = runtime.send(HttpRequest.json("POST", "/api/v1/questions/" + safeQid + "/answers", JsonTree.write(payload)));
         }
         if (response.status() == 200 || response.status() == 202 || response.status() == 204) {
-            var answerDisplay = option != null ? option : words;
-            if (answerDisplay == null) answerDisplay = effectiveAction;
-            out.printf("✓ Answered %s with option %s.%n", questionId, answerDisplay);
+            if ("waive".equalsIgnoreCase(effectiveAction)) {
+                out.println(MessageCatalogue.format(locale, "operator.decision.waived", Map.of(
+                                    "gate", envelope != null && envelope.waiverGate() != null ? envelope.waiverGate() : "gate",
+                                    "plan", envelope != null ? extractPlanNoun(envelope) : (plan != null ? plan : "plan")
+                )));
+            } else if ("decline".equalsIgnoreCase(effectiveAction)) {
+                out.println(MessageCatalogue.format(locale, "operator.decision.declined", Map.of("id", questionId)));
+            } else {
+                String label;
+                if (words != null && !words.isBlank()) {
+                    label = words;
+                } else if (envelope != null && option != null) {
+                    label = findOptionLabel(envelope, option);
+                } else {
+                    label = option != null ? option : "";
+                }
+                out.println(MessageCatalogue.format(locale, "operator.decision.answered", Map.of(
+                                    "id", questionId,
+                                    "label", label
+                )));
+            }
             out.flush();
             return 0;
         }
@@ -227,83 +326,102 @@ public final class AnswerCommand implements Callable<Integer> {
         }
     }
 
-    private int handleInteractive(RuntimeClient runtime, PrintWriter out, DecisionEnvelope envelope) {
+    private int handleInteractive(RuntimeClient runtime, PrintWriter out, DecisionEnvelope envelope, String locale) {
         try (var lease = context.openTerminal()) {
             var terminal = lease.terminal();
-            if (System.console() == null && !(terminal instanceof DumbTerminal)) {
-                printDecisionDetail(out, envelope);
-                out.flush();
-                return 0;
-            }
             var reader = LineReaderBuilder.builder().terminal(terminal).build();
             if (envelope.isWaiver()) {
-                return runInteractiveWaiver(runtime, out, reader, envelope);
+                return runInteractiveWaiver(runtime, out, reader, envelope, locale);
             }
-            return runInteractiveDecision(runtime, out, reader, envelope);
+            return runInteractiveDecision(runtime, out, reader, envelope, locale);
         } catch (StartPrompt.InterruptException interrupt) {
             throw interrupt;
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
             out.println("Error reading interactive input: " + e.getMessage());
             out.flush();
             return 1;
         }
     }
 
-    private int runInteractiveWaiver(RuntimeClient runtime, PrintWriter out, LineReader reader, DecisionEnvelope envelope) throws IOException {
-        out.printf("Waiver request %s · %s · gate %s%n",
-                            envelope.id(), envelope.subject(),
-                            envelope.waiverGate() != null ? envelope.waiverGate() : "gate");
+    private int runInteractiveWaiver(RuntimeClient runtime, PrintWriter out, LineReader reader, DecisionEnvelope envelope, String locale) throws IOException {
+        out.println(MessageCatalogue.format(locale, "operator.decision.header.waiver", Map.of(
+                            "id", envelope.id(),
+                            "scope", envelope.subject(),
+                            "gate", envelope.waiverGate() != null ? envelope.waiverGate() : "gate"
+        )));
         if (envelope.waiverReason() != null) {
             out.printf("  %s%n", OutputSafety.stripControlSequences(envelope.waiverReason()));
         }
         if (envelope.evidence() != null && !envelope.evidence().isEmpty()) {
-            out.println("  ? shows the evidence: the failing run, the test");
+            var hint = formatEvidenceHint(envelope.evidence());
+            if (!hint.isBlank()) {
+                out.println("  " + MessageCatalogue.format(locale, "operator.decision.evidence_hint", Map.of("hint", hint)));
+            }
         }
         out.println();
         out.flush();
 
+        var prompt = getMessage(locale, "operator.decision.waiver_prompt_full");
         while (true) {
-            var prompt = "Waive the gate or decline the request?   y) waive, with a reason   d) decline, with a reason   l) later   ?   › ";
             var choice = readLineSafe(reader, prompt);
             if (choice == null) {
                 return 0;
             }
             if (choice.isBlank()) {
-                out.println("Type y, d or l.");
+                out.println(MessageCatalogue.format(locale, "operator.decision.waiver_needs_answer", Map.of(
+                                    "waive", "y", "decline", "d", "later", "de".equals(locale) ? "s" : "l")));
                 out.flush();
                 continue;
             }
             choice = choice.trim();
 
-            if ("l".equalsIgnoreCase(choice) || "later".equalsIgnoreCase(choice)) {
-                out.printf("%s stays open; the plan waits for it. questions lists it.%n", envelope.id());
+            if ("q".equalsIgnoreCase(choice) || "v".equalsIgnoreCase(choice)) {
+                out.println(MessageCatalogue.format(locale, "operator.dialogue.left", Map.of("state", envelope.id())));
+                out.flush();
+                return 0;
+            }
+
+            if ("l".equalsIgnoreCase(choice) || "later".equalsIgnoreCase(choice)
+                                || ("s".equalsIgnoreCase(choice) && "de".equals(locale))
+                                || ("später".equalsIgnoreCase(choice) && "de".equals(locale))) {
+                out.println(MessageCatalogue.format(locale, "operator.decision.later_done", Map.of(
+                                    "id", envelope.id(),
+                                    "scope", extractScopeNoun(envelope),
+                                    "project", extractProjectNoun(envelope)
+                )));
                 out.flush();
                 return 0;
             }
 
             if ("?".equalsIgnoreCase(choice)) {
-                out.println("Evidence: " + envelope.evidence());
+                var ev = formatEvidenceHint(envelope.evidence());
+                if (!ev.isBlank()) {
+                    out.println(MessageCatalogue.format(locale, "operator.decision.evidence_details", Map.of("evidence", ev)));
+                } else {
+                    out.println(getMessage(locale, "operator.decision.evidence_none"));
+                }
                 out.flush();
                 continue;
             }
 
             if ("y".equalsIgnoreCase(choice) || "d".equalsIgnoreCase(choice)
-                                || "waive".equalsIgnoreCase(choice) || "decline".equalsIgnoreCase(choice)) {
+                                || "waive".equalsIgnoreCase(choice) || "decline".equalsIgnoreCase(choice)
+                                || ("g".equalsIgnoreCase(choice) && "de".equals(locale))
+                                || ("a".equalsIgnoreCase(choice) && "de".equals(locale))) {
                 String reqReason = "";
                 while (reqReason.isBlank()) {
-                    var line = readLineSafe(reader, "Reason (required): › ");
+                    var line = readLineSafe(reader, getMessage(locale, "operator.decision.reason_prompt") + " › ");
                     if (line == null) {
                         return 0;
                     }
                     if (line.isBlank()) {
-                        out.println(MessageCatalogue.get("operator.decision.reason_required"));
+                        out.println(getMessage(locale, "operator.decision.reason_required"));
                         out.flush();
                     } else {
                         reqReason = line.trim();
                     }
                 }
-                var act = "d".equalsIgnoreCase(choice) || "decline".equalsIgnoreCase(choice) ? "decline" : "waive";
+                var act = "d".equalsIgnoreCase(choice) || "decline".equalsIgnoreCase(choice) || "a".equalsIgnoreCase(choice) ? "decline" : "waive";
                 var payload = new LinkedHashMap<String, Object>();
                 payload.put("action", act);
                 payload.put("reason", reqReason);
@@ -311,11 +429,11 @@ public final class AnswerCommand implements Callable<Integer> {
 
                 var ansPath = "/api/v1/decisions/" + OperatorUrlUtil.encodePathSegment(envelope.id()) + "/answer";
                 var ansRes = runtime.send(HttpRequest.json("POST", ansPath, JsonTree.write(payload)));
-                if (ansRes.status() == 200) {
+                if (ansRes.status() == 200 || ansRes.status() == 202 || ansRes.status() == 204) {
                     if ("decline".equals(act)) {
-                        out.println(MessageCatalogue.format("operator.decision.declined", Map.of("id", envelope.id())));
+                        out.println(MessageCatalogue.format(locale, "operator.decision.declined", Map.of("id", envelope.id())));
                     } else {
-                        out.println(MessageCatalogue.format("operator.decision.waived", Map.of(
+                        out.println(MessageCatalogue.format(locale, "operator.decision.waived", Map.of(
                                             "gate", envelope.waiverGate() != null ? envelope.waiverGate() : "gate",
                                             "plan", extractPlanNoun(envelope)
                         )));
@@ -326,48 +444,92 @@ public final class AnswerCommand implements Callable<Integer> {
                 throw new OperatorRefusedException("answer " + envelope.id(), ansRes);
             }
 
-            out.println("Type y, d or l.");
+            out.println(MessageCatalogue.format(locale, "operator.decision.waiver_needs_answer", Map.of(
+                                "waive", "y", "decline", "d", "later", "de".equals(locale) ? "s" : "l")));
             out.flush();
         }
     }
 
-    private int runInteractiveDecision(RuntimeClient runtime, PrintWriter out, LineReader reader, DecisionEnvelope envelope) throws IOException {
-        var blocksKey = "decision.blocks." + envelope.blocks().toLowerCase();
-        var revKey = "decision.reversibility." + envelope.reversibility().value();
-        out.printf("Question %s · %s · %s · %s · %s%n",
-                            envelope.id(), envelope.subject(),
-                            envelope.askingPhase() != null ? envelope.askingPhase() : "",
-                            MessageCatalogue.get(blocksKey), MessageCatalogue.get(revKey));
-        out.printf("  %s%n", OutputSafety.stripControlSequences(envelope.description() != null ? envelope.description() : envelope.title()));
+    private int runInteractiveDecision(RuntimeClient runtime, PrintWriter out, LineReader reader, DecisionEnvelope envelope, String locale) throws IOException {
+        var blocksKey = "decision.blocks." + (envelope.blocks() != null ? envelope.blocks().toLowerCase() : "plan");
+        var revKey = "decision.reversibility." + (envelope.reversibility() != null ? envelope.reversibility().value() : "reversible");
+        var blocksMsg = MessageCatalogue.hasKey(blocksKey) ? getMessage(locale, blocksKey) : "blocks the plan";
+        var revMsg = MessageCatalogue.hasKey(revKey) ? getMessage(locale, revKey) : "can be undone";
+
+        if (envelope.askingPhase() != null && !envelope.askingPhase().isBlank()) {
+            out.println(MessageCatalogue.format(locale, "operator.decision.header.question", Map.of(
+                                "id", envelope.id(),
+                                "scope", envelope.subject(),
+                                "phase", envelope.askingPhase(),
+                                "blocks", blocksMsg,
+                                "reversibility", revMsg
+            )));
+        } else {
+            out.println(MessageCatalogue.format(locale, "operator.decision.header.question_short", Map.of(
+                                "id", envelope.id(),
+                                "scope", envelope.subject(),
+                                "blocks", blocksMsg,
+                                "reversibility", revMsg
+            )));
+        }
+
+        var titleOrDesc = envelope.description() != null ? envelope.description() : envelope.title();
+        if (titleOrDesc != null && !titleOrDesc.isBlank()) {
+            out.printf("  %s%n", OutputSafety.stripControlSequences(titleOrDesc));
+        }
         if (envelope.evidence() != null && !envelope.evidence().isEmpty()) {
-            out.println("  ? shows the evidence: the conflict, both versions of the method");
+            var hint = formatEvidenceHint(envelope.evidence());
+            if (!hint.isBlank()) {
+                out.println("  " + MessageCatalogue.format(locale, "operator.decision.evidence_hint", Map.of("hint", hint)));
+            }
         }
         out.println();
 
         var part = envelope.parts().isEmpty() ? null : envelope.parts().get(0);
+        DecisionOption recommendedOpt = null;
         if (part != null) {
+            var recKey = part.recommendation();
             for (var opt : part.options()) {
-                var isRec = opt.key().equals(part.recommendation());
+                var isRec = opt.key().equals(recKey);
+                if (isRec) {
+                    recommendedOpt = opt;
+                }
                 var recMark = isRec ? " ←" : "  ";
                 var supportStr = "";
                 if (opt.quorumSupport() != null) {
                     var qs = opt.quorumSupport();
-                    var bandStr = qs.band().value().replace('_', ' ');
-                    supportStr = String.format("%d of %d votes · %d model%s   %s",
-                                        qs.votesCount(), qs.totalVotes(), qs.modelsCount(),
-                                        qs.modelsCount() > 1 ? "s" : "", bandStr);
-                } else if (isRec) {
-                    supportStr = "recommended by " + part.recommendingRole();
+                    var bandKey = "decision.support.band." + qs.band().value();
+                    var bandStr = MessageCatalogue.hasKey(bandKey) ? getMessage(locale, bandKey) : qs.band().value().replace('_', ' ');
+                    var votesStr = MessageCatalogue.format(locale, "decision.support.votes", Map.of(
+                                        "votes", qs.votesCount(),
+                                        "total", qs.totalVotes(),
+                                        "models", qs.modelsCount()
+                    ));
+                    supportStr = votesStr + "   " + bandStr;
+                } else if (isRec && part.recommendingRole() != null) {
+                    supportStr = MessageCatalogue.format(locale, "operator.decision.recommended_by", Map.of("role", part.recommendingRole()));
                 }
                 out.printf("    %s) %-25s%s  %s%n", opt.key(), OutputSafety.stripControlSequences(opt.label()), recMark, supportStr);
             }
-            if (part.recommendationRationale() != null) {
-                out.printf("  Recommended by %s: %s%n", part.recommendingRole(), OutputSafety.stripControlSequences(part.recommendationRationale()));
+            if (part.recommendationRationale() != null && part.recommendingRole() != null) {
+                var rationaleOption = recommendedOpt != null ? recommendedOpt.label() + ". " + part.recommendationRationale() : part.recommendationRationale();
+                out.println("  " + MessageCatalogue.format(locale, "decision.recommendation.by", Map.of(
+                                    "role", part.recommendingRole(),
+                                    "option", OutputSafety.stripControlSequences(rationaleOption)
+                )));
             }
             // Check dissent
             for (var opt : part.options()) {
                 if (opt.quorumSupport() != null && opt.quorumSupport().dissentSummary() != null) {
-                    out.printf("  Against it (quorum-b): %s%n", OutputSafety.stripControlSequences(opt.quorumSupport().dissentSummary()));
+                    var qs = opt.quorumSupport();
+                    var dissentRole = qs.votes().stream()
+                                        .filter(v -> v.reason() != null && !v.reason().isBlank())
+                                        .map(QuorumVote::role)
+                                        .findFirst().orElse("quorum-b");
+                    out.println("  " + MessageCatalogue.format(locale, "decision.dissent", Map.of(
+                                        "role", dissentRole,
+                                        "reason", OutputSafety.stripControlSequences(qs.dissentSummary())
+                    )));
                     break;
                 }
             }
@@ -376,20 +538,35 @@ public final class AnswerCommand implements Callable<Integer> {
         out.flush();
 
         String currentNote = null;
-        var recKey = part != null ? part.recommendation() : null;
         var isReversible = envelope.reversibility() == Reversibility.REVERSIBLE;
-        var recommendedOpt = recKey != null && part != null
-                            ? part.options().stream().filter(o -> recKey.equals(o.key())).findFirst().orElse(null)
-                            : null;
+        int optCount = part != null ? part.options().size() : 0;
+        String rangeStr = optCount > 1 ? "1-" + optCount : "1";
 
         while (true) {
             String prompt;
+            var ownWordsStr = getMessage(locale, "operator.decision.prompt.own_words");
+            var chatStr = getMessage(locale, "operator.decision.prompt.chat");
+            var noneFitsStr = getMessage(locale, "operator.decision.prompt.none_fits");
+            var laterStr = getMessage(locale, "operator.decision.prompt.later");
+
             if (recommendedOpt != null && isReversible) {
-                prompt = String.format("%s? [Enter]   other: 1-3   w) in my own words   %s   h) chat   x) none fits   l) later   ?   › ",
-                                    recommendedOpt.label(),
-                                    currentNote != null ? "m) " + MessageCatalogue.get("operator.decision.note_set") : "m) add a note");
+                var otherStr = optCount > 1 ? MessageCatalogue.format(locale, "operator.decision.prompt.other", Map.of("range", rangeStr)) : "";
+                var noteStr = currentNote != null
+                                    ? "m) " + getMessage(locale, "operator.decision.note_set")
+                                    : getMessage(locale, "operator.decision.prompt.add_note");
+                var sb = new StringBuilder();
+                sb.append(recommendedOpt.label()).append("? [Enter]");
+                if (!otherStr.isBlank()) sb.append("   ").append(otherStr);
+                sb.append("   ").append(ownWordsStr);
+                sb.append("   ").append(noteStr);
+                sb.append("   ").append(chatStr);
+                sb.append("   ").append(noneFitsStr);
+                sb.append("   ").append(laterStr);
+                sb.append("   ?   › ");
+                prompt = sb.toString();
             } else {
-                prompt = "Choose: 1-3   w) in my own words   h) chat   x) none fits   l) later   ?   › ";
+                var chooseStr = MessageCatalogue.format(locale, "operator.decision.prompt.choose", Map.of("range", rangeStr));
+                prompt = chooseStr + "   " + ownWordsStr + "   " + chatStr + "   " + noneFitsStr + "   " + laterStr + "   ?   › ";
             }
 
             var line = readLineSafe(reader, prompt);
@@ -399,26 +576,42 @@ public final class AnswerCommand implements Callable<Integer> {
             var choice = line.trim();
 
             if (choice.isEmpty() && recommendedOpt != null && isReversible) {
-                return submitChoice(runtime, out, envelope, recommendedOpt.key(), recommendedOpt.label(), currentNote);
+                return submitChoice(runtime, out, envelope, recommendedOpt.key(), recommendedOpt.label(), currentNote, locale);
             }
 
-            if ("l".equalsIgnoreCase(choice) || "later".equalsIgnoreCase(choice)) {
-                out.printf(MessageCatalogue.format("operator.decision.later_done", Map.of(
-                                    "id", envelope.id(),
-                                    "scope", extractScopeNoun(envelope),
-                                    "project", extractProjectNoun(envelope)
-                )) + "%n");
+            if ("q".equalsIgnoreCase(choice) || "v".equalsIgnoreCase(choice)) {
+                out.println(MessageCatalogue.format(locale, "operator.dialogue.left", Map.of("state", envelope.id())));
                 out.flush();
                 return 0;
             }
 
-            if ("x".equalsIgnoreCase(choice) || "none fits".equalsIgnoreCase(choice)) {
-                var confirm = readLineSafe(reader, String.format("None fits: the %s thinks again and asks anew. Send? [Enter]   b) back   › ", extractScopeNoun(envelope)));
+            if ("l".equalsIgnoreCase(choice) || "later".equalsIgnoreCase(choice)
+                                || ("s".equalsIgnoreCase(choice) && "de".equals(locale))
+                                || ("später".equalsIgnoreCase(choice) && "de".equals(locale))) {
+                out.println(MessageCatalogue.format(locale, "operator.decision.later_done", Map.of(
+                                    "id", envelope.id(),
+                                    "scope", extractScopeNoun(envelope),
+                                    "project", extractProjectNoun(envelope)
+                )));
+                out.flush();
+                return 0;
+            }
+
+            if ("x".equalsIgnoreCase(choice) || "none fits".equalsIgnoreCase(choice)
+                                || ("nichts passt".equalsIgnoreCase(choice) && "de".equals(locale))) {
+                var confirmPrompt = MessageCatalogue.format(locale, "operator.decision.none_fits_confirm", Map.of(
+                                    "scope", extractScopeNoun(envelope),
+                                    "project", extractProjectNoun(envelope)
+                )) + " [Enter]   " + ("de".equals(locale) ? "z) zurück   › " : "b) back   › ");
+                var confirm = readLineSafe(reader, confirmPrompt);
                 if (confirm == null) return 0;
-                if (confirm.isBlank() || "y".equalsIgnoreCase(confirm.trim())) {
+                if (confirm.isBlank() || "y".equalsIgnoreCase(confirm.trim()) || "j".equalsIgnoreCase(confirm.trim())) {
                     var withPath = "/api/v1/decisions/" + OperatorUrlUtil.encodePathSegment(envelope.id()) + "/withdraw";
                     runtime.send(HttpRequest.json("POST", withPath, "{}"));
-                    out.printf("✓ %s: you asked the %s to think again.%n", envelope.id(), extractScopeNoun(envelope));
+                    out.println(MessageCatalogue.format(locale, "operator.decision.none_fits_done", Map.of(
+                                        "id", envelope.id(),
+                                        "scope", extractScopeNoun(envelope)
+                    )));
                     out.flush();
                     return 0;
                 }
@@ -426,7 +619,7 @@ public final class AnswerCommand implements Callable<Integer> {
             }
 
             if ("m".equalsIgnoreCase(choice)) {
-                var noteInput = readLineSafe(reader, MessageCatalogue.get("operator.decision.note_prompt") + " › ");
+                var noteInput = readLineSafe(reader, getMessage(locale, "operator.decision.note_prompt") + " › ");
                 if (noteInput == null) return 0;
                 if (!noteInput.isBlank()) {
                     currentNote = noteInput.trim();
@@ -435,43 +628,76 @@ public final class AnswerCommand implements Callable<Integer> {
             }
 
             if ("w".equalsIgnoreCase(choice)) {
-                return handleInteractiveOwnWords(runtime, out, reader, envelope);
+                return handleInteractiveOwnWords(runtime, out, reader, envelope, locale);
             }
 
             if ("?".equalsIgnoreCase(choice)) {
-                out.println("Evidence details: " + envelope.evidence());
+                var ev = formatEvidenceHint(envelope.evidence());
+                if (!ev.isBlank()) {
+                    out.println(MessageCatalogue.format(locale, "operator.decision.evidence_details", Map.of("evidence", ev)));
+                } else {
+                    out.println(getMessage(locale, "operator.decision.evidence_none"));
+                }
                 out.flush();
                 continue;
             }
 
-            // Number choice
+            if ("?r".equalsIgnoreCase(choice) && part != null) {
+                if (part.recommendationRationale() != null && part.recommendingRole() != null) {
+                    var rationaleOption = recommendedOpt != null ? recommendedOpt.label() + ". " + part.recommendationRationale() : part.recommendationRationale();
+                    out.println("  " + MessageCatalogue.format(locale, "decision.recommendation.by", Map.of(
+                                        "role", part.recommendingRole(),
+                                        "option", OutputSafety.stripControlSequences(rationaleOption)
+                    )));
+                }
+                for (var opt : part.options()) {
+                    if (opt.quorumSupport() != null && opt.quorumSupport().dissentSummary() != null) {
+                        var qs = opt.quorumSupport();
+                        var dissentRole = qs.votes().stream()
+                                            .filter(v -> v.reason() != null && !v.reason().isBlank())
+                                            .map(QuorumVote::role)
+                                            .findFirst().orElse("quorum-b");
+                        out.println("  " + MessageCatalogue.format(locale, "decision.dissent", Map.of(
+                                            "role", dissentRole,
+                                            "reason", OutputSafety.stripControlSequences(qs.dissentSummary())
+                        )));
+                        break;
+                    }
+                }
+                out.flush();
+                continue;
+            }
+
+            // Number or key choice
             if (part != null) {
-                var picked = part.options().stream().filter(o -> o.key().equalsIgnoreCase(choice)).findFirst().orElse(null);
+                var picked = part.options().stream()
+                                    .filter(o -> o.key().equalsIgnoreCase(choice))
+                                    .findFirst().orElse(null);
                 if (picked != null) {
                     if (!isReversible) {
                         out.println();
-                        out.printf("Your decision · %s · cannot be undone%n", envelope.id());
-                        out.printf("  %s%n", picked.label());
+                        out.println(MessageCatalogue.format(locale, "operator.decision.confirm_title", Map.of("id", envelope.id())));
+                        out.printf("  %s%n", OutputSafety.stripControlSequences(picked.label()));
                         if (picked.consequences() != null) {
-                            out.printf("  Follows: %s%n", picked.consequences());
+                            out.println("  " + MessageCatalogue.format(locale, "operator.decision.follows", Map.of("consequence", OutputSafety.stripControlSequences(picked.consequences()))));
                         }
-                        var confirm = readLineSafe(reader, "Decide? [Enter]   b) back   ?   › ");
+                        var confirm = readLineSafe(reader, getMessage(locale, "operator.decision.confirm_prompt"));
                         if (confirm == null) return 0;
-                        if (!confirm.isBlank() && !"y".equalsIgnoreCase(confirm.trim())) {
+                        if (!confirm.isBlank() && !"y".equalsIgnoreCase(confirm.trim()) && !"j".equalsIgnoreCase(confirm.trim())) {
                             continue;
                         }
                     }
-                    return submitChoice(runtime, out, envelope, picked.key(), picked.label(), currentNote);
+                    return submitChoice(runtime, out, envelope, picked.key(), picked.label(), currentNote, locale);
                 }
             }
 
-            out.println("Please choose a valid option or action.");
+            out.println(getMessage(locale, "operator.decision.invalid_choice"));
             out.flush();
         }
     }
 
-    private int handleInteractiveOwnWords(RuntimeClient runtime, PrintWriter out, LineReader reader, DecisionEnvelope envelope) throws IOException {
-        var wordsPrompt = MessageCatalogue.get("operator.decision.own_words_prompt") + " › ";
+    private int handleInteractiveOwnWords(RuntimeClient runtime, PrintWriter out, LineReader reader, DecisionEnvelope envelope, String locale) throws IOException {
+        var wordsPrompt = getMessage(locale, "operator.decision.own_words_prompt") + " › ";
         var wordsInput = readLineSafe(reader, wordsPrompt);
         if (wordsInput == null || wordsInput.isBlank()) {
             return 0;
@@ -482,17 +708,21 @@ public final class AnswerCommand implements Callable<Integer> {
         var interp = DecisionInterpretation.fromJson(interpRes.bodyText());
 
         if (interp.interpretationType() == InterpretationType.UNCLEAR && interp.clarificationQuestion() != null) {
-            out.printf("interpret asks: %s%n", interp.clarificationQuestion());
-            var reply = readLineSafe(reader, MessageCatalogue.get("operator.decision.reply_prompt") + " › ");
+            out.println(MessageCatalogue.format(locale, "decision.clarify.asks", Map.of(
+                                "role", "interpret",
+                                "question", interp.clarificationQuestion()
+            )));
+            var reply = readLineSafe(reader, getMessage(locale, "operator.decision.reply_prompt") + " › ");
             var combinedWords = wordsInput.trim() + ". " + (reply != null ? reply.trim() : "");
             interpRes = runtime.send(HttpRequest.json("POST", interpPath, JsonTree.write(Map.of("words", combinedWords))));
             interp = DecisionInterpretation.fromJson(interpRes.bodyText());
         }
 
         out.println();
-        out.printf("I understood: %s%n", interp.readBackText() != null ? interp.readBackText() : wordsInput.trim());
-        var confirm = readLineSafe(reader, "Correct? [Enter]   e) edit my words   o) choose an option instead   ?   › ");
-        if (confirm == null || (!confirm.isBlank() && !"y".equalsIgnoreCase(confirm.trim()))) {
+        var reading = interp.readBackText() != null ? interp.readBackText() : wordsInput.trim();
+        out.println(MessageCatalogue.format(locale, "decision.readback.understood", Map.of("reading", reading)));
+        var confirm = readLineSafe(reader, getMessage(locale, "operator.decision.readback_confirm"));
+        if (confirm == null || (!confirm.isBlank() && !"y".equalsIgnoreCase(confirm.trim()) && !"j".equalsIgnoreCase(confirm.trim()))) {
             return 0;
         }
 
@@ -503,15 +733,18 @@ public final class AnswerCommand implements Callable<Integer> {
         runtime.send(HttpRequest.json("POST", ansPath, JsonTree.write(payload)));
 
         if (interp.readBackText() != null) {
-            out.printf("✓ %s answered: %s%n", envelope.id(), interp.readBackText());
+            out.println(MessageCatalogue.format(locale, "operator.decision.answered", Map.of(
+                                "id", envelope.id(),
+                                "label", interp.readBackText()
+            )));
         } else {
-            out.println(MessageCatalogue.format("operator.decision.answered_own_words", Map.of("id", envelope.id())));
+            out.println(MessageCatalogue.format(locale, "operator.decision.answered_own_words", Map.of("id", envelope.id())));
         }
         out.flush();
         return 0;
     }
 
-    private int submitChoice(RuntimeClient runtime, PrintWriter out, DecisionEnvelope envelope, String key, String label, @Nullable String noteText) throws IOException {
+    private int submitChoice(RuntimeClient runtime, PrintWriter out, DecisionEnvelope envelope, String key, String label, @Nullable String noteText, String locale) throws IOException {
         var payload = new LinkedHashMap<String, Object>();
         payload.put("option", key);
         payload.put("channel", "cli");
@@ -520,12 +753,17 @@ public final class AnswerCommand implements Callable<Integer> {
         var ansPath = "/api/v1/decisions/" + OperatorUrlUtil.encodePathSegment(envelope.id()) + "/answer";
         var ansRes = runtime.send(HttpRequest.json("POST", ansPath, JsonTree.write(payload)));
         if (ansRes.status() == 200 || ansRes.status() == 202 || ansRes.status() == 204) {
-            var noteSuffix = noteText != null && !noteText.isBlank() ? " " + MessageCatalogue.get("operator.decision.with_note") : "";
-            var goesOn = MessageCatalogue.format("operator.decision.goes_on", Map.of(
+            var noteSuffix = noteText != null && !noteText.isBlank() ? " " + getMessage(locale, "operator.decision.with_note") : "";
+            var goesOn = MessageCatalogue.format(locale, "operator.decision.goes_on", Map.of(
                                 "scope", extractScopeNoun(envelope),
                                 "project", extractProjectNoun(envelope)
             ));
-            out.printf("✓ %s answered: %s%s. %s%n", envelope.id(), label, noteSuffix, goesOn);
+            out.println(MessageCatalogue.format(locale, "operator.decision.answered_goes_on", Map.of(
+                                "id", envelope.id(),
+                                "label", label,
+                                "note", noteSuffix,
+                                "goes_on", goesOn
+            )));
             out.flush();
             return 0;
         }
@@ -566,5 +804,9 @@ public final class AnswerCommand implements Callable<Integer> {
         if (subj.contains("pm-mcp-core")) return "pm-mcp-core";
         if (subj.contains("plan-marshall")) return "plan-marshall";
         return "pm-mcp-clients";
+    }
+
+    private static String getMessage(String locale, String key) {
+        return MessageCatalogue.format(locale, key, Map.of());
     }
 }
