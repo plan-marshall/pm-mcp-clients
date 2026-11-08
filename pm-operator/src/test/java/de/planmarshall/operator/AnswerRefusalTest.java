@@ -1,7 +1,7 @@
 /*
  * Copyright © 2026-present Oliver Wolff
  *
- * SPDX-License-Identifier: Proprietary
+ * SPDX-License-Identifier: LicenseRef-Proprietary
  *
  * All rights reserved. This file is part of plan-marshall-mcp, which is proprietary software.
  * No right to use, copy, modify or distribute this file is granted; see the LICENSE.md file at
@@ -9,6 +9,7 @@
  */
 package de.planmarshall.operator;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,7 +22,6 @@ import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.Map;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -147,13 +147,13 @@ class AnswerRefusalTest {
         out = new StringWriter();
         err = new StringWriter();
         var code = run("de", new byte[0], args);
-        assertTrue(code == 0, "exit " + code + ": " + err);
+        assertEquals(0, code, "exit " + code + ": " + err);
         assertTrue(out.toString().contains(expected), out.toString());
     }
 
     private int run(String language, byte[] input, String... args) throws IOException {
         var environment = new HashMap<>(fixture.environment());
-        environment.put("LANG", language.equals("de") ? "de_DE.UTF-8" : "en_US.UTF-8");
+        environment.put("LANG", "de".equals(language) ? "de_DE.UTF-8" : "en_US.UTF-8");
         var terminalBytes = new ByteArrayOutputStream();
         InputStream inStream = new ByteArrayInputStream(input);
         var termProvider = (OperatorContext.TerminalProvider) () -> new DumbTerminal(inStream, terminalBytes);
@@ -168,26 +168,26 @@ class AnswerRefusalTest {
 
     private static String ownWordsEnvelope() {
         return """
-               {
-                 "id": "Q-001", "revision": 1, "title": "Pick", "subject": "plan fix-relay",
-                 "scope": "plan", "blocks": "plan", "reversibility": "reversible",
-                 "plan": "fix-relay", "project": "pm-mcp-clients",
-                 "parts": [{
-                   "part_id": "1", "question": "Which?", "allow_own_words": true,
-                   "options": [{"key": "1", "label": "Rebase"}]
-                 }]
-               }
-               """;
+                            {
+                              "id": "Q-001", "revision": 1, "title": "Pick", "subject": "plan fix-relay",
+                              "scope": "plan", "blocks": "plan", "reversibility": "reversible",
+                              "plan": "fix-relay", "project": "pm-mcp-clients",
+                              "parts": [{
+                                "part_id": "1", "question": "Which?", "allow_own_words": true,
+                                "options": [{"key": "1", "label": "Rebase"}]
+                              }]
+                            }
+                            """;
     }
 
     private static String envelope(String id, String scope, String blocks, String subject, String project) {
         return """
-               {
-                 "id": "%s", "revision": 1, "title": "Pick", "subject": "%s",
-                 "scope": "%s", "blocks": "%s", "reversibility": "reversible",
-                 "plan": "storage-v2", "project": "%s",
-                 "parts": [{"part_id": "1", "question": "Which?", "options": [{"key": "1", "label": "Yes"}]}]
-               }
-               """.formatted(id, subject, scope, blocks, project);
+                            {
+                              "id": "%s", "revision": 1, "title": "Pick", "subject": "%s",
+                              "scope": "%s", "blocks": "%s", "reversibility": "reversible",
+                              "plan": "storage-v2", "project": "%s",
+                              "parts": [{"part_id": "1", "question": "Which?", "options": [{"key": "1", "label": "Yes"}]}]
+                            }
+                            """.formatted(id, subject, scope, blocks, project);
     }
 }

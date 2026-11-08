@@ -147,49 +147,49 @@ class AnswerSanitizationTest {
 
     private static String hostileEnvelope() {
         return """
-               {
-                 "id": "Q-001",
-                 "revision": 1,
-                 "title": "Pick one",
-                 "subject": "plan fix-relay%s",
-                 "scope": "plan",
-                 "asking_phase": "phase-5%s",
-                 "blocks": "plan",
-                 "reversibility": "reversible",
-                 "description": "Choose",
-                 "evidence": {
-                   "file": "src/Main%s.java",
-                   "lines": "1%s",
-                   "summary": "mismatch%s"
-                 },
-                 "parts": [
-                   {
-                     "part_id": "part-1",
-                     "question": "Which strategy%s?",
-                     "recommendation": "1",
-                     "recommending_role": "implement%s",
-                     "recommendation_rationale": "Keeps history linear%s",
-                     "allow_own_words": true,
-                     "allow_note": true,
-                     "options": [
-                       {"key": "1", "label": "Rebase%s"},
-                       {
-                         "key": "2",
-                         "label": "Merge%s",
-                         "quorum_support": {
-                           "band": "split",
-                           "votes_count": 1,
-                           "total_votes": 3,
-                           "models_count": 1,
-                           "dissent_summary": "context lost%s",
-                           "votes": [{"role": "reviewer%s", "reason": "why%s"}]
-                         }
-                       }
-                     ]
-                   }
-                 ]
-               }
-               """.formatted(CSI + OSC + C1_CSI, CSI, CSI, C1_OSC, OSC, CSI, OSC + C1_CSI,
+                            {
+                              "id": "Q-001",
+                              "revision": 1,
+                              "title": "Pick one",
+                              "subject": "plan fix-relay%s",
+                              "scope": "plan",
+                              "asking_phase": "phase-5%s",
+                              "blocks": "plan",
+                              "reversibility": "reversible",
+                              "description": "Choose",
+                              "evidence": {
+                                "file": "src/Main%s.java",
+                                "lines": "1%s",
+                                "summary": "mismatch%s"
+                              },
+                              "parts": [
+                                {
+                                  "part_id": "part-1",
+                                  "question": "Which strategy%s?",
+                                  "recommendation": "1",
+                                  "recommending_role": "implement%s",
+                                  "recommendation_rationale": "Keeps history linear%s",
+                                  "allow_own_words": true,
+                                  "allow_note": true,
+                                  "options": [
+                                    {"key": "1", "label": "Rebase%s"},
+                                    {
+                                      "key": "2",
+                                      "label": "Merge%s",
+                                      "quorum_support": {
+                                        "band": "split",
+                                        "votes_count": 1,
+                                        "total_votes": 3,
+                                        "models_count": 1,
+                                        "dissent_summary": "context lost%s",
+                                        "votes": [{"role": "reviewer%s", "reason": "why%s"}]
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                            """.formatted(CSI + OSC + C1_CSI, CSI, CSI, C1_OSC, OSC, CSI, OSC + C1_CSI,
                             C1_OSC, CSI, OSC + C1_CSI, CSI, OSC, CSI + C1_OSC);
     }
 

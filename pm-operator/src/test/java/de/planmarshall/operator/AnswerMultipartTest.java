@@ -24,7 +24,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.json.JsonTree;
@@ -197,82 +196,82 @@ class AnswerMultipartTest {
 
     private static String threePartEnvelope() {
         return """
-               {
-                 "id": "Q-012", "revision": 1, "title": "How should the new store be introduced?",
-                 "subject": "plan storage-v2", "scope": "plan", "asking_phase": "outline",
-                 "blocks": "plan", "reversibility": "reversible",
-                 "parts": [
-                   {"part_id": "1", "question": "Where does the data live?", "recommendation": "1",
-                    "recommending_role": "outline", "recommendation_rationale": "Simple isolation.",
-                    "allow_own_words": true,
-                    "options": [{"key": "1", "label": "A file per plan"}, {"key": "2", "label": "One database for the machine"}]},
-                   {"part_id": "2", "question": "How is it migrated?", "recommendation": "1",
-                    "recommending_role": "outline", "recommendation_rationale": "Automated transition.",
-                    "dependency": "depends on part 1: A file per plan", "allow_own_words": true,
-                    "options": [{"key": "1", "label": "At the first start of the new release"}, {"key": "2", "label": "By a verb the operator runs"}]},
-                   {"part_id": "3", "question": "Which format?", "recommendation": "1",
-                    "recommending_role": "outline", "recommendation_rationale": "JSON lines.",
-                    "allow_own_words": true,
-                    "options": [{"key": "1", "label": "JSON lines"}, {"key": "2", "label": "SQLite per plan"}]}
-                 ]
-               }
-               """;
+                            {
+                              "id": "Q-012", "revision": 1, "title": "How should the new store be introduced?",
+                              "subject": "plan storage-v2", "scope": "plan", "asking_phase": "outline",
+                              "blocks": "plan", "reversibility": "reversible",
+                              "parts": [
+                                {"part_id": "1", "question": "Where does the data live?", "recommendation": "1",
+                                 "recommending_role": "outline", "recommendation_rationale": "Simple isolation.",
+                                 "allow_own_words": true,
+                                 "options": [{"key": "1", "label": "A file per plan"}, {"key": "2", "label": "One database for the machine"}]},
+                                {"part_id": "2", "question": "How is it migrated?", "recommendation": "1",
+                                 "recommending_role": "outline", "recommendation_rationale": "Automated transition.",
+                                 "dependency": "depends on part 1: A file per plan", "allow_own_words": true,
+                                 "options": [{"key": "1", "label": "At the first start of the new release"}, {"key": "2", "label": "By a verb the operator runs"}]},
+                                {"part_id": "3", "question": "Which format?", "recommendation": "1",
+                                 "recommending_role": "outline", "recommendation_rationale": "JSON lines.",
+                                 "allow_own_words": true,
+                                 "options": [{"key": "1", "label": "JSON lines"}, {"key": "2", "label": "SQLite per plan"}]}
+                              ]
+                            }
+                            """;
     }
 
     private static String costlyEnvelope() {
         return """
-               {
-                 "id": "Q-001", "revision": 1, "title": "Delete the endpoints", "subject": "plan drop-legacy-api",
-                 "scope": "plan", "blocks": "plan", "reversibility": "irreversible",
-                 "parts": [{
-                   "part_id": "1", "question": "Delete them?", "recommendation": "1",
-                   "recommending_role": "implement", "recommendation_rationale": "Keeps the API clean.",
-                   "allow_own_words": true, "allow_note": true,
-                   "options": [
-                     {"key": "1", "label": "Delete them", "consequences": "Old clients break"},
-                     {"key": "2", "label": "Keep them"}
-                   ]
-                 }]
-               }
-               """;
+                            {
+                              "id": "Q-001", "revision": 1, "title": "Delete the endpoints", "subject": "plan drop-legacy-api",
+                              "scope": "plan", "blocks": "plan", "reversibility": "irreversible",
+                              "parts": [{
+                                "part_id": "1", "question": "Delete them?", "recommendation": "1",
+                                "recommending_role": "implement", "recommendation_rationale": "Keeps the API clean.",
+                                "allow_own_words": true, "allow_note": true,
+                                "options": [
+                                  {"key": "1", "label": "Delete them", "consequences": "Old clients break"},
+                                  {"key": "2", "label": "Keep them"}
+                                ]
+                              }]
+                            }
+                            """;
     }
 
     private static String splitEnvelope() {
         return """
-               {
-                 "id": "Q-001", "revision": 1, "title": "Pick a strategy", "subject": "plan fix-relay",
-                 "scope": "plan", "blocks": "plan", "reversibility": "reversible",
-                 "parts": [{
-                   "part_id": "1", "question": "Which strategy?", "recommendation": "1",
-                   "recommending_role": "implement", "recommendation_rationale": "Keeps history linear",
-                   "allow_own_words": true, "allow_note": true,
-                   "options": [
-                     {"key": "1", "label": "Rebase",
-                      "quorum_support": {"band": "split", "votes_count": 1, "total_votes": 3, "models_count": 1}},
-                     {"key": "2", "label": "Merge",
-                      "quorum_support": {"band": "split", "votes_count": 1, "total_votes": 3, "models_count": 1,
-                        "dissent_summary": "context lost",
-                        "votes": [{"role": "reviewer-a", "model": "gpt-4o", "confidence_percent": 70,
-                                   "reason": "preserves context"}]}}
-                   ]
-                 }]
-               }
-               """;
+                            {
+                              "id": "Q-001", "revision": 1, "title": "Pick a strategy", "subject": "plan fix-relay",
+                              "scope": "plan", "blocks": "plan", "reversibility": "reversible",
+                              "parts": [{
+                                "part_id": "1", "question": "Which strategy?", "recommendation": "1",
+                                "recommending_role": "implement", "recommendation_rationale": "Keeps history linear",
+                                "allow_own_words": true, "allow_note": true,
+                                "options": [
+                                  {"key": "1", "label": "Rebase",
+                                   "quorum_support": {"band": "split", "votes_count": 1, "total_votes": 3, "models_count": 1}},
+                                  {"key": "2", "label": "Merge",
+                                   "quorum_support": {"band": "split", "votes_count": 1, "total_votes": 3, "models_count": 1,
+                                     "dissent_summary": "context lost",
+                                     "votes": [{"role": "reviewer-a", "model": "gpt-4o", "confidence_percent": 70,
+                                                "reason": "preserves context"}]}}
+                                ]
+                              }]
+                            }
+                            """;
     }
 
     private static String plainEnvelope(boolean ownWords, boolean note) {
         return """
-               {
-                 "id": "Q-001", "revision": 1, "title": "Pick a strategy", "subject": "plan fix-relay",
-                 "scope": "plan", "blocks": "plan", "reversibility": "reversible",
-                 "parts": [{
-                   "part_id": "1", "question": "Which strategy?", "recommendation": "1",
-                   "recommending_role": "implement", "recommendation_rationale": "Keeps history linear",
-                   "allow_own_words": %s, "allow_note": %s,
-                   "options": [{"key": "1", "label": "Rebase"}, {"key": "2", "label": "Merge"}]
-                 }]
-               }
-               """.formatted(ownWords, note);
+                            {
+                              "id": "Q-001", "revision": 1, "title": "Pick a strategy", "subject": "plan fix-relay",
+                              "scope": "plan", "blocks": "plan", "reversibility": "reversible",
+                              "parts": [{
+                                "part_id": "1", "question": "Which strategy?", "recommendation": "1",
+                                "recommending_role": "implement", "recommendation_rationale": "Keeps history linear",
+                                "allow_own_words": %s, "allow_note": %s,
+                                "options": [{"key": "1", "label": "Rebase"}, {"key": "2", "label": "Merge"}]
+                              }]
+                            }
+                            """.formatted(ownWords, note);
     }
 
     private int run(String input, String... args) throws IOException {
