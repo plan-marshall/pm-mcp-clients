@@ -126,6 +126,12 @@ ui-improvements`; read, never write):
 
 Checked at `aa3a9be3`. `chat.adoc` is absent. Besides the listed files the deliverable also names the terminal onboarding-roles transcript and consent listing under `doc/design/terminal-client/` and `shared/starting-work.adoc`; `pm-web-app/package.json` has no `marked` yet (the lexer is approved by the operator, not yet a dependency; the npm registry could not be read). Files outside this repository are HYPOTHESIS until read.
 
+## Operator Decision 2026-11-08 (the waiting mark)
+
+The `WaitingMark` that D3 (PLAN-114) defines is the clipboard whose TODO lines are ticked one after another, independent of
+the brand icon choice (the marshal star badge is the brand mark candidate). The chat's working line uses it as D3 defines
+it; this plan neither redraws nor re-specifies it. Expected Surface unchanged.
+
 ## Hand-Off Command
 
 Lane: none — a direct Claude Code session (operator instruction 2026-11-06). Start it in its own worktree and branch of

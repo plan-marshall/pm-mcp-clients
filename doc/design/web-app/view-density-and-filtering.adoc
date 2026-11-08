@@ -5,29 +5,28 @@
 
 link:README.adoc[Web App] » View Density and Filtering
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4]_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2], link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4], link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2]_
 
 Status: `AGREED`.
 
-The list views of the web app (`/reports`, `/decisions`, the running and ended work of the overview, and the workstreams of an epic) hold their items client-side already. This design gives each of them one deliberate way to use a wide window — one of the four page templates (<<templates>>) — and one shared way to find an item in the list: a filter-as-you-type control. The three layout modes of <<layouts>> remain only for the views that have not moved onto a template yet.
+The list views of the web app (`/reports`, `/decisions`, the running and ended work of the overview, the workstreams of an epic, and the projects) hold their items client-side already. This design gives each of them one way to use a wide window — the page template it sits on, and for a list the column window of link:navigation.adoc[Navigation] (<<templates>>) — and one shared way to find an item in the list: a filter-as-you-type control.
 
 It changes nothing about the data: no endpoint, no record, no server-side search, and no pagination semantics.
 
 [#templates]
-== Page Templates Replace the Layout Modes
+== Page Templates
 
-link:../../claude_review/ux/proposals.adoc#UX-P-03[UX-P-03] replaces the three layout modes with four page
-templates:
+link:../../claude_review/ux/proposals.adoc#UX-P-03[UX-P-03] replaced the three layout modes of the list views with four page templates (link:components.adoc#templates[Components, Page Templates]):
 
 [cols="1,2",options="header"]
 |===
 | Template | Width and split
 
 | `lib/templates/TriagePage.svelte`
-| Full width; the list and the detail split 40 / 60. Below 1100 px the detail replaces the list.
+| The column engine: the full width of the container, shown as the column window of link:navigation.adoc#window[Navigation, The Column Window].
 
 | `lib/templates/ObjectPage.svelte`
-| At most 1440 px, centred.
+| The object column inside the column engine; on a page of its own at most 1440 px, centred.
 
 | `lib/templates/WizardPage.svelte`
 | 720 px, centred.
@@ -36,40 +35,7 @@ templates:
 | At most 1440 px, centred.
 |===
 
-A view sits on one template and takes the page's width and split from it: no view sets its own page width, and
-no view keeps a layout toggle or a `pm_view_layout_<view>` choice. The filter of <<filter>> stays with the view —
-the template owns the panes, the view owns its items, its matches and its result count. A list view that has not
-moved yet still carries the modes of <<layouts>>; this section records the target, and the plan that moves the
-view removes the mode from it.
-
-[#layouts]
-== Layout Modes
-
-Every adopted view offers the same three modes and remembers the choice per view in the browser's `localStorage` under `pm_view_layout_<view>`:
-
-[cols="1,1,4",options="header"]
-|===
-| Mode | Storage value | Behaviour
-
-| Comfortable
-| `comfortable`
-| Today's single column with a readable measure (`800px` for decisions), the current spacing, and the full body of every item. This is the default when the browser holds no valid choice.
-
-| Compact
-| `compact`
-| A denser list: card padding `--space-2 --space-3`, gaps `--space-1`, the header metadata on one line, and the body clamped to two lines behind a disclosure ("Show the text"). Decisions collapse their evidence block behind its existing disclosure and keep the badge row and the action bar.
-
-| Split
-| `split`
-| The list on the left, the detail on the right. Decisions use `minmax(300px, 380px) minmax(0, 1fr)`. The list pane scrolls independently and stays mounted; the selected item is marked with `aria-current` and a primary left border. The hard width cap is removed only in this mode.
-|===
-
-[#breakpoint]
-=== The split breakpoint
-
-`split` collapses to one column at `max-width: 959px`. Below it the view behaves like the single-column modes: the list fills the window, and only a selected detail replaces it (never both). No horizontal scrollbar appears at any width down to `320px`.
-
-The layout choice survives that collapse: a view left in `split` on a desktop is still in `split` when the same browser opens it on a phone, and it returns to two panes on a wide screen.
+*The template's split is the only layout*: for a list view it is the column window, and no view keeps a layout mode, a layout toggle or a `pm_view_layout_<view>` choice. A view sets no page width of its own. The filter of <<filter>> stays with the view — the template owns the columns, the view owns its items, its matches and its result count.
 
 [#filter]
 == The Filter Contract
@@ -91,9 +57,11 @@ One utility (`filterText.ts`) and one component (`FilterInput.svelte`) power eve
 `FilterInput` renders a visible label and a labelled `<input type="search">` inside `role="search"`.
 
 * `oninput` emits immediately; there is no debounce because the lists are bounded by what is loaded.
-* `Esc` clears the query and keeps the focus; `/` focuses the field unless the focus is already in an input, textarea, select, or contenteditable element.
+* `Esc` clears the query and keeps the focus; `/` focuses the field unless the focus is already in an input, textarea, select, or contenteditable element. On a view with a filter, `/` is the filter's and does not open find; `Ctrl+K` opens find on every view (link:needs-and-find.adoc#search[What Waits and Find, The Search Button]).
 * A clear button appears while the query is non-empty.
-* The result count sits in an `aria-live="polite"` region, e.g. "3 matches" or "No matches".
+* The result count sits in an `aria-live="polite"` region, e.g. "3 matches" or "No matches". The region is always in the document, empty while no filter is active, never inserted with the first query: a region added together with its text may not be announced.
+* *One key pattern*: the field's label is `common.filter.label` with the list's name as its argument (_Filter: decisions_), its count `common.filter.results`, its clear control `common.filter.clear` and its empty state `common.filter.empty`; a view keeps a key of its own only for a text that says more than the shared one (`<view>.filter.no_matches`, `report.filter.loaded_only`). The labels `decisions.filter.label` and `report.filter.label` merge into the shared one, and a placeholder is an example value, never a list of the fields (link:components-fields.adoc#field-texts[Fields and Forms, Labels, Hints, Placeholders]).
+* *The Projects list* takes `FilterInput` like every other list; its own filter field, without a count, `Esc` or `/`, goes.
 * A view with no match shows its own empty state (`common.filter.empty` or `<view>.filter.no_matches`); pagination chrome stays visible.
 
 Header counts keep their own meaning: the reports heading still shows the unread count of all loaded reports, and the decisions heading still shows the open-decision count. The filter's count is a separate "matches" figure.
@@ -122,6 +90,9 @@ Every field a view can render takes part, so a query that matches only a body, a
 | Overview — ended work
 | `id`/`item_id`, `kind`, `title`, `outcome`, `terminal_reason`, `reason`, `ended_at`, and its rendered relative date.
 
+| Projects
+| `display_name` and `project_id`; for a project being added, its checkout path. With a query, the groups _Favourites_, _Recent_ and _All projects_ become one list of matches in the order of _All projects_ (link:../shared/project-explorer.adoc#layout[Project Explorer, Favourites, Recent, All]).
+
 | Epic — workstreams
 | The workstream's `id` and `name` plus each row's `plan_id`, `title`, `status`, `wait_reason`, `wait_plan_id`, `change`, `objective`, `deliverables`, `surface`, `dependencies`, and `overlap_files`.
 |===
@@ -141,11 +112,11 @@ Do **not** add a filter to:
 
 * a single-record view (`SettingsView`, `SystemView`, `CleanupView` and their detail panes);
 * a form, a wizard step, or a picker whose list is itself the input;
-* a navigation surface such as the overview's project tiles, which choose what the main panel shows rather than being list items.
+* a lens's scope list whose rows choose what the next column shows, such as the projects of Running work, while it holds only a handful of rows; the list of all projects is a list and takes the filter.
 
 A view that adopts the components must not implement its own matching rules. A new multi-element list imports `filterText` and `FilterInput`, publishes its field matrix here, and follows the result-count and empty-state behaviour above.
 
 [#rollback]
 == Rollback
 
-Removing the layout toggle and the filter inputs and restoring the single-column CSS returns the views to their earlier behaviour. No data, endpoint, or stored record changes with it; only the per-view `localStorage` keys remain and are harmless.
+Removing the filter inputs returns the views to their unfiltered lists. No data, endpoint, or stored record changes with it. The layout modes are gone and are not restored; a `pm_view_layout_<view>` key a browser still holds is no longer read and is harmless.

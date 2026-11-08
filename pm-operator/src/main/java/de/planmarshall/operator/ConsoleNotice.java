@@ -118,7 +118,7 @@ public final class ConsoleNotice {
      *
      * @param id    the waiver request id (e.g. "WR-2")
      * @param scope the plan scope (e.g. "plan fix-relay")
-     * @param gate  the target gate (e.g. "ci_check:integration-tests")
+     * @param gate  the target gate (e.g. "integration-tests")
      * @return multi-line formatted notice
      */
     public static String formatWaiverRequest(String id, String scope, @Nullable String gate) {
@@ -131,7 +131,7 @@ public final class ConsoleNotice {
      * @param locale the interface locale
      * @param id     the waiver request id (e.g. "WR-2")
      * @param scope  the plan scope (e.g. "plan fix-relay")
-     * @param gate   the target gate (e.g. "ci_check:integration-tests")
+     * @param gate   the target gate (e.g. "integration-tests")
      * @return multi-line formatted notice
      */
     public static String formatWaiverRequest(String locale, String id, String scope, @Nullable String gate) {

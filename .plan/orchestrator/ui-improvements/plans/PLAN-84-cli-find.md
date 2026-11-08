@@ -83,6 +83,10 @@ The web half is `PLAN-46` (the command palette behind the top bar's search butto
 - Overlaps with: `PLAN-46` (`overview.{en,de}.properties`, the find texts), `PLAN-36` (`PmOperator`, `PmConsole`, the catalogue pair), `PLAN-42` (`PmConsole`, `01-commands.adoc`), `PLAN-48` (`01-commands.adoc`), `PLAN-30` (`01-commands.adoc`, catalogue): run one after the other
 - Adjacent to: `PLAN-46` (the web half)
 
+## Fold 2026-11-08 (PLAN-116 landing)
+
+Source: `landings/PLAN-116.md` (layer 2). PLAN-116 changed the console's argv for a being-added run to `project setup --entry -- <entry_id>` (`PmConsole.java:292` at `6c105a86`, so an id starting with `--` is never read as an option), but `doc/design/terminal-client/04-console.adoc:26` and `:112` still show `project setup --entry <entry_id>`. When this plan edits `04-console.adoc` for the console's find entry, correct both lines and say why the `--` is there. Surface unchanged: `04-console.adoc` is already declared.
+
 ## Re-grounding 2026-11-07 (cleanup)
 
 Checked at `aa3a9be3`. The `overview.find.*` rows exist in `overview.{en,de}.properties` (PLAN-46, #296): the "NOT in the catalogues" note is satisfied. `GET /api/v1/find` (`MachineApiPaths.FIND`) and `FindMatch` exist in `pm-api` (PLAN-82). This plan adds `find` to `PmOperator` and to `01-commands.adoc` after PLAN-97's tree (22 verbs, none is `find`); the `needs` row belongs to PLAN-36, not here.

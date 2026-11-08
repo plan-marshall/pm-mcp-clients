@@ -206,7 +206,7 @@ With `--no-input` an unscreened source stops the run like a flagged one.
   … l
   Unclaimed lessons of pm-mcp-clients, newest first
     1) ConfigLoader keeps a stale cache after reload           2 d ago
-    2) The relay retries without a backoff                     3 weeks ago
+    2) The relay retries without a backoff                     21 d ago
   › 1
     ▶  lesson   ConfigLoader keeps a stale cache after reload   checking
     !  lesson   ConfigLoader keeps a stale cache after reload   its premise no longer holds

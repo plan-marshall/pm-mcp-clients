@@ -67,6 +67,25 @@ Convert the tests of `pm-operator` to the `pm-dev-java-cui:cui-testing` standard
 
 Checked at `aa3a9be3`. The before-count is 23 of 132 test classes (111 `*Test` + 21 `*IT`) carrying `@EnableGeneratorController` (added by PLAN-26/91/92/94, #357, #358), not 0 of 116; about 109 remain. The HOLD on PLAN-97 is cleared (#358 landed) and PLAN-92 shipped. PR 362 also swept `nonEmptyStrings` to `nonBlankStrings` in the `pm-api` tests: use `nonBlankStrings`.
 
+## Fold 2026-11-08 (PLAN-109 landing)
+
+Source: `landings/PLAN-109.md` (layer 2), a CodeRabbit nitpick on PR #367 that the lane left unanswered and the three-layer reading confirmed. `control.plan.settings` is `Plan-Einstellungen` in `pm-api/src/main/resources/messages/control.de.properties:16` (at `56b43a02`), but no test asserts the German value: `ActionMenusTest` reads locale `en` (`:58`, `:78`, `:105` assert `startsWith("Plan settings")`) and `ControlCatalogueTest` checks key presence and parity only. A revert to `Einstellungen` would pass and bring back the clash with the rail's "Einstellungen" the rename removed. When this plan rewrites `ActionMenusTest`, add one German-locale assertion that entry 3's label starts with `Plan-Einstellungen` (expected catalogue text stays literal). Surface unchanged: the file lies below the claimed `pm-operator/src/test/java/`.
+
+## Fold 2026-11-08 (PLAN-116 landing)
+
+Source: `landings/PLAN-116.md` (layer 2), read at `6c105a86`. Three test gaps in files this plan rewrites anyway; surface unchanged (all below `pm-operator/src/test/java/`):
+
+1. `transcript/ConsoleSettingsTranscriptTest.java:72-83` checks each device name and each age as separate substrings of the whole render, so swapped Firefox/Safari ages still pass (CodeRabbit nitpick on PR #368, unanswered). Assert each device's age on its own rendered row, for both clocks.
+2. `PmConsoleBehaviourTest.java:758-763` waits for the second refresh to reach `TIMED_WAITING`, which a lock wait (`PmConsole.java:693` `tryLock(timeout)`) and `EntryFlow.bounded`'s `thread.join(millis)` both produce: without the lock the test can still pass. Make the check discriminate the lock wait (e.g. the lock's queue, `hasQueuedThreads`, or the waiting thread's blocker), and check the negative over the window rather than at one instant.
+3. No test shows the injected aspect list reaches the dialogue through `EntryFlow.java:292` and `PmConsole.java:314` (reverting either fails nothing): add one dialogue-level assertion with a list of another size.
+
+## Fold 2026-11-08 (PLAN-118 landing)
+
+Source: `landings/PLAN-118.md` (layer 2), read at `2fc2c214`. Two test gaps in files this plan rewrites anyway; surface unchanged (all below `pm-operator/src/test/java/`):
+
+1. `DrainCommandTest.java:619-650` builds the expected drain bound from the production constants (`DEFAULT_DRAIN_TIMEOUT_SECONDS`, `GRACE_PERIOD`, `MARGIN`), so a changed constant passes. Assert the contract literally (15 s without config, the configured value + 5 s + 10 s), and cover the String-valued `drain_timeout_seconds` branch (`DrainCommand.java:205-208`) and a non-object `machine-config.json`.
+2. Nothing pins that `PmConsole` builds its completer from `OperatorVerbs.completer()` (`PmConsole.java:137`): a completer reverted to a hand list passes `OperatorVerbsTest`. Add an assertion on the console's own completer.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

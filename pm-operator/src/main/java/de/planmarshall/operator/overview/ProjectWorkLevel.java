@@ -304,8 +304,12 @@ public final class ProjectWorkLevel {
                                 Map.of("count", count, "state", state));
         } else {
             String unit = OverviewFormatting.clean(landing.unit() != null ? landing.unit() : "");
+            var unitKey = "unit." + unit;
+            var unitTitle = MessageCatalogue.hasKey(locale, unitKey)
+                                ? MessageCatalogue.format(locale, unitKey, Map.of())
+                                : unit;
             text = MessageCatalogue.format(locale, "overview.landing.unit",
-                                Map.of("unit", unit, "state", state));
+                                Map.of("unit", unitTitle, "state", state));
         }
 
         String line;

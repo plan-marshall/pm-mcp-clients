@@ -19,6 +19,7 @@ import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.json.JsonFormatException;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.overview.ChangeSize;
 
 /**
  * Full process tree representation of a plan (UC-PLN-1).
@@ -38,6 +39,7 @@ import de.planmarshall.api.json.JsonTree;
  * @param pullRequestNumber   associated pull request number, or {@code null}
  * @param pullRequestUrl      associated pull request URL, or {@code null}
  * @param durationSeconds     total running duration in seconds
+ * @param change              the size of the plan's change at its last capture, or {@code null}
  */
 public record ProcessTree(
         String planId,
@@ -54,7 +56,8 @@ public record ProcessTree(
         List<String> currentPositionPath,
         @Nullable Integer pullRequestNumber,
         @Nullable String pullRequestUrl,
-        long durationSeconds
+        long durationSeconds,
+        @Nullable ChangeSize change
 ) {
     public ProcessTree {
         Objects.requireNonNull(planId, "planId");
@@ -100,6 +103,9 @@ public record ProcessTree(
             map.put("pull_request_url", pullRequestUrl);
         }
         map.put("duration_seconds", durationSeconds);
+        if (change != null) {
+            map.put("change", change.toMap());
+        }
         return map;
     }
 
@@ -183,6 +189,8 @@ public record ProcessTree(
         var durNum = JsonTree.number(map, "duration_seconds");
         long durationSeconds = durNum != null ? durNum.longValue() : 0L;
 
+        var change = ChangeSize.fromMap(JsonTree.asObject(map.get("change")));
+
         return new ProcessTree(
                 planId,
                 title != null ? title : planId,
@@ -198,7 +206,8 @@ public record ProcessTree(
                 currentPositionPath,
                 pullRequestNumber,
                 prUrl,
-                durationSeconds
+                durationSeconds,
+                change
         );
     }
 

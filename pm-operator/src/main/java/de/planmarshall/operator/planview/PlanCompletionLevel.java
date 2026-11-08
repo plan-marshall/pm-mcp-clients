@@ -83,6 +83,7 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
         appendDeliverables(rows, locale);
         appendDecisions(rows, locale);
         appendOwnCalls(rows, locale);
+        appendChange(rows, locale);
         appendChangeMap(rows, locale);
         appendTokens(rows, locale);
         return rows;
@@ -193,6 +194,15 @@ public record PlanCompletionLevel(PlanCompletionReport report) {
             return MessageCatalogue.format(locale, "report.completion.own_call_consistent", Map.of());
         }
         return PlanViewFormatting.clean(ownCall.judgment());
+    }
+
+    private void appendChange(List<TuiRow> rows, String locale) {
+        var change = report.change();
+        if (change == null) {
+            return;
+        }
+        rows.add(entry("completion:change", locale, "report.completion.change",
+                            MessageCatalogue.format(locale, "plan.change.size", change.toMap())));
     }
 
     private void appendChangeMap(List<TuiRow> rows, String locale) {

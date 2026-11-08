@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.
 
 _Relies on: link:README.adoc#frame[Web App, The Frame] (where a control sits), link:../shared/texts-and-languages.adoc[Texts and Languages] (the catalogue is the only source of copy)_
 
-Status: `DRAFT`. This document is the authority for the hover advisory of a control: when a control carries one, which catalogue key it reads, what it may say, and how the convention is checked.
+Status: `AGREED`. This document is the authority for the hover advisory of a control: when a control carries one, which catalogue key it reads, what it may say, and how the convention is checked.
 
 [#purpose]
 == What a Hover Advisory Is
@@ -58,7 +58,7 @@ An advisory earns its place only by adding information to the label. It does tha
 * *Consequence*: what changes because of the action, especially where it cannot be undone ("Decline the waiver; the gate stays failed").
 * *Scope*: what the action reaches beyond the control's own row ("Mark every loaded report as read; older reports stay unread").
 * *Shortcut or state*: a fact the operator would otherwise have to discover ("Switch the interface language; this browser remembers the choice").
-* *Where the action goes*: for a label that does not name its destination ("Return to the view you came from").
+* *Where the action goes*: for a label that does not name its destination ("Show this level; the selection stays").
 
 Two rules bound the text:
 
@@ -101,8 +101,8 @@ A control is audited by its class, not one by one. Every class below must carry 
 |Filter reset and search clear
 |A single glyph (`✕`) whose consequence is "show everything again".
 
-|Back and navigation entries whose label does not name the destination
-|The advisory names where the operator returns to.
+|Navigation entries whose label does not name the destination (a mark of the gap strip whose name is hidden)
+|The advisory names what the entry shows.
 
 |Primary confirmation of a decision or a plan action
 |The advisory names what the submission starts.
@@ -124,6 +124,15 @@ An act is a control that changes the resource it belongs to. The acts a state of
 * *Typed names.* Where the act is as wide as a pairing or an enrolment, the confirmation asks the operator to type the resource's name; the confirming act stays disabled until the exact name is typed. Revoking all other devices takes it today; unenrolling a project takes it on when the project rows are rebuilt (PLAN-59).
 * *The API's acts win.* Where the runtime sends the offered acts of a resource (a plan's and an epic's actions), they decide which acts exist and whether they can run; the table decides their order and their role. An act the table does not know is appended to the overflow, never promoted to the primary one; where the runtime says it cannot run, it stays there disabled with its reason. An act the runtime offers as runnable but this client has no handler for is shown disabled too, with the reason that this client cannot run it (`web.act.unsupported`, naming the act); it never runs and never vanishes.
 * *Advisories.* An act's advisory is the `X.title` key beside its label key `X`, and follows the rules of this document. The destructive acts name the consequence ("End the plan for good; this cannot be taken back"); an act whose label already says everything carries none.
+
+[#navigation]
+== Up, the Strip and the Column Keys
+
+The controls of link:navigation.adoc[Navigation] follow the same rules:
+
+* *Up and a breadcrumb segment* name their destination (the parent's `KindMark` and name), so they carry no advisory. There is no in-page Back whose advisory would name a caller: the caller stack is gone (link:navigation.adoc#up[Navigation, Up, the Breadcrumb, Back]).
+* *A mark of the gap strip* with its name visible carries none either; a mark whose name is hidden (the strip of marks only) has the level's kind and name as its accessible name and `web.nav.strip.mark.title` as its advisory, and the strip's _Names_ shows the names in a popover.
+* *The column keys* are `Ctrl+←` and `Ctrl+→`, and `[` and `]` while the focus is not in a field (link:navigation.adoc#keys[Navigation, Keys and Focus]). They are written in the help of the keys, never in an advisory of their own: no control stands for them.
 
 [#enforcement]
 == Enforcement

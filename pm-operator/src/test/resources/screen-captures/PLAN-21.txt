@@ -1,0 +1,22 @@
+# Screen captures for PLAN-21: Terminal: A Working Answer Dialogue
+# name | scenario | states | command | keys | columnsxrows | locale | environment
+
+answer-q007-prompt-120x30-en | running-work | decisions.open | answer Q-007 | l\n | 120x30 | en_US.UTF-8 | -
+answer-q007-prompt-80x24-en | running-work | decisions.open | answer Q-007 | l\n | 80x24 | en_US.UTF-8 | -
+answer-q007-prompt-120x30-de | running-work | decisions.open | answer Q-007 | s\n | 120x30 | de_DE.UTF-8 | -
+answer-q007-prompt-80x24-de | running-work | decisions.open | answer Q-007 | s\n | 80x24 | de_DE.UTF-8 | -
+
+answer-q007-enter-120x30-en | running-work | decisions.open | answer Q-007 | \n | 120x30 | en_US.UTF-8 | -
+answer-q007-enter-80x24-en | running-work | decisions.open | answer Q-007 | \n | 80x24 | en_US.UTF-8 | -
+answer-q007-enter-120x30-de | running-work | decisions.open | answer Q-007 | \n | 120x30 | de_DE.UTF-8 | -
+answer-q007-enter-80x24-de | running-work | decisions.open | answer Q-007 | \n | 80x24 | de_DE.UTF-8 | -
+
+answer-q007-direct-120x30-en | running-work | decisions.open | answer Q-007 2 | - | 120x30 | en_US.UTF-8 | -
+answer-q007-direct-80x24-en | running-work | decisions.open | answer Q-007 2 | - | 80x24 | en_US.UTF-8 | -
+answer-q007-direct-120x30-de | running-work | decisions.open | answer Q-007 2 | - | 120x30 | de_DE.UTF-8 | -
+answer-q007-direct-80x24-de | running-work | decisions.open | answer Q-007 2 | - | 80x24 | de_DE.UTF-8 | -
+
+answer-wr2-120x30-en | running-work | decisions.open | answer WR-2 | l\n | 120x30 | en_US.UTF-8 | -
+answer-wr2-80x24-en | running-work | decisions.open | answer WR-2 | l\n | 80x24 | en_US.UTF-8 | -
+answer-wr2-120x30-de | running-work | decisions.open | answer WR-2 | s\n | 120x30 | de_DE.UTF-8 | -
+answer-wr2-80x24-de | running-work | decisions.open | answer WR-2 | s\n | 80x24 | de_DE.UTF-8 | -

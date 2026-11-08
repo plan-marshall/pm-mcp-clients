@@ -41,7 +41,7 @@ The tokens of design system v2 are declared in `pm-web-app/src/styles/tokens.css
 |`--color-text-primary` |`#E6EAF2` |`#16181D` |Titles, body.
 |`--color-text-secondary` |`#AEB6C4` |`#3E4450` |Secondary lines.
 |`--color-text-muted` |`#8B95A7` |`#5F6672` |Meta, time, hints.
-|`--color-brand` |`#8B7EF9` |`#5B4BDB` |Primary act, selection, focus, brand mark.
+|`--color-brand` |`#8B7EF9` |`#5B4BDB` |Primary act, selection, focus.
 |`--color-brand-hover` |`#A093FB` |`#4A3BC4` |Hover of the primary act.
 |`--color-brand-subtle` |`#1E2240` |`#EEEBFF` |Selected row, recommendation block.
 |`--color-attention` |`#F2A93B` |`#B86E00` |Dot and edge for "needs you".
@@ -157,7 +157,7 @@ Contrast ratio between two luminances \(L_1\) (lighter) and \(L_2\) (darker) is 
 Two reasoned, functional exceptions carry colour literals; the first sits inside the scanned surface, the second outside it:
 
 * **`PairingQr.svelte`:** SVG QR code modules use `#ffffff` (quiet zone and light modules) and `#000000` (dark modules). QR code optical scanners require strict binary black-on-white module contrast regardless of operating system or browser theme.
-* **The two browser-tab copies** (`pm-web-app/static/brand-mark.svg`, `pm-web-app/static/brand-mark-attention.svg`): a standalone SVG has no page context for `currentColor`, so they bake the light-theme brand colour and the attention dot; link:brand-mark.adoc#theme[Brand Mark, Theme and Contrast] names the values.
+* **The two browser-tab copies** (`pm-web-app/static/brand-mark.svg`, `pm-web-app/static/brand-mark-attention.svg`): a standalone SVG has no page context for `currentColor`, so they bake their colours and the attention dot. Today they carry the light-theme brand colour of the earlier mark; the D3 brand assets package redraws them on the chosen brand icon in the mascot palette, and link:brand-mark.adoc#favicon[Brand Mark and Mascot, The Browser Tab] names those values.
 
 All other components and views must reference defined tokens in `tokens.css`. Static scans in `tokens.test.ts` enforce zero unexpected color literals across `pm-web-app/src/lib/`; the `static/` copies are outside that scan and are documented in link:brand-mark.adoc[Brand Mark].
 
