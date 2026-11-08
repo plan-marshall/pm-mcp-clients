@@ -61,10 +61,14 @@ Unenrolled projects
   14) ▪ legacy-portal       unenrolled 2 Sep · 7 plans, 1 epic    1.1 GB
 Kept for good 4 (cleanup --kept) · durations 30 days, reminder 3 days · last sweep 03:00
 
-d) delete…   r) ask me again   i) ignore   x) leave items out   o) open   q) leave   › x
+d) delete…   r) ask me again   i) ignore   x) leave items out   o) open
+q) leave
+  › x
 Leave out: 6
   6) ▸ token-usage  ✎ kept for good
-d) delete…   r) ask me again   i) ignore   x) leave items out   o) open   q) leave   › d
+d) delete…   r) ask me again   i) ignore   x) leave items out   o) open
+q) leave
+  › d
 Delete 11 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project?
   This frees 1.7 GB. It cannot be undone.
   Branches, pull requests, the remote, the checkout, and an epic's ledger in the
@@ -160,7 +164,9 @@ pm ›
 pm › cleanup
 Cleanup cln-0007 · due since today 03:00
   …
-d) delete…   r) ask me again   i) ignore   x) leave items out   o) open   q) leave   ›
+d) delete…   r) ask me again   i) ignore   x) leave items out   o) open
+q) leave
+  ›
 ▪ This cleanup was decided in the web app (iPad): deleted.
 pm ›
 ----
@@ -237,6 +243,10 @@ $ pm-operator sweep --apply
 |`cleanup.confirm`, `cleanup.delete`
 |`[O]`, `[S]`
 |<<t-job>>, <<t-script>>
+
+|`cleanup.leave_out`, `cleanup.open`
+|`[O]`, `[O]`
+|<<t-job>>
 
 |`cleanup.remind`
 |`[S]`
@@ -353,4 +363,13 @@ The texts of the job, the kept list, the durations, and the residue are those of
 |{what} entfernt; {size} freigegeben.
 |===
 
-The decision bar is composed from `operator.cleanup.choose.delete|remind|ignore|leave_out|open|leave`, keyed by `ChoicePrompt`: `d) delete…   r) ask me again   i) ignore   x) leave items out   o) open   q) leave`, wrapped at the dialogue width when the terminal is narrower than the whole bar. The reminder offers no number of days because the job carries none; `--remind` names the date the items come back in its result. The delete's confirmation is `operator.cleanup.choose.delete_confirm` above the prompt's own `y`/`n`/`q` line.
+The decision bar is composed from `operator.cleanup.choose.delete|remind|ignore|leave_out|open|leave`, keyed by `ChoicePrompt`, wrapped at the prompt's 80-column dialogue width:
+
+[source,text]
+----
+d) delete…   r) ask me again   i) ignore   x) leave items out   o) open
+q) leave
+› x
+----
+
+The reminder offers no number of days because the job carries none; `--remind` names the date the items come back in its result. The delete's confirmation is `operator.cleanup.choose.delete_confirm` above the prompt's own `y`/`n`/`q` line. An unenrolled-project entry is discounted by itself, its logs and its size; the plans and epics it groups are not in the entry, so the preview cannot subtract them.

@@ -127,6 +127,32 @@ class CleanupDialogueIT {
         }
     }
 
+    @Test
+    @DisplayName("the console bar's d with y sends the delete")
+    void consoleBarDeletes() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.REPORTS_AND_SYSTEM).goTo("cleanup.preview");
+             var session = harness.open()) {
+            assertTrue(session.awaitConsolePrompt(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, "cleanup\n");
+            assertTrue(session.awaitText("q) leave", DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, "d\n");
+            assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, "y\n");
+            assertTrue(session.awaitText("Deleted", DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, "exit\n");
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+            assertEquals(0, session.exitCode(), session.rawOutput());
+            var recorded = harness.acts();
+            assertTrue(recorded.stream().anyMatch(act -> "POST".equals(act.method())
+                                && act.path().startsWith("/api/v1/system/cleanup/")
+                                && act.path().endsWith("/delete")), recorded.toString());
+        }
+    }
+
     /**
      * The console's own startup act ({@code PUT /api/v1/web}) is not the cleanup's: only a
      * {@code /api/v1/system/cleanup} act proves that a delete or a keep was sent.
