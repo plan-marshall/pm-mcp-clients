@@ -599,6 +599,10 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Watches
 
+- PLAN-122 shipped 2026-11-08 (PR #375, `ee693ead`, made directly by the orchestrator on the operator's word, label
+  `skip-bot-review`; `landings/PLAN-122.md`): the 17 D1 documents read `Status: AGREED`. THE D1 GATE IS CLOSED — D2
+  (PLAN-113) and D3 (PLAN-114) are emittable as direct Claude Code design sessions (D3's PR merges after D2's); D4
+  (PLAN-115) after both. They take the next free slots.
 - PLAN-117 landed (PR #370, `bf24091c`, analysed 2026-11-08); see `landings/PLAN-117.md`. Open: (1) Layer 3, MAJOR,
   reported to the operator 2026-11-08: the terminal reads an unknown running count as 0 — `EpicResource.java:59,164,188-191`
   (`int running`, absent → 0), `EpicViewFormatting.java:86-89` (`0 of N at once`), `WorkActionDialogue.java:292` (never asks,
