@@ -67,6 +67,10 @@ Convert the tests of `pm-operator` to the `pm-dev-java-cui:cui-testing` standard
 
 Checked at `aa3a9be3`. The before-count is 23 of 132 test classes (111 `*Test` + 21 `*IT`) carrying `@EnableGeneratorController` (added by PLAN-26/91/92/94, #357, #358), not 0 of 116; about 109 remain. The HOLD on PLAN-97 is cleared (#358 landed) and PLAN-92 shipped. PR 362 also swept `nonEmptyStrings` to `nonBlankStrings` in the `pm-api` tests: use `nonBlankStrings`.
 
+## Fold 2026-11-08 (PLAN-109 landing)
+
+Source: `landings/PLAN-109.md` (layer 2), a CodeRabbit nitpick on PR #367 that the lane left unanswered and the three-layer reading confirmed. `control.plan.settings` is `Plan-Einstellungen` in `pm-api/src/main/resources/messages/control.de.properties:16` (at `56b43a02`), but no test asserts the German value: `ActionMenusTest` reads locale `en` (`:58`, `:78`, `:105` assert `startsWith("Plan settings")`) and `ControlCatalogueTest` checks key presence and parity only. A revert to `Einstellungen` would pass and bring back the clash with the rail's "Einstellungen" the rename removed. When this plan rewrites `ActionMenusTest`, add one German-locale assertion that entry 3's label starts with `Plan-Einstellungen` (expected catalogue text stays literal). Surface unchanged: the file lies below the claimed `pm-operator/src/test/java/`.
+
 ## Hand-Off Command
 
 Lane: `runbook` (run with opencode).

@@ -631,9 +631,20 @@ plan spec names the plan, proposal and finding documents it comes from.
   Recurrence 2026-11-01: `rb-46-web-command-palette-002.md` (PLAN-46, the landing message, opencode), same two keys.
   Recurrence 2026-11-01: `rb-46-web-command-palette-003.md` (PLAN-46 follow-up) and `rb-37-web-accessibility-baseline-001.md` (PLAN-37, merge_state open), opencode, same two keys each.
   Recurrence 2026-11-01: `rb-26-cli-system-model-001.md` (PLAN-26, opencode), same two keys.
+  Recurrence 2026-11-08: `rb-109-web-rail-settings-label-and-icon-001.md` (PLAN-109, antigravity), `total_tokens`, `model`
+  and `effort` missing (`plugin_version=0.1.0` beside `executor_version=0.1.2080` looks like a placeholder).
 
 ## Watches
 
+- PLAN-109 landed (PR #367, `56b43a02`, analysed 2026-11-08); see `landings/PLAN-109.md`. Open: (1) the merge rule was not
+  met in full: CodeRabbit's first review body carried a nitpick (assert `Plan-Einstellungen`) nobody answered; confirmed by
+  reading and folded into PLAN-79. (2) The collapsed rail's tooltip is the short label (`NavRail.svelte:117` reads
+  `item.labelKey`); `web.frame.settings.title` (long form) is read by no code: a design question for the settings owner
+  (PLAN-60, parked) or D2 navigation. (3) The rewritten e2e locators use `getByRole` name `'Settings'` without
+  `exact: true` (substring match; strict-mode safety is run-only, Playwright not in CI), and `theme-readability.spec.js`
+  `LABELS.settings` is never read. (4) The new cog path matches Lucide's "settings" icon (ISC); no provenance or licence
+  notice is recorded (the icon-licence decision is open in `doc/claude_review`). (5) The lane's "test-first" order is
+  not borne out by the history (production and tests in the same commits `4936c9f3`, `37a70b16`).
 - Fix plans staged 2026-11-01: PLAN-89, PLAN-90, PLAN-91 (see the Decisions entry). PLAN-89 waits for PLAN-37 (the audit helper). PLAN-90's
   seven red e2e tests are the base failures of PLAN-37's third deliverable: when PLAN-90 lands, that gate command can pass. Emit order
   when slots free: PLAN-90 (RUNNING since 2026-11-01; now with deliverable 3, the SystemView words), then PLAN-91
