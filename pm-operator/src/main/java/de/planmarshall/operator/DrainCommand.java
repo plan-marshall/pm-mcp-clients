@@ -103,18 +103,26 @@ public final class DrainCommand implements Callable<Integer> {
         }
         var runtimeRecord = stored.get();
         var handle = processes.apply(runtimeRecord.pid());
-        if (handle.isEmpty() || !handle.get().isAlive()
-                            || handle.get().pid() == ProcessHandle.current().pid()) {
+        if (handle.isEmpty() || !handle.get().isAlive()) {
             return notRunning(out);
         }
         var runtime = handle.get();
         // the process id is an identifier, never a number to group
         var pid = Map.of(PID, String.valueOf(runtime.pid()));
         if (!runtimeRecord.identifies(runtime)) {
+            // The process can exit between the liveness check and the reading of its start
+            // instant: that is a runtime that is gone, not one that cannot be identified.
+            if (!runtime.isAlive()) {
+                return notRunning(out);
+            }
             var err = spec.commandLine().getErr();
             err.println(text("operator.drain.not_identifiable", pid));
             err.flush();
             return PmOperator.EXIT_FAILURE;
+        }
+        if (runtime.pid() == ProcessHandle.current().pid()) {
+            // Never signal ourselves, however well the record matches.
+            return notRunning(out);
         }
         if (!runtime.destroy()) {
             if (!runtime.isAlive()) {

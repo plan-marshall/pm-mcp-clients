@@ -66,8 +66,9 @@ pm-operator epic next <epic_id> [--raise-scope]
 pm-operator epic auto <epic_id> on|off | --common-files <n>
 pm-operator epic decompose <epic_id> [--instruction <text>]
 pm-operator epic archive|findings|watches|chat <epic_id>
-pm-operator epic review|instruct <epic_id> [--instruction <text>]
-                                                          [op]  check the decomposition and agree the cut, or shape one staged plan (19-actions)
+pm-operator epic review <epic_id>                         [op]  check the decomposition and agree the cut (19-actions)
+pm-operator epic instruct <epic_id> --instruction <text> [--plan <plan_id>] [--action edit|add|rewrite]
+                                                          [op]  shape one staged plan and show the read-back (19-actions)
 pm-operator epic cancel <epic_id> [--reason <text>] [--with-plans|--without-plans]
                                                           [op]  act on an epic, or chat; `findings` and `watches` read the review without the checks (19-actions)
 pm-operator web enable|disable [--lan]                    [op]  open the loopback listener, or with --lan the LAN listener beside it; close both

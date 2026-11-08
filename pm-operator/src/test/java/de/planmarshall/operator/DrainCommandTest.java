@@ -266,14 +266,50 @@ class DrainCommandTest {
 
 
     @Test
-    @DisplayName("a runtime that exited before the signal is reported not running with exit 0")
-    void exitedBeforeTheSignalIsNotRunning() throws Exception {
-        var child = recordedRuntime("trap 'exit 0' TERM");
+    @DisplayName("a record that names the console's own process with another start instant is not identifiable")
+    void ownPidWithAnotherStartInstantIsNotIdentifiable() throws Exception {
+        var self = ProcessHandle.current();
+        Files.createDirectories(fixture.paths().stateDir());
+        Files.writeString(fixture.paths().runtimeRecord(), "{\"pid\":" + self.pid()
+                            + ",\"start_instant\":\"2001-01-01T00:00:00Z\"}");
 
-        var code = drainWith(_ -> Optional.of(new FailedSignal(child.pid(), false, Instant.EPOCH)));
+        var code = execute("drain");
+
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code, err.toString()),
+                            () -> assertTrue(err.toString().contains("cannot be identified"), err.toString()),
+                            () -> assertTrue(out.toString().isBlank(), out.toString()));
+    }
+
+    @Test
+    @DisplayName("a record that identifies the console's own process is never signalled")
+    void ownPidIsNeverSignalled() throws Exception {
+        var self = ProcessHandle.current();
+        var start = self.info().startInstant().orElseThrow();
+        Files.createDirectories(fixture.paths().stateDir());
+        Files.writeString(fixture.paths().runtimeRecord(), "{\"pid\":" + self.pid()
+                            + ",\"start_instant\":\"" + start + "\"}");
+
+        var code = execute("drain");
 
         assertAll(
                             () -> assertEquals(0, code, err.toString()),
+                            () -> assertEquals("The runtime is not running; there is nothing to drain.",
+                                                out.toString().strip()));
+    }
+
+    @Test
+    @DisplayName("a runtime that exited before the signal is reported not running with exit 0")
+    void exitedBeforeTheSignalIsNotRunning() throws Exception {
+        var child = recordedRuntime("trap 'exit 0' TERM");
+        var start = child.toHandle().info().startInstant().orElseThrow();
+        var attempted = new AtomicBoolean();
+
+        var code = drainWith(_ -> Optional.of(new FailedSignal(child.pid(), false, start, attempted)));
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(attempted.get(), "the signal was never attempted"),
                             () -> assertEquals("The runtime is not running; there is nothing to drain.",
                                                 out.toString().strip()),
                             () -> assertFalse(err.toString().contains("could not be signalled"), err.toString()));
@@ -285,7 +321,7 @@ class DrainCommandTest {
         var child = recordedRuntime("trap 'exit 0' TERM");
         var start = child.toHandle().info().startInstant().orElseThrow();
 
-        var code = drainWith(_ -> Optional.of(new FailedSignal(child.pid(), true, start)));
+        var code = drainWith(_ -> Optional.of(new FailedSignal(child.pid(), true, start, new AtomicBoolean())));
 
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
@@ -295,14 +331,17 @@ class DrainCommandTest {
     }
 
     /**
-     * A process whose signal fails: {@code destroy()} answers {@code false}, and the process is still
-     * alive or has exited, as the test needs.
+     * A process whose signal fails: {@code destroy()} answers {@code false}. It reports itself alive
+     * until the signal is attempted, so the run reaches {@code destroy()}, and then reports
+     * {@code alive}.
      *
-     * @param pid   the process id it reports
-     * @param alive whether it is still alive after the failed signal
-     * @param start the start instant it reports
+     * @param pid       the process id it reports
+     * @param alive     whether it is still alive after the failed signal
+     * @param start     the start instant it reports
+     * @param attempted set when {@code destroy()} reaches it
      */
-    private record FailedSignal(long pid, boolean alive, Instant start) implements ProcessHandle {
+    private record FailedSignal(long pid, boolean alive, Instant start, AtomicBoolean attempted)
+                        implements ProcessHandle {
 
         @Override
         public Optional<ProcessHandle> parent() {
@@ -336,17 +375,19 @@ class DrainCommandTest {
 
         @Override
         public boolean destroy() {
+            attempted.set(true);
             return false;
         }
 
         @Override
         public boolean destroyForcibly() {
+            attempted.set(true);
             return false;
         }
 
         @Override
         public boolean isAlive() {
-            return alive;
+            return alive || !attempted.get();
         }
 
         @Override

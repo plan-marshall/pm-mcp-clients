@@ -242,15 +242,21 @@ class PmOperatorTest {
                                 .toList();
         }
 
-        @Test
-        @DisplayName("registers only verbs the design's command tree declares")
-        void registersOnlyDesignVerbs() throws Exception {
-            var design = designVerbs();
+        /** The design's verbs that no registered verb answers yet — the open items of `01-commands.adoc`. */
+        private static final Set<String> DOCUMENTED_UNIMPLEMENTED = Set.of(
+                            "profile", "decision-log", "waive", "grant-access", "sweep");
 
-            assertAll(registeredVerbs().stream()
-                                .map(verb -> (Executable) () -> assertTrue(design.contains(verb),
-                                                    verb + " is registered but not in 01-commands.adoc: " + design))
-                                .toList());
+        /** The console's own commands, which the design lists beside the shell verbs. */
+        private static final Set<String> CONSOLE_ONLY = Set.of("help", "exit");
+
+        @Test
+        @DisplayName("registers exactly the verbs the design declares, but the console's own and the open items")
+        void registersTheDesignsVerbs() throws Exception {
+            var expected = new TreeSet<>(designVerbs());
+            expected.removeAll(DOCUMENTED_UNIMPLEMENTED);
+            expected.removeAll(CONSOLE_ONLY);
+
+            assertEquals(expected, new TreeSet<>(registeredVerbs()));
         }
 
         @ParameterizedTest(name = "{0}")
