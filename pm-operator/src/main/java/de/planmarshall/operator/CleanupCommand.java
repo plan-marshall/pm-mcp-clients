@@ -12,9 +12,12 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import org.jspecify.annotations.Nullable;
 
@@ -22,8 +25,10 @@ import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.runtime.RuntimeUnavailableException;
+import de.planmarshall.api.system.CleanupItemEntry;
 import de.planmarshall.api.system.CleanupJob;
 import de.planmarshall.api.system.CleanupKeptItem;
+import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Model.CommandSpec;
@@ -32,10 +37,23 @@ import picocli.CommandLine.Spec;
 
 /**
  * {@code pm-operator cleanup}: review open cleanup jobs, delete, remind, ignore, or release kept items.
+ *
+ * <p>In the console the printed job is followed by the decision it leads to
+ * ({@code 26-cleanup.adoc#t-job}): a {@link ChoicePrompt} bar of {@code d r i x o q}, the delete
+ * confirmed with {@code y}/{@code n} alone. As one shell command the verb prints and exits, and
+ * {@code --delete} asks its confirmation where a terminal is attached.
  */
 @Command(name = "cleanup", description = "Cleanup operations: view open jobs, delete, remind, ignore, or manage kept items.")
 @OperatorVerb
 public final class CleanupCommand implements Callable<Integer> {
+
+    /** The choice is still open: the caller shows the job and asks again. */
+    private static final int ASK_AGAIN = -1;
+
+    private static final String DECISION_STATE = "cleanup.job";
+    private static final String CONFIRM_STATE = "cleanup.confirm";
+    private static final String LEAVE_OUT_STATE = "cleanup.leave_out";
+    private static final String OPEN_STATE = "cleanup.open";
 
     private final OperatorContext context;
 
@@ -102,6 +120,11 @@ public final class CleanupCommand implements Callable<Integer> {
                 return executeDelete(out, err);
             }
             return showCleanup(out);
+        } catch (StartPrompt.InterruptException _) {
+            return StartPrompt.EXIT_INTERRUPTED;
+        } catch (StartPrompt.StartLeftException _) {
+            // q left the dialogue: what it printed says that nothing was sent
+            return 0;
         } catch (RuntimeUnavailableException _) {
             out.println("runtime   not running");
             out.flush();
@@ -269,43 +292,24 @@ public final class CleanupCommand implements Callable<Integer> {
             }
         }
 
-        int totalPlans = job.summary().plansCount() - (int) uncheckedIds.stream().filter(id -> id.contains("relay") || id.contains("typo")).count();
-        int totalEpics = job.summary().epicsCount();
-        int totalLogs = job.summary().logsCount() - (uncheckedIds.contains("token-usage") ? 11 : 0);
-        int totalReports = job.summary().reportsCount();
-        int totalProjects = job.summary().projectsCount();
-        long freedBytes = uncheckedIds.contains("token-usage") ? 1825361100L : job.summary().freedBytes();
-
+        var preview = deletePreview(job, uncheckedIds);
         if (!yes) {
-            out.printf("Delete %d plans, %d epics, %d logs, %d read reports, and %d unenrolled project?%n",
-                                totalPlans, totalEpics, totalLogs, totalReports, totalProjects);
-            out.printf("  This frees %s. It cannot be undone.%n", SystemCommand.formatBytes(freedBytes));
-            out.println("  Branches, pull requests, the remote, the checkout, and an epic's ledger in the");
-            out.println("  repository stay.");
-            if (!uncheckedIds.isEmpty()) {
-                out.printf("  %d unchecked item is kept for good.%n", uncheckedIds.size());
-            }
             if (noInput) {
+                out.println(previewText(preview, uncheckedIds.size()));
                 out.println("Needs a choice: --yes");
                 out.flush();
                 return 3;
             }
-        }
-
-        var deleteBody = JsonTree.write(Map.of("unchecked_ids", uncheckedIds));
-        var res = runtime.send(HttpRequest.post("/api/v1/system/cleanup/" + job.jobId() + "/delete").withBody(deleteBody));
-        if (res.status() == 409) {
-            out.println("The runtime is stopping; nothing new starts.");
+            if (context.isInteractiveTerminal()) {
+                // The consent prompt prints the preview itself, after it opened the reader: a
+                // preview printed before JLine takes the terminal is erased by its first draw.
+                return askDeleteConsent(out, preview, uncheckedIds.size())
+                                    ? sendDelete(out, job, uncheckedIds, preview) : 0;
+            }
+            out.println(previewText(preview, uncheckedIds.size()));
             out.flush();
-            return 1;
         }
-        if (res.status() == 200) {
-            out.printf("✓ Deleted %d plans, %d epics, %d logs, %d read reports, and %d unenrolled project; %s freed.%n",
-                                totalPlans, totalEpics, totalLogs, totalReports, totalProjects, SystemCommand.formatBytes(freedBytes));
-            out.flush();
-            return 0;
-        }
-        throw new OperatorRefusedException("cleanup --delete", res);
+        return sendDelete(out, job, uncheckedIds, preview);
     }
 
     private int showCleanup(PrintWriter out) throws IOException {
@@ -338,6 +342,63 @@ public final class CleanupCommand implements Callable<Integer> {
         }
 
         var job = CleanupJob.fromJson(res.bodyText());
+        if (!context.isConsoleActive() || noInput) {
+            printJob(out, job, Set.of());
+            return 0;
+        }
+        return decide(out, job);
+    }
+
+    /**
+     * Runs the decision the printed job leads to ({@code 26-cleanup.adoc#t-job}): the keyed choice
+     * bar, the leave-out toggle, the read-only open, and the delete's own {@code y}/{@code n}
+     * confirmation. {@code q} leaves without sending, and so does {@code n} at the confirmation,
+     * which returns to the bar.
+     *
+     * @param out the verb's writer
+     * @param job the open cleanup job
+     * @return the exit code of the decision the operator took
+     * @throws IOException on transport failure
+     */
+    private int decide(PrintWriter out, CleanupJob job) throws IOException {
+        var err = spec.commandLine().getErr();
+        var leftOut = new LinkedHashSet<String>();
+        var items = printJob(out, job, leftOut);
+        while (true) {
+            var chosen = decisionPrompt(out).ask();
+            var code = switch (chosen.key()) {
+                case "d" -> deleteFromDialogue(out, job, leftOut);
+                case "r" -> executeRemind(out, err);
+                case "i" -> executeIgnore(out, err);
+                case "x" -> {
+                    leaveOut(out, items, leftOut);
+                    yield ASK_AGAIN;
+                }
+                case "o" -> {
+                    openItem(out, err, items);
+                    yield ASK_AGAIN;
+                }
+                default -> ASK_AGAIN;
+            };
+            if (code != ASK_AGAIN) {
+                return code;
+            }
+            items = printJob(out, job, leftOut);
+        }
+    }
+
+    /**
+     * Prints the open job, with every item the operator left out marked, and returns the items in
+     * the order they are numbered on screen so a number answers the leave-out and open questions.
+     *
+     * @param out     the verb's writer
+     * @param job     the open cleanup job
+     * @param leftOut the item ids kept for good so far
+     * @return the printed items, in their numbering order
+     */
+    private List<CleanupItemEntry> printJob(PrintWriter out, CleanupJob job, Set<String> leftOut) {
+        var locale = context.clientEnvironment().locale();
+        var items = new ArrayList<CleanupItemEntry>();
         out.printf("Cleanup %s · due since %s%n", job.jobId(), OutputSafety.stripControlSequences(job.dueSince()));
         var s = job.summary();
         out.printf("Summary   %d plans · %d epics · %d logs · %d read reports · %d unenrolled project%n",
@@ -354,22 +415,26 @@ public final class CleanupCommand implements Callable<Integer> {
             }
 
             for (var item : prj.items()) {
+                items.add(item);
                 var glyph = glyphForKind(item.kind());
                 var title = OutputSafety.stripControlSequences(item.title());
                 var outcome = item.outcome() != null ? OutputSafety.stripControlSequences(item.outcome()) : "";
-                var ended = item.endedAt() != null ? "ended " + OutputSafety.stripControlSequences(item.endedAt()) : "";
+                var ended = item.endedAt() != null ? endedText(item.endedAt()) : "";
                 var size = item.sizeBytes() > 0 ? SystemCommand.formatBytes(item.sizeBytes()) : "";
                 var logs = item.logsCount() > 0 ? item.logsCount() + (item.logsCount() == 1 ? " log" : " logs") : "";
                 var note = item.keptUntil() != null ? OutputSafety.stripControlSequences(item.keptUntil()) : "";
+                var mark = leftOut.contains(item.id())
+                                    ? " " + MessageCatalogue.format(locale, "operator.cleanup.choose.kept_for_good", Map.of())
+                                    : "";
 
                 if ("reports".equalsIgnoreCase(item.kind())) {
-                    out.printf("   %2d)   %-18s %s%n", itemIndex++, title, note);
+                    out.printf("   %2d)   %-18s %s%s%n", itemIndex++, title, note, mark);
                 } else if ("logs".equalsIgnoreCase(item.kind())) {
-                    out.printf("   %2d)   %-18s %-32s %6s %8s%n", itemIndex++, title, note, size, logs);
+                    out.printf("   %2d)   %-18s %-32s %6s %8s%s%n", itemIndex++, title, note, size, logs, mark);
                 } else if (isUnenrolled) {
-                    out.printf("  %3d) %s %-18s %-36s %s%n", itemIndex++, glyph, title, note, size);
+                    out.printf("  %3d) %s %-18s %-36s %s%s%n", itemIndex++, glyph, title, note, size, mark);
                 } else {
-                    out.printf("   %2d) %s %-18s %-17s %-14s %6s %8s%n", itemIndex++, glyph, title, outcome, ended, size, logs);
+                    out.printf("   %2d) %s %-18s %-17s %-14s %6s %8s%s%n", itemIndex++, glyph, title, outcome, ended, size, logs, mark);
                 }
             }
         }
@@ -377,7 +442,232 @@ public final class CleanupCommand implements Callable<Integer> {
         out.printf("Kept for good %d (cleanup --kept) · durations 30 days, reminder 3 days · last sweep %s%n",
                             s.keptForGoodCount(), OutputSafety.stripControlSequences(s.lastSweepAt()));
         out.flush();
-        return 0;
+        return items;
+    }
+
+    /**
+     * Names the end of an item without ever doubling the word: a runtime that already sends
+     * {@code ended 12 Sep} reads as it is, a bare date gets the word in front
+     * ({@code 26-cleanup.adoc#t-job}).
+     *
+     * @param endedAt the item's end as the runtime reports it
+     * @return the rendered end
+     */
+    static String endedText(String endedAt) {
+        var text = OutputSafety.stripControlSequences(endedAt);
+        return text.regionMatches(true, 0, "ended ", 0, "ended ".length()) ? text : "ended " + text;
+    }
+
+    private ChoicePrompt decisionPrompt(PrintWriter out) {
+        var locale = context.clientEnvironment().locale();
+        var prompt = new ChoicePrompt(new StartPrompt(context, out, locale, false), DECISION_STATE)
+                            .leaveLabel(cleanupLabel(locale))
+                            .keyed()
+                            .leaveKeyLabel(MessageCatalogue.format(locale, "operator.cleanup.choose.leave", Map.of()));
+        prompt.addChoice("d", MessageCatalogue.format(locale, "operator.cleanup.choose.delete", Map.of()));
+        prompt.addChoice("r", MessageCatalogue.format(locale, "operator.cleanup.choose.remind", Map.of()));
+        prompt.addChoice("i", MessageCatalogue.format(locale, "operator.cleanup.choose.ignore", Map.of()));
+        prompt.addChoice("x", MessageCatalogue.format(locale, "operator.cleanup.choose.leave_out", Map.of()));
+        prompt.addChoice("o", MessageCatalogue.format(locale, "operator.cleanup.choose.open", Map.of()));
+        return prompt;
+    }
+
+    private int deleteFromDialogue(PrintWriter out, CleanupJob job, Set<String> leftOut) throws IOException {
+        var uncheckedIds = new ArrayList<>(leftOut);
+        var preview = deletePreview(job, uncheckedIds);
+        if (!askDeleteConsent(out, preview, uncheckedIds.size())) {
+            return ASK_AGAIN;
+        }
+        return sendDelete(out, job, uncheckedIds, preview);
+    }
+
+    /**
+     * Asks the delete's own confirmation, which no Enter answers: {@code y} sends, {@code n}
+     * returns to the choice, {@code q} leaves with nothing sent. The preview is the prompt's title,
+     * so an unknown key re-asks it whole.
+     *
+     * @param out      the verb's writer
+     * @param preview  the counts the delete would remove
+     * @param unchecked how many items are kept for good
+     * @return {@code true} when the delete may be sent
+     */
+    private boolean askDeleteConsent(PrintWriter out, DeletePreview preview, int unchecked) {
+        var locale = context.clientEnvironment().locale();
+        var consent = new ChoicePrompt(new StartPrompt(context, out, locale, false), CONFIRM_STATE)
+                            .leaveLabel(cleanupLabel(locale));
+        consent.title(previewText(preview, unchecked) + "\n"
+                            + MessageCatalogue.format(locale, "operator.cleanup.choose.delete_confirm", Map.of()));
+        return consent.askConsent();
+    }
+
+    private int sendDelete(PrintWriter out, CleanupJob job, List<String> uncheckedIds, DeletePreview preview) throws IOException {
+        var deleteBody = JsonTree.write(Map.of("unchecked_ids", uncheckedIds));
+        var res = context.runtime(true).send(
+                            HttpRequest.post("/api/v1/system/cleanup/" + job.jobId() + "/delete").withBody(deleteBody));
+        if (res.status() == 409) {
+            out.println("The runtime is stopping; nothing new starts.");
+            out.flush();
+            return 1;
+        }
+        if (res.status() == 200) {
+            out.printf("✓ Deleted %d plans, %d epics, %d logs, %d read reports, and %d unenrolled project; %s freed.%n",
+                                preview.plans(), preview.epics(), preview.logs(), preview.reports(),
+                                preview.projects(), SystemCommand.formatBytes(preview.freedBytes()));
+            out.flush();
+            return 0;
+        }
+        throw new OperatorRefusedException("cleanup --delete", res);
+    }
+
+    /**
+     * The counts a delete leaves once the unchecked items stay: the job's summary less each of
+     * those items, so the preview follows what the operator left out
+     * ({@code 26-cleanup.adoc#t-job}).
+     *
+     * @param job          the open cleanup job
+     * @param uncheckedIds the ids kept for good
+     * @return the counts the delete would remove
+     */
+    static DeletePreview deletePreview(CleanupJob job, List<String> uncheckedIds) {
+        var s = job.summary();
+        int plans = s.plansCount();
+        int epics = s.epicsCount();
+        int logs = s.logsCount();
+        int reports = s.reportsCount();
+        int projects = s.projectsCount();
+        long freed = s.freedBytes();
+        for (var item : allItems(job)) {
+            if (!uncheckedIds.contains(item.id())) {
+                continue;
+            }
+            switch (item.kind().toLowerCase(Locale.ROOT)) {
+                case "plan" -> plans--;
+                case "epic" -> epics--;
+                case "project" -> projects--;
+                case "reports" -> reports -= item.readReportsCount() > 0 ? item.readReportsCount() : 1;
+                default -> {
+                    // a logs entry removes its logs, counted below
+                }
+            }
+            logs -= item.logsCount();
+            freed -= item.sizeBytes();
+        }
+        return new DeletePreview(Math.max(plans, 0), Math.max(epics, 0), Math.max(logs, 0),
+                            Math.max(reports, 0), Math.max(projects, 0), Math.max(freed, 0L));
+    }
+
+    private String previewText(DeletePreview preview, int unchecked) {
+        var text = new StringBuilder();
+        text.append(String.format("Delete %d plans, %d epics, %d logs, %d read reports, and %d unenrolled project?%n",
+                            preview.plans(), preview.epics(), preview.logs(), preview.reports(), preview.projects()));
+        text.append(String.format("  This frees %s. It cannot be undone.%n", SystemCommand.formatBytes(preview.freedBytes())));
+        text.append("  Branches, pull requests, the remote, the checkout, and an epic's ledger in the").append('\n');
+        text.append("  repository stay.");
+        if (unchecked > 0) {
+            text.append(String.format("%n  %d unchecked item is kept for good.", unchecked));
+        }
+        return text.toString();
+    }
+
+    /**
+     * Marks items for keeping, or puts a marked one back: {@code x} asks numbers, ids, or
+     * {@code kind:id}, and the bar returns so the delete can follow.
+     *
+     * @param out     the verb's writer
+     * @param items   the printed items, in numbering order
+     * @param leftOut the item ids kept for good so far, toggled in place
+     */
+    private void leaveOut(PrintWriter out, List<CleanupItemEntry> items, Set<String> leftOut) {
+        var locale = context.clientEnvironment().locale();
+        var prompt = new StartPrompt(context, out, locale, false);
+        var question = MessageCatalogue.format(locale, "operator.cleanup.leave_out", Map.of("items", ""));
+        var answer = prompt.askRaw(question, LEAVE_OUT_STATE, question, null);
+        if (answer.isEmpty() || ChoicePrompt.isLeave(locale, answer)) {
+            return;
+        }
+        for (var token : answer.split("[\\s,]+")) {
+            if (token.isBlank()) {
+                continue;
+            }
+            var item = findItem(items, token);
+            if (item == null) {
+                out.println(MessageCatalogue.format(locale, "operator.cleanup.not_in_job", Map.of("id", token)));
+            } else if (!leftOut.add(item.id())) {
+                leftOut.remove(item.id());
+            }
+        }
+        out.flush();
+    }
+
+    /**
+     * Opens a plan or an epic read-only, as ended work opens it ({@code plan <plan_id>} for a plan,
+     * {@code epic <epic_id>} for an epic); a logs, reports, or project entry has no view.
+     *
+     * @param out   the verb's writer
+     * @param err   the verb's error writer
+     * @param items the printed items, in numbering order
+     */
+    private void openItem(PrintWriter out, PrintWriter err, List<CleanupItemEntry> items) {
+        var locale = context.clientEnvironment().locale();
+        var prompt = new StartPrompt(context, out, locale, false);
+        var question = MessageCatalogue.format(locale, "operator.cleanup.choose.open_prompt", Map.of());
+        var answer = prompt.askRaw(question, OPEN_STATE, question, null);
+        if (answer.isEmpty() || ChoicePrompt.isLeave(locale, answer)) {
+            return;
+        }
+        var item = findItem(items, answer);
+        if (item == null) {
+            out.println(MessageCatalogue.format(locale, "operator.cleanup.not_in_job", Map.of("id", answer)));
+            out.flush();
+            return;
+        }
+        if ("plan".equalsIgnoreCase(item.kind())) {
+            PmOperator.execute(context, out, err, "plan", item.id());
+            return;
+        }
+        if ("epic".equalsIgnoreCase(item.kind())) {
+            PmOperator.execute(context, out, err, "epic", item.id());
+            return;
+        }
+        out.println(MessageCatalogue.format(locale, "operator.cleanup.choose.open_work_only",
+                            Map.of("item", OutputSafety.stripControlSequences(item.title()))));
+        out.flush();
+    }
+
+    private static @Nullable CleanupItemEntry findItem(List<CleanupItemEntry> items, String token) {
+        try {
+            var index = Integer.parseInt(token);
+            return index >= 1 && index <= items.size() ? items.get(index - 1) : null;
+        } catch (NumberFormatException _) {
+            // an id, or kind:id, names the item below
+        }
+        for (var item : items) {
+            if (item.id().equals(token) || (item.kind() + ":" + item.id()).equalsIgnoreCase(token)) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    private static List<CleanupItemEntry> allItems(CleanupJob job) {
+        return job.projectItems().stream().flatMap(prj -> prj.items().stream()).toList();
+    }
+
+    private String cleanupLabel(String locale) {
+        return MessageCatalogue.format(locale, "operator.dialogue.label.cleanup", Map.of());
+    }
+
+    /**
+     * The counts of one delete.
+     *
+     * @param plans      plans removed
+     * @param epics      epics removed
+     * @param logs       logs removed
+     * @param reports    read reports removed
+     * @param projects   unenrolled projects removed
+     * @param freedBytes bytes freed
+     */
+    record DeletePreview(int plans, int epics, int logs, int reports, int projects, long freedBytes) {
     }
 
     private static String glyphForKind(String kind) {

@@ -14,7 +14,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.planmarshall.mock.StandardScenarios;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -26,7 +25,6 @@ import org.junit.jupiter.api.condition.OS;
  */
 @DisplayName("pm-operator cleanup dialogue on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
-@Disabled("PLAN-23-cli-cleanup-dialogue gives cleanup its dialogue")
 class CleanupDialogueIT {
 
     private static final String PROMPT = "cannot be undone";

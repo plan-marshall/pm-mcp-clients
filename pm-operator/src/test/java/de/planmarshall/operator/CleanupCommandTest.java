@@ -11,6 +11,7 @@ package de.planmarshall.operator;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -289,7 +290,7 @@ class CleanupCommandTest {
         var output = out.toString();
         assertAll(
                             () -> assertEquals(3, code),
-                            () -> assertTrue(output.contains("Delete 12 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project?")),
+                            () -> assertTrue(output.contains("Delete 12 plans, 2 epics, 40 logs, 5 read reports, and 1 unenrolled project?")),
                             () -> assertTrue(output.contains("1 unchecked item is kept for good.")),
                             () -> assertTrue(output.contains("Needs a choice: --yes"))
         );
@@ -315,7 +316,7 @@ class CleanupCommandTest {
         var output = out.toString();
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(output.contains("✓ Deleted 12 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project; 1.7 GB freed."))
+                            () -> assertTrue(output.contains("✓ Deleted 12 plans, 2 epics, 40 logs, 5 read reports, and 1 unenrolled project; 1.8 GB freed."))
         );
     }
 
@@ -420,5 +421,52 @@ class CleanupCommandTest {
         int code = execute("cleanup", "--kept");
         assertEquals(0, code);
         assertTrue(out.toString().contains("Nothing is kept for good."));
+    }
+
+    @Test
+    @DisplayName("an item's end never carries the word twice")
+    void cleanupEndedWordIsNeverDoubled() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var item = new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged (#214)",
+                            "ended 12 Sep", 88080384L, 6, 0, null);
+        var project = new CleanupProjectItem("pm-mcp-clients", 1, 0, 6, 0, 88080384L, List.of(item));
+        var summary = new CleanupSummary(1, 0, 6, 0, 0, 88080384L, 0, "today 03:00", "tomorrow 03:00");
+        var job = new CleanupJob("cln-0007", CleanupJobState.OPEN, "today 03:00", summary, List.of(project), Map.of());
+
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup".equals(request.target())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        execute("cleanup");
+        var output = out.toString();
+        assertAll(
+                            () -> assertTrue(output.contains("ended 12 Sep"), output),
+                            () -> assertFalse(output.contains("ended ended"), output)
+        );
+    }
+
+    @Test
+    @DisplayName("the delete preview follows the items left out")
+    void deletePreviewFollowsTheItemsLeftOut() {
+        var item = new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged (#214)",
+                            "12 Sep", 88080384L, 6, 0, null);
+        var project = new CleanupProjectItem("pm-mcp-clients", 1, 0, 6, 0, 88080384L, List.of(item));
+        var summary = new CleanupSummary(3, 2, 40, 5, 1, 1932735283L, 4, "today 03:00", "tomorrow 03:00");
+        var job = new CleanupJob("cln-0007", CleanupJobState.OPEN, "today 03:00", summary, List.of(project), Map.of());
+
+        var preview = CleanupCommand.deletePreview(job, List.of("fix-relay"));
+
+        assertAll(
+                            () -> assertEquals(2, preview.plans()),
+                            () -> assertEquals(2, preview.epics()),
+                            () -> assertEquals(34, preview.logs()),
+                            () -> assertEquals(5, preview.reports()),
+                            () -> assertEquals(1, preview.projects()),
+                            () -> assertEquals(1844654899L, preview.freedBytes())
+        );
     }
 }

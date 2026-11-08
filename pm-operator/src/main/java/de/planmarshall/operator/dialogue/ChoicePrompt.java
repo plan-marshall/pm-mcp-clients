@@ -42,6 +42,9 @@ import de.planmarshall.operator.StartPrompt;
  *   <li>Unknown input re-asks with offered keys; never falls through to a default</li>
  *   <li>Consent and irreversible acts have no Enter default (re-prompts with {@code "Type y or n."})</li>
  *   <li>Options with consequences render in an aligned two-column layout with {@code ←} on preselection</li>
+ *   <li>A keyed prompt ({@link #keyed()}) draws its choices as one bar of {@code key) label} parts,
+ *       matched by key alone; the edit action bar of {@code 19-actions.adoc} and the cleanup
+ *       decision of {@code 26-cleanup.adoc} are its shape</li>
  * </ul>
  */
 public final class ChoicePrompt {
@@ -56,6 +59,7 @@ public final class ChoicePrompt {
     }
 
     private static final String PRESELECT_ARROW = " \u2190";
+    private static final String KEYED_GAP = "   ";
     private static final int MAX_ROW = 80;
     private static final int MIN_CONSEQUENCE_COLUMN = 20;
 
@@ -104,6 +108,8 @@ public final class ChoicePrompt {
     private boolean noInput;
     private @Nullable String leaveLabel;
     private @Nullable String keepLabel;
+    private boolean keyed;
+    private @Nullable String leaveKeyLabel;
 
     /**
      * Creates a choice prompt over a JLine {@link LineReader}.
@@ -215,6 +221,33 @@ public final class ChoicePrompt {
      */
     public ChoicePrompt keepKey(String label) {
         this.keepLabel = Objects.requireNonNull(label, "label");
+        return this;
+    }
+
+    /**
+     * Draws the choices as one bar of {@code key) label} parts instead of the numbered list, and
+     * answers them by key alone: the shape a decision takes where its keys are the interface
+     * ({@code d) delete…   r) ask me again   …   q) leave} of {@code 26-cleanup.adoc}).
+     *
+     * <p>The bar wraps at the dialogue width; the chosen answer is not echoed, because the bar
+     * already names it.
+     *
+     * @return this prompt
+     */
+    public ChoicePrompt keyed() {
+        this.keyed = true;
+        return this;
+    }
+
+    /**
+     * Names the single key that leaves a keyed prompt, drawn as the last part of the bar. Without
+     * it the leave key ({@code q}, German {@code v}) still leaves, but the bar does not name it.
+     *
+     * @param label the rendered label, without its key
+     * @return this prompt
+     */
+    public ChoicePrompt leaveKeyLabel(String label) {
+        this.leaveKeyLabel = Objects.requireNonNull(label, "label");
         return this;
     }
 
@@ -364,9 +397,11 @@ public final class ChoicePrompt {
     }
 
     private @Nullable Choice match(String line) {
-        var number = numberOf(line);
-        if (number != null) {
-            return choices.get(number - 1);
+        if (!keyed) {
+            var number = numberOf(line);
+            if (number != null) {
+                return choices.get(number - 1);
+            }
         }
         for (var choice : choices) {
             if (choice.key().equalsIgnoreCase(line)) {
@@ -386,8 +421,10 @@ public final class ChoicePrompt {
     }
 
     private Choice echoed(Choice choice) {
-        out.println(MessageCatalogue.format(locale, "operator.dialogue.answer", Map.of("answer", choice.label())));
-        out.flush();
+        if (!keyed) {
+            out.println(MessageCatalogue.format(locale, "operator.dialogue.answer", Map.of("answer", choice.label())));
+            out.flush();
+        }
         return choice;
     }
 
@@ -471,13 +508,46 @@ public final class ChoicePrompt {
 
     private void renderFrame() {
         printTitle();
-        var labelWidth = labelWidth();
-        for (var i = 0; i < choices.size(); i++) {
-            printChoice(i, labelWidth);
+        if (keyed) {
+            printKeyedBar();
+        } else {
+            var labelWidth = labelWidth();
+            for (var i = 0; i < choices.size(); i++) {
+                printChoice(i, labelWidth);
+            }
         }
         printKeep();
         printEpicTold();
         out.flush();
+    }
+
+    /**
+     * Draws the keyed bar: every choice as {@code key) label}, the declared leave key last, wrapped
+     * at the dialogue width so a narrow terminal never breaks a part.
+     */
+    private void printKeyedBar() {
+        var parts = new ArrayList<String>();
+        for (var choice : choices) {
+            parts.add(choice.key() + ") " + choice.label());
+        }
+        if (leaveKeyLabel != null) {
+            parts.add(leaveKey() + ") " + leaveKeyLabel);
+        }
+        var width = MAX_ROW;
+        var line = new StringBuilder();
+        for (var part : parts) {
+            if (!line.isEmpty() && line.length() + KEYED_GAP.length() + part.length() > width) {
+                out.println(line);
+                line.setLength(0);
+            }
+            if (!line.isEmpty()) {
+                line.append(KEYED_GAP);
+            }
+            line.append(part);
+        }
+        if (!line.isEmpty()) {
+            out.println(line);
+        }
     }
 
     private void printKeep() {
@@ -568,6 +638,7 @@ public final class ChoicePrompt {
     private void printTitle() {
         if (title != null) {
             out.println(title);
+            out.flush();
         }
     }
 
@@ -614,6 +685,10 @@ public final class ChoicePrompt {
 
     private String keepKey() {
         return isGerman() ? "l" : "k";
+    }
+
+    private String leaveKey() {
+        return isGerman() ? "v" : "q";
     }
 
     /**
@@ -711,6 +786,17 @@ public final class ChoicePrompt {
     }
 
     private String formatOffered() {
+        if (keyed) {
+            var offered = new StringBuilder();
+            for (var choice : choices) {
+                if (!offered.isEmpty()) {
+                    offered.append(", ");
+                }
+                offered.append(choice.key());
+            }
+            appendLeaveAndKeep(offered);
+            return offered.toString();
+        }
         var sb = new StringBuilder();
         if (!choices.isEmpty()) {
             if (choices.size() == 1) {
@@ -719,17 +805,20 @@ public final class ChoicePrompt {
                 sb.append("1-").append(choices.size());
             }
         }
-        var leaveKey = isGerman() ? "v" : "q";
-        if (!sb.isEmpty()) {
-            sb.append(", ");
+        appendLeaveAndKeep(sb);
+        return sb.toString();
+    }
+
+    private void appendLeaveAndKeep(StringBuilder offered) {
+        if (!offered.isEmpty()) {
+            offered.append(", ");
         }
-        sb.append(leaveKey);
+        offered.append(leaveKey());
         if (keepLabel != null) {
-            sb.append(", ").append(keepKey());
+            offered.append(", ").append(keepKey());
         }
         if (hasExplanation()) {
-            sb.append(", ?");
+            offered.append(", ?");
         }
-        return sb.toString();
     }
 }

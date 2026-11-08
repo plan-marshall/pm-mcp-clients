@@ -107,8 +107,7 @@ class ChoicePromptTest {
 
     @Test
     @DisplayName("rule 3: picks multi-selection ranges and toggles")
-    void picksMultiSelectionRanges() {
-        var out = new StringWriter();
+    void picksMultiSelectionRanges() {        var out = new StringWriter();
         var prompt = createPrompt("1-2\nEnter\n", out, "en");
         prompt.addChoice("opt1", "Option 1");
         prompt.addChoice("opt2", "Option 2");
@@ -475,5 +474,69 @@ class ChoicePromptTest {
         var output = out.toString();
         assertTrue(output.contains("l) lass sie laufen"), output);
         assertTrue(output.contains("1-2, v, l"), output);
+    }
+
+    @Test
+    @DisplayName("rule 15: a keyed prompt draws the bar of keys and answers it by key alone")
+    void keyedPromptDrawsTheBarAndAnswersByKey() {
+        var out = new StringWriter();
+        var prompt = keyedPrompt("d\n", out, "en");
+
+        var chosen = prompt.ask();
+        var output = out.toString();
+        assertEquals("d", chosen.key());
+        assertTrue(output.contains("d) delete…   r) ask me again   i) ignore"), output);
+        assertTrue(output.contains("q) leave"), output);
+        assertFalse(output.contains("1) "), output);
+        assertFalse(output.contains("Chosen:"), output);
+    }
+
+    @Test
+    @DisplayName("rule 15: a keyed prompt rejects a number and offers its keys, never the numbers")
+    void keyedPromptRejectsANumber() {
+        var out = new StringWriter();
+        var prompt = keyedPrompt("1\nd\n", out, "en");
+
+        prompt.ask();
+        var output = out.toString();
+        assertTrue(output.contains("1 is not offered here: d, r, i, x, o, q"), output);
+    }
+
+    @Test
+    @DisplayName("rule 15: the German keyed bar names v as the leave key")
+    void keyedPromptIsGerman() {
+        var out = new StringWriter();
+        var prompt = keyedPrompt("v\n", out, "de");
+
+        assertThrows(StartPrompt.StartLeftException.class, prompt::ask);
+        assertTrue(out.toString().contains("v) verlassen"), out.toString());
+    }
+
+    @Test
+    @DisplayName("rule 15: the keyed bar wraps at 80 columns and never breaks a part")
+    void keyedBarWrapsAtTheDialogueWidth() {
+        var out = new StringWriter();
+        var prompt = createPrompt("q\n", out, "en").keyed().leaveKeyLabel("leave");
+        prompt.addChoice("d", "delete…");
+        prompt.addChoice("r", "ask me again in some future days");
+        prompt.addChoice("i", "ignore");
+        prompt.addChoice("x", "leave items out");
+        prompt.addChoice("o", "open");
+
+        assertThrows(StartPrompt.StartLeftException.class, prompt::ask);
+        var bar = out.toString().lines().filter(line -> line.contains(") ")).toList();
+        assertTrue(bar.size() > 1, out.toString());
+        bar.forEach(line -> assertTrue(line.length() <= 80, line));
+        assertTrue(out.toString().contains("ask me again in some future days"), out.toString());
+    }
+
+    private ChoicePrompt keyedPrompt(String input, StringWriter out, String locale) {
+        var prompt = createPrompt(input, out, locale).keyed().leaveKeyLabel(locale.equals("de") ? "verlassen" : "leave");
+        prompt.addChoice("d", "delete…");
+        prompt.addChoice("r", "ask me again");
+        prompt.addChoice("i", "ignore");
+        prompt.addChoice("x", "leave items out");
+        prompt.addChoice("o", "open");
+        return prompt;
     }
 }
