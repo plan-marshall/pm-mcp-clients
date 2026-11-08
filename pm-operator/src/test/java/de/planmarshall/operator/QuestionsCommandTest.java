@@ -1137,7 +1137,7 @@ class QuestionsCommandTest {
 
     @Test
     @DisplayName("direct answer actions waive and decline require reason")
-    void answerDirectActionsRequireReason() throws Exception {
+    void answerDirectActionsRequireReason() {
         int codeWaive = execute("answer", "WR-1", "--action", "waive");
         assertEquals(3, codeWaive);
         assertTrue(out.toString().contains("A reason is required") || out.toString().contains("Ein Grund ist erforderlich"));

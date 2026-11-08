@@ -14,6 +14,7 @@ import java.io.PrintWriter;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.OptionalInt;
 import java.util.concurrent.Callable;
 import java.util.stream.Collectors;
 import org.jline.reader.EndOfFileException;
@@ -69,7 +70,6 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private static final String API_V1_DECISIONS = "/api/v1/decisions/";
     private static final String API_V1_PLANS = "/api/v1/plans/";
-    private static final String PATH_DECISIONS = "/decisions/";
     private static final String PATH_ANSWER = "/answer";
     private static final String PATH_WITHDRAW = "/withdraw";
     private static final String PATH_INTERPRET = "/interpret";
@@ -128,9 +128,7 @@ public final class AnswerCommand implements Callable<Integer> {
 
         if (option == null && (words == null || words.isBlank()) && (action == null || action.isBlank())) {
             var safeQid = OperatorUrlUtil.encodePathSegment(questionId);
-            var qPath = plan != null
-                                ? API_V1_PLANS + OperatorUrlUtil.encodePathSegment(plan) + PATH_DECISIONS + safeQid
-                                : API_V1_DECISIONS + safeQid;
+            var qPath = resolveDecisionPath(safeQid);
             var qResponse = runtime.send(HttpRequest.get(qPath));
             if (qResponse.status() == 404) {
                 out.println(MessageCatalogue.format(locale, "operator.decision.not_found", Map.of(ID_KEY, questionId)));
@@ -341,9 +339,7 @@ public final class AnswerCommand implements Callable<Integer> {
         }
         if (note != null) payload.put("note", note);
 
-        var answerPath = plan != null
-                            ? API_V1_PLANS + OperatorUrlUtil.encodePathSegment(plan) + PATH_DECISIONS + safeQid + PATH_ANSWER
-                            : API_V1_DECISIONS + safeQid + PATH_ANSWER;
+        var answerPath = resolveDecisionPath(safeQid) + PATH_ANSWER;
 
         var response = runtime.send(HttpRequest.json("POST", answerPath, JsonTree.write(payload)));
         if (response.status() == 404) {
@@ -356,10 +352,15 @@ public final class AnswerCommand implements Callable<Integer> {
         throw new OperatorRefusedException("answer " + questionId, response);
     }
 
+    private String resolveDecisionPath(String safeQid) {
+        if (plan != null) {
+            return API_V1_PLANS + OperatorUrlUtil.encodePathSegment(plan) + "/decisions/" + safeQid;
+        }
+        return API_V1_DECISIONS + safeQid;
+    }
+
     private @Nullable DecisionEnvelope fetchEnvelopeSafe(RuntimeClient runtime, String safeQid) {
-        var qPath = plan != null
-                            ? API_V1_PLANS + OperatorUrlUtil.encodePathSegment(plan) + PATH_DECISIONS + safeQid
-                            : API_V1_DECISIONS + safeQid;
+        var qPath = resolveDecisionPath(safeQid);
         try {
             var qResponse = runtime.send(HttpRequest.get(qPath));
             if (qResponse.status() == 200) {
@@ -425,7 +426,7 @@ public final class AnswerCommand implements Callable<Integer> {
     private record DialogueSession(RuntimeClient runtime, PrintWriter out, LineReader reader, String locale) {
     }
 
-    private record DecisionCommandResult(@Nullable Integer exitCode, @Nullable String note, boolean repeat) {
+    private record DecisionCommandResult(OptionalInt exitCode, @Nullable String note, boolean repeat) {
     }
 
     private int handleInteractive(RuntimeClient runtime, PrintWriter out, DecisionEnvelope envelope, String locale) {
@@ -609,8 +610,8 @@ public final class AnswerCommand implements Callable<Integer> {
             var choice = line.trim();
 
             var cmd = handleDecisionCommand(session, envelope, part, recommendedOpt, choice, currentNote);
-            if (cmd.exitCode() != null) {
-                return cmd.exitCode();
+            if (cmd.exitCode().isPresent()) {
+                return cmd.exitCode().getAsInt();
             }
             if (cmd.repeat()) {
                 currentNote = cmd.note();
@@ -618,11 +619,11 @@ public final class AnswerCommand implements Callable<Integer> {
             }
 
             var result = tryPickOption(session, envelope, choice, currentNote);
-            if (result != null) {
-                if (result.intValue() == -1) {
+            if (result.isPresent()) {
+                if (result.getAsInt() == -1) {
                     continue;
                 }
-                return result.intValue();
+                return result.getAsInt();
             }
             session.out().println(getMessage(session.locale(), "operator.decision.invalid_choice"));
             session.out().flush();
@@ -634,36 +635,36 @@ public final class AnswerCommand implements Callable<Integer> {
                         String choice, @Nullable String currentNote) throws IOException {
         if (choice.isEmpty() && recommendedOpt != null && envelope.reversibility() == Reversibility.REVERSIBLE) {
             int code = submitChoice(session.runtime(), session.out(), envelope, recommendedOpt.key(), recommendedOpt.label(), currentNote, session.locale());
-            return new DecisionCommandResult(code, currentNote, false);
+            return new DecisionCommandResult(OptionalInt.of(code), currentNote, false);
         }
         if (isQuitChoice(choice)) {
             printLeftDialogue(session.out(), envelope.id(), session.locale());
-            return new DecisionCommandResult(0, currentNote, false);
+            return new DecisionCommandResult(OptionalInt.of(0), currentNote, false);
         }
         if (isLaterChoice(choice, session.locale())) {
             printLaterDone(session.out(), envelope, session.locale());
-            return new DecisionCommandResult(0, currentNote, false);
+            return new DecisionCommandResult(OptionalInt.of(0), currentNote, false);
         }
         if (isNoneFitsChoice(choice, session.locale())) {
             boolean done = handleWithdrawChoice(session.runtime(), session.out(), session.reader(), envelope, session.locale());
-            return new DecisionCommandResult(done ? 0 : null, currentNote, !done);
+            return new DecisionCommandResult(done ? OptionalInt.of(0) : OptionalInt.empty(), currentNote, !done);
         }
         if ("m".equalsIgnoreCase(choice)) {
-            return new DecisionCommandResult(null, promptNote(session.reader(), session.locale(), currentNote), true);
+            return new DecisionCommandResult(OptionalInt.empty(), promptNote(session.reader(), session.locale(), currentNote), true);
         }
         if ("w".equalsIgnoreCase(choice)) {
             int code = handleInteractiveOwnWords(session.runtime(), session.out(), session.reader(), envelope, session.locale());
-            return new DecisionCommandResult(code, currentNote, false);
+            return new DecisionCommandResult(OptionalInt.of(code), currentNote, false);
         }
         if ("?".equalsIgnoreCase(choice)) {
             printEvidenceDetails(session.out(), envelope.evidence(), session.locale());
-            return new DecisionCommandResult(null, currentNote, true);
+            return new DecisionCommandResult(OptionalInt.empty(), currentNote, true);
         }
         if ("?r".equalsIgnoreCase(choice) && part != null) {
             printRationaleAndDissent(session.out(), part, recommendedOpt, session.locale());
-            return new DecisionCommandResult(null, currentNote, true);
+            return new DecisionCommandResult(OptionalInt.empty(), currentNote, true);
         }
-        return new DecisionCommandResult(null, currentNote, false);
+        return new DecisionCommandResult(OptionalInt.empty(), currentNote, false);
     }
 
     private static boolean isNoneFitsChoice(String choice, String locale) {
@@ -679,10 +680,10 @@ public final class AnswerCommand implements Callable<Integer> {
         return currentNote;
     }
 
-    private @Nullable Integer tryPickOption(DialogueSession session, DecisionEnvelope envelope,
+    private OptionalInt tryPickOption(DialogueSession session, DecisionEnvelope envelope,
                         String choice, @Nullable String currentNote) throws IOException {
         if (envelope.parts().isEmpty()) {
-            return null;
+            return OptionalInt.empty();
         }
         var part = envelope.parts().get(0);
         var picked = part.options().stream()
@@ -691,11 +692,11 @@ public final class AnswerCommand implements Callable<Integer> {
         if (picked != null) {
             boolean isReversible = envelope.reversibility() == Reversibility.REVERSIBLE;
             if (!isReversible && !confirmNonReversible(session.reader(), session.out(), envelope, picked, session.locale())) {
-                return -1;
+                return OptionalInt.of(-1);
             }
-            return submitChoice(session.runtime(), session.out(), envelope, picked.key(), picked.label(), currentNote, session.locale());
+            return OptionalInt.of(submitChoice(session.runtime(), session.out(), envelope, picked.key(), picked.label(), currentNote, session.locale()));
         }
-        return null;
+        return OptionalInt.empty();
     }
 
     private static @Nullable DecisionOption renderOptionsAndSupport(PrintWriter out,
