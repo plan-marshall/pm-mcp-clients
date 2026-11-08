@@ -107,7 +107,8 @@ class ChoicePromptTest {
 
     @Test
     @DisplayName("rule 3: picks multi-selection ranges and toggles")
-    void picksMultiSelectionRanges() {        var out = new StringWriter();
+    void picksMultiSelectionRanges() {
+        var out = new StringWriter();
         var prompt = createPrompt("1-2\nEnter\n", out, "en");
         prompt.addChoice("opt1", "Option 1");
         prompt.addChoice("opt2", "Option 2");
@@ -531,7 +532,7 @@ class ChoicePromptTest {
     }
 
     private ChoicePrompt keyedPrompt(String input, StringWriter out, String locale) {
-        var prompt = createPrompt(input, out, locale).keyed().leaveKeyLabel(locale.equals("de") ? "verlassen" : "leave");
+        var prompt = createPrompt(input, out, locale).keyed().leaveKeyLabel("de".equals(locale) ? "verlassen" : "leave");
         prompt.addChoice("d", "delete…");
         prompt.addChoice("r", "ask me again");
         prompt.addChoice("i", "ignore");
