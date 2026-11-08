@@ -600,6 +600,12 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Watches
 
+- D3 (PLAN-114) mid-flight 2026-11-08 (inbox `plan-114-001`, finding): PR #379 open and green at `a2121ed1`, not merged,
+  CodeRabbit's 6 points fixed and answered, 4 of 5 threads resolved (`PRRT_kwDOVBOtss61CmSl` answered, not resolved).
+  Operator decisions of 2026-11-08 recorded in the PLAN-114 spec: icon B (star badge), hat `#A0602E`, pairing icon 28 px
+  beside the figure, one-colour waiting mark still and unticked under reduced motion, new `MascotFigure`, provenance "made
+  with an image tool", poses later (fallback to the original image). Remaining: the README/components edits after D2's #380
+  merges, AGREED as the last commit; #379 merges after #380. D2 (PLAN-113) opened PR #380.
 - PLAN-34 landed (PR #371, `40dc879e`, analysed 2026-11-08); see `landings/PLAN-34.md`. Merged on the operator's "Merge now"
   with 1 of 4 deliverables fully met and the MERGE RULE NOT MET: 2 CodeRabbit threads (`ProjectWorkLevel.java:312`,
   `StatusCommand.java:437`) unresolved and unanswered, the second review body (3 actionable, 2 nitpicks) unanswered; the lane
