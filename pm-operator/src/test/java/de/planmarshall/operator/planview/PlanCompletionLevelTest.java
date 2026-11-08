@@ -59,6 +59,31 @@ class PlanCompletionLevelTest {
         return level.rows("en").stream().map(TuiRow::line).collect(Collectors.joining("\n"));
     }
 
+    private static final String REPORT_WITH_CHANGE = REPORT.replace(
+                        "\"token_usage\"",
+                        "\"change\": {\"files\": 12, \"insertions\": 340, \"deletions\": 27, \"unplanned\": 2},\n"
+                                            + "  \"token_usage\"");
+
+    @Test
+    @DisplayName("the completion level shows Change when the report carries a size and no line without")
+    void changeSizeLine() throws Exception {
+        var withChange = new PlanCompletionLevel(PlanCompletionReport.fromJson(REPORT_WITH_CHANGE));
+        var line = withChange.rows("en").stream()
+                            .filter(row -> "completion:change".equals(row.id()))
+                            .map(TuiRow::line)
+                            .findFirst()
+                            .orElse("");
+        assertAll(
+                            () -> assertTrue(line.contains("Change"), line),
+                            () -> assertTrue(line.contains("12 files"), line),
+                            () -> assertTrue(line.contains("+340"), line),
+                            () -> assertTrue(line.contains("\u221227"), line),
+                            () -> assertTrue(line.contains("2 unplanned"), line),
+                            () -> assertFalse(new PlanCompletionLevel(PlanCompletionReport.fromJson(REPORT))
+                                                .rows("en").stream()
+                                                .anyMatch(row -> "completion:change".equals(row.id()))));
+    }
+
     @Test
     @DisplayName("the report names its outcome, reason, deliverables, decisions and tokens")
     void reportLines() throws Exception {

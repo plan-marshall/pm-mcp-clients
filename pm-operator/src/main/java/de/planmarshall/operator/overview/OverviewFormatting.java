@@ -17,8 +17,6 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -115,67 +113,41 @@ public final class OverviewFormatting {
     }
 
     /**
-     * Orders projects with those needing the operator first, then by most recent activity,
-     * preserving original runtime order on ties.
+     * Returns the projects in the order the runtime serves them.
+     *
+     * <p>The runtime already serves running work with those that need the operator first, then the
+     * newest started; a client does not sort again, and activity moves no row
+     * ({@code doc/design/shared/plan-overview.adoc#levels}). The time beside a row only says how
+     * recently it was active.
      *
      * @param projects the input project list
-     * @return sorted copy of projects
+     * @return the same order, as an immutable copy
      */
     public static List<ProjectSummary> sortProjects(List<ProjectSummary> projects) {
         Objects.requireNonNull(projects, "projects");
-        var indexed = new ArrayList<Indexed<ProjectSummary>>(projects.size());
-        for (int i = 0; i < projects.size(); i++) {
-            var project = projects.get(i);
-            indexed.add(new Indexed<>(project, i, needsOperator(project), project.lastActivityAt()));
-        }
-        indexed.sort(OverviewFormatting::compareIndexed);
-        return indexed.stream().map(Indexed::item).toList();
+        return List.copyOf(projects);
     }
 
     /**
-     * Orders plans with those needing the operator first, then by most recent activity,
-     * preserving original runtime order on ties.
+     * Returns the plans in the order the runtime serves them; activity moves no row.
      *
      * @param plans the input plan list
-     * @return sorted copy of plans
+     * @return the same order, as an immutable copy
      */
     public static List<ActivePlanSummary> sortPlans(List<ActivePlanSummary> plans) {
         Objects.requireNonNull(plans, "plans");
-        var indexed = new ArrayList<Indexed<ActivePlanSummary>>(plans.size());
-        for (int i = 0; i < plans.size(); i++) {
-            var plan = plans.get(i);
-            var instant = plan.phaseEnteredAt() != null ? plan.phaseEnteredAt() : plan.runningSince();
-            indexed.add(new Indexed<>(plan, i, needsOperator(plan), instant));
-        }
-        indexed.sort(OverviewFormatting::compareIndexed);
-        return indexed.stream().map(Indexed::item).toList();
+        return List.copyOf(plans);
     }
 
     /**
-     * Orders epics with those needing the operator first, then by start instant descending,
-     * preserving original runtime order on ties.
+     * Returns the epics in the order the runtime serves them; activity moves no row.
      *
      * @param epics the input epic list
-     * @return sorted copy of epics
+     * @return the same order, as an immutable copy
      */
     public static List<ActiveEpicSummary> sortEpics(List<ActiveEpicSummary> epics) {
         Objects.requireNonNull(epics, "epics");
-        var indexed = new ArrayList<Indexed<ActiveEpicSummary>>(epics.size());
-        for (int i = 0; i < epics.size(); i++) {
-            var epic = epics.get(i);
-            boolean needs = needsOperator(epic) || epic.plans().stream().anyMatch(OverviewFormatting::needsOperator);
-            indexed.add(new Indexed<>(epic, i, needs, epic.runningSince()));
-        }
-        indexed.sort(OverviewFormatting::compareIndexed);
-        return indexed.stream().map(Indexed::item).toList();
-    }
-
-    private static <T> int compareIndexed(Indexed<T> a, Indexed<T> b) {
-        return Comparator.<Indexed<T>, Boolean>comparing(i -> !i.needsOperator())
-                            .thenComparing(Indexed::instant,
-                                                Comparator.nullsLast(Comparator.<Instant>reverseOrder()))
-                            .thenComparingInt(Indexed::index)
-                            .compare(a, b);
+        return List.copyOf(epics);
     }
 
     /**
@@ -423,8 +395,5 @@ public final class OverviewFormatting {
         } catch (DateTimeParseException _) {
             return null;
         }
-    }
-
-    private record Indexed<T>(T item, int index, boolean needsOperator, @Nullable Instant instant) {
     }
 }

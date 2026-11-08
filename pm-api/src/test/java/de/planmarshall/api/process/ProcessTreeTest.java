@@ -118,7 +118,8 @@ class ProcessTreeTest {
                 List.of("execute", "execute.envelope", taskId),
                 214,
                 "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
-                7800L
+                7800L,
+                null
         );
 
         // Act

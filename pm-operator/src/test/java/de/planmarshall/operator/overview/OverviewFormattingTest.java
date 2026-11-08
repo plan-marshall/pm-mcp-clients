@@ -71,29 +71,29 @@ class OverviewFormattingTest {
     }
 
     @Test
-    @DisplayName("sortProjects prioritizes attention projects then recent activity")
-    void sortProjects() {
+    @DisplayName("sortProjects keeps the order the runtime serves, activity moves no row")
+    void sortProjectsKeepsServedOrder() {
         var p1 = new ProjectSummary("p1", "Old Normal", 1, 0, 0, null, false, Instant.parse("2026-10-20T10:00:00Z"));
         var p2 = new ProjectSummary("p2", "New Normal", 1, 0, 0, null, false, Instant.parse("2026-10-20T11:00:00Z"));
         var p3 = new ProjectSummary("p3", "Attention", 1, 0, 1, null, false, Instant.parse("2026-10-20T09:00:00Z"));
 
         var sorted = OverviewFormatting.sortProjects(List.of(p1, p2, p3));
-        assertEquals(List.of("p3", "p2", "p1"), sorted.stream().map(ProjectSummary::projectId).toList());
+        assertEquals(List.of("p1", "p2", "p3"), sorted.stream().map(ProjectSummary::projectId).toList());
     }
 
     @Test
-    @DisplayName("sortPlans prioritizes attention plans")
-    void sortPlans() {
+    @DisplayName("sortPlans keeps the order the runtime serves, activity moves no row")
+    void sortPlansKeepsServedOrder() {
         var plan1 = new ActivePlanSummary("p1", "Normal", "execute", "running", null, null, null, 0, 0, null, null, null, null, null, null, null, null);
         var plan2 = new ActivePlanSummary("p2", "Needs Attention", "refine", "waiting", null, null, null, 0, 0, null, null, null, null, null, "decision", 1, null);
 
         var sorted = OverviewFormatting.sortPlans(List.of(plan1, plan2));
-        assertEquals(List.of("p2", "p1"), sorted.stream().map(ActivePlanSummary::planId).toList());
+        assertEquals(List.of("p1", "p2"), sorted.stream().map(ActivePlanSummary::planId).toList());
     }
 
     @Test
-    @DisplayName("sortEpics prioritizes attention epics and epics with attention plans")
-    void sortEpics() {
+    @DisplayName("sortEpics keeps the order the runtime serves, activity moves no row")
+    void sortEpicsKeepsServedOrder() {
         var childPlan1 = new ActivePlanSummary("cp1", "Normal Child", "execute", "running", null, null, null, 0, 0, null, null, null, null, null, null, null, null);
         var childPlan2 = new ActivePlanSummary("cp2", "Needs Child", "refine", "waiting", null, null, null, 0, 0, null, null, null, null, null, "decision", 1, null);
 
@@ -101,7 +101,7 @@ class OverviewFormattingTest {
         var epic2 = new ActiveEpicSummary("e2", "Has Attention Child", null, 1, 0, 0, 1, null, null, List.of(childPlan2));
 
         var sorted = OverviewFormatting.sortEpics(List.of(epic1, epic2));
-        assertEquals(List.of("e2", "e1"), sorted.stream().map(ActiveEpicSummary::epicId).toList());
+        assertEquals(List.of("e1", "e2"), sorted.stream().map(ActiveEpicSummary::epicId).toList());
     }
 
     @Test
@@ -161,14 +161,14 @@ class OverviewFormattingTest {
     }
 
     @Test
-    @DisplayName("sortPlans and sortProjects comparator is transitive with null instants")
+    @DisplayName("sortPlans and sortProjects keep the served order with null instants")
     void sortComparatorTransitivity() {
         var p1 = new ProjectSummary("p1", "With Instant 10", 1, 0, 0, null, false, baseInstant.minusSeconds(100));
         var p2 = new ProjectSummary("p2", "Null Instant", 1, 0, 0, null, false, null);
         var p3 = new ProjectSummary("p3", "With Instant 20", 1, 0, 0, null, false, baseInstant.minusSeconds(50));
 
         var sorted = OverviewFormatting.sortProjects(List.of(p1, p2, p3));
-        assertEquals(List.of("p3", "p1", "p2"), sorted.stream().map(ProjectSummary::projectId).toList());
+        assertEquals(List.of("p1", "p2", "p3"), sorted.stream().map(ProjectSummary::projectId).toList());
     }
 
     @Test

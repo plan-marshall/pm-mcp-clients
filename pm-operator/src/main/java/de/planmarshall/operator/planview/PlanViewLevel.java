@@ -51,6 +51,8 @@ public final class PlanViewLevel {
     public static final String SUMMARY_ROW_ID = "summary:plan";
     /** The row id of the tokens-so-far line. */
     public static final String TOKENS_ROW_ID = "summary:tokens";
+    /** The row id of the change-so-far line. */
+    public static final String CHANGE_ROW_ID = "summary:change";
 
     private static final String DETAIL_PREFIX = "detail:";
     private static final String TOKENS_PREFIX = "tokens:";
@@ -221,6 +223,9 @@ public final class PlanViewLevel {
         var rows = new ArrayList<TuiRow>();
         rows.add(summaryRow(locale));
         rows.add(tokensRow(locale));
+        if (tree.change() != null) {
+            rows.add(changeRow(locale));
+        }
         if (tokensVisible) {
             appendTokenRows(rows, locale);
         }
@@ -485,6 +490,11 @@ public final class PlanViewLevel {
     private TuiRow tokensRow(String locale) {
         return TuiRow.leaf(TOKENS_ROW_ID, MessageCatalogue.format(locale, "plan.view.tokens", Map.of())
                             + "   " + PlanViewFormatting.tokens(locale, tree.tokensSoFar()));
+    }
+
+    private TuiRow changeRow(String locale) {
+        return TuiRow.leaf(CHANGE_ROW_ID, MessageCatalogue.format(locale, "plan.change.so_far", Map.of())
+                            + "   " + MessageCatalogue.format(locale, "plan.change.size", tree.change().toMap()));
     }
 
     private void appendTokenRows(List<TuiRow> rows, String locale) {
