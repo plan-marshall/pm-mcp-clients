@@ -160,6 +160,9 @@ class ControlDialoguesTest {
     private static final String ACTIONS_PATH = "/actions";
     private static final String NEXT_PATH = "/actions/next";
 
+    private static final String EPIC_WITHOUT_RUNNING =
+                        EPIC.replace("\"scope\":3,\"running\":3", "\"scope\":3");
+
     private RuntimeFixture fixture;
     private VirtualScreenTerminal virtual;
     private StringWriter out;
@@ -698,7 +701,7 @@ class ControlDialoguesTest {
     void workActionNextUnknownRunning() throws Exception {
         var server = serveNext();
         virtual.type("n\n");
-        var unknown = EPIC.replace("\"scope\":3,\"running\":3", "\"scope\":3");
+        var unknown = EPIC_WITHOUT_RUNNING;
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
                             EpicResource.fromJson(unknown), null));
         var text = out.toString();
@@ -711,8 +714,8 @@ class ControlDialoguesTest {
     @DisplayName("an empty answer over an unknown running count sends nothing")
     void workActionNextUnknownRunningEmptyAnswer() throws Exception {
         var server = serveNext();
-        virtual.type("\n");
-        var unknown = EPIC.replace("\"scope\":3,\"running\":3", "\"scope\":3");
+        virtual.type("\nn\n");
+        var unknown = EPIC_WITHOUT_RUNNING;
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
                             EpicResource.fromJson(unknown), null));
         var text = out.toString();
@@ -726,7 +729,7 @@ class ControlDialoguesTest {
     void workActionNextUnknownRunningRaise() throws Exception {
         var server = serveNext();
         virtual.type("r\n");
-        var unknown = EPIC.replace("\"scope\":3,\"running\":3", "\"scope\":3");
+        var unknown = EPIC_WITHOUT_RUNNING;
         assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
                             EpicResource.fromJson(unknown), null));
         assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith("/actions/next")
@@ -745,6 +748,20 @@ class ControlDialoguesTest {
         var text = out.toString();
         assertTrue(text.contains("e runs 3 of 3 at once"), text);
         assertTrue(text.contains("next-plan started (4 of 3 at once)"), text);
+        assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith(NEXT_PATH)
+                                                && request.bodyText().contains("\"raise_scope\":true")),
+                            server.requests().toString());
+    }
+
+    @Test
+    @DisplayName("an unrecognised answer over an unknown running count is reported and asked again")
+    void workActionNextInvalidAnswerReprompts() throws Exception {
+        var server = serveNext();
+        virtual.type("x\nr\n");
+        assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
+                            EpicResource.fromJson(EPIC_WITHOUT_RUNNING), null));
+        var text = out.toString();
+        assertTrue(text.contains("Type r to raise the scope or n to leave it."), text);
         assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith(NEXT_PATH)
                                                 && request.bodyText().contains("\"raise_scope\":true")),
                             server.requests().toString());

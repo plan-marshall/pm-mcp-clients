@@ -303,23 +303,30 @@ final class WorkActionDialogue {
                                 : MessageCatalogue.format(prompt.locale(), "control.epic.scope_unknown",
                                 Map.<String, Object>of(EPIC, id, SCOPE, epic.scope(),
                                                     PLAN, plan));
-            var answer = prompt.askRaw(question
-                                + "   " + MessageCatalogue.format(prompt.locale(),
-                                "operator.actions.key.raise_and_start", Map.of())
+            var raiseKey = MessageCatalogue.format(prompt.locale(),
+                                "operator.actions.key.raise_and_start", Map.of());
+            var leaveKey = MessageCatalogue.format(prompt.locale(),
+                                "operator.actions.key.leave_scope", Map.of());
+            var promptText = question
+                                + "   " + raiseKey
                                 + ") " + MessageCatalogue.format(prompt.locale(),
                                 "control.epic.next_raise", Map.of("count", epic.scope() + 1))
-                                + "   " + MessageCatalogue.format(prompt.locale(),
-                                "operator.actions.key.leave_scope", Map.of())
+                                + "   " + leaveKey
                                 + ") " + MessageCatalogue.format(prompt.locale(), "control.epic.next_leave",
-                                Map.of()) + StartPrompt.SUFFIX,
-                                STATE_ID, MessageCatalogue.format(prompt.locale(), "control.epic.next_raise",
-                                                    Map.of("count", epic.scope() + 1)), id);
-            if (!answer.equalsIgnoreCase(MessageCatalogue.format(prompt.locale(),
-                                "operator.actions.key.raise_and_start", Map.of()))) {
-                return 0;
+                                Map.of()) + StartPrompt.SUFFIX;
+            var need = MessageCatalogue.format(prompt.locale(), "control.epic.next_raise",
+                                Map.of("count", epic.scope() + 1));
+            while (true) {
+                var answer = prompt.askRaw(promptText, STATE_ID, need, id);
+                if (answer.equalsIgnoreCase(raiseKey)) {
+                    client.perform(kind, id, "next", Map.of("raise_scope", true));
+                    return started(epic);
+                }
+                if (answer.equalsIgnoreCase(leaveKey)) {
+                    return 0;
+                }
+                prompt.line("control.epic.next_invalid", Map.of("raise", raiseKey, "leave", leaveKey));
             }
-            client.perform(kind, id, "next", Map.of("raise_scope", true));
-            return started(epic);
         }
         client.perform(kind, id, "next", Map.of("raise_scope", false));
         return started(epic);

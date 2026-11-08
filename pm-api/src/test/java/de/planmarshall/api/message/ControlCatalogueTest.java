@@ -57,7 +57,8 @@ class ControlCatalogueTest {
                 "control.settings.applies", "control.settings.refused", "control.settings.too_late",
                 "control.settings.epic_told", "control.settings.close", "control.settings.conflict",
                 "control.epic.next", "control.epic.next_none", "control.epic.next_raise",
-                "control.epic.next_leave", "control.epic.scope_full", "control.epic.auto",
+                "control.epic.next_leave", "control.epic.scope_full", "control.epic.scope_unknown",
+                "control.epic.next_invalid", "control.epic.auto",
                 "control.epic.auto_already", "control.epic.auto_started", "control.epic.auto_nothing",
                 "control.epic.auto_off_done", "control.epic.overlap", "control.epic.decompose_again",
                 "control.epic.findings_review", "control.epic.watches_review", "control.epic.chat",
@@ -120,6 +121,9 @@ class ControlCatalogueTest {
         assertEquals("Wie viele Pl\u00e4ne laufen, ist nicht bekannt; relay-hardening darf 3 gleichzeitig "
                 + "ausf\u00fchren, und der n\u00e4chste Plan, relay-token-store, wartet auf einen freien Platz.",
                 MessageCatalogue.format("de", "control.epic.scope_unknown", params));
+        assertEquals("Type r to raise the scope or n to leave it.",
+                MessageCatalogue.format("en", "control.epic.next_invalid",
+                        Map.of("raise", "r", "leave", "n")));
     }
 
     @Test
