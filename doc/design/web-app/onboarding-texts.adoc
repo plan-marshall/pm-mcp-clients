@@ -130,6 +130,10 @@ The keys of the speech role in the roles step (xref:onboarding-steps-4-7.adoc#sp
 |Choose a provider
 |Wähle einen Provider
 
+|`onboard.roles.speech.token_missing`
+|token missing
+|Token fehlt
+
 |`onboard.roles.speech.terminal_note`
 |The microphone is the web app's; the terminal records no audio.
 |Das Mikrofon gehört zur Web-App; das Terminal nimmt nichts auf.

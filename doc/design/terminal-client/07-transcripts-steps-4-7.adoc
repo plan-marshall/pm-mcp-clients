@@ -135,15 +135,17 @@ Allow 2 methods? [Enter]   toggle: 1-3   b) back   ?   › ⏎
 [4/7] Roles · Allow these methods for dictation?
   1) let the browser turn dictation into text   transcribe_browser
      sends   what you dictate to the speech service of the browser you use
-     never   keeps a recording, or uses the models that work your plans
+     never   keeps a recording on this machine or in this browser, or uses
+             the models that work your plans
+r) yes, and don't ask again   n) not now   ?   › r
   2) look for a local speech model             scan_speech_model
      runs    the check of a local speech model found on this machine
-r) yes, and don't ask again   n) not now   ?   › r
+y) yes   r) yes, and don't ask again   n) not now   ?   › y
   ✓  whisper-small found
 ✓ Dictation: browser, local model
 ----
 
-* The speech consents are only remembered, so the prompt offers no `y`; each kind is answered in turn where several are asked. The speech role is the web app's microphone; the terminal chooses its methods and asks their consents like the web app's roles step (link:../web-app/onboarding-steps-4-7.adoc#speech[Web App, Onboarding, The Speech Role]) and records no audio. A method whose consent is not given is not allowed; a provider without a token asks for it as in step 6.
+* Each kind is answered in turn. `transcribe_browser` and `transcribe_provider` are only remembered, so their prompt offers no `y`; `scan_speech_model` offers all three answers. `v) dictation` stands in every prompt of the overview, also while roles are still open. The speech role is the web app's microphone; the terminal chooses its methods and asks their consents like the web app's roles step (link:../web-app/onboarding-steps-4-7.adoc#speech[Web App, Onboarding, The Speech Role]) and records no audio. A method whose consent is not given is not allowed; a provider's token is asked in step 6 in the first run, and here in a later run.
 * The texts are those of link:../web-app/onboarding-texts.adoc#texts-speech[Onboarding, Texts, The Speech Role] and link:../shared/consents.adoc#texts[Consents, Texts]; the consents are link:../shared/consents.adoc#speech[The Speech Consents].
 
 [#t-credentials]

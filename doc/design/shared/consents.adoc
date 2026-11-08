@@ -157,7 +157,7 @@ Every kind of consent of the use cases (link:../../../../plan-marshall-documenta
 |`transcribe_provider`
 |send what the operator dictates to the chosen speech provider, with its credential, to be turned into text
 |`roles.speech-consent`
-|machine, and only remembered: _yes_ for one run is not offered
+|machine and the provider it names (another provider asks again), and only remembered: _yes_ for one run is not offered
 |goes on: the method is not allowed
 |`common.consent.kind.transcribe_provider`
 
@@ -280,16 +280,16 @@ The consent texts both clients show are keys of the area `common` (link:texts-an
 |{method, select, off {Aus} browser {Die Spracherkennung des Browsers} local {Ein lokales Modell auf dieser Maschine} other {Ein Sprach-Provider}}
 
 |`common.transcribe.where`
-|{method, select, off {Nowhere: only the dictation of your system.} browser {To the speech service of the browser you use: Chrome and Edge their maker's cloud service, Safari Apple's service or this device.} local {It stays on this machine.} other {{provider, select, none {To the provider you choose, with its token.} other {To {provider}.}}}}
-|{method, select, off {Nirgendwohin: nur das Diktieren deines Systems.} browser {An den Sprachdienst des Browsers, den du benutzt: Chrome und Edge den Cloud-Dienst ihres Herstellers, Safari den Dienst von Apple oder dieses Gerät.} local {Sie bleibt auf dieser Maschine.} other {{provider, select, none {An den Provider, den du wählst, mit seinem Token.} other {An {provider}.}}}}
+|{method, select, off {Not through the app; your system's own dictation sends it where its settings say.} browser {To the speech service of the browser you use: Chrome and Edge their maker's cloud service, Safari Apple's service or this device.} local {From this browser over the paired connection to this machine, and it stays there.} other {{provider, select, none {To the provider you choose, with its token.} other {To {provider}.}}}}
+|{method, select, off {Nicht über die App; das Diktieren deines Systems sendet sie, wohin seine Einstellungen sagen.} browser {An den Sprachdienst des Browsers, den du benutzt: Chrome und Edge den Cloud-Dienst ihres Herstellers, Safari den Dienst von Apple oder dieses Gerät.} local {Von diesem Browser über die gekoppelte Verbindung zu dieser Maschine, und sie bleibt dort.} other {{provider, select, none {An den Provider, den du wählst, mit seinem Token.} other {An {provider}.}}}}
 
 |`common.transcribe.method_short`
 |{method, select, browser {browser} local {local model} other {provider}}
 |{method, select, browser {Browser} local {lokales Modell} other {Provider}}
 
 |`common.transcribe.never`
-|keeps a recording, or uses the models that work your plans
-|eine Aufnahme behalten oder die Modelle nutzen, die deine Pläne bearbeiten
+|keeps a recording on this machine or in this browser, or uses the models that work your plans; what the chosen service keeps is that service's
+|eine Aufnahme auf dieser Maschine oder in diesem Browser behalten oder die Modelle nutzen, die deine Pläne bearbeiten; was der gewählte Dienst behält, ist Sache dieses Dienstes
 
 |`common.consent.withdraw.title`
 |Withdraw "{action}"?

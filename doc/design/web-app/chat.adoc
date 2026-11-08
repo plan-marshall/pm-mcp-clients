@@ -112,7 +112,7 @@ A role's reply (`format: markdown`) is rendered as a closed subset (link:../../.
 * paragraphs, *bold*, _italic_, `inline code`, block quotes;
 * lists, and tables, which scroll sideways when wide;
 * code blocks in the mono face with their language as a label, a _Copy_ act, sideways scroll, and no syntax colours;
-* links only with `http` or `https`, as `ExternalLink` (link:components.adoc#external-link[ExternalLink]); an image as a link to it, never loaded;
+* links only with `http` or `https`, as `ExternalLink` (link:components.adoc#external-link[ExternalLink]), the target's host shown beside a link text that does not name it, so a link the role quotes from outside never hides where it goes; an image as a link to it, never loaded;
 * references to a task, a file with its line (`path:line`), a decision or a plan that the turn's `refs` name, outside inline code and code blocks, as reference chips (inside code a reference stays code): a `Link` in the chip look of `PrChip` (link:components-tags.adoc[Tags and Kinds]), opening its target, never a copy `Chip`;
 * a fenced Mermaid block as a diagram, drawn as every diagram of a model's text (link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-diagrams[Diagrams]).
 
@@ -190,7 +190,7 @@ What turns speech into text is the speech role `transcribe`, chosen in the machi
 |===
 |Method |Where the audio goes |Available
 
-|_Off_ (the default) |nowhere; only the system's dictation |always
+|_Off_ (the default) |not through the app; the system's own dictation sends it where its settings say |always
 |_The browser's recognition_ |to the speech service of the browser in use: Chrome and Edge their maker's cloud service, Safari Apple's service or the device; Firefox has none |where the browser has it and the project does not narrow it away; the consent `transcribe_browser`
 |_A local model on this machine_ |stays on the machine: the browser sends the recording to the runtime over the paired connection |the model found and checked (`scan_speech_model`)
 |_A speech provider_ |to that provider, with its own credential |a provider and its token; the consent `transcribe_provider`
@@ -230,6 +230,10 @@ The chat's shared keys, both clients', are `control.chat.*` (link:../shared/work
 |`web.chat.new_reply`
 |New reply
 |Neue Antwort
+
+|`web.chat.answers_wait`
+|Answer once the chat has ended. Open the chat
+|Antworte, wenn der Chat beendet ist. Öffne den Chat
 
 |`web.chat.with`
 |with {role} · {model}

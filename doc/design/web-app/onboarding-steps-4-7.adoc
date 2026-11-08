@@ -105,14 +105,14 @@ Below the overview, apart from the roles that plan and work, the speech role `tr
         To the speech service of the browser you use: Chrome and Edge
         their maker's cloud service, Safari Apple's service or this device.
     [ ] A local model on this machine          not looked for yet
-        It stays on this machine.
+        From this browser over the paired connection; it stays here.
     [ ] A speech provider                      [ Choose a provider ▾ ]
         To the provider you choose, with its token.
                                          [ Back ]   [ Allow no method ]
 ----
 
 * _Allow methods…_ opens `roles.speech`. Each method is a `CheckField` with its line of where the audio goes (`common.transcribe.method`, `common.transcribe.where`); a local model not yet checked says so (`onboard.roles.speech.not_scanned`), and a provider is chosen in its `SelectField` (`onboard.roles.speech.provider_choose`). The planning models are never among them.
-* *Allow* goes through `roles.speech-consent` (link:../shared/consents.adoc#speech[Consents, The Speech Consents]): one consent screen asks each chosen method's kind, `transcribe_browser`, `transcribe_provider`, and for a local model `scan_speech_model`; each kind has its own answer, and a method whose consent is not given is not allowed. A local model is then looked for and checked as a check line (`✓ whisper-small found` or `✗ no local speech model found`, with how to install one); a provider without a token asks for it as in the providers step (<<providers-credentials,⑥ Providers, Credentials>>).
+* *Allow* goes through `roles.speech-consent` (link:../shared/consents.adoc#speech[Consents, The Speech Consents]): one consent screen asks each chosen method's kind, `transcribe_browser`, `transcribe_provider`, and for a local model `scan_speech_model`; each kind has its own answer, and a method whose consent is not given is not allowed. A local model is then looked for and checked as a check line (`✓ whisper-small found` or `✗ no local speech model found`, with how to install one); a provider is recorded with its base URL and model, and in the first run, before the credential store exists, its token is asked in ⑥ (<<providers-credentials,⑥ Providers, Credentials>>) with the other tokens; until then the method shows `token missing` (`onboard.roles.speech.token_missing`) and is not offered. In a later run the token is asked here.
 * The line in the overview then names the allowed methods by their short names (`browser, local model`, `common.transcribe.method_short`); ⓘ repeats where the audio goes for each. A local model is looked for and checked in `roles.speech-check`, and `roles.speech-write` records the methods.
 
 Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-roles[Terminal Client, transcript], with link:../terminal-client/07-transcripts-steps-4-7.adoc#t-roles-speech[The Speech Role].
