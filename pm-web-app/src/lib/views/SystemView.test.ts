@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/svelte';
 import SystemView from './SystemView.svelte';
-import { runtimeStore } from '../stores/runtime';
+import { runtimeStore, lifecycleEpochOf, lifecycleFieldsOf } from '../stores/runtime';
 import { makeRuntimeState } from '../test/runtimeState';
-import { apiClient, type SystemSnapshot } from '../api/client';
+import { apiClient, type SystemSnapshot, type StatusResponse } from '../api/client';
 import { currentLocale, messagesStore } from '../i18n';
 import { loadMessages } from '../../test/catalogue-fixture';
 import { get } from 'svelte/store';
@@ -513,5 +513,35 @@ describe('SystemView component', () => {
     expect(reload).toHaveTextContent('0.10.0');
     expect(reload).toHaveTextContent('waits until the text');
     field.remove();
+  });
+
+  it('advances the lifecycle epoch on a successful stop so a stale status read does not overwrite the result', async () => {
+    vi.spyOn(apiClient, 'getSystemSnapshot').mockResolvedValue(mockSnapshot);
+    const stopSpy = vi.spyOn(apiClient, 'stopRuntime').mockResolvedValue(undefined as never);
+
+    render(SystemView);
+    await waitFor(() => expect(screen.getByRole('button', { name: /Stop…/i })).toBeInTheDocument());
+
+    const epochBefore = lifecycleEpochOf();
+    let resolveStaleStatus: (status: StatusResponse) => void = () => {};
+    const pendingStatus = new Promise<StatusResponse>((resolve) => {
+      resolveStaleStatus = resolve;
+    });
+
+    const inFlightRead = (async () => {
+      const status = await pendingStatus;
+      if (epochBefore !== lifecycleEpochOf()) return;
+      runtimeStore.update((s) => ({ ...s, ...lifecycleFieldsOf(status) }));
+    })();
+
+    await fireEvent.click(screen.getByRole('button', { name: /Stop…/i }));
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    await fireEvent.click(screen.getByRole('button', { name: /Stop when done/i }));
+    expect(stopSpy).toHaveBeenCalledWith('drain');
+
+    resolveStaleStatus({ status: 'ready', onboarded: true });
+    await inFlightRead;
+
+    expect(get(runtimeStore).isDraining).toBe(true);
   });
 });

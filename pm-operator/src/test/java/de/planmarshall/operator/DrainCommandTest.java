@@ -22,13 +22,16 @@ import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.LongFunction;
 import java.util.stream.Stream;
+import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
@@ -101,10 +104,23 @@ class DrainCommandTest {
     }
 
     private int drainWith(LongFunction<Optional<ProcessHandle>> processes) {
-        var commandLine = new CommandLine(new DrainCommand(context(), GENEROUS, processes));
+        return drainWith(GENEROUS, processes);
+    }
+
+    private int drainWith(Duration bound, LongFunction<Optional<ProcessHandle>> processes) {
+        var commandLine = new CommandLine(new DrainCommand(context(), bound, processes));
         commandLine.setOut(new PrintWriter(out));
         commandLine.setErr(new PrintWriter(err));
         return commandLine.execute();
+    }
+
+    private Duration boundOfMachine() {
+        return new DrainCommand(context(), null).boundOfMachine(new PrintWriter(err));
+    }
+
+    private void writeMachineConfig(String json) throws IOException {
+        Files.createDirectories(fixture.paths().base());
+        Files.writeString(fixture.paths().base().resolve("machine-config.json"), json);
     }
 
     /**
@@ -143,10 +159,13 @@ class DrainCommandTest {
 
     private void recordRuntime(Process child) throws IOException {
         var handle = child.toHandle();
-        var start = handle.info().startInstant();
+        recordRuntime(child, handle.info().startInstant().orElse(null));
+    }
+
+    private void recordRuntime(Process child, @Nullable Instant start) throws IOException {
         Files.createDirectories(fixture.paths().stateDir());
-        Files.writeString(fixture.paths().runtimeRecord(), "{\"pid\":" + handle.pid()
-                            + start.map(instant -> ",\"start_instant\":\"" + instant + "\"").orElse("") + "}");
+        Files.writeString(fixture.paths().runtimeRecord(), "{\"pid\":" + child.pid()
+                            + (start == null ? "" : ",\"start_instant\":\"" + start + "\"") + "}");
     }
 
     @Test
@@ -181,14 +200,129 @@ class DrainCommandTest {
     }
 
     @Test
-    @DisplayName("a runtime that exited before the signal is reported not running with exit 0")
-    void exitedBeforeTheSignalIsNotRunning() throws Exception {
-        var child = recordedRuntime("trap 'exit 0' TERM");
+    @DisplayName("a record without a start instant signals nothing and says the runtime is not identifiable")
+    void recordWithoutStartInstantSignalsNothing() throws Exception {
+        var witness = workDir.resolve("signalled");
+        var child = recordedRuntime("trap 'echo signed > \"$2\"; exit 0' TERM", witness);
+        recordRuntime(child, null);
 
-        var code = drainWith(_ -> Optional.of(new FailedSignal(child.pid(), false)));
+        var code = execute("drain");
+
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code, err.toString()),
+                            () -> assertTrue(child.isAlive(), "the fixture was signalled"),
+                            () -> assertFalse(Files.exists(witness), "the fixture saw a signal"),
+                            () -> assertTrue(err.toString().contains("cannot be identified"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("a process that reports no start instant is signalled not at all")
+    void processWithoutStartInfoSignalsNothing() throws Exception {
+        var witness = workDir.resolve("signalled");
+        var child = recordedRuntime("trap 'echo signed > \"$2\"; exit 0' TERM", witness);
+        var signalled = new AtomicBoolean();
+
+        var code = drainWith(_ -> Optional.of(new FakeProcess(child.pid(), true, null, signalled)));
+
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code, err.toString()),
+                            () -> assertFalse(signalled.get(), "the process was signalled"),
+                            () -> assertFalse(Files.exists(witness), "the fixture saw a signal"),
+                            () -> assertTrue(err.toString().contains("cannot be identified"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("a record whose start instant differs signals nothing and says the runtime is not identifiable")
+    void mismatchingStartInstantSignalsNothing() throws Exception {
+        var witness = workDir.resolve("signalled");
+        var child = recordedRuntime("trap 'echo signed > \"$2\"; exit 0' TERM", witness);
+        recordRuntime(child, Instant.parse("2001-01-01T00:00:00Z"));
+
+        var code = execute("drain");
+
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code, err.toString()),
+                            () -> assertTrue(child.isAlive(), "the fixture was signalled"),
+                            () -> assertFalse(Files.exists(witness), "the fixture saw a signal"),
+                            () -> assertTrue(err.toString().contains("cannot be identified"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("a matching start instant is signalled")
+    void matchingStartInstantSignals() throws Exception {
+        var witness = workDir.resolve("signalled");
+        var child = recordedRuntime("trap 'echo signed > \"$2\"; exit 0' TERM", witness);
+        var signalled = new AtomicBoolean();
+        var start = child.toHandle().info().startInstant().orElseThrow();
+
+        var code = drainWith(Duration.ZERO, _ -> Optional.of(new FakeProcess(child.pid(), true, start, signalled)));
 
         assertAll(
                             () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(signalled.get(), "the process was not signalled"),
+                            () -> assertTrue(out.toString().contains("Signalled the runtime (PID " + child.pid() + ")"),
+                                                out.toString()));
+    }
+
+
+    @Test
+    @DisplayName("a runtime that exits while its start instant is read is reported not running")
+    void exitsDuringIdentification() throws Exception {
+        var child = recordedRuntime("trap 'exit 0' TERM");
+
+        var code = drainWith(_ -> Optional.of(new DyingProcess(child.pid())));
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertEquals("The runtime is not running; there is nothing to drain.",
+                                                out.toString().strip()));
+    }
+
+    @Test
+    @DisplayName("a record that names the console's own process with another start instant is not identifiable")
+    void ownPidWithAnotherStartInstantIsNotIdentifiable() throws Exception {
+        var self = ProcessHandle.current();
+        Files.createDirectories(fixture.paths().stateDir());
+        Files.writeString(fixture.paths().runtimeRecord(), "{\"pid\":" + self.pid()
+                            + ",\"start_instant\":\"2001-01-01T00:00:00Z\"}");
+
+        var code = execute("drain");
+
+        assertAll(
+                            () -> assertEquals(PmOperator.EXIT_FAILURE, code, err.toString()),
+                            () -> assertTrue(err.toString().contains("cannot be identified"), err.toString()),
+                            () -> assertTrue(out.toString().isBlank(), out.toString()));
+    }
+
+    @Test
+    @DisplayName("a record that identifies the console's own process is never signalled")
+    void ownPidIsNeverSignalled() throws Exception {
+        var self = ProcessHandle.current();
+        var start = self.info().startInstant().orElseThrow();
+        Files.createDirectories(fixture.paths().stateDir());
+        Files.writeString(fixture.paths().runtimeRecord(), "{\"pid\":" + self.pid()
+                            + ",\"start_instant\":\"" + start + "\"}");
+
+        var code = execute("drain");
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertEquals("The runtime is not running; there is nothing to drain.",
+                                                out.toString().strip()));
+    }
+
+    @Test
+    @DisplayName("a runtime that exited before the signal is reported not running with exit 0")
+    void exitedBeforeTheSignalIsNotRunning() throws Exception {
+        var child = recordedRuntime("trap 'exit 0' TERM");
+        var start = child.toHandle().info().startInstant().orElseThrow();
+        var attempted = new AtomicBoolean();
+
+        var code = drainWith(_ -> Optional.of(new FailedSignal(child.pid(), false, start, attempted)));
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(attempted.get(), "the signal was never attempted"),
                             () -> assertEquals("The runtime is not running; there is nothing to drain.",
                                                 out.toString().strip()),
                             () -> assertFalse(err.toString().contains("could not be signalled"), err.toString()));
@@ -198,8 +332,9 @@ class DrainCommandTest {
     @DisplayName("a live runtime the signal does not reach is reported with exit 1")
     void liveRuntimeTheSignalMissesFails() throws Exception {
         var child = recordedRuntime("trap 'exit 0' TERM");
+        var start = child.toHandle().info().startInstant().orElseThrow();
 
-        var code = drainWith(_ -> Optional.of(new FailedSignal(child.pid(), true)));
+        var code = drainWith(_ -> Optional.of(new FailedSignal(child.pid(), true, start, new AtomicBoolean())));
 
         assertAll(
                             () -> assertEquals(PmOperator.EXIT_FAILURE, code),
@@ -209,13 +344,17 @@ class DrainCommandTest {
     }
 
     /**
-     * A process whose signal fails: {@code destroy()} answers {@code false}, and the process is still
-     * alive or has exited, as the test needs.
+     * A process whose signal fails: {@code destroy()} answers {@code false}. It reports itself alive
+     * until the signal is attempted, so the run reaches {@code destroy()}, and then reports
+     * {@code alive}.
      *
-     * @param pid   the process id it reports
-     * @param alive whether it is still alive after the failed signal
+     * @param pid       the process id it reports
+     * @param alive     whether it is still alive after the failed signal
+     * @param start     the start instant it reports
+     * @param attempted set when {@code destroy()} reaches it
      */
-    private record FailedSignal(long pid, boolean alive) implements ProcessHandle {
+    private record FailedSignal(long pid, boolean alive, Instant start, AtomicBoolean attempted)
+                        implements ProcessHandle {
 
         @Override
         public Optional<ProcessHandle> parent() {
@@ -234,7 +373,73 @@ class DrainCommandTest {
 
         @Override
         public Info info() {
-            return ProcessHandle.current().info();
+            return new FakeInfo(start);
+        }
+
+        @Override
+        public CompletableFuture<ProcessHandle> onExit() {
+            return new CompletableFuture<>();
+        }
+
+        @Override
+        public boolean supportsNormalTermination() {
+            return true;
+        }
+
+        @Override
+        public boolean destroy() {
+            attempted.set(true);
+            return false;
+        }
+
+        @Override
+        public boolean destroyForcibly() {
+            attempted.set(true);
+            return false;
+        }
+
+        @Override
+        public boolean isAlive() {
+            return alive || !attempted.get();
+        }
+
+        @Override
+        public int compareTo(ProcessHandle other) {
+            return Long.compare(pid, other.pid());
+        }
+    }
+
+    /**
+     * A process that is alive at the first liveness check and gone — reporting no start instant — by
+     * the time its identity is read. A signal never reaches it.
+     */
+    private static final class DyingProcess implements ProcessHandle {
+
+        private final long pid;
+        private final AtomicBoolean checked = new AtomicBoolean();
+
+        DyingProcess(long pid) {
+            this.pid = pid;
+        }
+
+        @Override
+        public Optional<ProcessHandle> parent() {
+            return Optional.empty();
+        }
+
+        @Override
+        public Stream<ProcessHandle> children() {
+            return Stream.empty();
+        }
+
+        @Override
+        public Stream<ProcessHandle> descendants() {
+            return Stream.empty();
+        }
+
+        @Override
+        public Info info() {
+            return new FakeInfo(null);
         }
 
         @Override
@@ -259,12 +464,119 @@ class DrainCommandTest {
 
         @Override
         public boolean isAlive() {
+            return !checked.getAndSet(true);
+        }
+
+        @Override
+        public int compareTo(ProcessHandle other) {
+            return Long.compare(pid, other.pid());
+        }
+
+        @Override
+        public long pid() {
+            return pid;
+        }
+    }
+
+    /**
+     * A process that answers what a test needs of it and records whether a signal reached it.
+     *
+     * @param pid       the process id it reports
+     * @param alive     whether it is alive
+     * @param start     the start instant it reports, {@code null} for none
+     * @param signalled set when {@code destroy()} or {@code destroyForcibly()} reaches it
+     */
+    private record FakeProcess(long pid, boolean alive, @Nullable Instant start, AtomicBoolean signalled)
+                        implements ProcessHandle {
+
+        @Override
+        public Optional<ProcessHandle> parent() {
+            return Optional.empty();
+        }
+
+        @Override
+        public Stream<ProcessHandle> children() {
+            return Stream.empty();
+        }
+
+        @Override
+        public Stream<ProcessHandle> descendants() {
+            return Stream.empty();
+        }
+
+        @Override
+        public Info info() {
+            return new FakeInfo(start);
+        }
+
+        @Override
+        public CompletableFuture<ProcessHandle> onExit() {
+            return new CompletableFuture<>();
+        }
+
+        @Override
+        public boolean supportsNormalTermination() {
+            return true;
+        }
+
+        @Override
+        public boolean destroy() {
+            signalled.set(true);
+            return true;
+        }
+
+        @Override
+        public boolean destroyForcibly() {
+            signalled.set(true);
+            return true;
+        }
+
+        @Override
+        public boolean isAlive() {
             return alive;
         }
 
         @Override
         public int compareTo(ProcessHandle other) {
             return Long.compare(pid, other.pid());
+        }
+    }
+
+    /**
+     * The process information of {@link FakeProcess}, with only the start instant answered.
+     *
+     * @param start the start instant it reports, {@code null} for none
+     */
+    private record FakeInfo(@Nullable Instant start) implements ProcessHandle.Info {
+
+        @Override
+        public Optional<String> command() {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<String> commandLine() {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<String[]> arguments() {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<Instant> startInstant() {
+            return Optional.ofNullable(start);
+        }
+
+        @Override
+        public Optional<Duration> totalCpuDuration() {
+            return Optional.empty();
+        }
+
+        @Override
+        public Optional<String> user() {
+            return Optional.empty();
         }
     }
 
@@ -300,6 +612,43 @@ class DrainCommandTest {
                             () -> assertTrue(waited.compareTo(GENEROUS) < 0, "waited past the bound: " + waited),
                             () -> assertTrue(out.toString().contains(
                                                 "The runtime is still draining (PID " + child.pid() + ")."), out.toString()));
+    }
+
+    @Test
+    @DisplayName("an absent machine configuration takes the default drain timeout")
+    void boundOfMachineWithoutConfig() {
+        assertEquals(Duration.ofSeconds(DrainCommand.DEFAULT_DRAIN_TIMEOUT_SECONDS)
+                            .plus(DrainCommand.GRACE_PERIOD).plus(DrainCommand.MARGIN), boundOfMachine());
+    }
+
+    @Test
+    @DisplayName("the configured drain timeout is part of the bound")
+    void boundOfMachineConfigured() throws Exception {
+        var seconds = Generators.integers(1, 300).next();
+        writeMachineConfig("{\"drain_timeout_seconds\":" + seconds + "}");
+
+        assertEquals(Duration.ofSeconds(seconds).plus(DrainCommand.GRACE_PERIOD).plus(DrainCommand.MARGIN),
+                            boundOfMachine());
+    }
+
+    @Test
+    @DisplayName("zero is a configured drain timeout, not an absent one")
+    void boundOfMachineZero() throws Exception {
+        writeMachineConfig("{\"drain_timeout_seconds\":0}");
+
+        assertEquals(DrainCommand.GRACE_PERIOD.plus(DrainCommand.MARGIN), boundOfMachine());
+    }
+
+    @Test
+    @DisplayName("an invalid drain timeout takes the default and is named in a warning")
+    void boundOfMachineInvalid() throws Exception {
+        writeMachineConfig("{\"drain_timeout_seconds\":-1}");
+
+        assertAll(
+                            () -> assertEquals(Duration.ofSeconds(DrainCommand.DEFAULT_DRAIN_TIMEOUT_SECONDS)
+                                                                    .plus(DrainCommand.GRACE_PERIOD).plus(DrainCommand.MARGIN),
+                                                boundOfMachine()),
+                            () -> assertTrue(err.toString().contains("drain_timeout_seconds"), err.toString()));
     }
 
     @Test

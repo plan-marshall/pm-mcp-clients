@@ -256,8 +256,9 @@ public final class MockRuntime implements AutoCloseable {
             Files.move(tempToken, paths.runtimeToken(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
 
             // state/runtime.json
+            var startedAt = ProcessHandle.current().info().startInstant().orElseGet(Instant::now);
             var runtimeJson = "{\"pid\":" + ProcessHandle.current().pid()
-                    + ",\"start_instant\":\"" + Instant.now().toString() + "\""
+                    + ",\"start_instant\":\"" + startedAt + "\""
                     + ",\"version\":\"0.1.0-SNAPSHOT\""
                     + ",\"listener\":\"unix\""
                     + ",\"socket_path\":\"" + paths.socket().toString().replace("\\", "\\\\") + "\"}";
@@ -269,8 +270,9 @@ public final class MockRuntime implements AutoCloseable {
             Files.createDirectories(paths.runDir());
             Files.createDirectories(paths.stateDir());
             Files.writeString(paths.runtimeToken(), token);
+            var startedAt = ProcessHandle.current().info().startInstant().orElseGet(Instant::now);
             var runtimeJson = "{\"pid\":" + ProcessHandle.current().pid()
-                    + ",\"start_instant\":\"" + Instant.now().toString() + "\""
+                    + ",\"start_instant\":\"" + startedAt + "\""
                     + ",\"version\":\"0.1.0-SNAPSHOT\""
                     + ",\"listener\":\"unix\""
                     + ",\"socket_path\":\"" + paths.socket().toString().replace("\\", "\\\\") + "\"}";

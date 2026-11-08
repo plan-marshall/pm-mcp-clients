@@ -209,7 +209,6 @@ describe('tableActIds and handledActIds', () => {
 
     expect(handledActIds('plan')).toEqual(planIdsMinusDecision);
     expect(handledActIds('epic')).toEqual(tableActIds(EPIC_ACTS, ['decision']));
-    expect(handledActIds('epic')).toEqual(tableActIds(EPIC_ACTS));
 
     const decisionAct: ActSpec = {
       id: 'decision',

@@ -134,8 +134,48 @@ public class ErrorTexts {
         return text(locale, ApiErrorCode.fromWireOrNull(wire), FIX);
     }
 
+    /**
+     * Reads the fix of a code, with the arguments its text names.
+     *
+     * @param code      the code, or {@code null} for the unknown fallback
+     * @param arguments the named arguments of the text, such as the project id of
+     *                  {@code enrolment_tampered}
+     * @return the fix, what to do next
+     */
+    public static String fix(ApiErrorCode code, Map<String, ?> arguments) {
+        return fix(null, code, arguments);
+    }
+
+    /**
+     * Reads the fix of a code, with the arguments its text names.
+     *
+     * @param locale    the language ({@code en} or {@code de}); {@code null} takes the default language
+     * @param code      the code, or {@code null} for the unknown fallback
+     * @param arguments the named arguments of the text
+     * @return the fix, what to do next
+     */
+    public static String fix(String locale, ApiErrorCode code, Map<String, ?> arguments) {
+        return text(locale, code, FIX, arguments);
+    }
+
+    /**
+     * Reads the fix of a wire value, with the arguments its text names.
+     *
+     * @param locale    the language ({@code en} or {@code de}); {@code null} takes the default language
+     * @param wire      the wire value of the code, or {@code null} for the unknown fallback
+     * @param arguments the named arguments of the text
+     * @return the fix, what to do next; the unknown fallback when no code carries the wire value
+     */
+    public static String fix(String locale, String wire, Map<String, ?> arguments) {
+        return text(locale, ApiErrorCode.fromWireOrNull(wire), FIX, arguments);
+    }
+
     private static String text(String locale, ApiErrorCode code, String part) {
+        return text(locale, code, part, Map.of());
+    }
+
+    private static String text(String locale, ApiErrorCode code, String part, Map<String, ?> arguments) {
         String name = code == null ? UNKNOWN : code.wire();
-        return MessageCatalogue.format(locale, AREA + name + part, Map.of());
+        return MessageCatalogue.format(locale, AREA + name + part, arguments);
     }
 }
