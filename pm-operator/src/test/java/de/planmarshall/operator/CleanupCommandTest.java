@@ -71,8 +71,12 @@ class CleanupCommandTest {
                             new CleanupItemEntry("relay-hardening", "epic", "relay-hardening", "completed", "10 Sep", 12582912L, 0, 0, null)
         );
         var prj1 = new CleanupProjectItem("pm-mcp-clients", 2, 1, 6, 0, 102760448L, items1);
+        var items2 = List.of(
+                            new CleanupItemEntry("token-usage", "plan", "token-usage", "merged (#88)", "9 Sep", 125829120L, 11, 0, null)
+        );
+        var prj2 = new CleanupProjectItem("pm-mcp-core", 1, 0, 11, 0, 125829120L, items2);
         var summary = new CleanupSummary(12, 2, 40, 5, 1, 1932735283L, 4, "today 03:00", "tomorrow 03:00");
-        return new CleanupJob("cln-0007", CleanupJobState.OPEN, "today 03:00", summary, List.of(prj1), Map.of());
+        return new CleanupJob("cln-0007", CleanupJobState.OPEN, "today 03:00", summary, List.of(prj1, prj2), Map.of());
     }
 
     @Test
@@ -268,7 +272,7 @@ class CleanupCommandTest {
         int code = execute("cleanup", "--ignore");
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ Nothing was deleted. 3 items are kept for good; cleanup --kept lists them, cleanup --release gives them back."))
+                            () -> assertTrue(out.toString().contains("✓ Nothing was deleted. 4 items are kept for good; cleanup --kept lists them, cleanup --release gives them back."))
         );
     }
 
@@ -290,7 +294,7 @@ class CleanupCommandTest {
         var output = out.toString();
         assertAll(
                             () -> assertEquals(3, code),
-                            () -> assertTrue(output.contains("Delete 12 plans, 2 epics, 40 logs, 5 read reports, and 1 unenrolled project?")),
+                            () -> assertTrue(output.contains("Delete 11 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project?")),
                             () -> assertTrue(output.contains("1 unchecked item is kept for good.")),
                             () -> assertTrue(output.contains("Needs a choice: --yes"))
         );
@@ -316,7 +320,7 @@ class CleanupCommandTest {
         var output = out.toString();
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(output.contains("✓ Deleted 12 plans, 2 epics, 40 logs, 5 read reports, and 1 unenrolled project; 1.8 GB freed."))
+                            () -> assertTrue(output.contains("✓ Deleted 11 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project; 1.7 GB freed."))
         );
     }
 

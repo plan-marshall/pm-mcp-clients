@@ -353,4 +353,4 @@ The texts of the job, the kept list, the durations, and the residue are those of
 |{what} entfernt; {size} freigegeben.
 |===
 
-The decision bar is composed from `operator.cleanup.choose.delete|remind|ignore|leave_out|open|leave`, keyed by `ChoicePrompt`: `d) delete…   r) ask me again   i) ignore   x) leave items out   o) open   q) leave`. The reminder offers no number of days because the job carries none; `--remind` names the date the items come back in its result. The delete's confirmation is `operator.cleanup.choose.delete_confirm` above the prompt's own `y`/`n`/`q` line.
+The decision bar is composed from `operator.cleanup.choose.delete|remind|ignore|leave_out|open|leave`, keyed by `ChoicePrompt`: `d) delete…   r) ask me again   i) ignore   x) leave items out   o) open   q) leave`, wrapped at the dialogue width when the terminal is narrower than the whole bar. The reminder offers no number of days because the job carries none; `--remind` names the date the items come back in its result. The delete's confirmation is `operator.cleanup.choose.delete_confirm` above the prompt's own `y`/`n`/`q` line.
