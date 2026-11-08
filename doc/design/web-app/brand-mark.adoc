@@ -72,7 +72,7 @@ The fur and the gold were sampled from the source figure, and they are the value
 
 image::../../resources/diagrams/brand-icon.svg[The brand icon, the marshal star badge, in colour and in monochrome at its sizes, and beside the wordmark in the rail head, light and dark,720,align=center]
 
-*Choice:* the marshal star badge, the operator's decision of 2026-11-08 on a review sheet that showed it beside a bear-head candidate in the real rail head on the mock runtime.
+*Choice:* the marshal star badge, the operator's decision of 2026-11-08 from a throw-away review sheet that showed it beside a bear-head candidate in the real rail head on the mock runtime. The sheet is not part of the product; its findings are this document.
 
 [#icon-rules]
 === Drawing Rules
@@ -117,7 +117,7 @@ The brand icon sits near the kind marks (in the rail, in a list beside a mascot 
 
 * No kind icon is a clipboard, a star or a head (link:components-tags.adoc#kind-mark[Tags and Kinds, KindMark]); the clipboard belongs to the waiting mark alone.
 * The badge is told apart from `kind-plan`, `kind-report` and `kind-task` by its silhouette at `16` and `24` px. The final kind marks are those of link:components-tags.adoc#kind-mark[Tags and Kinds].
-* *The favourite star*: the UI set's `act.favourite` and `act.favourite-on` are plain five-point stars. The badge stays apart from them by its ball tips, its centre disc and its colour; in monochrome at `16` px the difference is the balls and the disc alone, and it held on the review sheet, where the three stood side by side.
+* *The favourite star*: the UI set's `act.favourite` is an outline five-point star in the set's line art, and `act.favourite-on` the same outline with a small dot at its centre. The badge stays apart from them by its ball tips, its centre disc on a solid star and its colour; in monochrome at `16` px the difference is the ball tips and the centre disc against an outline star.
 * The kind tints keep their measured distance from the mascot's fur and gold (link:components-tags.adoc#kind-tints[Tags and Kinds, The Three Kind Tints]).
 
 [#icon-files]
@@ -202,7 +202,7 @@ The waiting mark is the mascot's clipboard: it shows that the operator waits on 
 
 * A clipboard on the `24 × 24` grid: a board with rounded corners, a clip at its top edge, and a short to-do list of three lines. In front of each line stands a small dot while it is open and a tick once it is done.
 * The line weight and the palette of the UI icon set: a `1.5` unit stroke, round caps and joins, `currentColor` (`--color-text-secondary` beside a text). It carries no mascot colour: it is a sign in a line of text, not the brand.
-* Sizes: `20` px beside body text (the chat's working line), `24` px at the head of a step.
+* Size: `20` px, beside its text, on every surface (the chat's working line, the one main wait of an onboarding state).
 * `doc/resources/brand/waiting-mark.svg` is the drawing with every line ticked; the component draws the same paths inline, so each tick can be animated on its own.
 
 [#waiting-motion]
