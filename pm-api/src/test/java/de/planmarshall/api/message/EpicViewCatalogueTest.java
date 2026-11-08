@@ -134,6 +134,10 @@ class EpicViewCatalogueTest {
                 MessageCatalogue.format("en", "overview.epic.at_once", Map.of("running", 2, "scope", 3)));
         assertEquals("2 von 3 gleichzeitig",
                 MessageCatalogue.format("de", "overview.epic.at_once", Map.of("running", 2, "scope", 3)));
+        assertEquals("? of 3 at once",
+                MessageCatalogue.format("en", "overview.epic.at_once", Map.of("running", "?", "scope", 3)));
+        assertEquals("? von 3 gleichzeitig",
+                MessageCatalogue.format("de", "overview.epic.at_once", Map.of("running", "?", "scope", 3)));
 
         assertEquals("1 running", MessageCatalogue.format("en", "overview.epic.counts.running", Map.of("count", 1)));
         assertEquals("2 laufen", MessageCatalogue.format("de", "overview.epic.counts.running", Map.of("count", 2)));
