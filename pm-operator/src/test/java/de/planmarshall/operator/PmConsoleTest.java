@@ -166,7 +166,7 @@ class PmConsoleTest {
                             () -> assertTrue(output.contains("\"id\":\"fix-relay\""), "Should show plan details"),
                             () -> assertTrue(output.contains("\"id\":\"storage-v2\""), "Should show epic details"),
                             () -> assertTrue(output.contains("Q-007 (pending)"), "Should show questions"),
-                            () -> assertTrue(output.contains("Q-007 answered: 2.") || output.contains("Q-007 beantwortet: 2."), () -> "Should answer question, but was:\n" + output),
+                            () -> assertTrue(output.contains("✓ Q-007 answered: 2.") || output.contains("✓ Q-007 beantwortet: 2."), () -> "Should answer question, but was:\n" + output),
                             () -> assertTrue(output.contains("✓ Copied, if your terminal allows it; the text is above."), "Should copy ssh"),
                             () -> assertTrue(output.contains("✓ New code: NEW-CODE1"), "Should issue new pairing code")
         );

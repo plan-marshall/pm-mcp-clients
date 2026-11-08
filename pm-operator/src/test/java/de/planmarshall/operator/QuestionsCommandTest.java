@@ -292,7 +292,7 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-007", "withdraw");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("think again"));
+        assertTrue(out.toString().contains("you asked the plan to think again") || out.toString().contains("gebeten, neu zu überlegen"));
     }
 
     @Test
@@ -800,6 +800,6 @@ class QuestionsCommandTest {
         out = new StringWriter();
         int codeWithdraw = execute("answer", "Q-001", "--action", "withdraw");
         assertEquals(0, codeWithdraw);
-        assertTrue(out.toString().contains("think again") || out.toString().contains("überlegen"));
+        assertTrue(out.toString().contains("you asked the plan to think again") || out.toString().contains("gebeten, neu zu überlegen"));
     }
 }

@@ -182,9 +182,9 @@ public final class AnswerCommand implements Callable<Integer> {
         if (evidence == null || evidence.isEmpty()) {
             return "";
         }
-        var file = (String) evidence.get("file");
-        var lines = (String) evidence.get("lines");
-        var summary = (String) evidence.get("summary");
+        var file = evidence.get("file") != null ? String.valueOf(evidence.get("file")) : null;
+        var lines = evidence.get("lines") != null ? String.valueOf(evidence.get("lines")) : null;
+        var summary = evidence.get("summary") != null ? String.valueOf(evidence.get("summary")) : null;
         if (file != null && lines != null && summary != null) {
             return file + ":" + lines + " (" + summary + ")";
         }
@@ -194,8 +194,8 @@ public final class AnswerCommand implements Callable<Integer> {
         if (file != null && summary != null) {
             return file + " (" + summary + ")";
         }
-        var run = (String) evidence.get("run");
-        var test = (String) evidence.get("test");
+        var run = evidence.get("run") != null ? String.valueOf(evidence.get("run")) : null;
+        var test = evidence.get("test") != null ? String.valueOf(evidence.get("test")) : null;
         if (run != null && test != null) {
             return test + " (" + run + ")";
         }
@@ -206,6 +206,13 @@ public final class AnswerCommand implements Callable<Integer> {
                             .map(Object::toString)
                             .filter(s -> !s.isBlank())
                             .collect(Collectors.joining(", "));
+    }
+
+    private static String formatRationale(@Nullable DecisionOption recommendedOpt, String rationale) {
+        if (recommendedOpt != null && !rationale.startsWith(recommendedOpt.label())) {
+            return recommendedOpt.label() + ". " + rationale;
+        }
+        return rationale;
     }
 
     private int submitAnswer(RuntimeClient runtime, PrintWriter out, String locale) throws IOException {
@@ -512,7 +519,7 @@ public final class AnswerCommand implements Callable<Integer> {
                 out.printf("    %s) %-25s%s  %s%n", opt.key(), OutputSafety.stripControlSequences(opt.label()), recMark, supportStr);
             }
             if (part.recommendationRationale() != null && part.recommendingRole() != null) {
-                var rationaleOption = recommendedOpt != null ? recommendedOpt.label() + ". " + part.recommendationRationale() : part.recommendationRationale();
+                var rationaleOption = formatRationale(recommendedOpt, part.recommendationRationale());
                 out.println("  " + MessageCatalogue.format(locale, "decision.recommendation.by", Map.of(
                                     "role", part.recommendingRole(),
                                     "option", OutputSafety.stripControlSequences(rationaleOption)
@@ -644,7 +651,7 @@ public final class AnswerCommand implements Callable<Integer> {
 
             if ("?r".equalsIgnoreCase(choice) && part != null) {
                 if (part.recommendationRationale() != null && part.recommendingRole() != null) {
-                    var rationaleOption = recommendedOpt != null ? recommendedOpt.label() + ". " + part.recommendationRationale() : part.recommendationRationale();
+                    var rationaleOption = formatRationale(recommendedOpt, part.recommendationRationale());
                     out.println("  " + MessageCatalogue.format(locale, "decision.recommendation.by", Map.of(
                                         "role", part.recommendingRole(),
                                         "option", OutputSafety.stripControlSequences(rationaleOption)
