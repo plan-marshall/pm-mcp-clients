@@ -219,6 +219,15 @@ class EpicViewLevelTest {
     }
 
     @Test
+    @DisplayName("a known running count names the taken places in a wait text")
+    void knownWaitText() throws Exception {
+        var known = EPIC.replace("\"wait_reason\":\"none\"", "\"wait_reason\":\"scope\"");
+        var view = new EpicViewLevel(EpicResource.fromJson(known));
+
+        assertTrue(text(view).contains("waits for a free place: 3 of 3 taken"), text(view));
+    }
+
+    @Test
     @DisplayName("a known running count shows 2 of 3 at once")
     void knownRunning() throws Exception {
         var view = new EpicViewLevel(EpicResource.fromJson(
