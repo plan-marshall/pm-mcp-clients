@@ -244,10 +244,6 @@ $ pm-operator sweep --apply
 |`[O]`, `[S]`
 |<<t-job>>, <<t-script>>
 
-|`cleanup.leave_out`, `cleanup.open`
-|`[O]`, `[O]`
-|<<t-job>>
-
 |`cleanup.remind`
 |`[S]`
 |<<t-remind>>
@@ -369,7 +365,7 @@ The decision bar is composed from `operator.cleanup.choose.delete|remind|ignore|
 ----
 d) delete…   r) ask me again   i) ignore   x) leave items out   o) open
 q) leave
-› x
+  › x
 ----
 
 The reminder offers no number of days because the job carries none; `--remind` names the date the items come back in its result. The delete's confirmation is `operator.cleanup.choose.delete_confirm` above the prompt's own `y`/`n`/`q` line. An unenrolled-project entry is discounted by itself, its logs and its size; the plans and epics it groups are not in the entry, so the preview cannot subtract them.
