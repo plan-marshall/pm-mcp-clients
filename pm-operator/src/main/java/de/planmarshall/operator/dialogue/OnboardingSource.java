@@ -37,6 +37,7 @@ public final class OnboardingSource implements StateDialogue.Source {
 
     private final RuntimeClient runtime;
     private final OperatorGate gate;
+    private final List<OnboardingAspect> aspects;
     private final int totalSteps;
 
     /**
@@ -53,7 +54,7 @@ public final class OnboardingSource implements StateDialogue.Source {
      * @param aspects the machine onboarding aspects
      */
     public OnboardingSource(RuntimeClient runtime, OperatorGate gate, List<OnboardingAspect> aspects) {
-        this(runtime, gate, Objects.requireNonNull(aspects, "aspects").size());
+        this(runtime, gate, aspects, Objects.requireNonNull(aspects, "aspects").size());
     }
 
     /**
@@ -61,10 +62,22 @@ public final class OnboardingSource implements StateDialogue.Source {
      * @param gate       the operator gate an answer is sent through
      * @param totalSteps the total steps of the onboarding run
      */
-    public OnboardingSource(RuntimeClient runtime, OperatorGate gate, int totalSteps) {
+    OnboardingSource(RuntimeClient runtime, OperatorGate gate, int totalSteps) {
+        this(runtime, gate, List.of(OnboardingAspect.values()), totalSteps);
+    }
+
+    private OnboardingSource(RuntimeClient runtime, OperatorGate gate, List<OnboardingAspect> aspects, int totalSteps) {
         this.runtime = Objects.requireNonNull(runtime, "runtime");
         this.gate = Objects.requireNonNull(gate, "gate");
+        this.aspects = List.copyOf(Objects.requireNonNull(aspects, "aspects"));
         this.totalSteps = totalSteps;
+    }
+
+    /**
+     * @return the machine onboarding aspects
+     */
+    public List<OnboardingAspect> aspects() {
+        return aspects;
     }
 
     @Override

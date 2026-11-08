@@ -327,6 +327,25 @@ class StateDialogueTest {
     }
 
     @Test
+    @DisplayName("a dialogue over a two-aspect list shows 2 in intro and exactly those two aspects in overview")
+    void dialogueFollowsInjectedAspectList() {
+        var aspects = List.of(OnboardingAspect.LANGUAGE, OnboardingAspect.HARNESSES);
+        var frame = new StateDialogue.Frame(MODE, "operator_wait", 0, 2, null, Map.of(),
+                            List.of(new StateDialogue.Link("begin", "next", true)));
+        var dialogue = new StateDialogue(new FakeSource(frame), new PrintWriter(new StringWriter()), "en",
+                            stateId -> new ChoicePrompt(new BufferedReader(new StringReader("")),
+                                                new PrintWriter(new StringWriter()), "en", stateId), aspects);
+
+        var content = dialogue.content(frame);
+        assertTrue(content.getFirst().startsWith("2 steps."), "intro says 2 steps");
+        var overviewLines = content.subList(1, content.size());
+        assertEquals(2, overviewLines.size(), "overview should list exactly the two injected aspects");
+
+        var rolesFrame = new StateDialogue.Frame("roles.review", "operator_wait", 3, 2, null, Map.of(), List.of());
+        assertEquals("Done", dialogue.stepName(rolesFrame), "aspect outside injected list maps to Done");
+    }
+
+    @Test
     @DisplayName("the intro line says the number of steps the run reports")
     void introFollowsTheRunStepCount() {
         var frame = new StateDialogue.Frame(MODE, "operator_wait", 0, 8, null, Map.of(),

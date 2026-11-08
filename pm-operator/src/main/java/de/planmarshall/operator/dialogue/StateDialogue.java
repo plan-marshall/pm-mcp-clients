@@ -166,6 +166,7 @@ public final class StateDialogue {
     private final PrintWriter out;
     private final String locale;
     private final Function<String, ChoicePrompt> prompts;
+    private final List<OnboardingAspect> aspects;
 
     /**
      * @param source  the runtime to read and act on
@@ -175,10 +176,27 @@ public final class StateDialogue {
      */
     public StateDialogue(Source source, PrintWriter out, String locale,
                         Function<String, ChoicePrompt> prompts) {
+        this(source, out, locale, prompts,
+                            source instanceof OnboardingSource onboardingSource
+                                                ? onboardingSource.aspects()
+                                                : List.of(OnboardingAspect.values()));
+    }
+
+    /**
+     * @param source  the runtime to read and act on
+     * @param out     the output of the dialogue
+     * @param locale  the interface locale
+     * @param prompts creates the strict choice prompt of one state, by its state id
+     * @param aspects the machine onboarding aspects
+     */
+    public StateDialogue(Source source, PrintWriter out, String locale,
+                        Function<String, ChoicePrompt> prompts,
+                        List<OnboardingAspect> aspects) {
         this.source = Objects.requireNonNull(source, "source");
         this.out = Objects.requireNonNull(out, "out");
         this.locale = Objects.requireNonNull(locale, "locale");
         this.prompts = Objects.requireNonNull(prompts, "prompts");
+        this.aspects = List.copyOf(Objects.requireNonNull(aspects, "aspects"));
     }
 
     /**
@@ -408,7 +426,7 @@ public final class StateDialogue {
     }
 
     private void addStepOverview(List<String> lines) {
-        for (var aspect : OnboardingAspect.values()) {
+        for (var aspect : aspects) {
             var suffix = aspect.stepNameKey().substring(STEP_KEY_PREFIX.length());
             lines.add(MessageCatalogue.format(locale, "onboard.state.step_entry", Map.of(
                                 "number", aspect.step(),
@@ -644,13 +662,13 @@ public final class StateDialogue {
      * @param stateId the machine onboarding state
      * @return the catalogue suffix of its step name
      */
-    static String machineStepOf(String stateId) {
-        for (var aspect : OnboardingAspect.values()) {
+    String machineStepOf(String stateId) {
+        for (var aspect : aspects) {
             if (stateId.startsWith(aspect.wireValue() + ".")) {
                 return aspect.stepNameKey().substring(STEP_KEY_PREFIX.length());
             }
         }
-        if (stateId.startsWith("github.") || stateId.startsWith("sonar.")) {
+        if (aspects.contains(OnboardingAspect.PROVIDERS) && (stateId.startsWith("github.") || stateId.startsWith("sonar."))) {
             return "providers";
         }
         return DONE;
