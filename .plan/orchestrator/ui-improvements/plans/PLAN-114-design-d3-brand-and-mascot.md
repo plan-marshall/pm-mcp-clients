@@ -117,6 +117,25 @@ ui-improvements`; read, never write):
 
 Checked at `aa3a9be3`. The gate "after the running PLAN-104" is satisfied (#357 landed); D2 (PLAN-113) is still unlanded for `README.adoc` and `components.adoc` (PLAN-112 landed). No mascot or pose assets and no `WaitingMark` exist yet. The claims name no HEAD later than 60b4bfa5; the production users of `EmptyState` are `ReportsView` only.
 
+## Operator Decision 2026-11-08 (the waiting mark)
+
+Amends `design-review-005.md` §3 and §6 and deliverables 1, 2 and 4; the message's other rules stand. The waiting mark no
+longer follows the icon choice. Both elements of candidate B are kept, in two roles:
+
+- **The marshal star badge** is the brand mark/badge: candidate B on the review sheet is the star badge alone, without the
+  clipboard. The operator still chooses between A (bear head) and B (star badge); `brand-mark.adoc` records the choice.
+- **The clipboard is the waiting mark** (`WaitingMark`), whatever icon is chosen: a clipboard with a short TODO list whose
+  lines are ticked one after another (✓ by ✓, then the list starts again), drawn in the same line weight and palette as the
+  icon set. Static with reduced motion (the list shown fully ticked or unticked, never mid-animation). The star glint is
+  dropped as a waiting animation.
+- Unchanged from §6: always with a text, one per screen, only where the operator waits on the system (the chat's working
+  line, long checks on screens without a figure), never an object's state, short waits (under about 1–2 s) keep the neutral
+  `Spinner`, and no waiting mark on a screen that shows a figure.
+- The review sheet (deliverable 2) shows the animated clipboard waiting mark once, beside both icon candidates, and in the
+  chat's working line and an onboarding check step, light and dark, with and without reduced motion.
+- `components.adoc` (deliverable 4) defines `WaitingMark` as the clipboard with its tick animation, and `brand-mark.adoc`
+  (deliverable 1) carries its drawing and motion rules. Expected Surface unchanged.
+
 ## Hand-Off Command
 
 Lane: none — a direct Claude Code session (operator instruction 2026-11-06). Start it in its own worktree and branch of
