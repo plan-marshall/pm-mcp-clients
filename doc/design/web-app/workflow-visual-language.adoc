@@ -95,10 +95,10 @@ Every delivered file satisfies all of the following. The registry test enforces 
 
 Two drawings of the web app stand outside the delivered set and are governed by link:brand-mark.adoc[Brand Mark and Mascot], not by the registry above:
 
-* *The brand icon in colour* is the one icon of the app with literal colours: the mascot palette (`--color-mascot-*`), solid fills with a dark outline, the same in both themes, drawn at `16`, `24`, `28` and `64` px. It is the brand's own drawing, so it is exempt from the monochrome rule, the stroke rule, the fill rule and the sizes of <<accessibility>>. Its *monochrome* rendering keeps this contract's `currentColor` rule and its grid, as a solid silhouette with its details cut out (link:brand-mark.adoc#icon-rules[Brand Mark and Mascot, What Both Candidates Follow]).
+* *The brand icon in colour* is the one icon of the app with literal colours: the mascot palette (`--color-mascot-*`), solid fills with a dark outline, the same in both themes, drawn at `16`, `24`, `28` and `64` px. It is the brand's own drawing, so it is exempt from the monochrome rule, the stroke rule, the fill rule and the sizes of <<accessibility>>. Its *monochrome* rendering keeps this contract's `currentColor` rule and its grid, as a solid silhouette with its details cut out (link:brand-mark.adoc#icon-rules[Brand Mark and Mascot, Drawing Rules]).
 * *The waiting mark* is drawn on this grid at the UI set's `1.5` stroke in `currentColor`, but inline in its component rather than as a mask, so that each tick can be animated (link:brand-mark.adoc#waiting-mark[Brand Mark and Mascot, The Waiting Mark]).
 
-No workflow, phase, axis or UI icon may take either exception, and no icon of the delivered set may be a clipboard, a star badge with balls on its tips, or a bear's head, so that none is mistaken for the brand or the waiting mark; the favourite act keeps its plain star.
+No workflow, phase, axis or UI icon may take either exception, and no icon of the delivered set may be a clipboard or a star badge with balls on its tips, so that none is mistaken for the brand or the waiting mark; the favourite act keeps its plain star.
 
 [#naming]
 == Naming and Stability

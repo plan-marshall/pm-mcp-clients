@@ -191,7 +191,7 @@ The artwork is supplied by the operator or by an image tool the operator names (
 [#pose-sheet]
 === Review of the Poses
 
-The six poses are reviewed as one set on a pose sheet rendered on the real surfaces on the mock runtime (screenshots, as the icon's review sheet was): each pose on its surfaces, in light and dark, at its sizes, beside the source figure. The operator accepts each pose or leaves it out; an accepted pose gets its derived files (<<assets>>) and its provenance row (<<pose-provenance>>), and its surfaces switch from the source figure to it.
+The six poses are reviewed as one set on a pose sheet rendered on the real surfaces on the mock runtime (screenshots, as the brand icon was chosen): each pose on its surfaces, in light and dark, at its sizes, beside the source figure. The operator accepts each pose or leaves it out; an accepted pose gets its derived files (<<assets>>) and its provenance row (<<pose-provenance>>), and its surfaces switch from the source figure to it.
 
 [#pose-provenance]
 === Provenance of the Poses

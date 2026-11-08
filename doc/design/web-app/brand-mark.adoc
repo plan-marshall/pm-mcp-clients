@@ -38,7 +38,7 @@ The icon *replaces* the earlier abstract mark (three ascending plan sheets, a ba
 [#palette]
 == The Mascot Palette
 
-The colour rendering of the brand icon and the browser-tab copies draw from five tokens, `--color-mascot-*`. They are the same in both themes: the brand is one drawing, not a themed glyph. They are design tokens of this document; the package that delivers the icon adds them to `pm-web-app/src/styles/tokens.css`, where the token lint covers them.
+The mascot palette is five tokens, `--color-mascot-*`. The colour rendering of the brand icon and the browser-tab copies draw the fur, the gold and the outline; the hat and the cream are the bear's colours for any vector drawing of the bear itself. They are the same in both themes: the brand is one drawing, not a themed glyph. They are design tokens of this document; the package that delivers the icon adds them to `pm-web-app/src/styles/tokens.css`, where the token lint covers them.
 
 [cols="2,1,3",options="header"]
 |===
@@ -46,79 +46,49 @@ The colour rendering of the brand icon and the browser-tab copies draw from five
 
 |`--color-mascot-fur`
 |`#E17512`
-|The bear's fur (candidate A); the centre disc of the star badge (candidate B).
+|The centre disc of the star badge.
 
 |`--color-mascot-gold`
 |`#F2B630`
-|The sheriff star.
+|The star of the badge.
 
 |`--color-mascot-hat`
 |`#A0602E`
-|The hat (candidate A). Lighter than the source's dark brown, so the hat keeps `3:1` against the dark grounds as well (<<theme>>).
+|The bear's hat in a vector drawing of the mascot; the brand icon does not draw it. Lighter than the source's dark brown, so a hat drawn in it keeps `3:1` against the dark grounds as well (<<theme>>).
 
 |`--color-mascot-cream`
 |`#F6DDB0`
-|The muzzle and the inner ears (candidate A).
+|The bear's muzzle and inner ears in a vector drawing of the mascot; the brand icon does not draw it.
 
 |`--color-mascot-outline`
 |`#2A1A10`
-|The outline, the eyes and the nose.
+|The outline.
 |===
 
 The fur and the gold were sampled from the source figure, and they are the values the kind tints are measured against (link:components-tags.adoc#kind-tints[Tags and Kinds, The Three Kind Tints]); once the tokens exist, that check reads them. The raster illustration keeps its own pixels: the palette governs the vector drawings only.
 
 [#icon]
-== The Brand Icon: Two Candidates, One Choice
+== The Brand Icon: the Marshal Star Badge
 
-image::../../resources/diagrams/brand-icon-candidates.svg[The two brand icon candidates, the bear head and the marshal star badge, in colour and in monochrome, light and dark,720,align=center]
+image::../../resources/diagrams/brand-icon.svg[The brand icon, the marshal star badge, in colour and in monochrome at its sizes, and beside the wordmark in the rail head, light and dark,720,align=center]
 
-The mascot gives two candidates for the icon. Both are drawn, and both are shown side by side on one rendered review sheet (<<review-sheet>>). *The operator chooses one.* The chosen candidate's drawings are kept and the other's are removed with its section below.
-
-*Choice:* _open — the operator chooses on the review sheet before this document is set to `AGREED`._
+*Choice:* the marshal star badge, the operator's decision of 2026-11-08 on a review sheet that showed it beside a bear-head candidate in the real rail head on the mock runtime.
 
 [#icon-rules]
-=== What Both Candidates Follow
+=== Drawing Rules
 
 * *Grid*: a `24 × 24` view box; the drawing stays inside `1..23` on both axes. No part relies on the rendered size.
 * *Hand-drawn, not traced*: a few simple shapes taken from the mascot, never an auto-vectorised or resampled copy of the source image.
 * *Colour rendering*: the mascot palette (<<palette>>), solid fills with a dark outline. It is the brand's own drawing and a documented exception to the monochrome icon contract (link:workflow-visual-language.adoc#exceptions[Workflow Visual Language, Exceptions]). It stands in the rail head *without* the violet plate of the earlier mark, on the pairing page, and in the browser tab.
 * *Monochrome rendering*: one colour, `currentColor` in every fill, no literal colour, the inner details cut out of the silhouette. It follows the SVG contract of link:workflow-visual-language.adoc#grammar[Workflow Visual Language, Visual Grammar] apart from its solid silhouette, and serves every one-colour use: a muted glyph, forced colours (`@media (forced-colors: active)`, where it takes the system's text colour), and print.
-* *No text in the drawing*: the star carries no `MARSHALL`, the hat no letter.
-* *One sign*: the icon is always the same drawing, with two fixed exceptions at the browser tab: the attention dot (<<favicon>>), and candidate A's favicon, which draws the hat with the star alone because the face is too fine at `16` px (<<candidate-a>>). The icon never marks a state, a kind or a count.
+* *No text in the drawing*: the badge carries no `MARSHALL`.
+* *One sign*: the icon is always the same drawing, at every size and in the browser tab; the one addition there is the attention dot (<<favicon>>). The icon never marks a state, a kind or a count.
 * *The wordmark stays*: the visible word `plan-marshall` stands beside the icon wherever the brand is shown as a block.
 
-[#candidate-a]
-=== Candidate A: the Bear Head
+[#badge]
+=== The Drawing
 
-The bear's head under the cowboy hat, with the star on the hat, without the clipboard. It carries the mascot's character and is unmistakably plan-marshall.
-
-[cols="1,3",options="header"]
-|===
-|Part |Drawing
-
-|Hat
-|A crown with a dent in the middle of its top edge, over a wide brim that curls up at both ends; `--color-mascot-hat` with the outline.
-
-|Star
-|A five-point star in `--color-mascot-gold` in the middle of the crown, outlined.
-
-|Head
-|Two round ears below the brim, each with a cream inner ear, and a round face in `--color-mascot-fur`; the face starts under the brim.
-
-|Face
-|A cream muzzle low on the face, a dark nose on its top edge, two dark round eyes, and a short smile line.
-
-|Favicon
-|At `16` px the face is too fine, so the tab shows the hat with the star alone, drawn larger to fill the grid.
-
-|Monochrome
-|The hat as one silhouette with the star cut out; the head as one silhouette with the eyes and the muzzle cut out and the nose standing in the muzzle; a gap of one unit between the brim and the head keeps the two shapes apart.
-|===
-
-[#candidate-b]
-=== Candidate B: the Marshal Star Badge
-
-The sheriff star the bear wears on its hat, alone, as a badge (the operator's decision of 2026-11-08: the clipboard of the first candidate B is the waiting mark now, <<waiting-mark>>). It is a simple silhouette that stays legible at `16` px and works in one colour.
+The sheriff star the bear wears on its hat, alone, as a badge. It is a simple silhouette that stays legible at `16` px and works in one colour.
 
 [cols="1,3",options="header"]
 |===
@@ -146,36 +116,31 @@ The sheriff star the bear wears on its hat, alone, as a badge (the operator's de
 The brand icon sits near the kind marks (in the rail, in a list beside a mascot empty state), so it must not be read as a kind:
 
 * No kind icon is a clipboard, a star or a head (link:components-tags.adoc#kind-mark[Tags and Kinds, KindMark]); the clipboard belongs to the waiting mark alone.
-* Both candidates are told apart from `kind-plan`, `kind-report` and `kind-task` (documents and checks) by their silhouette at `16` and `24` px; the review sheet shows them side by side, in the kind tints, with a draft `kind-project` (a folder) and a draft `kind-plan` (steps to a flag) that D3 drew for the comparison only. The final kind marks are those of link:components-tags.adoc#kind-mark[Tags and Kinds].
-* *The favourite star*: the UI set's `act.favourite` and `act.favourite-on` are plain five-point stars. Candidate B stays apart from them by its ball tips, its centre disc and its colour; in monochrome at `16` px the difference is the balls and the disc alone, so the sheet shows the three side by side. Candidate A has no such neighbour.
+* The badge is told apart from `kind-plan`, `kind-report` and `kind-task` by its silhouette at `16` and `24` px. The final kind marks are those of link:components-tags.adoc#kind-mark[Tags and Kinds].
+* *The favourite star*: the UI set's `act.favourite` and `act.favourite-on` are plain five-point stars. The badge stays apart from them by its ball tips, its centre disc and its colour; in monochrome at `16` px the difference is the balls and the disc alone, and it held on the review sheet, where the three stood side by side.
 * The kind tints keep their measured distance from the mascot's fur and gold (link:components-tags.adoc#kind-tints[Tags and Kinds, The Three Kind Tints]).
 
-[#review-sheet]
-=== The Review Sheet
+[#icon-files]
+=== Files
 
-The sheet was rendered on 2026-11-08 from the draft SVGs, on the mock runtime (scenario `running-work`), in a throw-away development page; the rail heads in it are the real `NavRail` with `BrandMark` drawing each candidate. It shows each candidate at `16` (the favicon, with and without the attention dot), `24`, `28` (the rail head) and `64` px (the pairing page), in colour, monochrome and muted, in light and dark; the real rail head expanded and collapsed; a browser tab bar beside other tabs; the distance from the kind marks and the favourite star; and the animated waiting mark beside both candidates, in the chat's working line and in an onboarding check, with and without reduced motion.
+The design's drawings of the icon are the reference the brand assets package builds from (<<implementation>>):
 
 [cols="1,3",options="header"]
 |===
 |File |What it holds
 
-|`doc/resources/brand/review/d3-brand-review-sheet.png`
-|The sheet, one screenshot of all five sections.
+|`doc/resources/brand/star-badge-colour.svg`
+|The colour rendering, in the mascot palette.
 
-|`doc/resources/brand/review/d3-waiting-mark.gif`
-|The waiting-mark section in motion, one cycle, captured from the same page.
+|`doc/resources/brand/star-badge-mono.svg`
+|The monochrome rendering, `currentColor`.
 
-|`doc/resources/brand/candidate-a/`, `doc/resources/brand/candidate-b/`
-|The draft drawings: colour, monochrome, favicon, favicon with the attention dot.
+|`doc/resources/brand/favicon.svg`, `favicon-attention.svg`
+|The browser-tab copies, without and with the attention dot.
 
 |`doc/resources/brand/waiting-mark.svg`
-|The waiting mark's static drawing, every line ticked.
-
-|`doc/resources/brand/review/kind-project-draft.svg`, `kind-plan-draft.svg`
-|The two draft kind marks of the comparison.
+|The waiting mark's static drawing, every line ticked (<<waiting-mark>>).
 |===
-
-The sheet, the GIF and the two draft kind marks are throw-away: they are removed in the commit that records the choice. The development page that rendered them was never committed.
 
 [#colour]
 == Colour
@@ -204,7 +169,7 @@ The sheet, the GIF and the two draft kind marks are throw-away: they are removed
 |`PairingView` (link:entry.adoc#pairing[Entry, The Pairing Page]). The figure is the one large drawing of the page, so the icon stays small beside it.
 
 |Browser tab
-|`16` px, colour, the favicon drawing of the chosen candidate; with the attention dot while the attention count is above zero
+|`16` px, colour, the same drawing; with the attention dot while the attention count is above zero
 |The favicon of `app.html`, applied by `src/lib/favicon.ts` (<<favicon>>).
 
 |One-colour uses
@@ -221,16 +186,16 @@ The sheet, the GIF and the two draft kind marks are throw-away: they are removed
 `src/app.html` links `brand-mark.svg`; `pm-web-app/src/lib/favicon.ts` keeps that link in step with the attention count, as today:
 
 * `faviconHref(count)` answers `brand-mark-attention.svg` while the count is above zero and `brand-mark.svg` otherwise; `applyFavicon(count)` writes it onto the document's icon link.
-* The two files keep their names and are redrawn on the chosen candidate's favicon drawing, so `favicon.ts` does not change.
+* The two files keep their names and are redrawn as the badge (<<icon-files>>), so `favicon.ts` does not change.
 * A standalone SVG has no page context for a token, so the two copies bake the mascot palette (<<palette>>).
-* The attention dot is drawn in the upper right corner, `#B86E00` (the light-theme `--color-attention`) inside a white ring of `1.4` units. The dot is close in hue to the fur and the gold (`1.3:1` against the fur), so the white ring is what sets it apart from the drawing; the review sheet shows it on a light and a dark tab strip.
+* The attention dot is drawn in the upper right corner, `#B86E00` (the light-theme `--color-attention`) inside a white ring of `1.4` units. The dot is close in hue to the fur and the gold (`1.3:1` against the fur), so the white ring is what sets it apart from the drawing, on a light and a dark tab strip alike.
 
 [#waiting-mark]
 == The Waiting Mark
 
 image::../../resources/diagrams/brand-waiting-mark.svg[The clipboard waiting mark in its cycle of ticks, still with reduced motion, and beside its text in the chat's working line,720,align=center]
 
-The waiting mark is the mascot's clipboard: it shows that the operator waits on the system. It is the same whichever icon is chosen (the operator's decision of 2026-11-08); the star glint the first design gave candidate A is dropped.
+The waiting mark is the mascot's clipboard: it shows that the operator waits on the system. It is a sign of its own, apart from the icon (the operator's decision of 2026-11-08).
 
 [#waiting-drawing]
 === Drawing
@@ -296,14 +261,14 @@ The colour icon is the same drawing in both themes. Its silhouette is carried by
 |inner detail only
 |===
 
-So every outer shape of either candidate keeps `3:1` as a graphical object in both themes: on light by its outline, on dark by its fur, gold or hat. The monochrome rendering inherits the text colour of its surface and keeps that colour's contrast. The two browser-tab copies bake the same palette, so they read on a light and a dark tab strip alike.
+So the badge's outer shape keeps `3:1` as a graphical object in both themes: on light by its outline, on dark by its gold. The hat colour is measured for any vector drawing of the hat; the icon does not draw it. The monochrome rendering inherits the text colour of its surface and keeps that colour's contrast. The two browser-tab copies bake the same palette, so they read on a light and a dark tab strip alike.
 
 [#provenance]
 == Provenance
 
-* *The mascot* is the operator's own work, and the operator holds the right to use it in the product and to modify it — new poses, the icon (the operator's decision of 2026-11-06). The source is `plan-marshall/doc/resources/planmarshall.png` in the repository `plan-marshall` (`1122 × 1402` px, RGBA with a transparent background). How the source image was made: _to be stated by the operator before any asset ships._
+* *The mascot* is the operator's own work, and the operator holds the right to use it in the product and to modify it — new poses, the icon (the operator's decision of 2026-11-06). The source is `plan-marshall/doc/resources/planmarshall.png` in the repository `plan-marshall` (`1122 × 1402` px, RGBA with a transparent background). It was made with an AI image tool from the operator's own prompt and direction, then selected and edited by the operator (the operator's statement of 2026-11-08).
 * *The source stays where it is.* Only derived files are copied into `pm-web-app` (link:brand-mark-mascot.adoc#assets[The Mascot, Asset Rules]); the `1.4 MB` source PNG is never shipped.
-* *The icon* (both candidates) is new vector artwork drawn by hand for this project from the mascot, by the D3 design session (2026-11-08): a few shapes taken from the figure, not traced, auto-vectorised or resampled. It is the project's own, under the repository's licence.
+* *The icon* is new vector artwork drawn by hand for this project from the mascot, by the D3 design session (2026-11-08): a few shapes taken from the figure, not traced, auto-vectorised or resampled. It is the project's own, under the repository's licence.
 * *The waiting mark* is original line art in the style of the UI icon set, drawn for this project; it shares the provenance row of link:workflow-visual-language.adoc#provenance[Workflow Visual Language, Provenance Table].
 * *The poses* each get a row in link:brand-mark-mascot.adoc#pose-provenance[The Mascot, Provenance of the Poses] — who or which tool made it, and the operator's acceptance — before the pose ships.
 * *No third-party mark*: no vendor logo, icon-font glyph, stock icon, or remote asset is copied or referenced.
@@ -313,8 +278,8 @@ So every outer shape of either candidate keeps `3:1` as a graphical object in bo
 
 The D3 brand assets package delivers this design after it is agreed; the component specifications are in link:components.adoc#supporting[Components, Supporting Pieces].
 
-* `BrandMark` draws the chosen icon as an inline SVG whose colours come from the `--color-mascot-*` tokens through classes of its own stylesheet, never as literals in `src/lib/`: `rendering` `colour` (default) or `monochrome`, `size` `16`, `20`, `24`, `28` or `64`. The `plate` option goes with the earlier mark. Under `forced-colors: active` it draws the monochrome rendering whatever was asked. `aria-hidden="true"` by default; a `label` turns it into `role="img"` with that name. `data-testid="brand-mark"`.
-* `static/brand-mark.svg` and `static/brand-mark-attention.svg` are redrawn on the chosen favicon drawing (<<favicon>>).
+* `BrandMark` draws the badge as an inline SVG whose colours come from the `--color-mascot-*` tokens through classes of its own stylesheet, never as literals in `src/lib/`: `rendering` `colour` (default) or `monochrome`, `size` `16`, `20`, `24`, `28` or `64`. The `plate` option goes with the earlier mark. Under `forced-colors: active` it draws the monochrome rendering whatever was asked. `aria-hidden="true"` by default; a `label` turns it into `role="img"` with that name. `data-testid="brand-mark"`.
+* `static/brand-mark.svg` and `static/brand-mark-attention.svg` are redrawn as the badge (<<favicon>>).
 * `WaitingMark` draws the waiting mark: `size` `20` or `24`, the cycle of <<waiting-motion>>, still under `prefers-reduced-motion: reduce`.
 * The `--color-mascot-*` tokens join `tokens.css`; `tokens.test.ts` allows their literals there only, and the kind-tint check reads the fur and the gold from them.
 * The mascot figure and its uses are link:brand-mark-mascot.adoc#implementation[The Mascot, Implementation].
