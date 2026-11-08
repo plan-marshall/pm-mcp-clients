@@ -316,7 +316,7 @@ public final class EpicCommand implements Callable<Integer> {
             out.println("  alongside landings:");
             var locale = context.clientEnvironment().locale();
             for (var landing : epic.alongsideLandings()) {
-                out.printf("    ✓ %s%n", landingTitle(locale, landing));
+                out.printf("    ✓ %s%n", OutputSafety.stripControlSequences(landingTitle(locale, landing)));
             }
         }
 
