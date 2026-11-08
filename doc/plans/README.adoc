@@ -364,9 +364,9 @@ The status of a package is `open`, `blocked`, `done` or `dropped`; a `dropped` r
 |Milestone 11
 
 |link:web-moving-between-plans.adoc[`web-moving-between-plans`]
-|Web app: the work list beside a plan and an epic, _Add a plan_ on a project's row, one notification for a burst and none after a reconnect
+|Web app: the work list beside a plan and an epic (the column chain of link:../design/web-app/navigation.adoc#levels[Navigation]), _Add a plan_ on a project's row, one notification for a burst and none after a reconnect; built by the navigation engine, `PLAN-59` and `PLAN-51`
 |`open`
-|`overview-order-and-size`
+|`overview-order-and-size`; the navigation engine
 |Milestone 11
 
 |link:relay-session-mode-removal.adoc[`relay-session-mode-removal`]

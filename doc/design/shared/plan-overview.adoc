@@ -168,6 +168,8 @@ The overview remembers the project, the view (by plan, by epic), and the selecte
 
 A remembered plan that has ended falls back to its project; a project that no longer has running work falls back to the list of projects.
 
+In the web app the address wins over the remembered place: an address that names a project, a mode or an object opens what it names, and only the bare lens (`/overview`) is filled from the remembered place, by replacing the address rather than pushing it. The project, the mode (running or ended, by plan or by epic) and the follow mode are part of the address (link:../web-app/navigation.adoc#url[Web App, Navigation, Addresses and History]).
+
 [#texts]
 == Texts
 
