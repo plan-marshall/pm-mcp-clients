@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue/14-machine-onboarding.adoc[State Catalogue, Machine Onboarding], link:../../../../pm-mcp-core/doc/specification/state-catalogue/19-onboarding-aspects-models-providers.adoc[Onboarding Aspects, Part 2], link:../../../../pm-mcp-core/doc/specification/store-schemas/12-machine-stores.adoc#consent[Store Schemas, Consent Before Acting], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#two-channels[CLI, Coordination & Security, Operator Choices in the Web App and the Terminal], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App]_
 
-Status: `AGREED`. A part of link:onboarding.adoc[Onboarding]; its introduction applies here.
+Status: `DRAFT`. A part of link:onboarding.adoc[Onboarding]; its introduction applies here.
 
 [#texts]
 == Texts
@@ -76,6 +76,64 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |===
 
 Every `onboard` key named above has its texts in the pack link:https://github.com/plan-marshall/pm-mcp-clients/blob/main/pm-api/src/main/resources/messages/onboarding.en.properties[`onboarding.en.properties`] with its German twin, shared with the terminal client, since its dialogues say the same (link:../terminal-client/09-texts-common.adoc#texts[Common], link:../terminal-client/10-texts-steps-1-2.adoc[Steps 1 and 2], link:../terminal-client/11-texts-steps-3-5.adoc[Steps 3 to 5], link:../terminal-client/12-texts-steps-6-7.adoc[Steps 6 and 7]).
+
+[#texts-speech]
+=== The Speech Role
+
+The keys of the speech role in the roles step (xref:onboarding-steps-4-7.adoc#speech[The Speech Role]), shared with the terminal client; the D4 voice package adds them to the pack. The names of the methods and where their audio goes are `common.transcribe.*` (link:../shared/consents.adoc#texts[Consents, Texts]).
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`onboard.roles.speech.title`
+|Dictation · the speech role
+|Diktieren · die Sprach-Role
+
+|`onboard.roles.speech.text`
+|Turns what you dictate in the web app into text. Your system's dictation works without it.
+|Wandelt in Text um, was du in der Web-App diktierst. Das Diktieren deines Systems geht auch ohne.
+
+|`onboard.roles.speech.allowed`
+|{count, plural, =0 {Off} other {{methods}}}
+|{count, plural, =0 {Aus} other {{methods}}}
+
+|`onboard.roles.speech.choose`
+|Allow methods…
+|Erlaube Methoden…
+
+|`onboard.roles.speech.choose_title`
+|Allow methods for dictation
+|Erlaube Methoden zum Diktieren
+
+|`onboard.roles.speech.action`
+|{count, plural, =0 {Allow no method} one {Allow # method} other {Allow # methods}}
+|{count, plural, =0 {Erlaube keine Methode} one {Erlaube # Methode} other {Erlaube # Methoden}}
+
+|`onboard.roles.speech.consent.title`
+|Allow these methods for dictation?
+|Diese Methoden zum Diktieren erlauben?
+
+|`onboard.roles.speech.model_found`
+|{model} found
+|{model} gefunden
+
+|`onboard.roles.speech.model_missing`
+|No local speech model found. Install one and look again.
+|Kein lokales Sprachmodell gefunden. Installiere eines und such erneut.
+
+|`onboard.roles.speech.not_scanned`
+|not looked for yet
+|noch nicht gesucht
+
+|`onboard.roles.speech.provider_choose`
+|Choose a provider
+|Wähle einen Provider
+
+|`onboard.roles.speech.terminal_note`
+|The microphone is the web app's; the terminal records no audio.
+|Das Mikrofon gehört zur Web-App; das Terminal nimmt nichts auf.
+|===
 
 [#texts-web]
 === Keys of the Web App

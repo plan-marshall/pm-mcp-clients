@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue/14-machine-onboarding.adoc[State Catalogue, Machine Onboarding], link:../../../../pm-mcp-core/doc/specification/state-catalogue/19-onboarding-aspects-models-providers.adoc[Onboarding Aspects, Part 2], link:../../../../pm-mcp-core/doc/specification/store-schemas/12-machine-stores.adoc#consent[Store Schemas, Consent Before Acting], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#two-channels[CLI, Coordination & Security, Operator Choices in the Web App and the Terminal], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App]_
 
-Status: `AGREED`. A part of link:onboarding.adoc[Onboarding]; its introduction applies here.
+Status: `DRAFT`. A part of link:onboarding.adoc[Onboarding]; its introduction applies here.
 
 [#roles]
 == ④ Roles (`roles.review`)
@@ -88,7 +88,34 @@ The advisory of a role (ⓘ, opened in place below its row):
 * *Assign the selected roles…* sets harness, model, and effort for the selected rows in one go; the advisories of the rows stay. A harness without an effort setting shows `(OpenCode has no effort setting)` in place of the effort.
 * *Save* is disabled while a row is marked ⚠; the header counts them. `roles.validate` that refuses a role returns to the table with the row marked `⚠ <reason>`.
 
-Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-roles[Terminal Client, transcript].
+[#speech]
+=== The Speech Role (`roles.speech`, `roles.speech-consent`, `roles.speech-check`, `roles.speech-write`)
+
+Below the overview, apart from the roles that plan and work, the speech role `transcribe`: how what the operator dictates becomes text (link:chat.adoc#methods[Chat and Voice, The Speech Role]). It is off by default; the overview's _Use the defaults_ leaves it off.
+
+[source,text]
+----
+  Dictation · the speech role                                 Off   ⓘ
+  Turns what you dictate in the web app into text. Your system's
+  dictation works without it.
+                                                  [ Allow methods… ]
+
+  Allow methods for dictation
+    [ ] The browser's recognition
+        To the speech service of the browser you use: Chrome and Edge
+        their maker's cloud service, Safari Apple's service or this device.
+    [ ] A local model on this machine          not looked for yet
+        It stays on this machine.
+    [ ] A speech provider                      [ Choose a provider ▾ ]
+        To the provider you choose, with its token.
+                                         [ Back ]   [ Allow no method ]
+----
+
+* _Allow methods…_ opens `roles.speech`. Each method is a `CheckField` with its line of where the audio goes (`common.transcribe.method`, `common.transcribe.where`); a local model not yet checked says so (`onboard.roles.speech.not_scanned`), and a provider is chosen in its `SelectField` (`onboard.roles.speech.provider_choose`). The planning models are never among them.
+* *Allow* goes through `roles.speech-consent` (link:../shared/consents.adoc#speech[Consents, The Speech Consents]): one consent screen asks each chosen method's kind, `transcribe_browser`, `transcribe_provider`, and for a local model `scan_speech_model`; each kind has its own answer, and a method whose consent is not given is not allowed. A local model is then looked for and checked as a check line (`✓ whisper-small found` or `✗ no local speech model found`, with how to install one); a provider without a token asks for it as in the providers step (<<providers-credentials,⑥ Providers, Credentials>>).
+* The line in the overview then names the allowed methods by their short names (`browser, local model`, `common.transcribe.method_short`); ⓘ repeats where the audio goes for each. A local model is looked for and checked in `roles.speech-check`, and `roles.speech-write` records the methods.
+
+Terminal: link:../terminal-client/07-transcripts-steps-4-7.adoc#t-roles[Terminal Client, transcript], with link:../terminal-client/07-transcripts-steps-4-7.adoc#t-roles-speech[The Speech Role].
 
 [#credential-store]
 == ⑤ Credentials

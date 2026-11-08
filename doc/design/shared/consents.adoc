@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/store-schemas/12-machine-stores.adoc#consent[Consent Before Acting], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#consents[Consents] (the closed list of the kinds)_
 
-Status: `AGREED`. Shared by both clients: link:../terminal-client/03-dialogues.adoc#consent[Terminal Client, Dialogues, Consent], link:../terminal-client/08-transcripts-later.adoc#t-consents[Terminal Client, The Remembered Consents], link:../web-app/onboarding.adoc#consent[Web App, Onboarding, Consent], link:../web-app/machine-settings.adoc#consents[Web App, Machine Settings, Remembered Consents].
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/03-dialogues.adoc#consent[Terminal Client, Dialogues, Consent], link:../terminal-client/08-transcripts-later.adoc#t-consents[Terminal Client, The Remembered Consents], link:../web-app/onboarding.adoc#consent[Web App, Onboarding, Consent], link:../web-app/machine-settings.adoc#consents[Web App, Machine Settings, Remembered Consents].
 
 Nothing happens on the machine until the operator says so: every action that looks at the machine, runs a program found on it, writes to its credential store on its own, calls a provider, or spends model tokens waits in a consent state first. What the operator does with their own hands needs none: a token the operator types is stored on that act alone. This design is the one place that says how a consent state looks and behaves in both clients, which kinds of consent there are, where the remembered ones are listed and withdrawn, and the texts they share. A client's part shows its own rendering and links here.
 
@@ -140,6 +140,27 @@ Every kind of consent of the use cases (link:../../../../plan-marshall-documenta
 |goes on: no newer version is known (`newer version not checked`); an upgrade is offered only for a version installed by hand
 |`common.consent.kind.check_updates`
 
+|`scan_speech_model`
+|look for a local speech model of the speech role and run its check, like a harness's version probe
+|`roles.speech-consent`
+|machine
+|goes on without the local model
+|`common.consent.kind.scan_speech_model`
+
+|`transcribe_browser`
+|let the browser's own recognition turn what the operator dictates into text; the audio goes to the speech service of the browser in use (<<speech>>)
+|`roles.speech-consent`
+|machine, and only remembered: _yes_ for one run is not offered
+|goes on: the method is not allowed
+|`common.consent.kind.transcribe_browser`
+
+|`transcribe_provider`
+|send what the operator dictates to the chosen speech provider, with its credential, to be turned into text
+|`roles.speech-consent`
+|machine, and only remembered: _yes_ for one run is not offered
+|goes on: the method is not allowed
+|`common.consent.kind.transcribe_provider`
+
 |`auto_run`, the automatic run
 |every consent of the steps the run needs, listed in full, for this run only (<<auto>>)
 |`auto.consent`
@@ -152,6 +173,17 @@ Every kind of consent of the use cases (link:../../../../plan-marshall-documenta
 * A consent of `run_checkout_scripts` is asked again for a script whose digest changed since it was remembered; the state names the changed scripts (`common.consent.changed_scripts`) and offers only those.
 * A grant is not a consent: reading the issues of another repository is a read grant, kept and shown with the grants, never in the list of <<remembered>>.
 * `store.consent` is asked only for an OS store; choosing the files goes from `store.choose` to `store.check` without it. `providers.verify-consent` follows `providers.credentials`: storing the typed token is the operator's own act, calling the provider with it is the machine's.
+
+[#speech]
+=== The Speech Consents
+
+The speech role `transcribe` turns what the operator dictates into text (link:../web-app/chat.adoc#methods[Web App, Chat and Voice, The Speech Role]). Its methods are chosen in the roles step and in the machine settings, and each method that sends the audio off the machine is a consent with its consequence, asked in `roles.speech-consent` before the method is allowed:
+
+* *The fields* of the consent state say where the audio goes, the method's line of `common.transcribe.where`: for the browser's recognition `to the speech service of the browser you use: Chrome and Edge their maker's cloud service, Safari Apple's service or this device`; for a provider `to {provider}`. _never_ says that a recording is not kept and that the planning models are not used.
+* *A local model* stays on the machine and needs no consent for the audio; looking for it and running its check is `scan_speech_model`.
+* *Only remembered*: the two consents allow a method the clients use later, not an action of the state, so they offer _yes, and don't ask again_ and _not now_ only; the automatic run never asks them, and the speech role stays off there.
+* *Withdrawn* in the list of <<remembered>>, the method is out of use at once in both clients, and no browser offers it until it is allowed again in the roles step.
+* *The terminal client* asks and lists these consents like every other and records no audio.
 
 [#remembered]
 == The Remembered Consents
@@ -230,6 +262,34 @@ The consent texts both clients show are keys of the area `common` (link:texts-an
 |`common.consent.kind.check_updates`
 |check for a newer version
 |nach einer neueren Version suchen
+
+|`common.consent.kind.scan_speech_model`
+|look for a local speech model
+|nach einem lokalen Sprachmodell suchen
+
+|`common.consent.kind.transcribe_browser`
+|let the browser turn dictation into text
+|den Browser Diktiertes in Text umwandeln lassen
+
+|`common.consent.kind.transcribe_provider`
+|send dictation to a speech provider
+|Diktiertes an einen Sprach-Provider senden
+
+|`common.transcribe.method`
+|{method, select, off {Off} browser {The browser's recognition} local {A local model on this machine} other {A speech provider}}
+|{method, select, off {Aus} browser {Die Spracherkennung des Browsers} local {Ein lokales Modell auf dieser Maschine} other {Ein Sprach-Provider}}
+
+|`common.transcribe.where`
+|{method, select, off {Nowhere: only the dictation of your system.} browser {To the speech service of the browser you use: Chrome and Edge their maker's cloud service, Safari Apple's service or this device.} local {It stays on this machine.} other {{provider, select, none {To the provider you choose, with its token.} other {To {provider}.}}}}
+|{method, select, off {Nirgendwohin: nur das Diktieren deines Systems.} browser {An den Sprachdienst des Browsers, den du benutzt: Chrome und Edge den Cloud-Dienst ihres Herstellers, Safari den Dienst von Apple oder dieses Gerät.} local {Sie bleibt auf dieser Maschine.} other {{provider, select, none {An den Provider, den du wählst, mit seinem Token.} other {An {provider}.}}}}
+
+|`common.transcribe.method_short`
+|{method, select, browser {browser} local {local model} other {provider}}
+|{method, select, browser {Browser} local {lokales Modell} other {Provider}}
+
+|`common.transcribe.never`
+|keeps a recording, or uses the models that work your plans
+|eine Aufnahme behalten oder die Modelle nutzen, die deine Pläne bearbeiten
 
 |`common.consent.withdraw.title`
 |Withdraw "{action}"?

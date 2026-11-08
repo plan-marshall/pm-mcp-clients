@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue/16-decision.adoc#state-catalogue-decision[the decision unit's states], link:../../../../pm-mcp-core/doc/specification/model-work/06-envelopes-questions-deadlines.adoc#question-delivery[Delivery to the Operator], link:../../../../pm-mcp-core/doc/specification/model-work/06-envelopes-questions-deadlines.adoc#answers-and-amendments[Answers & Amendments], link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role], link:../../../../pm-mcp-core/doc/specification/model-work/06-envelopes-questions-deadlines.adoc#decision-structure[The Decision Structure] and link:../../../../pm-mcp-core/doc/specification/model-work/06-envelopes-questions-deadlines.adoc#own-words[Answers in the Operator's Own Words], link:../../../../pm-mcp-core/doc/specification/model-work/10-decision-quorum.adoc[Decision Quorum]_
 
-Status: `AGREED`. Shared by both clients: link:../terminal-client/README.adoc[Terminal Client] (transcripts: link:../terminal-client/14-transcripts-decisions.adoc[Decisions]), link:../web-app/README.adoc[Web App].
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/README.adoc[Terminal Client] (transcripts: link:../terminal-client/14-transcripts-decisions.adoc[Decisions]), link:../web-app/README.adoc[Web App].
 
 A running plan leads to decisions, small and large, that the operator takes. They are the core interaction of `PM-MCP` with its operator. This document is the channel's side of them: what a client shows of a decision, in which order, and how it is answered, in the terminal and in the web app alike.
 
@@ -129,7 +129,7 @@ At `decision.answer` the operator may ask back before answering (`what does opti
 * *The plan waits* during the chat, as for any decision, with no time limit. The transcript is kept with the decision, and its record says that the answer followed a chat (`answered after a chat`).
 * *Answered elsewhere* during the chat: the decision closes as in <<outcomes>>, and the chat ends with it (`Q-007 was answered in the web app (iPad); the chat has ended.`); a proposal not yet taken is dropped.
 * *A waiver request offers no chat*: the waiver is an operator override, never an answer to its content (<<waiver>>).
-* *In the web app* the chat is the panel beside the decision, as beside a plan view; the decision stays visible, its answers disabled while the chat is open.
+* *In the web app* the chat is a side column beside the decision, as beside a plan (link:../web-app/navigation.adoc#side-columns[Navigation, Side Columns]); the decision stays visible beside it, its answers disabled while the chat is open. Where the window cannot show both, the chat takes the space and _Hide the chat_ returns to the decision; ending the chat is the chat's own act. The chat itself is the one component of link:../web-app/chat.adoc[Web App, Chat and Voice], with the texts of this document unchanged.
 
 [#setup]
 == A Project's Setup Asks
