@@ -14,6 +14,8 @@ _Relies on: link:../../../../pm-mcp-core/doc/specification/model-work/06-envelop
 
 The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts]. What a decision carries and how every client shows it is link:../shared/decisions.adoc[Decisions]; these transcripts show each variant in the console. The states are those of the sub-workflow `decision.*` (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]).
 
+_Note: the decision chat (`h`, German `t`) is the surface of PLAN-115. While the console has no decision chat, that surface does not exist and the dialogue does not advertise the key; the transcripts below show it where the chat is available._
+
 [#t-decisions]
 == Decisions
 
@@ -400,4 +402,40 @@ The prompts and result lines only the terminal has; what both clients show is `d
 |`operator.decision.declined`
 |Declined {id}: the plan takes its next step without the waiver.
 |{id} abgelehnt: der Plan geht ohne den Waiver seinen nächsten Schritt.
+
+|`operator.decision.input_error`
+|Error reading interactive input: {message}
+|Fehler beim Lesen der Eingabe: {message}
+
+|`operator.decision.prompt.back`
+|b) back
+|z) zurück
+
+|`operator.decision.parts_direct_refused`
+|{id} has {count} parts; answer them one at a time in the dialogue.
+|{id} hat {count} Teile; beantworte sie nacheinander im Dialog.
+
+|`operator.decision.confirm_title_parts`
+|Your decision · {id}
+|Deine Entscheidung · {id}
+
+|`operator.decision.confirm_parts_prompt`
+|Decide? [Enter]   {range}) change a part   ?   › 
+|Entscheiden? [Enter]   {range}) ändere einen Teil   ?   › 
+
+|`operator.decision.part_answer_line`
+|  {n}  {answer}
+|  {n}  {answer}
+
+|`operator.decision.votes_for`
+|Votes for {option}: {label}
+|Stimmen für {option}: {label}
+
+|`operator.decision.vote_line`
+|  {role} · {model}: {reason}
+|  {role} · {model}: {reason}
+
+|`operator.decision.vote_none`
+|No votes for {option}: {label}.
+|Keine Stimmen für {option}: {label}.
 |===

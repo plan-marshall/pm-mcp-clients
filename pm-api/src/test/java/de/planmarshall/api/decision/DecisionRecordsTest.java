@@ -136,7 +136,7 @@ class DecisionRecordsTest {
                 "Q-007", revision, title, "Conflict", subject,
                 DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.REVERSIBLE,
                 "The change conflicts with main", Map.of("file", "RelayServer.java", "conflict_line", 42),
-                List.of(part1), now, false, null, null, null
+                List.of(part1), now, false, null, null, null, null, null
         );
 
         var json = envelope.toJson();
@@ -185,7 +185,7 @@ class DecisionRecordsTest {
                 "WR-2", 1, "Waiver for coverage gate", null, "plan fix-relay",
                 DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.COSTLY,
                 "Coverage below 80%", null, List.of(), Instant.now(),
-                true, waiverGate, waiverResult, waiverReason
+                true, waiverGate, waiverResult, waiverReason, null, null
         );
 
         var json = envelope.toJson();
@@ -245,7 +245,7 @@ class DecisionRecordsTest {
         var answer = Generators.nonBlankStrings().next();
         var env = new DecisionEnvelope("Q-001", 1, "Title", null, "plan pln-1", DecisionScope.PLAN,
                 "refine", "planner", "plan", Reversibility.REVERSIBLE, null, null, List.of(), Instant.now(),
-                false, null, null, null);
+                false, null, null, null, null, null);
 
         var opened = new DecisionOpenedEvent(env);
         assertEquals(DecisionOpenedEvent.EVENT_NAME, "decision.opened");

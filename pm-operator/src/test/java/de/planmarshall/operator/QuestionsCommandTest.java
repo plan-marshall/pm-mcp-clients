@@ -269,12 +269,30 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "WR-2", "waive", "--reason", "hotfix on prod");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("Waived gate for plan."));
+        assertTrue(out.toString().contains("Waived Quality gate for Plan."), out.toString());
     }
 
     @Test
-    @DisplayName("answer later leaves decision open")
+    @DisplayName("answer later checks the decision and leaves it open")
     void answerLater() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-007".equals(target) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "id": "Q-007", "revision": 1, "title": "Resolve",
+                                      "subject": "plan fix-relay", "scope": "plan", "blocks": "plan",
+                                      "reversibility": "reversible", "plan": "fix-relay",
+                                      "project": "pm-mcp-clients", "parts": []
+                                    }
+                                    """);
+            } else if ("/api/v1/decisions/Q-007/answer".equals(target) && "POST".equals(request.method())) {
+                response.json(200, "{\"status\":\"open\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
         int code = execute("answer", "Q-007", "later");
         assertEquals(0, code);
         assertTrue(out.toString().contains("stays open"));
@@ -644,6 +662,7 @@ class QuestionsCommandTest {
                                       "title": "Coverage waiver",
                                       "subject": "plan fix-relay",
                                       "scope": "plan",
+                                      "plan": "fix-relay",
                                       "is_waiver": true,
                                       "waiver_gate": "coverage >= 80%",
                                       "waiver_reason": "generated files",
@@ -952,6 +971,7 @@ class QuestionsCommandTest {
                                       "title": "Coverage waiver",
                                       "subject": "plan fix-relay",
                                       "scope": "plan",
+                                      "plan": "fix-relay",
                                       "is_waiver": true,
                                       "waiver_gate": "coverage >= 80%",
                                       "waiver_reason": "generated files"

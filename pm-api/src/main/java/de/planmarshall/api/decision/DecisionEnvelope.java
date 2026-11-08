@@ -43,6 +43,8 @@ import de.planmarshall.api.json.JsonTree;
  * @param waiverGate    the gate under waiver if applicable
  * @param waiverResult  the gate evaluation result if applicable
  * @param waiverReason  the reason submitted by the asking role if applicable
+ * @param project       the project the decision belongs to, if the runtime names one
+ * @param plan          the plan the decision belongs to, if the runtime names one
  */
 public record DecisionEnvelope(
         String id,
@@ -62,7 +64,9 @@ public record DecisionEnvelope(
         boolean isWaiver,
         @Nullable String waiverGate,
         @Nullable String waiverResult,
-        @Nullable String waiverReason
+        @Nullable String waiverReason,
+        @Nullable String project,
+        @Nullable String plan
 ) {
     public DecisionEnvelope {
         Objects.requireNonNull(id, "id");
@@ -107,6 +111,8 @@ public record DecisionEnvelope(
         if (waiverGate != null) map.put("waiver_gate", waiverGate);
         if (waiverResult != null) map.put("waiver_result", waiverResult);
         if (waiverReason != null) map.put("waiver_reason", waiverReason);
+        if (project != null) map.put("project", project);
+        if (plan != null) map.put("plan", plan);
 
         return map;
     }
@@ -207,7 +213,8 @@ public record DecisionEnvelope(
         return new DecisionEnvelope(
                 id, rev, title, header, subject, scope, askingPhase, askingRole,
                 blocks, reversibility, description, evidence, partsList, deliveredAt,
-                isWaiver, waiverGate, waiverResult, waiverReason
+                isWaiver, waiverGate, waiverResult, waiverReason,
+                JsonTree.string(map, "project"), JsonTree.string(map, "plan")
         );
     }
 }

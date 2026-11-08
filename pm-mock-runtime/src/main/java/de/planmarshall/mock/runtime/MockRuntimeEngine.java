@@ -9853,7 +9853,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 DECISION_ASKED_ANEW, 1, "Resolve rebase conflict (asked anew)", null, removed.subject(),
                 removed.scope(), removed.askingPhase(), removed.askingRole(), removed.blocks(),
                 removed.reversibility(), "The role implement asked anew after " + decisionId,
-                removed.evidence(), removed.parts(), Instant.now(), false, null, null, null
+                removed.evidence(), removed.parts(), Instant.now(), false, null, null, null,
+                removed.project(), removed.plan()
         );
         synchronized (decisionsLock) {
             openDecisions.put(DECISION_ASKED_ANEW, replacement);
