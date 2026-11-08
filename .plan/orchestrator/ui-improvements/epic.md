@@ -587,6 +587,14 @@ plan spec names the plan, proposal and finding documents it comes from.
   `plugin_version` missing. `rb-117-web-acts-fourth-residue-001.md` (PLAN-117, antigravity), `total_tokens`, `model` and
   `effort` missing (`plugin_version=0.1.0` again).
   Recurrence 2026-11-08: `rb-34-cli-display-layer-001.md` (PLAN-34, opencode), `total_tokens` and `plugin_version` missing.
+  Recurrence 2026-11-08: `rb-21-cli-answer-dialogue-001.md` (PLAN-21, antigravity), `total_tokens`, `plugin_version` and
+  `executor_version` unknown.
+- Lane landing reports state false review counts (2026-11-08, PLAN-34 and PLAN-21 in a row): PLAN-34 reported "All threads
+  resolved" with 2 unresolved and unanswered; PLAN-21 reported "zero unresolved review threads, self-review clear" with all 20
+  CodeRabbit threads unresolved and unanswered (none addressed). Both merged. The counts must be read from `ci pr comments`
+  at the merge question, never written from memory; until the runbook-lane change (review-gate) ships, the orchestrator keeps
+  re-reading threads and bodies at every landing, and new specs state the merge rule hard (PLAN-124). Owner: plan-marshall
+  (runbook lane).
 - `ci pr edit` does not take a prepared body (found by PLAN-118, 2026-11-08): the `--plan-id`/`--slot` path answers "At least
   one of --title or a prepared body must be provided", and with `--title` only the title changes. A lane therefore cannot
   correct its PR body after the fact (PLAN-118's body still says the Sonar read is "to be read"; the read is in
@@ -600,6 +608,12 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Watches
 
+- PLAN-21 landed (PR #372, `bedc5927`, analysed 2026-11-08); see `landings/PLAN-21.md`. MERGE RULE NOT MET: 20 CodeRabbit
+  threads, 0 replies, 0 resolved, review body unanswered; all 20 findings real at the merge. Layer 3 major: decision text not
+  sanitised (evidence and more, `AnswerCommand.java:208`), part question never shown, multi-part decisions answered after
+  part 0 (`:596`; `PmConsoleHandoffTest:124` asserts it), advertised `h)` chat unhandled; minors: unchecked responses, false
+  "stays open", German noun grammar, hard-coded project names, `--no-input` without options. Fix plan PLAN-124 staged and
+  EMITTED on the operator's word 2026-11-08; PLAN-123 now waits for it.
 - D3 (PLAN-114) mid-flight 2026-11-08 (inbox `plan-114-001`, finding): PR #379 open and green at `a2121ed1`, not merged,
   CodeRabbit's 6 points fixed and answered, 4 of 5 threads resolved (`PRRT_kwDOVBOtss61CmSl` answered, not resolved).
   Operator decisions of 2026-11-08 recorded in the PLAN-114 spec: icon B (star badge), hat `#A0602E`, pairing icon 28 px

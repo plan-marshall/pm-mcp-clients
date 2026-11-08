@@ -199,8 +199,9 @@ Close these, and answer the open review items on the threads where they stand.
 
 ## Dependencies and Sequencing
 
-- Depends on: `PLAN-34` (shipped, #371), `PLAN-120` (staged; `epicview/`, `EpicCommand`), `PLAN-21` (running;
-  `AnswerCommand`), `PLAN-119` (running; `StateDialogue`)
+- Depends on: `PLAN-34` (shipped, #371), `PLAN-120` (running; `epicview/`, `EpicCommand`), `PLAN-21` (shipped, #372),
+  `PLAN-124` (running; rewrites `AnswerCommand`, so the waiver-gate item of deliverable 3 there is checked against it, not
+  redone), `PLAN-119` (running; `StateDialogue`)
 - Overlaps with:
   - `PLAN-44` (staged; `planview/`, `overview/`, `system/`). This plan lands BEFORE PLAN-44, so PLAN-44 colours one
     formatter instead of six.
