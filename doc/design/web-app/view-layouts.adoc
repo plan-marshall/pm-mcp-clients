@@ -7,7 +7,7 @@ link:../README.adoc[Design] » link:README.adoc[Web App] » View Layouts
 
 _Relies on: link:README.adoc#visual-language[Web App, Visual Language] (the frame, the grid and the tokens every layout uses), link:view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates], link:navigation.adoc[Navigation] (the lenses and the column window)_
 
-Status: `DRAFT`. A part of link:README.adoc[Web App]: the layout of three views of the app — Reports, System and Cleanup — each a sketch of its tiers with the rules of its rows, its acts and its width. What each view shows is its shared design (link:../shared/reports.adoc[Reports], link:../shared/system.adoc[System], link:../shared/cleanup.adoc[Cleanup]); this part says how the web app lays it out.
+Status: `AGREED`. A part of link:README.adoc[Web App]: the layout of three views of the app — Reports, System and Cleanup — each a sketch of its tiers with the rules of its rows, its acts and its width. What each view shows is its shared design (link:../shared/reports.adoc[Reports], link:../shared/system.adoc[System], link:../shared/cleanup.adoc[Cleanup]); this part says how the web app lays it out.
 
 [#reports-layout]
 == Reports View (`/reports`)

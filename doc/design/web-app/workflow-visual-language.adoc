@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/workflow-dsl/01-grammar.adoc#unit-frontmatter[Workflow DSL, Unit Frontmatter] (the required `icon` key), link:../../../../pm-mcp-core/doc/specification/workflow-dsl/09-plan-instance.adoc#plan-axes[Workflow DSL, Plan Behaviour Axes], link:process-designer.adoc[Process Designer], link:harness-icons.adoc[Harness Icons] (the unrelated harness artwork and its legal research)_
 
-Status: `DRAFT`. This document is the single visual authority for the icons that stand for workflow units, sub-workflows, phases, plan axes, and recipes in the web app. It is a visual contract, not a schema: the wire field is owned by `pm-workflow`, the id set and the delivered assets by `pm-web-app`.
+Status: `AGREED`. This document is the single visual authority for the icons that stand for workflow units, sub-workflows, phases, plan axes, and recipes in the web app. It is a visual contract, not a schema: the wire field is owned by `pm-workflow`, the id set and the delivered assets by `pm-web-app`.
 
 [#purpose]
 == What This Is

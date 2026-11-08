@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.
 
 _Relies on: link:brand-mark.adoc#provenance[Brand Mark and Mascot, Provenance], link:README.adoc#shell[Web App, The App Shell] (the rail), link:components.adoc#empty-state[Components, EmptyState], link:theme-readability.adoc[Theme Readability] (the contrast every pair owes), link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App] (the content security policy)_
 
-Status: `DRAFT`. A part of link:brand-mark.adoc[Brand Mark and Mascot]: the mascot as illustration — where it appears and where it never does, how its files are made and delivered, the rail-foot bear, and the closed set of six poses with a brief for each.
+Status: `AGREED`. A part of link:brand-mark.adoc[Brand Mark and Mascot]: the mascot as illustration — where it appears and where it never does, how its files are made and delivered, the rail-foot bear, and the closed set of six poses with a brief for each.
 
 [#surfaces]
 == Surfaces
