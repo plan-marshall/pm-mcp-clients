@@ -1020,4 +1020,156 @@ class QuestionsCommandTest {
         assertEquals(0, codeWithdraw);
         assertTrue(out.toString().contains("you asked the plan to think again") || out.toString().contains("gebeten, neu zu überlegen"));
     }
+
+    @Test
+    @DisplayName("interactive decision renders quorum support and dissent")
+    void answerInteractiveQuorumSupportAndDissent() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-003".equals(target) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "id": "Q-003",
+                                      "revision": 1,
+                                      "title": "Adopt cache layer",
+                                      "subject": "plan fix-relay",
+                                      "scope": "plan",
+                                      "blocks": "plan",
+                                      "reversibility": "reversible",
+                                      "parts": [
+                                        {
+                                          "part_id": "part-1",
+                                          "recommendation": "1",
+                                          "recommending_role": "implement",
+                                          "recommendation_rationale": "High read performance gain",
+                                          "options": [
+                                            {
+                                              "key": "1",
+                                              "label": "In-memory cache",
+                                              "quorum_support": {
+                                                "band": "clear_majority",
+                                                "votes_count": 3,
+                                                "total_votes": 4,
+                                                "models_count": 3,
+                                                "dissent_summary": "stale data risk",
+                                                "votes": [
+                                                  {"role": "reviewer-b", "reason": "stale data risk"}
+                                                ]
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                    """);
+            } else if ("/api/v1/decisions/Q-003/answer".equals(target)) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        // 1. ?r shows rationale and dissent, then pick 1
+        int code = executeInteractive("?r\n1\n", "answer", "Q-003", "-i");
+        assertEquals(0, code);
+        var output = out.toString();
+        assertTrue(output.contains("3 of 4 votes") || output.contains("clear majority"));
+        assertTrue(output.contains("Against it (reviewer-b): stale data risk")
+                            || output.contains("Dagegen (reviewer-b): stale data risk"));
+        assertTrue(output.contains("✓ Q-003 answered: In-memory cache"));
+    }
+
+    @Test
+    @DisplayName("interactive own words with clarification question flow")
+    void answerInteractiveOwnWordsClarificationFlow() throws Exception {
+        var callCount = new int[]{0};
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-004".equals(target) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "id": "Q-004",
+                                      "title": "Select database",
+                                      "subject": "plan fix-relay",
+                                      "scope": "plan",
+                                      "blocks": "plan",
+                                      "reversibility": "reversible",
+                                      "parts": [
+                                        {"part_id": "part-1", "options": [{"key": "1", "label": "Postgres"}]}
+                                      ]
+                                    }
+                                    """);
+            } else if ("/api/v1/decisions/Q-004/interpret".equals(target)) {
+                callCount[0]++;
+                if (callCount[0] == 1) {
+                    response.json(200, """
+                                        {
+                                          "words": "vague idea",
+                                          "interpretation_type": "unclear",
+                                          "clarification_question": "Which db engine?",
+                                          "understood": false
+                                        }
+                                        """);
+                } else {
+                    response.json(200, """
+                                        {
+                                          "words": "vague idea. postgresql",
+                                          "interpretation_type": "option",
+                                          "read_back_text": "use PostgreSQL 17",
+                                          "understood": true
+                                        }
+                                        """);
+                }
+            } else if ("/api/v1/decisions/Q-004/answer".equals(target)) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeInteractive("w\nvague idea\npostgresql\ny\n", "answer", "Q-004", "-i");
+        assertEquals(0, code);
+        var output = out.toString();
+        assertTrue(output.contains("Which db engine?"));
+        assertTrue(output.contains("use PostgreSQL 17"));
+        assertTrue(output.contains("✓ Q-004 answered: use PostgreSQL 17"));
+    }
+
+    @Test
+    @DisplayName("direct answer actions waive and decline require reason")
+    void answerDirectActionsRequireReason() throws Exception {
+        int codeWaive = execute("answer", "WR-1", "--action", "waive");
+        assertEquals(3, codeWaive);
+        assertTrue(out.toString().contains("A reason is required") || out.toString().contains("Ein Grund ist erforderlich"));
+
+        out = new StringWriter();
+        int codeDecline = execute("answer", "WR-1", "--action", "decline");
+        assertEquals(3, codeDecline);
+        assertTrue(out.toString().contains("A reason is required") || out.toString().contains("Ein Grund ist erforderlich"));
+    }
+
+    @Test
+    @DisplayName("direct answer with plan flag routes to plan endpoint")
+    void answerDirectWithPlanFlag() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/plans/plan-99/decisions/Q-007/answer".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("answer", "Q-007", "2", "--plan", "plan-99");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ Q-007 answered: 2."));
+    }
+
+    @Test
+    @DisplayName("direct answer server error returns failure exit code")
+    void answerDirectServerError() throws Exception {
+        fixture.start((request, response) -> response.send(500, null, "Internal server error"));
+
+        int code = execute("answer", "Q-007", "1");
+        assertEquals(1, code);
+    }
 }
