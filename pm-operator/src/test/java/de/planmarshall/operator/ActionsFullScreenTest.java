@@ -278,7 +278,7 @@ class ActionsFullScreenTest {
         try (var virtual = VirtualScreenTerminal.create(160, 45)) {
             var context = control.context(virtual);
             var thread = openProject(context, virtual);
-            select(virtual, "landing remediation.ci-failure");
+            select(virtual, "landing CI failure");
             virtual.type("a");
             ControlFixture.await(() -> ControlFixture.shows(virtual, "Retry now"));
             virtual.type("r");
