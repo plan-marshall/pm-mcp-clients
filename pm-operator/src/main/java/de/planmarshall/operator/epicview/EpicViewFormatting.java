@@ -41,7 +41,9 @@ public final class EpicViewFormatting {
 
     private static final String DOT = " \u00b7 ";
     private static final String PULL_REQUEST = "#";
-    private static final String UNKNOWN = "?";
+
+    /** The rendered running count when the runtime does not say it. */
+    public static final String UNKNOWN_COUNT = "?";
 
     private EpicViewFormatting() {
     }
@@ -86,7 +88,7 @@ public final class EpicViewFormatting {
      */
     public static String atOnce(String locale, @Nullable Integer running, int scope) {
         return MessageCatalogue.format(locale, "overview.epic.at_once",
-                            Map.of("running", running != null ? running : UNKNOWN, "scope", scope));
+                            Map.of("running", running != null ? running : UNKNOWN_COUNT, "scope", scope));
     }
 
     /**
@@ -114,7 +116,7 @@ public final class EpicViewFormatting {
         var params = new LinkedHashMap<String, Object>();
         params.put("plan", clean(row.waitPlanId() != null ? row.waitPlanId() : row.planId()));
         params.put("lock", clean(row.waitPlanId() != null ? row.waitPlanId() : ""));
-        params.put("running", running != null ? running : UNKNOWN);
+        params.put("running", running != null ? running : UNKNOWN_COUNT);
         params.put("scope", scope);
         var key = switch (reason.value()) {
             case "dependency" -> "overview.epic.waits.dependency";

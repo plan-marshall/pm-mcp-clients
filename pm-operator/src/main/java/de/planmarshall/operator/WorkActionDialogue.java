@@ -26,6 +26,7 @@ import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.operator.actions.WorkActionsClient;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
+import de.planmarshall.operator.epicview.EpicViewFormatting;
 
 /**
  * One action of a plan or an epic, run as its dialogue ({@code doc/design/terminal-client/19-actions.adoc}).
@@ -328,7 +329,7 @@ final class WorkActionDialogue {
             var running = epic.running();
             prompt.line("operator.actions.result.next_started",
                                 Map.<String, Object>of("plan", plan,
-                                                    "running", running != null ? running + 1 : "?",
+                                                    "running", running != null ? running + 1 : EpicViewFormatting.UNKNOWN_COUNT,
                                                     "scope", epic.scope()));
         } else {
             prompt.line("control.epic.next_none",
