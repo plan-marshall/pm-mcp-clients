@@ -35,7 +35,7 @@ Every text of the screens above is a key of the message catalogue (link:../share
 |xref:onboarding.adoc#consent[consent]
 |the title `onboard.<step>.consent.title`; the fields `common.consent.field.looks_for`, `.in`, `.runs`, `.never`, `.tokens` with the values of the step's consent keys; `common.consent.tokens.none`, `.estimate`, `.estimate_runs`, `.unknown`; the choice `common.consent.yes`, `common.consent.yes_remember`; `common.consent.no`, `common.consent.nothing_done`, `common.consent.once_only`, `common.consent.remembered` with the kind's title `common.consent.kind.<kind>` (link:../shared/consents.adoc#texts[Consents, Texts]); the primary button is the step's consent action (`onboard.harness.consent.action`)
 
-|xref:onboarding.adoc#language[language]
+|xref:onboarding-step-1.adoc#language[language]
 |`onboard.language.choose.title`, `.interface`, `.model`, `.model_same`, `.glossary_note`, `.why`, `.action_both`, `.action_split`; `onboard.language.name.<locale>`; `common.from.system_locale`
 
 |xref:onboarding.adoc#harness-icons-consent[harness-icons-consent]

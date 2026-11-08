@@ -22,7 +22,7 @@ image::../../resources/diagrams/brand-icon.svg[The brand icon, the marshal star 
 Draws the brand icon, the marshal star badge, as an inline SVG on the `24 × 24` grid (link:brand-mark.adoc#icon[Brand Mark and Mascot, The Brand Icon]). In colour its fills come from the `--color-mascot-*` tokens through classes of its own stylesheet, never as literals; in monochrome every fill is `currentColor`, so the surface sets the colour. Under `forced-colors: active` it draws the monochrome rendering whatever was asked. It stands without a plate and never changes with a state.
 
 * *Decorative by default*: `aria-hidden="true"` beside the visible wordmark. With a `label` it is `role="img"` with that name — the collapsed rail's case, where the button's name carries the brand.
-* *Sizes*: `16` (the favicon drawing, one-colour uses), `20`, `24`, `28` (the rail head, the header before onboarding, the pairing page beside its figure) and `64` (the pairing page where its figure is hidden).
+* *Sizes*: in colour `16` (the favicon drawing), `28` (the rail head, the header before onboarding, the pairing page beside its figure) and `64` (the pairing page where its figure is hidden); in monochrome any of `16`, `20`, `24`, `28` and `64` (the one-colour uses, link:brand-mark.adoc#uses[Brand Mark and Mascot, Where the Icon Is Used]). `20` and `24` are monochrome only.
 * *Not here*: the browser tab draws the two static copies, not this component (link:brand-mark.adoc#favicon[Brand Mark and Mascot, The Browser Tab]).
 
 Source and surface: `pm-web-app/src/lib/components/BrandMark.svelte`, tests in `BrandMark.test.ts`; the props are `rendering` (`colour`, the default, or `monochrome`), `size` and `label`, with `data-testid="brand-mark"`. The `plate` prop of the earlier mark goes.
@@ -55,4 +55,4 @@ _New._ The long wait beside a text: the mascot's clipboard as a line drawing who
 * *Where*: the chat's working line, an onboarding state the server works in or a model at work, and the model tests of the machine settings; never on a screen that shows a mascot figure. One per screen; a second wait on the same screen and every short wait take the `Spinner` (link:components.adoc#supporting[Components, Supporting Pieces]).
 * *Never a state*: it shows that the operator waits, never what state an object is in; a running plan keeps its `StatusLabel`.
 
-Source and surface: `pm-web-app/src/lib/components/WaitingMark.svelte` (new), tests in `WaitingMark.test.ts`; the props are `label` (from the catalogue) and `size` (`20` beside body text, `24` at the head of a step).
+Source and surface: `pm-web-app/src/lib/components/WaitingMark.svelte` (new), tests in `WaitingMark.test.ts`; the prop is `label` (from the catalogue); the mark is `20` px beside its text on every surface (link:brand-mark.adoc#waiting-drawing[Brand Mark and Mascot, The Waiting Mark, Drawing]).

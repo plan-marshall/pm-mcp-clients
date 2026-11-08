@@ -66,6 +66,28 @@ One utility (`filterText.ts`) and one component (`FilterInput.svelte`) power eve
 
 Header counts keep their own meaning: the reports heading still shows the unread count of all loaded reports, and the decisions heading still shows the open-decision count. The filter's count is a separate "matches" figure.
 
+[#texts]
+=== Texts
+
+The shared texts of the control, area `common`, used by every adopted view; the label `common.filter.label` is the pattern of <<filter-control>>.
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`common.filter.results`
+|{count, plural, =0 {No matches} =1 {1 match} other {{count} matches}}
+|{count, plural, =0 {Keine Treffer} =1 {1 Treffer} other {{count} Treffer}}
+
+|`common.filter.clear`
+|Clear filter
+|Filter löschen
+
+|`common.filter.empty`
+|Nothing matches the filter.
+|Nichts passt zum Filter.
+|===
+
 [#field-matrices]
 == Field Matrices
 

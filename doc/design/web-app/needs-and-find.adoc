@@ -18,7 +18,7 @@ Status: `AGREED`. The web part of the work package link:../../plans/needs-and-fi
 
 The reason is the question the operator opens the app with: "what needs me now?". An app that opens on what runs answers a question the operator asked second. Nothing is lost on the way: the running work is one step away, because the list's empty state names it and the rail carries it beside the list.
 
-A remembered place still wins, as it does today (link:../shared/plan-overview.adoc#persistence[Plan Overview, Where the Operator Left It]): a browser that left the app on a plan opens that plan, and only a browser without one opens on the list.
+A remembered place still wins at a bare start of the app (link:../shared/plan-overview.adoc#persistence[Plan Overview, Where the Operator Left It]): a browser that left the app on a plan and opens it again at `/` opens that plan, and only a browser without one opens on the list. An explicit click on the lens, in the rail or the bottom bar, always opens the list; the rule is link:navigation.adoc#url[Navigation, Addresses and History].
 
 [#route]
 == The Route and the Rail
