@@ -407,17 +407,6 @@ public final class CleanupCommand implements Callable<Integer> {
      * which returns to the bar.
      *
      * @param out the verb's writer
-     * @param job the open cleanup job
-     * @return the exit code of the decision the operator took
-     * @throws IOException on transport failure
-     */
-    /**
-     * Runs the decision the printed job leads to ({@code 26-cleanup.adoc#t-job}): the keyed choice
-     * bar, the leave-out toggle, the read-only open, and the delete's own {@code y}/{@code n}
-     * confirmation. {@code q} leaves without sending, and so does {@code n} at the confirmation,
-     * which returns to the bar.
-     *
-     * @param out the verb's writer
      * @param err the verb's error writer
      * @param job the open cleanup job
      * @return the exit code of the decision the operator took
@@ -502,7 +491,8 @@ public final class CleanupCommand implements Callable<Integer> {
         var glyph = glyphForKind(item.kind());
         var title = OutputSafety.stripControlSequences(item.title());
         var outcome = item.outcome() != null ? OutputSafety.stripControlSequences(item.outcome()) : "";
-        var ended = item.endedAt() != null ? endedText(item.endedAt()) : "";
+        var endedAt = item.endedAt();
+        var ended = endedAt != null ? endedText(endedAt) : "";
         var size = item.sizeBytes() > 0 ? SystemCommand.formatBytes(item.sizeBytes()) : "";
         var logs = item.logsCount() > 0 ? item.logsCount() + (item.logsCount() == 1 ? " log" : " logs") : "";
         var note = item.keptUntil() != null ? OutputSafety.stripControlSequences(item.keptUntil()) : "";

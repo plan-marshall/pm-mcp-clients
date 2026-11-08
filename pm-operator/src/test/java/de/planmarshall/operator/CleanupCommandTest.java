@@ -526,7 +526,7 @@ class CleanupCommandTest {
 
     @Test
     @DisplayName("the printed job marks the items kept for good and shapes each kind")
-    void printJobMarksAndShapesEveryKind() throws Exception {
+    void printJobMarksAndShapesEveryKind() {
         var items = List.of(
                             new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged", "ended 12 Sep", 1L, 2, 0, null),
                             new CleanupItemEntry("relay-docs", "logs", "relay-docs", null, null, 2L, 3, 0, "kept until 24 Oct"),
@@ -578,7 +578,7 @@ class CleanupCommandTest {
 
         assertAll(
                             () -> assertEquals(List.of("d", "r", "i", "x", "o"),
-                                                choices.stream().map(c -> c.key()).toList()),
+                                                choices.stream().map(ChoicePrompt.Choice::key).toList()),
                             () -> assertEquals("delete…", choices.get(0).label()),
                             () -> assertEquals("leave items out", choices.get(3).label())
         );
@@ -641,7 +641,7 @@ class CleanupCommandTest {
 
     @Test
     @DisplayName("o names the item's view, or refuses a kind that has none")
-    void dialogOpensTheItem() throws Exception {
+    void dialogOpensTheItem() {
         var items = List.of(
                             new CleanupItemEntry("relay-docs", "logs", "relay-docs", null, null, 1L, 3, 0, null));
         var command = new CleanupCommand(
