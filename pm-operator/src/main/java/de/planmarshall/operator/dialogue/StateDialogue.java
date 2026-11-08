@@ -79,6 +79,7 @@ public final class StateDialogue {
     private static final String LABEL = "label";
     private static final String TOTAL_STEPS_FIELD = "total_steps";
     private static final String STEP_FIELD = "step";
+    private static final String COMPLETED_STEPS_FIELD = "completed_steps";
     private static final int CONTENT_WIDTH = 76;
     private static final Set<String> BARE_FIELDS = Set.of(
                         NAME, SUMMARY, VALUE, REASON, "model_id", "role", "effort",
@@ -275,7 +276,7 @@ public final class StateDialogue {
             return title;
         }
         return MessageCatalogue.format(locale, "onboard.state.step_line", Map.of(
-                            "step", frame.step(), "total", frame.totalSteps(),
+                            STEP_FIELD, frame.step(), "total", frame.totalSteps(),
                             "name", stepName(frame), "title", title));
     }
 
@@ -719,7 +720,7 @@ public final class StateDialogue {
 
     private static int stepOf(Map<String, Object> source, Map<String, Object> map, String stateId,
                         int totalSteps, boolean project) {
-        var completed = JsonTree.integer(map, "completed_steps");
+        var completed = JsonTree.integer(map, COMPLETED_STEPS_FIELD);
         int step = completed != null ? Math.min(completed + 1, totalSteps) : 0;
         var reportedStep = JsonTree.integer(source, STEP_FIELD);
         if (reportedStep == null) {
@@ -777,7 +778,7 @@ public final class StateDialogue {
     private static boolean isStructural(String key) {
         return switch (key) {
             case STATE, "scope", LINKS, FACTS, SUMMARY, "runtime", OPERATOR,
-                "completed_steps", "steps", "step", "total_steps", "auto",
+                COMPLETED_STEPS_FIELD, "steps", STEP_FIELD, TOTAL_STEPS_FIELD, "auto",
                 "step_summaries", "verification", "usage", "link" -> true;
             default -> false;
         };
