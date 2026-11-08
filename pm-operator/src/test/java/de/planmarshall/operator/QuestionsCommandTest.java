@@ -21,6 +21,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.Map;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.testsupport.RuntimeFixture;
@@ -57,7 +58,10 @@ class QuestionsCommandTest {
     }
 
     private int execute(String... args) {
-        var context = new OperatorContext(fixture.environment(), tempDir, true);
+        var inStream = new ByteArrayInputStream(new byte[0]);
+        var outStream = new ByteArrayOutputStream();
+        OperatorContext.TerminalProvider termProvider = () -> new DumbTerminal(inStream, outStream);
+        var context = new OperatorContext(fixture.environment(), tempDir, true, ClientEnvironment.capture(fixture.environment()), termProvider, null);
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
 
@@ -153,7 +157,7 @@ class QuestionsCommandTest {
         int code = execute("answer", "Q-007", "2");
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ Answered Q-007 with option 2."))
+                            () -> assertTrue(out.toString().contains("✓ Q-007 answered: 2."))
         );
     }
 
@@ -171,7 +175,7 @@ class QuestionsCommandTest {
         int code = execute("answer", "Q-007", "--words", "rebase onto origin/main");
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ Answered Q-007 with option rebase onto origin/main."))
+                            () -> assertTrue(out.toString().contains("✓ Q-007 answered: rebase onto origin/main."))
         );
     }
 
@@ -232,7 +236,7 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-008", "yes", "--note", "proceeding");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("✓ Answered Q-008 with option yes."));
+        assertTrue(out.toString().contains("✓ Q-008 answered: yes."));
     }
 
     @Test
@@ -265,7 +269,7 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "WR-2", "waive", "--reason", "hotfix on prod");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("✓ Answered WR-2 with option waive."));
+        assertTrue(out.toString().contains("Waived gate for plan."));
     }
 
     @Test
@@ -289,7 +293,7 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-007", "withdraw");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("you asked to think again"));
+        assertTrue(out.toString().contains("you asked the plan to think again") || out.toString().contains("gebeten, neu zu überlegen"));
     }
 
     @Test
@@ -651,14 +655,231 @@ class QuestionsCommandTest {
         int codeWaive = executeInteractive("?\ny\n\nApproved temporary\n", "answer", "WR-1", "-i");
         assertEquals(0, codeWaive);
         var waiveOut = out.toString();
-        assertTrue(waiveOut.contains("Evidence:"));
-        assertTrue(waiveOut.contains("Waived coverage >= 80% for fix-relay."));
+        assertTrue(waiveOut.contains("Evidence details:") || waiveOut.contains("Beleg-Details:"));
+        assertTrue(waiveOut.contains("Waived coverage >= 80% for fix-relay.") || waiveOut.contains("Gewährt"));
 
         // 3. Decline
         out = new StringWriter();
         int codeDecline = executeInteractive("d\nNot allowed\n", "answer", "WR-1", "-i");
         assertEquals(0, codeDecline);
-        assertTrue(out.toString().contains("Declined WR-1"));
+        assertTrue(out.toString().contains("Declined WR-1") || out.toString().contains("Abgelehnt WR-1"));
+    }
+
+    @Test
+    @DisplayName("interactive decision options, note, rationale and quit")
+    void answerInteractiveDecisionOptionsAndNote() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "id": "Q-001",
+                                      "revision": 1,
+                                      "title": "Select merge strategy",
+                                      "description": "Choose strategy",
+                                      "subject": "plan fix-relay",
+                                      "scope": "plan",
+                                      "blocks": "plan",
+                                      "asking_phase": "phase-5",
+                                      "reversibility": "reversible",
+                                      "evidence": {"file": "pom.xml", "lines": "12-15", "summary": "version mismatch"},
+                                      "parts": [
+                                        {
+                                          "part_id": "part-1",
+                                          "question": "Which strategy?",
+                                          "recommendation": "1",
+                                          "recommending_role": "implement",
+                                          "recommendation_rationale": "Keeps linear history",
+                                          "options": [
+                                            {
+                                              "key": "1",
+                                              "label": "Rebase",
+                                              "quorum_support": {
+                                                "band": "clear_majority",
+                                                "votes_count": 2,
+                                                "total_votes": 3,
+                                                "models_count": 2
+                                              }
+                                            },
+                                            {
+                                              "key": "2",
+                                              "label": "Merge",
+                                              "quorum_support": {
+                                                "band": "split",
+                                                "votes_count": 1,
+                                                "total_votes": 3,
+                                                "models_count": 1,
+                                                "dissent_summary": "merge commit preferred",
+                                                "votes": [{"role": "reviewer-a", "reason": "preserves context"}]
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                    """);
+            } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        // 1. ? then ?r then m (note) then pick 2
+        int code = executeInteractive("?\n?r\nm\nurgent\n2\n", "answer", "Q-001", "-i");
+        assertEquals(0, code);
+        var output = out.toString();
+        assertTrue(output.contains("Evidence details:") || output.contains("Beleg-Details:"));
+        assertTrue(output.contains("Recommended by implement: Rebase. Keeps linear history")
+                            || output.contains("Empfohlen von implement: Rebase. Keeps linear history"));
+        assertTrue(output.contains("Against it (reviewer-a): merge commit preferred")
+                            || output.contains("Dagegen (reviewer-a): merge commit preferred"));
+        assertTrue(output.contains("✓ Q-001 answered: Merge"));
+
+        // 2. Quit
+        out = new StringWriter();
+        int codeQuit = executeInteractive("q\n", "answer", "Q-001", "-i");
+        assertEquals(0, codeQuit);
+        assertTrue(out.toString().contains("Q-001"));
+    }
+
+    @Test
+    @DisplayName("interactive decision non-reversible confirmation")
+    void answerInteractiveDecisionNonReversible() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-002".equals(target) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "id": "Q-002",
+                                      "revision": 1,
+                                      "title": "Drop database table",
+                                      "subject": "plan fix-relay",
+                                      "scope": "plan",
+                                      "blocks": "plan",
+                                      "reversibility": "irreversible",
+                                      "parts": [
+                                        {
+                                          "part_id": "part-1",
+                                          "options": [
+                                            {"key": "1", "label": "Drop table", "consequences": "Data will be lost"}
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                    """);
+            } else if ("/api/v1/decisions/Q-002/answer".equals(target)) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        // Pick 1 -> confirm Enter
+        int code = executeInteractive("1\n\n", "answer", "Q-002", "-i");
+        assertEquals(0, code);
+        var output = out.toString();
+        assertTrue(output.contains("cannot be undone") || output.contains("nicht rückgängig machen"));
+        assertTrue(output.contains("Follows: Data will be lost") || output.contains("Folgt: Data will be lost"));
+        assertTrue(output.contains("✓ Q-002 answered: Drop table"));
+    }
+
+    @Test
+    @DisplayName("formatEvidenceHint formats diverse evidence payloads")
+    void formatEvidenceHintCoverage() {
+        assertEquals("", AnswerCommand.formatEvidenceHint(null));
+        assertEquals("", AnswerCommand.formatEvidenceHint(Map.of()));
+        assertEquals("src/Main.java:42 (syntax error)",
+                            AnswerCommand.formatEvidenceHint(Map.of("file", "src/Main.java", "lines", 42, "summary", "syntax error")));
+        assertEquals("src/Main.java:10",
+                            AnswerCommand.formatEvidenceHint(Map.of("file", "src/Main.java", "lines", "10")));
+        assertEquals("src/Main.java (broken)",
+                            AnswerCommand.formatEvidenceHint(Map.of("file", "src/Main.java", "summary", "broken")));
+        assertEquals("src/Main.java",
+                            AnswerCommand.formatEvidenceHint(Map.of("file", "src/Main.java")));
+        assertEquals("testLogin (run-1)",
+                            AnswerCommand.formatEvidenceHint(Map.of("test", "testLogin", "run", "run-1")));
+        assertEquals("all good",
+                            AnswerCommand.formatEvidenceHint(Map.of("summary", "all good")));
+        assertEquals("custom-val",
+                            AnswerCommand.formatEvidenceHint(Map.of("other", "custom-val")));
+    }
+
+    @Test
+    @DisplayName("answer command with --no-input returns exit code 3")
+    void answerNoInputChoiceRequired() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/decisions/Q-001".equals(request.target())) {
+                response.json(200, """
+                                    {
+                                      "id": "Q-001",
+                                      "title": "Select strategy",
+                                      "subject": "plan fix-relay",
+                                      "scope": "plan"
+                                    }
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("answer", "Q-001", "--no-input");
+        assertEquals(3, code);
+        assertTrue(out.toString().contains("Choice or option required") || out.toString().contains("Auswahl oder Option erforderlich"));
+    }
+
+    @Test
+    @DisplayName("interactive decision cancel and rejection flows")
+    void answerInteractiveDecisionCancellationFlows() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "id": "Q-001",
+                                      "revision": 1,
+                                      "title": "Select strategy",
+                                      "subject": "plan fix-relay",
+                                      "scope": "plan",
+                                      "blocks": "plan",
+                                      "reversibility": "reversible",
+                                      "parts": [
+                                        {
+                                          "part_id": "part-1",
+                                          "options": [{"key": "1", "label": "Opt 1"}]
+                                        }
+                                      ]
+                                    }
+                                    """);
+            } else if ("/api/v1/decisions/Q-001/interpret".equals(target)) {
+                response.json(200, "{\"words\": \"my words\", \"read_back_text\": \"my words\", \"understood\": true}");
+            } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        // 1. Own words with blank input -> cancels (exits 0)
+        int codeOwnWordsBlank = executeInteractive("w\n\n", "answer", "Q-001", "-i");
+        assertEquals(0, codeOwnWordsBlank);
+
+        // 2. Own words with rejected confirm -> cancels (exits 0)
+        out = new StringWriter();
+        int codeOwnWordsReject = executeInteractive("w\nmy words\nn\n", "answer", "Q-001", "-i");
+        assertEquals(0, codeOwnWordsReject);
+
+        // 3. None-fits reject confirm -> then later
+        out = new StringWriter();
+        int codeNoneFitsReject = executeInteractive("x\nb\nl\n", "answer", "Q-001", "-i");
+        assertEquals(0, codeNoneFitsReject);
+        assertTrue(out.toString().contains("stays open") || out.toString().contains("bleibt offen"));
+
+        // 4. Note prompt with blank input leaves note unchanged, then pick 1
+        out = new StringWriter();
+        int codeNoteBlank = executeInteractive("m\n\n1\n", "answer", "Q-001", "-i");
+        assertEquals(0, codeNoteBlank);
+        assertTrue(out.toString().contains("✓ Q-001 answered: Opt 1"));
     }
 
     @Test
@@ -792,11 +1013,163 @@ class QuestionsCommandTest {
 
         int codeDecline = execute("answer", "WR-1", "--action", "decline", "--reason", "Not approved");
         assertEquals(0, codeDecline);
-        assertTrue(out.toString().contains("Answered WR-1 with option decline"));
+        assertTrue(out.toString().contains("Declined WR-1") || out.toString().contains("Abgelehnt WR-1"));
 
         out = new StringWriter();
         int codeWithdraw = execute("answer", "Q-001", "--action", "withdraw");
         assertEquals(0, codeWithdraw);
-        assertTrue(out.toString().contains("you asked to think again"));
+        assertTrue(out.toString().contains("you asked the plan to think again") || out.toString().contains("gebeten, neu zu überlegen"));
+    }
+
+    @Test
+    @DisplayName("interactive decision renders quorum support and dissent")
+    void answerInteractiveQuorumSupportAndDissent() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-003".equals(target) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "id": "Q-003",
+                                      "revision": 1,
+                                      "title": "Adopt cache layer",
+                                      "subject": "plan fix-relay",
+                                      "scope": "plan",
+                                      "blocks": "plan",
+                                      "reversibility": "reversible",
+                                      "parts": [
+                                        {
+                                          "part_id": "part-1",
+                                          "recommendation": "1",
+                                          "recommending_role": "implement",
+                                          "recommendation_rationale": "High read performance gain",
+                                          "options": [
+                                            {
+                                              "key": "1",
+                                              "label": "In-memory cache",
+                                              "quorum_support": {
+                                                "band": "clear_majority",
+                                                "votes_count": 3,
+                                                "total_votes": 4,
+                                                "models_count": 3,
+                                                "dissent_summary": "stale data risk",
+                                                "votes": [
+                                                  {"role": "reviewer-b", "reason": "stale data risk"}
+                                                ]
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                    """);
+            } else if ("/api/v1/decisions/Q-003/answer".equals(target)) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        // 1. ?r shows rationale and dissent, then pick 1
+        int code = executeInteractive("?r\n1\n", "answer", "Q-003", "-i");
+        assertEquals(0, code);
+        var output = out.toString();
+        assertTrue(output.contains("3 of 4 votes") || output.contains("clear majority"));
+        assertTrue(output.contains("Against it (reviewer-b): stale data risk")
+                            || output.contains("Dagegen (reviewer-b): stale data risk"));
+        assertTrue(output.contains("✓ Q-003 answered: In-memory cache"));
+    }
+
+    @Test
+    @DisplayName("interactive own words with clarification question flow")
+    void answerInteractiveOwnWordsClarificationFlow() throws Exception {
+        var callCount = new int[]{0};
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-004".equals(target) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "id": "Q-004",
+                                      "title": "Select database",
+                                      "subject": "plan fix-relay",
+                                      "scope": "plan",
+                                      "blocks": "plan",
+                                      "reversibility": "reversible",
+                                      "parts": [
+                                        {"part_id": "part-1", "options": [{"key": "1", "label": "Postgres"}]}
+                                      ]
+                                    }
+                                    """);
+            } else if ("/api/v1/decisions/Q-004/interpret".equals(target)) {
+                callCount[0]++;
+                if (callCount[0] == 1) {
+                    response.json(200, """
+                                        {
+                                          "words": "vague idea",
+                                          "interpretation_type": "unclear",
+                                          "clarification_question": "Which db engine?",
+                                          "understood": false
+                                        }
+                                        """);
+                } else {
+                    response.json(200, """
+                                        {
+                                          "words": "vague idea. postgresql",
+                                          "interpretation_type": "option",
+                                          "read_back_text": "use PostgreSQL 17",
+                                          "understood": true
+                                        }
+                                        """);
+                }
+            } else if ("/api/v1/decisions/Q-004/answer".equals(target)) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeInteractive("w\nvague idea\npostgresql\ny\n", "answer", "Q-004", "-i");
+        assertEquals(0, code);
+        var output = out.toString();
+        assertTrue(output.contains("Which db engine?"));
+        assertTrue(output.contains("use PostgreSQL 17"));
+        assertTrue(output.contains("✓ Q-004 answered: use PostgreSQL 17"));
+    }
+
+    @Test
+    @DisplayName("direct answer actions waive and decline require reason")
+    void answerDirectActionsRequireReason() {
+        int codeWaive = execute("answer", "WR-1", "--action", "waive");
+        assertEquals(3, codeWaive);
+        assertTrue(out.toString().contains("A reason is required") || out.toString().contains("Ein Grund ist erforderlich"));
+
+        out = new StringWriter();
+        int codeDecline = execute("answer", "WR-1", "--action", "decline");
+        assertEquals(3, codeDecline);
+        assertTrue(out.toString().contains("A reason is required") || out.toString().contains("Ein Grund ist erforderlich"));
+    }
+
+    @Test
+    @DisplayName("direct answer with plan flag routes to plan endpoint")
+    void answerDirectWithPlanFlag() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/plans/plan-99/decisions/Q-007/answer".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(200, "{\"ok\":true}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("answer", "Q-007", "2", "--plan", "plan-99");
+        assertEquals(0, code);
+        assertTrue(out.toString().contains("✓ Q-007 answered: 2."));
+    }
+
+    @Test
+    @DisplayName("direct answer server error returns failure exit code")
+    void answerDirectServerError() throws Exception {
+        fixture.start((request, response) -> response.send(500, null, "Internal server error"));
+
+        int code = execute("answer", "Q-007", "1");
+        assertEquals(1, code);
     }
 }
