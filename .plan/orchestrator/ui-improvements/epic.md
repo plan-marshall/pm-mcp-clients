@@ -531,6 +531,14 @@ plan spec names the plan, proposal and finding documents it comes from.
   only) sets the 17 D1 documents to `Status: AGREED`; when it merges, D2 (PLAN-113) and D3 (PLAN-114) are emittable. (4) The
   settled entries of this Decisions section move to `settled.md` with one-line pointers (the cleanup relocation deferred on
   2026-11-07).
+- 2026-11-08 — D3 SEAMS ROUTED (operator, AskUserQuestion, `landings/PLAN-114.md`). In the D2 seams PR (documents only,
+  `skip-bot-review`, by the orchestrator): S3 (`act.favourite-on` has a centre dot; no citation of the deleted sheet), S4 (colour
+  sizes 16/28/64 in `workflow-visual-language.adoc` and `components-brand.adoc`), S6 (`bmm:43` anchor `#after-pairing`; the
+  revoked figure), S7 (README lists `components-brand.adoc`), S11 (`--color-mascot-*` rows in `theme-readability.adoc`), S13
+  (attention dot inside the grid), C1 (`onboarding.adoc` split verbatim under 500 lines); S5 "an unknown address" dropped from
+  the mascot surfaces; S2/S8 follow the component rule (the state's one main wait shows the `WaitingMark` at 20 px, per-item
+  checks keep the `Spinner`; `onboarding.adoc:45` and `cb:58` reworded, sketches unchanged). Folded: S1 and S9 into PLAN-115;
+  S12 (`kind-plan` vs the clipboard) into the D3 brand assets package, still to be staged. S10 is declared and temporary.
 
 ## Open Defects
 
@@ -621,12 +629,13 @@ plan spec names the plan, proposal and finding documents it comes from.
   part 0 (`:596`; `PmConsoleHandoffTest:124` asserts it), advertised `h)` chat unhandled; minors: unchecked responses, false
   "stays open", German noun grammar, hard-coded project names, `--no-input` without options. Fix plan PLAN-124 staged and
   EMITTED on the operator's word 2026-11-08; PLAN-123 now waits for it.
-- D3 (PLAN-114) mid-flight 2026-11-08 (inbox `plan-114-001`, finding): PR #379 open and green at `a2121ed1`, not merged,
-  CodeRabbit's 6 points fixed and answered, 4 of 5 threads resolved (`PRRT_kwDOVBOtss61CmSl` answered, not resolved).
-  Operator decisions of 2026-11-08 recorded in the PLAN-114 spec: icon B (star badge), hat `#A0602E`, pairing icon 28 px
-  beside the figure, one-colour waiting mark still and unticked under reduced motion, new `MascotFigure`, provenance "made
-  with an image tool", poses later (fallback to the original image). Remaining: the README/components edits after D2's #380
-  merges, AGREED as the last commit; #379 merges after #380. D2 (PLAN-113) opened PR #380.
+- D3 (PLAN-114) landed (PR #379, `64a18ed1`, analysed 2026-11-08); see `landings/PLAN-114.md`. Merge rule met (1 CodeRabbit
+  body, 6 actionable answered, 5/5 threads resolved; README/components/components-brand/view-layouts never bot-reviewed, rate
+  limit); the 12 changed documents are AGREED (operator review of the README/components text, AGREED commit `878615a2` by the
+  orchestrator). Operator decisions 2026-11-08: layout move to `view-layouts.adoc` kept, `MascotFigure` `entrance`/`src`
+  accepted, `WaitingMark` draws its own polite status line (the chat build must not add a second live region). README now
+  498 lines, so D2's C1 is closed. Seams S1–S13 and C1 (`onboarding.adoc` 504 lines) reported to the operator. Code still
+  draws the old mark until the brand assets package. D3 worktree, branch and the three sibling-repo symlinks removed.
 - PLAN-34 landed (PR #371, `40dc879e`, analysed 2026-11-08); see `landings/PLAN-34.md`. Merged on the operator's "Merge now"
   with 1 of 4 deliverables fully met and the MERGE RULE NOT MET: 2 CodeRabbit threads (`ProjectWorkLevel.java:312`,
   `StatusCommand.java:437`) unresolved and unanswered, the second review body (3 actionable, 2 nitpicks) unanswered; the lane
