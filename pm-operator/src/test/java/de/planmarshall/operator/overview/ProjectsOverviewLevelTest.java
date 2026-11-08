@@ -67,31 +67,29 @@ class ProjectsOverviewLevelTest {
 
         assertEquals(3, rows.size());
 
-        // proj-b has 2 attention items -> should be first!
+        // The runtime serves the order; the client keeps it (activity moves no row).
         var first = rows.get(0);
-        assertEquals("proj-b", first.id());
-        assertTrue(first.needsOperator());
-        assertTrue(first.line().contains("! 2"));
-        assertTrue(first.line().contains("Project Beta"));
-        assertTrue(first.line().contains("1 plan"));
-        assertTrue(first.line().contains("10 min ago"));
+        assertEquals("proj-a", first.id());
+        assertFalse(first.needsOperator());
+        assertTrue(first.line().contains("Project Alpha"));
+        assertTrue(first.line().contains("2 plans"));
+        assertTrue(first.line().contains("1 epic"));
+        assertTrue(first.line().contains("2 min ago"));
 
-        // proj-c has setup needs operator -> should be second
         var second = rows.get(1);
-        assertEquals("proj-c", second.id());
+        assertEquals("proj-b", second.id());
         assertTrue(second.needsOperator());
-        assertTrue(second.line().contains("! 1"));
-        assertTrue(second.line().contains("Project Setup"));
-        assertTrue(second.line().contains("setup needs you"));
+        assertTrue(second.line().contains("! 2"));
+        assertTrue(second.line().contains("Project Beta"));
+        assertTrue(second.line().contains("1 plan"));
+        assertTrue(second.line().contains("10 min ago"));
 
-        // proj-a has no attention items -> should be last
         var third = rows.get(2);
-        assertEquals("proj-a", third.id());
-        assertFalse(third.needsOperator());
-        assertTrue(third.line().contains("Project Alpha"));
-        assertTrue(third.line().contains("2 plans"));
-        assertTrue(third.line().contains("1 epic"));
-        assertTrue(third.line().contains("2 min ago"));
+        assertEquals("proj-c", third.id());
+        assertTrue(third.needsOperator());
+        assertTrue(third.line().contains("! 1"));
+        assertTrue(third.line().contains("Project Setup"));
+        assertTrue(third.line().contains("setup needs you"));
     }
 
     @Test
@@ -104,6 +102,6 @@ class ProjectsOverviewLevelTest {
         assertEquals(1, rows.size());
         var row = rows.getFirst();
         assertTrue(row.line().contains("1 Plan"));
-        assertTrue(row.line().contains("vor 5 Min."));
+        assertTrue(row.line().contains("vor 5 min"));
     }
 }

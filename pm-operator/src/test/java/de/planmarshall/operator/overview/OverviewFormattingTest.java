@@ -71,29 +71,29 @@ class OverviewFormattingTest {
     }
 
     @Test
-    @DisplayName("sortProjects prioritizes attention projects then recent activity")
-    void sortProjects() {
+    @DisplayName("sortProjects keeps the order the runtime serves, activity moves no row")
+    void sortProjectsKeepsServedOrder() {
         var p1 = new ProjectSummary("p1", "Old Normal", 1, 0, 0, null, false, Instant.parse("2026-10-20T10:00:00Z"));
         var p2 = new ProjectSummary("p2", "New Normal", 1, 0, 0, null, false, Instant.parse("2026-10-20T11:00:00Z"));
         var p3 = new ProjectSummary("p3", "Attention", 1, 0, 1, null, false, Instant.parse("2026-10-20T09:00:00Z"));
 
         var sorted = OverviewFormatting.sortProjects(List.of(p1, p2, p3));
-        assertEquals(List.of("p3", "p2", "p1"), sorted.stream().map(ProjectSummary::projectId).toList());
+        assertEquals(List.of("p1", "p2", "p3"), sorted.stream().map(ProjectSummary::projectId).toList());
     }
 
     @Test
-    @DisplayName("sortPlans prioritizes attention plans")
-    void sortPlans() {
+    @DisplayName("sortPlans keeps the order the runtime serves, activity moves no row")
+    void sortPlansKeepsServedOrder() {
         var plan1 = new ActivePlanSummary("p1", "Normal", "execute", "running", null, null, null, 0, 0, null, null, null, null, null, null, null, null);
         var plan2 = new ActivePlanSummary("p2", "Needs Attention", "refine", "waiting", null, null, null, 0, 0, null, null, null, null, null, "decision", 1, null);
 
         var sorted = OverviewFormatting.sortPlans(List.of(plan1, plan2));
-        assertEquals(List.of("p2", "p1"), sorted.stream().map(ActivePlanSummary::planId).toList());
+        assertEquals(List.of("p1", "p2"), sorted.stream().map(ActivePlanSummary::planId).toList());
     }
 
     @Test
-    @DisplayName("sortEpics prioritizes attention epics and epics with attention plans")
-    void sortEpics() {
+    @DisplayName("sortEpics keeps the order the runtime serves, activity moves no row")
+    void sortEpicsKeepsServedOrder() {
         var childPlan1 = new ActivePlanSummary("cp1", "Normal Child", "execute", "running", null, null, null, 0, 0, null, null, null, null, null, null, null, null);
         var childPlan2 = new ActivePlanSummary("cp2", "Needs Child", "refine", "waiting", null, null, null, 0, 0, null, null, null, null, null, "decision", 1, null);
 
@@ -101,7 +101,7 @@ class OverviewFormattingTest {
         var epic2 = new ActiveEpicSummary("e2", "Has Attention Child", null, 1, 0, 0, 1, null, null, List.of(childPlan2));
 
         var sorted = OverviewFormatting.sortEpics(List.of(epic1, epic2));
-        assertEquals(List.of("e2", "e1"), sorted.stream().map(ActiveEpicSummary::epicId).toList());
+        assertEquals(List.of("e1", "e2"), sorted.stream().map(ActiveEpicSummary::epicId).toList());
     }
 
     @Test
@@ -147,44 +147,44 @@ class OverviewFormattingTest {
     }
 
     @Test
-    @DisplayName("formatRelativeActivity formats relative times")
+    @DisplayName("formatRelativeActivity formats relative times through the display rule")
     void relativeActivity() {
         assertEquals("", OverviewFormatting.formatRelativeActivity("en", (Instant) null, clock));
         assertEquals("2 min ago", OverviewFormatting.formatRelativeActivity("en", baseInstant.minusSeconds(120), clock));
-        assertEquals("vor 2 Min.", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(120), clock));
+        assertEquals("vor 2 min", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(120), clock));
         assertEquals("3 h ago", OverviewFormatting.formatRelativeActivity("en", baseInstant.minusSeconds(10800), clock));
-        assertEquals("vor 3 Std.", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(10800), clock));
-        assertEquals("1 day ago", OverviewFormatting.formatRelativeActivity("en", baseInstant.minusSeconds(86400 + 3600), clock));
-        assertEquals("vor 1 Tag", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(86400 + 3600), clock));
-        assertEquals("3 days ago", OverviewFormatting.formatRelativeActivity("en", baseInstant.minusSeconds(86400 * 3), clock));
-        assertEquals("vor 3 Tagen", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(86400 * 3), clock));
+        assertEquals("vor 3 h", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(10800), clock));
+        assertEquals("1 d ago", OverviewFormatting.formatRelativeActivity("en", baseInstant.minusSeconds(86400 + 3600), clock));
+        assertEquals("vor 1 T", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(86400 + 3600), clock));
+        assertEquals("3 d ago", OverviewFormatting.formatRelativeActivity("en", baseInstant.minusSeconds(86400 * 3), clock));
+        assertEquals("vor 3 T", OverviewFormatting.formatRelativeActivity("de", baseInstant.minusSeconds(86400 * 3), clock));
     }
 
     @Test
-    @DisplayName("sortPlans and sortProjects comparator is transitive with null instants")
+    @DisplayName("sortPlans and sortProjects keep the served order with null instants")
     void sortComparatorTransitivity() {
         var p1 = new ProjectSummary("p1", "With Instant 10", 1, 0, 0, null, false, baseInstant.minusSeconds(100));
         var p2 = new ProjectSummary("p2", "Null Instant", 1, 0, 0, null, false, null);
         var p3 = new ProjectSummary("p3", "With Instant 20", 1, 0, 0, null, false, baseInstant.minusSeconds(50));
 
         var sorted = OverviewFormatting.sortProjects(List.of(p1, p2, p3));
-        assertEquals(List.of("p3", "p1", "p2"), sorted.stream().map(ProjectSummary::projectId).toList());
+        assertEquals(List.of("p1", "p2", "p3"), sorted.stream().map(ProjectSummary::projectId).toList());
     }
 
     @Test
-    @DisplayName("formatEndedTime handles today, yesterday, and older dates")
+    @DisplayName("formatEndedTime renders the moment in the short style")
     void endedTime() {
         assertEquals("", OverviewFormatting.formatEndedTime("en", (Instant) null, clock));
 
-        // Same day: relative
+        // Same day: the moment itself
         var today = OverviewFormatting.formatEndedTime("en", baseInstant.minusSeconds(600), clock);
-        assertTrue(today.contains("ago"), today);
+        assertTrue(today.startsWith("today "), today);
 
-        // Yesterday
+        // Yesterday: the moment of yesterday
         var yesterday = OverviewFormatting.formatEndedTime("en", baseInstant.minusSeconds(86400), clock);
         assertTrue(yesterday.startsWith("yesterday "), yesterday);
 
-        // Older (e.g. 15 days ago)
+        // Older (e.g. 15 days ago): day and month
         var older = OverviewFormatting.formatEndedTime("en", baseInstant.minusSeconds(86400 * 15), clock);
         assertTrue(older.contains("Oct"), older);
     }
@@ -256,12 +256,12 @@ class OverviewFormattingTest {
         assertEquals("", OverviewFormatting.formatEndedTime("en", (String) null, clock));
         assertEquals("", OverviewFormatting.formatEndedTime("en", "   ", clock));
         assertEquals("bad-date", OverviewFormatting.formatEndedTime("en", "bad-date", clock));
-        assertEquals("10 min ago", OverviewFormatting.formatEndedTime("en", "2026-10-20T11:50:00Z", clock));
+        assertEquals("today 11:50", OverviewFormatting.formatEndedTime("en", "2026-10-20T11:50:00Z", clock));
 
-        // 3 days ago in EN and DE
+        // 3 days ago in EN and DE: the weekday of the moment
         var threeDaysInstant = baseInstant.minusSeconds(86400 * 3);
-        assertEquals("3 days ago", OverviewFormatting.formatEndedTime("en", threeDaysInstant, clock));
-        assertEquals("vor 3 Tagen", OverviewFormatting.formatEndedTime("de", threeDaysInstant, clock));
+        assertEquals("Sat 12:00", OverviewFormatting.formatEndedTime("en", threeDaysInstant, clock));
+        assertEquals("Sa 12:00", OverviewFormatting.formatEndedTime("de", threeDaysInstant, clock));
 
         // 10 days ago in DE
         var tenDaysInstant = baseInstant.minusSeconds(86400 * 10);

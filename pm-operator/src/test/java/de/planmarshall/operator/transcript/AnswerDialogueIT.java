@@ -13,7 +13,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.planmarshall.mock.StandardScenarios;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
@@ -25,7 +24,6 @@ import org.junit.jupiter.api.condition.OS;
  */
 @DisplayName("pm-operator answer dialogue on a real PTY")
 @EnabledOnOs({OS.MAC, OS.LINUX})
-@Disabled("PLAN-21-cli-answer-dialogue fixes the answer dialogue and its q")
 class AnswerDialogueIT {
 
     private static final String PROMPT = "w) in my own words";
@@ -34,7 +32,7 @@ class AnswerDialogueIT {
     @DisplayName("q first: the dialogue leaves and sends nothing")
     void qFirstSendsNothing() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
-             var session = harness.open("answer", "Q-007", "--interactive")) {
+             var session = harness.open("answer", "Q-007")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "q\n");
@@ -49,7 +47,7 @@ class AnswerDialogueIT {
     @DisplayName("an unknown input re-asks and sends nothing")
     void unknownInputReAsks() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
-             var session = harness.open("answer", "Q-007", "--interactive")) {
+             var session = harness.open("answer", "Q-007")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "zzz\nl\n");
@@ -64,13 +62,70 @@ class AnswerDialogueIT {
     @DisplayName("the main path: the chosen option sends the answer")
     void mainPathAnswers() throws Exception {
         try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
-             var session = harness.open("answer", "Q-007", "--interactive")) {
+             var session = harness.open("answer", "Q-007")) {
             assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
 
             DialogueHarness.type(session, "1\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
 
             assertTrue(session.screenText().contains("Q-007 answered"), session.screenText());
+            harness.assertAct("POST", "/api/v1/decisions/Q-007/answer");
+        }
+    }
+
+    @Test
+    @DisplayName("in own words: answering in operator's own words sends the interpreted answer")
+    void ownWordsAnswers() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
+             var session = harness.open("answer", "Q-007")) {
+            assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, "w\nrebase onto main\n\n");
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            assertTrue(session.screenText().contains("Q-007 answered"), session.screenText());
+            harness.assertAct("POST", "/api/v1/decisions/Q-007/answer");
+        }
+    }
+
+    @Test
+    @DisplayName("waiver request: granting waiver with reason sends answer")
+    void waiverAnswers() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.RUNNING_WORK).goTo("decisions.open");
+             var session = harness.open("answer", "WR-2")) {
+            assertTrue(session.awaitText("Waive the gate", DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, "y\ncovered by CI\n");
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            assertTrue(session.screenText().contains("Waived ci_check:integration-tests for fix-relay"), session.screenText());
+            harness.assertAct("POST", "/api/v1/decisions/WR-2/answer");
+        }
+    }
+
+    @Test
+    @DisplayName("later leaves the decision open without sending an act")
+    void laterLeavesOpen() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
+             var session = harness.open("answer", "Q-007")) {
+            assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
+
+            DialogueHarness.type(session, "l\n");
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            assertTrue(session.screenText().contains("Q-007 stays open"), session.screenText());
+            harness.assertNoAct();
+        }
+    }
+
+    @Test
+    @DisplayName("direct answer sends without dialogue and prints confirmation")
+    void directAnswerSendsWithoutDialogue() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.FULLY_ONBOARDED);
+             var session = harness.open("answer", "Q-007", "2")) {
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+
+            assertTrue(session.screenText().contains("✓ Q-007 answered: Rebase onto main"), session.screenText());
             harness.assertAct("POST", "/api/v1/decisions/Q-007/answer");
         }
     }

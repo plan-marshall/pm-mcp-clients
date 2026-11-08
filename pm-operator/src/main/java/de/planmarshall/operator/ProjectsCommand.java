@@ -12,7 +12,6 @@ package de.planmarshall.operator;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +22,7 @@ import java.util.concurrent.Callable;
 import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
@@ -187,7 +187,7 @@ public final class ProjectsCommand implements Callable<Integer> {
         out.println("─────────────────────────────────────────────────────────────────────────────");
 
         if (filter != null && !filter.isBlank()) {
-            renderFiltered(out, explorer.allProjects(), filter);
+            renderFiltered(out, explorer.allProjects(), filter, locale);
             return;
         }
 
@@ -197,7 +197,7 @@ public final class ProjectsCommand implements Callable<Integer> {
         renderAll(out, explorer.allProjects(), locale);
     }
 
-    private static void renderFiltered(PrintWriter out, List<EnrolledProject> allProjects, String filter) {
+    private static void renderFiltered(PrintWriter out, List<EnrolledProject> allProjects, String filter, String locale) {
         var query = filter.trim().toLowerCase(Locale.ROOT);
         var matches = allProjects.stream()
                             .filter(p -> p.projectId().toLowerCase(Locale.ROOT).contains(query)
@@ -208,7 +208,7 @@ public final class ProjectsCommand implements Callable<Integer> {
         } else {
             out.printf("Matches for '%s'%n", OutputSafety.stripControlSequences(filter));
             for (var p : matches) {
-                printProjectRow(out, p);
+                printProjectRow(out, p, locale);
             }
         }
     }
@@ -235,7 +235,7 @@ public final class ProjectsCommand implements Callable<Integer> {
                             ? MessageCatalogue.format(locale, "project.explorer.favourites", Map.of())
                             : "Favourites");
         for (var p : favourites) {
-            printProjectRow(out, p);
+            printProjectRow(out, p, locale);
         }
     }
 
@@ -247,7 +247,7 @@ public final class ProjectsCommand implements Callable<Integer> {
                             ? MessageCatalogue.format(locale, "project.explorer.recent", Map.of())
                             : "Recent");
         for (var p : recent) {
-            printProjectRow(out, p);
+            printProjectRow(out, p, locale);
         }
     }
 
@@ -263,11 +263,11 @@ public final class ProjectsCommand implements Callable<Integer> {
                             : "by name";
         out.println(allTitle + " (" + byName + ")");
         for (var p : allProjects) {
-            printProjectRow(out, p);
+            printProjectRow(out, p, locale);
         }
     }
 
-    private static void printProjectRow(PrintWriter out, EnrolledProject project) {
+    private static void printProjectRow(PrintWriter out, EnrolledProject project, String locale) {
         var mark = project.isFavourite() ? "  ★ " : "    ";
         var name = OutputSafety.stripControlSequences(project.displayName());
         var readiness = switch (project.readiness()) {
@@ -296,37 +296,21 @@ public final class ProjectsCommand implements Callable<Integer> {
         }
 
         if (project.lastActive() != null) {
-            sb.append("   ").append(formatRelativeTime(project.lastActive()));
+            sb.append("   ").append(formatRelativeTime(locale, project.lastActive()));
         }
 
         out.println(sb.toString().stripTrailing());
     }
 
-    public static String formatRelativeTime(@Nullable Instant instant) {
-        if (instant == null) {
-            return "";
-        }
-        var diff = Duration.between(instant, Instant.now());
-        long days = diff.toDays();
-        if (days == 0) {
-            long hours = diff.toHours();
-            if (hours > 0) {
-                return hours + " h ago";
-            }
-            long minutes = diff.toMinutes();
-            return minutes > 0 ? minutes + " min ago" : "just now";
-        }
-        if (days == 1) {
-            return "yesterday";
-        }
-        if (days < 7) {
-            return days + " d ago";
-        }
-        long weeks = days / 7;
-        if (weeks < 5) {
-            return weeks + (weeks == 1 ? " week ago" : " weeks ago");
-        }
-        long months = days / 30;
-        return months + (months == 1 ? " month ago" : " months ago");
+    /**
+     * Renders a project's last activity as the age the display rule gives it, in the interface
+     * language.
+     *
+     * @param locale  the interface locale
+     * @param instant the last activity, or {@code null}
+     * @return the age, or an empty string for {@code null}
+     */
+    public static String formatRelativeTime(String locale, @Nullable Instant instant) {
+        return Display.time(locale, instant, Clock.systemUTC());
     }
 }

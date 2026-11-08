@@ -78,29 +78,28 @@ class ProjectWorkLevelTest {
 
         assertEquals(2, rows.size());
 
-        // plan2 needs operator -> should sort first!
+        // The runtime serves the order; the client keeps it (activity moves no row).
         var first = rows.get(0);
-        assertEquals("pln-2", first.id());
-        assertTrue(first.needsOperator());
-        assertTrue(first.line().contains("Plan Two"));
-        assertTrue(first.line().contains("refine"));
-        assertTrue(first.line().contains("waiting for you"));
+        assertEquals("pln-1", first.id());
+        assertFalse(first.needsOperator());
+        assertTrue(first.line().contains("Plan One"));
+        assertTrue(first.line().contains("execute"));
+        assertNotNull(first.details());
+        assertTrue(first.details().contains("Epic Alpha"));
+        assertTrue(first.details().contains("2 of 5 tasks"));
+        assertTrue(first.details().contains("#42"));
+        assertFalse(first.details().contains("https://"), "PR URL should be hidden unless help visible");
 
-        // plan1 has details: duration, epic, tasks, PR
         var second = rows.get(1);
-        assertEquals("pln-1", second.id());
-        assertFalse(second.needsOperator());
-        assertTrue(second.line().contains("Plan One"));
-        assertTrue(second.line().contains("execute"));
-        assertNotNull(second.details());
-        assertTrue(second.details().contains("Epic Alpha"));
-        assertTrue(second.details().contains("2 of 5 tasks"));
-        assertTrue(second.details().contains("#42"));
-        assertFalse(second.details().contains("https://"), "PR URL should be hidden unless help visible");
+        assertEquals("pln-2", second.id());
+        assertTrue(second.needsOperator());
+        assertTrue(second.line().contains("Plan Two"));
+        assertTrue(second.line().contains("refine"));
+        assertTrue(second.line().contains("waiting for you"));
 
         // When help is visible, URL appears in details
         var helpRows = level.rows("en", clock, true);
-        assertTrue(helpRows.get(1).details().contains("https://github.com/org/repo/pull/42"));
+        assertTrue(helpRows.get(0).details().contains("https://github.com/org/repo/pull/42"));
     }
 
     @Test
