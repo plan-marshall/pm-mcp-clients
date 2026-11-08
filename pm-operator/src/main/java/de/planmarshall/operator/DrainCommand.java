@@ -97,11 +97,11 @@ public final class DrainCommand implements Callable<Integer> {
     @Override
     public Integer call() throws IOException {
         var out = spec.commandLine().getOut();
-        var record = context.directFiles().readRuntimeRecord();
-        if (record.isEmpty()) {
+        var stored = context.directFiles().readRuntimeRecord();
+        if (stored.isEmpty()) {
             return notRunning(out);
         }
-        var runtimeRecord = record.get();
+        var runtimeRecord = stored.get();
         var handle = processes.apply(runtimeRecord.pid());
         if (handle.isEmpty() || !handle.get().isAlive()
                             || handle.get().pid() == ProcessHandle.current().pid()) {
