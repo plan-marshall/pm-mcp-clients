@@ -46,6 +46,7 @@ public final class Display {
     private static final long HOURS_PER_DAY = 24L;
     private static final long DAYS_PER_MONTH = 30L;
     private static final long DAYS_PER_YEAR = 365L;
+    private static final String COUNT = "count";
 
     /**
      * The three renderings of a moment the design defines
@@ -183,11 +184,11 @@ public final class Display {
     public static String duration(String locale, long seconds) {
         long totalSeconds = Math.max(0L, seconds);
         if (totalSeconds < SECONDS_PER_MINUTE) {
-            return MessageCatalogue.format(locale, "common.time.unit.second", Map.of("count", totalSeconds));
+            return MessageCatalogue.format(locale, "common.time.unit.second", Map.of(COUNT, totalSeconds));
         }
         long minutes = totalSeconds / SECONDS_PER_MINUTE;
         if (minutes < MINUTES_PER_HOUR) {
-            return MessageCatalogue.format(locale, "common.time.unit.minute", Map.of("count", minutes));
+            return MessageCatalogue.format(locale, "common.time.unit.minute", Map.of(COUNT, minutes));
         }
         long hours = minutes / MINUTES_PER_HOUR;
         if (hours < HOURS_PER_DAY * 2) {
@@ -195,14 +196,14 @@ public final class Display {
             return rest > 0L
                     ? MessageCatalogue.format(locale, "common.time.unit.hour_minute",
                     Map.of("hours", hours, "minutes", rest))
-                    : MessageCatalogue.format(locale, "common.time.unit.hour", Map.of("count", hours));
+                    : MessageCatalogue.format(locale, "common.time.unit.hour", Map.of(COUNT, hours));
         }
         long days = hours / HOURS_PER_DAY;
         long restHours = hours % HOURS_PER_DAY;
         return restHours > 0L
                 ? MessageCatalogue.format(locale, "common.time.unit.day_hour",
                 Map.of("days", days, "hours", restHours))
-                : MessageCatalogue.format(locale, "common.time.unit.day", Map.of("count", days));
+                : MessageCatalogue.format(locale, "common.time.unit.day", Map.of(COUNT, days));
     }
 
     private static String age(String locale, long millis) {
@@ -211,20 +212,20 @@ public final class Display {
         }
         long minutes = millis / Duration.ofMinutes(1).toMillis();
         if (minutes < MINUTES_PER_HOUR) {
-            return MessageCatalogue.format(locale, "common.time.minutes", Map.of("count", minutes));
+            return MessageCatalogue.format(locale, "common.time.minutes", Map.of(COUNT, minutes));
         }
         long hours = minutes / MINUTES_PER_HOUR;
         if (hours < HOURS_PER_DAY) {
-            return MessageCatalogue.format(locale, "common.time.hours", Map.of("count", hours));
+            return MessageCatalogue.format(locale, "common.time.hours", Map.of(COUNT, hours));
         }
         long days = hours / HOURS_PER_DAY;
         if (days < DAYS_PER_MONTH) {
-            return MessageCatalogue.format(locale, "common.time.days", Map.of("count", days));
+            return MessageCatalogue.format(locale, "common.time.days", Map.of(COUNT, days));
         }
         if (days < DAYS_PER_YEAR) {
-            return MessageCatalogue.format(locale, "common.time.months", Map.of("count", days / DAYS_PER_MONTH));
+            return MessageCatalogue.format(locale, "common.time.months", Map.of(COUNT, days / DAYS_PER_MONTH));
         }
-        return MessageCatalogue.format(locale, "common.time.years", Map.of("count", days / DAYS_PER_YEAR));
+        return MessageCatalogue.format(locale, "common.time.years", Map.of(COUNT, days / DAYS_PER_YEAR));
     }
 
     private static String shortMoment(String locale, Instant instant, Instant now, ZoneId zone) {

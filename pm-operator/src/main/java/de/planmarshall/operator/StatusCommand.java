@@ -432,8 +432,9 @@ final class StatusCommand implements Callable<Integer> {
                                 ? "! landing failed   "
                                 : "                   ";
             String desc;
-            if (landing.unit() != null) {
-                desc = "landing " + unitTitle(locale, landing.unit());
+            var unit = landing.unit();
+            if (unit != null) {
+                desc = "landing " + unitTitle(locale, unit);
             } else if (landing.count() != null) {
                 desc = "removing " + landing.count() + " moved documents from git";
             } else {
