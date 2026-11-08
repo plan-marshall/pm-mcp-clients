@@ -238,18 +238,51 @@ class StateDialogueTest {
                                                 Map.of(), List.of()))));
     }
 
+    private static final Map<String, String> EXPECTED_PROJECT_STEP_BY_STATE = Map.ofEntries(
+                        Map.entry("consent", "checkout"),
+                        Map.entry("detect", "checkout"),
+                        Map.entry("run-consent", "checkout"),
+                        Map.entry("probe", "checkout"),
+                        Map.entry("checkout", "checkout"),
+                        Map.entry("enrol", "enrolment"),
+                        Map.entry("enrolment", "enrolment"),
+                        Map.entry("operator", "own"),
+                        Map.entry("own", "own"),
+                        Map.entry("identity", "identity"),
+                        Map.entry("team", "team"),
+                        Map.entry("architecture", "architecture"),
+                        Map.entry("landing", "landing"),
+                        Map.entry("roles", "roles"),
+                        Map.entry("descriptions", "descriptions"),
+                        Map.entry("commit", "commit"));
+
     @Test
     @DisplayName("every project setup state maps to a step the catalogue defines")
     void projectStatesNameCatalogueSteps() {
-        var states = StateDialogue.PROJECT_STEP_BY_STATE;
-
-        for (var entry : states.entrySet()) {
+        assertEquals(EXPECTED_PROJECT_STEP_BY_STATE, StateDialogue.PROJECT_STEP_BY_STATE,
+                            "the production mapping must match the catalogue contract");
+        for (var entry : EXPECTED_PROJECT_STEP_BY_STATE.entrySet()) {
             var state = "project." + entry.getKey();
             var suffix = StateDialogue.projectStepOf(state);
             assertEquals(entry.getValue(), suffix, state + " -> " + suffix);
             assertTrue(MessageCatalogue.hasKey("en", "project.step." + suffix), state + " -> " + suffix);
         }
         assertEquals("done", StateDialogue.projectStepOf("project.completed"));
+    }
+
+    @Test
+    @DisplayName("a being-added run reporting a different total_steps prints that total")
+    void beingAddedRunWithCustomTotalStepsPrintsThatTotal() throws Exception {
+        var frame = StateDialogue.fromJson("""
+                            {"state":"identity","step":3,"total_steps":12,
+                             "operator":{"state":{"state_id":"project.identity","kind":"operator_wait"},
+                               "facts":{"summary":"Choose identity"},
+                               "links":[{"id":"next","method":"POST","preselected":true}]}}
+                            """, 10, true);
+
+        assertEquals(12, frame.totalSteps());
+        assertEquals("[3/12] Identity \u00b7 How should the project be named?",
+                            dialogue(new FakeSource(frame), "", new StringWriter()).stepLine(frame));
     }
 
     @Test

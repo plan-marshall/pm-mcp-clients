@@ -88,6 +88,7 @@ class ConsoleBadgeStallIT {
                                      StallingSocketProxy.isPath(STALLED_PATH));
                  var session = PtySession.start(binary.with(), environment(machineRoot),
                                      Path.of("").toAbsolutePath(), 120, 30)) {
+                assertTrue(proxy.awaitHolding(READY_TIMEOUT), "the initial request must reach the proxy stall");
                 assertTrue(session.awaitConsolePrompt(READY_TIMEOUT),
                                     () -> "the console did not draw its prompt within " + READY_TIMEOUT
                                                         + ": " + session.rawOutput());

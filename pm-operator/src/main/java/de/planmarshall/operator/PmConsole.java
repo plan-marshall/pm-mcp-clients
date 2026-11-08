@@ -283,7 +283,8 @@ public final class PmConsole {
         try {
             // The address travels as an argument, never through a command line the console would
             // have to quote and parse back: an id with a quote or a backslash reaches the verb as it is.
-            runOperatorVerb(List.of("project", "setup", "--entry", address), out, reader, terminal);
+            // Passing -- ensures that an entry id starting with -- is never read as an option or project selector.
+            runOperatorVerb(List.of("project", "setup", "--entry", "--", address), out, reader, terminal);
         } finally {
             try {
                 context.clearTerminal(terminal);
@@ -305,7 +306,7 @@ public final class PmConsole {
     private void continueOnboarding(PrintWriter out, LineReader reader, String locale, Terminal terminal) {
         try {
             var runtime = context.runtime(true);
-            var dialogue = new StateDialogue(new OnboardingSource(runtime, context.gate()), out, locale,
+            var dialogue = new StateDialogue(new OnboardingSource(runtime, context.gate(), entryFlow.aspects()), out, locale,
                                 stateId -> new ChoicePrompt(reader, out, locale, stateId));
             dialogue.run();
         } catch (StartPrompt.StartLeftException | StartPrompt.MissingInputException _) {
