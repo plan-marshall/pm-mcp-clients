@@ -442,7 +442,16 @@ public final class PmConsole {
         }
         var effective = selection.args().toArray(String[]::new);
         if (!isFullScreenVerb(effective)) {
-            PmOperator.execute(context, out, out, effective);
+            context.useTerminal(terminal);
+            try {
+                PmOperator.execute(context, out, out, effective);
+            } finally {
+                try {
+                    context.clearTerminal(terminal);
+                } catch (IllegalStateException _) {
+                    // Scope already cleared
+                }
+            }
             // A verb can change what waits (a project setup advances, an onboarding completes):
             // the badge and the title follow what the runtime says after it, not before it.
             refreshSetupBadge(locale(), terminal);

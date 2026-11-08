@@ -104,6 +104,38 @@ class PmConsoleHandoffTest {
     }
 
     @Test
+    @DisplayName("the console answers twice in one session without closing the terminal")
+    void consoleAnswersTwiceInOneSession() throws Exception {
+        try (var virtual = VirtualScreenTerminal.create(120, 30)) {
+            var creations = new AtomicInteger();
+            var context = context(virtual, creations);
+            var console = new PmConsole(context);
+            var exitCode = new AtomicInteger(-1);
+            var thread = Thread.ofPlatform().start(() -> exitCode.set(runConsole(console)));
+
+            await(() -> shows(virtual, PROMPT));
+            virtual.type("answer Q-007\n");
+            await(() -> shows(virtual, "Rebase onto main? [Enter]"));
+
+            virtual.type("\n");
+            await(virtual, "Q-007 answered: Rebase onto main");
+
+            assertEquals(1, creations.get(), "the console's terminal is the only one created");
+            assertFalse(virtual.isClosed(), "the nested verb must not close the console's terminal");
+
+            virtual.type("answer Q-012 2\n");
+            await(virtual, "Q-012 answered: One database for the machine");
+
+            assertEquals(1, creations.get(), "the console's terminal is the only one created");
+            assertFalse(virtual.isClosed(), "the nested verb must not close the console's terminal");
+
+            virtual.type("exit\n");
+            thread.join(AWAIT_MILLIS);
+            assertEquals(0, exitCode.get());
+        }
+    }
+
+    @Test
     @DisplayName("a direct plans run creates one terminal and closes it when the view leaves")
     void directPlansClosesItsOwnTerminal() throws Exception {
         try (var virtual = VirtualScreenTerminal.create(120, 30)) {
@@ -170,6 +202,19 @@ class PmConsoleHandoffTest {
         while (!condition.getAsBoolean()) {
             if (System.nanoTime() > deadline) {
                 fail("the console did not reach the expected state in time");
+            }
+            LockSupport.parkNanos(20_000_000L);
+            if (Thread.interrupted()) {
+                throw new InterruptedException();
+            }
+        }
+    }
+
+    private static void await(VirtualScreenTerminal virtual, String text) throws InterruptedException {
+        var deadline = System.nanoTime() + AWAIT_MILLIS * 1_000_000L;
+        while (!shows(virtual, text)) {
+            if (System.nanoTime() > deadline) {
+                fail("the console did not reach the expected state in time: '" + text + "'\nScreen:\n" + String.join("\n", virtual.screen().lines()) + "\nRaw:\n" + virtual.rawOutput());
             }
             LockSupport.parkNanos(20_000_000L);
             if (Thread.interrupted()) {
