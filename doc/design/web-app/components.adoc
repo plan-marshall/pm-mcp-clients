@@ -12,7 +12,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:README.adoc#visual-language[Web App, Visual Language] (the tokens, the grid and the type scale every component draws from), link:theme-readability.adoc[Theme Readability] (the contrast every colour pair owes), link:interaction-affordances.adoc[Interaction Affordances] (the advisory of a control, the acts of a state), link:brand-mark.adoc[Brand Mark] (the mark an empty state carries), link:workflow-visual-language.adoc[Workflow Visual Language] (the icon contract), link:../shared/texts-and-languages.adoc[Texts and Languages] (the words of every label)_
 
-Status: `AGREED`. This document is the authority for the components of the web app: the closed vocabulary every view is built from, the specification of each component with its picture, the rules for using them, and the surface the implementation delivers. Every component it names lives in `pm-web-app/src/lib/components/` with a test beside it and a fixture on the development page `/dev/components` (built only in development); a component marked _new_ is specified here and is built by the package that implements this design. It has two parts: link:components-tags.adoc[Tags and Kinds] (state, reason, count, id, pull request, kind with its tints, phase, markers) and link:components-fields.adoc[Fields and Forms]. Its rules speak of _the object shown_ and _the selected row_; which columns show them is the navigation design's.
+Status: `DRAFT`. This document is the authority for the components of the web app: the closed vocabulary every view is built from, the specification of each component with its picture, the rules for using them, and the surface the implementation delivers. Every component it names lives in `pm-web-app/src/lib/components/` with a test beside it and a fixture on the development page `/dev/components` (built only in development); a component marked _new_ is specified here and is built by the package that implements this design. It has two parts: link:components-tags.adoc[Tags and Kinds] (state, reason, count, id, pull request, kind with its tints, phase, markers) and link:components-fields.adoc[Fields and Forms]. Its rules speak of _the object shown_ and _the selected row_; which columns show them is the navigation design's (link:navigation.adoc[Navigation]): the object shown is the object column, and the selected row is the row of a list column that opened the column to its right.
 
 The proposal (`doc/claude_review/visual-design/proposals.adoc#VD-P-05`) states what the first components were; this document has since become the authority, and a component it adds is specified here.
 
@@ -60,6 +60,10 @@ The proposal (`doc/claude_review/visual-design/proposals.adoc#VD-P-05`) states w
 |Supporting
 |`Icon`, `BrandMark`, `Spinner`
 |<<supporting>>
+
+|Templates
+|`TriagePage` (the column engine), `ObjectPage` (the object column), `WizardPage`, `DashboardPage`
+|<<templates>>
 |===
 
 A component that no view uses is removed from this document in the package that leaves it unused; a component a view needs and this table lacks is added first (<<new-component>>).
@@ -281,7 +285,7 @@ Source and surface: `pm-web-app/src/lib/components/Tabs.svelte`, tests in `Tabs.
 
 image::../../resources/diagrams/web-component-breadcrumb.svg[A trail whose last segment is the current page,360,align=center]
 
-The one path of the page, in the top bar. Every segment but the last is a link with its `href`, in `--color-text-secondary`; the last is the current page, in `--color-text-primary` and marked with `aria-current="page"`. A segment whose place has no URL is text. On a phone an identifier is shortened in its middle — the head names the kind, the tail tells two ids apart — while a sentence a person reads is never cut. Which segments a page has is the navigation design's.
+The one path of the page, in the top bar. Every segment but the last is a link with its `href`, in `--color-text-secondary`; the last is the current page, in `--color-text-primary` and marked with `aria-current="page"`. A segment whose place has no URL is text. On a phone an identifier is shortened in its middle — the head names the kind, the tail tells two ids apart — while a sentence a person reads is never cut. Its segments are lens › project › epic › plan, each with its `KindMark` (link:navigation.adoc#up[Navigation, Up, the Breadcrumb, Back]).
 
 Source and surface: `pm-web-app/src/lib/components/Breadcrumb.svelte`, tests in `Breadcrumb.test.ts`; the props are `crumbs` (`label`, `href`, `id`) and `label` (the accessible name of the trail).
 
@@ -304,7 +308,7 @@ Source and surface: `pm-web-app/src/lib/components/ConfirmDialog.svelte`, tests 
 [#hierarchy]
 == Hierarchy
 
-* *One primary act per screen*: the main next act of the object shown, from `byState`. Only the object shown carries it; a list's head shows its act as secondary while an object is shown beside it, and the create act of a list (_Start a plan_, _Add a project_) is the primary only while no object is shown. Everything else is secondary — at most three visible — and the rest is in the overflow.
+* *One primary act per screen*: the main next act of the object shown, from `byState`. Only the object shown — the object column — carries it; a list's head shows its act as secondary while an object is shown beside it, and the create act of a list (_Start a plan_, _Add a project_) is the primary only while no object is shown. Everything else is secondary — at most three visible — and the rest is in the overflow.
 * *Ghost* is only for leaving without acting: _Back_ in a wizard, _Close_, _Cancel_ and _Later_ in a dialog, dismissing a notice.
 * *Danger* is only the confirming button of a `ConfirmDialog`. A destructive act is opened from the overflow (an entry in the danger text colour, with `…`), never as a visible danger button or a red link at rest.
 * *A decision*: its options are `RadioGroup` cards, or `CheckGroup` cards for a part that accepts several (link:components-fields.adoc#choice[Fields and Forms]), and its one act is the primary _Decide_; `Enter` decides only a decision with a chosen option. A waiver request keeps its agreed answers and its rule of no preselection (link:../shared/decisions.adoc#waiver[Decisions, A Waiver Request]): _Waive the gate_ and _Decline_ are both secondary, neither is preselected, `Enter` answers nothing, _Later_ is ghost, and neither is a danger act. A choice that cannot be undone asks through `ConfirmDialog`.
@@ -316,7 +320,7 @@ Source and surface: `pm-web-app/src/lib/components/ConfirmDialog.svelte`, tests 
 * *The head of the object shown*: the `ActionBar` at the head's right. The related places are links in the head's id line (link:components-tags.adoc#tag-places[Tags and Kinds, One Fixed Place]): the pull request, _Completion report_, the process designer — one link per destination per page. While a plan waits for a decision, its act `decision` (_To the decision_) is such a head link and opens the decision beside the plan.
 * *A row*: a `RowLink` over the row, and the row's acts in its `RowMenu`, the last element at its right end; the menu opens at the row. No panel of acts above the list, no word _Actions_ in a row. *One exception*, agreed in link:../shared/project-explorer.adoc#project-row[Project Explorer, A Project]: the row of a ready project keeps its visible act _Add a plan_ before its `RowMenu`, and shows it disabled with its reason while the project is not ready.
 * *The head of a list*: the list's create act and the `SegmentedControl` of its mode or grouping. An empty list's `EmptyState` repeats the create act only while the list is empty, and the head then shows none.
-* *Back*: a page has no Back of its own; going up and the breadcrumb are the navigation design's. Back exists inside a wizard and a dialog (ghost, left in the footer), and as the one return of an object opened in place inside its caller (_Back to the job_, ghost, in that object's head).
+* *Back*: a page has no Back of its own; going up and the breadcrumb are link:navigation.adoc#up[Navigation, Up, the Breadcrumb, Back]. Back exists inside a wizard and a dialog (ghost, left in the footer), and as the one return of an object opened in place inside its caller (_Back to the job_, ghost, in that object's head).
 * *Controls of a view* (jump to now, the follow mode, expand all) sit in the head of the part they act on (the phase tree's head), not among the acts of the object.
 
 [#labels]
@@ -346,6 +350,31 @@ Every component draws these itself, so every use has them:
 * *A row or a card is clickable if and only if it opens an object*, and then the whole row is a `RowLink` (<<row-link>>): the rows of running work, of the projects, of decisions and reports, of an epic's workstreams.
 * *A block that opens nothing* has no hover lift, no pointer, and no shadow that suggests a click.
 * *A list whose rows are chosen* (the projects of running work, the list of decisions) is a list of `RowLink`s with `aria-current`, not a set of tabs.
+
+[#templates]
+== Page Templates
+
+A view sits on one of the four templates of `pm-web-app/src/lib/templates/` and takes its width and its split from it (link:view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates]). Two of them carry the columns of link:navigation.adoc[Navigation]; `WizardPage` and `DashboardPage` stay single pages.
+
+[#triage-page]
+=== TriagePage: the Column Engine
+
+The template of every lens: it draws the chain of levels as columns and owns the column window (link:navigation.adoc#window[Navigation, The Column Window]).
+
+* *The window*: it measures its own container, not the viewport, and shows the rightmost columns that fit by the rule and the width table of the navigation design, again on every change of the container's width. Its viewport query at `1099 px` and its fixed `40 / 60` split go.
+* *The strips*: the gap strip of the hidden levels on the left, with names or with marks only, and during a peek the strip at the right edge (link:navigation.adoc#gap-strip[Navigation, The Gap Strip]).
+* *The side column*: a column docked right of the object column, which takes the space where both do not fit (link:navigation.adoc#side-columns[Navigation, Side Columns]).
+* *The focus*: after a shift of the window it moves the focus to the heading of the column now in view and announces it in the frame's live region; a column out of the window is not rendered.
+* *The template owns the columns, never the items*: the view gives each level and fills its column; it keeps its rows, its filter, its matches, its selection and its `j`/`k`/`Enter`.
+
+Source and surface: `pm-web-app/src/lib/templates/TriagePage.svelte`, tests in `TriagePage.test.ts`; the props are `levels` (`key`, `kind`, `title`, `href`, `state`), `label` and `side`, with one snippet per level for its column's body and one for the object column.
+
+[#object-page]
+=== ObjectPage: the Object Column
+
+The regions of an object — the head (`KindMark`, title, id, state sentence, and the `ActionBar`), the attention strip, the tabs and the body — are the regions of the object column (link:navigation.adoc#column-types[Navigation, Two Column Types]). Inside the column engine it draws no path (the top bar's breadcrumb is the only one) and no page cap; outside it, on a page of its own, it keeps its cap of `1440 px`. The same object as a list column shows only the compact head: `KindMark`, title, state word, and its main act as a secondary `Button`.
+
+Source and surface: `pm-web-app/src/lib/templates/ObjectPage.svelte`, tests in `ObjectPage.test.ts`; the slots are `kind`, `title`, `id`, `state`, `primary`, `secondary`, `overflow`, `attention`, `tabs` and the body, and the prop `compact` draws the head of a list column. The slot `path` goes.
 
 [#containers]
 == Containers

@@ -1,0 +1,400 @@
+= Design: Web App, Navigation
+:toc: left
+:toclevels: 3
+:toc-title: Table of Contents
+:sectnums:
+:source-highlighter: highlight.js
+:nofooter:
+
+link:../README.adoc[Design] » link:README.adoc[Web App] » Navigation
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-4[UC-PLN-4] (see what runs), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1] (follow a plan down to its parts), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-5[UC-PLN-5] (follow an epic), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2] (answer a decision), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6] (catch up on what happened), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7] (what waits), link:../../../../plan-marshall-documentation/doc/use-cases/04-projects.adoc#UC-PRJ-2[UC-PRJ-2] (find a project)_
+
+_Relies on: link:README.adoc#shell[Web App, The App Shell] (the rail, the top bar, the bottom bar), link:components.adoc#templates[Components, Page Templates] (the column templates), link:components-tags.adoc#kind-mark[Tags and Kinds, KindMark] (the kinds and their tints), link:components.adoc#breadcrumb[Components, Breadcrumb], link:../shared/plan-overview.adoc[Plan Overview], link:../shared/plan-view.adoc[Plan View]_
+
+Status: `DRAFT`. This document is the authority for how the operator moves through the web app: the lenses of the rail, the levels of an object as columns, the window of columns a screen shows, going up, the breadcrumb and the browser's back, the address of every selection, the keys and the focus, the phone, and the side column of the chat. The components a column is built from are link:components.adoc[Components]; which rows, heads and acts an object shows is its own shared design.
+
+The pattern is the one Running work already had: the rail chooses a lens, selecting an item shows its content to the right, and selecting in that content shows the next level further right. Every kind follows the same path, so an epic, a plan, a decision and a report are reached the same way.
+
+[#lenses]
+== Lenses and the Rail
+
+The rail entries of the groups *Work* and *Records* are *lenses*: What waits, Running work, Projects, Decisions and Reports. Each lens has a list column of its own items. The rail shows the lens of the current route, and every kind has exactly one canonical route and so one home lens:
+
+[cols="1,2,3",options="header"]
+|===
+|Kind |Home lens |Its canonical route
+
+|Project
+|Projects
+|the one project page: its work, its setup, its release (link:../shared/project-explorer.adoc#project-page[Project Explorer, The Project Page])
+
+|Epic, plan, side job
+|Running work
+|the object in the chain of its project, in the running or the ended mode of the lens
+
+|Decision
+|Decisions
+|the decision beside the list of open decisions
+
+|Report
+|Reports
+|the report's detail beside the list of reports
+
+|Machine
+|Settings for a credential, System for a due cleanup
+|the providers of the settings; the cleanup job
+|===
+
+* *Selecting in a lens's own list scopes the lens.* A project selected in Running work narrows the work list to that project; it is not the project page, and the rail stays on Running work.
+* *Opening an object from another lens goes to its canonical route*, and the rail moves with it. Every project link outside the chain (a match of find, a report's path, a project named in another view) opens the one project page; every plan link opens the plan in Running work. The breadcrumb and Up are inside the chain and stay in the lens (<<up>>).
+* *In place instead of a jump*, in exactly three cases: a plan opened from the cleanup job (link:../shared/cleanup.adoc#details[Cleanup, Details]), the decision of a waiting plan (the plan head's link to it, link:components.adoc#fixed-places[Components, Fixed Places]), and the completion report of an ended plan (link:../shared/completion-report.adoc#reached[Completion Report, Where It Is Reached]). The object opens as a content column inside its caller, the caller keeps its state (the cleanup's checks, the plan's selection), and the rail does not move.
+* *What waits* (`/`) is a launcher: its list column has no object column of its own, and each item opens at its canonical route or in place (link:needs-and-find.adoc[What Waits and Find]).
+
+[#levels]
+== Levels as Columns
+
+A page is a *chain of levels*, and the chain always follows the structure:
+
+----
+lens list › project › epic › plan › the plan's phase tree › task
+                     (a plan without an epic: project › plan)
+----
+
+* *By plan* and *by epic* only group the rows inside a column; they never change the chain. A plan opened from the flat list of its project still shows its epic as a level.
+* *Each column lists the children of the item selected in the column to its left.* Opening a child therefore shows its siblings, with the child selected, in the column to its left.
+* *A workstream groups rows* inside an epic's column and is no level; *a phase and a task belong to the plan*: the phase tree is the plan's list of children, and a task is the level after it.
+
+[#column-types]
+=== Two Column Types
+
+* *The object column* is the rightmost object: its full head — `KindMark`, title, id, state sentence, acts — then its attention strip, its tabs and its body, on the regions of `ObjectPage` (link:components.adoc#templates[Components, Page Templates]), without the page cap of `1440 px` inside a column. The path is the top bar's breadcrumb (<<up>>), never a second path in the head. *Only the object column carries the screen's primary act* (link:components.adoc#hierarchy[Components, Hierarchy]).
+* *A list column* is an object to the left of its opened child. It shows its children with a compact head — `KindMark`, title, state word, and its main act as a secondary button. Selecting the object itself (its head) closes the child, and the object becomes the object column again with all its tabs.
+* *A list with nothing selected*, rightmost, takes the object column's width; the create act of the list is then its primary act (link:components.adoc#hierarchy[Components, Hierarchy]).
+
+[#missing]
+=== A Selection the List Does Not Hold
+
+* *A pinned row*: an item selected but not a row of its column — ended, read, resolved, filtered out, or on another page — is shown as one pinned row at the top of the column, labelled with the reason (`ended`, `read`, `hidden by the filter`). The ended mode of Running work lists every project with ended work, so an ended plan always has its project.
+* *A deleted object*: an object deleted while it is shown falls back to its parent, with one notice line in the parent's column, and the address is replaced, not pushed (<<url>>).
+
+[#window]
+== The Column Window
+
+*The screen shows the rightmost columns that fit: one, two, three or four.* The window is computed from the width of the container the columns stand in — not from the viewport, so the rail's choice counts — and from the column widths below, and it is computed again whenever the container changes its width. The phone is the same rule with one column.
+
+[cols="2,2,3",options="header"]
+|===
+|Part |Width |Rule
+
+|List column
+|`220` to `320 px`
+|All list columns of a window take the same width: the room left after the object column and the strip, shared out, never above `320 px`.
+
+|Object column
+|at least `480 px`
+|It takes every pixel the list columns leave.
+
+|Gap strip with names
+|`136 px`
+|Shown while levels are hidden to the left (<<gap-strip>>).
+
+|Gap strip, marks only
+|`44 px`
+|Only where the strip with names would leave a single column.
+
+|Page inset
+|`24 px` on each side; `12 px` below `480 px`
+|The inset of the template (link:README.adoc#grid[Web App, The Layout Grid]).
+|===
+
+*The rule*, for a content width `W` (the container less its inset) and a chain deeper than the window: the window takes the largest number of columns `n`, at most four, for which `(n − 1) × 220 + 480 + 136 ≤ W`. Where that leaves one column but two fit with the strip of marks only (`220 + 480 + 44 ≤ W`), it shows two with the strip of marks. With no level hidden there is no strip, and its width goes to the columns. Each column scrolls on its own; the page does not scroll sideways.
+
+[#width-table]
+=== The Width Table
+
+The window for the deepest chain (lens › project › epic › plan › task), the rail expanded (`232 px`) and collapsed (`64 px`). Settled with the operator on 2026-11-08 from the column-window prototype on the mock runtime (<<decisions>>).
+
+[cols="1,1,3,1,3",options="header"]
+|===
+|Viewport |Content, rail expanded |Window, rail expanded |Content, rail collapsed |Window, rail collapsed
+
+|`360 px`
+2+|`336 px`, no rail: one column, Up, the breadcrumb shortened in the middle, no strip (<<phone>>)
+2+|the same
+
+|`768 px`
+|`488 px`
+|one column (`488`), no strip
+|`656 px`
+|one column (`656`), no strip
+
+|`1024 px`
+|`744 px`
+|two: list `220` · object `480`; strip of *marks only* (`44`), its names in a popover
+|`912 px`
+|two: list `296` · object `480`; strip with names (`136`)
+
+|`1280 px`
+|`1000 px`
+|two: list `320` · object `544`; strip with names
+|`1168 px`
+|three: lists `276` · object `480`; strip with names
+
+|`1440 px`
+|`1160 px`
+|three: lists `272` · object `480`; strip with names
+|`1328 px`
+|four: lists `237` · object `481`; strip with names
+
+|`1920 px`
+|`1640 px`
+|four: lists `320` · object `544`; strip with names
+|`1808 px`
+|four: lists `320` · object `712`; strip with names
+|===
+
+A shorter chain gives its strip's width to its columns: a plan of a project at `1440 px` with the rail expanded shows all four of its levels without a strip. Below `768 px` the rail is hidden and the bottom bar carries the lenses (<<phone>>).
+
+[#gap-strip]
+=== The Gap Strip
+
+* *When levels are hidden on the left*, a narrow strip at the left edge shows them, from the lens down, as stacked `KindMark`s with their names visible — never as a tooltip only. The strip is a group of buttons (`role="group"`, named _Hidden levels_), each with the level's kind and name as its accessible name.
+* *Marks only*: where the window shows the strip of marks (`1024 px`, rail expanded), the last button of the strip, _Names_, opens a popover that lists the hidden levels with their names, each one step.
+* *Selecting a mark brings that level back into view* (a _peek_): the window moves to start at that level, the rightmost visible column stretches to fill the window, and a strip of marks at the right edge stands for the levels now hidden on the right; selecting it returns the window to the object. A peek changes no selection, no address and no history, and the next selection, Up or breadcrumb ends it.
+* *With one column there is no strip*: Up and the breadcrumb lead to the levels before it.
+* *When a side column takes the only column* (<<side-columns>>), the object returns through the chat head's _Hide the chat_, not through a strip.
+* *Motion*: shifting the window slides its columns briefly (`--duration-base`) and does not move at all where the person asked for reduced motion.
+
+[#up]
+== Up, the Breadcrumb, Back
+
+* *Up* sits at a fixed place in the head of the first visible column: the parent's `KindMark` and name (the epic's mark and _Relay Hardening_). It *navigates*: it pushes the parent's address, and the parent becomes the deepest selection. It behaves the same at every width.
+* *One breadcrumb*, in the top bar: lens › project › epic › plan, each segment with its `KindMark`, titles rather than slugs (link:components.adoc#breadcrumb[Components, Breadcrumb]). Every segment but the last navigates as Up does: the project segment of a plan in Running work goes to the project's level of Running work, not to the project page. The object column's head carries no second path.
+* *The browser's back and forward* move through the history (<<url>>).
+* *There is no caller stack.* No page keeps a list of where the operator came from, and no view draws a Back of its own: the in-page Back of the plan, the epic, the settings, the completion report, the overview, the project onboarding, the epic's adoption and decomposition, the machine settings and the cleanup go.
+* *The backs that remain have a meaning of their own*: the Back of a wizard (link:components.adoc#hierarchy[Components, Hierarchy]), the cancel of a dialogue, and the closing of an object opened in place (<<lenses>>): a ghost act _Back to the job_ in the head of that column, which returns to the caller with its state (link:../shared/cleanup.adoc#details[Cleanup, Details]).
+
+[#url]
+== Addresses and History
+
+*Every selection is in the address*, in one scheme: *path segments for objects*, *the query for scope, mode, tab and what is opened beside*. The routes are listed once, in link:README.adoc#routes[Web App, Routes and the Address Bar].
+
+[cols="2,3",options="header"]
+|===
+|What |How it is written
+
+|An object
+|its path: `/projects/{id}`, `/epics/{id}`, `/plans/{id}`, `/plans/{id}/tasks/{task}`, `/decisions/{id}`, `/reports/{id}`; the chain to its left is derived from the object (a plan names its project and its epic), never written into the address
+
+|The scope of a lens
+|the selected project of Running work: `/overview?project={id}`
+
+|The mode of a lens
+|`mode=ended` (running is the default), `group=epic` (by plan is the default), `follow=on`; carried on every address of the lens (`/plans/{id}?mode=ended`); an address without it takes the mode its object implies (an ended plan is in the ended mode)
+
+|A tab of an object
+|`tab={id}` (`/settings?tab=access`); an address without it opens the first tab
+
+|An object opened in place
+|`open={kind}:{id}` on the caller's address (`/system/cleanup?open=plan:fix-relay`, `/plans/fix-relay?open=decision:Q-007`, `/plans/fix-relay?open=completion-report`)
+
+|A side column
+|`chat=open` (<<side-columns>>)
+|===
+
+* *Push* only for a change of depth — opening a child, Up, a breadcrumb segment, opening in place — or of lens.
+* *Replace* for a change to a sibling in the same column, for a `j`/`k` move, for a tab, a mode or a scope switched inside the lens, for opening or hiding a side column, and for every selection the app makes on its own (a fallback to the parent, the follow mode moving to the next task, filling a bare lens).
+* *An object in place* is opened by a push and closed by the history's back, so _Back to the job_ is a history back. An address loaded with `open=` has nothing to go back to: its close replaces the address with the caller's.
+* *The follow mode*: following the running task is a mode in the address (`follow=on`), not a task id, until the operator selects a task; selecting one ends it.
+* *The address wins over the remembered place* (link:../shared/plan-overview.adoc#persistence[Plan Overview, Where the Operator Left It]): a full address opens what it names. Only a bare lens (`/overview`) is filled from the remembered place, by `replaceState`.
+* *A pairing code in the fragment* is redeemed before the first write and is never written into the history (link:entry.adoc#after-pairing[Entry, Where the App Opens]).
+* *An old address* of a moved view (`/decisions?decision=`, `/reports?plan=`, `/settings/machine`, `/settings/browser`, `/projects?project=`) is replaced by its address in this scheme when it is opened; pre-1.0, there is no other compatibility.
+
+[#kinds]
+== Kinds and the KindMark
+
+* *One kind per object, a closed set*: project, epic, plan, side job (a short landing, a running onboarding or setup run; the group `alongside` of link:../shared/plan-overview.adoc#project-row[Plan Overview, A Project]), decision, report and machine. The set, the icons and the three tints are link:components-tags.adoc#kind-mark[Tags and Kinds, KindMark]; phases and tasks belong to the plan and take the phase icons of the plan's tree, which never repeat a kind's icon.
+* *Where a `KindMark` stands*: every row, the head of a list column and of the object column, every breadcrumb segment, Up, every mark of the gap strip, every match of find and every row of what waits.
+* *What waits*: a row's `KindMark` is the kind of the object its item belongs to; the item's kind is the row's reason (`ReasonBadge`) in the words `overview.needs.*`. A `decision` item is a row of the kind decision without a reason (link:../shared/needs-and-find.adoc#waits[What Waits, The List]).
+* *One row shape* for every kind in a list: the slots of link:components-tags.adoc#tag-places[Tags and Kinds, One Fixed Place], the whole row a `RowLink`.
+
+[#keys]
+== Keys and Focus
+
+[cols="1,3",options="header"]
+|===
+|Key |What it does
+
+|`Ctrl+←`, `Ctrl+→`
+|Moves the focus to the column on the left or the right; where that column is hidden, the window shifts to show it.
+
+|`[`, `]`
+|The same, while the focus is not in a field; macOS takes `Ctrl+←`/`→` for its own spaces unless the operator frees them, so a Mac always has this pair.
+
+|`j`, `k`
+|The next or the previous row of the focused list column (a replace).
+
+|`Enter`
+|Keeps its meaning per widget: it opens a row, and in Decisions it decides a decision with a chosen option.
+
+|Plain `←`, `→`, `↑`, `↓`
+|Stay with the widget that has the focus: the phase tree, `Tabs`, a `SegmentedControl`, a text field.
+|===
+
+* *After every window shift* the focus moves to the heading of the column that is now in view, and the move is announced in the frame's polite live region (`Fix Relay Transport, plan`).
+* *The focus never falls to the page*: when the column that holds it slides out, it moves to the heading of the nearest visible column first.
+* *Hidden columns are out of the tab order and the accessibility tree*: they are not rendered, not only moved out of sight.
+
+[#phone]
+== The Phone
+
+* *One column*, Up in its head, and the breadcrumb in the top bar shortened in the middle; no gap strip.
+* *The bottom bar* is What waits · Running work · Decisions · More (the operator's decision of 2026-11-06). Reports moves into More, and its count of unread reports shows on More. *More* takes the active state while the current route's lens is one it holds (link:README.adoc#shell[Web App, The App Shell]).
+
+[#scope]
+== Where It Does Not Apply
+
+* *Not list → content*: starting work (`WizardPage`), the decomposition, the onboarding, the settings, the process designer, and the system with its cleanup. The cleanup job hosts objects in place (<<lenses>>).
+* *The web app only.* The terminal keeps `Esc` as the return to the level that opened it (link:../terminal-client/15-overview.adoc#full-screen-levels[Terminal Client, Levels, Roots, and Returning]).
+* *No layout modes*: the column window is the only layout (link:view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates]).
+
+[#side-columns]
+== Side Columns: the Chat
+
+* *The chat is a side column*, not a level. It docks to the right of the object column it belongs to; the object keeps its full head, and the gap strip never shows the chat.
+* *Its width* is `480 px`, or `400 px` where `480 px` would cost the window a column.
+* *Where the window cannot show the object column and the chat side by side*, the chat takes the space and the object becomes a hidden level; with one column there is no strip, and _Hide the chat_ returns to the object. The object column's own levels shift left as usual.
+* *Its address* is the query `chat=open`; opening and hiding it replace the address and never push.
+* *Hiding the chat* (`Escape`, _Hide the chat_) keeps it running; ending it is the chat's own act. What the chat shows is the chat design's.
+
+[cols="1,3,3",options="header"]
+|===
+|Viewport |Rail expanded, chat open |Rail collapsed, chat open
+
+|below `768 px`
+2+|the chat takes the screen
+
+|`1024 px`
+|the chat only, at the full width (`744`)
+|object `512` · chat `400`
+
+|`1280 px`
+|object `520` · chat `480`
+|list `244` · object `480` · chat `400`; strip of marks
+
+|`1440 px`
+|list `236` · object `480` · chat `400`; strip of marks
+|list `232` · object `480` · chat `480`; strip with names
+
+|`1920 px`
+|lists `272` · object `480` · chat `480`; strip with names
+|lists `237` · object `481` · chat `480`; strip with names
+|===
+
+[#texts]
+== Texts
+
+The kinds' words are `common.kind.*` (link:components-tags.adoc#kind-mark[Tags and Kinds, KindMark]); the close of an object opened in place in the cleanup is _Back to the job_ (`system.cleanup.preview.back`, link:../shared/cleanup-texts.adoc[Cleanup, Texts]); the chat's head is the chat design's. The keys of this document's own parts, area `web`:
+
+[cols="3,3,3",options="header"]
+|===
+|Key |English |German
+
+|`web.nav.up`
+|Up: {name}
+|Nach oben: {name}
+
+|`web.nav.strip.label`
+|Hidden levels
+|Verborgene Ebenen
+
+|`web.nav.strip.names`
+|Names
+|Namen
+
+|`web.nav.strip.mark.title`
+|Show this level; the selection stays
+|Zeige diese Ebene; die Auswahl bleibt
+
+|`web.nav.strip.return`
+|Back to {name}
+|Zurück zu {name}
+
+|`web.nav.pinned.ended`
+|ended
+|beendet
+
+|`web.nav.pinned.read`
+|read
+|gelesen
+
+|`web.nav.pinned.resolved`
+|resolved
+|erledigt
+
+|`web.nav.pinned.filtered`
+|hidden by the filter
+|vom Filter ausgeblendet
+
+|`web.nav.pinned.page`
+|on another page
+|auf einer anderen Seite
+
+|`web.nav.gone`
+|{name} no longer exists.
+|{name} gibt es nicht mehr.
+
+|`web.nav.announce`
+|{name}, {kind}
+|{name}, {kind}
+|===
+
+`web.nav.up` is the accessible name of Up; its visible label is the parent's `KindMark` and name. `web.nav.strip.mark.title` is the advisory of a mark whose name is hidden (link:interaction-affordances.adoc#navigation[Interaction Affordances, Up, the Strip and the Column Keys]).
+
+[#decisions]
+== Decisions of the Operator
+
+The design of this document was settled by the operator's review of 2026-11-06. The width table was the one open point; the operator settled it on 2026-11-08 from a throw-away prototype of the column window on the mock runtime (`running-work`, machine `mock-machine`), which checked the window, the focus, the live region and the gap strip at `1024`, `1280` and `1440 px` and on the phone:
+
+* *Names first*: the strip shows its names wherever the window keeps two or more columns with them, and shows its marks only where the names would leave a single column (`1024 px`, rail expanded). At `1280 px` with the rail expanded the window therefore shows two columns with names rather than three with marks.
+* *A peek stretches*: while a mark of the strip shows a hidden level, the rightmost visible column fills the window, and a strip at the right edge returns to the object.
+* *`[` and `]` beside `Ctrl+←`/`→`*, because macOS takes the latter by default.
+* *The chat takes `400 px` where `480 px` would cost a column.*
+* *The breadcrumb stays in the lens* (the operator's decision of 2026-11-08, where message 003 named the plan's breadcrumb among the links to the project page): its segments navigate as Up does, and only a project link outside the chain opens the project page.
+
+The prototype is not part of the product; its findings are this document.
+
+[#rely]
+== What the Staged Plans Rely On
+
+Each plan reads the parts named here; a plan that finds them changed is re-scoped before it starts.
+
+[cols="1,3",options="header"]
+|===
+|Plan |The parts of this design it relies on
+
+|The navigation engine
+|<<window>> and <<gap-strip>> on `TriagePage` as the column engine; <<url>> in the address sync; <<up>>: Up and the breadcrumb with its `KindMark`s in `TopBar`; the rail's lens from the route (<<lenses>>); the caller stack and the in-page Backs removed; <<keys>>; the work list beside a plan (the task of `web-moving-between-plans`); the template is link:components.adoc#triage-page[Components, TriagePage]
+
+|`PLAN-52` (Running work)
+|<<levels>>: the project list column, running and ended, by plan and by epic and the follow mode as modes in the address (<<url>>)
+
+|`PLAN-55`, `PLAN-58` (the plan, the epic)
+|<<column-types>>: the object column and the list column; the decision of a waiting plan in place (<<lenses>>); the chat as a side column (<<side-columns>>)
+
+|`PLAN-59` (Projects)
+|the one project page as the Projects lens's object (<<lenses>>)
+
+|`PLAN-51` (Decisions)
+|the list and one decision; the next decision after deciding is a replace (<<url>>); `Enter` decides (<<keys>>)
+
+|`PLAN-49` (What waits)
+|What waits as a launcher (<<lenses>>); its rows (<<kinds>>); the bottom bar (<<phone>>)
+
+|`PLAN-62` (the phase tree)
+|the phase tree as the plan's list of children (<<levels>>); plain arrows stay with the tree (<<keys>>)
+
+|`PLAN-60`, `PLAN-85` (settings)
+|the tabs of the settings as `tab=` (<<url>>), `/settings/machine` and `/settings/browser` replaced by their tabs
+|===

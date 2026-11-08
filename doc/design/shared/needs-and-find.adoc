@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#needs-operator[What Needs the Operator, at a Glance], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#needs-operator-list[Everything That Waits, as One List], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#find-work[Finding Work by Name], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#event-streams[Events per Scope], link:plan-overview.adoc#item-rows[Plan Overview, A Plan, an Epic]_
 
-Status: `AGREED`. Shared by both clients: link:../terminal-client/04-console.adoc#pushed[Terminal Client, What the Runtime Pushes], link:../web-app/needs-and-find.adoc[Web App, What Waits and Find]. Work package link:../../plans/needs-and-find.adoc[`needs-and-find`].
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/04-console.adoc#pushed[Terminal Client, What the Runtime Pushes], link:../web-app/needs-and-find.adoc[Web App, What Waits and Find]. Work package link:../../plans/needs-and-find.adoc[`needs-and-find`].
 
 The operator asks two questions of the machine, and each is one view with one job. _What needs me now?_ is answered by the list of everything that waits (<<waits>>). _Where is the work I know the name of?_ is answered by going to work by name (<<find>>). They are two views, never one combined entry: the first is about acting, the second about finding, and a list that did both would answer neither well.
 
@@ -73,7 +73,7 @@ One field, one answer: the operator types a part of an id, a part of a title, or
 
 * *What matches*: a part of an id or a part of a title, ignoring case, and the plans whose pull request has the number typed. The runtime answers; the client sends the text and shows what comes back.
 * *The order* is the runtime's: running work first, ended work after it and marked `ended`; within each by kind, in the order project, epic, plan, decision, report. A client keeps it.
-* *A match* shows its kind (its kind mark), its title, where it belongs (`project › epic › plan`), and, for ended work, the word `ended` with its outcome. Selecting a match opens it where it belongs: the plan view, the epic view, the decision, the project, or the report.
+* *A match* shows its kind (its kind mark), its title, where it belongs (`project › epic › plan`), and, for ended work, the word `ended` with its outcome. Selecting a match opens it where it belongs: the plan view, the epic view, the decision, the project, or the report; in the web app at its canonical address, so the rail moves to its lens and a project opens its one project page (link:../web-app/navigation.adoc#lenses[Web App, Navigation, Lenses and the Rail]).
 * *No match* says so and keeps the text the operator typed, so one character can be corrected instead of retyping: `Nothing matches “relayy”.` with the field still holding `relayy`.
 * *An empty text is refused* by the runtime, and the client never sends one: an empty field is a hint, not a search (`overview.find.hint`), and the field's own clear action returns to the hint.
 * *Plain text*: the typed text and every title are shown as plain text, after removing control sequences, never as markup and never as a link the client follows on its own — a title may come from a project.

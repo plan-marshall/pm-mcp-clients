@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#event-streams[Events per Scope]_
 
-Status: `AGREED`. Shared by both clients: link:../terminal-client/24-reports.adoc[Terminal Client, Reports], link:../web-app/README.adoc#structure[Web App]. A plan's completion report, the detail of a plan that ended, is link:completion-report.adoc[Completion Report].
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/24-reports.adoc[Terminal Client, Reports], link:../web-app/README.adoc#structure[Web App]. A plan's completion report, the detail of a plan that ended, is link:completion-report.adoc[Completion Report].
 
 While the operator is away, plans start and end, an epic starts its next plan or re-orders its staged ones, a project finishes its onboarding. None of it needs an answer, but the operator wants to know it on coming back. A *report* is the runtime's record of such a thing, written for the operator: what happened, from where, when, and the way to its details. The operator catches up by reading the unread reports and leaves them read (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6]).
 
@@ -121,7 +121,7 @@ The runtime writes a report for a closed list of kinds; the client shows each re
 [#list]
 == The List
 
-The page sits on the `TriagePage` template (link:../web-app/view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates Replace the Layout Modes]): the list on the left, the detail on the right, the detail replacing the list below 1100 px. It sets no page width and keeps no layout mode.
+In the web app the list is the Reports lens on the `TriagePage` template (link:../web-app/view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates]): the list column and the report's detail as the object column beside it, in the column window of link:../web-app/navigation.adoc#window[Web App, Navigation]. It sets no page width of its own.
 
 ----
   Reports · 5 unread                                       [Mark all shown read]
