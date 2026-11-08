@@ -167,8 +167,8 @@ class ProcessTreeTest {
         var project = new ProcessProjectRef("project", "project", null);
         var change = new ChangeSize(12, 340, 27, 2);
         var tree = new ProcessTree("plan", "Plan", project, null, "execute", "running", null,
-                            false, 1, new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false),
-                            List.of(), List.of(), null, null, 0L, change);
+                false, 1, new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false),
+                List.of(), List.of(), null, null, 0L, change);
 
         var json = tree.toJson();
         var parsed = ProcessTree.fromJson(json);
