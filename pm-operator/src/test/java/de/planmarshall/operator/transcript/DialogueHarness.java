@@ -79,7 +79,7 @@ final class DialogueHarness implements AutoCloseable {
      */
     static DialogueHarness start(String scenario) throws IOException {
         Assumptions.assumeTrue(Files.isExecutable(Path.of(SCRIPT)), SCRIPT + " is not available");
-        var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).build());
+        var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).recordActBodies(true).build());
         try {
             MockMachine.recordLiveRuntime(runtime);
             return new DialogueHarness(runtime);

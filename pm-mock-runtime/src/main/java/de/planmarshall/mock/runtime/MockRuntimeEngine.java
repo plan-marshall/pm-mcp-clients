@@ -662,6 +662,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * screen (CLI-CC-S-01, CLI-CC-P-07).
      */
     private final List<Map<String, Object>> operatorActs = new CopyOnWriteArrayList<>();
+    /**
+     * Whether a decision act's request body is kept in the act log: off unless the mock was started
+     * for a dialogue test, so a developer's mock never exposes free-text answers through
+     * {@code /mock/acts}.
+     */
+    private final boolean recordActBodies;
     private final DesignerRegistry designer = new DesignerRegistry();
     private final Object devicesLock = new Object();
     private final List<PairedDevice> pairedDevices = new ArrayList<>();
@@ -769,15 +775,30 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Map<String, EpicDecomposition> decompositions = new LinkedHashMap<>();
 
     /**
+     * Creates an engine that keeps no decision body in its act log.
+     *
      * @param registry     the scenario registry
      * @param scenario     the initial scenario
      * @param runtimeToken the accepted runtime token on the Unix domain socket
      * @param deviceSecret the accepted device secret on the web port
      */
     public MockRuntimeEngine(ScenarioRegistry registry, Scenario scenario, String runtimeToken, String deviceSecret) {
+        this(registry, scenario, runtimeToken, deviceSecret, false);
+    }
+
+    /**
+     * @param registry     the scenario registry
+     * @param scenario     the initial scenario
+     * @param runtimeToken the accepted runtime token on the Unix domain socket
+     * @param deviceSecret the accepted device secret on the web port
+     * @param recordActBodies whether {@code /mock/acts} records decision request bodies
+     */
+    public MockRuntimeEngine(ScenarioRegistry registry, Scenario scenario, String runtimeToken, String deviceSecret,
+                        boolean recordActBodies) {
         this.registry = Objects.requireNonNull(registry, "registry");
         this.runtimeToken = Objects.requireNonNull(runtimeToken, "runtimeToken");
         this.deviceSecret = Objects.requireNonNull(deviceSecret, "deviceSecret");
+        this.recordActBodies = recordActBodies;
         this.scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().name("mock-engine-scheduler").factory());
         this.startRegistry = new StartRegistry(event -> {
             recordStartEvent(event);
@@ -6901,12 +6922,20 @@ public final class MockRuntimeEngine implements AutoCloseable {
         act.put(KEY_METHOD, method);
         act.put("path", request.path());
         act.put(KEY_STATE, currentStateId.get());
-        if (request.path().startsWith(API_DECISIONS_PATH)) {
-            // Only a decision act carries a body a case asserts; other bodies (credentials, device
-            // secrets) never enter the act log.
+        if (recordActBodies && carriesDecisionBody(request.path())) {
             act.put("body", request.bodyText());
         }
         operatorActs.add(act);
+    }
+
+    /**
+     * @param path a request path
+     * @return whether the act is a decision answer, withdrawal or interpretation whose body a
+     *         dialogue test asserts; every other body (credentials, device secrets) stays out of
+     *         the act log
+     */
+    private static boolean carriesDecisionBody(String path) {
+        return path.contains("/decisions/") || path.startsWith("/api/v1/questions/");
     }
 
     private void handleControlActs(MockHttpResponse response) throws IOException {
