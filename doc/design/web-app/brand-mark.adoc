@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.
 
 _Relies on: link:README.adoc#frame[Web App, The Frame] (where the icon sits), link:workflow-visual-language.adoc[Workflow Visual Language] (the SVG contract the monochrome icon follows, and the colour exception), link:components-tags.adoc#kind-tints[Tags and Kinds, The Three Kind Tints] (the kind tints stay clear of the mascot's colours), link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App] (the content security policy every image obeys)_
 
-Status: `AGREED`. This document is the authority for the brand of the web app: the brand icon (how it is drawn, its colours, where it is used), the waiting mark, and the provenance of both. Its part link:brand-mark-mascot.adoc[The Mascot] is the authority for the mascot as illustration: the surfaces it appears on, the asset rules, the rail-foot bear, and the closed set of six poses with their briefs.
+Status: `DRAFT`. This document is the authority for the brand of the web app: the brand icon (how it is drawn, its colours, where it is used), the waiting mark, and the provenance of both. Its part link:brand-mark-mascot.adoc[The Mascot] is the authority for the mascot as illustration: the surfaces it appears on, the asset rules, the rail-foot bear, and the closed set of six poses with their briefs.
 
 [#purpose]
 == What the Brand Is
@@ -216,7 +216,7 @@ The waiting mark is the mascot's clipboard: it shows that the operator waits on 
 === Where It Appears
 
 * *Only where the operator waits on the system*:
-** the chat's working line (`replan liest den Plan…`), which the chat design places;
+** the chat's working line before the role's first word (`replan is reading the whole plan…`, `control.chat.working`), placed by link:chat.adoc#working[Chat and Voice, The Working Line]; it is the screen's one waiting mark and its own polite status line, so the chat adds no live region for it;
 ** long waits on screens without a figure: an onboarding state the server works in (`[S]`) or a model at work (`[M]`, link:onboarding.adoc#model-at-work[Onboarding, Model at Work]), and the model tests of the machine settings.
 * *Short waits keep the neutral `Spinner`*: a button or a single check that answers in under about 1–2 s, and each line of a check list; the `Spinner`'s label comes from the catalogue, never the literal `Loading…`.
 * *Never on a screen that shows a mascot figure*: the pairing page, the onboarding welcome and done, the terminal states, and the app's first load keep the `Spinner` for their own waits.

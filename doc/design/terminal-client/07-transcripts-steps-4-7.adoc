@@ -10,6 +10,8 @@ link:README.adoc[Terminal Client] » Transcripts: Steps 4 to 7
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6] to link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]_
 
+Status: `DRAFT`.
+
 The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
 [#t-roles]
@@ -109,6 +111,42 @@ Use these roles? [Enter]   e) adjust roles   d) reset to default   ?   ›
 * The steward runs on the default harness of step 2 with the model its profile maps to the tier `standard`, outside the model catalogue and exempt from qualification; it is not among the 31 roles this step assigns (link:../../../../pm-mcp-core/doc/specification/model-work/01-roles-and-configuration.adoc#steward-role[Steward Role]); `config harnesses --default` changes where it runs. The consent is `model_advice` (link:../shared/consents.adoc#kinds[Consents, The Kinds]).
 * A failed or left model task returns to `roles.review` as it was, with one line: `– The steward gave no proposal: <reason>.`
 * `roles.validate` that finds an invalid role returns to the list with the role marked `⚠ <reason>` and the prompt naming it.
+
+[#t-roles-speech]
+=== The Speech Role (`roles.review`, `roles.speech-consent`)
+
+[source,text]
+----
+[4/7] Roles · Give every role a harness and a model
+    …
+  Dictation · the speech role      Off
+Use the defaults? [Enter]   e) adjust roles   s) ask the steward   v) dictation   ?   › v
+[4/7] Roles · Allow methods for dictation
+  The microphone is the web app's; the terminal records no audio.
+    1) [ ] The browser's recognition
+           To the speech service of the browser you use: Chrome and Edge
+           their maker's cloud service, Safari Apple's service or this device.
+    2) [ ] A local model on this machine
+           It stays on this machine.
+    3) [ ] A speech provider
+           To the provider you choose, with its token.
+Toggle: 1-3   b) back   ?   › 1 2
+Allow 2 methods? [Enter]   toggle: 1-3   b) back   ?   › ⏎
+[4/7] Roles · Allow these methods for dictation?
+  1) let the browser turn dictation into text   transcribe_browser
+     sends   what you dictate to the speech service of the browser you use
+     never   keeps a recording on this machine or in this browser, or uses
+             the models that work your plans
+r) yes, and don't ask again   n) not now   ?   › r
+  2) look for a local speech model             scan_speech_model
+     runs    the check of a local speech model found on this machine
+y) yes   r) yes, and don't ask again   n) not now   ?   › y
+  ✓  whisper-small found
+✓ Dictation: browser, local model
+----
+
+* Each kind is answered in turn. `transcribe_browser` and `transcribe_provider` are only remembered, so their prompt offers no `y`; `scan_speech_model` offers all three answers. `v) dictation` stands in every prompt of the overview, also while roles are still open. The speech role is the web app's microphone; the terminal chooses its methods and asks their consents like the web app's roles step (link:../web-app/onboarding-steps-4-7.adoc#speech[Web App, Onboarding, The Speech Role]) and records no audio. A method whose consent is not given is not allowed; a provider's token is asked in step 6 in the first run, and here in a later run.
+* The texts are those of link:../web-app/onboarding-texts.adoc#texts-speech[Onboarding, Texts, The Speech Role] and link:../shared/consents.adoc#texts[Consents, Texts]; the consents are link:../shared/consents.adoc#speech[The Speech Consents].
 
 [#t-credentials]
 == Credentials — step 5
