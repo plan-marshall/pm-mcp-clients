@@ -294,17 +294,24 @@ final class WorkActionDialogue {
     }
 
     private int next(@Nullable EpicResource epic) throws IOException {
-        var running = epic != null ? epic.running() : null;
-        var plan = epic != null ? nextLaunchable(epic) : null;
-        if (epic != null && plan != null && (running == null || running >= epic.scope())) {
-            if (!askRaise(epic, running, plan)) {
-                return 0;
+        if (epic == null) {
+            prompt.line("control.epic.next_waiting", Map.of());
+            return 0;
+        }
+        var running = epic.running();
+        var launchable = nextLaunchable(epic);
+        if (running == null || running >= epic.scope()) {
+            var candidate = launchable != null ? launchable : nextScopeBlocked(epic);
+            if (candidate != null) {
+                if (!askRaise(epic, running, candidate)) {
+                    return 0;
+                }
+                client.perform(kind, id, "next", Map.of("raise_scope", true));
+                return started(epic, candidate, epic.scope() + 1);
             }
-            client.perform(kind, id, "next", Map.of("raise_scope", true));
-            return started(epic, epic.scope() + 1);
         }
         client.perform(kind, id, "next", Map.of("raise_scope", false));
-        return started(epic, epic != null ? epic.scope() : 0);
+        return started(epic, launchable, epic.scope());
     }
 
     private boolean askRaise(EpicResource epic, @Nullable Integer running, String plan) {
@@ -337,9 +344,8 @@ final class WorkActionDialogue {
         }
     }
 
-    private int started(@Nullable EpicResource epic, int scope) {
-        var plan = epic != null ? nextLaunchable(epic) : null;
-        if (plan != null && epic != null) {
+    private int started(EpicResource epic, @Nullable String plan, int scope) {
+        if (plan != null) {
             var running = epic.running();
             prompt.line("operator.actions.result.next_started",
                                 Map.<String, Object>of(PLAN, plan,
@@ -347,7 +353,7 @@ final class WorkActionDialogue {
                                                     SCOPE, scope));
         } else {
             prompt.line("control.epic.next_none",
-                                Map.of("reasons", epic != null ? String.join(", ", waitReasons(epic)) : ""));
+                                Map.of("reasons", String.join(", ", waitReasons(epic))));
         }
         return 0;
     }
@@ -458,6 +464,17 @@ final class WorkActionDialogue {
             for (var row : workstream.rows()) {
                 if ("staged".equals(normalize(row.status()))
                                     && (row.waitReason() == null || "none".equals(row.waitReason()))) {
+                    return row.planId();
+                }
+            }
+        }
+        return null;
+    }
+
+    private static @Nullable String nextScopeBlocked(EpicResource epic) {
+        for (var workstream : epic.workstreams()) {
+            for (var row : workstream.rows()) {
+                if ("staged".equals(normalize(row.status())) && "scope".equals(row.waitReason())) {
                     return row.planId();
                 }
             }

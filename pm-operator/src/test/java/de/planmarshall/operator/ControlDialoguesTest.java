@@ -754,6 +754,34 @@ class ControlDialoguesTest {
     }
 
     @Test
+    @DisplayName("next without the epic resource says it is still being read and sends nothing")
+    void workActionNextWithoutResource() throws Exception {
+        var server = serveNext();
+        assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
+                            null, null));
+        var text = out.toString();
+        assertTrue(text.contains("The epic is still being read"), text);
+        assertFalse(server.requests().stream().anyMatch(request -> request.target().endsWith(NEXT_PATH)),
+                            server.requests().toString());
+    }
+
+    @Test
+    @DisplayName("a scope-blocked plan is offered for a raise")
+    void workActionNextScopeBlocked() throws Exception {
+        var server = serveNext();
+        virtual.type("r\n");
+        var blocked = EPIC.replace("\"wait_reason\":\"none\"", "\"wait_reason\":\"scope\"");
+        assertEquals(0, WorkActionDialogue.run(context, new PrintWriter(out), "epic", "e", "next", false,
+                            EpicResource.fromJson(blocked), null));
+        var text = out.toString();
+        assertTrue(text.contains("e runs 3 of 3 at once"), text);
+        assertTrue(text.contains("next-plan started (4 of 4 at once)"), text);
+        assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith(NEXT_PATH)
+                                                && request.bodyText().contains("\"raise_scope\":true")),
+                            server.requests().toString());
+    }
+
+    @Test
     @DisplayName("an unrecognised answer over an unknown running count is reported and asked again")
     void workActionNextInvalidAnswerReprompts() throws Exception {
         var server = serveNext();
