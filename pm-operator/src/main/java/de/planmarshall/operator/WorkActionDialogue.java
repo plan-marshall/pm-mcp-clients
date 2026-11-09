@@ -44,6 +44,7 @@ final class WorkActionDialogue {
     private static final String EPIC = "epic";
     private static final String RUNNING = "running";
     private static final String SCOPE = "scope";
+    private static final String STAGED = "staged";
     private static final String COUNT = "count";
     private static final String WITH_PLANS = "with_plans";
     private static final Set<String> HOLD_ACTS = Set.of("retry", "recycle", "grant", "add_credential",
@@ -362,7 +363,7 @@ final class WorkActionDialogue {
         var reasons = new ArrayList<String>();
         for (var workstream : epic.workstreams()) {
             for (var row : workstream.rows()) {
-                if ("staged".equals(normalize(row.status())) && row.waitReason() != null
+                if (STAGED.equals(normalize(row.status())) && row.waitReason() != null
                                     && !"none".equals(row.waitReason())) {
                     reasons.add(row.planId() + " " + row.waitReason());
                 }
@@ -462,7 +463,7 @@ final class WorkActionDialogue {
     private static @Nullable String nextLaunchable(EpicResource epic) {
         for (var workstream : epic.workstreams()) {
             for (var row : workstream.rows()) {
-                if ("staged".equals(normalize(row.status()))
+                if (STAGED.equals(normalize(row.status()))
                                     && (row.waitReason() == null || "none".equals(row.waitReason()))) {
                     return row.planId();
                 }
@@ -474,7 +475,7 @@ final class WorkActionDialogue {
     private static @Nullable String nextScopeBlocked(EpicResource epic) {
         for (var workstream : epic.workstreams()) {
             for (var row : workstream.rows()) {
-                if ("staged".equals(normalize(row.status())) && "scope".equals(row.waitReason())) {
+                if (STAGED.equals(normalize(row.status())) && SCOPE.equals(row.waitReason())) {
                     return row.planId();
                 }
             }
