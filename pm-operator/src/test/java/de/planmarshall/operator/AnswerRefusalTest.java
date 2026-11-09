@@ -143,7 +143,7 @@ class AnswerRefusalTest {
         assertGerman("du hast den Start in pm-mcp-clients gebeten, neu zu \u00fcberlegen.", "answer", "Q-ENTRY", "x");
     }
 
-    private void assertGerman(String expected, String... args) throws Exception {
+    private void assertGerman(String expected, String... args) {
         out = new StringWriter();
         err = new StringWriter();
         var code = run("de", new byte[0], args);
@@ -151,7 +151,7 @@ class AnswerRefusalTest {
         assertTrue(out.toString().contains(expected), out.toString());
     }
 
-    private int run(String language, byte[] input, String... args) throws IOException {
+    private int run(String language, byte[] input, String... args) {
         var environment = new HashMap<>(fixture.environment());
         environment.put("LANG", "de".equals(language) ? "de_DE.UTF-8" : "en_US.UTF-8");
         var terminalBytes = new ByteArrayOutputStream();

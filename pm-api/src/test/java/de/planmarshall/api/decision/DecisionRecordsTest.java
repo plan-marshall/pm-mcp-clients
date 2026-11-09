@@ -145,6 +145,12 @@ class DecisionRecordsTest {
         assertTrue(json.contains("Rebase onto main"));
 
         var parsed = DecisionEnvelope.fromJson(json);
+        assertEnvelope(parsed, revision, title, subject, now);
+        assertPart(parsed.parts().get(0));
+    }
+
+    private static void assertEnvelope(DecisionEnvelope parsed, int revision, String title,
+                                       String subject, Instant now) {
         assertAll(
                 () -> assertEquals("Q-007", parsed.id()),
                 () -> assertEquals(revision, parsed.revision()),
@@ -161,8 +167,9 @@ class DecisionRecordsTest {
                 () -> assertFalse(parsed.isWaiver()),
                 () -> assertEquals(1, parsed.parts().size())
         );
+    }
 
-        var parsedPart = parsed.parts().get(0);
+    private static void assertPart(DecisionPart parsedPart) {
         assertAll(
                 () -> assertEquals("1", parsedPart.partId()),
                 () -> assertEquals("2", parsedPart.recommendation()),
@@ -171,7 +178,6 @@ class DecisionRecordsTest {
                 () -> assertTrue(parsedPart.allowNote()),
                 () -> assertEquals(2, parsedPart.options().size())
         );
-
         var parsedOpt2 = parsedPart.options().get(1);
         assertNotNull(parsedOpt2.quorumSupport());
         assertEquals(QuorumBand.CLEAR_MAJORITY, parsedOpt2.quorumSupport().band());

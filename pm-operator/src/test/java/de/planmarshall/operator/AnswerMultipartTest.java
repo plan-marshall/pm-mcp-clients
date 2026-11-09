@@ -295,11 +295,11 @@ class AnswerMultipartTest {
                             """.formatted(ownWords, note);
     }
 
-    private int run(String input, String... args) throws IOException {
+    private int run(String input, String... args) {
         return run(input.getBytes(StandardCharsets.UTF_8), args);
     }
 
-    private int run(byte[] input, String... args) throws IOException {
+    private int run(byte[] input, String... args) {
         var terminalBytes = new ByteArrayOutputStream();
         InputStream inStream = new ByteArrayInputStream(input);
         var termProvider = (OperatorContext.TerminalProvider) () -> new DumbTerminal(inStream, terminalBytes);
