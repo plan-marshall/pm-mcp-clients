@@ -17,7 +17,7 @@ What a report is, what it shows, and how it is read is link:../shared/reports.ad
 
 ----
   reports [--project <project_id>|.] [--older]   the unread reports, grouped, newest first; the next page
-  reports read <report_id>... | --all       mark one or several read, or every unread report
+  reports read <report_id>... | --all       mark one or several read, or the reports the first page it reads lists
   reports open <report_id>                  its detail; reads it
   plan report <plan_id> [--tokens [--components]]   an ended plan's completion report; with its tokens by phase, role, and model
 ----
