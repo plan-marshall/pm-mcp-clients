@@ -794,7 +794,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * @param recordActBodies whether {@code /mock/acts} records decision request bodies
      */
     public MockRuntimeEngine(ScenarioRegistry registry, Scenario scenario, String runtimeToken, String deviceSecret,
-                        boolean recordActBodies) {
+            boolean recordActBodies) {
         this.registry = Objects.requireNonNull(registry, "registry");
         this.runtimeToken = Objects.requireNonNull(runtimeToken, "runtimeToken");
         this.deviceSecret = Objects.requireNonNull(deviceSecret, "deviceSecret");
