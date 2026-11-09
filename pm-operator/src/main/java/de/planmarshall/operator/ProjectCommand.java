@@ -14,7 +14,6 @@ import java.io.IOError;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
-import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -254,7 +253,7 @@ public final class ProjectCommand implements Callable<Integer> {
                 try {
                     var name = Path.of(path).getFileName();
                     projectId = name != null ? name.toString() : path;
-                } catch (IllegalArgumentException | InvalidPathException _) {
+                } catch (IllegalArgumentException _) {
                     projectId = path;
                 }
             }
