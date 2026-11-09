@@ -271,6 +271,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String DECISION_ASKED_ANEW = "Q-009";
     /** The API prefix of a decision resource. */
     private static final String API_DECISIONS_PATH = "/api/v1/decisions/";
+    /** The API prefix of a question resource. */
+    private static final String API_QUESTIONS_PATH = "/api/v1/questions/";
     private static final String KEY_LOOPBACK = "loopback";
     private static final String KEY_DEVICE_ID = "device_id";
     private static final String KEY_LABEL = "label";
@@ -6935,7 +6937,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
      *         the act log
      */
     private static boolean carriesDecisionBody(String path) {
-        return path.contains("/decisions/") || path.startsWith("/api/v1/questions/");
+        return path.contains(SEGMENT_DECISIONS) || path.startsWith(API_QUESTIONS_PATH);
     }
 
     private void handleControlActs(MockHttpResponse response) throws IOException {
@@ -9628,8 +9630,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 decisionId = sub.substring(0, slash);
                 action = sub.substring(slash + 1);
             }
-        } else if (path.startsWith("/api/v1/questions/")) {
-            var sub = path.substring("/api/v1/questions/".length());
+        } else if (path.startsWith(API_QUESTIONS_PATH)) {
+            var sub = path.substring(API_QUESTIONS_PATH.length());
             int slash = sub.indexOf('/');
             if (slash < 0) {
                 decisionId = sub;
