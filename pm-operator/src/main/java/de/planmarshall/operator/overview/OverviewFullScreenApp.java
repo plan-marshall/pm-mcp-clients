@@ -106,6 +106,8 @@ public final class OverviewFullScreenApp {
     private static final String PROJECTS_API_PREFIX = "/api/v1/projects/";
     private static final String PLANS_API_PREFIX = "/api/v1/plans/";
     private static final String PROJECT_VERB = "project";
+    private static final String VERB_ANSWER = "answer";
+    private static final String VERB_SETUP = "setup";
     private static final String STATUS_ROW_ID = "__status__";
 
     /**
@@ -1154,7 +1156,7 @@ public final class OverviewFullScreenApp {
         if (subject == ActionsMenu.Subject.PLAN && "decide".equals(entry.action())) {
             var decision = menuDecision;
             if (decision != null) {
-                runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), "answer", decision,
+                runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), VERB_ANSWER, decision,
                                     "--interactive"));
             }
             return;
@@ -1216,7 +1218,7 @@ public final class OverviewFullScreenApp {
             if (cached != null) {
                 var project = cached.projects().stream().filter(p -> p.projectId().equals(selectedId)).findFirst().orElse(null);
                 if (project != null && project.setupNeedsOperator()) {
-                    runVerb(PROJECT_VERB, "setup", project.projectId());
+                    runVerb(PROJECT_VERB, VERB_SETUP, project.projectId());
                     return;
                 }
             }
@@ -1286,7 +1288,7 @@ public final class OverviewFullScreenApp {
             var openDecision = actionsClient().openDecision(planId);
             if (openDecision != null && !openDecision.isBlank()) {
                 String decision = openDecision;
-                runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), "answer", decision));
+                runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), VERB_ANSWER, decision));
                 return;
             }
         } catch (IOException _) {
@@ -1298,7 +1300,7 @@ public final class OverviewFullScreenApp {
     private void openEpicWaitAct(String epicId) {
         try {
             var resource = actionsClient().epic(epicId);
-            if (resource != null && resource.findings().open() > 0) {
+            if (resource.findings().open() > 0) {
                 runVerb("epic", "findings", epicId);
                 return;
             }
@@ -1338,66 +1340,76 @@ public final class OverviewFullScreenApp {
 
     private void openNeedsItemAct(NeedsOperatorItem item) {
         switch (item.kind()) {
-            case DECISION, WAIVER -> {
-                String decisionId = null;
-                if (item.link() != null && item.link().contains("/decisions/")) {
-                    decisionId = item.link().substring(item.link().lastIndexOf('/') + 1);
-                } else if (item.plan() != null) {
-                    try {
-                        decisionId = actionsClient().openDecision(item.plan().id());
-                    } catch (IOException _) {
-                        // best effort
-                    }
-                }
-                if (decisionId != null) {
-                    String finalDecisionId = decisionId;
-                    runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), "answer", finalDecisionId));
-                } else {
-                    runVerb("answer");
-                }
-            }
-            case HELD, LANDING_FAILED -> {
-                var planId = item.plan() != null ? item.plan().id() : null;
-                if (planId != null) {
-                    try {
-                        var hold = actionsClient().hold(planId);
-                        if (hold != null) {
-                            runDialogue(() -> OperatorActions.runHold(context, dialogueOut(), planId, hold.holdId()));
-                            return;
-                        }
-                    } catch (IOException _) {
-                        // best effort
-                    }
-                    runVerb("plan", "hold", planId);
-                } else if (item.epic() != null) {
-                    runVerb("epic", item.epic().id());
-                }
-            }
-            case SETUP -> {
-                var projId = item.project() != null ? item.project().id() : null;
-                if (projId != null) {
-                    runVerb(PROJECT_VERB, "setup", projId);
-                } else {
-                    runVerb(PROJECT_VERB, "setup");
-                }
-            }
+            case DECISION, WAIVER -> openDecisionAct(item);
+            case HELD, LANDING_FAILED -> openHoldAct(item);
+            case SETUP -> openSetupAct(item);
             case CREDENTIAL -> runVerb("credentials");
             case CLEANUP_DUE -> runVerb("cleanup");
-            case FINDINGS -> {
-                if (item.epic() != null) {
-                    runVerb("epic", "findings", item.epic().id());
-                } else {
-                    runVerb("reports");
-                }
+            case FINDINGS -> openFindingsAct(item);
+            case CONDITION, STALLED, INTEGRITY_PAUSE, WAITS_FOR_YOU -> openPlanAct(item);
+        }
+    }
+
+    private void openDecisionAct(NeedsOperatorItem item) {
+        String decisionId = null;
+        if (item.link() != null && item.link().contains("/decisions/")) {
+            decisionId = item.link().substring(item.link().lastIndexOf('/') + 1);
+        } else if (item.plan() != null) {
+            try {
+                decisionId = actionsClient().openDecision(item.plan().id());
+            } catch (IOException _) {
+                // best effort
             }
-            case CONDITION, STALLED, INTEGRITY_PAUSE, WAITS_FOR_YOU -> {
-                if (item.plan() != null) {
-                    try {
-                        openPlan(context.runtime(true), item.plan().id(), null);
-                    } catch (IOException _) {
-                        // best effort
-                    }
+        }
+        if (decisionId != null) {
+            String finalDecisionId = decisionId;
+            runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), VERB_ANSWER, finalDecisionId));
+        } else {
+            runVerb(VERB_ANSWER);
+        }
+    }
+
+    private void openHoldAct(NeedsOperatorItem item) {
+        var planId = item.plan() != null ? item.plan().id() : null;
+        if (planId != null) {
+            try {
+                var hold = actionsClient().hold(planId);
+                if (hold != null) {
+                    runDialogue(() -> OperatorActions.runHold(context, dialogueOut(), planId, hold.holdId()));
+                    return;
                 }
+            } catch (IOException _) {
+                // best effort
+            }
+            runVerb("plan", "hold", planId);
+        } else if (item.epic() != null) {
+            runVerb("epic", item.epic().id());
+        }
+    }
+
+    private void openSetupAct(NeedsOperatorItem item) {
+        var projId = item.project() != null ? item.project().id() : null;
+        if (projId != null) {
+            runVerb(PROJECT_VERB, VERB_SETUP, projId);
+        } else {
+            runVerb(PROJECT_VERB, VERB_SETUP);
+        }
+    }
+
+    private void openFindingsAct(NeedsOperatorItem item) {
+        if (item.epic() != null) {
+            runVerb("epic", "findings", item.epic().id());
+        } else {
+            runVerb("reports");
+        }
+    }
+
+    private void openPlanAct(NeedsOperatorItem item) {
+        if (item.plan() != null) {
+            try {
+                openPlan(context.runtime(true), item.plan().id(), null);
+            } catch (IOException _) {
+                // best effort
             }
         }
     }

@@ -81,32 +81,7 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
      */
     public List<TuiRow> rows(String locale, Clock clock) {
         var rows = new ArrayList<TuiRow>();
-
-        if (needsOperator != null && !needsOperator.items().isEmpty()) {
-            var header = MessageCatalogue.hasKey(locale, "operator.needs.title")
-                                ? MessageCatalogue.format(locale, "operator.needs.title", Map.of("total", needsOperator.total()))
-                                : "Needs you · " + needsOperator.total();
-            rows.add(new TuiRow(GROUP_NEEDS_YOU_ID, header, null, false, false));
-
-            var items = needsOperator.items();
-            for (int i = 0; i < items.size(); i++) {
-                var item = items.get(i);
-                var kindLabel = OverviewFormatting.formatNeedsItemKind(item.kind(), locale);
-                var subject = OverviewFormatting.formatNeedsItemSubject(item);
-                var blocks = OverviewFormatting.formatNeedsItemBlocks(item.blocks(), locale);
-                var since = OverviewFormatting.formatNeedsItemSince(item.since(), locale, clock);
-                var cmd = OverviewFormatting.formatNeedsItemCommand(item, Map.of());
-
-                var line = String.format("%-16s %-16s %-19s %-13s %s",
-                                    "! " + kindLabel,
-                                    subject,
-                                    blocks,
-                                    since,
-                                    cmd).stripTrailing();
-
-                rows.add(new TuiRow(NEEDS_ITEM_PREFIX + i, line, null, true, true));
-            }
-        }
+        addNeedsYouRows(rows, locale, clock);
 
         if (projects.isEmpty()) {
             if (rows.isEmpty()) {
@@ -184,6 +159,35 @@ public record ProjectsOverviewLevel(List<ProjectSummary> projects, @Nullable Nee
             }
         }
         return rows.isEmpty() ? null : rows.getFirst().id();
+    }
+
+    private void addNeedsYouRows(List<TuiRow> rows, String locale, Clock clock) {
+        if (needsOperator == null || needsOperator.items().isEmpty()) {
+            return;
+        }
+        var header = MessageCatalogue.hasKey(locale, "operator.needs.title")
+                            ? MessageCatalogue.format(locale, "operator.needs.title", Map.of("total", needsOperator.total()))
+                            : "Needs you · " + needsOperator.total();
+        rows.add(new TuiRow(GROUP_NEEDS_YOU_ID, header, null, false, false));
+
+        var items = needsOperator.items();
+        for (int i = 0; i < items.size(); i++) {
+            var item = items.get(i);
+            var kindLabel = OverviewFormatting.formatNeedsItemKind(item.kind(), locale);
+            var subject = OverviewFormatting.formatNeedsItemSubject(item);
+            var blocks = OverviewFormatting.formatNeedsItemBlocks(item.blocks(), locale);
+            var since = OverviewFormatting.formatNeedsItemSince(item.since(), locale, clock);
+            var cmd = OverviewFormatting.formatNeedsItemCommand(item, Map.of());
+
+            var line = String.format("%-16s %-16s %-19s %-13s %s",
+                                "! " + kindLabel,
+                                subject,
+                                blocks,
+                                since,
+                                cmd).stripTrailing();
+
+            rows.add(new TuiRow(NEEDS_ITEM_PREFIX + i, line, null, true, true));
+        }
     }
 
     private static String formatSummary(String locale, ProjectSummary project) {

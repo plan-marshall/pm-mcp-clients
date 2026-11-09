@@ -114,28 +114,38 @@ public final class NeedsCommand implements Callable<Integer> {
             if (resp.status() != 200) {
                 resp = client.send(HttpRequest.get("/api/v1/questions"));
             }
-            if (resp.status() == 200) {
-                var parsed = JsonTree.parse(resp.body());
-                if (parsed instanceof List<?> list) {
-                    var map = new HashMap<String, String>();
-                    for (var el : list) {
-                        if (el instanceof Map<?, ?> m) {
-                            var id = m.get("id");
-                            var plan = m.get("plan");
-                            var proj = m.get("project");
-                            if (id != null && plan != null) {
-                                map.put(plan.toString(), id.toString());
-                            } else if (id != null && proj != null) {
-                                map.put(proj.toString(), id.toString());
-                            }
-                        }
-                    }
-                    return map;
-                }
+            if (resp.status() == 200 && JsonTree.parse(resp.body()) instanceof List<?> list) {
+                return parseDecisions(list);
             }
         } catch (IOException _) {
             // Fall back gracefully to empty map if decisions route is unavailable
         }
         return Map.of();
+    }
+
+    private static Map<String, String> parseDecisions(List<?> list) {
+        var map = new HashMap<String, String>();
+        for (var el : list) {
+            if (el instanceof Map<?, ?> m) {
+                recordDecisionMapping(m, map);
+            }
+        }
+        return map;
+    }
+
+    private static void recordDecisionMapping(Map<?, ?> m, Map<String, String> map) {
+        var id = m.get("id");
+        if (id == null) {
+            return;
+        }
+        var plan = m.get("plan");
+        if (plan != null) {
+            map.put(plan.toString(), id.toString());
+            return;
+        }
+        var proj = m.get("project");
+        if (proj != null) {
+            map.put(proj.toString(), id.toString());
+        }
     }
 }

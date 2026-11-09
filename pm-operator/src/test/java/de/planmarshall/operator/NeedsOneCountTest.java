@@ -118,8 +118,33 @@ class NeedsOneCountTest {
             int waiverCount = intVal(statusNeeds.get("waiver_request"));
             assertEquals(8, decisionCount + waiverCount,
                                 "decision + waiver_request count in status needs_operator must agree with questions count (8)");
+        }
+    }
 
-            // 5. Badges read needs_operator and gain credential and cleanup_due
+    @Test
+    @DisplayName("badges read needs_operator and gain credential and cleanup_due commands")
+    void badgesAndCommandsReadNeedsOperator() throws Exception {
+        try (var runtime = MockRuntime.start(MockRuntimeConfig.builder()
+                                 .webPort(0)
+                                 .scenario(StandardScenarios.RUNNING_WORK)
+                                 .build())) {
+            var environment = Map.of(MachinePaths.ENV_BASE, runtime.base().toString());
+            var context = new OperatorContext(
+                                environment,
+                                tempDir,
+                                true,
+                                ClientEnvironment.capture(environment),
+                                () -> new DumbTerminal(new ByteArrayInputStream(new byte[0]), new ByteArrayOutputStream()),
+                                null
+            );
+
+            var outStatus = new StringWriter();
+            var errStatus = new StringWriter();
+            int exitStatus = PmOperator.execute(context, new PrintWriter(outStatus), new PrintWriter(errStatus), "status", "--json");
+            assertEquals(0, exitStatus, "status --json should exit 0");
+            var statusMap = JsonTree.asObject(JsonTree.parse(outStatus.toString()));
+            assertNotNull(statusMap);
+
             var badges = EntryFlow.extractWaitingConsoleBadges("en", statusMap);
             var badgeTexts = badges.stream().map(ConsoleBadge::text).toList();
 
@@ -132,29 +157,30 @@ class NeedsOneCountTest {
                                 () -> assertTrue(badgeTexts.contains("1 held"), "badges should have 1 held: " + badgeTexts)
             );
 
-            // Total count across waiting badges is 12
             int badgesTotal = badges.stream().mapToInt(ConsoleBadge::count).sum();
             assertEquals(12, badgesTotal, "sum of badge counts must equal 12");
 
-            // Badge opening commands
             var credBadge = badges.stream().filter(b -> "credential".equals(b.itemKind())).findFirst().orElseThrow();
             var cleanupBadge = badges.stream().filter(b -> "cleanup_due".equals(b.itemKind())).findFirst().orElseThrow();
             assertEquals("credentials", credBadge.command());
             assertEquals("cleanup", cleanupBadge.command());
-
-            // 6. Pushed needs_operator.changed for the machine adds an item / notice
-            var credNotice = ConsoleNotice.fromEventMap("en", "needs_operator.changed",
-                                Map.of("kind", "credential", "count", 1, "scope", "github"));
-            assertNotNull(credNotice);
-            assertTrue(credNotice.contains("Credential github needs attention"),
-                                "credential notice expected: " + credNotice);
-
-            var cleanupNotice = ConsoleNotice.fromEventMap("en", "needs_operator.changed",
-                                Map.of("kind", "cleanup_due", "count", 1));
-            assertNotNull(cleanupNotice);
-            assertTrue(cleanupNotice.contains("Cleanup is due"),
-                                "cleanup_due notice expected: " + cleanupNotice);
         }
+    }
+
+    @Test
+    @DisplayName("pushed needs_operator.changed for the machine adds notices")
+    void pushedNeedsOperatorChangedNotices() {
+        var credNotice = ConsoleNotice.fromEventMap("en", "needs_operator.changed",
+                            Map.of("kind", "credential", "count", 1, "scope", "github"));
+        assertNotNull(credNotice);
+        assertTrue(credNotice.contains("Credential github needs attention"),
+                            "credential notice expected: " + credNotice);
+
+        var cleanupNotice = ConsoleNotice.fromEventMap("en", "needs_operator.changed",
+                            Map.of("kind", "cleanup_due", "count", 1));
+        assertNotNull(cleanupNotice);
+        assertTrue(cleanupNotice.contains("Cleanup is due"),
+                            "cleanup_due notice expected: " + cleanupNotice);
     }
 
     private static int intVal(Object v) {

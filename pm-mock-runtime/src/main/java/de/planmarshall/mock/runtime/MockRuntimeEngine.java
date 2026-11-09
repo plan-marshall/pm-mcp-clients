@@ -330,6 +330,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String PROJECT_ROUTE_PREFIX = "GET /api/v1/projects/";
     private static final String SEGMENT_ENDED = "/ended";
     private static final String KEY_ITEMS = "items";
+    private static final String KEY_NEEDS_OPERATOR = "needs_operator";
     private static final String KEY_PLANS = "plans";
     private static final String KEY_EPICS = "epics";
     private static final String KEY_ID = "id";
@@ -5641,7 +5642,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         applyStateRuntimeToStatus(copy);
         copy.put("lifecycle_state", lifecycleState.name().toLowerCase());
         copy.put("listeners", listenerMaps());
-        copy.put("needs_operator", waitingCounts());
+        copy.put(KEY_NEEDS_OPERATOR, waitingCounts());
         synchronized (devicesLock) {
             copy.put("paired_devices_count", pairedDevices.size());
         }
@@ -5680,19 +5681,26 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 kinds.merge(kind, 1, Integer::sum);
             }
         }
+        mergeMachineNeeds(kinds);
+        return new LinkedHashMap<>(kinds);
+    }
+
+    private void mergeMachineNeeds(Map<String, Integer> kinds) {
         var machineRoute = activeRoute("GET", MachineApiPaths.MACHINE);
-        if (machineRoute != null && machineRoute.representation() instanceof Map<?, ?> mMap) {
-            if (mMap.get("needs_operator") instanceof Map<?, ?> mNeeds) {
-                if (mNeeds.get("items") instanceof List<?> items) {
-                    for (var item : items) {
-                        if (item instanceof Map<?, ?> itemMap && itemMap.get("kind") instanceof String k) {
-                            kinds.merge(k, 1, Integer::sum);
-                        }
-                    }
-                }
+        if (machineRoute == null || !(machineRoute.representation() instanceof Map<?, ?> mMap)) {
+            return;
+        }
+        if (!(mMap.get(KEY_NEEDS_OPERATOR) instanceof Map<?, ?> mNeeds)) {
+            return;
+        }
+        if (!(mNeeds.get(KEY_ITEMS) instanceof List<?> items)) {
+            return;
+        }
+        for (var item : items) {
+            if (item instanceof Map<?, ?> itemMap && itemMap.get(KEY_KIND) instanceof String k) {
+                kinds.merge(k, 1, Integer::sum);
             }
         }
-        return new LinkedHashMap<>(kinds);
     }
 
     /**
@@ -10113,7 +10121,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         copy.put("current_phase", phase);
         copy.put("phase_state", phaseState);
         if ("waiting_for_you".equals(phaseState)) {
-            copy.put("needs_operator", true);
+            copy.put(KEY_NEEDS_OPERATOR, true);
         }
         copy.put("instance_version", 1);
         copy.put("nodes", phaseNodes(template, phase, phaseState));
