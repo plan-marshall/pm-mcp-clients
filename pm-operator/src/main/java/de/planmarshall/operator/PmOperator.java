@@ -179,7 +179,7 @@ public final class PmOperator implements Callable<Integer> {
                 return StartPrompt.EXIT_INTERRUPTED;
             }
             if (exception instanceof OperatorSecurityException ose) {
-                err.println(command.getCommandName() + ": " + ose.getMessage());
+                err.println(command.getCommandName() + ": " + TerminalSanitizer.sanitizeLine(ose.getMessage()));
                 err.flush();
                 return ose.exitCode();
             }
