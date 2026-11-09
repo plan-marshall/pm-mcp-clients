@@ -14,7 +14,7 @@ Status: `AGREED`. The texts of link:work-actions.adoc#chat[Chatting with the Pla
 [#texts]
 == Texts
 
-Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Planning Role]; the chat's action is `control.plan.chat`, `control.epic.chat` (also on an ended plan or epic), `control.review.chat`, `start.decomposition.chat`, `start.sources.chat`, or `decision.answer.chat` where it is opened. The runtime's message keys of D5 render through these: a narrative line `chat.line.<name>` as `control.chat.line.<name>`, an entry `chat.knows.<item>` of the context summary as `control.chat.knows.item` with that `item`, and `queued_revision.applies` (`chat.applies.after_task {task_id}`, `chat.applies.on_start`) as `control.chat.revision_queued` (`applies` `after_task` or `on_start`) and `control.chat.at_boundary` / `control.chat.at_start`. One name per meaning: `{subject}` is the chat's subject (the plan, the epic, the entry, the decision, the ended work), `{plan}` another plan (an epic's row), `{task_id}` a task's id. An argument that is itself a key — a pause's `{point}`, a decision's or a hold's `{reason}`, an `{outcome}`, a source's flag `{reason}`, a waiver's `{gate}`, a re-planning `{trigger}`, an item's `{disposition}` — is rendered through its own catalogue entry (the pause points of link:work-actions-texts.adoc[Actions, Texts], the reasons and outcomes of their areas), never shown raw. A chat inside a decision adds the keys `decision.chat.*` (link:decisions-texts.adoc#texts[Decisions, Texts]), a chat while starting `start.chat.*` (link:starting-work-texts.adoc#texts[Starting Work, Texts]).
+Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Planning Role]; the chat's action is `control.plan.chat`, `control.epic.chat` (also on an ended plan or epic), `control.review.chat`, `start.decomposition.chat`, `start.sources.chat`, or `decision.answer.chat` where it is opened. The runtime's message keys of D5 render through these: a narrative line `chat.line.<name>` as `control.chat.line.<name>`, an entry `chat.knows.<item>` of the context summary as `control.chat.knows.item` with that `item`, and `queued_revision.applies` (`chat.applies.after_task {task_id}`, `chat.applies.on_start`) as `control.chat.revision_queued` (`applies` `after_task` or `on_start`) and `control.chat.at_boundary` / `control.chat.at_start`. One name per meaning: `{subject}` is the chat's subject (the plan, the epic, the entry, the decision, the ended work), `{plan}` a plan a message is about (the chat's plan, the plan a decision belongs to, an epic's row), so a revision in a decision's chat names its plan, never the decision; `{task_id}` a task's id. An argument that is itself a key — a pause's `{point}`, a decision's or a hold's `{reason}`, an `{outcome}`, a source's flag `{reason}`, a waiver's `{gate}`, a re-planning `{trigger}`, an item's `{disposition}` — is rendered through its own catalogue entry (the pause points of link:work-actions-texts.adoc[Actions, Texts], the reasons and outcomes of their areas), never shown raw. A chat inside a decision adds the keys `decision.chat.*` (link:decisions-texts.adoc#texts[Decisions, Texts]), a chat while starting `start.chat.*` (link:starting-work-texts.adoc#texts[Starting Work, Texts]).
 
 [cols="3,3,3",options="header"]
 |===
@@ -61,16 +61,16 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |gilt nach dem laufenden Task
 
 |`control.chat.at_start`
-|applies when {subject} starts again
-|gilt, wenn {subject} wieder startet
+|applies when {plan} starts again
+|gilt, wenn {plan} wieder startet
 
 |`control.chat.no_revision_yet`
-|{subject} proposes no change yet: a revision comes in execute or in finalize, until its merge
-|{subject} schlägt noch keine Änderung vor: eine Überarbeitung kommt in execute oder in finalize, bis zu seinem Merge
+|{plan} proposes no change yet: a revision comes in execute or in finalize, until its merge
+|{plan} schlägt noch keine Änderung vor: eine Überarbeitung kommt in execute oder in finalize, bis zu seinem Merge
 
 |`control.chat.no_revision_merged`
-|{subject} is merged: the chat answers and proposes no change
-|{subject} ist gemergt: der Chat antwortet und schlägt keine Änderung vor
+|{plan} is merged: the chat answers and proposes no change
+|{plan} ist gemergt: der Chat antwortet und schlägt keine Änderung vor
 
 |`control.chat.applied`
 |{subject} changed{version, select, none {} other {; the plan's version becomes {version}}}
@@ -290,12 +290,12 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 
 
 |`control.chat.changed_since`
-|not applied: {subject} changed since (version {version})
-|nicht übernommen: {subject} hat sich seitdem geändert (Version {version})
+|not applied: {plan} changed since (version {version})
+|nicht übernommen: {plan} hat sich seitdem geändert (Version {version})
 
 |`control.chat.lapsed`
-|{subject} left the time for a revision; the proposal no longer applies.
-|{subject} ist aus der Zeit für eine Revision heraus; der Vorschlag gilt nicht mehr.
+|{plan} left the time for a revision; the proposal no longer applies.
+|{plan} ist aus der Zeit für eine Revision heraus; der Vorschlag gilt nicht mehr.
 
 |`control.chat.lines.folded`
 |{count} changes to {subject} · Show them
@@ -310,8 +310,8 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |{act} — bei den Aktionen von {subject}
 
 |`control.chat.revision_queued`
-|{applies, select, on_start {Revision from the chat queued · applies when {subject} starts again} other {Revision from the chat queued · applies after {task_id}}}
-|{applies, select, on_start {Revision aus dem Chat vorgemerkt · gilt, wenn {subject} wieder startet} other {Revision aus dem Chat vorgemerkt · gilt nach {task_id}}}
+|{applies, select, on_start {Revision from the chat queued · applies when {plan} starts again} other {Revision from the chat queued · applies after {task_id}}}
+|{applies, select, on_start {Revision aus dem Chat vorgemerkt · gilt, wenn {plan} wieder startet} other {Revision aus dem Chat vorgemerkt · gilt nach {task_id}}}
 
 |`control.chat.changed_in_chat`
 |changed in the chat
@@ -432,4 +432,8 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |`control.chat.line.item_disposed`
 |{item}: {disposition}
 |{item}: {disposition}
+
+|`control.chat.revision_origin`
+|{origin, select, decision {from the chat of {id}} other {from an earlier chat}}
+|{origin, select, decision {aus dem Chat von {id}} other {aus einem früheren Chat}}
 |===
