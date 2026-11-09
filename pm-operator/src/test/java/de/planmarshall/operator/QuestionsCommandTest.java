@@ -885,8 +885,12 @@ class QuestionsCommandTest {
     @Test
     @DisplayName("interactive decision cancel and rejection flows")
     void answerInteractiveDecisionCancellationFlows() throws Exception {
+        var answerPosts = new java.util.ArrayList<String>();
         fixture.start((request, response) -> {
             var target = request.target();
+            if ("POST".equals(request.method()) && "/api/v1/decisions/Q-001/answer".equals(target)) {
+                answerPosts.add(target);
+            }
             if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
                 response.json(200, """
                                     {
@@ -919,23 +923,27 @@ class QuestionsCommandTest {
         // 1. Own words with blank input -> cancels (exits 0)
         int codeOwnWordsBlank = executeInteractive("w\n\n", "answer", "Q-001", "-i");
         assertEquals(0, codeOwnWordsBlank);
+        assertTrue(answerPosts.isEmpty(), "a cancelled own-words answer sent " + answerPosts);
 
         // 2. Own words with rejected confirm -> cancels (exits 0)
         out = new StringWriter();
         int codeOwnWordsReject = executeInteractive("w\nmy words\nn\n", "answer", "Q-001", "-i");
         assertEquals(0, codeOwnWordsReject);
+        assertTrue(answerPosts.isEmpty(), "a rejected read-back sent " + answerPosts);
 
         // 3. None-fits reject confirm -> then later
         out = new StringWriter();
         int codeNoneFitsReject = executeInteractive("x\nb\nl\n", "answer", "Q-001", "-i");
         assertEquals(0, codeNoneFitsReject);
         assertTrue(out.toString().contains("stays open"), out.toString());
+        assertTrue(answerPosts.isEmpty(), "a withdrawn or deferred answer sent " + answerPosts);
 
         // 4. Note prompt with blank input leaves note unchanged, then pick 1
         out = new StringWriter();
         int codeNoteBlank = executeInteractive("m\n\n1\n", "answer", "Q-001", "-i");
         assertEquals(0, codeNoteBlank);
         assertTrue(out.toString().contains("✓ Q-001 answered: Opt 1"));
+        assertEquals(1, answerPosts.size(), "the submitted answer did not reach the runtime: " + answerPosts);
     }
 
     @Test
