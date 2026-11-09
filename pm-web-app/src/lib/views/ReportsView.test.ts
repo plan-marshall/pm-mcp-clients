@@ -274,7 +274,8 @@ describe('ReportsView component', () => {
     const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
     expect(card).toHaveAttribute('data-unread', 'true');
     expect(card.querySelector('.report-card__unread-dot')).not.toBeNull();
-    expect(screen.getAllByText('unread').length).toBeGreaterThan(0);
+    // The unread word is anchored to this row, not matched anywhere on the page.
+    expect(within(card).getByText('unread')).toBeInTheDocument();
     expect(
       screen.getByText('Ended: merged (#214)').classList.contains('report-card__subject--unread'),
     ).toBe(true);
@@ -347,6 +348,86 @@ describe('ReportsView component', () => {
     await fireEvent.click(markAllBtn);
 
     expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(['rep-0142', 'rep-0139', 'rep-0131']);
+  });
+
+  /**
+   * @param index the 1-based position in the seven-unread fixture
+   * @returns one unread report; the first is the one a deep link opens
+   */
+  function unreadFixture(index: number): ReportItem {
+    return {
+      id: `rep-02${String(index).padStart(4, '0')}`,
+      from:
+        index === 1
+          ? { project: 'pm-mcp-clients', plan: 'fix-relay' }
+          : { project: 'pm-mcp-clients', plan: `plan-${index}` },
+      kind: 'plan.ended',
+      subject: `Unread report ${index}`,
+      created_at: '2026-10-16T11:20:00Z',
+    };
+  }
+
+  it('reloads the first unread page after a shown-ids mark-all and lists the remaining reports with the server count', async () => {
+    const shownFive = [1, 2, 3, 4, 5].map(unreadFixture);
+    const olderTwo = [6, 7].map(unreadFixture);
+    const shownPage: ReportsPage = {
+      items: shownFive,
+      unread_count: 7,
+      has_older: true,
+      older_count: 2,
+    };
+    const remainingPage: ReportsPage = {
+      items: olderTwo,
+      unread_count: 2,
+      has_older: false,
+      older_count: 0,
+    };
+    let servedPage = shownPage;
+    let reloadResolve: ((page: ReportsPage) => void) | undefined;
+    let readCalls = 0;
+    vi.spyOn(apiClient, 'getReports').mockImplementation(() => {
+      readCalls += 1;
+      if (readCalls === 1) return Promise.resolve(servedPage);
+      return new Promise<ReportsPage>((resolve) => {
+        reloadResolve = resolve;
+      });
+    });
+    vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(async () => {
+      servedPage = remainingPage;
+      return { marked_count: 5 };
+    });
+    vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    // The deep link opens the first report without reading it, so it is shown and unread.
+    runtimeStore.update((s) => ({ ...s, selectedReportDetailPlanId: 'fix-relay' }));
+
+    render(ReportsView);
+    await screen.findByText('Unread report 1');
+    expect(screen.getByTestId('unread-count')).toHaveTextContent('7 unread reports');
+    expect(screen.getByRole('button', { name: /Show 2 older/i })).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByRole('button', { name: /Mark all shown read/i }));
+
+    expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(shownFive.map((item) => item.id));
+
+    // Before the reload answers, the count is the pre-count of the five shown ids (7 - 5). The
+    // deep-linked report is counted with them, so leaving it out would leave 3 here.
+    await waitFor(() => {
+      expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+    });
+
+    await waitFor(() => expect(reloadResolve).toBeDefined());
+    reloadResolve?.(remainingPage);
+
+    // After the reload the two older unread reports are listed and the count is the server's.
+    await waitFor(() => {
+      expect(screen.getByText('Unread report 6')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Unread report 7')).toBeInTheDocument();
+    expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+    // One page of unread reports remains, so the load-older control is gone.
+    expect(screen.queryByRole('button', { name: /Show \d+ older/i })).toBeNull();
+    // The retained row stays beside its open detail until that detail closes.
+    expect(screen.getByText('Unread report 1')).toBeInTheDocument();
   });
 
   it('renders empty state when there are no unread reports', async () => {
@@ -667,6 +748,12 @@ describe('ReportsView component', () => {
     const active = document.querySelector('.report-card--active');
     expect(active).not.toBeNull();
     expect(active).toHaveAttribute('aria-current', 'true');
+
+    // The page heading is the h1; the report title beside it sits one level lower.
+    const h1Elements = document.querySelectorAll('h1');
+    expect(h1Elements).toHaveLength(1);
+    expect(h1Elements[0]).toHaveClass('reports-heading');
+    expect(document.querySelector('.report-title')?.tagName.toLowerCase()).toBe('h2');
   });
 
   it('keeps the row beside its detail when the list reloads', async () => {
@@ -1124,6 +1211,19 @@ describe('ReportsView component', () => {
   });
 
   it('marks only the matching reports read and keeps the hidden rows when filter is active', async () => {
+    let served: ReportsPage = mockPage;
+    vi.spyOn(apiClient, 'getReports').mockImplementation(() => Promise.resolve(served));
+    vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(async () => {
+      // The server no longer serves the one report this act read.
+      served = {
+        items: mockReports.filter((report) => report.id !== 'rep-0142'),
+        unread_count: 2,
+        has_older: false,
+        older_count: 0,
+      };
+      return { marked_count: 1 };
+    });
+
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
 
@@ -1135,6 +1235,11 @@ describe('ReportsView component', () => {
     await fireEvent.click(markAllBtn);
 
     expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(['rep-0142']);
+
+    // The reload takes the count from the server; the rows the filter hides come back with it.
+    await waitFor(() => {
+      expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+    });
 
     await fireEvent.click(screen.getByTestId('filter-clear'));
 
@@ -1530,7 +1635,26 @@ describe('ReportsView component', () => {
   });
 
   it('keeps a report that arrived after the list was drawn listed and unread on mark-all (D1)', async () => {
+    const arrivedReport: ReportItem = {
+      id: 'rep-arrived',
+      from: { project: 'pm-mcp-clients', plan: 'fix-relay' },
+      kind: 'plan.ended',
+      subject: 'Arrived during request',
+      created_at: '2026-10-16T12:00:00Z',
+    };
     let resolveMarkAll: (() => void) | undefined;
+    let readCalls = 0;
+    vi.spyOn(apiClient, 'getReports').mockImplementation(() => {
+      readCalls += 1;
+      if (readCalls === 1) return Promise.resolve(mockPage);
+      // The arrival is not among the ids the mark-all read, so the server still serves it.
+      return Promise.resolve({
+        items: [arrivedReport],
+        unread_count: 1,
+        has_older: false,
+        older_count: 0,
+      });
+    });
     vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(
       () =>
         new Promise<{ marked_count: number }>((resolve) => {
@@ -1544,13 +1668,6 @@ describe('ReportsView component', () => {
     const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
     await fireEvent.click(markAllBtn);
 
-    const arrivedReport: ReportItem = {
-      id: 'rep-arrived',
-      from: { project: 'pm-mcp-clients', plan: 'fix-relay' },
-      kind: 'plan.ended',
-      subject: 'Arrived during request',
-      created_at: '2026-10-16T12:00:00Z',
-    };
     eventHandler?.('report.sent', { report: arrivedReport });
     await tick();
 
@@ -1559,27 +1676,43 @@ describe('ReportsView component', () => {
     await tick();
     await tick();
 
-    expect(screen.getByText('Arrived during request')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Arrived during request')).toBeInTheDocument();
+    });
     expect(screen.getByTestId('unread-count')).toHaveTextContent('1 unread report');
   });
 
-  it('decrements unread count by shown reports marked and keeps load-older control (D1)', async () => {
-    vi.spyOn(apiClient, 'getReports').mockResolvedValue({
-      items: mockReports,
-      unread_count: 8,
+  it('keeps the load-older control while more than one page of unread reports remains after a mark-all (D1)', async () => {
+    const shownFive = [1, 2, 3, 4, 5].map(unreadFixture);
+    let served: ReportsPage = {
+      items: shownFive,
+      unread_count: 12,
       has_older: true,
-      older_count: 5,
+      older_count: 7,
+    };
+    vi.spyOn(apiClient, 'getReports').mockImplementation(() => Promise.resolve(served));
+    vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(async () => {
+      // Seven unread reports remain, more than one page of five; the server says so.
+      served = {
+        items: [6, 7, 8, 9, 10].map(unreadFixture),
+        unread_count: 7,
+        has_older: true,
+        older_count: 2,
+      };
+      return { marked_count: 5 };
     });
-    render(ReportsView);
-    await screen.findByText('Ended: merged (#214)');
 
-    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
-    await fireEvent.click(markAllBtn);
+    render(ReportsView);
+    await screen.findByText('Unread report 1');
+    expect(screen.getByTestId('unread-count')).toHaveTextContent('12 unread reports');
+    expect(screen.getByRole('button', { name: /Show 7 older/i })).toBeInTheDocument();
+
+    await fireEvent.click(screen.getByRole('button', { name: /Mark all shown read/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('unread-count')).toHaveTextContent('5 unread reports');
+      expect(screen.getByTestId('unread-count')).toHaveTextContent('7 unread reports');
     });
-    expect(screen.getByRole('button', { name: /Show 5 older/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Show 2 older/i })).toBeInTheDocument();
   });
 
   it('keeps the retained read marker when mark-all request fails (D1)', async () => {
@@ -1676,30 +1809,21 @@ describe('ReportsView component', () => {
     await tick();
   });
 
-  it('tracks unreadCount accurately and prevents double decrements on duplicate events (D3e)', async () => {
-    render(ReportsView);
-    await screen.findByText('Ended: merged (#214)');
-
-    expect(screen.getByTestId('unread-count')).toHaveTextContent('3 unread reports');
-
-    // Mark one report read via API
-    const card = screen.getByText('Ended: merged (#214)').closest('.report-card') as HTMLElement;
-    await fireEvent.click(within(card).getByRole('button', { name: /Report actions/i }));
-    await fireEvent.click(await within(card).findByRole('menuitem', { name: /Mark read/i }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
-    });
-
-    // Duplicate event arriving for same report does not double decrement
-    eventHandler?.('report.read', { report_id: 'rep-0142' });
-    await tick();
-
-    expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
-  });
-
   it('retains the open report beside the detail during a filtered mark-all and drops it when detail closes (D3e)', async () => {
     vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
+    let served: ReportsPage = mockPage;
+    vi.spyOn(apiClient, 'getReports').mockImplementation(() => Promise.resolve(served));
+    vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(async () => {
+      // The reload no longer serves the report this act read.
+      served = {
+        items: mockReports.filter((report) => report.id !== 'rep-0142'),
+        unread_count: 2,
+        has_older: false,
+        older_count: 0,
+      };
+      return { marked_count: 1 };
+    });
+
     render(ReportsView);
     await screen.findByText('Ended: merged (#214)');
 
@@ -1721,7 +1845,10 @@ describe('ReportsView component', () => {
     // Filtered mark-all called with matching IDs
     expect(apiClient.markAllReportsRead).toHaveBeenCalledWith(['rep-0142']);
 
-    // The selected report stays retained in list beside open detail
+    // The reload takes the server's count, and the retained row stays beside the open detail.
+    await waitFor(() => {
+      expect(screen.getByTestId('unread-count')).toHaveTextContent('2 unread reports');
+    });
     expect(screen.getByText('Ended: merged (#214)')).toBeInTheDocument();
 
     // Close detail
