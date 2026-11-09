@@ -659,6 +659,29 @@ plan spec names the plan, proposal and finding documents it comes from.
   `chat=open` (`stores/runtime.ts`), web events outside the catalogue, the mock dropping an open proposal on every plan
   turn (`MockRuntimeEngine.java:5060-5100`). The report's final state (after the bot rounds) has to come as a NEW
   message: the drained 001 can no longer be amended.
+  CONTENT ANALYSIS 2026-11-09 (operator request; read-only sub-agent at clients `a7cd395b`, docs `6cc868a`, core
+  `7cc504f0`; since then core `fc3ec9e4` and docs `e18fff1` answered CodeRabbit, clients unchanged). VERDICT: needs fixes
+  before the AGREED review; 0 blockers, ~14 majors; all six decisions are written down in all three repos. Re-read by
+  the orchestrator and holding: (1) the stale proposal — core `state-catalogue.adoc:138,208` (fc3ec9e4) keeps it
+  visible and rejectable, the web `chat.adoc:107` folds its card into the `changed_since` line, and `28-chat.adoc:79`
+  says nothing of rejecting; (2) the fold rule differs — terminal "more than three at once" (`28-chat.adoc:77`), web
+  "several lines at once" (`chat.adoc:123`), components "folded beyond one" (`components-chat.adoc:39`); (3) a
+  queued revision is shown on the plan's overview row (decision 2) but `queued_revision` exists only on the plan
+  resource (docs `01-processes-and-transport.adoc:177`), not on the overview; (4) core `02-task-protocol.adoc:51` binds
+  a chat reply to its generation while `:55` sends a task with more than 200 changed paths to a fresh worker — a
+  contradiction for a chat (it should be re-primed); (5) ref kind `hold` is used by the engine and the status cards but
+  decided by no decision and missing from the client contract list (`chat.adoc` D5 bullet: `act` only); (6) UC-CTL-1
+  is `DRAFT` while UC-CTL-2 and UC-CTL-3 (`06-controlling-work.adoc:139,257`) stay `AGREED` although they gained chat
+  variations; (7) no client work package for D5 (contract+mock, web chat, terminal chat) in `doc/plans/`. Further
+  majors from the leaf, not re-read: no mechanism by which the warm role learns that its proposal lapsed, was refused
+  or rejected (`since_last_turn` excludes the chat's own events); open edge cases of a queued revision when a new
+  version arrives before its boundary and of `lapsed` vs `conflict`; where "changed in the chat" is kept per
+  operator/device; all ten changed client design files go AGREED → DRAFT, including the broad `navigation.adoc` and
+  `components.adoc`. CodeRabbit on core #338: 7 valid, 2 partly valid (3: read-only rests on the tool list,
+  confinement absent on some hosts; 7: counts now refreshed per turn, so the knows line lags them); all nine answered
+  by fc3ec9e4, which also introduces a confinement claim ("grants no write in the project") that does not hold
+  where confinement is unavailable, and a new `register-item.schema.json` not listed in the stores' layout. The
+  client docs were not updated with the core fixes.
 - PLAN-119 landed (PR #377, `147309ae`, analysed 2026-11-09); see `landings/PLAN-119.md`. One parser
   (`JsonTree.positiveInteger`) and one fallback constant; the overview and machine step follow the injected aspect list;
   Sonar 0. MERGE RULE NOT MET: the CodeRabbit body's nitpick is unanswered, and thread 2 was resolved contested — with a
