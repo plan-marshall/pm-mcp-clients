@@ -195,7 +195,7 @@ public final class ReportsCommand implements Callable<Integer> {
         @Parameters(arity = "0..*", description = "Report IDs to mark read")
         List<String> reportIds = new ArrayList<>();
 
-        @Option(names = "--all", description = "Mark all unread reports read")
+        @Option(names = "--all", description = "Read the first page of the report list and mark the ids it read")
         boolean all;
 
         ReadCommand(OperatorContext context) {
