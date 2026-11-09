@@ -44,6 +44,7 @@ final class WorkActionDialogue {
     private static final String EPIC = "epic";
     private static final String RUNNING = "running";
     private static final String SCOPE = "scope";
+    private static final String COUNT = "count";
     private static final String WITH_PLANS = "with_plans";
     private static final Set<String> HOLD_ACTS = Set.of("retry", "recycle", "grant", "add_credential",
                         "raise_budget", "accept", "abort", "end_plan", "cancel_epic", "show_pr",
@@ -306,7 +307,7 @@ final class WorkActionDialogue {
         return started(epic, epic != null ? epic.scope() : 0);
     }
 
-    private boolean askRaise(EpicResource epic, @Nullable Integer running, String plan) throws IOException {
+    private boolean askRaise(EpicResource epic, @Nullable Integer running, String plan) {
         var question = running != null
                             ? MessageCatalogue.format(prompt.locale(), "control.epic.scope_full",
                             Map.<String, Object>of(EPIC, id, RUNNING, running, SCOPE, epic.scope(), PLAN, plan))
@@ -317,7 +318,7 @@ final class WorkActionDialogue {
         var leaveKey = MessageCatalogue.format(prompt.locale(),
                             "operator.actions.key.leave_scope", Map.of());
         var need = MessageCatalogue.format(prompt.locale(), "control.epic.next_raise",
-                            Map.of("count", epic.scope() + 1));
+                            Map.of(COUNT, epic.scope() + 1));
         var promptText = question
                             + "   " + raiseKey
                             + ") " + need
@@ -379,7 +380,7 @@ final class WorkActionDialogue {
     private int commonFiles() throws IOException {
         var answer = prompt.askRaw(MessageCatalogue.format(prompt.locale(), "operator.actions.common_files.ask",
                             Map.of("epic", id)) + StartPrompt.SUFFIX, STATE_ID,
-                            MessageCatalogue.format(prompt.locale(), "control.epic.overlap", Map.of("count", 0)),
+                            MessageCatalogue.format(prompt.locale(), "control.epic.overlap", Map.of(COUNT, 0)),
                             id);
         int count;
         try {
@@ -388,9 +389,9 @@ final class WorkActionDialogue {
             prompt.line("operator.actions.common_files.invalid", Map.of());
             return 1;
         }
-        client.perform(kind, id, "common_files", Map.of("count", count));
+        client.perform(kind, id, "common_files", Map.of(COUNT, count));
         prompt.line("control.epic.overlap_done",
-                            Map.of("epic", id, "count", count, "started", "none"));
+                            Map.of("epic", id, COUNT, count, "started", "none"));
         return 0;
     }
 
