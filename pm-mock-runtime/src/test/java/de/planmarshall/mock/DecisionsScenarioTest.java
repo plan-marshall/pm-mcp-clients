@@ -325,7 +325,7 @@ class DecisionsScenarioTest {
             var custom = new DecisionEnvelope(decisionId, 1, Generators.letterStrings(4, 10).next(), null,
                     "plan " + Generators.letterStrings(4, 10).next(),
                     DecisionScope.PLAN, "refine", "planner", "plan", Reversibility.REVERSIBLE,
-                    null, null, List.of(), Instant.now(), false, null, null, null);
+                    null, null, List.of(), Instant.now(), false, null, null, null, null, null);
             runtime.engine().addDecisionAndBroadcast(custom);
             assertEquals(200, get(runtime, "/api/v1/decisions/" + decisionId).status());
         }

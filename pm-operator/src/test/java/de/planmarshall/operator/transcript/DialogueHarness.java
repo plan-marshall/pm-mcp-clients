@@ -61,8 +61,9 @@ final class DialogueHarness implements AutoCloseable {
      * @param method the HTTP method
      * @param path   the request path
      * @param state  the state the request was sent in
+     * @param body   the request body, empty when it carried none
      */
-    record Act(String method, String path, String state) {
+    record Act(String method, String path, String state, String body) {
     }
 
     private DialogueHarness(MockRuntime runtime) {
@@ -78,7 +79,7 @@ final class DialogueHarness implements AutoCloseable {
      */
     static DialogueHarness start(String scenario) throws IOException {
         Assumptions.assumeTrue(Files.isExecutable(Path.of(SCRIPT)), SCRIPT + " is not available");
-        var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).build());
+        var runtime = MockRuntime.start(MockRuntimeConfig.builder().scenario(scenario).recordActBodies(true).build());
         try {
             MockMachine.recordLiveRuntime(runtime);
             return new DialogueHarness(runtime);
@@ -138,7 +139,7 @@ final class DialogueHarness implements AutoCloseable {
                 var map = JsonTree.asObject(entry);
                 if (map != null) {
                     acts.add(new Act(JsonTree.string(map, "method"), JsonTree.string(map, "path"),
-                                        JsonTree.string(map, "state")));
+                                        JsonTree.string(map, "state"), JsonTree.string(map, "body")));
                 }
             }
         }

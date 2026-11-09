@@ -54,6 +54,14 @@ public class MockRuntimeConfig {
     @Nullable
     Boolean cleanupBaseOnClose;
 
+    /**
+     * Whether {@code GET /mock/acts} records the request body of decision acts. Off by default, so a
+     * developer's mock keeps no free-text answer, note or waiver reason in a control surface; the
+     * dialogue tests turn it on to assert what the operator sent.
+     */
+    @Builder.Default
+    boolean recordActBodies = false;
+
     /** An optional preconfigured scenario registry. If {@code null}, a new registry is instantiated. */
     @Nullable
     ScenarioRegistry registry;

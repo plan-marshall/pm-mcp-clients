@@ -14,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import de.cuioss.test.generator.Generators;
+import de.cuioss.test.generator.junit.EnableGeneratorController;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -21,9 +23,13 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.jline.terminal.impl.DumbTerminal;
 
+import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -31,8 +37,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 @DisplayName("QuestionsCommand and AnswerCommand")
+@EnableGeneratorController
 class QuestionsCommandTest {
 
     @TempDir
@@ -41,6 +51,7 @@ class QuestionsCommandTest {
     private RuntimeFixture fixture;
     private StringWriter out;
     private StringWriter err;
+    private final List<String> answerBodies = new ArrayList<>();
 
     @BeforeEach
     void setUp() throws IOException {
@@ -48,6 +59,7 @@ class QuestionsCommandTest {
         PmOperatorTest.writeLiveRecord(fixture);
         out = new StringWriter();
         err = new StringWriter();
+        answerBodies.clear();
     }
 
     @AfterEach
@@ -269,12 +281,30 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "WR-2", "waive", "--reason", "hotfix on prod");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("Waived gate for plan."));
+        assertTrue(out.toString().contains("Waived Quality gate for Plan."), out.toString());
     }
 
     @Test
-    @DisplayName("answer later leaves decision open")
+    @DisplayName("answer later checks the decision and leaves it open")
     void answerLater() throws Exception {
+        fixture.start((request, response) -> {
+            var target = request.target();
+            if ("/api/v1/decisions/Q-007".equals(target) && "GET".equals(request.method())) {
+                response.json(200, """
+                                    {
+                                      "id": "Q-007", "revision": 1, "title": "Resolve",
+                                      "subject": "plan fix-relay", "scope": "plan", "blocks": "plan",
+                                      "reversibility": "reversible", "plan": "fix-relay",
+                                      "project": "pm-mcp-clients", "parts": []
+                                    }
+                                    """);
+            } else if ("/api/v1/decisions/Q-007/answer".equals(target) && "POST".equals(request.method())) {
+                response.json(200, "{\"status\":\"open\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
         int code = execute("answer", "Q-007", "later");
         assertEquals(0, code);
         assertTrue(out.toString().contains("stays open"));
@@ -293,7 +323,7 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-007", "withdraw");
         assertEquals(0, code);
-        assertTrue(out.toString().contains("you asked the plan to think again") || out.toString().contains("gebeten, neu zu überlegen"));
+        assertTrue(out.toString().contains("you asked the plan to think again"), out.toString());
     }
 
     @Test
@@ -337,7 +367,17 @@ class QuestionsCommandTest {
                                             },
                                             {
                                               "key": "merge",
-                                              "label": "Merge main into branch"
+                                              "label": "Merge main into branch",
+                                              "quorum_support": {
+                                                "votes_count": 1,
+                                                "total_votes": 3,
+                                                "models_count": 1,
+                                                "band": "clear_majority",
+                                                "votes": [
+                                                  {"role": "reviewer-b", "model": "gpt-4o", "confidence_percent": 70,
+                                                   "reason": "Merge keeps commits"}
+                                                ]
+                                              }
                                             }
                                           ]
                                         }
@@ -357,7 +397,7 @@ class QuestionsCommandTest {
         assertTrue(output.contains("Question Q-001"));
         assertTrue(output.contains("Rebase onto main"));
         assertTrue(output.contains("2 of 3 votes · 2 models"));
-        assertTrue(output.contains("Against it (quorum-b): Merge keeps commits"));
+        assertTrue(output.contains("Against it (reviewer-b): Merge keeps commits"), output);
         assertTrue(output.contains("✓ Q-001 answered: Rebase onto main"));
     }
 
@@ -456,6 +496,7 @@ class QuestionsCommandTest {
                                           "part_id": "part-1",
                                           "question": "Choose strategy",
                                           "answer_type": "one_option",
+                                          "allow_note": true,
                                           "options": [
                                             {"key": "rebase", "label": "Rebase"},
                                             {"key": "merge", "label": "Merge", "consequences": "Creates merge commit"}
@@ -475,8 +516,8 @@ class QuestionsCommandTest {
         int code = executeInteractive("m\nmy note text\nmerge\n\n", "answer", "Q-001", "-i");
         assertEquals(0, code);
         var output = out.toString();
-        assertTrue(output.contains("cannot be undone"));
-        assertTrue(output.contains("✓ Q-001 answered: Merge (with your note)"));
+        assertTrue(output.contains("costly to undo"), output);
+        assertTrue(output.contains("✓ Q-001 answered: Merge (with your note)"), output);
     }
 
     @Test
@@ -534,6 +575,7 @@ class QuestionsCommandTest {
                                           "part_id": "part-1",
                                           "question": "How?",
                                           "answer_type": "one_option",
+                                          "allow_own_words": true,
                                           "options": [{"key": "rebase", "label": "Rebase"}]
                                         }
                                       ]
@@ -632,6 +674,7 @@ class QuestionsCommandTest {
                                       "title": "Coverage waiver",
                                       "subject": "plan fix-relay",
                                       "scope": "plan",
+                                      "plan": "fix-relay",
                                       "is_waiver": true,
                                       "waiver_gate": "coverage >= 80%",
                                       "waiver_reason": "generated files",
@@ -655,14 +698,14 @@ class QuestionsCommandTest {
         int codeWaive = executeInteractive("?\ny\n\nApproved temporary\n", "answer", "WR-1", "-i");
         assertEquals(0, codeWaive);
         var waiveOut = out.toString();
-        assertTrue(waiveOut.contains("Evidence details:") || waiveOut.contains("Beleg-Details:"));
-        assertTrue(waiveOut.contains("Waived coverage >= 80% for fix-relay.") || waiveOut.contains("Gewährt"));
+        assertTrue(waiveOut.contains("Evidence details:"), waiveOut);
+        assertTrue(waiveOut.contains("Waived coverage >= 80% for fix-relay."), waiveOut);
 
         // 3. Decline
         out = new StringWriter();
         int codeDecline = executeInteractive("d\nNot allowed\n", "answer", "WR-1", "-i");
         assertEquals(0, codeDecline);
-        assertTrue(out.toString().contains("Declined WR-1") || out.toString().contains("Abgelehnt WR-1"));
+        assertTrue(out.toString().contains("Declined WR-1"), out.toString());
     }
 
     @Test
@@ -690,6 +733,7 @@ class QuestionsCommandTest {
                                           "recommendation": "1",
                                           "recommending_role": "implement",
                                           "recommendation_rationale": "Keeps linear history",
+                                          "allow_note": true,
                                           "options": [
                                             {
                                               "key": "1",
@@ -719,6 +763,7 @@ class QuestionsCommandTest {
                                     }
                                     """);
             } else if ("/api/v1/decisions/Q-001/answer".equals(target)) {
+                answerBodies.add(request.bodyText());
                 response.json(200, "{\"ok\":true}");
             } else {
                 response.send(404, null, "");
@@ -729,12 +774,14 @@ class QuestionsCommandTest {
         int code = executeInteractive("?\n?r\nm\nurgent\n2\n", "answer", "Q-001", "-i");
         assertEquals(0, code);
         var output = out.toString();
-        assertTrue(output.contains("Evidence details:") || output.contains("Beleg-Details:"));
-        assertTrue(output.contains("Recommended by implement: Rebase. Keeps linear history")
-                            || output.contains("Empfohlen von implement: Rebase. Keeps linear history"));
-        assertTrue(output.contains("Against it (reviewer-a): merge commit preferred")
-                            || output.contains("Dagegen (reviewer-a): merge commit preferred"));
-        assertTrue(output.contains("✓ Q-001 answered: Merge"));
+        assertTrue(output.contains("Evidence details:"), output);
+        assertTrue(output.contains("Recommended by implement: Rebase. Keeps linear history"), output);
+        assertTrue(output.contains("Against it (reviewer-a): merge commit preferred"), output);
+        assertTrue(output.contains("✓ Q-001 answered: Merge"), output);
+        assertEquals(1, answerBodies.size(), answerBodies.toString());
+        var sent = JsonTree.asObject(JsonTree.parse(answerBodies.get(0)));
+        assertEquals("2", sent.get("option"), answerBodies.get(0));
+        assertEquals("urgent", sent.get("note"), answerBodies.get(0));
 
         // 2. Quit
         out = new StringWriter();
@@ -779,30 +826,37 @@ class QuestionsCommandTest {
         int code = executeInteractive("1\n\n", "answer", "Q-002", "-i");
         assertEquals(0, code);
         var output = out.toString();
-        assertTrue(output.contains("cannot be undone") || output.contains("nicht rückgängig machen"));
-        assertTrue(output.contains("Follows: Data will be lost") || output.contains("Folgt: Data will be lost"));
+        assertTrue(output.contains("cannot be undone"), output);
+        assertTrue(output.contains("Follows: Data will be lost"), output);
         assertTrue(output.contains("✓ Q-002 answered: Drop table"));
     }
 
-    @Test
+    @ParameterizedTest(name = "{1}")
+    @MethodSource("evidenceCases")
     @DisplayName("formatEvidenceHint formats diverse evidence payloads")
-    void formatEvidenceHintCoverage() {
+    void formatEvidenceHintCoverage(Map<String, Object> evidence, String expected) {
         assertEquals("", AnswerCommand.formatEvidenceHint(null));
-        assertEquals("", AnswerCommand.formatEvidenceHint(Map.of()));
-        assertEquals("src/Main.java:42 (syntax error)",
-                            AnswerCommand.formatEvidenceHint(Map.of("file", "src/Main.java", "lines", 42, "summary", "syntax error")));
-        assertEquals("src/Main.java:10",
-                            AnswerCommand.formatEvidenceHint(Map.of("file", "src/Main.java", "lines", "10")));
-        assertEquals("src/Main.java (broken)",
-                            AnswerCommand.formatEvidenceHint(Map.of("file", "src/Main.java", "summary", "broken")));
-        assertEquals("src/Main.java",
-                            AnswerCommand.formatEvidenceHint(Map.of("file", "src/Main.java")));
-        assertEquals("testLogin (run-1)",
-                            AnswerCommand.formatEvidenceHint(Map.of("test", "testLogin", "run", "run-1")));
-        assertEquals("all good",
-                            AnswerCommand.formatEvidenceHint(Map.of("summary", "all good")));
-        assertEquals("custom-val",
-                            AnswerCommand.formatEvidenceHint(Map.of("other", "custom-val")));
+        assertEquals(expected, AnswerCommand.formatEvidenceHint(evidence));
+    }
+
+    static Stream<Arguments> evidenceCases() {
+        var file = "src/" + Generators.letterStrings(4, 10).next() + ".java";
+        var lines = String.valueOf(Generators.integers(1, 999).next());
+        var summary = Generators.letterStrings(4, 20).next();
+        var test = Generators.letterStrings(3, 10).next();
+        var run = Generators.letterStrings(3, 10).next();
+        var other = Generators.letterStrings(3, 10).next();
+        return Stream.of(
+                            Arguments.of(Map.of(), ""),
+                            Arguments.of(Map.of("file", file, "lines", lines, "summary", summary),
+                                                file + ":" + lines + " (" + summary + ")"),
+                            Arguments.of(Map.of("file", file, "lines", lines), file + ":" + lines),
+                            Arguments.of(Map.of("file", file, "summary", summary), file + " (" + summary + ")"),
+                            Arguments.of(Map.of("file", file), file),
+                            Arguments.of(Map.of("test", test, "run", run), test + " (" + run + ")"),
+                            Arguments.of(Map.of("summary", summary), summary),
+                            Arguments.of(Map.of("other", other), other)
+        );
     }
 
     @Test
@@ -825,14 +879,18 @@ class QuestionsCommandTest {
 
         int code = execute("answer", "Q-001", "--no-input");
         assertEquals(3, code);
-        assertTrue(out.toString().contains("Choice or option required") || out.toString().contains("Auswahl oder Option erforderlich"));
+        assertTrue(out.toString().contains("Choice or option required"), out.toString());
     }
 
     @Test
     @DisplayName("interactive decision cancel and rejection flows")
     void answerInteractiveDecisionCancellationFlows() throws Exception {
+        var answerPosts = new ArrayList<String>();
         fixture.start((request, response) -> {
             var target = request.target();
+            if ("POST".equals(request.method()) && "/api/v1/decisions/Q-001/answer".equals(target)) {
+                answerPosts.add(target);
+            }
             if ("/api/v1/decisions/Q-001".equals(target) && "GET".equals(request.method())) {
                 response.json(200, """
                                     {
@@ -846,6 +904,8 @@ class QuestionsCommandTest {
                                       "parts": [
                                         {
                                           "part_id": "part-1",
+                                          "allow_own_words": true,
+                                          "allow_note": true,
                                           "options": [{"key": "1", "label": "Opt 1"}]
                                         }
                                       ]
@@ -863,23 +923,27 @@ class QuestionsCommandTest {
         // 1. Own words with blank input -> cancels (exits 0)
         int codeOwnWordsBlank = executeInteractive("w\n\n", "answer", "Q-001", "-i");
         assertEquals(0, codeOwnWordsBlank);
+        assertTrue(answerPosts.isEmpty(), "a cancelled own-words answer sent " + answerPosts);
 
         // 2. Own words with rejected confirm -> cancels (exits 0)
         out = new StringWriter();
         int codeOwnWordsReject = executeInteractive("w\nmy words\nn\n", "answer", "Q-001", "-i");
         assertEquals(0, codeOwnWordsReject);
+        assertTrue(answerPosts.isEmpty(), "a rejected read-back sent " + answerPosts);
 
         // 3. None-fits reject confirm -> then later
         out = new StringWriter();
         int codeNoneFitsReject = executeInteractive("x\nb\nl\n", "answer", "Q-001", "-i");
         assertEquals(0, codeNoneFitsReject);
-        assertTrue(out.toString().contains("stays open") || out.toString().contains("bleibt offen"));
+        assertTrue(out.toString().contains("stays open"), out.toString());
+        assertTrue(answerPosts.isEmpty(), "a withdrawn or deferred answer sent " + answerPosts);
 
         // 4. Note prompt with blank input leaves note unchanged, then pick 1
         out = new StringWriter();
         int codeNoteBlank = executeInteractive("m\n\n1\n", "answer", "Q-001", "-i");
         assertEquals(0, codeNoteBlank);
         assertTrue(out.toString().contains("✓ Q-001 answered: Opt 1"));
+        assertEquals(1, answerPosts.size(), "the submitted answer did not reach the runtime: " + answerPosts);
     }
 
     @Test
@@ -937,6 +1001,7 @@ class QuestionsCommandTest {
                                       "title": "Coverage waiver",
                                       "subject": "plan fix-relay",
                                       "scope": "plan",
+                                      "plan": "fix-relay",
                                       "is_waiver": true,
                                       "waiver_gate": "coverage >= 80%",
                                       "waiver_reason": "generated files"
@@ -976,6 +1041,7 @@ class QuestionsCommandTest {
                                           "part_id": "part-1",
                                           "question": "How?",
                                           "answer_type": "one_option",
+                                          "allow_own_words": true,
                                           "options": [{"key": "rebase", "label": "Rebase"}]
                                         }
                                       ]
@@ -1013,12 +1079,12 @@ class QuestionsCommandTest {
 
         int codeDecline = execute("answer", "WR-1", "--action", "decline", "--reason", "Not approved");
         assertEquals(0, codeDecline);
-        assertTrue(out.toString().contains("Declined WR-1") || out.toString().contains("Abgelehnt WR-1"));
+        assertTrue(out.toString().contains("Declined WR-1"), out.toString());
 
         out = new StringWriter();
         int codeWithdraw = execute("answer", "Q-001", "--action", "withdraw");
         assertEquals(0, codeWithdraw);
-        assertTrue(out.toString().contains("you asked the plan to think again") || out.toString().contains("gebeten, neu zu überlegen"));
+        assertTrue(out.toString().contains("you asked the plan to think again"), out.toString());
     }
 
     @Test
@@ -1073,9 +1139,8 @@ class QuestionsCommandTest {
         int code = executeInteractive("?r\n1\n", "answer", "Q-003", "-i");
         assertEquals(0, code);
         var output = out.toString();
-        assertTrue(output.contains("3 of 4 votes") || output.contains("clear majority"));
-        assertTrue(output.contains("Against it (reviewer-b): stale data risk")
-                            || output.contains("Dagegen (reviewer-b): stale data risk"));
+        assertTrue(output.contains("3 of 4 votes"), output);
+        assertTrue(output.contains("Against it (reviewer-b): stale data risk"), output);
         assertTrue(output.contains("✓ Q-003 answered: In-memory cache"));
     }
 
@@ -1095,7 +1160,7 @@ class QuestionsCommandTest {
                                       "blocks": "plan",
                                       "reversibility": "reversible",
                                       "parts": [
-                                        {"part_id": "part-1", "options": [{"key": "1", "label": "Postgres"}]}
+                                        {"part_id": "part-1", "allow_own_words": true, "options": [{"key": "1", "label": "Postgres"}]}
                                       ]
                                     }
                                     """);
@@ -1121,6 +1186,7 @@ class QuestionsCommandTest {
                                         """);
                 }
             } else if ("/api/v1/decisions/Q-004/answer".equals(target)) {
+                answerBodies.add(request.bodyText());
                 response.json(200, "{\"ok\":true}");
             } else {
                 response.send(404, null, "");
@@ -1130,9 +1196,12 @@ class QuestionsCommandTest {
         int code = executeInteractive("w\nvague idea\npostgresql\ny\n", "answer", "Q-004", "-i");
         assertEquals(0, code);
         var output = out.toString();
-        assertTrue(output.contains("Which db engine?"));
-        assertTrue(output.contains("use PostgreSQL 17"));
-        assertTrue(output.contains("✓ Q-004 answered: use PostgreSQL 17"));
+        assertTrue(output.contains("Which db engine?"), output);
+        assertTrue(output.contains("use PostgreSQL 17"), output);
+        assertTrue(output.contains("✓ Q-004 answered: use PostgreSQL 17"), output);
+        assertEquals(1, answerBodies.size(), answerBodies.toString());
+        var sent = JsonTree.asObject(JsonTree.parse(answerBodies.get(0)));
+        assertEquals("use PostgreSQL 17", sent.get("words"), answerBodies.get(0));
     }
 
     @Test
@@ -1140,12 +1209,12 @@ class QuestionsCommandTest {
     void answerDirectActionsRequireReason() {
         int codeWaive = execute("answer", "WR-1", "--action", "waive");
         assertEquals(3, codeWaive);
-        assertTrue(out.toString().contains("A reason is required") || out.toString().contains("Ein Grund ist erforderlich"));
+        assertTrue(out.toString().contains("A reason is required."), out.toString());
 
         out = new StringWriter();
         int codeDecline = execute("answer", "WR-1", "--action", "decline");
         assertEquals(3, codeDecline);
-        assertTrue(out.toString().contains("A reason is required") || out.toString().contains("Ein Grund ist erforderlich"));
+        assertTrue(out.toString().contains("A reason is required."), out.toString());
     }
 
     @Test

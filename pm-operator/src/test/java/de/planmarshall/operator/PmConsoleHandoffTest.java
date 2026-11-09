@@ -124,7 +124,9 @@ class PmConsoleHandoffTest {
             assertFalse(virtual.isClosed(), "the nested verb must not close the console's terminal");
 
             virtual.type("answer Q-012 2\n");
-            await(virtual, "Q-012 answered: One database for the machine");
+            await(virtual, "has 3 parts");
+            assertFalse(virtual.rawOutput().contains("Q-012 answered"),
+                                "a direct key must not answer a multi-part decision: " + virtual.rawOutput());
 
             assertEquals(1, creations.get(), "the console's terminal is the only one created");
             assertFalse(virtual.isClosed(), "the nested verb must not close the console's terminal");

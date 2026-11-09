@@ -269,6 +269,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String OUTCOME_WITHDRAWN = "withdrawn";
     /** The decision a withdrawn question is asked anew as. */
     private static final String DECISION_ASKED_ANEW = "Q-009";
+    /** The API prefix of a decision resource. */
+    private static final String API_DECISIONS_PATH = "/api/v1/decisions/";
+    /** The API prefix of a question resource. */
+    private static final String API_QUESTIONS_PATH = "/api/v1/questions/";
     private static final String KEY_LOOPBACK = "loopback";
     private static final String KEY_DEVICE_ID = "device_id";
     private static final String KEY_LABEL = "label";
@@ -661,6 +665,12 @@ public final class MockRuntimeEngine implements AutoCloseable {
      * screen (CLI-CC-S-01, CLI-CC-P-07).
      */
     private final List<Map<String, Object>> operatorActs = new CopyOnWriteArrayList<>();
+    /**
+     * Whether a decision act's request body is kept in the act log: off unless the mock was started
+     * for a dialogue test, so a developer's mock never exposes free-text answers through
+     * {@code /mock/acts}.
+     */
+    private final boolean recordActBodies;
     private final DesignerRegistry designer = new DesignerRegistry();
     private final Object devicesLock = new Object();
     private final List<PairedDevice> pairedDevices = new ArrayList<>();
@@ -768,15 +778,30 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private final Map<String, EpicDecomposition> decompositions = new LinkedHashMap<>();
 
     /**
+     * Creates an engine that keeps no decision body in its act log.
+     *
      * @param registry     the scenario registry
      * @param scenario     the initial scenario
      * @param runtimeToken the accepted runtime token on the Unix domain socket
      * @param deviceSecret the accepted device secret on the web port
      */
     public MockRuntimeEngine(ScenarioRegistry registry, Scenario scenario, String runtimeToken, String deviceSecret) {
+        this(registry, scenario, runtimeToken, deviceSecret, false);
+    }
+
+    /**
+     * @param registry     the scenario registry
+     * @param scenario     the initial scenario
+     * @param runtimeToken the accepted runtime token on the Unix domain socket
+     * @param deviceSecret the accepted device secret on the web port
+     * @param recordActBodies whether {@code /mock/acts} records decision request bodies
+     */
+    public MockRuntimeEngine(ScenarioRegistry registry, Scenario scenario, String runtimeToken, String deviceSecret,
+            boolean recordActBodies) {
         this.registry = Objects.requireNonNull(registry, "registry");
         this.runtimeToken = Objects.requireNonNull(runtimeToken, "runtimeToken");
         this.deviceSecret = Objects.requireNonNull(deviceSecret, "deviceSecret");
+        this.recordActBodies = recordActBodies;
         this.scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofVirtual().name("mock-engine-scheduler").factory());
         this.startRegistry = new StartRegistry(event -> {
             recordStartEvent(event);
@@ -6919,7 +6944,20 @@ public final class MockRuntimeEngine implements AutoCloseable {
         act.put(KEY_METHOD, method);
         act.put("path", request.path());
         act.put(KEY_STATE, currentStateId.get());
+        if (recordActBodies && carriesDecisionBody(request.path())) {
+            act.put("body", request.bodyText());
+        }
         operatorActs.add(act);
+    }
+
+    /**
+     * @param path a request path
+     * @return whether the act is a decision answer, withdrawal or interpretation whose body a
+     *         dialogue test asserts; every other body (credentials, device secrets) stays out of
+     *         the act log
+     */
+    private static boolean carriesDecisionBody(String path) {
+        return path.contains(SEGMENT_DECISIONS) || path.startsWith(API_QUESTIONS_PATH);
     }
 
     private void handleControlActs(MockHttpResponse response) throws IOException {
@@ -9605,8 +9643,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         // 2. Decision specific routes
         String decisionId = null;
         String action = null;
-        if (path.startsWith("/api/v1/decisions/")) {
-            var sub = path.substring("/api/v1/decisions/".length());
+        if (path.startsWith(API_DECISIONS_PATH)) {
+            var sub = path.substring(API_DECISIONS_PATH.length());
             int slash = sub.indexOf('/');
             if (slash < 0) {
                 decisionId = sub;
@@ -9614,8 +9652,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 decisionId = sub.substring(0, slash);
                 action = sub.substring(slash + 1);
             }
-        } else if (path.startsWith("/api/v1/questions/")) {
-            var sub = path.substring("/api/v1/questions/".length());
+        } else if (path.startsWith(API_QUESTIONS_PATH)) {
+            var sub = path.substring(API_QUESTIONS_PATH.length());
             int slash = sub.indexOf('/');
             if (slash < 0) {
                 decisionId = sub;
@@ -9875,7 +9913,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 DECISION_ASKED_ANEW, 1, "Resolve rebase conflict (asked anew)", null, removed.subject(),
                 removed.scope(), removed.askingPhase(), removed.askingRole(), removed.blocks(),
                 removed.reversibility(), "The role implement asked anew after " + decisionId,
-                removed.evidence(), removed.parts(), Instant.now(), false, null, null, null
+                removed.evidence(), removed.parts(), Instant.now(), false, null, null, null,
+                removed.project(), removed.plan()
         );
         synchronized (decisionsLock) {
             openDecisions.put(DECISION_ASKED_ANEW, replacement);

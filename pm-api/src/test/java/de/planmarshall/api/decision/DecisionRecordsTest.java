@@ -130,13 +130,15 @@ class DecisionRecordsTest {
 
         var revision = Generators.integers(1, 100).next();
         var title = Generators.nonBlankStrings().next();
+        var project = Generators.nonBlankStrings().next();
+        var plan = Generators.nonBlankStrings().next();
         var subject = "plan " + Generators.nonBlankStrings().next();
         var now = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
         var envelope = new DecisionEnvelope(
                 "Q-007", revision, title, "Conflict", subject,
                 DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.REVERSIBLE,
                 "The change conflicts with main", Map.of("file", "RelayServer.java", "conflict_line", 42),
-                List.of(part1), now, false, null, null, null
+                List.of(part1), now, false, null, null, null, project, plan
         );
 
         var json = envelope.toJson();
@@ -145,12 +147,20 @@ class DecisionRecordsTest {
         assertTrue(json.contains("Rebase onto main"));
 
         var parsed = DecisionEnvelope.fromJson(json);
+        assertEnvelope(parsed, revision, title, subject, now, project, plan);
+        assertPart(parsed.parts().get(0));
+    }
+
+    private static void assertEnvelope(DecisionEnvelope parsed, int revision, String title,
+                                       String subject, Instant now, String project, String plan) {
         assertAll(
                 () -> assertEquals("Q-007", parsed.id()),
                 () -> assertEquals(revision, parsed.revision()),
                 () -> assertEquals(title, parsed.title()),
                 () -> assertEquals(subject, parsed.subject()),
                 () -> assertEquals(DecisionScope.PLAN, parsed.scope()),
+                () -> assertEquals(project, parsed.project()),
+                () -> assertEquals(plan, parsed.plan()),
                 () -> assertEquals("execute", parsed.askingPhase()),
                 () -> assertEquals("implement", parsed.askingRole()),
                 () -> assertEquals("plan", parsed.blocks()),
@@ -159,8 +169,9 @@ class DecisionRecordsTest {
                 () -> assertFalse(parsed.isWaiver()),
                 () -> assertEquals(1, parsed.parts().size())
         );
+    }
 
-        var parsedPart = parsed.parts().get(0);
+    private static void assertPart(DecisionPart parsedPart) {
         assertAll(
                 () -> assertEquals("1", parsedPart.partId()),
                 () -> assertEquals("2", parsedPart.recommendation()),
@@ -169,7 +180,6 @@ class DecisionRecordsTest {
                 () -> assertTrue(parsedPart.allowNote()),
                 () -> assertEquals(2, parsedPart.options().size())
         );
-
         var parsedOpt2 = parsedPart.options().get(1);
         assertNotNull(parsedOpt2.quorumSupport());
         assertEquals(QuorumBand.CLEAR_MAJORITY, parsedOpt2.quorumSupport().band());
@@ -185,7 +195,7 @@ class DecisionRecordsTest {
                 "WR-2", 1, "Waiver for coverage gate", null, "plan fix-relay",
                 DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.COSTLY,
                 "Coverage below 80%", null, List.of(), Instant.now(),
-                true, waiverGate, waiverResult, waiverReason
+                true, waiverGate, waiverResult, waiverReason, null, null
         );
 
         var json = envelope.toJson();
@@ -245,7 +255,7 @@ class DecisionRecordsTest {
         var answer = Generators.nonBlankStrings().next();
         var env = new DecisionEnvelope("Q-001", 1, "Title", null, "plan pln-1", DecisionScope.PLAN,
                 "refine", "planner", "plan", Reversibility.REVERSIBLE, null, null, List.of(), Instant.now(),
-                false, null, null, null);
+                false, null, null, null, null, null);
 
         var opened = new DecisionOpenedEvent(env);
         assertEquals(DecisionOpenedEvent.EVENT_NAME, "decision.opened");

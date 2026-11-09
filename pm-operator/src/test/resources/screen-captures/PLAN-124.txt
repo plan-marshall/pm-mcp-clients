@@ -1,0 +1,18 @@
+# Screen captures for PLAN-124: Terminal: The Answer Dialogue, Made Correct
+# name | scenario | states | command | keys | columnsxrows | locale | environment | beforeKeys | broadcast
+
+# A three-part decision: part 1, then part 2 after the first answer
+answer-q012-part1-120x30-en | running-work | decisions.open | answer Q-012 | l\n | 120x30 | en_US.UTF-8 | - | - | -
+answer-q012-part2-120x30-en | running-work | decisions.open | answer Q-012 | l\n | 120x30 | en_US.UTF-8 | - | 1\n | -
+answer-q012-part1-120x30-de | running-work | decisions.open | answer Q-012 | s\n | 120x30 | de_DE.UTF-8 | - | - | -
+answer-q012-part2-120x30-de | running-work | decisions.open | answer Q-012 | s\n | 120x30 | de_DE.UTF-8 | - | 1\n | -
+
+# A costly decision before and after ?r
+answer-q009-before-r-120x30-en | running-work | decisions.open | answer Q-009 | l\n | 120x30 | en_US.UTF-8 | - | - | -
+answer-q009-after-r-120x30-en | running-work | decisions.open | answer Q-009 | l\n | 120x30 | en_US.UTF-8 | - | ?r\n | -
+answer-q009-before-r-120x30-de | running-work | decisions.open | answer Q-009 | s\n | 120x30 | de_DE.UTF-8 | - | - | -
+answer-q009-after-r-120x30-de | running-work | decisions.open | answer Q-009 | s\n | 120x30 | de_DE.UTF-8 | - | ?r\n | -
+
+# An evidence line whose text carries ESC, CSI and OSC, shown cleaned
+answer-evil-evidence-120x30-en | running-work | decisions.open | | l\nexit\n | 120x30 | en_US.UTF-8 | - | answer Q-EVIL\n?\n | {"event":"decision.opened","data":{"decision":{"id":"Q-EVIL","revision":1,"title":"Injected evidence","subject":"plan fix-relay","scope":"plan","blocks":"plan","reversibility":"reversible","description":"Choose","evidence":{"file":"src/Main\u001b[31m.java","lines":"42-58","summary":"both\u001b]0;owned\u0007 versions"},"parts":[{"part_id":"1","question":"Which?","options":[{"key":"1","label":"Yes"}]}]}}}
+answer-evil-evidence-120x30-de | running-work | decisions.open | | s\nexit\n | 120x30 | de_DE.UTF-8 | - | answer Q-EVIL\n?\n | {"event":"decision.opened","data":{"decision":{"id":"Q-EVIL","revision":1,"title":"Injected evidence","subject":"plan fix-relay","scope":"plan","blocks":"plan","reversibility":"reversible","description":"Choose","evidence":{"file":"src/Main\u001b[31m.java","lines":"42-58","summary":"both\u001b]0;owned\u0007 versions"},"parts":[{"part_id":"1","question":"Which?","options":[{"key":"1","label":"Yes"}]}]}}}

@@ -90,10 +90,12 @@ class ScreenCaptureIT {
      *                   screen the verb opens
      * @param broadcast  the body {@code POST /mock/broadcast} is sent once the screen settled, so
      *                   that the capture shows what the pushed event drew; empty for none
+     * @param expectedExit the exit code the capture expects, {@code 0} when the line names none
+     * @param declaresExit whether the line names an expected exit at all
      */
     private record Capture(String name, String scenario, List<String> states, List<String> command,
     String keys, int columns, int rows, String locale, Map<String, String> environment,
-    String beforeKeys, String broadcast) {
+    String beforeKeys, String broadcast, int expectedExit, boolean declaresExit) {
     }
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
@@ -131,13 +133,21 @@ class ScreenCaptureIT {
             }
             try (var session = start(runtime, capture)) {
                 var consoleCapture = capture.command().isEmpty();
-                assertTrue(awaitQuiet(session, !capture.keys().isEmpty(), consoleCapture),
+                assertTrue(awaitQuiet(session, !capture.keys().isEmpty(), consoleCapture, capture.expectedExit()),
                                     capture.name() + " did not settle within " + READY_TIMEOUT);
                 if (!capture.broadcast().isEmpty()) {
                     var drawn = session.rawOutput().length();
                     broadcast(runtime, capture.broadcast());
-                    assertTrue(awaitBroadcast(session, drawn, consoleCapture),
+                    assertTrue(awaitBroadcast(session, drawn, consoleCapture, capture.expectedExit()),
                                         capture.name() + " did not settle after the broadcast within " + READY_TIMEOUT);
+                }
+                if (capture.declaresExit() && session.exitCode() == null) {
+                    // A line that names its exit expects the process to leave: a quiet prompt is not
+                    // the refusal the capture is for, so wait for the exit before accepting it.
+                    assertTrue(session.awaitExit(READY_TIMEOUT),
+                                        capture.name() + " did not exit within " + READY_TIMEOUT);
+                    assertTrue(session.awaitReader(READY_TIMEOUT),
+                                        capture.name() + "'s output reader did not finish");
                 }
                 var screen = session.screen();
                 var raw = session.rawOutput();
@@ -159,6 +169,12 @@ class ScreenCaptureIT {
                     // The exit keys follow the capture: a short pause keeps a lone Esc in the keys
                     // that opened this state from being read together with the exit key.
                     LockSupport.parkNanos(EXIT_PAUSE.toNanos());
+                }
+                if (session.exitCode() != null) {
+                    // A keys-empty capture never consults `settled`, so an unexpected exit has to
+                    // be rejected here; only the exit the line declares is a capture.
+                    assertEquals(capture.expectedExit(), session.exitCode(),
+                                        capture.name() + " exited with " + session.exitCode());
                 }
                 if (capture.keys().isEmpty() || session.exitCode() != null) {
                     Files.writeString(output.resolve(capture.name() + ".stdout.txt"),
@@ -187,7 +203,7 @@ class ScreenCaptureIT {
      * @return {@code true} when the screen settled
      * @throws InterruptedException if interrupted
      */
-    private static boolean awaitBroadcast(PtySession session, int drawn, boolean consoleCapture)
+    private static boolean awaitBroadcast(PtySession session, int drawn, boolean consoleCapture, int expectedExit)
                         throws InterruptedException {
         var graceEnd = System.nanoTime() + BROADCAST_GRACE.toNanos();
         while (session.rawOutput().length() == drawn && System.nanoTime() < graceEnd) {
@@ -196,7 +212,7 @@ class ScreenCaptureIT {
                 throw new InterruptedException();
             }
         }
-        return awaitQuiet(session, false, consoleCapture);
+        return awaitQuiet(session, false, consoleCapture, expectedExit);
     }
 
     private static void broadcast(MockRuntime runtime, String body) throws IOException {
@@ -235,7 +251,7 @@ class ScreenCaptureIT {
      * @return {@code true} when the screen settled before the deadline
      * @throws InterruptedException if interrupted
      */
-    private static boolean awaitQuiet(PtySession session, boolean expectsView, boolean console)
+    private static boolean awaitQuiet(PtySession session, boolean expectsView, boolean console, int expectedExit)
                         throws InterruptedException {
         var start = System.nanoTime();
         var deadline = start + READY_TIMEOUT.toNanos();
@@ -248,7 +264,7 @@ class ScreenCaptureIT {
                 if (quietSince == 0L) {
                     quietSince = System.nanoTime();
                 } else if (System.nanoTime() - quietSince >= SETTLE.toNanos()
-                                    && (!expectsView || settled(session, raw, start, console))) {
+                                    && (!expectsView || settled(session, raw, start, console, expectedExit))) {
                     return true;
                 }
             } else {
@@ -271,9 +287,11 @@ class ScreenCaptureIT {
      *         prompt suffix and past {@link #MIN_WAIT}, or a full-screen view that entered the
      *         alternate screen
      */
-    private static boolean settled(PtySession session, String raw, long start, boolean console) {
+    private static boolean settled(PtySession session, String raw, long start, boolean console, int expectedExit) {
         if (session.exitCode() != null) {
-            return true;
+            // A clean exit may be the settled state a capture of a short verb wants; any other exit
+            // is not a settled screen, so the capture fails instead of recording the crash.
+            return session.exitCode() == expectedExit;
         }
         if (raw.contains(StartPrompt.SUFFIX) || (console
                             && (raw.contains(CONSOLE_PROMPT) || raw.contains(BADGED_CONSOLE_PROMPT)))) {
@@ -362,9 +380,9 @@ class ScreenCaptureIT {
 
     private static Capture parse(String line) {
         var fields = line.split("\\|", -1);
-        if (fields.length != 8 && fields.length != 9 && fields.length != 10) {
+        if (fields.length != 8 && fields.length != 9 && fields.length != 10 && fields.length != 11) {
             throw new IllegalArgumentException(
-                                "A capture line names 8 fields and up to 2 optional ones, got " + fields.length + ": " + line);
+                                "A capture line names 8 fields and up to 3 optional ones, got " + fields.length + ": " + line);
         }
         var size = fields[5].strip().split("x");
         if (size.length != 2) {
@@ -395,11 +413,12 @@ class ScreenCaptureIT {
             environment.put(pair.substring(0, split), pair.substring(split + 1));
         }
         var beforeKeys = fields.length >= 9 ? keys(fields[8].strip()) : "";
-        var broadcast = fields.length == 10 && !"-".equals(fields[9].strip()) ? fields[9].strip() : "";
+        var broadcast = fields.length >= 10 && !"-".equals(fields[9].strip()) ? fields[9].strip() : "";
+        var expectedExit = fields.length >= 11 ? Integer.parseInt(fields[10].strip()) : 0;
         return new Capture(fields[0].strip(), fields[1].strip(), List.copyOf(states), List.copyOf(command),
                             keys(fields[4].strip()), Integer.parseInt(size[0].strip()),
                             Integer.parseInt(size[1].strip()), fields[6].strip(), Map.copyOf(environment),
-                            beforeKeys, broadcast);
+                            beforeKeys, broadcast, expectedExit, fields.length >= 11);
     }
 
     private static String keys(String raw) {

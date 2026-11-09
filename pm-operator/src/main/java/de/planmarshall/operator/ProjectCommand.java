@@ -235,7 +235,7 @@ public final class ProjectCommand implements Callable<Integer> {
         }
 
         private @Nullable Integer checkResponse(HttpResponse response, String safePath, String locale,
-                PrintWriter out, PrintWriter err) throws IOException {
+                            PrintWriter out, PrintWriter err) throws IOException {
             if (response.status() == 409) {
                 var reason = refusalReason(response.bodyText());
                 if (ERR_ENROLMENT_ROOT_CONFLICT.equals(reason)) {
@@ -487,7 +487,7 @@ public final class ProjectCommand implements Callable<Integer> {
                 if (reason == null || reason.isBlank()) {
                     var prompt = text(locale, "operator.actions.end.reason") + "  \u203a ";
                     var line = readLineSafe(reader, prompt);
-                    reason = (line != null && !line.isBlank()) ? line.trim() : "Released by operator";
+                    reason = line != null && !line.isBlank() ? line.trim() : "Released by operator";
                 }
                 if (!confirm(reader, locale, "operator.projects.release.confirm")) {
                     return 0;

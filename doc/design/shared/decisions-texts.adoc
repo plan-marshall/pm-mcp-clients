@@ -54,6 +54,22 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |cannot be undone
 |lässt sich nicht rückgängig machen
 
+|`decision.project.fallback`
+|the project
+|das Projekt
+
+|`decision.waiver.plan_fallback`
+|Plan
+|Plan
+
+|`decision.waiver.gate_fallback`
+|Quality gate
+|Qualitätstor
+
+|`decision.interpret.unclear_reason`
+|still unclear
+|weiterhin unklar
+
 |`decision.waiting`
 |{subject, select, epic {the epic} setup {the setup of {project}} entry {the start in {project}} other {the plan}} waits for your answer, since {time}
 |{subject, select, epic {das Epic} setup {das Setup von {project}} entry {der Start in {project}} other {der Plan}} wartet seit {time} auf deine Antwort

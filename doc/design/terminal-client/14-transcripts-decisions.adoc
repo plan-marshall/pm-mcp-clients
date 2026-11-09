@@ -14,6 +14,8 @@ _Relies on: link:../../../../pm-mcp-core/doc/specification/model-work/06-envelop
 
 The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts]. What a decision carries and how every client shows it is link:../shared/decisions.adoc[Decisions]; these transcripts show each variant in the console. The states are those of the sub-workflow `decision.*` (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-2[UC-PLN-2]).
 
+_Note: the decision chat (`h`, German `t`) is the surface of PLAN-115. While the console has no decision chat, that surface does not exist and the dialogue does not advertise the key; the transcripts below show it where the chat is available._
+
 [#t-decisions]
 == Decisions
 
@@ -248,7 +250,7 @@ Question Q-014 · plan fix-relay · plan · blocks the plan · can be undone
   …
 ----
 
-* `h) chat` stands with _none fits_ and _later_, for the whole decision; it is no answer, and the plan waits while it runs.
+* While the terminal has a decision chat (PLAN-115), `h)` (German `t)`) stands with _none fits_ and _later_, for the whole decision; it is no answer, and the plan waits while it runs. Without that surface the key is not advertised (the note at the top).
 * The role follows who asked: Q-007 was asked by the task `implement`, so its chat goes to `implement`; Q-016, escalated by a quorum, and Q-014, raised by a server rule, go to the plan's planning role `replan`.
 * A proposed answer is offered only where the part takes own words; `Enter` sends it to `interpret` as the operator's words, and the read-back follows as in <<t-decision-own-words>>. `r) reject` drops it and the chat goes on.
 * A revision accepted in the chat leaves the decision open (`Q-014 stays open; answer it whenever you are ready.`) unless the runtime closes it as withdrawn, and the chat with it, as above.
@@ -401,6 +403,50 @@ The prompts and result lines only the terminal has; what both clients show is `d
 |`operator.decision.declined`
 |Declined {id}: the plan takes its next step without the waiver.
 |{id} abgelehnt: der Plan geht ohne den Waiver seinen nächsten Schritt.
+
+|`operator.decision.input_error`
+|Error reading interactive input: {message}
+|Fehler beim Lesen der Eingabe: {message}
+
+|`operator.decision.prompt.back`
+|b) back
+|z) zurück
+
+|`operator.decision.parts_direct_refused`
+|{id} has {count} parts; answer them one at a time in the dialogue.
+|{id} hat {count} Teile; beantworte sie nacheinander im Dialog.
+
+|`operator.decision.confirm_title_parts`
+|Your decision · {id}
+|Deine Entscheidung · {id}
+
+|`operator.decision.confirm_title_costly`
+|Your decision · {id} · costly to undo
+|Deine Entscheidung · {id} · teuer rückgängig zu machen
+
+|`operator.decision.confirm_single_prompt`
+|Decide? [Enter]   ?   › 
+|Entscheiden? [Enter]   ?   › 
+
+|`operator.decision.confirm_parts_prompt`
+|Decide? [Enter]   {range}) change a part   ?   › 
+|Entscheiden? [Enter]   {range}) ändere einen Teil   ?   › 
+
+|`operator.decision.part_answer_line`
+|  {n}  {answer}
+|  {n}  {answer}
+
+|`operator.decision.votes_for`
+|Votes for {option}: {label}
+|Stimmen für {option}: {label}
+
+|`operator.decision.vote_line`
+|  {role} · {model}: {reason}
+|  {role} · {model}: {reason}
+
+|`operator.decision.vote_none`
+|No votes for {option}: {label}.
+|Keine Stimmen für {option}: {label}.
 
 |`operator.decision.chat_wait`
 |{reason, select, proposal {Answer once the proposal is accepted or rejected.} other {Answer once the reply has finished.}}
