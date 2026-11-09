@@ -52,8 +52,8 @@ Rebase onto main? [Enter]   other: 1-3   w) in my own words   m) add a note   h)
 ----
 
 * *The line* shows the target's mark and id and its state in the words of its view, kept current while the chat is open; it never offers the target's acts.
-* *`o`* as the whole first line opens the target of the last status line, `o <id>` that of another (`operator.actions.key.open`, `o` in both languages). It leaves the chat, which stays as after an empty line (`Left the chat; it stays with fix-relay.`), and opens the target where its view is: a decision its answer dialogue (xref:14-transcripts-decisions.adoc[Decisions]), a hold its dialogue (xref:19-actions.adoc#holds[What Holds a Plan]), the queued revision and an act the plan view with the actions of `a` (xref:19-actions.adoc#full-screen[In the Full-Screen View]). `h) chat` there, or `plan chat`, returns to the chat where it was.
-* *An act the role names* is printed with the command that does it (`plan pause fix-relay --after-task`); the chat never runs it, and the operator runs it after leaving, with its checks and its confirmation.
+* *`o`* as the whole first line opens the target of the last status line printed, also one printed by `older` or `changes`, `o <id>` that of another, and with no status line printed says so (`operator.actions.chat.nothing_to_open`) (`operator.actions.key.open`, `o` in both languages). It leaves the chat, which stays as after an empty line (`Left the chat; it stays with fix-relay.`), and opens the target where its view is: a decision its answer dialogue (xref:14-transcripts-decisions.adoc[Decisions]), a hold its dialogue (xref:19-actions.adoc#holds[What Holds a Plan]), the queued revision and an act the plan view with the actions of `a` (xref:19-actions.adoc#full-screen[In the Full-Screen View]). `h) chat` there, or `plan chat`, returns to the chat where it was.
+* *An act the role names* is printed with the command that does it; the chat never runs it, and the operator runs it after leaving, with its checks and its confirmation. The reference names the act and its subject only, so the command carries no further argument and the verb asks for what it needs (xref:19-actions.adoc#commands[Commands]): `pause` `plan pause <plan_id>`, `start` `plan start <plan_id>`, `cancel` `plan cancel <plan_id>`, `abandon` `plan abandon <plan_id>`, `settings` `config <aspect> --plan <plan_id>` with the aspect asked, `next_plan` `epic next <epic_id>`, `auto` `epic auto <epic_id>`, `decompose` `epic decompose <epic_id>`, `archive` `epic archive <epic_id>`, `cancel_epic` `epic cancel <epic_id>`, a hold's act `answer` at its hold (xref:19-actions.adoc#holds[What Holds a Plan]).
 * *A queued revision*: after `Enter` at `Accept?` on a running plan the chat prints `✓ accepted: applies after the current task` (as today); the plan's row and its view say `Revision from the chat queued · applies after TASK-4` until it is applied (link:../shared/plan-view.adoc#chat-revision[Plan View, A Revision from the Chat]), and the chat prints its applied line among the notices.
 
 [#notices]
@@ -74,9 +74,9 @@ While the chat is open it follows its subject's stream (the plan's, the epic's, 
 ----
 
 * *A notice line* starts with `–`, muted, with its time (`control.chat.line.*`), printed above the prompt (xref:04-console.adoc#line-editor[Line Editor]) and never inside a reply being printed: lines that arrive while a reply is printed wait until it ends. A line that names a decision or a hold is followed by its status line.
-* *More than three at once* fold into one line, `5 changes to fix-relay · changes shows them` (`operator.actions.chat.lines_folded`); `changes` as the whole first line (German `änderungen`, `operator.actions.chat.changes_command`) prints them.
+* *More than three lines of one notice turn* (the lines the runtime writes together between two replies) fold into one line, `5 changes to fix-relay · changes shows them` (`operator.actions.chat.lines_folded`); `changes` as the whole first line (German `änderungen`, `operator.actions.chat.changes_command`) prints them.
 * *Without cursor control* (`TERM=dumb`, a screen reader) the lines are printed between lines, at the next prompt, as every notice of the console.
-* *A proposal overtaken*: at `Accept?`, `Enter` on a proposal made against an older version prints `not applied: fix-relay changed since (version 8)` (`control.chat.changed_since`), and a proposal the plan can no longer take prints `fix-relay left the time for a revision; the proposal no longer applies.` (`control.chat.lapsed`) in place of its `Accept?`; the chat goes on.
+* *A proposal overtaken*: at `Accept?`, `Enter` on a plan's proposal made against an older version prints `not applied: fix-relay changed since (version 8)` (`control.chat.changed_since`) and asks again with `r) reject` only, so the proposal can still be dropped; a proposal the plan can no longer take prints `fix-relay left the time for a revision; the proposal no longer applies.` (`control.chat.lapsed`) in place of its `Accept?`, which wins where both hold; the chat goes on.
 * *A paused plan's chat* runs as every other: a reply changes nothing.
 
 [#texts]
@@ -107,6 +107,10 @@ The shared keys are link:../shared/work-actions-chat-texts.adoc#texts[Chatting w
 |`operator.actions.key.open`
 |o
 |o
+
+|`operator.actions.chat.nothing_to_open`
+|No status line to open.
+|Keine Statuszeile zum Öffnen.
 
 |`operator.actions.chat.open_hint`
 |o) open it

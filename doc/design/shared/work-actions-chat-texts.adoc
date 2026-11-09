@@ -14,7 +14,7 @@ Status: `DRAFT`. The texts of link:work-actions.adoc#chat[Chatting with the Plan
 [#texts]
 == Texts
 
-Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Planning Role]; the chat's action is `control.plan.chat`, `control.epic.chat` (also on an ended plan or epic), `control.review.chat`, `start.decomposition.chat`, `start.sources.chat`, or `decision.answer.chat` where it is opened. A chat inside a decision adds the keys `decision.chat.*` (link:decisions-texts.adoc#texts[Decisions, Texts]), a chat while starting `start.chat.*` (link:starting-work-texts.adoc#texts[Starting Work, Texts]).
+Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Planning Role]; the chat's action is `control.plan.chat`, `control.epic.chat` (also on an ended plan or epic), `control.review.chat`, `start.decomposition.chat`, `start.sources.chat`, or `decision.answer.chat` where it is opened. The runtime's message keys of D5 render through these: a narrative line `chat.line.<name>` as `control.chat.line.<name>`, an entry `chat.knows.<item>` of the context summary as `control.chat.knows.item` with that `item`, and `queued_revision.applies` (`chat.applies.after_task {task_id}`, `chat.applies.on_start`) as `control.chat.revision_queued` (`applies` `after_task` or `on_start`) and `control.chat.at_boundary` / `control.chat.at_start`. An argument that is itself a key — a pause's `{point}`, a decision's or a hold's `{reason}`, an `{outcome}`, a source's flag `{reason}` — is rendered through its own catalogue entry (the pause points of link:work-actions-texts.adoc[Actions, Texts], the reasons and outcomes of their areas), never shown raw. A chat inside a decision adds the keys `decision.chat.*` (link:decisions-texts.adoc#texts[Decisions, Texts]), a chat while starting `start.chat.*` (link:starting-work-texts.adoc#texts[Starting Work, Texts]).
 
 [cols="3,3,3",options="header"]
 |===
@@ -310,8 +310,8 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |{act} — bei den Aktionen von {subject}
 
 |`control.chat.revision_queued`
-|{applies, select, on_start {Revision from the chat queued · applies when {subject} starts again} other {Revision from the chat queued · applies after {task}}}
-|{applies, select, on_start {Revision aus dem Chat vorgemerkt · gilt, wenn {subject} wieder startet} other {Revision aus dem Chat vorgemerkt · gilt nach {task}}}
+|{applies, select, on_start {Revision from the chat queued · applies when {subject} starts again} other {Revision from the chat queued · applies after {task_id}}}
+|{applies, select, on_start {Revision aus dem Chat vorgemerkt · gilt, wenn {subject} wieder startet} other {Revision aus dem Chat vorgemerkt · gilt nach {task_id}}}
 
 |`control.chat.changed_in_chat`
 |changed in the chat

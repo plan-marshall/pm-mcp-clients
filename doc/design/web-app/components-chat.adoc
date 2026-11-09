@@ -36,7 +36,7 @@ Source and surface: `pm-web-app/src/lib/components/Chat.svelte` (new), tests in 
 
 _New._ One turn of the transcript: the operator's (right-aligned, subtle surface, _You_), the role's (full width, the role's glyph, name and model), or a notice (centred, muted). Consecutive turns of one side share one head.
 
-* *Text*: the operator's text and a notice as plain text; a notice of the subject's narrative is one line per entry of its `lines`, each in its catalogue words with its time, folded beyond one into `3 changes to fix-relay` with a disclosure `Button` (_Show them_), its decisions, holds and queued revision as `ChatStatusCard`s; the role's text through `ChatMarkdown`; a turn with `untrusted` as plain text with the label _From outside · not checked_ and its icon.
+* *Text*: the operator's text and a notice as plain text; a notice of the subject's narrative is one line per entry of its `lines`, each in its catalogue words with its time, more than three of one turn folded into `5 changes to fix-relay` with a disclosure `Button` (_Show them_), its decisions, holds and queued revision as `ChatStatusCard`s; the role's text through `ChatMarkdown`; a turn with `untrusted` as plain text with the label _From outside · not checked_ and its icon.
 * *States*: `sending` (the client's, muted with its word), `streaming` (the caret at the end, `aria-busy="true"`), `complete`, `stopped` and `failed` (its notice below), and _Not sent_ with _Try again_ and _Edit the message_.
 * *Working*: before the first word the role's turn is the `WaitingMark` with its label; the steps under it fold into a disclosure `Button` (`3 steps`) once the text arrives.
 * *Acts*: _Copy_ on hover and focus, never hiding the text; the time in a `<time>` element, shown on hover and focus and always in the accessible name.
@@ -50,6 +50,7 @@ _New._ The change a role proposes, in the transcript at the turn that proposed i
 
 * *Content*: the title of its kind, its summary, when it applies, and the diff: `−` and `+` lines on `--color-diff-removed` and `--color-diff-added`, changed words marked within a line, collapsed beyond 12 lines behind _Show all_. The signs carry the meaning without the colour, and the diff tokens are used nowhere else.
 * *Acts*: _Accept_ primary with its check icon, the card's own primary and the one exception to one primary per screen (link:components.adoc#hierarchy[Components, Hierarchy]), and _Reject_ secondary; the decision's _Answer in these words_ and ended work's _Start a plan with it_ in _Accept_'s place. Each is a `Button` with `loading` while its request runs.
+* *Refused for an older version*: the card stays open with `not applied: … changed since (version N)` under it, _Accept_ disabled with that reason, _Reject_ enabled.
 * *Folded*: once decided, the card folds into its notice line; a replaced card folds with `The earlier proposal was replaced.`, a `lapsed` one with its line, and a plan's revision accepted while a task runs stays folded as `accepted: applies after the current task` until its applied line.
 * *Announced* once when it arrives, through the transcript's log.
 
@@ -65,7 +66,7 @@ _New (D5)._ The state of something a turn or a notice names that has acts of its
 * *Act*: one, _Open it_ (`control.chat.card.open`), a secondary `Button` that opens the target where link:chat.adoc#status-cards[Chat and Voice, Status Cards] says. It never offers the target's own acts.
 * *Gone*: a target that ended (a decision answered, a hold cleared, the revision applied) keeps the card with its last state, muted, and _Open it_ still opens it.
 
-Source and surface: `pm-web-app/src/lib/components/ChatStatusCard.svelte` (new), tests in `ChatStatusCard.test.ts`; the props are `target` (kind, id, subject) and `onopen`; it reads its state through the stores the views use, never through a request of its own.
+Source and surface: `pm-web-app/src/lib/components/ChatStatusCard.svelte` (new), tests in `ChatStatusCard.test.ts`; the props are `target` (kind, id, subject) and `onopen`; it reads its state through the stores the views use, and a target no view has loaded (a decision or a hold of another subject) once from its resource, kept current by the events the chat follows, else shown as of that read.
 
 [#chat-markdown]
 == ChatMarkdown
