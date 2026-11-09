@@ -3777,12 +3777,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
         if ("GET".equals(request.method()) && act == null) {
             var state = startRegistry.find(entryId);
             if (state == null) {
-                if (entryId.startsWith("ent-")) {
-                    var prjId = entryId.substring("ent-".length());
-                    response.json(200, projectSetupState(prjId,
-                            projectSetupStates.getOrDefault(prjId, PROJECT_SETUP_IDENTITY)));
-                    return true;
-                }
                 sendEntryNotFound(response, entryId);
                 return true;
             }
@@ -3790,11 +3784,6 @@ public final class MockRuntimeEngine implements AutoCloseable {
             return true;
         }
         if (METHOD_POST.equals(request.method()) && act != null) {
-            if (entryId.startsWith("ent-") && startRegistry.find(entryId) == null) {
-                var prjId = entryId.substring("ent-".length());
-                handleSetupProject(request, response, prjId, act);
-                return true;
-            }
             handleEntryAct(request, response, entryId, act);
             return true;
         }
@@ -8620,13 +8609,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
      */
     private void handleSetupProject(MockHttpRequest request, MockHttpResponse response,
             String projectId) throws IOException {
-        handleSetupProject(request, response, projectId, null);
-    }
-
-    private void handleSetupProject(MockHttpRequest request, MockHttpResponse response,
-            String projectId, @Nullable String linkOverride) throws IOException {
         var body = readBodyMap(request);
-        var linkName = linkOverride != null ? linkOverride : JsonTree.string(body, "link");
+        var linkName = JsonTree.string(body, "link");
         var current = projectSetupStates.getOrDefault(projectId, PROJECT_SETUP_IDENTITY);
         if ("set".equals(linkName) && PROJECT_SETUP_IDENTITY.equals(current)) {
             current = PROJECT_SETUP_COMPLETED;
