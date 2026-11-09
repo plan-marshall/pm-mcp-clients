@@ -5581,8 +5581,17 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 var req = ReadReportsRequest.fromJson(request.bodyText());
                 ids = req.reportIds();
             } catch (IOException _) {
-                // Ignore parse errors from malformed body
+                // A malformed body carries no ids either; it is refused below with them.
+                ids = List.of();
             }
+        }
+        if (ids.isEmpty()) {
+            // The contract carries the ids alone. A body without them, the removed all form among
+            // them, marks nothing and is refused so a caller cannot believe it read a report.
+            response.json(422, Map.of(
+                    KEY_ERROR, "report_ids_required",
+                    KEY_MESSAGE, "POST /api/v1/reports/read needs a non-empty report_ids list"));
+            return;
         }
         var marked = new ArrayList<ReportItem>();
         synchronized (reportsLock) {
