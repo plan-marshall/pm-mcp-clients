@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -23,13 +24,11 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.json.JsonTree;
-import de.planmarshall.api.resource.EnrolResult;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -361,50 +360,135 @@ class ProjectCommandTest {
     }
 
     @Test
-    @DisplayName("project add enrols the checkout through the enrolment and reports the project")
-    void projectAdd() throws Exception {
-        var projectId = Generators.letterStrings(4, 12).next();
-        var path = "/git/" + Generators.letterStrings(4, 12).next();
+    @DisplayName("interactive project add reaches identity state and asks")
+    void projectAddInteractiveReachesIdentity() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
         var server = fixture.start((request, response) -> {
-            if ("/api/v1/enrol".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(201, new EnrolResult(EnrolResult.STATUS_ENROLLED, projectId, false).toJson());
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, """
+                                    {"status":"started","onboarding_id":"onb-cui-parent","checkout_path":"/git/cui-parent",
+                                     "project_id":"cui-parent","current_step":"Identity","step_number":2,"total_steps":10}
+                                    """);
+            } else if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
+                if (request.bodyText().contains("\"link\"")) {
+                    response.json(200, """
+                                        {"project_id":"cui-parent","state":"project.completed","step":10,
+                                         "total_steps":10,"summary":"cui-parent is ready","links":{}}
+                                        """);
+                } else {
+                    response.json(200, """
+                                        {"project_id":"cui-parent","state":"project.identity","step":2,
+                                         "total_steps":10,"id":"cui-parent","name":"cui-parent","pilot":false,
+                                         "links":{"set":{"href":"/api/v1/projects/cui-parent/setup","method":"POST"}}}
+                                        """);
+                }
             } else {
                 response.send(404, null, "");
             }
         });
 
-        int code = execute("project", "add", path);
-
-        var request = server.awaitRequest(Duration.ofSeconds(1));
+        int code = executeWithInput("\n", "project", "add", "/git/cui-parent");
+        var output = out.toString();
         assertAll(
                             () -> assertEquals(0, code, err.toString()),
-                            () -> assertTrue(request.bodyText().contains("\"path\":\"" + path + "\""), request.bodyText()),
-                            () -> assertTrue(request.bodyText().contains("\"pilot\":false"), request.bodyText()),
-                            () -> assertTrue(out.toString().contains("✓ Enrolled " + projectId + " (standard mode)"),
-                                                out.toString()));
+                            () -> assertTrue(output.contains("Id"), output),
+                            () -> assertTrue(output.contains("cui-parent"), output),
+                            () -> assertTrue(output.contains("cui-parent is ready"), output),
+                            () -> assertTrue(server.requests().stream().noneMatch(r -> "/api/v1/enrol".equals(r.target())),
+                                                "no POST /api/v1/enrol is sent outside the onboarding's own enrol step")
+        );
     }
 
     @Test
-    @DisplayName("project add --pilot enrols the project in pilot mode")
-    void projectAddPilot() throws Exception {
-        var projectId = Generators.letterStrings(4, 12).next();
-        var server = fixture.start((request, response) -> {
-            if ("/api/v1/enrol".equals(request.target()) && "POST".equals(request.method())) {
-                response.json(200, new EnrolResult(EnrolResult.STATUS_ENROLLED, projectId, true).toJson());
+    @DisplayName("project add --no-input without --pilot exits 3 and names --pilot")
+    void projectAddNoInputWithoutPilotExitsNeedsInput() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, """
+                                    {"status":"started","onboarding_id":"onb-cui-parent","checkout_path":"/git/cui-parent",
+                                     "project_id":"cui-parent","current_step":"Identity","step_number":2,"total_steps":10}
+                                    """);
+            } else if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
+                response.json(200, """
+                                    {"project_id":"cui-parent","state":"project.identity","step":2,
+                                     "total_steps":10,"id":"cui-parent","name":"cui-parent","pilot":false,
+                                     "links":{"set":{"href":"/api/v1/projects/cui-parent/setup","method":"POST"}}}
+                                    """);
             } else {
                 response.send(404, null, "");
             }
         });
 
-        int code = execute("project", "add", "--pilot");
+        int code = execute("project", "add", "/git/cui-parent", "--no-input");
+        assertAll(
+                            () -> assertEquals(ProjectCommand.EXIT_NEEDS_INPUT, code, out.toString()),
+                            () -> assertTrue(err.toString().contains("--pilot"), err.toString())
+        );
+    }
 
-        var request = server.awaitRequest(Duration.ofSeconds(1));
+    @Test
+    @DisplayName("project add with every answer given runs through to enrolment without a prompt")
+    void projectAddWithAllAnswersRunsWithoutPrompt() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, """
+                                    {"status":"started","onboarding_id":"onb-cui-parent","checkout_path":"/git/cui-parent",
+                                     "project_id":"cui-parent","current_step":"Identity","step_number":2,"total_steps":10}
+                                    """);
+            } else if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
+                if (request.bodyText().contains("\"link\"")) {
+                    response.json(200, """
+                                        {"project_id":"cui-parent","state":"project.completed","step":10,
+                                         "total_steps":10,"summary":"cui-parent is ready","links":{}}
+                                        """);
+                } else {
+                    response.json(200, """
+                                        {"project_id":"cui-parent","state":"project.identity","step":2,
+                                         "total_steps":10,"id":"cui-parent","name":"cui-parent","pilot":true,
+                                         "links":{"set":{"href":"/api/v1/projects/cui-parent/setup","method":"POST"}}}
+                                        """);
+                }
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("project", "add", "/git/cui-parent", "--pilot");
+        var output = out.toString();
         assertAll(
                             () -> assertEquals(0, code, err.toString()),
-                            () -> assertTrue(request.bodyText().contains("\"path\":\".\""), request.bodyText()),
-                            () -> assertTrue(request.bodyText().contains("\"pilot\":true"), request.bodyText()),
-                            () -> assertTrue(out.toString().contains("✓ Enrolled " + projectId + " (pilot mode)"),
-                                                out.toString()));
+                            () -> assertTrue(output.contains("cui-parent is ready"), output),
+                            () -> assertTrue(server.requests().stream().noneMatch(r -> "/api/v1/enrol".equals(r.target())),
+                                                "no POST /api/v1/enrol is sent outside the onboarding's own enrol step")
+        );
+    }
+
+    @Test
+    @DisplayName("no POST /api/v1/enrol is sent outside the onboarding's own enrol step")
+    void projectAddNeverSendsDirectEnrol() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, """
+                                    {"status":"started","onboarding_id":"onb-cui-parent","checkout_path":"/git/cui-parent",
+                                     "project_id":"cui-parent","current_step":"Identity","step_number":2,"total_steps":10}
+                                    """);
+            } else if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
+                response.json(200, """
+                                    {"project_id":"cui-parent","state":"project.completed","step":10,
+                                     "total_steps":10,"summary":"cui-parent is ready","links":{}}
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("project", "add", "/git/cui-parent", "--pilot");
+        assertEquals(0, code, err.toString());
+        assertTrue(server.requests().stream().noneMatch(r -> "/api/v1/enrol".equals(r.target())),
+                            "no POST /api/v1/enrol is sent");
     }
 
     @Test
@@ -445,6 +529,134 @@ class ProjectCommandTest {
         assertAll(
                             () -> assertEquals(1, code),
                             () -> assertTrue(err.toString().contains("HTTP 400"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("project add continues a run that has only an entry in its continue link")
+    void projectAddContinuesTheEntryOfAnUnenrolledRun() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, """
+                                    {"status":"started","checkout_path":"/git/cui-parent",
+                                     "continue_link":"/api/v1/entries/ent-cui/continue"}
+                                    """);
+            } else if ("/api/v1/entries/ent-cui".equals(request.target())) {
+                response.json(200, """
+                                    {"state":"project.completed","step":10,"total_steps":10,
+                                     "summary":"cui-parent is ready","links":{}}
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("project", "add", "/git/cui-parent", "--pilot");
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(out.toString().contains("The project is ready"), out.toString()),
+                            () -> assertTrue(server.requests().stream()
+                                                .anyMatch(r -> "/api/v1/entries/ent-cui".equals(r.target())),
+                                                "the run is read at its entry"));
+    }
+
+    @Test
+    @DisplayName("project add names the project after the checkout directory when the runtime names neither")
+    void projectAddFallsBackToTheCheckoutDirectoryName() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, "{\"status\":\"started\"}");
+            } else if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
+                response.json(200, """
+                                    {"project_id":"cui-parent","state":"project.completed","step":10,
+                                     "total_steps":10,"summary":"cui-parent is ready","links":{}}
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("project", "add", "/git/cui-parent", "--pilot");
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(server.requests().stream()
+                                                .anyMatch(r -> "/api/v1/projects/cui-parent/setup".equals(r.target())),
+                                                "the run is read at the directory name"));
+    }
+
+    @Test
+    @DisplayName("project add reports a checkout without a directory name as unreadable")
+    void projectAddWithARootPathReportsUnreadable() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, "{\"status\":\"started\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("project", "add", "/", "--pilot");
+
+        assertAll(
+                            () -> assertEquals(1, code, out.toString()),
+                            () -> assertTrue(err.toString().contains("could not be read"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("project add reports a run whose setup cannot be read")
+    void projectAddReportsAnUnreadableSetup() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, "{\"status\":\"started\",\"project_id\":\"cui-parent\"}");
+            } else {
+                response.send(500, null, "");
+            }
+        });
+
+        int code = execute("project", "add", "/git/cui-parent", "--pilot");
+
+        assertAll(
+                            () -> assertEquals(1, code, out.toString()),
+                            () -> assertTrue(err.toString().contains("cui-parent could not be read"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("project add does not treat a server error of the start as a refusal of the operator")
+    void projectAddServerErrorOnStartFails() throws Exception {
+        fixture.start((request, response) -> response.send(503, null, ""));
+
+        int code = execute("project", "add", "/git/cui-parent", "--pilot");
+
+        assertNotEquals(0, code, out.toString());
+    }
+
+    @Test
+    @DisplayName("project unenrol treats a closed input as a declined confirmation and sends nothing")
+    void projectUnenrolWithClosedInputSendsNothing() throws Exception {
+        var server = fixture.start((request, response) -> response.json(200, "{\"status\":\"unenrolled\"}"));
+
+        int code = executeWithInput("", "project", "unenrol", "my-app");
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(server.requests().stream()
+                                                .noneMatch(r -> r.target().endsWith("/unenrol")),
+                                                "nothing is sent"));
+    }
+
+    @Test
+    @DisplayName("project release treats a closed input as a declined confirmation and sends nothing")
+    void projectReleaseWithClosedInputSendsNothing() throws Exception {
+        var server = fixture.start((request, response) -> response.json(200, "{\"status\":\"released\"}"));
+
+        int code = executeWithInput("", "project", "release", "my-app");
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(server.requests().stream()
+                                                .noneMatch(r -> r.target().endsWith("/release")),
+                                                "nothing is sent"));
     }
 
     @Test
@@ -521,6 +733,53 @@ class ProjectCommandTest {
     }
 
     @Test
+    @DisplayName("project release without --yes prompts confirmation; declining sends nothing")
+    void projectReleaseWithoutYesConfirmationAskedDecliningSendsNothing() throws Exception {
+        var server = fixture.start((request, response) -> response.json(200, "{}"));
+
+        int code = executeWithInput("n\n", "project", "release", "old-app", "--reason", "my-reason");
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(server.requests().isEmpty(), "no request may be sent when declined"),
+                            () -> assertTrue(out.toString().contains("Release the project?"), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("project release interactive without --reason asks reason and records it")
+    void projectReleaseInteractiveWithoutReasonAsksReason() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/projects/old-app/release".equals(request.target())) {
+                response.json(200, "{\"project_id\":\"old-app\",\"plans_ended_count\":1,\"epics_ended_count\":0,\"entries_deleted_count\":0}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithInput("my custom reason\ny\n", "project", "release", "old-app");
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertEquals(1, server.requests().size()),
+                            () -> assertTrue(server.requests().get(0).bodyText().contains("my custom reason"),
+                                                server.requests().get(0).bodyText()),
+                            () -> assertTrue(out.toString().contains("✓ old-app released"), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("project release --no-input without --yes stops with exit 3 and sends nothing")
+    void projectReleaseNoInputWithoutYesExitsNeedsInput() throws Exception {
+        var server = fixture.start((request, response) -> response.json(200, "{}"));
+
+        int code = execute("project", "release", "old-app", "--reason", "my-reason", "--no-input");
+        assertAll(
+                            () -> assertEquals(3, code),
+                            () -> assertTrue(err.toString().contains("Release confirmation required (--yes)"), err.toString()),
+                            () -> assertTrue(server.requests().isEmpty(), "no request may be sent")
+        );
+    }
+
+    @Test
     @DisplayName("project unenrol un-enrols project")
     void projectUnenrol() throws Exception {
         fixture.start((request, response) -> {
@@ -535,6 +794,19 @@ class ProjectCommandTest {
         assertAll(
                             () -> assertEquals(0, code),
                             () -> assertTrue(out.toString().contains("✓ old-app unenrolled"))
+        );
+    }
+
+    @Test
+    @DisplayName("project unenrol without --yes prompts confirmation; declining sends nothing")
+    void projectUnenrolWithoutYesConfirmationAskedDecliningSendsNothing() throws Exception {
+        var server = fixture.start((request, response) -> response.json(200, "{}"));
+
+        int code = executeWithInput("n\n", "project", "unenrol", "old-app");
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(server.requests().isEmpty(), "no request may be sent when declined"),
+                            () -> assertTrue(out.toString().contains("Unenrol the project?"), out.toString())
         );
     }
 

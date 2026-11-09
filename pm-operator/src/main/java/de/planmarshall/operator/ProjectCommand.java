@@ -9,21 +9,28 @@
  */
 package de.planmarshall.operator;
 
+import java.io.BufferedReader;
+import java.io.IOError;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.io.StringReader;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jline.reader.EndOfFileException;
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.UserInterruptException;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.project.EnrolledProject;
 import de.planmarshall.api.project.ProjectReleaseRequest;
-import de.planmarshall.api.resource.EnrolRequest;
-import de.planmarshall.api.resource.EnrolResult;
 import de.planmarshall.api.resource.UnenrolRequest;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 import de.planmarshall.operator.dialogue.ProjectOnboardingSource;
@@ -152,8 +159,8 @@ public final class ProjectCommand implements Callable<Integer> {
     }
 
     /**
-     * {@code project add [<path>] [--pilot]}: the direct verb of a project's enrolment, its
-     * arguments the answers of {@code project.identity} to {@code project.enrol} (PM-EXEC-2; CLI
+     * {@code project add [<path>] [--pilot]}: the direct verb of a project's onboarding, its
+     * arguments the answers of {@code project.checkout} and {@code project.identity} (PM-EXEC-2; CLI
      * &amp; Security § Enrolment, Lifecycle Gate &amp; Release; 17-projects.adoc#commands).
      * <p>
      * It reaches the stores only through the runtime's local API, and the operator gate refuses it
@@ -173,6 +180,9 @@ public final class ProjectCommand implements Callable<Integer> {
         @Option(names = "--pilot", description = "Enrol the project in pilot mode (the lifecycle gate)")
         boolean pilot;
 
+        @Option(names = "--no-input", description = "Non-interactive mode")
+        boolean noInput;
+
         AddCommand(OperatorContext context) {
             this.context = context;
         }
@@ -185,18 +195,47 @@ public final class ProjectCommand implements Callable<Integer> {
             var safePath = OutputSafety.stripControlSequences(path);
             var locale = context.clientEnvironment().locale();
 
-            var request = new EnrolRequest(path, pilot);
-            var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/enrol", request.toJson()));
-
-            if (response.status() == 200 || response.status() == 201) {
-                var result = EnrolResult.fromJson(response.bodyText());
-                var id = OutputSafety.stripControlSequences(result.projectId());
-                var mode = text(locale, result.pilot() ? "enrolment.enrol.mode.pilot"
-                                    : "enrolment.enrol.mode.standard");
-                out.println(MessageCatalogue.format(locale, "enrolment.enrol.done", Map.of("id", id, "mode", mode)));
-                out.flush();
-                return 0;
+            if (noInput && !pilot) {
+                err.println(text(locale, "operator.project.add.pilot_required"));
+                err.flush();
+                return EXIT_NEEDS_INPUT;
             }
+
+            var startPayload = JsonTree.write(Map.of("path", path, "pilot", pilot));
+            var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/project-onboardings", startPayload));
+
+            var refusalExit = checkResponse(response, safePath, locale, out, err);
+            if (refusalExit != null) {
+                return refusalExit;
+            }
+
+            var source = resolveSource(response);
+
+            var startPrompt = new StartPrompt(context, out, locale, noInput);
+            var dialogue = new StateDialogue(source, out, locale, stateId -> {
+                if ("project.identity".equals(stateId) && pilot) {
+                    return new ChoicePrompt(new BufferedReader(new StringReader("\n")), out, locale, stateId);
+                }
+                return new ChoicePrompt(startPrompt, stateId);
+            });
+
+            try {
+                var finalFrame = dialogue.run();
+                return finalFrame.isFinal() ? 0 : EXIT_NEEDS_INPUT;
+            } catch (StartPrompt.InterruptException _) {
+                return StartPrompt.EXIT_INTERRUPTED;
+            } catch (StartPrompt.StartLeftException _) {
+                return 0;
+            } catch (IOException _) {
+                err.println(MessageCatalogue.format(locale, "project.setup.unreadable",
+                                    Map.of(PARAM_PROJECT, safePath)));
+                err.flush();
+                return 1;
+            }
+        }
+
+        private @Nullable Integer checkResponse(HttpResponse response, String safePath, String locale,
+                PrintWriter out, PrintWriter err) throws IOException {
             if (response.status() == 409) {
                 var reason = refusalReason(response.bodyText());
                 if (ERR_ENROLMENT_ROOT_CONFLICT.equals(reason)) {
@@ -218,7 +257,47 @@ public final class ProjectCommand implements Callable<Integer> {
                 err.flush();
                 return 1;
             }
-            throw new OperatorRefusedException("project add " + safePath, response);
+            if (response.status() != 200 && response.status() != 201) {
+                throw new OperatorRefusedException("project add " + safePath, response);
+            }
+            return null;
+        }
+
+        private StateDialogue.Source resolveSource(HttpResponse response) throws IOException {
+            String entryId = null;
+            String projectId = null;
+            try {
+                var parsed = JsonTree.asObject(JsonTree.parse(response.bodyText()));
+                if (parsed != null) {
+                    var continueLink = JsonTree.string(parsed, "continue_link");
+                    if (continueLink != null) {
+                        entryId = EntryFlow.entryId(continueLink);
+                    }
+                    if (entryId == null) {
+                        entryId = JsonTree.string(parsed, "entry_id");
+                    }
+                    projectId = JsonTree.string(parsed, "project_id");
+                    if (projectId == null) {
+                        projectId = JsonTree.string(parsed, "id");
+                    }
+                }
+            } catch (IOException _) {
+                // fall back below
+            }
+
+            if (projectId != null) {
+                return new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId);
+            }
+            if (entryId != null) {
+                return ProjectOnboardingSource.forEntry(context.runtime(true), context.gate(), entryId);
+            }
+            try {
+                var name = Path.of(path).getFileName();
+                projectId = name != null ? name.toString() : path;
+            } catch (IllegalArgumentException _) {
+                projectId = path;
+            }
+            return new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId);
         }
     }
 
@@ -357,21 +436,25 @@ public final class ProjectCommand implements Callable<Integer> {
             var sanitizedId = OutputSafety.stripControlSequences(projectId);
             var locale = context.clientEnvironment().locale();
 
-            if (reason == null || reason.isBlank()) {
-                if (noInput) {
-                    err.println(text(locale, "operator.project.release.reason_required"));
-                    err.flush();
-                    return EXIT_NEEDS_INPUT;
-                }
-                // The reason the release request records when the operator gave none: a value of the
-                // request the runtime stores, not a text the terminal shows.
-                reason = "Released by operator";
+            if ((reason == null || reason.isBlank()) && noInput) {
+                err.println(text(locale, "operator.project.release.reason_required"));
+                err.flush();
+                return EXIT_NEEDS_INPUT;
             }
 
             if (!yes && noInput) {
                 err.println(text(locale, "operator.project.release.confirm_required"));
                 err.flush();
                 return EXIT_NEEDS_INPUT;
+            }
+
+            if (!yes) {
+                var confirmationExit = promptReleaseConfirmation(locale);
+                if (confirmationExit != null) {
+                    return confirmationExit;
+                }
+            } else if (reason == null || reason.isBlank()) {
+                reason = "Released by operator";
             }
 
             var req = new ProjectReleaseRequest(projectId, true, force, reason);
@@ -396,6 +479,23 @@ public final class ProjectCommand implements Callable<Integer> {
                 return 1;
             }
             throw new OperatorRefusedException("release project " + sanitizedId, response);
+        }
+
+        private @Nullable Integer promptReleaseConfirmation(String locale) throws IOException {
+            try (var lease = context.openTerminal()) {
+                var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
+                if (reason == null || reason.isBlank()) {
+                    var prompt = text(locale, "operator.actions.end.reason") + "  \u203a ";
+                    var line = readLineSafe(reader, prompt);
+                    reason = (line != null && !line.isBlank()) ? line.trim() : "Released by operator";
+                }
+                if (!confirm(reader, locale, "operator.projects.release.confirm")) {
+                    return 0;
+                }
+                return null;
+            } catch (StartPrompt.InterruptException _) {
+                return StartPrompt.EXIT_INTERRUPTED;
+            }
         }
     }
 
@@ -437,6 +537,17 @@ public final class ProjectCommand implements Callable<Integer> {
                 err.println(text(locale, "enrolment.unenrol.confirm_required"));
                 err.flush();
                 return EXIT_NEEDS_INPUT;
+            }
+
+            if (!yes) {
+                try (var lease = context.openTerminal()) {
+                    var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
+                    if (!confirm(reader, locale, "operator.projects.unenrol.confirm")) {
+                        return 0;
+                    }
+                } catch (StartPrompt.InterruptException _) {
+                    return StartPrompt.EXIT_INTERRUPTED;
+                }
             }
 
             var request = new UnenrolRequest(projectId);
@@ -483,5 +594,28 @@ public final class ProjectCommand implements Callable<Integer> {
         } catch (IOException _) {
             return "";
         }
+    }
+
+    private static @Nullable String readLineSafe(LineReader reader, String prompt) {
+        try {
+            return reader.readLine(prompt);
+        } catch (UserInterruptException _) {
+            throw new StartPrompt.InterruptException();
+        } catch (EndOfFileException | IOError _) {
+            return null;
+        }
+    }
+
+    private static boolean confirm(LineReader reader, String locale, String confirmKey) {
+        var confirmText = text(locale, confirmKey);
+        var keepItText = text(locale, "operator.projects.keep_it");
+        var yesText = text(locale, "operator.project.detail.yes");
+        var yKey = "de".equals(locale) ? "j" : "y";
+        var prompt = confirmText + "? " + yKey + ") " + yesText + "   n) " + keepItText + "   ?   \u203a ";
+        var line = readLineSafe(reader, prompt);
+        if (line == null) {
+            return false;
+        }
+        return Answers.isYes(line);
     }
 }

@@ -152,7 +152,6 @@ In the console only:
 * *Open items of this tree*, each with its owner:
 ** `profile`, `decision-log`, `waive`, `grant-access` and `sweep` stand in the verb listing above and no registered verb answers them. Owner: `plan-marshall/pm-mcp-clients` — each needs its verb with its options, or its removal, decided per verb.
 ** The specification's operator channel (`doc/specification/cli-and-security/02-operator-channel.adoc`, line 42 of `plan-marshall/plan-marshall-documentation`) still names `enrol` where this tree folds it into `project add`. Owner: `plan-marshall/plan-marshall-documentation` — a companion change there, not opened yet.
-** `project add` enrols directly today, although the line above says it onboards the project; the target, the gap and its owner are recorded in xref:17-projects.adoc#commands[Projects, Commands] (open item `project-add-onboarding`). Owner: `plan-marshall/pm-mcp-clients`.
 
 [#one-surface]
 === One Surface in Every Language

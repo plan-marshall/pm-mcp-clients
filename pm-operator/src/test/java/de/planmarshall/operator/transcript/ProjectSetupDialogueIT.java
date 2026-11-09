@@ -92,4 +92,18 @@ class ProjectSetupDialogueIT {
             harness.assertAct("POST", "/api/v1/projects/cui-parent/setup");
         }
     }
+
+    @Test
+    @DisplayName("project add starts onboarding and reaches identity state")
+    void projectAddStartsOnboardingAndReachesIdentity() throws Exception {
+        try (var harness = DialogueHarness.start(StandardScenarios.PROJECTS_AND_START);
+             var session = harness.open("project", "add", "/git/cui-parent")) {
+            assertTrue(session.awaitText(PROMPT, DialogueHarness.TIMEOUT), session.rawOutput());
+            assertTrue(session.awaitText("Record this choice", DialogueHarness.TIMEOUT),
+                                session.rawOutput());
+            DialogueHarness.type(session, "q\n");
+            assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
+            assertEquals(0, session.exitCode(), session.rawOutput());
+        }
+    }
 }
