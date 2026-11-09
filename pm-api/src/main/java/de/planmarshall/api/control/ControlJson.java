@@ -10,6 +10,7 @@
 package de.planmarshall.api.control;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +18,7 @@ import java.util.Objects;
 import lombok.experimental.UtilityClass;
 
 import de.planmarshall.api.json.JsonFormatException;
+import de.planmarshall.api.json.JsonNumber;
 import de.planmarshall.api.json.JsonTree;
 
 /**
@@ -107,6 +109,38 @@ final class ControlJson {
     static Long optLong(Map<String, Object> map, String key) {
         var value = JsonTree.number(map, key);
         return value != null ? value.longValue() : null;
+    }
+
+    /**
+     * Reads the named field of a record as a count: a missing field, a present {@code null}, a
+     * negative value, a fractional value and a value outside the integer range are all unknown and
+     * yield {@code null}, never an assumed zero. The number is read at its own precision, so a
+     * value such as {@code 2.0000000000000001} stays fractional instead of rounding to {@code 2}.
+     *
+     * @param map the object
+     * @param key the field key
+     * @return the count, or {@code null} when the value is not a non-negative integer
+     */
+    static Integer optCount(Map<String, Object> map, String key) {
+        BigDecimal value;
+        try {
+            value = switch (map != null ? map.get(key) : null) {
+                case JsonNumber(String text) -> new BigDecimal(text);
+                case Number number -> new BigDecimal(number.toString());
+                case String text -> new BigDecimal(text.trim());
+                case null, default -> null;
+            };
+        } catch (NumberFormatException _) {
+            return null;
+        }
+        if (value == null || value.signum() < 0) {
+            return null;
+        }
+        try {
+            return value.intValueExact();
+        } catch (ArithmeticException _) {
+            return null;
+        }
     }
 
     /**

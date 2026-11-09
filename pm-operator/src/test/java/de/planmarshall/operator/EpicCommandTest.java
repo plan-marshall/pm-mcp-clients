@@ -167,6 +167,44 @@ class EpicCommandTest {
     }
 
     @Test
+    @DisplayName("epic <id> shows an unknown running count as ? of 3 at once")
+    void epicResourceUnknownRunning() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/epics/relay-hardening".equals(request.target())) {
+                response.json(200, EPIC_RESOURCE.replace("\"scope\":3,\"running\":3", "\"scope\":3"));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("epic", "relay-hardening");
+
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("? of 3 at once"), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("epic <id> shows a known running count as 2 of 3 at once")
+    void epicResourceKnownRunning() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/epics/relay-hardening".equals(request.target())) {
+                response.json(200, EPIC_RESOURCE.replace("\"scope\":3,\"running\":3", "\"scope\":3,\"running\":2"));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("epic", "relay-hardening");
+
+        assertAll(
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(out.toString().contains("2 of 3 at once"), out.toString())
+        );
+    }
+
+    @Test
     @DisplayName("epic <id> --tokens prints the figure per plan and the epic's own tasks")
     void epicResourceTokens() throws Exception {
         fixture.start((request, response) -> {
