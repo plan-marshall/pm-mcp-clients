@@ -12,7 +12,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-contro
 
 _Relies on: link:components.adoc#rules[Components, Rules Every Component Keeps], link:chat.adoc[Chat and Voice] (what the chat shows and does), link:components-fields.adoc#compose[Fields and Forms, Compose], link:components-brand.adoc#waiting-mark[Brand Pieces, WaitingMark], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-chat-text[The Chat's Text]_
 
-Status: `DRAFT`. A part of link:components.adoc[Components]: the six pieces the chat and the voice input are built from — `Chat`, `ChatTurn`, `ProposalCard`, `ChatStatusCard`, `ChatMarkdown` and `VoiceInput`. What they show and when is link:chat.adoc[Chat and Voice]; this part is their component specification. Each is _new_, lives in `pm-web-app/src/lib/components/` with a test beside it and a fixture on `/dev/components` in both themes, and is built by the D4 web chat package (`VoiceInput` by the D4 voice package, `ChatStatusCard` and the D5 additions by the D5 web chat package).
+Status: `AGREED`. A part of link:components.adoc[Components]: the six pieces the chat and the voice input are built from — `Chat`, `ChatTurn`, `ProposalCard`, `ChatStatusCard`, `ChatMarkdown` and `VoiceInput`. What they show and when is link:chat.adoc[Chat and Voice]; this part is their component specification. Each is _new_, lives in `pm-web-app/src/lib/components/` with a test beside it and a fixture on `/dev/components` in both themes, and is built by the D4 web chat package (`VoiceInput` by the D4 voice package, `ChatStatusCard` and the D5 additions by the D5 web chat package).
 
 [#chat]
 == Chat

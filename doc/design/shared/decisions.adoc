@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue/16-decision.adoc#state-catalogue-decision[the decision unit's states], link:../../../../pm-mcp-core/doc/specification/model-work/06-envelopes-questions-deadlines.adoc#question-delivery[Delivery to the Operator], link:../../../../pm-mcp-core/doc/specification/model-work/06-envelopes-questions-deadlines.adoc#answers-and-amendments[Answers & Amendments], link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role], link:../../../../pm-mcp-core/doc/specification/model-work/06-envelopes-questions-deadlines.adoc#decision-structure[The Decision Structure] and link:../../../../pm-mcp-core/doc/specification/model-work/06-envelopes-questions-deadlines.adoc#own-words[Answers in the Operator's Own Words], link:../../../../pm-mcp-core/doc/specification/model-work/10-decision-quorum.adoc[Decision Quorum]_
 
-Status: `DRAFT`. Shared by both clients: link:../terminal-client/README.adoc[Terminal Client] (transcripts: link:../terminal-client/14-transcripts-decisions.adoc[Decisions]), link:../web-app/README.adoc[Web App].
+Status: `AGREED`. Shared by both clients: link:../terminal-client/README.adoc[Terminal Client] (transcripts: link:../terminal-client/14-transcripts-decisions.adoc[Decisions]), link:../web-app/README.adoc[Web App].
 
 A running plan leads to decisions, small and large, that the operator takes. They are the core interaction of `PM-MCP` with its operator. This document is the channel's side of them: what a client shows of a decision, in which order, and how it is answered, in the terminal and in the web app alike.
 

@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-contro
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role], link:../../../../pm-mcp-core/doc/specification/phase-workflows/08-dynamic-re-planning.adoc#replan-chat[Revision from a Chat], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work], link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat-reply-stream[The Reply as It Is Written]_
 
-Status: `DRAFT`. The texts of link:work-actions.adoc#chat[Chatting with the Planning Role]; the other texts of the actions are link:work-actions-texts.adoc[Actions on Plans and Epics, Texts], and how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
+Status: `AGREED`. The texts of link:work-actions.adoc#chat[Chatting with the Planning Role]; the other texts of the actions are link:work-actions-texts.adoc[Actions on Plans and Epics, Texts], and how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
 
 [#texts]
 == Texts

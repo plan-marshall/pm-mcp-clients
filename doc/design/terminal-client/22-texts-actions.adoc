@@ -12,7 +12,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-contro
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role: `chat`]_
 
-Status: `DRAFT`.
+Status: `AGREED`.
 
 The texts the terminal adds to the shared ones in xref:19-actions.adoc[Actions on Plans and Epics], of the area `operator`.
 
