@@ -12,7 +12,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-contro
 
 _Relies on: link:components.adoc#rules[Components, Rules Every Component Keeps], link:chat.adoc[Chat and Voice] (what the chat shows and does), link:components-fields.adoc#compose[Fields and Forms, Compose], link:components-brand.adoc#waiting-mark[Brand Pieces, WaitingMark], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-chat-text[The Chat's Text]_
 
-Status: `DRAFT`. A part of link:components.adoc[Components]: the five pieces the chat and the voice input are built from — `Chat`, `ChatTurn`, `ProposalCard`, `ChatMarkdown` and `VoiceInput`. What they show and when is link:chat.adoc[Chat and Voice]; this part is their component specification. Each is _new_, lives in `pm-web-app/src/lib/components/` with a test beside it and a fixture on `/dev/components` in both themes, and is built by the D4 web chat package (`VoiceInput` by the D4 voice package).
+Status: `AGREED`. A part of link:components.adoc[Components]: the five pieces the chat and the voice input are built from — `Chat`, `ChatTurn`, `ProposalCard`, `ChatMarkdown` and `VoiceInput`. What they show and when is link:chat.adoc[Chat and Voice]; this part is their component specification. Each is _new_, lives in `pm-web-app/src/lib/components/` with a test beside it and a fixture on `/dev/components` in both themes, and is built by the D4 web chat package (`VoiceInput` by the D4 voice package).
 
 [#chat]
 == Chat
@@ -49,7 +49,7 @@ Source and surface: `pm-web-app/src/lib/components/ChatTurn.svelte` (new), tests
 _New._ The change a role proposes, in the transcript at the turn that proposed it (link:chat.adoc#proposal[Chat and Voice, The Change Proposal]).
 
 * *Content*: the title of its kind, its summary, when it applies, and the diff: `−` and `+` lines on `--color-diff-removed` and `--color-diff-added`, changed words marked within a line, collapsed beyond 12 lines behind _Show all_. The signs carry the meaning without the colour, and the diff tokens are used nowhere else.
-* *Acts*: _Accept_ and _Reject_, both secondary, _Accept_ first with its check icon; the decision's _Answer in these words_ and ended work's _Start a plan with it_ in _Accept_'s place. Each is a `Button` with `loading` while its request runs.
+* *Acts*: _Accept_ primary with its check icon, the card's own primary and the one exception to one primary per screen (link:components.adoc#hierarchy[Components, Hierarchy]), and _Reject_ secondary; the decision's _Answer in these words_ and ended work's _Start a plan with it_ in _Accept_'s place. Each is a `Button` with `loading` while its request runs.
 * *Folded*: once decided, the card folds into its notice line; a replaced card folds with `The earlier proposal was replaced.`
 * *Announced* once when it arrives, through the transcript's log.
 

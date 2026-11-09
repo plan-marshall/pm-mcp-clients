@@ -45,9 +45,9 @@ The texts of the actions, the dialogues, the settings, the review, and the holds
 |{plan} waits for a decision the runtime did not return: its other actions stand
 |{plan} wartet auf eine Entscheidung, die die Laufzeit nicht geliefert hat: seine übrigen Aktionen gelten
 
-|`operator.actions.chat_end`
-|an empty line ends it
-|eine leere Zeile beendet ihn
+|`operator.actions.chat_leave`
+|an empty line leaves it
+|eine leere Zeile verlässt ihn
 
 |`operator.actions.chat.you`
 |you
@@ -76,6 +76,22 @@ The texts of the actions, the dialogues, the settings, the review, and the holds
 |`operator.actions.chat.no_input`
 |The chat needs you at every turn; --no-input refuses it.
 |Der Chat braucht dich bei jeder Runde; --no-input lehnt ihn ab.
+
+|`operator.actions.chat.left`
+|Left the chat; it stays with {subject}.
+|Chat verlassen; er bleibt bei {subject}.
+
+|`operator.actions.chat.new_command`
+|new
+|neu
+
+|`operator.actions.chat.writing`
+|{stop}) stop the reply   {leave}) leave: the reply goes on
+|{stop}) stoppe die Antwort   {leave}) verlassen: die Antwort läuft weiter
+
+|`operator.actions.chat.restarted`
+|The reply starts again.
+|Die Antwort beginnt neu.
 
 |`operator.actions.settings.which`
 |Which settings of {plan}?
@@ -346,6 +362,10 @@ The mnemonics of the action menu, of the acts of a hold, and of the review, one 
 |`operator.actions.key.reject`
 |r
 |l
+
+|`operator.actions.key.stop`
+|s
+|s
 
 |`operator.actions.key.accept_remaining`
 |r

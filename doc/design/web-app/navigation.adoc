@@ -269,11 +269,11 @@ A shorter chain gives its strip's width to its columns: a plan of a project at `
 [#side-columns]
 == Side Columns: the Chat
 
-* *The chat is a side column*, not a level. It docks to the right of the object column it belongs to; the object keeps its full head, and the gap strip never shows the chat.
-* *Its width* is `480 px`, or `400 px` where `480 px` would cost the window a column.
-* *Where the window cannot show the object column and the chat side by side*, the chat takes the space and the object becomes a hidden level; with one column there is no strip, and _Hide the chat_ returns to the object. The object column's own levels shift left as usual.
+* *The chat is a side column*, not a level. It docks to the right of the object column it belongs to, or of a `WizardPage`'s content where it is opened in a wizard (starting work, the decomposition, a question of the project's setup step, link:components.adoc#templates[Components, Page Templates]); the object keeps its full head, and the gap strip never shows the chat.
+* *Its width* is `480 px`, or `400 px` where `480 px` would cost the window a column or would drop a wizard's content below `480 px`.
+* *Where the window cannot show the object column (or the wizard's content) and the chat side by side*, the chat takes the space and the object becomes a hidden level; with one column there is no strip, and _Hide the chat_ returns to the object or the wizard. The object column's own levels shift left as usual.
 * *Its address* is the query `chat=open`; opening and hiding it replace the address and never push.
-* *Hiding the chat* (`Escape`, _Hide the chat_) keeps it running; ending it is the chat's own act. What the chat shows is the chat design's.
+* *Hiding the chat* (`Escape`, _Hide the chat_) keeps it running; _New chat_ is the chat's own act. What the chat shows is the chat design's.
 
 [cols="1,3,3",options="header"]
 |===
