@@ -91,10 +91,11 @@ class ScreenCaptureIT {
      * @param broadcast  the body {@code POST /mock/broadcast} is sent once the screen settled, so
      *                   that the capture shows what the pushed event drew; empty for none
      * @param expectedExit the exit code the capture expects, {@code 0} when the line names none
+     * @param declaresExit whether the line names an expected exit at all
      */
     private record Capture(String name, String scenario, List<String> states, List<String> command,
     String keys, int columns, int rows, String locale, Map<String, String> environment,
-    String beforeKeys, String broadcast, int expectedExit) {
+    String beforeKeys, String broadcast, int expectedExit, boolean declaresExit) {
     }
 
     private final BinaryUnderTest binary = BinaryUnderTest.locate("pm-operator", PmOperator.class,
@@ -139,6 +140,14 @@ class ScreenCaptureIT {
                     broadcast(runtime, capture.broadcast());
                     assertTrue(awaitBroadcast(session, drawn, consoleCapture, capture.expectedExit()),
                                         capture.name() + " did not settle after the broadcast within " + READY_TIMEOUT);
+                }
+                if (capture.declaresExit() && session.exitCode() == null) {
+                    // A line that names its exit expects the process to leave: a quiet prompt is not
+                    // the refusal the capture is for, so wait for the exit before accepting it.
+                    assertTrue(session.awaitExit(READY_TIMEOUT),
+                                        capture.name() + " did not exit within " + READY_TIMEOUT);
+                    assertTrue(session.awaitReader(READY_TIMEOUT),
+                                        capture.name() + "'s output reader did not finish");
                 }
                 var screen = session.screen();
                 var raw = session.rawOutput();
@@ -409,7 +418,7 @@ class ScreenCaptureIT {
         return new Capture(fields[0].strip(), fields[1].strip(), List.copyOf(states), List.copyOf(command),
                             keys(fields[4].strip()), Integer.parseInt(size[0].strip()),
                             Integer.parseInt(size[1].strip()), fields[6].strip(), Map.copyOf(environment),
-                            beforeKeys, broadcast, expectedExit);
+                            beforeKeys, broadcast, expectedExit, fields.length >= 11);
     }
 
     private static String keys(String raw) {
