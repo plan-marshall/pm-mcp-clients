@@ -426,6 +426,9 @@ public final class OverviewFormatting {
             }
             return "blocks no work";
         }
+        if (MessageCatalogue.hasKey(locale, "overview.needs.blocks")) {
+            return MessageCatalogue.format(locale, "overview.needs.blocks", Map.of("what", blocks));
+        }
         return "blocks the " + blocks;
     }
 
@@ -444,6 +447,9 @@ public final class OverviewFormatting {
         var formatted = Display.time(locale, since, Display.TimeStyle.SHORT, clock);
         if (formatted.isBlank()) {
             formatted = Display.time(locale, since, clock);
+        }
+        if (MessageCatalogue.hasKey(locale, "overview.needs.since")) {
+            return MessageCatalogue.format(locale, "overview.needs.since", Map.of("time", formatted));
         }
         return "since " + formatted;
     }

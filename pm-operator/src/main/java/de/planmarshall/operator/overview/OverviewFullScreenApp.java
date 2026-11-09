@@ -1636,9 +1636,7 @@ public final class OverviewFullScreenApp {
         if (targetKind == TuiLevel.Kind.OVERVIEW) {
             try {
                 fetchNeedsOperator(context.runtime(false));
-            }
-            /*TODO: Catch specific not Exception. Suppress: // cui-rewrite:disable InvalidExceptionUsageRecipe*/
-            catch (Exception _) {
+            } catch (IOException _) {
                 // best effort
             }
             var cached = cachedProjects.get();
