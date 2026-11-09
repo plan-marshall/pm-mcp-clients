@@ -205,6 +205,11 @@ are then typed after the capture, and they end the process.
 |A JSON body sent as `POST /mock/broadcast` over the runtime's socket once the screen has settled,
 so that the capture shows what the pushed event drew — a notice the console prints above the
 prompt, a badge that changed. The keys before the capture are typed after it (`-` for none).
+
+|expected exit code (optional)
+|The exit code the capture expects, `0` when the field is absent. A capture of a verb that refuses
+by design names its code (`4` for an act verb refused by the gate), so the refusal's output is
+written instead of failing the set.
 |===
 
 Every capture writes its files below `target/screens/{set}/` (or `-Dpm.screens.out`):
