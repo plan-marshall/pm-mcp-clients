@@ -58,7 +58,7 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await expect(row).toBeVisible();
 
     // Sibling pattern: wait for the initial unread count before reading rows
-    await expect(page.getByTestId('unread-count')).toContainText('6 unread reports');
+    await expect(page.getByTestId('unread-count')).toContainText('7 unread reports');
 
     // Open this row's menu and mark the one report read
     const rows = page.locator('.report-card');
@@ -175,29 +175,41 @@ test.describe('Reports & Completion Reports Flow (UC-PLN-6)', () => {
     await expect(page.locator('.reports-view')).toBeVisible();
   });
 
-  test('marks all shown reports read and shows empty state', async ({ page }) => {
+  test('marks all shown reports read and reloads the remaining unread reports', async ({
+    page,
+  }) => {
     await page
       .locator('.nav-rail')
       .getByRole('button', { name: /Reports/i })
       .click();
     await expect(page.locator('.reports-view')).toBeVisible();
 
-    // The scenario announces a report and its read a moment after the list was drawn. Waiting for
-    // the count those two events produce is the page's own condition, and it keeps the empty state
-    // that follows stable.
-    await expect(page.getByTestId('unread-count')).toContainText('6 unread reports');
+    // The scenario announces one report and its read a moment after the list was drawn. Wait for
+    // that pair to settle, so the mark-all acts on the stable 7 unread reports of the first page.
+    await expect(page.getByTestId('report-arrival-notice')).toBeAttached();
+    await expect(page.getByTestId('unread-count')).toContainText('7 unread reports');
+
+    // Only the first page is loaded: the 2 older unread reports sit behind the older control.
+    await expect(page.getByRole('button', { name: /Show 2 older/i })).toBeVisible();
 
     const markAllBtn = page.getByRole('button', { name: /Mark all shown read/i });
     await expect(markAllBtn).toBeVisible();
     await markAllBtn.click();
 
-    // Should transition to empty state
-    await expect(page.locator('.empty-state')).toBeVisible();
-    await expect(page.locator('.empty-state')).toContainText('Nothing new');
-    await expect(page.locator('.empty-state')).toContainText(
-      'Reports you have read are not shown any more.',
-    );
-    await expect(page.getByTestId('unread-count')).toHaveCount(0);
+    // The first page is reloaded from the server: the 5 shown reports are read, and the 2 older
+    // reports are now the first page, with the server's count. The empty state is never shown.
+    await expect(page.getByTestId('unread-count')).toContainText('2 unread reports');
+    await expect(page.locator('.report-card')).toHaveCount(2);
+    await expect(
+      page.locator('.report-card', { hasText: 'relay-auth-v2 ended: merged (#210)' }),
+    ).toBeVisible();
+    await expect(
+      page.locator('.report-card', { hasText: 'A source of codeberg-issues was flagged' }),
+    ).toBeVisible();
+    await expect(page.locator('.empty-state')).toHaveCount(0);
+
+    // The 2 remaining reports fit on one page, so the older control is not offered.
+    await expect(page.getByRole('button', { name: /Show .* older/i })).toHaveCount(0);
   });
 });
 
