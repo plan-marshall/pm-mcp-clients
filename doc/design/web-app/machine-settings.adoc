@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue/14-machine-onboarding.adoc#state-catalogue-settings[State Catalogue, The Machine's Settings], link:../../../../pm-mcp-core/doc/specification/store-schemas/12-machine-stores.adoc#consent[Store Schemas, Consent Before Acting], link:../../../../pm-mcp-core/doc/specification/credentials-and-enrolment/01-provider-credentials.adoc#provider-verification[CLI, Coordination & Security, Provider Verification], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#two-channels[Operator Choices in the Web App and the Terminal], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#concurrent-changes[Concurrent Changes of a Setting]_
 
-Status: `AGREED`. The settings of the machine, behind ⚙ in the header of every page and _Machine settings_ at the end of the onboarding: the page is the state `settings.choose`, reached from `onboard.completed` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]). They show what the onboarding recorded and change it by running one aspect again, or through the settings' own states (a consent withdrawn, the documents mode, the cleanup's durations, a token rotated or replaced); every change is audited. The principles are those of the link:README.adoc#principles[Web App]. Names, times and figures in the sketches are examples.
+Status: `DRAFT`. The settings of the machine, behind ⚙ in the header of every page and _Machine settings_ at the end of the onboarding: the page is the state `settings.choose`, reached from `onboard.completed` (link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10]). They show what the onboarding recorded and change it by running one aspect again, or through the settings' own states (a consent withdrawn, the documents mode, the cleanup's durations, a token rotated or replaced); every change is audited. The principles are those of the link:README.adoc#principles[Web App]. Names, times and figures in the sketches are examples.
 
 [#layout]
 == Layout
@@ -26,6 +26,7 @@ Status: `AGREED`. The settings of the machine, behind ⚙ in the header of every
 │    ② Harnesses    Claude Code 2.4.1 (default), OpenCode 1.9.0    [ Change ]  │
 │    ③ Models       4 models on 2 harnesses                        [ Change ]  │
 │    ④ Roles        31 roles · 1 ✎ steward    [ Ask the steward… ] [ Change ]  │
+│                   Dictation: browser, local model                            │
 │    ⑤ Credentials  macOS Keychain                                 [ Change ]  │
 │    ⑥ Providers    GitHub (gh); SonarCloud not available          [ Change ]  │
 │    ⑦ Plans        Pull Request · Test first · key points         [ Change ]  │
@@ -48,6 +49,7 @@ Status: `AGREED`. The settings of the machine, behind ⚙ in the header of every
 │    check whether a harness is logged in        12 Oct · Firefox  [ Withdraw ]│
 │    look for CLI tools and stored tokens        12 Oct · terminal [ Withdraw ]│
 │    check the providers with their tokens       12 Oct · terminal [ Withdraw ]│
+│    let the browser turn dictation into text    14 Oct · Firefox  [ Withdraw ]│
 │    run scripts of a project's checkout                                       │
 │      pm-mcp-clients · 3 scripts                14 Oct · Firefox  [ Withdraw ]│
 │                                                                              │
@@ -65,6 +67,13 @@ Status: `AGREED`. The settings of the machine, behind ⚙ in the header of every
 * A changed interface language is the language of every text from then on, as in the first run.
 * *⑦ Plans* in a later run also shows the optional posture of a plan (`plan_defaults.posture`: minimal, standard, full), which the first run never asks: unset by default, so that a plan asks it in its start while no level sets it (link:onboarding-steps-4-7.adoc#plan-defaults[Onboarding, ⑦ Plans]).
 * An aspect a project sets for itself is changed in that project's setup, never here; the line says only what the machine provides.
+
+[#speech]
+=== The Speech Role
+
+* *Its line* under ④ names the methods of the speech role the machine allows, or `Off` (`onboard.roles.speech.allowed`); _Change_ of ④ opens the roles step, where its methods are allowed again through their consents (link:onboarding-steps-4-7.adoc#speech[Onboarding, The Speech Role]).
+* *Withdrawing a speech consent* in _Remembered consents_ takes its method out of use at once; no browser offers it until it is allowed again (link:../shared/consents.adoc#speech[Consents, The Speech Consents]).
+* *This browser's choice* among the allowed methods is not a machine setting: it is kept in the browser's own settings (_Dictation in this browser_, `web.voice.browser_choice`), beside its theme and language, and offers the browser's recognition only where the machine allows it and the browser has it (link:chat.adoc#methods[Chat and Voice, The Speech Role]).
 
 Terminal: `pm-operator config <aspect>` (link:../terminal-client/08-transcripts-later.adoc#t-later[Terminal Client, Later Changes]).
 

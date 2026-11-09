@@ -10,6 +10,8 @@ link:README.adoc[Terminal Client] » Transcripts: Later Changes, and Every State
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] to link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2]_
 
+Status: `DRAFT`.
+
 The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
 [#t-later]
@@ -199,21 +201,24 @@ Consents · The consents you said not to ask again
          pm-mcp-clients · 3 scripts · 2 Jun, 09:41 · terminal   ?5 lists them
     6) approve the tokens of a role task     model_cost
          pm-mcp-clients · 3 Jun, 16:02 · iPad Oliver
+    7) let the browser turn dictation into text   transcribe_browser
+         4 Jun, 08:30 · Firefox on mbp-oliver
 
   A withdrawn consent is asked again the next time its action runs.
 
-Withdraw: 1-6   q) leave   ?   › 3
+Withdraw: 1-7   q) leave   ?   › 3
 Withdraw "check whether a harness is logged in"?
   Asked again in [2/7] Harnesses, the next time its action runs. Nothing
   recorded with it changes.
 Withdraw? [Enter]   k) keep it   ?   › ⏎
 ✓ 1 consent withdrawn; it is asked again the next time.
-Withdraw: 1-5   q) leave   ?   ›
+Withdraw: 1-6   q) leave   ?   ›
 ----
 
 * One entry per remembered consent: the title of its kind (`common.consent.kind.<kind>`) and the kind; below it the project for a kind of a project (`inspect_checkout`, `run_checkout_scripts`, `model_cost`), for `run_checkout_scripts` the number of scripts it covers, when it was given, and where: `terminal`, or the label of the paired device that gave it in the web app. `?5` lists each script of the consent with its arguments and digest.
 * A number opens `settings.withdraw` for that consent: where it will be asked again, `Enter` withdraws it (`settings.remove-consent`), `k` keeps it. Several numbers are asked in turn. Withdrawing is audited with the channel `cli`.
 * A consent is never given here; it is given only where its action asks (xref:03-dialogues.adoc#consent[Consent]). With no remembered consent the verb prints `No consent is remembered.` and returns.
+* A withdrawn speech consent (`transcribe_browser`, `transcribe_provider`) takes its method of dictation out of use at once in both clients (link:../shared/consents.adoc#speech[Consents, The Speech Consents]); the terminal records no audio itself.
 
 [#t-documents]
 === The Documents Mode (`config documents`, `settings.documents-mode`, `settings.record`)
