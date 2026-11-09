@@ -10,7 +10,7 @@ link:README.adoc[Terminal Client] » Transcripts: Later Changes, and Every State
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] to link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-10[UC-ONB-10], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1], link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2]_
 
-Status: `DRAFT`.
+Status: `AGREED`.
 
 The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 

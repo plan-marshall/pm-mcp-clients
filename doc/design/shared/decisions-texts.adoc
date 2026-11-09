@@ -291,12 +291,16 @@ The texts both clients use for decisions, keys of the area `decision` (link:text
 |Antworte mit diesen Worten
 
 |`decision.chat.stays_open`
-|{id} stays open; answer it once the chat has ended.
-|{id} bleibt offen; beantworte sie, wenn der Chat beendet ist.
+|{id} stays open; answer it whenever you are ready.
+|{id} bleibt offen; beantworte sie, wann du so weit bist.
 
 |`decision.chat.withdrawn`
-|{id} is closed: the revision removed the need for it ({reason}).
-|{id} ist geschlossen: die Überarbeitung hat sie überflüssig gemacht ({reason}).
+|{id} is closed: the revision removed the need for it ({reason}); the chat has ended with it.
+|{id} ist geschlossen: die Überarbeitung hat sie überflüssig gemacht ({reason}); der Chat endet mit ihr.
+
+|`decision.chat.answered`
+|{id} is answered; the chat has ended with it.
+|{id} ist beantwortet; der Chat endet mit ihr.
 
 |`decision.chat.closed_elsewhere`
 |{id} was answered in {channel} ({device}); the chat has ended.

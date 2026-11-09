@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-contro
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role], link:../../../../pm-mcp-core/doc/specification/phase-workflows/08-dynamic-re-planning.adoc#replan-chat[Revision from a Chat], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work], link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat-reply-stream[The Reply as It Is Written]_
 
-Status: `DRAFT`. The texts of link:work-actions.adoc#chat[Chatting with the Planning Role]; the other texts of the actions are link:work-actions-texts.adoc[Actions on Plans and Epics, Texts], and how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
+Status: `AGREED`. The texts of link:work-actions.adoc#chat[Chatting with the Planning Role]; the other texts of the actions are link:work-actions-texts.adoc[Actions on Plans and Epics, Texts], and how texts are written and kept is link:texts-and-languages.adoc[Texts and Languages].
 
 [#texts]
 == Texts
@@ -156,6 +156,10 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |The reply was lost: {reason}
 |Die Antwort ging verloren: {reason}
 
+|`control.chat.too_long_reply`
+|The reply was too long (over 64 KiB); the text so far is kept.
+|Die Antwort war zu lang (über 64 KiB); der Text bis hier bleibt.
+
 |`control.chat.untrusted`
 |From outside · not checked
 |Von außen · ungeprüft
@@ -267,4 +271,12 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |`control.chat.subject_ended`
 |{subject} has ended; the chat has ended with it.
 |{subject} ist beendet; der Chat endet mit ihm.
+
+|`control.chat.carried`
+|The proposal was carried out; the chat has ended and is kept with {subject}.
+|Der Vorschlag wurde übernommen; der Chat ist beendet und bleibt bei {subject} gespeichert.
+
+|`control.chat.entry_closed`
+|{outcome, select, started {The request was started; the chat has ended and goes with it.} other {The request was abandoned; the chat has ended with it.}}
+|{outcome, select, started {Die Anfrage wurde gestartet; der Chat ist beendet und geht mit ihr.} other {Die Anfrage wurde verworfen; der Chat endet mit ihr.}}
 |===

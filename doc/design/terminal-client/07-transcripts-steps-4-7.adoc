@@ -10,7 +10,7 @@ link:README.adoc[Terminal Client] » Transcripts: Steps 4 to 7
 
 _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6] to link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]_
 
-Status: `DRAFT`.
+Status: `AGREED`.
 
 The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 

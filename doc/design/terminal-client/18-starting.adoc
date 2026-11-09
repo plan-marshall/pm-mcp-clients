@@ -283,7 +283,7 @@ pm › plan add
     ✓  description   "Add a Codeberg provider for issues, so that …"
     ✓  issue   https://codeberg.org/forgejo/forgejo/issues/4711   Issue comments API · open
   d) description   f) documents   i) issue   l) lesson (2)   h) chat   Enter) continue   x) remove one   ?   › h
-Chat · a new plan in pm-mcp-clients · with refine · the request   an empty line ends it
+Chat · a new plan in pm-mcp-clients · with refine · the request   an empty line leaves it
   you     › What did you understand, and what is unclear?
     ▶  refine answers
   refine  A provider that reads Codeberg issues. The issue (untrusted) also asks
@@ -297,7 +297,7 @@ Chat · a new plan in pm-mcp-clients · with refine · the request   an empty li
 Accept? [Enter]   r) reject   ?   › ⏎
     ✓  description stored
   you     › ⏎
-✓ The chat is kept with a new plan in pm-mcp-clients.
+Left the chat; it stays with a new plan in pm-mcp-clients.
   d) description   f) documents   i) issue   l) lesson (2)   h) chat   Enter) continue   x) remove one   ?   › ⏎
 ----
 
