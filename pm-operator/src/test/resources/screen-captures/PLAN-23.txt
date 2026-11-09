@@ -1,0 +1,17 @@
+# Screen captures for PLAN-23: The Cleanup Dialogue
+# name | scenario | states | command | keys | columnsxrows | locale | environment | before-keys
+#
+# The console captures type `cleanup` (beforeKeys): the screen is the console prompt, the .after.txt
+# is the cleanup job with the decision prompt, and the second capture types `d` too, so its
+# .after.txt is the delete confirmation's y/n question. The exit keys leave the dialogue (`q`, `v`
+# in German) and then the console (`exit`); the whole output, keys included, is in the .stdout.txt.
+
+PLAN-23-cleanup-choose-120x30-en | reports-and-system | cleanup.preview |  | q\nexit\n | 120x30 | en_US.UTF-8 | - | cleanup\n
+PLAN-23-cleanup-choose-80x24-en | reports-and-system | cleanup.preview |  | q\nexit\n | 80x24 | en_US.UTF-8 | - | cleanup\n
+PLAN-23-cleanup-choose-120x30-de | reports-and-system | cleanup.preview |  | v\nexit\n | 120x30 | de_DE.UTF-8 | - | cleanup\n
+PLAN-23-cleanup-choose-80x24-de | reports-and-system | cleanup.preview |  | v\nexit\n | 80x24 | de_DE.UTF-8 | - | cleanup\n
+
+PLAN-23-cleanup-confirm-120x30-en | reports-and-system | cleanup.preview |  | q\nexit\n | 120x30 | en_US.UTF-8 | - | cleanup\nd\n
+PLAN-23-cleanup-confirm-80x24-en | reports-and-system | cleanup.preview |  | q\nexit\n | 80x24 | en_US.UTF-8 | - | cleanup\nd\n
+PLAN-23-cleanup-confirm-120x30-de | reports-and-system | cleanup.preview |  | v\nexit\n | 120x30 | de_DE.UTF-8 | - | cleanup\nd\n
+PLAN-23-cleanup-confirm-80x24-de | reports-and-system | cleanup.preview |  | v\nexit\n | 80x24 | de_DE.UTF-8 | - | cleanup\nd\n
