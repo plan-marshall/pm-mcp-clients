@@ -11,7 +11,7 @@ _Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue/14-ma
 
 Status: `AGREED`. The principles are those of the link:README.adoc#principles[Web App]. Each state is designed for both clients: the web app here (a wireframe), and the terminal dialogue of the console `pm-operator` in link:../terminal-client/README.adoc[Terminal Client] (a transcript of every state, with its texts). The sketches are ASCII sketches of layout and content, not of the visual style. Names, versions, paths, models and figures in them are examples.
 
-Parts: this document (the frame, start, consent, steps ① to ③; a later run of ② is in link:machine-settings.adoc#harnesses[Machine Settings]), xref:onboarding-steps-4-7.adoc[Steps ④ to ⑦, the automatic run, done], xref:onboarding-texts.adoc[Texts].
+Parts: this document (the frame, start, consent, steps ② and ③; a later run of ② is in link:machine-settings.adoc#harnesses[Machine Settings]), xref:onboarding-step-1.adoc[Step ①, Language], xref:onboarding-steps-4-7.adoc[Steps ④ to ⑦, the automatic run, done], xref:onboarding-texts.adoc[Texts].
 
 [#frame]
 == Frame
@@ -21,7 +21,7 @@ The onboarding fills the whole app until it is complete; the rest of the app is 
 [source,text]
 ----
 ┌──────────────────────────────────────────────────────────────────────────────┐
-│ plan-marshall                                   Machine: mbp-oliver   ⚙  ?   │
+│ [icon] plan-marshall                            Machine: mbp-oliver   ⚙  ?   │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  ① Language ─ ② Harnesses ─ ③ Models ─ ④ Roles ─ ⑤ Credentials ─ ⑥ Providers │
 │  ─ ⑦ Plans ─ ✓ Done                                                          │
@@ -40,7 +40,10 @@ The onboarding fills the whole app until it is complete; the rest of the app is 
 
 * *Step bar*: the seven sub-workflows of `onboard.*`; done steps are ticked and can be opened to look at, never re-run from the bar (a re-run is a later change from the settings). The bar shows where the process is; it does not navigate ahead.
 * *One route*: the onboarding is one route of the app (`/onboarding`) that renders whichever state the server reports; the app has no route per state, so it cannot show a state the server is not in. A done step opened from the step bar is shown read-only beside the current one.
+* *Header*: the brand icon at `28` px beside the wordmark, as in the rail head (link:brand-mark.adoc#uses[Brand Mark and Mascot, Where the Icon Is Used]).
 * *Footer*: the links of the state; the primary one on the right. A state the server is working in (`[S]`) shows progress instead and no link.
+* *Waits*: the one main wait of a state the server is working in (`[S]`) or of a model at work (`[M]`) shows the waiting mark at `20` px beside the line that says what runs, at the head of the content; every other wait on the screen takes the `Spinner`: each item of a check list keeps its own until it turns to ✓ or ✗, and a wait of under about 1–2 s keeps the `Spinner` alone. One waiting mark per screen (link:brand-mark.adoc#waiting-mark[Brand Mark and Mascot, The Waiting Mark]).
+* *Figures*: the start and the done screen carry the mascot (<<start>>, xref:onboarding-steps-4-7.adoc#done[Done]); every other state carries none, and the two screens with a figure use the `Spinner` for their own waits.
 * *Answered elsewhere*: a state answered in the terminal or on another device while it is open here is replaced by the state the server moved to, with the line `Answered elsewhere: <answer>` (`common.error.state_moved`).
 * *Terminal*: the console `pm-operator` prints the step line `[3/7] Models` above each state, the content below it, and the links as a prompt line; `?` shows the explanation the web app shows under the title (link:../terminal-client/03-dialogues.adoc#state-frame[Terminal Client, The Frame of a State]).
 
@@ -51,7 +54,7 @@ The onboarding fills the whole app until it is complete; the rest of the app is 
 ----
   Choose the models plans may use
 
-  ⠴  steward is working on Claude Code · sonnet-5.5          0:18   about 50 k tokens
+  [≡] steward is working on Claude Code · sonnet-5.5          0:18   about 50 k tokens
 
      You can leave this page; the work continues, and the next visit shows
      its result.
@@ -59,6 +62,7 @@ The onboarding fills the whole app until it is complete; the rest of the app is 
   [ Continue without the advice ]
 ----
 
+* `[≡]` is the waiting mark at `20` px (link:brand-mark.adoc#waiting-mark[Brand Mark and Mascot, The Waiting Mark]); the line beside it says what runs.
 * The content names the role, the harness (the default harness, for the steward) and the model, the time so far, and the tokens expected (`common.model.working`, with `common.consent.tokens.estimate`).
 * *Continue without the advice* leaves the model task; the state continues as the use case's variation says, without the result. A task that fails does the same and shows one line with its reason (`common.model.no_result`): `The steward gave no proposal: <reason>.`
 
@@ -87,6 +91,7 @@ The onboarding fills the whole app until it is complete; the rest of the app is 
   [ Decide everything for me… ]                      [ Begin with step 1 ]
 ----
 
+* *The figure*: beside the list of steps stands the mascot, full figure, about `240` px, in the pose `welcome` (the source figure until that pose is accepted); decorative, hidden on a phone, where the list takes the width (link:brand-mark-mascot.adoc#surfaces[The Mascot, Surfaces]).
 * *Decide everything for me…* is the automatic run (xref:onboarding-steps-4-7.adoc#auto[auto]); it opens its consent first.
 
 Terminal: link:../terminal-client/05-transcripts-entry.adoc#t-entry-first[Terminal Client, transcript].
@@ -119,32 +124,6 @@ Terminal: link:../terminal-client/06-transcripts-steps-1-3.adoc#t-harness-consen
 * A consent that is never remembered (`harness.add-consent`, `auto.consent`) has no choice; the line `This consent is for this run only.` stands in its place.
 * A consent that calls a model names the role, the harness, and the tokens expected from earlier runs, in the number format of link:../shared/texts-and-languages.adoc#numbers[Texts and Languages, Numbers] and never in money, or "not known yet: first run" for the first run.
 * A remembered consent passes its state without a screen; the step shows one line `Consent remembered: <action>` above the result, the action by the kind's title (link:../shared/consents.adoc#texts[Consents, Texts]). The remembered consents are listed and withdrawn in the machine settings (link:machine-settings.adoc#consents[Machine Settings, Remembered Consents]).
-
-[#language]
-== ① Language (`language.choose`)
-
-[source,text]
-----
-  Choose your languages
-
-  plan-marshall and pm-operator   ( ) English  (•) Deutsch
-                                  from your system (de_DE)
-
-  What models write and read      (•) same as above
-                                  ( ) English
-                                  ( ) Deutsch
-
-  Words like Pull Request, Commit, Merge and Request stay as they are.
-                                                                [ Why? ]
-
-                                                 [ Use Deutsch for both ]
-----
-
-* The screen stays in the language it was shown in until the choice is recorded (`language.record`); every text after it is in the chosen interface language (the sketch is in English to be read here).
-* *Why?* shows `onboard.language.choose.why` in place: models do not work equally well in every language, and _same as above_ follows a later change.
-* With two different languages the button reads `Use Deutsch here, English for models`.
-
-Terminal: link:../terminal-client/06-transcripts-steps-1-3.adoc#t-language[Terminal Client, transcript].
 
 [#harness]
 == ② Harnesses
@@ -442,7 +421,7 @@ Terminal: link:../terminal-client/06-transcripts-steps-1-3.adoc#t-models[Termina
 
     ✓  Claude Code    3 models
     ✓  OpenCode       cannot list its models
-    ⠴  steward is working on Claude Code · sonnet-5.5      0:18   about 50 k tokens
+    [≡] steward is working on Claude Code · sonnet-5.5      0:18   about 50 k tokens
 
   [ Continue without the advice ]
 ----

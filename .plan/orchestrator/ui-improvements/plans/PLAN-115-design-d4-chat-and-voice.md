@@ -132,6 +132,29 @@ The `WaitingMark` that D3 (PLAN-114) defines is the clipboard whose TODO lines a
 the brand icon choice (the marshal star badge is the brand mark candidate). The chat's working line uses it as D3 defines
 it; this plan neither redraws nor re-specifies it. Expected Surface unchanged.
 
+## Fold 2026-11-08 (PLAN-113 landing, seam S8)
+
+`doc/design/shared/decisions.adoc:132` ("the decision stays visible, its answers disabled while the chat is open"; "panel")
+and `doc/design/shared/work-actions.adoc:382` ("End the chat returns to the view") predate D2's column window: per
+`web-app/navigation.adoc:166,274-285` the chat is a side column (480 / 400 px) that can take the only column at 1024 px,
+*Hide the chat* returns to the object, and ending is the chat's own act. D4 owns these chat texts: align them with
+`navigation.adoc`. Surface unchanged (both files are D4's).
+
+## Fold 2026-11-08 (PLAN-114 landing, seams S1 and S9)
+
+- **S1:** `doc/design/web-app/brand-mark.adoc:218-219` and `doc/resources/diagrams/brand-waiting-mark.svg` place the waiting
+  mark in "the chat's working line", which `shared/work-actions.adoc:356-373` does not have (its line says `replan answers`,
+  with no mark and no catalogue key); the diagram's example text is German in an English document. D4 decides whether the
+  chat has a working line with the `WaitingMark` (one per screen, its own polite status line, so the chat adds no second live
+  region) and gives it its key; then align `brand-mark.adoc:218-219` and the diagram (English example text).
+- **S9:** `web-app/onboarding-steps-4-7.adoc:444` and `web-app/brand-mark-mascot.adoc:33-34` give the project onboarding's
+  done screen the `done` figure; `shared/project-onboarding.adoc:38` (`✓ Ready`, `project.completed`) never mentions it.
+  Settle it where D4 touches the onboarding texts: either the shared design names the web figure, or the two web documents
+  drop it.
+
+Surface: `+brand-mark.adoc`, `+doc/resources/diagrams/brand-waiting-mark.svg`, `+shared/project-onboarding.adoc` (read),
+`+brand-mark-mascot.adoc`, `+onboarding-steps-4-7.adoc` (only if S9 drops the figure).
+
 ## Hand-Off Command
 
 Lane: none — a direct Claude Code session (operator instruction 2026-11-06). Start it in its own worktree and branch of

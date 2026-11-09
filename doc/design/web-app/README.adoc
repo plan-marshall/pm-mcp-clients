@@ -12,14 +12,16 @@ _Relies on: link:../../../../plan-marshall-documentation/doc/specification/cli-a
 Status: `AGREED`. The design of the web app, the specification its implementation follows (work packages `web-app-foundation` and `web-onboarding`); the work package `web-design` works it out. Its parts:
 
 * link:entry.adoc[Entry]: the pairing page, the page a revoked device lands on, the page of a device whose network listener was turned off, and where the app opens after pairing.
-* link:onboarding.adoc[Onboarding]: one screen per choice state of the onboarding, the consent screen (the pattern shared with the terminal is link:../shared/consents.adoc[Consents]), the automatic run, and the keys of the web app; in three parts with link:onboarding-steps-4-7.adoc[Steps ④ to ⑦] and link:onboarding-texts.adoc[Texts].
+* link:onboarding.adoc[Onboarding]: one screen per choice state of the onboarding, the consent screen (the pattern shared with the terminal is link:../shared/consents.adoc[Consents]), the automatic run, and the keys of the web app; in four parts with link:onboarding-step-1.adoc[Step ①], link:onboarding-steps-4-7.adoc[Steps ④ to ⑦] and link:onboarding-texts.adoc[Texts].
 * link:machine-settings.adoc[Machine Settings]: a later run of one aspect, the harnesses again (new and missing ones, the default), the providers verified again, the remembered consents and withdrawing one, the documents mode, the cleanup's durations, a token rotated or replaced, the paired devices.
 * link:harness-icons.adoc[Harness Icons]: how a harness is shown, and the research behind it.
 * link:workflow-visual-language.adoc[Workflow Visual Language]: one original icon per workflow unit, phase, axis, and recipe; the visual grammar, the SVG contract, the licence gate, the accessible use beside text, the icon catalogue, and the update checklist.
-* link:view-density-and-filtering.adoc[View Density and Filtering]: the three layout modes of the list views, their breakpoint, the shared filter-as-you-type contract, the per-view field matrices, and the adoption rule for future list surfaces.
+* link:navigation.adoc[Navigation]: the lenses of the rail, the levels of an object as columns, the column window with its width table and its gap strip, Up, the breadcrumb and the browser's back, one address scheme with its push and replace rule, the keys and the focus, the phone, and the chat as a side column.
+* link:view-density-and-filtering.adoc[View Density and Filtering]: the page templates and their one layout, the shared filter-as-you-type contract, the per-view field matrices, and the adoption rule for future list surfaces.
 * link:interaction-affordances.adoc[Interaction Affordances]: the hover advisory of a control: the `X` → `X.title` key convention, what an advisory may say, the classes it is owed to, and the deterministic check that keeps a tooltip from repeating its label.
-* link:components.adoc[Components]: the closed vocabulary every view is built from, with its specification and one picture per component, the rules every component keeps, and the source and test that deliver it; in three parts with link:components-tags.adoc[Tags and Kinds] (state, reason, count, id, pull request, kind and its tints, phase, markers) and link:components-fields.adoc[Fields and Forms].
-* link:brand-mark.adoc[Brand Mark]: the project's own `24 × 24` mark: construction, the brand colour, meaning of the parts, provenance, delivery as an inline `currentColor` drawing and as the two tab copies, the uses (rail head, pairing page, empty states, favicon with the attention dot), theme, accessibility, and usage.
+* link:components.adoc[Components]: the closed vocabulary every view is built from, with its specification and one picture per component, the rules every component keeps, and the source and test that deliver it; in four parts with link:components-tags.adoc[Tags and Kinds] (state, reason, count, id, pull request, kind and its tints, phase, markers), link:components-fields.adoc[Fields and Forms] and link:components-brand.adoc[Brand Pieces] (`BrandMark`, `MascotFigure`, `WaitingMark`).
+* link:brand-mark.adoc[Brand Mark and Mascot]: the brand icon (the marshal star badge) with its palette, its uses and the browser tab, the waiting mark, theme, provenance and usage; with its part link:brand-mark-mascot.adoc[The Mascot] (the surfaces of the mascot figure, the asset rules, the rail-foot bear, and the six poses with their briefs).
+* link:view-layouts.adoc[View Layouts]: the layouts of the Reports, System and Cleanup views.
 * link:theme-readability.adoc[Theme Readability]: the design token contract, WCAG 2.1 AA contrast compliance, the audit allowlist, and automated verification across light and dark themes.
 * link:process-designer.adoc[Process Designer] with link:process-designer-texts.adoc[its Texts]: designing a workflow unit, the one part only the web app offers: the input (an uploaded file, a pasted text, an installed unit), the text and the structure side by side, the building blocks, the unit's frontmatter, validating with the composed process, placing on the machine or in the project with the difference first, removing.
 * link:needs-and-find.adoc[What Waits and Find]: where the two views of link:../shared/needs-and-find.adoc[What Waits, and Going to Work by Name] live in the app: the list of what waits as the start page at `/`, its rail destination with the count, the top-bar search button that opens the find panel over the view, and the keys of this document's own parts.
@@ -53,7 +55,7 @@ Each decision is carried out by the step of the visual redesign that needs it; t
 [#structure]
 == Structure and Navigation
 
-How the app is organised and how one moves from one part to another and back. Until the machine is onboarded, the app shows the onboarding only (link:entry.adoc#after-pairing[Entry, Where the App Opens]); afterwards it opens where the operator left it, and without a remembered place on the list of what waits at `/` (link:needs-and-find.adoc#start-page[What Waits and Find, The Start Page Is What Waits]). Each part below is designed once for both clients; this list is where the web app finds it.
+How the app is organised and how one moves from one part to another and back. Until the machine is onboarded, the app shows the onboarding only (link:entry.adoc#after-pairing[Entry, Where the App Opens]); afterwards a bare start of the app opens where the operator left it, and without a remembered place on the list of what waits at `/` (link:needs-and-find.adoc#start-page[What Waits and Find, The Start Page Is What Waits]); a click on a lens always opens that lens (link:navigation.adoc#url[Navigation, Addresses and History]). Each part below is designed once for both clients; this list is where the web app finds it.
 
 [cols="1,3",options="header"]
 |===
@@ -99,7 +101,7 @@ How the app is organised and how one moves from one part to another and back. Un
 |link:../shared/work-actions.adoc[Actions on Plans and Epics] (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-1[UC-CTL-1], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-2[UC-CTL-2]), by the state of the plan or the epic, with a plan's settings (link:../shared/work-actions.adoc#settings[A Plan's Settings], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-5[UC-CTL-5]), how a plan ends (link:../shared/work-actions.adoc#outcomes[How a Plan Ends]), what holds a plan (link:../shared/work-actions.adoc#holds[What Holds a Plan], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-4[UC-CTL-4]) and the reviews of findings and watches (link:../shared/work-actions.adoc#review[Reviewing Findings or Watches], link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc#UC-CTL-3[UC-CTL-3]); the chat with the planning role as a panel beside its view (link:../shared/work-actions.adoc#chat[Chatting with the Planning Role], link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[State Catalogue, `chat`])
 
 |Reports
-|link:../shared/reports.adoc[Reports] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6]) and link:../shared/completion-report.adoc[Completion Report]. Where they live: an entry _Reports_ in the frame of the app, beside the way to the open decisions, with the count of unread reports while there are any, opening the list as a route of its own (`/reports`); on opening the app or after pairing, with unread reports, the line `5 unread reports since …` with _Show them_ at the top of the view it opens to; a new report as a quiet notice in the frame (a polite live region, no sound, never a browser notification, the tab title unchanged); a report's detail opens in the triage view's right pane beside the list, and the browser's back returns to it. Laid out with the rest of the frame in the visual language below; built by `web-reports`
+|link:../shared/reports.adoc[Reports] (link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-6[UC-PLN-6]) and link:../shared/completion-report.adoc[Completion Report]. Where they live: an entry _Reports_ in the frame of the app, beside the way to the open decisions, with the count of unread reports while there are any, opening the list as a route of its own (`/reports`); on opening the app or after pairing, with unread reports, the line `5 unread reports since …` with _Show them_ at the top of the view it opens to; a new report as a quiet notice in the frame (a polite live region, no sound, never a browser notification, the tab title unchanged); a report's detail opens as the object column beside the list (`/reports/{id}`), and the browser's back returns to the list. Laid out with the rest of the frame in the visual language below; built by `web-reports`
 
 |System
 |link:../shared/system.adoc[System] (link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-2[UC-SYS-2], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-1[UC-SYS-1]). Where it lives: an entry _System_ in the frame of the app beside the machine settings, opening the view as a route of its own (`/system`), its figures as links to what they count; the acts _Stop…_, _Restart…_, _Upgrade…_ as buttons of the view, each confirmation a dialogue over it; the progress line of a drain or an upgrade in the frame, above every view, on every paired device; the page of a stopped runtime in place of the view, which connects again by itself; a newer version shown on the entry while one is known; loading again after an upgrade; the cleanup (link:../shared/cleanup.adoc[Cleanup], link:../../../../plan-marshall-documentation/doc/use-cases/07-system.adoc#UC-SYS-3[UC-SYS-3]) as a route below it (`/system/cleanup`), reached from the view's line and from the report's detail, its confirmation a dialogue over it, its durations also in the machine settings. Laid out with the rest of the frame in the visual language below; built by `web-system`
@@ -113,17 +115,17 @@ How the app is organised and how one moves from one part to another and back. Un
 |Interaction affordances
 |link:interaction-affordances.adoc[Interaction Affordances]: the hover advisory as a separate `X.title` key, the words it may carry (consequence, scope, shortcut, state), the "no useful sentence, no tooltip" rule, the audit classes, and the convention test
 
-|The brand mark
-|link:brand-mark.adoc[Brand Mark]: the project's own original `24 × 24` vector, its three ascending plan sheets, baton, and runtime node, its provenance, its delivery as an inline `currentColor` drawing in the app and as the two baked tab copies, the uses of the mark (rail head, pairing page, empty states, favicon with the attention dot), and its usage rules
+|The brand and the mascot
+|link:brand-mark.adoc[Brand Mark and Mascot]: the brand icon, the marshal star badge, in colour and monochrome, its uses (rail head, pairing page, browser tab with the attention dot), the waiting mark, and provenance; link:brand-mark-mascot.adoc[The Mascot]: where the mascot figure appears, its six poses, and the rail-foot bear
 
 |The components
-|link:components.adoc[Components]: the closed vocabulary of the app with one picture per component — the tags and the kinds (link:components-tags.adoc[Tags and Kinds]), the interaction elements, the fields and forms (link:components-fields.adoc[Fields and Forms]), the containers and the data components
+|link:components.adoc[Components]: the closed vocabulary of the app with one picture per component — the tags and the kinds (link:components-tags.adoc[Tags and Kinds]), the interaction elements, the fields and forms (link:components-fields.adoc[Fields and Forms]), the containers and the data components, and the brand pieces (link:components-brand.adoc[Brand Pieces]: `BrandMark`, `MascotFigure`, `WaitingMark`)
 
 |Texts
-|link:../shared/texts-and-languages.adoc[Texts and Languages]; the keys of the area `web` are listed with the design that uses them (link:onboarding-texts.adoc#texts-web[Onboarding], link:entry.adoc#texts[Entry], link:machine-settings.adoc#texts[Machine Settings]); the area `designer` with link:process-designer-texts.adoc#texts[Process Designer]
+|link:../shared/texts-and-languages.adoc[Texts and Languages]; the keys of the area `web` are listed with the design that uses them (link:onboarding-texts.adoc#texts-web[Onboarding], link:entry.adoc#texts[Entry], link:machine-settings.adoc#texts[Machine Settings], link:navigation.adoc#texts[Navigation]); the shared keys of the filter, `common.filter.*`, with link:view-density-and-filtering.adoc#texts[View Density and Filtering]; the area `designer` with link:process-designer-texts.adoc#texts[Process Designer]
 |===
 
-How the parts are laid out in one app (the rail, the top bar, the phone's bottom bar, the routes) is worked out with the visual language below.
+How the operator moves between the parts — the lenses, the columns, Up, the breadcrumb, the addresses — is link:navigation.adoc[Navigation]; how the parts are laid out in one app (the rail, the top bar, the phone's bottom bar, the routes) is worked out with the visual language below.
 
 [#shell]
 === The App Shell
@@ -135,13 +137,19 @@ One frame holds every view: a rail on the left, a top bar above the view, and �
 |Part |Design
 
 |Rail
-|`232 px` wide, collapsible to `64 px` (icons with their labels as tooltips); this browser keeps the choice (`pm_rail_collapsed`). The head carries the `BrandMark` on its `28 px` brand square and the project's name, the mark and the name opening the start page. Three groups, in this order: *Work* (Running work, Projects, Decisions), *Records* (Reports), *Machine* (System, Process Designer, Settings). A destination that carries a count shows it beside its label: the open decisions and the unread reports. The tab title and the tab icon carry only the open decisions. A detail page keeps the destination it belongs to selected: a plan and an epic are Work, the cleanup is part of System, and the machine settings are Settings. The foot carries the language switch (`EN`/`DE`), the theme choice, and the control that collapses the rail.
+|`232 px` wide, collapsible to `64 px` (icons with their labels as tooltips); this browser keeps the choice (`pm_rail_collapsed`). Three groups, in this order: *Work* (What waits, Running work, Projects, Decisions), *Records* (Reports), *Machine* (System, Process Designer, Settings). The entries of *Work* and *Records* are the lenses of link:navigation.adoc#lenses[Navigation, Lenses and the Rail]. A destination that carries a count shows it beside its label: what waits, the open decisions and the unread reports. The tab title and the tab icon carry only the open decisions. The rail shows the lens of the current route: a project is Projects; an epic, a plan and a side job are Running work; a decision is Decisions; a report is Reports; the cleanup is part of System, and the machine settings are Settings. An object opened in place inside another view leaves the rail where it is.
+
+|Rail head
+|The brand icon, the marshal star badge, at `28 px` in colour without a plate, beside the wordmark `plan-marshall`; the icon and the word open the start page. The collapsed rail shows the icon alone, with the wordmark as the accessible name (link:brand-mark.adoc#uses[Brand Mark and Mascot, Where the Icon Is Used]).
+
+|Rail foot
+|The language switch (`EN`/`DE`), the theme choice, and the control that collapses the rail. Above them, as a faint background of the rail column, the rail-foot bear peeks up from the bottom edge; it is hidden on a collapsed or short rail and while the view shows a mascot figure (link:brand-mark-mascot.adoc#rail-foot[The Mascot, The Rail-Foot Bear]).
 
 |Top bar
-|The path of the page — its group and its title, with the cleanup as `Machine › System › Cleanup` — the search trigger of the command palette, the live indicator (<<live-state>>), and the machine's name as a `Chip` (link:components-tags.adoc#chip[Tags and Kinds, Chip]). The chip is neutral in both modes: the machine's name is a fact, never a warning, and the connection mode travels in its title.
+|The one breadcrumb of the page: in a lens, lens › project › epic › plan, each segment with its `KindMark` and its title (link:navigation.adoc#up[Navigation, Up, the Breadcrumb, Back]); outside the lenses its group and its title, with the cleanup as `Machine › System › Cleanup`. Then the search trigger of the command palette, the live indicator (<<live-state>>), and the machine's name as a `Chip` (link:components-tags.adoc#chip[Tags and Kinds, Chip]). The chip is neutral in both modes: the machine's name is a fact, never a warning, and the connection mode travels in its title.
 
 |Bottom bar
-|Below `768 px` the rail has no room, so the four destinations a person opens most stand at the foot of the page: Running work, Decisions, Reports, and *More*. *More* opens a sheet with every destination of the three groups — the same list the rail carries — and with the language switch and the theme choice the rail's foot offers on a desktop. Each item keeps a visible label: a phone has no hover for a tooltip. The top bar still carries the path and the search trigger.
+|Below `768 px` the rail has no room, so the destinations a person opens most stand at the foot of the page: What waits, Running work, Decisions, and *More* (the operator's decision of 2026-11-06). *More* opens a sheet with every destination of the three groups — the same list the rail carries, Reports among them — and with the language switch and the theme choice the rail's foot offers on a desktop. The count of unread reports shows on *More*, and *More* takes the active state while the current route's lens is one it holds. Each item keeps a visible label: a phone has no hover for a tooltip. The top bar still carries the breadcrumb, shortened in the middle, and the search trigger (link:navigation.adoc#phone[Navigation, The Phone]).
 
 |===
 
@@ -162,26 +170,27 @@ Every screen is built from the same frame, the same grid, the same tokens, and t
 The app is one rail, one column of four tiers beside it, and — on a phone — one bottom bar:
 
 ----
-rail      ▣ plan-marshall        │ top bar   path › path › title   [search]  ● live  machine
+rail      ✪ plan-marshall        │ top bar   lens › project › plan   [search]  ● live  machine
           WORK                   │ ──────────────────────────────────────────────────────────
-           Running               │ notices   runtime progress (a drain, an upgrade),
-           Projects              │           the arrival line of reports or decisions
-           Decisions 3           │ ──────────────────────────────────────────────────────────
-          RECORDS                │ context   the view's own head: title, path, its actions,
-           Reports 5             │           and its filters or view switches
+           What waits ! 4        │ notices   runtime progress (a drain, an upgrade),
+           Running               │           the arrival line of reports or decisions
+           Projects              │ ──────────────────────────────────────────────────────────
+           Decisions 3           │ context   the view's own head: title, its actions,
+          RECORDS                │           and its filters or view switches;
+           Reports 5             │           in a lens, one head per column
           MACHINE                │ ──────────────────────────────────────────────────────────
            System                │ body      the view: a list, a table, a process tree, a form,
-           Designer              │           a dialogue
+           Designer              │           a dialogue; in a lens, the column window
            Settings              │ ──────────────────────────────────────────────────────────
           ◐ de  ⚙  ‹             │ live region  polite announcements, visually hidden
 ----
 
-* *Rail*: the three groups of destinations (<<shell>>), their counts, the brand in the head and the language, theme and collapse controls in the foot. It stays while the person moves between views; only a phone hides it.
-* *Top bar*: the path of the page, the search trigger, the live indicator, and the machine's name as a `Chip`. The path is the frame's trail; a view that has a path of its own inside its body (the plan view) keeps it, and the two say the same thing.
+* *Rail*: the three groups of destinations (<<shell>>), their counts, the brand icon and the wordmark in the head, and the language, theme and collapse controls in the foot, with the rail-foot bear faint above them. It stays while the person moves between views; only a phone hides it.
+* *Top bar*: the breadcrumb of the page, the search trigger, the live indicator, and the machine's name as a `Chip`. The breadcrumb is the only path of the page: no view draws a second one in its head or its body.
 * *Notices*: at most one line per kind, above the view and below the top bar, never over the body. The progress line of a drain or an upgrade is on every paired device (link:../shared/system.adoc[System]); the arrival line names what arrived and holds the one step to it (link:../shared/reports.adoc#arrival[Reports, On Start], link:../shared/decisions.adoc#announce[Decisions, Announcing a Decision]). The connection state is not a notice: the live indicator of the top bar carries it (<<live-state>>).
-* *Context*: the view's title, its breadcrumb where it has a path, its actions on the right, and its filter, sort, or grouping controls directly below the title. A dialogue is never a tier of the frame: it opens over the body and keeps the rail and the top bar in place.
-* *Body*: one scroll container. The page itself does not scroll sideways; a wide table scrolls inside its own wrapper.
-* *Bottom bar*: below `768 px`, the four destinations of the phone (<<shell>>); the rail is hidden and the body ends above the bar.
+* *Context*: the view's title, its actions on the right, and its filter, sort, or grouping controls directly below the title; in a lens, each column carries its own head instead (link:navigation.adoc#column-types[Navigation, Two Column Types]). A dialogue is never a tier of the frame: it opens over the body and keeps the rail and the top bar in place.
+* *Body*: one scroll container; in a lens, one per column of the window, so each column scrolls on its own (link:navigation.adoc#window[Navigation, The Column Window]). The page itself does not scroll sideways; a wide table scrolls inside its own wrapper.
+* *Bottom bar*: below `768 px`, What waits, Running work, Decisions and More (<<shell>>); the rail is hidden and the body ends above the bar.
 * *Live region*: a polite `aria-live` region at the end of the frame, visually hidden, carrying the quiet notices (a new report, a new decision, a project change). It never repeats a notice the operator already sees.
 
 [#grid]
@@ -238,16 +247,17 @@ Every field and every button draws its frame from the same tokens, so a field an
 |What lies above what (link:components.adoc#layers[Components, Layers]).
 |===
 
-The content column is centred and bounded by the page template a view sits on
-(link:view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates Replace the Layout Modes]): the
-triage template at the full width of the window, the object and dashboard templates at `1440px`, and the wizard template
-at `720px`. Every template pads the page by `--space-6` and by `--space-3` on the phone (below `480px`). A view that has
-not moved yet picks its earlier bound — a reading view at `480px`, a table or a card grid at `1000px`, the explorer at
-`1200px` — and never sets an arbitrary width.
+The content is bounded by the page template a view sits on
+(link:view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates]): a lens on the triage
+template, the column engine, at the full width of its container, which it shows as the column window of
+link:navigation.adoc#window[Navigation] — list columns of `220` to `320px`, an object column of at least `480px`, the
+window by the width table there; an object on a page of its own and the dashboard template at `1440px`, centred; the
+wizard template at `720px`. Every template pads the page by `--space-6` and by `--space-3` on the phone (below `480px`).
+A view that has not moved yet picks its earlier bound — a reading view at `480px`, a table or a card grid at `1000px`,
+the explorer at `1200px` — and never sets an arbitrary width.
 
-Two-column views (a list beside a detail, the process tree beside the inspector, the sources beside the chat) split at
-`2fr 1fr` on the desktop. The triage template splits its list and detail `2fr 3fr` (40 / 60) and replaces the list with
-the detail below `1100px`. A column that carries a live stream (chat, activity) keeps its own scroll and never pushes
+The other two-column views (the process tree beside the inspector, the sources beside the start's chat) split at `2fr
+1fr` on the desktop. A column that carries a live stream (chat, activity) keeps its own scroll and never pushes
 the page.
 
 [#breakpoints]
@@ -263,11 +273,11 @@ the page.
 
 |Tablet
 |`768px` to `1279px`
-|The header wraps to a second row; two-column views keep both columns but at `1fr 1fr`, except the triage template, which already replaces the list with the detail below `1100px`; a wide table may drop its least important column, never its identifying one; the process tree and the inspector stack when the tree is narrower than `360px`.
+|The header wraps to a second row; two-column views keep both columns but at `1fr 1fr`, and a lens shows the columns its width table names; a wide table may drop its least important column, never its identifying one; the process tree and the inspector stack when the tree is narrower than `360px`.
 
 |Phone
 |< `768px`
-|One column throughout; the rail is hidden and the bottom bar (Running work, Decisions, Reports, More) carries the destinations, with a visible label each and the rest in the More sheet; the top bar keeps the path and the search trigger; breadcrumbs shorten in the middle; a table becomes a list of rows, each row a labelled pair (the terminal's field list, link:../terminal-client/03-dialogues.adoc#state-frame[Terminal Client, The Frame of a State]); a dialogue takes the whole body; a badge stays visible but never widens its row.
+|One column throughout; the rail is hidden and the bottom bar (What waits, Running work, Decisions, More) carries the destinations, with a visible label each and the rest in the More sheet; the top bar keeps the path and the search trigger; breadcrumbs shorten in the middle; a table becomes a list of rows, each row a labelled pair (the terminal's field list, link:../terminal-client/03-dialogues.adoc#state-frame[Terminal Client, The Frame of a State]); a dialogue takes the whole body; a badge stays visible but never widens its row.
 |===
 
 The layout is usable down to `320px` without horizontal scrolling. A touch target is at least `2.75rem` high on the phone. Focus is never hidden: every interactive element carries the `--focus-ring`, and the focus order follows the reading order.
@@ -349,7 +359,7 @@ The palette is semantic: a view names the role, not the hue. The tokens are defi
 
 |Brand
 |`--color-brand`, `--color-brand-hover`, `--color-brand-subtle`
-|The one primary act of a screen, the focus ring, the selected item (its row, its tab, the chosen option of a segmented control), the brand mark. Never an id, a count, a marker, a tag, a kind, or a link.
+|The one primary act of a screen, the focus ring, the selected item (its row, its tab, the chosen option of a segmented control). Never an id, a count, a marker, a tag, a kind, or a link, and never the brand icon, which draws in the mascot palette (`--color-mascot-*`, link:brand-mark.adoc#palette[Brand Mark and Mascot, The Mascot Palette]), a palette no state, act, row, tag or text of the interface takes.
 
 |Attention
 |`--color-attention`, `--color-attention-subtle`, `--color-attention-text`
@@ -423,92 +433,10 @@ The theme is a choice this browser remembers: light, dark, or system, offered to
 * *Dark*: the ground is the darkest step and a card one step above it, so a card reads as raised, never as a hole. Text is the lightest step; the roles take their lighter variants. A filled control takes `--color-on-brand` on the brand fill: white in light, the app ground in dark.
 * *Never inverted*: a colour that carries meaning is not swapped between the themes (danger stays red, success stays green), and no view hard-codes a hex value. An identifier in `--font-mono` keeps the same contrast as body text; a diff keeps its added and removed roles in both themes.
 
-[#reports-layout]
-=== Reports View (`/reports`)
-
-The page sits on the `TriagePage` template (link:view-density-and-filtering.adoc#templates[View Density and Filtering, Page Templates Replace the Layout Modes]): the list on the left, the report's detail on the right, the detail replacing the list below 1100 px. It sets no page width of its own and keeps no layout mode.
-
-----
-filters   [Filter reports]
-header    Reports · 5 unread reports                          [Mark all shown read]
-──────────────────────────────────────────────────────────────────────────
-body      pm-mcp-clients
-            ◇ relay-hardening
-              • fix-relay   fix-relay ended: merged (#214)  17 d ago  [Show the details] [⋯ Report actions]
-              • docs-typo   docs-typo ended: no change      17 d ago  [Show the details] [⋯ Report actions]
-          This machine
-            • machine       Cleanup is due: 12 candidates from 3 projects
-──────────────────────────────────────────────────────────────────────────
-          [Show 12 older]
-----
-
-* The subject is the report's own text from the catalogue with its parameters; the relative time is the only figure the client adds, and `--font-mono` is used only for the identifiers of the path.
-* An unread row leads with a dot and sets its subject in the semibold weight; a row read by opening its detail stays beside the detail until the detail closes, without the dot and in the normal weight, and names its state _read_ in words.
-* The row menu stands at the end of the row: an icon-only `⋯` (link:components.adoc#icon-button[Components, IconButton]), its accessible name _Report actions_ carrying the row's subject. It holds _Mark read_ for that one report; _Show the details_ opens the detail and marks the report read; _Mark all shown read_ acts on the list as shown.
-* A report of the machine (`system.*`) stands in the group _This machine_ of its own, whatever project the wire also names (link:../shared/reports.adoc#list[Reports, The List]).
-* An empty list says that nothing is new and that read reports are not shown again (link:../shared/reports.adoc#read[Reports, Reading a Report]).
-
-[#system-layout]
-=== System View (`/system`)
-
-The runtime's six parts in a fixed order (link:../shared/system.adoc#view[System, The System View]), each part a card of the same width, each figure one step from what it counts.
-
-----
-header
-──────────────────────────────────────────────────────────────────────────
-context   System                                    [Upgrade…] [Restart…] [Stop…]
-──────────────────────────────────────────────────────────────────────────
-body      Runtime   pm-mcpd 0.9.1 · build 2026-10-02 (a1b2c3d)   0.10.0 available
-                    running since today 08:14 · 6 h 12 min
-                    memory 412 MB in use of 1 GB · CPU 4 %
-                    listeners socket · loopback 127.0.0.1:7420 · network on
-──────────────────────────────────────────────────────────────────────────
-          Work      3 running · 1 waiting for you · 1 held · 2 paused
-                    [All] [Per project]
-──────────────────────────────────────────────────────────────────────────
-          Workers   5 · 3 busy · 2 idle
-          Jobs      build 1 of 2 slots · 1 queued · locks 3 held
-          Models    [Last hour] [Today] [7 days]   [Per model] [Per role]
-──────────────────────────────────────────────────────────────────────────
-          Cleanup   due: 12 plans · 2 epics · 40 logs · frees 1.8 GB  [Review…]
-──────────────────────────────────────────────────────────────────────────
-----
-
-* The three acts are buttons in the context tier, not in the body; each opens its confirmation as a dialogue over the view. A figure that leads to what it counts is a link; a figure that is not measured says so and never shows a zero.
-* Grouping and window switches are each a `SegmentedControl` of the part they belong to (link:components.adoc#segmented-control[Components, SegmentedControl]: a radio group, the chosen option on `--color-brand-subtle`, never a solid brand fill), not a global filter.
-* The stopped state replaces the body with the page that says the runtime is stopped and how to start it; the header and the frame stay, and the page connects again by itself.
-* Width: the dashboard template (at most `1440px`, link:view-density-and-filtering.adoc#templates[Page Templates Replace the Layout Modes]); the parts stack in the same order on the tablet and the phone, and a figure's unit stays with its number.
-
-[#cleanup-layout]
-=== Cleanup View (`/system/cleanup`)
-
-A part of the system view, reached from its cleanup line and from a cleanup report. It shows a cleanup job: its summary, its items, and the confirmation of a deletion.
-
-----
-header
-──────────────────────────────────────────────────────────────────────────
-context   System › Cleanup                                        [Back to System]
-──────────────────────────────────────────────────────────────────────────
-body      Summary   12 plans · 2 epics · 40 logs · 1.8 GB        [Check all]
-          4 kept for good · last sweep today 03:00
-──────────────────────────────────────────────────────────────────────────
-          Details   [x] Archived plans      30 days     1.2 GB
-                    [x] Archived epics      30 days     0.5 GB
-                    [ ] Logs of ended work  14 days     0.1 GB
-                    Unchecked items are kept for good.
-──────────────────────────────────────────────────────────────────────────
-                                       [Ask me again in 3 days] [Ignore] [⋯]
-----
-
-* The summary and the details are two cards; each item is a checkbox with its kind, its duration, and its size. An unchecked item is kept for good and the line says so.
-* _Delete…_ is an entry of the overflow menu `⋯`, in the danger text colour, never a visible danger button (link:components.adoc#hierarchy[Components, Hierarchy]); it opens the confirmation as a dialogue over the view, whose confirming button is the one filled danger control; the confirmation repeats what is freed and what stays (branches, pull requests, the remote, the checkout, the epic's ledger). _Back_ leaves everything as it is.
-* The items kept for good are a separate list below the details, with their release actions. The technical residue is a read-only figure, never an item.
-* Width: `1000px` on the desktop; the checklist becomes a list of labelled rows on the phone, and the acts stack at the foot of the body.
-
 [#routes]
 === Routes and the Address Bar
 
-Every view has a canonical path; the path is the view's address and the browser's back returns to the previous one. A route without a selection of its own (`/overview`, `/reports`, `/system`) is addressable alone; a plan and an epic are addressed by their id.
+Every view and every object has one canonical address, in one scheme: path segments for objects, the query for the scope, the mode, the tab, an object opened in place and a side column (link:navigation.adoc#url[Navigation, Addresses and History]). The chain of columns to the left of an object is derived from the object, never written into the address.
 
 [cols="2,2,3",options="header"]
 |===
@@ -516,47 +444,55 @@ Every view has a canonical path; the path is the view's address and the browser'
 
 |`/pair`, `/entry`, `/onboarding`
 |Entry, pairing, onboarding
-|The entry a browser reaches without a pairing; the onboarding while the machine is not onboarded.
-
-|`/settings`, `/settings/machine`
-|Settings, machine settings
-|The paired devices and the aspects; the machine settings one step below.
-
-|`/projects`, `/projects/onboard`
-|Project explorer, project onboarding
-|An open project onboarding is a route of its own.
-
-|`/overview`
-|Running and ended work
-|Reached from the rail; no longer the start point.
+|The entry a browser reaches without a pairing; the onboarding while the machine is not onboarded (`?step=`).
 
 |`/`
 |What waits
-|The start point when no place is remembered (link:needs-and-find.adoc#start-page[What Waits and Find]).
+|The start point when no place is remembered (link:needs-and-find.adoc#start-page[What Waits and Find]); a launcher, whose items open at their own addresses. A click on What waits always opens it; only a bare start of the app at `/` is filled from the remembered place, by a replace.
+
+|`/overview`
+|Running work
+|`?project={id}` scopes the lens to a project; `mode=ended`, `group=epic` and `follow=on` are its modes. A bare `/overview` is filled from the remembered place by a replace.
+
+|`/epics/{id}`, `/plans/{id}`, `/plans/{id}/tasks/{task}`
+|An epic, a plan, a task of a plan
+|Objects of Running work; the lens's modes travel with them (`/plans/fix-relay?mode=ended`).
+
+|`/decomposition`, `/epics/{id}/decomposition`
+|Decomposition
+|Not a lens (link:navigation.adoc#scope[Navigation, Where It Does Not Apply]).
+
+|`/projects`, `/projects/{id}`
+|Projects and the one project page
+|`?tab=setup` opens the project's setup; without a tab it opens its work. The segment after `/projects/` is always a project's id: a workflow of a project stands below that id (`/projects/{id}/start`), never beside it, so no id collides with a workflow's name.
+
+|`/project-onboarding/{entry}`
+|Project onboarding
+|Each open run before its enrolment, addressed by its entry (link:../shared/project-onboarding.adoc#several[Project Onboarding, Several Onboardings at Once]), so several runs open in tabs of their own; after its enrolment the run continues at `/projects/{id}?tab=setup`, and its old entry address is replaced by that one.
 
 |`/start`, `/projects/{id}/start`, `/entries/{id}`
 |Starting work
 |A start with a project, or an entry another client opened, addressed by its id.
 
-|`/plans/{id}`, `/epics/{id}`, `/epics/decompose`
-|Plan view, epic view, decomposition
-|The plan and the epic are addressed by their id.
+|`/decisions`, `/decisions/{id}`
+|Decisions and one decision
+|The open decisions of every project, and one of them beside the list.
 
-|`/decisions`
-|Decisions
-|The open decisions of every project.
-
-|`/reports`
+|`/reports`, `/reports/{id}`
 |Reports and a report's detail
-|The detail is a state of the list's route; the browser's back returns to the list.
+|The detail is the object column beside the list; the browser's back returns to the list.
 
 |`/system`, `/system/cleanup`
 |System, cleanup
-|The cleanup is a route below the system view.
+|The cleanup is a route below the system view; a plan or an epic it opens stands in place (`?open=plan:{id}`).
+
+|`/settings`
+|Settings
+|One view with a tab per part (`PLAN-60`): `?tab=setup`, `access`, `credentials`, `consents`, `retention`, and `browser` for _This browser_ (`PLAN-85`); without a tab it opens the first. `/settings/machine` becomes `?tab=setup`, `/settings/browser` `?tab=browser`.
 
 |`/designer`
 |Process designer
-|Opened from a project's setup, a plan node, or the machine settings.
+|Opened from a project's setup, a plan node, or the machine settings; `?project={id}`.
 |===
 
-A route that is not one of these opens the overview for a paired, onboarded browser and the pairing page otherwise; it never opens a blank page. The address bar is written with `pushState` when the operator moves, and read on `popstate`, so Back and Forward move between views without a reload. A pairing code in the fragment is redeemed before the first write and never rewritten into the history (link:entry.adoc#after-pairing[Entry, Where the App Opens]).
+On any address of a lens, `open={kind}:{id}` opens an object in place and `chat=open` the chat beside its object. An old address of a moved view — `/decisions?decision={id}`, `/reports?plan={id}`, `/projects?project={id}`, `/settings/machine`, `/settings/browser`, `/projects/onboard`, `/epics/decompose` — is replaced by its address in this scheme when it is opened. A route that is not one of these opens the overview for a paired, onboarded browser and the pairing page otherwise; it never opens a blank page. The address bar is written as link:navigation.adoc#url[Navigation, Addresses and History] says — a push for a change of depth or of lens, a replace for a sibling, a mode, a tab and every selection the app makes on its own — and read on `popstate`, so Back and Forward move between views without a reload. A pairing code in the fragment is redeemed before the first write and never rewritten into the history (link:entry.adoc#after-pairing[Entry, Where the App Opens]).
