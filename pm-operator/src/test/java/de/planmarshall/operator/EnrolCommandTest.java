@@ -71,10 +71,6 @@ class EnrolCommandTest {
         return fixture.start(handler);
     }
 
-    private static String enrolResult(String id, boolean pilot) {
-        return new EnrolResult(EnrolResult.STATUS_ENROLLED, id, pilot).toJson();
-    }
-
     @Test
     @DisplayName("project add posts the checkout path and reports the enrolled project")
     void enrolProject() throws Exception {
@@ -149,7 +145,7 @@ class EnrolCommandTest {
     @Test
     @DisplayName("enrol strips terminal control sequences from the path it reports")
     void enrolStripsControlSequences() throws Exception {
-        var server = runtime((request, response) -> {
+        runtime((request, response) -> {
             if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
                 response.json(201, """
                                     {"status":"started","onboarding_id":"onb-x","checkout_path":"/x",

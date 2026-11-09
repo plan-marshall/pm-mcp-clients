@@ -26,6 +26,7 @@ import org.jline.reader.UserInterruptException;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.project.EnrolledProject;
@@ -203,6 +204,38 @@ public final class ProjectCommand implements Callable<Integer> {
             var startPayload = JsonTree.write(Map.of("path", path, "pilot", pilot));
             var response = context.runtime(true).send(HttpRequest.json("POST", "/api/v1/project-onboardings", startPayload));
 
+            var refusalExit = checkResponse(response, safePath, locale, out, err);
+            if (refusalExit != null) {
+                return refusalExit;
+            }
+
+            var source = resolveSource(response);
+
+            var startPrompt = new StartPrompt(context, out, locale, noInput);
+            var dialogue = new StateDialogue(source, out, locale, stateId -> {
+                if ("project.identity".equals(stateId) && pilot) {
+                    return new ChoicePrompt(new BufferedReader(new StringReader("\n")), out, locale, stateId);
+                }
+                return new ChoicePrompt(startPrompt, stateId);
+            });
+
+            try {
+                var finalFrame = dialogue.run();
+                return finalFrame.isFinal() ? 0 : EXIT_NEEDS_INPUT;
+            } catch (StartPrompt.InterruptException _) {
+                return StartPrompt.EXIT_INTERRUPTED;
+            } catch (StartPrompt.StartLeftException _) {
+                return 0;
+            } catch (IOException _) {
+                err.println(MessageCatalogue.format(locale, "project.setup.unreadable",
+                                    Map.of(PARAM_PROJECT, safePath)));
+                err.flush();
+                return 1;
+            }
+        }
+
+        private @Nullable Integer checkResponse(HttpResponse response, String safePath, String locale,
+                PrintWriter out, PrintWriter err) throws IOException {
             if (response.status() == 409) {
                 var reason = refusalReason(response.bodyText());
                 if (ERR_ENROLMENT_ROOT_CONFLICT.equals(reason)) {
@@ -227,7 +260,10 @@ public final class ProjectCommand implements Callable<Integer> {
             if (response.status() != 200 && response.status() != 201) {
                 throw new OperatorRefusedException("project add " + safePath, response);
             }
+            return null;
+        }
 
+        private StateDialogue.Source resolveSource(HttpResponse response) throws IOException {
             String entryId = null;
             String projectId = null;
             try {
@@ -249,40 +285,19 @@ public final class ProjectCommand implements Callable<Integer> {
                 // fall back below
             }
 
-            if (entryId == null && projectId == null) {
-                try {
-                    var name = Path.of(path).getFileName();
-                    projectId = name != null ? name.toString() : path;
-                } catch (IllegalArgumentException _) {
-                    projectId = path;
-                }
+            if (projectId != null) {
+                return new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId);
             }
-
-            var source = projectId != null
-                                ? new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId)
-                                : ProjectOnboardingSource.forEntry(context.runtime(true), context.gate(), entryId);
-
-            var startPrompt = new StartPrompt(context, out, locale, noInput);
-            var dialogue = new StateDialogue(source, out, locale, stateId -> {
-                if ("project.identity".equals(stateId) && pilot) {
-                    return new ChoicePrompt(new BufferedReader(new StringReader("\n")), out, locale, stateId);
-                }
-                return new ChoicePrompt(startPrompt, stateId);
-            });
-
+            if (entryId != null) {
+                return ProjectOnboardingSource.forEntry(context.runtime(true), context.gate(), entryId);
+            }
             try {
-                var finalFrame = dialogue.run();
-                return finalFrame.isFinal() ? 0 : EXIT_NEEDS_INPUT;
-            } catch (StartPrompt.InterruptException _) {
-                return StartPrompt.EXIT_INTERRUPTED;
-            } catch (StartPrompt.StartLeftException _) {
-                return 0;
-            } catch (IOException _) {
-                err.println(MessageCatalogue.format(locale, "project.setup.unreadable",
-                                    Map.of(PARAM_PROJECT, safePath)));
-                err.flush();
-                return 1;
+                var name = Path.of(path).getFileName();
+                projectId = name != null ? name.toString() : path;
+            } catch (IllegalArgumentException _) {
+                projectId = path;
             }
+            return new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId);
         }
     }
 
@@ -421,12 +436,10 @@ public final class ProjectCommand implements Callable<Integer> {
             var sanitizedId = OutputSafety.stripControlSequences(projectId);
             var locale = context.clientEnvironment().locale();
 
-            if (reason == null || reason.isBlank()) {
-                if (noInput) {
-                    err.println(text(locale, "operator.project.release.reason_required"));
-                    err.flush();
-                    return EXIT_NEEDS_INPUT;
-                }
+            if ((reason == null || reason.isBlank()) && noInput) {
+                err.println(text(locale, "operator.project.release.reason_required"));
+                err.flush();
+                return EXIT_NEEDS_INPUT;
             }
 
             if (!yes && noInput) {
@@ -436,22 +449,9 @@ public final class ProjectCommand implements Callable<Integer> {
             }
 
             if (!yes) {
-                try (var lease = context.openTerminal()) {
-                    var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
-                    if (reason == null || reason.isBlank()) {
-                        var prompt = text(locale, "operator.actions.end.reason") + "  \u203a ";
-                        var line = readLineSafe(reader, prompt);
-                        if (line != null && !line.isBlank()) {
-                            reason = line.trim();
-                        } else {
-                            reason = "Released by operator";
-                        }
-                    }
-                    if (!confirm(reader, locale, "operator.projects.release.confirm")) {
-                        return 0;
-                    }
-                } catch (StartPrompt.InterruptException _) {
-                    return StartPrompt.EXIT_INTERRUPTED;
+                var confirmationExit = promptReleaseConfirmation(locale);
+                if (confirmationExit != null) {
+                    return confirmationExit;
                 }
             } else if (reason == null || reason.isBlank()) {
                 reason = "Released by operator";
@@ -479,6 +479,23 @@ public final class ProjectCommand implements Callable<Integer> {
                 return 1;
             }
             throw new OperatorRefusedException("release project " + sanitizedId, response);
+        }
+
+        private @Nullable Integer promptReleaseConfirmation(String locale) throws IOException {
+            try (var lease = context.openTerminal()) {
+                var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
+                if (reason == null || reason.isBlank()) {
+                    var prompt = text(locale, "operator.actions.end.reason") + "  \u203a ";
+                    var line = readLineSafe(reader, prompt);
+                    reason = (line != null && !line.isBlank()) ? line.trim() : "Released by operator";
+                }
+                if (!confirm(reader, locale, "operator.projects.release.confirm")) {
+                    return 0;
+                }
+                return null;
+            } catch (StartPrompt.InterruptException _) {
+                return StartPrompt.EXIT_INTERRUPTED;
+            }
         }
     }
 
@@ -516,12 +533,13 @@ public final class ProjectCommand implements Callable<Integer> {
             var sanitizedId = OutputSafety.stripControlSequences(projectId);
             var locale = context.clientEnvironment().locale();
 
+            if (!yes && noInput) {
+                err.println(text(locale, "enrolment.unenrol.confirm_required"));
+                err.flush();
+                return EXIT_NEEDS_INPUT;
+            }
+
             if (!yes) {
-                if (noInput) {
-                    err.println(text(locale, "enrolment.unenrol.confirm_required"));
-                    err.flush();
-                    return EXIT_NEEDS_INPUT;
-                }
                 try (var lease = context.openTerminal()) {
                     var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
                     if (!confirm(reader, locale, "operator.projects.unenrol.confirm")) {
