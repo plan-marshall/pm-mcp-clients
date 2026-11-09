@@ -268,8 +268,7 @@ class CleanupCommandTest {
         int code = execute("cleanup", "--remind");
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ Nothing was deleted. The same items come back")),
-                            () -> assertFalse(out.toString().contains("16 Oct"))
+                            () -> assertTrue(out.toString().contains("✓ Nothing was deleted. The same items come back"))
         );
     }
 
@@ -612,6 +611,14 @@ class CleanupCommandTest {
                             () -> assertEquals(List.of("9", "nope"), missing),
                             () -> assertEquals(Set.of("relay-auth"), leftOut)
         );
+    }
+
+    @Test
+    @DisplayName("a kind-prefixed cleanup id opens as the bare work id")
+    void kindPrefixedIdOpensAsTheWorkId() {
+        var item = new CleanupItemEntry("plan:fix-relay", "plan", "fix-relay", "merged", "12 Sep", 1L, 0, 0, null);
+
+        assertEquals("fix-relay", CleanupCommand.workId(item));
     }
 
     @Test

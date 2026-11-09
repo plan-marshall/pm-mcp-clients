@@ -531,6 +531,17 @@ class ChoicePromptTest {
         assertTrue(out.toString().contains("ask me again in some future days"), out.toString());
     }
 
+    @Test
+    @DisplayName("rule 15: a part wider than the terminal is broken instead of left to autowrap")
+    void keyedBarBreaksAnOversizedPart() {
+        var chunked = ChoicePrompt.chunk("r) frag mich in einer wirklich sehr weit entfernten zukunft wieder", 16);
+
+        var lines = chunked.lines().toList();
+        assertTrue(lines.size() > 1, chunked);
+        lines.forEach(line -> assertTrue(line.length() <= 16, line));
+        assertEquals("zukunft wieder", lines.getLast());
+    }
+
     private ChoicePrompt keyedPrompt(String input, StringWriter out, String locale) {
         var prompt = createPrompt(input, out, locale).keyed().leaveKeyLabel("de".equals(locale) ? "verlassen" : "leave");
         prompt.addChoice("d", "delete…");

@@ -543,6 +543,12 @@ public final class ChoicePrompt {
                 out.println(line);
                 line.setLength(0);
             }
+            if (part.length() > width) {
+                out.println(line.isEmpty() ? "" : line.toString());
+                line.setLength(0);
+                out.println(chunk(part, width));
+                continue;
+            }
             if (!line.isEmpty()) {
                 line.append(KEYED_GAP);
             }
@@ -551,6 +557,29 @@ public final class ChoicePrompt {
         if (!line.isEmpty()) {
             out.println(line);
         }
+    }
+
+    /**
+     * Breaks a part wider than the terminal at its last space inside the width, or mid-word when
+     * even that does not fit, so a label is never cut by the terminal's own autowrap.
+     *
+     * @param part  the rendered part
+     * @param width the width it must fit
+     * @return the lines it becomes
+     */
+    static String chunk(String part, int width) {
+        var lines = new ArrayList<String>();
+        var rest = part;
+        while (rest.length() > width) {
+            var cut = rest.lastIndexOf(' ', width);
+            if (cut <= 0) {
+                cut = width;
+            }
+            lines.add(rest.substring(0, cut));
+            rest = rest.substring(cut).stripLeading();
+        }
+        lines.add(rest);
+        return String.join("\n", lines);
     }
 
     /**

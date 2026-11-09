@@ -299,7 +299,6 @@ public final class CleanupCommand implements Callable<Integer> {
         var res = context.runtime(true).send(HttpRequest.post(CLEANUP_API + "/" + job.jobId() + "/remind"));
         if (res.status() == 200) {
             printRemindDone(out, res.bodyText());
-            printWholeJobActionNote(out);
             return 0;
         }
         throw new OperatorRefusedException("cleanup --remind", res);
@@ -390,7 +389,6 @@ public final class CleanupCommand implements Callable<Integer> {
         if (res.status() == 200) {
             int totalItems = job.projectItems().stream().mapToInt(p -> p.items().size()).sum();
             out.printf("✓ Nothing was deleted. %d items are kept for good; cleanup --kept lists them, cleanup --release gives them back.%n", totalItems);
-            printWholeJobActionNote(out);
             out.flush();
             return 0;
         }
@@ -614,6 +612,7 @@ public final class CleanupCommand implements Callable<Integer> {
         out.printf("Summary   %d plans · %d epics · %d logs · %d read reports · %d unenrolled project%n",
                             s.plansCount(), s.epicsCount(), s.logsCount(), s.reportsCount(), s.projectsCount());
         out.printf("          frees %s%n", SystemCommand.formatBytes(s.freedBytes()));
+        printWholeJobActionNote(out);
 
         int itemIndex = 1;
         for (var prj : job.projectItems()) {
@@ -889,12 +888,22 @@ public final class CleanupCommand implements Callable<Integer> {
         }
         var target = openTarget(item);
         if (target != null) {
-            PmOperator.execute(context, out, err, target, item.id());
+            PmOperator.execute(context, out, err, target, workId(item));
             return;
         }
         out.println(MessageCatalogue.format(locale, "operator.cleanup.choose.open_work_only",
                             Map.of("item", OutputSafety.stripControlSequences(item.title()))));
         out.flush();
+    }
+
+    /**
+     * @param item an item of the open job
+     * @return the work id the item names, without the {@code kind:} prefix a cleanup identity may
+     *         carry
+     */
+    static String workId(CleanupItemEntry item) {
+        var prefix = item.kind() + ":";
+        return item.id().startsWith(prefix) ? item.id().substring(prefix.length()) : item.id();
     }
 
     /**
