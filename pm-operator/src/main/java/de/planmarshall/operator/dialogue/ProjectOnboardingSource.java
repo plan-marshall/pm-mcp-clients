@@ -15,6 +15,7 @@ import java.util.Objects;
 
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
+import de.planmarshall.api.project.BeingAddedProject;
 import de.planmarshall.api.runtime.RuntimeClient;
 import de.planmarshall.operator.OperatorGate;
 import de.planmarshall.operator.OperatorUrlUtil;
@@ -30,6 +31,9 @@ import de.planmarshall.operator.OperatorUrlUtil;
  * an act is sent to the entry's link surface. See {@link #forEntry}.
  */
 public final class ProjectOnboardingSource implements StateDialogue.Source {
+
+    /** The default step total of a project's onboarding when the runtime reports none. */
+    static final int TOTAL_STEPS = BeingAddedProject.DEFAULT_TOTAL_STEPS;
 
     private static final String PROJECTS_API = "/api/v1/projects/";
     private static final String ENTRIES_API = "/api/v1/entries/";
@@ -77,7 +81,7 @@ public final class ProjectOnboardingSource implements StateDialogue.Source {
         if (response.status() != 200) {
             throw new IOException("the project setup answered HTTP " + response.status());
         }
-        return StateDialogue.fromJson(response.bodyText(), 0, true);
+        return StateDialogue.fromJson(response.bodyText(), TOTAL_STEPS, true);
     }
 
     @Override
@@ -91,6 +95,6 @@ public final class ProjectOnboardingSource implements StateDialogue.Source {
         if (response.status() != 200) {
             throw new IOException("the project setup answered HTTP " + response.status());
         }
-        return StateDialogue.fromJson(response.bodyText(), 0, true);
+        return StateDialogue.fromJson(response.bodyText(), TOTAL_STEPS, true);
     }
 }
