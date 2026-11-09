@@ -239,7 +239,7 @@ class TuiCapabilityIT {
                                 .filter(line -> line.contains("move") || line.contains("leave"))
                                 .findFirst()
                                 .orElse("");
-            var omitted = kind == TuiLevel.Kind.PLAN;
+            var omitted = kind == TuiLevel.Kind.PLAN || kind == TuiLevel.Kind.OVERVIEW;
             assertAll(
                                 () -> assertTrue(footer.contains("move"), session.screenText()),
                                 () -> assertTrue(footer.contains(omitted ? "? more" : "? help"), footer),

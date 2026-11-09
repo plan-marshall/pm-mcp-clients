@@ -89,6 +89,16 @@ Every kind of the closed list of `needs_operator` (link:../shared/plan-overview.
 |`◆ Project plan-marshall: the setup needs you: <what>` (`operator.console.notice.setup`)
 |`1 setup` (`operator.console.badge.setup_needs`)
 |`project setup <id>`
+
+|`credential`
+|`◆ Credential <key> needs attention` (`operator.console.notice.credential`)
+|`1 credential` (`operator.console.badge.credential`)
+|`credentials`
+
+|`cleanup_due`
+|`◆ Cleanup is due` (`operator.console.notice.cleanup_due`)
+|`1 cleanup due` (`operator.console.badge.cleanup_due`)
+|`cleanup`
 |===
 
 The holds among the kinds are exactly `stalled`, `condition`, `integrity_hold`, `held`, and `landing_failed`; the command of each opens the hold with its acts (xref:19-actions.adoc#holds[What Holds a Plan]). The open onboardings are badges of their own, not notices: `setup 3/7` for the machine (`operator.console.badge.setup`) and `setup cui-parent 5/9` for each project's (`operator.console.badge.setup_project`), whose name is the checkout's directory because a being-added run has no project id (`<<being-added-address>>`).

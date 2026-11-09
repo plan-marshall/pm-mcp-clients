@@ -121,6 +121,7 @@ In the console and as direct verbs:
   epic <epic_id> [--tokens]   an epic's view as a tree, with its tokens per plan (19-actions)
   questions                   the open decisions and waiver requests, with what they block and the recommendation
   answer <id> [<option>]      open a decision or a waiver request as a dialogue, or answer a decision with an option
+  needs                       the list of what waits across projects, in runtime order (UC-PLN-7)
 
 In the console only:
   web [qr|copy [ssh]]         the ways into the web app; the code's QR code again; copy the URL or the ssh command

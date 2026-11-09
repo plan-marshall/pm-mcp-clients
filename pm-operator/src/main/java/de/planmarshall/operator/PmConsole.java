@@ -380,8 +380,13 @@ public final class PmConsole {
             return;
         }
 
-        // `tui` is the alias of `plans`; the rewrite keeps its trailing arguments.
-        var command = "tui".equals(verb) ? PLANS + line.substring(verb.length()) : line;
+        // `tui` is the alias of `plans`; `!` is the alias of `needs`. The rewrite keeps trailing arguments.
+        String command = line;
+        if ("tui".equals(verb)) {
+            command = PLANS + line.substring(verb.length());
+        } else if ("!".equals(verb)) {
+            command = "needs" + line.substring(verb.length());
+        }
         if (OperatorActs.isAct(line) && !checkAct(out)) {
             return;
         }

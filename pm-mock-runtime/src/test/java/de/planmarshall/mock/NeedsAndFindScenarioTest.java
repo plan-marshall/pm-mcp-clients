@@ -160,6 +160,27 @@ class NeedsAndFindScenarioTest {
             }
         }
 
+        @Test
+        @DisplayName("status incorporates machine needs_operator items into waiting counts")
+        void statusIncorporatesMachineNeeds() throws Exception {
+            try (var runtime = MockRuntime.start(StandardScenarios.RUNNING_WORK)) {
+                var client = new UnixSocketHttpClient(runtime.socketPath());
+                var auth = "Bearer " + runtime.token();
+
+                var res = client.send(HttpRequest.get("/api/v1/status").withHeader(AUTH_HEADER, auth));
+                assertEquals(200, res.status());
+                var status = JsonTree.asObject(JsonTree.parse(new String(res.body())));
+                var needs = JsonTree.asObject(status.get("needs_operator"));
+                assertNotNull(needs);
+                assertEquals(1, JsonTree.integer(needs, "credential"));
+                assertEquals(1, JsonTree.integer(needs, "cleanup_due"));
+                assertEquals(6, JsonTree.integer(needs, "decision"));
+                assertEquals(2, JsonTree.integer(needs, "waiver_request"));
+                assertEquals(1, JsonTree.integer(needs, "integrity_pause"));
+                assertEquals(1, JsonTree.integer(needs, "held"));
+            }
+        }
+
         private static int itemCount(UnixSocketHttpClient client, String auth) throws Exception {
             var res = client.send(HttpRequest.get(MachineApiPaths.NEEDS_OPERATOR).withHeader(AUTH_HEADER, auth));
             assertEquals(200, res.status());

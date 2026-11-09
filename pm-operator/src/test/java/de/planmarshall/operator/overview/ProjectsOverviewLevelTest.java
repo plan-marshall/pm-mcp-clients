@@ -11,6 +11,7 @@ package de.planmarshall.operator.overview;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Clock;
@@ -18,7 +19,11 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 
+import de.planmarshall.api.overview.NeedsOperatorItem;
+import de.planmarshall.api.overview.NeedsOperatorKind;
+import de.planmarshall.api.overview.NeedsOperatorPage;
 import de.planmarshall.api.overview.ProjectSummary;
+import de.planmarshall.api.overview.WorkLocation;
 import de.planmarshall.operator.tui.TuiLevel;
 
 import org.junit.jupiter.api.DisplayName;
@@ -103,5 +108,57 @@ class ProjectsOverviewLevelTest {
         var row = rows.getFirst();
         assertTrue(row.line().contains("1 Plan"));
         assertTrue(row.line().contains("vor 5 min"));
+    }
+
+    @Test
+    @DisplayName("renders Needs you group above projects when items are present")
+    void needsYouGroupAboveProjects() {
+        var item1 = new NeedsOperatorItem(NeedsOperatorKind.DECISION, "/api/v1/decisions/Q-001",
+                            new WorkLocation("proj-a", "Project Alpha"), null,
+                            new WorkLocation("plan-1", "Plan One"), baseInstant.minusSeconds(60), "plan");
+        var item2 = new NeedsOperatorItem(NeedsOperatorKind.CLEANUP_DUE, null, null, null, null,
+                            baseInstant.minusSeconds(3600), null);
+        var page = new NeedsOperatorPage(1, 1, false, false, 2, List.of(item1, item2));
+
+        var p = new ProjectSummary("proj-a", "Project Alpha", 1, 0, 0, null, false, baseInstant);
+        var level = new ProjectsOverviewLevel(List.of(p), page);
+        var rows = level.rows("en", clock);
+
+        assertEquals(4, rows.size());
+        assertEquals(ProjectsOverviewLevel.GROUP_NEEDS_YOU_ID, rows.get(0).id());
+        assertTrue(rows.get(0).line().contains("Needs you · 2"));
+        assertFalse(rows.get(0).openable());
+
+        assertEquals("needs:0", rows.get(1).id());
+        assertTrue(rows.get(1).line().contains("! decision"));
+        assertTrue(rows.get(1).line().contains("plan-1"));
+        assertTrue(rows.get(1).openable());
+        assertTrue(rows.get(1).needsOperator());
+
+        assertEquals("needs:1", rows.get(2).id());
+        assertTrue(rows.get(2).line().contains("! cleanup due"));
+        assertTrue(rows.get(2).openable());
+
+        assertEquals("proj-a", rows.get(3).id());
+        assertEquals(item1, level.needsItemOf("needs:0"));
+        assertEquals(item2, level.needsItemOf("needs:1"));
+        assertEquals("needs:0", ProjectsOverviewLevel.firstSelectableId(rows));
+    }
+
+    @Test
+    @DisplayName("empty projects list with active needs items returns needs rows and handles invalid IDs")
+    void emptyProjectsWithNeeds() {
+        var item = new NeedsOperatorItem(NeedsOperatorKind.DECISION, "/api/v1/decisions/Q-001",
+                            new WorkLocation("proj-a", "Project Alpha"), null,
+                            new WorkLocation("plan-1", "Plan One"), baseInstant.minusSeconds(60), "plan");
+        var page = new NeedsOperatorPage(1, 1, false, false, 1, List.of(item));
+        var level = new ProjectsOverviewLevel(List.of(), page);
+        var rows = level.rows("en", clock);
+        assertEquals(2, rows.size());
+        assertEquals(ProjectsOverviewLevel.GROUP_NEEDS_YOU_ID, rows.get(0).id());
+        assertEquals("needs:0", rows.get(1).id());
+        assertNull(level.needsItemOf("needs:invalid"));
+        assertNull(level.needsItemOf("needs:999"));
+        assertNull(level.needsItemOf("not-a-needs-id"));
     }
 }

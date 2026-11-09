@@ -29,6 +29,7 @@ import org.jline.reader.UserInterruptException;
 import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.MachineApiPaths;
 import de.planmarshall.api.control.EpicResource;
 import de.planmarshall.api.control.HoldRecord;
 import de.planmarshall.api.event.EventKind;
@@ -37,6 +38,8 @@ import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.EndedWorkItem;
 import de.planmarshall.api.overview.EndedWorkPage;
+import de.planmarshall.api.overview.NeedsOperatorItem;
+import de.planmarshall.api.overview.NeedsOperatorPage;
 import de.planmarshall.api.overview.ProjectDetailResponse;
 import de.planmarshall.api.overview.ProjectOverviewResponse;
 import de.planmarshall.api.overview.ProjectSummary;
@@ -103,6 +106,8 @@ public final class OverviewFullScreenApp {
     private static final String PROJECTS_API_PREFIX = "/api/v1/projects/";
     private static final String PLANS_API_PREFIX = "/api/v1/plans/";
     private static final String PROJECT_VERB = "project";
+    private static final String VERB_ANSWER = "answer";
+    private static final String VERB_SETUP = "setup";
     private static final String STATUS_ROW_ID = "__status__";
 
     /**
@@ -175,6 +180,8 @@ public final class OverviewFullScreenApp {
     private final InitialSelection initialSelection;
 
     private final AtomicReference<ProjectOverviewResponse> cachedProjects = new AtomicReference<>();
+    private final AtomicReference<NeedsOperatorPage> cachedNeedsOperator = new AtomicReference<>();
+    private final AtomicReference<ProjectsOverviewLevel> currentOverviewLevel = new AtomicReference<>();
     private final AtomicReference<ProjectsExplorerLevel> explorerLevel = new AtomicReference<>();
     private final AtomicReference<ProjectDetailResponse> currentProjectDetail = new AtomicReference<>();
     private final AtomicBoolean currentByEpic = new AtomicBoolean(false);
@@ -400,11 +407,13 @@ public final class OverviewFullScreenApp {
             return;
         }
         fetchProjects(runtime);
+        fetchNeedsOperator(runtime);
         fetchUnreadReports(runtime);
 
         var cached = cachedProjects.get();
         var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
-        var rootLevel = new ProjectsOverviewLevel(projects);
+        var rootLevel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get());
+        currentOverviewLevel.set(rootLevel);
         var rootRows = rootLevel.rows(locale, clock);
 
         if (initialSelection.system()) {
@@ -456,7 +465,21 @@ public final class OverviewFullScreenApp {
             boolean byEpic = "epic".equalsIgnoreCase(initialSelection.by() != null ? initialSelection.by() : saved.projectView());
             openProject(runtime, savedProjectId, byEpic, saved.selectedId());
         } else {
-            stack.replaceRoot(ProjectsOverviewLevel.level(locale), rootRows, saved.selectedId());
+            var targetId = saved.selectedId() != null
+                                ? saved.selectedId()
+                                : ProjectsOverviewLevel.firstSelectableId(rootRows);
+            stack.replaceRoot(ProjectsOverviewLevel.level(locale), rootRows, targetId);
+        }
+    }
+
+    void fetchNeedsOperator(RuntimeClient runtime) {
+        try {
+            var response = runtime.send(HttpRequest.get(MachineApiPaths.NEEDS_OPERATOR));
+            if (response.status() == 200) {
+                cachedNeedsOperator.set(NeedsOperatorPage.fromJson(response.bodyText()));
+            }
+        } catch (IOException _) {
+            // Keep existing cached needs operator if runtime read fails
         }
     }
 
@@ -1133,7 +1156,7 @@ public final class OverviewFullScreenApp {
         if (subject == ActionsMenu.Subject.PLAN && "decide".equals(entry.action())) {
             var decision = menuDecision;
             if (decision != null) {
-                runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), "answer", decision,
+                runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), VERB_ANSWER, decision,
                                     "--interactive"));
             }
             return;
@@ -1174,32 +1197,221 @@ public final class OverviewFullScreenApp {
         };
     }
 
-    /** Opens what waits for the operator in the selected row. */
+    /** Opens what waits for the operator in the selected row, or jumps to the next waiting row. */
     private void openWhatWaits() {
         var lvl = stack.level();
         var selected = stack.selected();
         if (lvl == null || selected == null) {
             return;
         }
-        if (lvl.kind() == TuiLevel.Kind.EPIC) {
+        var kind = lvl.kind();
+        var selectedId = selected.id();
+
+        if (kind == TuiLevel.Kind.OVERVIEW) {
+            var overview = currentOverviewLevel.get();
+            var needsItem = overview != null ? overview.needsItemOf(selectedId) : null;
+            if (needsItem != null) {
+                openNeedsItemAct(needsItem);
+                return;
+            }
+            var cached = cachedProjects.get();
+            if (cached != null) {
+                var project = cached.projects().stream().filter(p -> p.projectId().equals(selectedId)).findFirst().orElse(null);
+                if (project != null && project.setupNeedsOperator()) {
+                    runVerb(PROJECT_VERB, VERB_SETUP, project.projectId());
+                    return;
+                }
+            }
+            jumpToNextWaitingRow();
+            return;
+        }
+
+        if (kind == TuiLevel.Kind.PROJECT_BY_PLAN || kind == TuiLevel.Kind.PROJECT_BY_EPIC) {
+            var detail = currentProjectDetail.get();
+            if (detail != null) {
+                var plan = detail.plans().stream().filter(p -> p.planId().equals(selectedId)).findFirst().orElse(null);
+                if (plan != null && OverviewFormatting.needsOperator(plan)) {
+                    openPlanWaitAct(plan.planId());
+                    return;
+                }
+                var epic = detail.epics().stream().filter(e -> e.epicId().equals(selectedId)).findFirst().orElse(null);
+                if (epic != null && OverviewFormatting.needsOperator(epic)) {
+                    openEpicWaitAct(epic.epicId());
+                    return;
+                }
+            }
+            jumpToNextWaitingRow();
+            return;
+        }
+
+        if (kind == TuiLevel.Kind.EPIC) {
             var view = currentEpicView.get();
             if (view != null) {
-                var planId = view.planIdOf(selected.id());
+                var planId = view.planIdOf(selectedId);
                 if (planId != null) {
-                    try {
-                        var hold = actionsClient().hold(planId);
-                        if (hold != null) {
-                            runDialogue(() -> OperatorActions.runHold(context, dialogueOut(), planId,
-                                                hold.holdId()));
-                        }
-                    } catch (IOException refused) {
-                        statusMessage = OutputSafety.stripControlSequences(refused.getMessage());
-                    }
+                    openPlanWaitAct(planId);
+                    return;
                 }
+            }
+            jumpToNextWaitingRow();
+            return;
+        }
+
+        if (kind == TuiLevel.Kind.PLAN) {
+            var view = currentPlanView.get();
+            if (view != null) {
+                openPlanWaitAct(view.planId());
+                return;
+            }
+            jumpToNextWaitingRow();
+            return;
+        }
+
+        if (selected.needsOperator()) {
+            openActions();
+        } else {
+            jumpToNextWaitingRow();
+        }
+    }
+
+    private void openPlanWaitAct(String planId) {
+        try {
+            var hold = actionsClient().hold(planId);
+            if (hold != null) {
+                runDialogue(() -> OperatorActions.runHold(context, dialogueOut(), planId, hold.holdId()));
+                return;
+            }
+        } catch (IOException _) {
+            // proceed to decisions
+        }
+        try {
+            var openDecision = actionsClient().openDecision(planId);
+            if (openDecision != null && !openDecision.isBlank()) {
+                String decision = openDecision;
+                runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), VERB_ANSWER, decision));
+                return;
+            }
+        } catch (IOException _) {
+            // best effort
+        }
+        openActions();
+    }
+
+    private void openEpicWaitAct(String epicId) {
+        try {
+            var resource = actionsClient().epic(epicId);
+            if (resource.findings().open() > 0) {
+                runVerb("epic", "findings", epicId);
+                return;
+            }
+        } catch (IOException _) {
+            // best effort
+        }
+        openActions();
+    }
+
+    void runVerb(String... args) {
+        runDialogue(() -> {
+            var code = PmOperator.execute(context, dialogueOut(), dialogueOut(), args);
+            // A start the view hands off is one of the view's other dialogues: its interrupt
+            // leaves back to the view as q does (04-console.adoc#console-dialogue-handoff).
+            var start = args.length > 1 && (("plan".equals(args[0]) || "epic".equals(args[0]))
+                                && "add".equals(args[1]));
+            return start && code == StartPrompt.EXIT_INTERRUPTED ? 0 : code;
+        });
+    }
+
+    private void jumpToNextWaitingRow() {
+        var rows = stack.rows();
+        int size = rows.size();
+        if (size <= 1) {
+            return;
+        }
+        int currentIdx = stack.selectedIndex();
+        for (int i = 1; i <= size; i++) {
+            int candidateIdx = (currentIdx + i) % size;
+            var row = rows.get(candidateIdx);
+            if (row.needsOperator()) {
+                stack.select(row.id());
                 return;
             }
         }
-        openActions();
+    }
+
+    private void openNeedsItemAct(NeedsOperatorItem item) {
+        switch (item.kind()) {
+            case DECISION, WAIVER -> openDecisionAct(item);
+            case HELD, LANDING_FAILED -> openHoldAct(item);
+            case SETUP -> openSetupAct(item);
+            case CREDENTIAL -> runVerb("credentials");
+            case CLEANUP_DUE -> runVerb("cleanup");
+            case FINDINGS -> openFindingsAct(item);
+            case CONDITION, STALLED, INTEGRITY_PAUSE, WAITS_FOR_YOU -> openPlanAct(item);
+        }
+    }
+
+    private void openDecisionAct(NeedsOperatorItem item) {
+        String decisionId = null;
+        if (item.link() != null && item.link().contains("/decisions/")) {
+            decisionId = item.link().substring(item.link().lastIndexOf('/') + 1);
+        } else if (item.plan() != null) {
+            try {
+                decisionId = actionsClient().openDecision(item.plan().id());
+            } catch (IOException _) {
+                // best effort
+            }
+        }
+        if (decisionId != null) {
+            String finalDecisionId = decisionId;
+            runDialogue(() -> PmOperator.execute(context, dialogueOut(), dialogueOut(), VERB_ANSWER, finalDecisionId));
+        } else {
+            runVerb(VERB_ANSWER);
+        }
+    }
+
+    private void openHoldAct(NeedsOperatorItem item) {
+        var planId = item.plan() != null ? item.plan().id() : null;
+        if (planId != null) {
+            try {
+                var hold = actionsClient().hold(planId);
+                if (hold != null) {
+                    runDialogue(() -> OperatorActions.runHold(context, dialogueOut(), planId, hold.holdId()));
+                    return;
+                }
+            } catch (IOException _) {
+                // best effort
+            }
+            runVerb("plan", "hold", planId);
+        } else if (item.epic() != null) {
+            runVerb("epic", item.epic().id());
+        }
+    }
+
+    private void openSetupAct(NeedsOperatorItem item) {
+        var projId = item.project() != null ? item.project().id() : null;
+        if (projId != null) {
+            runVerb(PROJECT_VERB, VERB_SETUP, projId);
+        } else {
+            runVerb(PROJECT_VERB, VERB_SETUP);
+        }
+    }
+
+    private void openFindingsAct(NeedsOperatorItem item) {
+        if (item.epic() != null) {
+            runVerb("epic", "findings", item.epic().id());
+        } else {
+            runVerb("reports");
+        }
+    }
+
+    private void openPlanAct(NeedsOperatorItem item) {
+        if (item.plan() != null) {
+            try {
+                openPlan(context.runtime(true), item.plan().id(), null);
+            } catch (IOException _) {
+                // best effort
+            }
+        }
     }
 
     private Thread startEventListener() {
@@ -1434,9 +1646,15 @@ public final class OverviewFullScreenApp {
         }
 
         if (targetKind == TuiLevel.Kind.OVERVIEW) {
+            try {
+                fetchNeedsOperator(context.runtime(false));
+            } catch (IOException _) {
+                // best effort
+            }
             var cached = cachedProjects.get();
             var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
-            var levelModel = new ProjectsOverviewLevel(projects);
+            var levelModel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get());
+            currentOverviewLevel.set(levelModel);
             stack.refresh(levelModel.rows(locale, clock));
         } else if (targetKind == TuiLevel.Kind.PROJECT_BY_PLAN || targetKind == TuiLevel.Kind.PROJECT_BY_EPIC) {
             if (fetchedDetail != null) {
@@ -2130,6 +2348,12 @@ public final class OverviewFullScreenApp {
             }
 
             if (kind == TuiLevel.Kind.OVERVIEW) {
+                var overview = currentOverviewLevel.get();
+                var needsItem = overview != null ? overview.needsItemOf(selectedId) : null;
+                if (needsItem != null) {
+                    openNeedsItemAct(needsItem);
+                    return true;
+                }
                 try {
                     openProject(context.runtime(true), selectedId, false, null);
                 } catch (IOException _) {
@@ -2739,7 +2963,8 @@ public final class OverviewFullScreenApp {
             }
             var cached = cachedProjects.get();
             var projects = cached != null ? cached.projects() : List.<ProjectSummary>of();
-            var levelModel = new ProjectsOverviewLevel(projects);
+            var levelModel = new ProjectsOverviewLevel(projects, cachedNeedsOperator.get());
+            currentOverviewLevel.set(levelModel);
             stack.push(ProjectsOverviewLevel.level(locale), levelModel.rows(locale, clock), null);
         }
 
@@ -2871,17 +3096,6 @@ public final class OverviewFullScreenApp {
 
         private static boolean isReleased(EnrolledProject project) {
             return project.isReleased() || project.readiness() == ProjectReadiness.RELEASED;
-        }
-
-        private void runVerb(String... args) {
-            runDialogue(() -> {
-                var code = PmOperator.execute(context, dialogueOut(), dialogueOut(), args);
-                // A start the view hands off is one of the view's other dialogues: its interrupt
-                // leaves back to the view as q does (04-console.adoc#console-dialogue-handoff).
-                var start = args.length > 1 && (("plan".equals(args[0]) || "epic".equals(args[0]))
-                                    && "add".equals(args[1]));
-                return start && code == StartPrompt.EXIT_INTERRUPTED ? 0 : code;
-            });
         }
 
         private void openProjectMenu() {
@@ -3116,7 +3330,7 @@ public final class OverviewFullScreenApp {
             if (project == null || isReleased(project)) {
                 return;
             }
-            runVerb(PROJECT_VERB, "setup", project.projectId());
+            runVerb(PROJECT_VERB, VERB_SETUP, project.projectId());
         }
 
         private void enrolAgain() {
@@ -3127,7 +3341,7 @@ public final class OverviewFullScreenApp {
             if (project == null || !isReleased(project)) {
                 return;
             }
-            runVerb(PROJECT_VERB, "setup", project.projectId(), "identity");
+            runVerb(PROJECT_VERB, VERB_SETUP, project.projectId(), "identity");
         }
 
         private void continueProject() {

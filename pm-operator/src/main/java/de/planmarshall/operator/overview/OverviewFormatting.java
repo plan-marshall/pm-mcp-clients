@@ -22,6 +22,8 @@ import de.planmarshall.api.display.Display;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.ActiveEpicSummary;
 import de.planmarshall.api.overview.ActivePlanSummary;
+import de.planmarshall.api.overview.NeedsOperatorItem;
+import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.overview.ProjectSummary;
 import de.planmarshall.operator.OutputSafety;
 
@@ -38,6 +40,8 @@ public final class OverviewFormatting {
     public static final String EPIC_GLYPH = "\u25c7";
 
     private static final String KIND_PAUSED = "paused";
+    private static final String ANSWER_PREFIX = "answer ";
+    private static final String CMD_PLANS = "plans";
 
     private OverviewFormatting() {
     }
@@ -127,7 +131,7 @@ public final class OverviewFormatting {
      * @return the same order, as an immutable copy
      */
     public static List<ActivePlanSummary> sortPlans(List<ActivePlanSummary> plans) {
-        Objects.requireNonNull(plans, "plans");
+        Objects.requireNonNull(plans);
         return List.copyOf(plans);
     }
 
@@ -138,13 +142,39 @@ public final class OverviewFormatting {
      * @return the same order, as an immutable copy
      */
     public static List<ActiveEpicSummary> sortEpics(List<ActiveEpicSummary> epics) {
-        Objects.requireNonNull(epics, "epics");
+        Objects.requireNonNull(epics);
         return List.copyOf(epics);
     }
 
     /**
-     * Formats the attention badge for a plan or epic row (e.g. {@code "! decision"} or
-     * {@code "! 2 · decision"}).
+     * Maps an attention kind name to its {@link MessageCatalogue} key.
+     *
+     * @param kind the attention kind
+     * @return message catalogue key, or null if unknown
+     */
+    public static @Nullable String needsKeyForKind(@Nullable String kind) {
+        if (kind == null) {
+            return null;
+        }
+        return switch (kind) {
+            case "question", "decision" -> "overview.needs.decision";
+            case "waiver", "waiver_request" -> "overview.needs.waiver";
+            case "waits_for_you", "operator_wait" -> "overview.needs.waits_for_you";
+            case "integrity_pause" -> "overview.needs.integrity_pause";
+            case "stalled" -> "overview.needs.stalled";
+            case "condition" -> "overview.needs.condition";
+            case "held" -> "overview.needs.held";
+            case "landing_failed" -> "overview.needs.landing_failed";
+            case "findings" -> "overview.needs.findings";
+            case "setup" -> "overview.needs.setup";
+            case "credential" -> "overview.needs.credential";
+            case "cleanup_due" -> "overview.needs.cleanup_due";
+            default -> null;
+        };
+    }
+
+    /**
+     * Formats the attention marker for a project summary cell.
      *
      * @param locale the target locale
      * @param kind   the attention kind
@@ -155,21 +185,7 @@ public final class OverviewFormatting {
         if (count == null || count <= 0 || kind == null || kind.isBlank() || KIND_PAUSED.equalsIgnoreCase(kind)) {
             return "";
         }
-        var key = switch (kind) {
-            case "question", "decision" -> "overview.needs.decision";
-            case "waiver" -> "overview.needs.waiver";
-            case "waiver_request" -> "overview.needs.waiver_request";
-            case "waits_for_you" -> "overview.needs.waits_for_you";
-            case "operator_wait" -> "overview.needs.operator_wait";
-            case "integrity_pause" -> "overview.needs.integrity_pause";
-            case "stalled" -> "overview.needs.stalled";
-            case "condition" -> "overview.needs.condition";
-            case "held" -> "overview.needs.held";
-            case "landing_failed" -> "overview.needs.landing_failed";
-            case "findings" -> "overview.needs.findings";
-            case "setup" -> "overview.needs.setup";
-            default -> null;
-        };
+        var key = needsKeyForKind(kind);
         var label = key != null
                             ? MessageCatalogue.format(locale, key, Map.of())
                             : "! " + clean(kind);
@@ -353,5 +369,149 @@ public final class OverviewFormatting {
         } catch (DateTimeParseException _) {
             return null;
         }
+    }
+
+    /**
+     * Formats the localized label of a {@link NeedsOperatorKind}.
+     *
+     * @param kind   the kind
+     * @param locale the target locale
+     * @return localized kind label
+     */
+    public static String formatNeedsItemKind(@Nullable NeedsOperatorKind kind, String locale) {
+        if (kind == null || kind.value() == null) {
+            return "";
+        }
+        var value = kind.value();
+        var key = needsKeyForKind(value);
+        if (key != null && MessageCatalogue.hasKey(locale, key)) {
+            return MessageCatalogue.format(locale, key, Map.of());
+        }
+        return value.replace('_', ' ');
+    }
+
+    /**
+     * Formats the subject of a {@link NeedsOperatorItem}.
+     *
+     * @param item the needs-operator item
+     * @return clean subject string
+     */
+    public static String formatNeedsItemSubject(NeedsOperatorItem item) {
+        if (item.plan() != null && !item.plan().id().isBlank()) {
+            return clean(item.plan().id());
+        }
+        if (item.epic() != null && !item.epic().id().isBlank()) {
+            return clean(item.epic().id());
+        }
+        if (item.project() != null && !item.project().id().isBlank()) {
+            return clean(item.project().id());
+        }
+        if (item.kind() == NeedsOperatorKind.CLEANUP_DUE) {
+            return "cleanup";
+        }
+        if (item.kind() == NeedsOperatorKind.CREDENTIAL) {
+            return "credential";
+        }
+        return "machine";
+    }
+
+    /**
+     * Formats the blocking description of a {@link NeedsOperatorItem}.
+     *
+     * @param blocks the blocks target
+     * @param locale the target locale
+     * @return localized blocking string
+     */
+    public static String formatNeedsItemBlocks(@Nullable String blocks, String locale) {
+        if (blocks == null || blocks.isBlank()) {
+            if (MessageCatalogue.hasKey(locale, "overview.needs.blocks_nothing")) {
+                return MessageCatalogue.format(locale, "overview.needs.blocks_nothing", Map.of());
+            }
+            return "blocks no work";
+        }
+        if (MessageCatalogue.hasKey(locale, "overview.needs.blocks")) {
+            return MessageCatalogue.format(locale, "overview.needs.blocks", Map.of("what", blocks));
+        }
+        return "blocks: " + blocks;
+    }
+
+    /**
+     * Formats the relative since timestamp of a {@link NeedsOperatorItem}.
+     *
+     * @param since  the start instant
+     * @param locale the target locale
+     * @param clock  the reference clock
+     * @return formatted since string
+     */
+    public static String formatNeedsItemSince(@Nullable Instant since, String locale, Clock clock) {
+        if (since == null) {
+            return "";
+        }
+        var formatted = Display.time(locale, since, Display.TimeStyle.SHORT, clock);
+        if (formatted.isBlank()) {
+            formatted = Display.time(locale, since, clock);
+        }
+        if (MessageCatalogue.hasKey(locale, "overview.needs.since")) {
+            return MessageCatalogue.format(locale, "overview.needs.since", Map.of("time", formatted));
+        }
+        return "waits since " + formatted;
+    }
+
+    /**
+     * Formats the resolving command for a {@link NeedsOperatorItem}.
+     *
+     * @param item        the needs-operator item
+     * @param decisionIds map of plan/project IDs to open decision IDs
+     * @return resolving command string
+     */
+    public static String formatNeedsItemCommand(NeedsOperatorItem item, Map<String, String> decisionIds) {
+        var kind = item.kind();
+        var planId = item.plan() != null ? item.plan().id() : null;
+        var epicId = item.epic() != null ? item.epic().id() : null;
+        var projId = item.project() != null ? item.project().id() : null;
+
+        return switch (kind) {
+            case DECISION, WAIVER -> decisionCommand(planId, projId, item.link(), decisionIds);
+            case FINDINGS -> epicId != null ? "epic findings " + epicId : "reports";
+            case SETUP -> projId != null ? "project setup " + projId : "project setup";
+            case CREDENTIAL -> "credentials";
+            case CLEANUP_DUE -> "cleanup";
+            case LANDING_FAILED -> landingFailedCommand(planId, epicId);
+            case HELD, CONDITION, STALLED, INTEGRITY_PAUSE, WAITS_FOR_YOU -> planOrEpicCommand(planId, epicId);
+        };
+    }
+
+    private static String decisionCommand(@Nullable String planId, @Nullable String projId,
+                        @Nullable String link, Map<String, String> decisionIds) {
+        if (planId != null && decisionIds.containsKey(planId)) {
+            return ANSWER_PREFIX + decisionIds.get(planId);
+        }
+        if (projId != null && decisionIds.containsKey(projId)) {
+            return ANSWER_PREFIX + decisionIds.get(projId);
+        }
+        if (link != null && link.contains("/decisions/")) {
+            return ANSWER_PREFIX + link.substring(link.lastIndexOf('/') + 1);
+        }
+        return "answer";
+    }
+
+    private static String landingFailedCommand(@Nullable String planId, @Nullable String epicId) {
+        if (planId != null) {
+            return "plan hold " + planId;
+        }
+        if (epicId != null) {
+            return "epic " + epicId;
+        }
+        return CMD_PLANS;
+    }
+
+    private static String planOrEpicCommand(@Nullable String planId, @Nullable String epicId) {
+        if (planId != null) {
+            return "plan " + planId;
+        }
+        if (epicId != null) {
+            return "epic " + epicId;
+        }
+        return CMD_PLANS;
     }
 }
