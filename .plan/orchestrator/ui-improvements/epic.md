@@ -550,7 +550,8 @@ plan spec names the plan, proposal and finding documents it comes from.
   exception to one primary per screen. (7) Empty chat: role + scope now; the 'replan knows …' line follows once the chat
   contract carries a context summary. (8) Terminal reply streams line by line with a stop key. (9) Values confirmed (120 s /
   8 MB, 60 s, 50 turns, 64 KiB, `whisper.cpp`). Daemon request: ledger only (Open Defects 7). Applied by three direct PRs
-  (`skip-bot-review`, branch `docs/d4-review-decisions`) that also fix the minor seams and set the client documents AGREED.
+  (`skip-bot-review`), merged on the operator's word: plan-marshall-documentation#169 `f475e34d`, pm-mcp-core#334 `96aaea5b`,
+  pm-mcp-clients#387 `85edf2a5`; the D4 client documents are AGREED. Terminal stop key `s`; `new`/`neu` reserved first line.
 
 ## Open Defects
 

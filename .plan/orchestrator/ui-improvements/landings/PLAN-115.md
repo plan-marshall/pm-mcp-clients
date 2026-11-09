@@ -65,7 +65,7 @@ are DRAFT again. The AGREED commits (three repositories) are owed on the operato
 
 - [x] row `status` → `shipped`; `pr` 386; `landing` `landings/PLAN-115.md`; `plan_marshall_plan_id` `plan-115`
 - [x] epic.md Watch; daemon request added to Open Defects (outside this repository)
-- [ ] AGREED commits in three repositories after the operator's review (and S1/S2 decided first)
+- [x] Operator decisions 2026-11-09 applied and AGREED set by three direct PRs (`skip-bot-review`), merged on the operator's word: plan-marshall-documentation#169 `f475e34d`, pm-mcp-core#334 `96aaea5b`, pm-mcp-clients#387 `85edf2a5` (all 16 D4 client documents AGREED; seams S1-S3, S5-S12 fixed; S4 refuted)
 
 ## Follow-Ups
 
