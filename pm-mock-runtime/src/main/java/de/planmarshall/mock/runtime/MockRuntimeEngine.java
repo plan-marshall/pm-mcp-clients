@@ -269,6 +269,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
     private static final String OUTCOME_WITHDRAWN = "withdrawn";
     /** The decision a withdrawn question is asked anew as. */
     private static final String DECISION_ASKED_ANEW = "Q-009";
+    /** The API prefix of a decision resource. */
+    private static final String API_DECISIONS_PATH = "/api/v1/decisions/";
     private static final String KEY_LOOPBACK = "loopback";
     private static final String KEY_DEVICE_ID = "device_id";
     private static final String KEY_LABEL = "label";
@@ -6899,7 +6901,7 @@ public final class MockRuntimeEngine implements AutoCloseable {
         act.put(KEY_METHOD, method);
         act.put("path", request.path());
         act.put(KEY_STATE, currentStateId.get());
-        if (request.path().startsWith("/api/v1/decisions/")) {
+        if (request.path().startsWith(API_DECISIONS_PATH)) {
             // Only a decision act carries a body a case asserts; other bodies (credentials, device
             // secrets) never enter the act log.
             act.put("body", request.bodyText());
@@ -9588,8 +9590,8 @@ public final class MockRuntimeEngine implements AutoCloseable {
         // 2. Decision specific routes
         String decisionId = null;
         String action = null;
-        if (path.startsWith("/api/v1/decisions/")) {
-            var sub = path.substring("/api/v1/decisions/".length());
+        if (path.startsWith(API_DECISIONS_PATH)) {
+            var sub = path.substring(API_DECISIONS_PATH.length());
             int slash = sub.indexOf('/');
             if (slash < 0) {
                 decisionId = sub;
