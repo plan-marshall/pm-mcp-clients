@@ -8481,8 +8481,10 @@ public final class MockRuntimeEngine implements AutoCloseable {
             broadcastEvent(ProjectChangedEvent.EVENT_NAME, Map.of(KEY_EVENT, EVENT_PROJECT_CHANGED, "being_added", path));
             response.json(201, Map.of(
                     KEY_STATUS, "started",
+                    KEY_PROJECT_ID, id,
                     "onboarding_id", "onb-" + id,
                     "checkout_path", path,
+                    "continue_link", beingAdded.continueLink(),
                     "current_step", STEP_IDENTITY,
                     "step_number", 2,
                     KEY_TOTAL_STEPS, 10

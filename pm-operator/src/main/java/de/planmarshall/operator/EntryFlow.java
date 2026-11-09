@@ -697,7 +697,7 @@ public final class EntryFlow {
      * @param continueLink the contract's continuation link ({@code /api/v1/entries/{entry_id}/continue})
      * @return the id the link addresses, decoded, or {@code null} when the link names none
      */
-    private static @Nullable String entryId(@Nullable String continueLink) {
+    static @Nullable String entryId(@Nullable String continueLink) {
         if (continueLink == null || continueLink.isBlank()) {
             return null;
         }
