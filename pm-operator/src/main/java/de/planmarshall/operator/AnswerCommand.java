@@ -164,7 +164,9 @@ public final class AnswerCommand implements Callable<Integer> {
 
     private void printNoInput(PrintWriter out, DecisionEnvelope envelope, String locale) {
         printDecisionDetail(out, envelope, locale);
-        if (!envelope.isWaiver()) {
+        if (envelope.isWaiver()) {
+            out.println(getMessage(locale, "operator.decision.waiver_prompt_full"));
+        } else {
             for (var part : effectiveParts(envelope)) {
                 out.println(MessageCatalogue.format(locale, "operator.decision.prompt.choose",
                                     Map.of(RANGE_KEY, optionRange(part))));
@@ -196,7 +198,7 @@ public final class AnswerCommand implements Callable<Integer> {
                             GATE_KEY, waiverGate(envelope, locale)
         )));
         if (envelope.waiverReason() != null) {
-            out.printf("  %s%n", OutputSafety.stripControlSequences(envelope.waiverReason()));
+            out.println("  " + OutputSafety.stripControlSequences(envelope.waiverReason()));
         }
         printEvidenceHintIfPresent(out, envelope.evidence(), locale);
     }
@@ -232,7 +234,7 @@ public final class AnswerCommand implements Callable<Integer> {
 
         var titleOrDesc = envelope.description() != null ? envelope.description() : envelope.title();
         if (titleOrDesc != null && !titleOrDesc.isBlank()) {
-            out.printf("  %s%n", OutputSafety.stripControlSequences(titleOrDesc));
+            out.println("  " + OutputSafety.stripControlSequences(titleOrDesc));
         }
         printEvidenceHintIfPresent(out, envelope.evidence(), locale);
     }
@@ -306,7 +308,7 @@ public final class AnswerCommand implements Callable<Integer> {
 
         if (ACTION_LATER.equalsIgnoreCase(effectiveAction)) {
             var laterEnvelope = fetchEnvelopeSafe(runtime, safeQid);
-            var laterPath = API_V1_DECISIONS + safeQid + PATH_ANSWER;
+            var laterPath = resolveDecisionPath(safeQid) + PATH_ANSWER;
             var laterPayload = new LinkedHashMap<String, Object>();
             laterPayload.put(ACTION_KEY, ACTION_LATER);
             laterPayload.put(CHANNEL_KEY, CHANNEL_CLI);
@@ -325,7 +327,7 @@ public final class AnswerCommand implements Callable<Integer> {
 
         if (ACTION_WITHDRAW.equalsIgnoreCase(effectiveAction)) {
             var withdrawEnvelope = fetchEnvelopeSafe(runtime, safeQid);
-            var withPath = API_V1_DECISIONS + safeQid + PATH_WITHDRAW;
+            var withPath = resolveDecisionPath(safeQid) + PATH_WITHDRAW;
             var resp = runtime.send(HttpRequest.json("POST", withPath, "{}"));
             if (isAccepted(resp.status())) {
                 out.println(MessageCatalogue.format(locale, "operator.decision.none_fits_done", Map.of(
@@ -577,7 +579,7 @@ public final class AnswerCommand implements Callable<Integer> {
                             GATE_KEY, waiverGate(envelope, session.locale())
         )));
         if (envelope.waiverReason() != null) {
-            session.out().printf("  %s%n", OutputSafety.stripControlSequences(envelope.waiverReason()));
+            session.out().println("  " + OutputSafety.stripControlSequences(envelope.waiverReason()));
         }
         printEvidenceHintIfPresent(session.out(), envelope.evidence(), session.locale());
         session.out().println();
@@ -685,7 +687,7 @@ public final class AnswerCommand implements Callable<Integer> {
         payload.put(REASON_KEY, reqReason);
         payload.put(CHANNEL_KEY, CHANNEL_CLI);
 
-        var ansPath = API_V1_DECISIONS + OperatorUrlUtil.encodePathSegment(envelope.id()) + PATH_ANSWER;
+        var ansPath = resolveDecisionPath(OperatorUrlUtil.encodePathSegment(envelope.id())) + PATH_ANSWER;
         var ansRes = runtime.send(HttpRequest.json("POST", ansPath, JsonTree.write(payload)));
         if (ansRes.status() == 200 || ansRes.status() == 202 || ansRes.status() == 204) {
             if (ACTION_DECLINE.equals(act)) {
@@ -902,7 +904,7 @@ public final class AnswerCommand implements Callable<Integer> {
                                 && recommended != null && opt.key().equalsIgnoreCase(recommended.key());
             var recMark = isRec ? " ←" : "  ";
             var supportStr = formatOptionSupport(opt, isRec, part, locale);
-            out.printf("    %s) %-25s%s  %s%n", opt.key(), TerminalSanitizer.sanitizeLine(opt.label()), recMark, supportStr);
+            out.println(String.format("    %s) %-25s%s  %s", opt.key(), TerminalSanitizer.sanitizeLine(opt.label()), recMark, supportStr));
         }
         if (stake == DecisionStake.COSTLY) {
             if (recommended != null) {
@@ -1299,7 +1301,7 @@ public final class AnswerCommand implements Callable<Integer> {
         }
         var answer = answers.get(0);
         if (answer.ownWords()) {
-            return submitOwnWordsAnswer(session, envelope, answer.value());
+            return submitOwnWordsAnswer(session, envelope, answer.value(), note);
         }
         var picked = pickOption(parts.get(0), answer.value());
         var label = picked != null ? picked.label() : answer.value();
@@ -1319,7 +1321,7 @@ public final class AnswerCommand implements Callable<Integer> {
         if (note != null) {
             payload.put("note", note);
         }
-        var answerPath = API_V1_DECISIONS + OperatorUrlUtil.encodePathSegment(envelope.id()) + PATH_ANSWER;
+        var answerPath = resolveDecisionPath(OperatorUrlUtil.encodePathSegment(envelope.id())) + PATH_ANSWER;
         var response = session.runtime().send(HttpRequest.json("POST", answerPath, JsonTree.write(payload)));
         if (response.status() == 200 || response.status() == 202 || response.status() == 204) {
             session.out().println(MessageCatalogue.format(session.locale(), "operator.decision.answered_parts",
@@ -1330,11 +1332,15 @@ public final class AnswerCommand implements Callable<Integer> {
         throw new OperatorRefusedException("answer " + envelope.id(), response);
     }
 
-    private int submitOwnWordsAnswer(DialogueSession session, DecisionEnvelope envelope, String words) throws IOException {
+    private int submitOwnWordsAnswer(DialogueSession session, DecisionEnvelope envelope, String words,
+                        @Nullable String note) throws IOException {
         var payload = new LinkedHashMap<String, Object>();
         payload.put(WORDS_KEY, words);
         payload.put(CHANNEL_KEY, CHANNEL_CLI);
-        var answerPath = API_V1_DECISIONS + OperatorUrlUtil.encodePathSegment(envelope.id()) + PATH_ANSWER;
+        if (note != null) {
+            payload.put("note", note);
+        }
+        var answerPath = resolveDecisionPath(OperatorUrlUtil.encodePathSegment(envelope.id())) + PATH_ANSWER;
         var response = session.runtime().send(HttpRequest.json("POST", answerPath, JsonTree.write(payload)));
         if (response.status() == 200 || response.status() == 202 || response.status() == 204) {
             session.out().println(MessageCatalogue.format(session.locale(), "operator.decision.answered", Map.of(
@@ -1346,7 +1352,7 @@ public final class AnswerCommand implements Callable<Integer> {
         throw new OperatorRefusedException("answer " + envelope.id(), response);
     }
 
-    private static boolean handleWithdrawChoice(RuntimeClient runtime, PrintWriter out, LineReader reader,
+    private boolean handleWithdrawChoice(RuntimeClient runtime, PrintWriter out, LineReader reader,
                         DecisionEnvelope envelope, String locale) throws IOException {
         var confirmPrompt = MessageCatalogue.format(locale, "operator.decision.none_fits_confirm", Map.of(
                             SCOPE_KEY, scopeSelector(envelope),
@@ -1355,7 +1361,7 @@ public final class AnswerCommand implements Callable<Integer> {
         var confirm = readLineSafe(reader, confirmPrompt);
         if (confirm == null) return true;
         if (confirm.isBlank() || "y".equalsIgnoreCase(confirm.trim()) || "j".equalsIgnoreCase(confirm.trim())) {
-            var withPath = API_V1_DECISIONS + OperatorUrlUtil.encodePathSegment(envelope.id()) + PATH_WITHDRAW;
+            var withPath = resolveDecisionPath(OperatorUrlUtil.encodePathSegment(envelope.id())) + PATH_WITHDRAW;
             var withResponse = runtime.send(HttpRequest.json("POST", withPath, "{}"));
             if (!isAccepted(withResponse.status())) {
                 throw new OperatorRefusedException("withdraw " + envelope.id(), withResponse);
@@ -1376,7 +1382,7 @@ public final class AnswerCommand implements Callable<Integer> {
                         String locale) {
         out.println();
         out.println(MessageCatalogue.format(locale, confirmTitleKey(envelope), Map.of(ID_KEY, envelope.id())));
-        out.printf("  %s%n", OutputSafety.stripControlSequences(picked.label()));
+        out.println("  " + OutputSafety.stripControlSequences(picked.label()));
         if (picked.consequences() != null) {
             out.println("  " + MessageCatalogue.format(locale, "operator.decision.follows", Map.of("consequence", OutputSafety.stripControlSequences(picked.consequences()))));
         }
@@ -1427,7 +1433,7 @@ public final class AnswerCommand implements Callable<Integer> {
         return new ReadBack(false, null);
     }
 
-    private static @Nullable DecisionInterpretation clarified(DialogueSession session, DecisionEnvelope envelope,
+    private @Nullable DecisionInterpretation clarified(DialogueSession session, DecisionEnvelope envelope,
                         String words, String locale) throws IOException {
         var interp = interpret(session, envelope, words);
         if (interp.interpretationType() != InterpretationType.UNCLEAR || interp.clarificationQuestion() == null) {
@@ -1454,9 +1460,9 @@ public final class AnswerCommand implements Callable<Integer> {
         return confirm == null ? null : confirm.trim();
     }
 
-    private static DecisionInterpretation interpret(DialogueSession session, DecisionEnvelope envelope,
+    private DecisionInterpretation interpret(DialogueSession session, DecisionEnvelope envelope,
                         String words) throws IOException {
-        var interpPath = API_V1_DECISIONS + OperatorUrlUtil.encodePathSegment(envelope.id()) + PATH_INTERPRET;
+        var interpPath = resolveDecisionPath(OperatorUrlUtil.encodePathSegment(envelope.id())) + PATH_INTERPRET;
         var interpRes = session.runtime().send(HttpRequest.json("POST", interpPath, JsonTree.write(Map.of(WORDS_KEY, words))));
         if (interpRes.status() != 200) {
             throw new OperatorRefusedException("interpret " + envelope.id(), interpRes);
@@ -1471,7 +1477,7 @@ public final class AnswerCommand implements Callable<Integer> {
         payload.put(CHANNEL_KEY, CHANNEL_CLI);
         if (noteText != null) payload.put("note", noteText);
 
-        var ansPath = API_V1_DECISIONS + OperatorUrlUtil.encodePathSegment(envelope.id()) + PATH_ANSWER;
+        var ansPath = resolveDecisionPath(OperatorUrlUtil.encodePathSegment(envelope.id())) + PATH_ANSWER;
         var ansRes = runtime.send(HttpRequest.json("POST", ansPath, JsonTree.write(payload)));
         if (ansRes.status() == 200 || ansRes.status() == 202 || ansRes.status() == 204) {
             var noteSuffix = noteText != null && !noteText.isBlank() ? " " + getMessage(locale, "operator.decision.with_note") : "";

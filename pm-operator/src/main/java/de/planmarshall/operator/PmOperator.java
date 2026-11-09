@@ -183,7 +183,7 @@ public final class PmOperator implements Callable<Integer> {
                 err.flush();
                 return ose.exitCode();
             }
-            err.println(command.getCommandName() + ": " + exception.getMessage());
+            err.println(command.getCommandName() + ": " + TerminalSanitizer.sanitizeLine(exception.getMessage()));
             err.flush();
             return EXIT_FAILURE;
         });

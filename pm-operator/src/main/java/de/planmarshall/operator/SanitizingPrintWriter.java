@@ -13,9 +13,11 @@ import java.io.PrintWriter;
 
 /**
  * The one sink of the answer dialogue: every text written through it has its control sequences
- * removed first ({@link TerminalSanitizer}). Wrapping the command's output once means a new print
- * site cannot forget the rule, and a text from a model or a repository never reaches the terminal
- * raw ({@code doc/design/shared/decisions.adoc#safety}).
+ * removed first ({@link TerminalSanitizer#sanitizeLine}). Wrapping the command's output once means a
+ * new print site cannot forget the rule, and a text from a model or a repository never reaches the
+ * terminal raw ({@code doc/design/shared/decisions.adoc#safety}). A line break or a tab in such a
+ * text cannot fake a prompt either: both become a space, while the line endings the writer itself
+ * adds ({@code println}) bypass this content path.
  */
 final class SanitizingPrintWriter extends PrintWriter {
 
@@ -28,19 +30,19 @@ final class SanitizingPrintWriter extends PrintWriter {
 
     @Override
     public void write(int c) {
-        var clean = TerminalSanitizer.sanitize(String.valueOf((char) c));
+        var clean = TerminalSanitizer.sanitizeLine(String.valueOf((char) c));
         super.write(clean, 0, clean.length());
     }
 
     @Override
     public void write(char[] buffer, int offset, int length) {
-        var clean = TerminalSanitizer.sanitize(new String(buffer, offset, length));
+        var clean = TerminalSanitizer.sanitizeLine(new String(buffer, offset, length));
         super.write(clean, 0, clean.length());
     }
 
     @Override
     public void write(String text, int offset, int length) {
-        var clean = TerminalSanitizer.sanitize(text.substring(offset, offset + length));
+        var clean = TerminalSanitizer.sanitizeLine(text.substring(offset, offset + length));
         super.write(clean, 0, clean.length());
     }
 }
