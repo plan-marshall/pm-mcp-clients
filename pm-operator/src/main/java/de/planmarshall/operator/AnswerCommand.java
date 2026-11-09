@@ -904,7 +904,8 @@ public final class AnswerCommand implements Callable<Integer> {
                                 && recommended != null && opt.key().equalsIgnoreCase(recommended.key());
             var recMark = isRec ? " ←" : "  ";
             var supportStr = formatOptionSupport(opt, isRec, part, locale);
-            out.println(String.format("    %s) %-25s%s  %s", opt.key(), TerminalSanitizer.sanitizeLine(opt.label()), recMark, supportStr));
+            out.printf("    %s) %-25s%s  %s", opt.key(), TerminalSanitizer.sanitizeLine(opt.label()), recMark, supportStr);
+            out.println();
         }
         if (stake == DecisionStake.COSTLY) {
             if (recommended != null) {
