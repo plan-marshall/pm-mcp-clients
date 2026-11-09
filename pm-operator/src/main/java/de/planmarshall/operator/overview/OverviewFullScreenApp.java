@@ -3330,7 +3330,7 @@ public final class OverviewFullScreenApp {
             if (project == null || isReleased(project)) {
                 return;
             }
-            runVerb(PROJECT_VERB, "setup", project.projectId());
+            runVerb(PROJECT_VERB, VERB_SETUP, project.projectId());
         }
 
         private void enrolAgain() {
@@ -3341,7 +3341,7 @@ public final class OverviewFullScreenApp {
             if (project == null || !isReleased(project)) {
                 return;
             }
-            runVerb(PROJECT_VERB, "setup", project.projectId(), "identity");
+            runVerb(PROJECT_VERB, VERB_SETUP, project.projectId(), "identity");
         }
 
         private void continueProject() {

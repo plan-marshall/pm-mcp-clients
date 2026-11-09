@@ -41,6 +41,7 @@ public final class OverviewFormatting {
 
     private static final String KIND_PAUSED = "paused";
     private static final String ANSWER_PREFIX = "answer ";
+    private static final String CMD_PLANS = "plans";
 
     private OverviewFormatting() {
     }
@@ -130,7 +131,7 @@ public final class OverviewFormatting {
      * @return the same order, as an immutable copy
      */
     public static List<ActivePlanSummary> sortPlans(List<ActivePlanSummary> plans) {
-        Objects.requireNonNull(plans, "plans");
+        Objects.requireNonNull(plans);
         return List.copyOf(plans);
     }
 
@@ -141,19 +142,10 @@ public final class OverviewFormatting {
      * @return the same order, as an immutable copy
      */
     public static List<ActiveEpicSummary> sortEpics(List<ActiveEpicSummary> epics) {
-        Objects.requireNonNull(epics, "epics");
+        Objects.requireNonNull(epics);
         return List.copyOf(epics);
     }
 
-    /**
-     * Formats the attention badge for a plan or epic row (e.g. {@code "! decision"} or
-     * {@code "! 2 · decision"}).
-     *
-     * @param locale the target locale
-     * @param kind   the attention kind
-     * @param count  the attention count
-     * @return the formatted marker, or empty string if none
-     */
     /**
      * Maps an attention kind name to its {@link MessageCatalogue} key.
      *
@@ -386,12 +378,16 @@ public final class OverviewFormatting {
      * @param locale the target locale
      * @return localized kind label
      */
-    public static String formatNeedsItemKind(NeedsOperatorKind kind, String locale) {
-        var key = needsKeyForKind(kind.value());
+    public static String formatNeedsItemKind(@Nullable NeedsOperatorKind kind, String locale) {
+        if (kind == null || kind.value() == null) {
+            return "";
+        }
+        var value = kind.value();
+        var key = needsKeyForKind(value);
         if (key != null && MessageCatalogue.hasKey(locale, key)) {
             return MessageCatalogue.format(locale, key, Map.of());
         }
-        return kind.value().replace('_', ' ');
+        return value.replace('_', ' ');
     }
 
     /**
@@ -506,7 +502,7 @@ public final class OverviewFormatting {
         if (epicId != null) {
             return "epic " + epicId;
         }
-        return "plans";
+        return CMD_PLANS;
     }
 
     private static String planOrEpicCommand(@Nullable String planId, @Nullable String epicId) {
@@ -516,6 +512,6 @@ public final class OverviewFormatting {
         if (epicId != null) {
             return "epic " + epicId;
         }
-        return "plans";
+        return CMD_PLANS;
     }
 }
