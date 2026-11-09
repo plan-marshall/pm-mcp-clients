@@ -113,6 +113,8 @@ public final class ConsolePrompt {
             case "landing_failed" -> "operator.console.badge.landing_failed";
             case "findings" -> "operator.console.badge.findings";
             case "setup" -> "operator.console.badge.setup_needs";
+            case "credential" -> "operator.console.badge.credential";
+            case "cleanup_due" -> "operator.console.badge.cleanup_due";
             default -> "operator.console.badge.fallback";
         };
         return MessageCatalogue.format(locale, key, Map.of(COUNT, count, "kind", kind));

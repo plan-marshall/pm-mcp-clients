@@ -5680,6 +5680,18 @@ public final class MockRuntimeEngine implements AutoCloseable {
                 kinds.merge(kind, 1, Integer::sum);
             }
         }
+        var machineRoute = activeRoute("GET", MachineApiPaths.MACHINE);
+        if (machineRoute != null && machineRoute.representation() instanceof Map<?, ?> mMap) {
+            if (mMap.get("needs_operator") instanceof Map<?, ?> mNeeds) {
+                if (mNeeds.get("items") instanceof List<?> items) {
+                    for (var item : items) {
+                        if (item instanceof Map<?, ?> itemMap && itemMap.get("kind") instanceof String k) {
+                            kinds.merge(k, 1, Integer::sum);
+                        }
+                    }
+                }
+            }
+        }
         return new LinkedHashMap<>(kinds);
     }
 

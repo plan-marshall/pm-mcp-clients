@@ -91,4 +91,25 @@ int count,
                             || "decision".equals(itemKind)
                             || "waiver_request".equals(itemKind));
     }
+
+    /**
+     * @return the command that opens this badge's item, or {@code null}
+     */
+    public @Nullable String command() {
+        if (kind == Kind.MACHINE_SETUP) {
+            return "onboarding";
+        }
+        if (kind == Kind.PROJECT_SETUP) {
+            return projectId != null && !projectId.isEmpty() ? "project setup " + projectId : "project setup";
+        }
+        if (kind == Kind.WAITING && itemKind != null) {
+            return switch (itemKind) {
+                case "decision", "question", "waiver_request" -> "questions";
+                case "credential" -> "credentials";
+                case "cleanup_due" -> "cleanup";
+                default -> null;
+            };
+        }
+        return null;
+    }
 }

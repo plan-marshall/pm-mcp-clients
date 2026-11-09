@@ -190,6 +190,13 @@ public final class ConsoleNotice {
                                 Map.of("epic", scope, DETAIL, safeDetail));
             case "setup" -> MessageCatalogue.format(locale, "operator.console.notice.setup",
                                 Map.of(KEY_PROJECT, scope, "what", safeDetail));
+            case "credential" -> {
+                var credKey = !scope.isBlank() ? scope : (!safeDetail.isBlank() ? safeDetail : "unknown");
+                yield MessageCatalogue.format(locale, "operator.console.notice.credential",
+                                    Map.of("key", credKey));
+            }
+            case "cleanup_due" -> MessageCatalogue.format(locale, "operator.console.notice.cleanup_due",
+                                Map.of());
             default -> MessageCatalogue.format(locale, "operator.console.notice.generic",
                                 Map.of("kind", kind, SCOPE, scope, DETAIL, safeDetail));
         };
@@ -333,7 +340,7 @@ public final class ConsoleNotice {
                                 TerminalSanitizer.sanitize(String.valueOf(payload.get("code"))),
                                 TerminalSanitizer.sanitize(String.valueOf(payload.getOrDefault("valid_until", ""))),
                                 String.valueOf(payload.getOrDefault("url", "")));
-            case OPERATOR_WAIT, INTEGRITY_PAUSE, STALLED, CONDITION, HELD, LANDING_FAILED, FINDINGS, SETUP ->
+            case OPERATOR_WAIT, INTEGRITY_PAUSE, STALLED, CONDITION, HELD, LANDING_FAILED, FINDINGS, SETUP, CREDENTIAL, CLEANUP_DUE ->
                 formatHoldNotice(locale, kind.notice(), scopeOf(event), detailOf(payload));
             case REPORT -> formatReportNotice(locale, reportOf(payload));
             case HOLD -> null;
@@ -372,6 +379,12 @@ public final class ConsoleNotice {
         }
         if (byName != null) {
             return byName == EventKind.QUESTION && isWaiver(payload) ? EventKind.WAIVER_REQUEST : byName;
+        }
+        if ("needs_operator.changed".equals(eventName) || "needs_operator.changed".equals(JsonTree.string(event, "event"))) {
+            var k = stringOf(payload, "kind");
+            if (k != null && !"none".equals(k)) {
+                return EventKind.fromType(k);
+            }
         }
         var byType = EventKind.fromType(textOr(payload, "type", ""));
         if (byType == EventKind.QUESTION && isWaiver(payload)) {
@@ -561,11 +574,15 @@ public final class ConsoleNotice {
     }
 
     private static @Nullable String firstScopeString(Map<String, Object> map) {
-        for (var key : List.of(SCOPE, "subject_id", SUBJECT, "epic", "plan", "plan_id", "epic_id")) {
+        for (var key : List.of(SCOPE, "subject_id", SUBJECT, "epic", "plan", "plan_id", "epic_id", "credential_key", "key")) {
             var value = stringOf(map, key);
             if (value != null && !value.isBlank()) {
                 return value;
             }
+        }
+        var link = stringOf(map, "link");
+        if (link != null && link.startsWith("/api/v1/credentials/")) {
+            return link.substring("/api/v1/credentials/".length());
         }
         return null;
     }
