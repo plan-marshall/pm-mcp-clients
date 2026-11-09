@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 
 import de.planmarshall.api.message.MessageCatalogue;
+import de.planmarshall.api.onboarding.OnboardingAspect;
 import de.planmarshall.operator.StartPrompt;
 
 import org.junit.jupiter.api.DisplayName;
@@ -283,6 +284,65 @@ class StateDialogueTest {
         assertEquals(12, frame.totalSteps());
         assertEquals("[3/12] Identity \u00b7 How should the project be named?",
                             dialogue(new FakeSource(frame), "", new StringWriter()).stepLine(frame));
+    }
+
+    @Test
+    @DisplayName("validates StateDialogue.fromJson total_steps variants: missing, zero, negative, fractional, over-range, non-numeric, and custom valid")
+    void stateDialogueTotalStepsVariants() throws Exception {
+        var missingFrame = StateDialogue.fromJson("{\"state\":\"project.identity\",\"step\":1}", 10, true);
+        assertEquals(10, missingFrame.totalSteps(), "missing total_steps falls back to passed default 10");
+
+        var zeroFrame = StateDialogue.fromJson("{\"state\":\"project.identity\",\"step\":1,\"total_steps\":0}", 10, true);
+        assertEquals(10, zeroFrame.totalSteps(), "zero total_steps falls back to passed default 10");
+
+        var negativeFrame = StateDialogue.fromJson("{\"state\":\"project.identity\",\"step\":1,\"total_steps\":-5}", 10, true);
+        assertEquals(10, negativeFrame.totalSteps(), "negative total_steps falls back to passed default 10");
+
+        var fractionalFrame = StateDialogue.fromJson("{\"state\":\"project.identity\",\"step\":1,\"total_steps\":3.9}", 10, true);
+        assertEquals(10, fractionalFrame.totalSteps(), "fractional total_steps falls back to passed default 10");
+
+        var overRangeFrame = StateDialogue.fromJson("{\"state\":\"project.identity\",\"step\":1,\"total_steps\":4294967297}", 10, true);
+        assertEquals(10, overRangeFrame.totalSteps(), "over-range total_steps falls back to passed default 10");
+
+        var nonNumericFrame = StateDialogue.fromJson("{\"state\":\"project.identity\",\"step\":1,\"total_steps\":\"invalid\"}", 10, true);
+        assertEquals(10, nonNumericFrame.totalSteps(), "non-numeric total_steps falls back to passed default 10");
+
+        var customFrame = StateDialogue.fromJson("{\"state\":\"project.identity\",\"step\":1,\"total_steps\":12}", 10, true);
+        assertEquals(12, customFrame.totalSteps(), "valid custom total_steps is preserved");
+    }
+
+    @Test
+    @DisplayName("a project payload without total_steps renders the step line with default total 10")
+    void projectPayloadWithoutTotalStepsRendersStepLine() throws Exception {
+        var frame = StateDialogue.fromJson("""
+                            {"state":"identity","step":1,
+                             "operator":{"state":{"state_id":"project.identity","kind":"operator_wait"},
+                               "facts":{"summary":"Choose identity"},
+                               "links":[{"id":"next","method":"POST","preselected":true}]}}
+                            """, 10, true);
+
+        assertEquals(10, frame.totalSteps());
+        assertEquals("[1/10] Identity \u00b7 How should the project be named?",
+                            dialogue(new FakeSource(frame), "", new StringWriter()).stepLine(frame));
+    }
+
+    @Test
+    @DisplayName("a dialogue over a two-aspect list shows 2 in intro and exactly those two aspects in overview")
+    void dialogueFollowsInjectedAspectList() {
+        var aspects = List.of(OnboardingAspect.LANGUAGE, OnboardingAspect.HARNESSES);
+        var frame = new StateDialogue.Frame(MODE, "operator_wait", 0, 2, null, Map.of(),
+                            List.of(new StateDialogue.Link("begin", "next", true)));
+        var dialogue = new StateDialogue(new FakeSource(frame), new PrintWriter(new StringWriter()), "en",
+                            stateId -> new ChoicePrompt(new BufferedReader(new StringReader("")),
+                                                new PrintWriter(new StringWriter()), "en", stateId), aspects);
+
+        var content = dialogue.content(frame);
+        assertTrue(content.getFirst().startsWith("2 steps."), "intro says 2 steps");
+        var overviewLines = content.subList(1, content.size());
+        assertEquals(2, overviewLines.size(), "overview should list exactly the two injected aspects");
+
+        var rolesFrame = new StateDialogue.Frame("roles.review", "operator_wait", 3, 2, null, Map.of(), List.of());
+        assertEquals("Done", dialogue.stepName(rolesFrame), "aspect outside injected list maps to Done");
     }
 
     @Test

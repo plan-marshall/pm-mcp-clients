@@ -326,4 +326,30 @@ class ProjectRecordsTest {
         assertThrows(JsonFormatException.class, () -> ProjectEnrolledEvent.fromJson("[]"));
         assertThrows(JsonFormatException.class, () -> ProjectReleasedEvent.fromJson("[]"));
     }
+
+    @Test
+    @DisplayName("validates BeingAddedProject total_steps variants: missing, zero, negative, fractional, over-range, non-numeric, and custom valid")
+    void beingAddedProjectTotalStepsVariants() throws Exception {
+        var path = "/tmp/" + Generators.letterStrings(5, 10).next();
+        var baseJson = "{\"checkout_path\":\"" + path + "\"}";
+        assertEquals(10, BeingAddedProject.fromJson(baseJson).totalSteps(), "missing total_steps falls back to 10");
+
+        var zeroJson = "{\"checkout_path\":\"" + path + "\",\"total_steps\":0}";
+        assertEquals(10, BeingAddedProject.fromJson(zeroJson).totalSteps(), "zero total_steps falls back to 10");
+
+        var negativeJson = "{\"checkout_path\":\"" + path + "\",\"total_steps\":-5}";
+        assertEquals(10, BeingAddedProject.fromJson(negativeJson).totalSteps(), "negative total_steps falls back to 10");
+
+        var fractionalJson = "{\"checkout_path\":\"" + path + "\",\"total_steps\":3.9}";
+        assertEquals(10, BeingAddedProject.fromJson(fractionalJson).totalSteps(), "fractional total_steps falls back to 10");
+
+        var overRangeJson = "{\"checkout_path\":\"" + path + "\",\"total_steps\":4294967297}";
+        assertEquals(10, BeingAddedProject.fromJson(overRangeJson).totalSteps(), "over-range total_steps falls back to 10");
+
+        var nonNumericJson = "{\"checkout_path\":\"" + path + "\",\"total_steps\":\"invalid\"}";
+        assertEquals(10, BeingAddedProject.fromJson(nonNumericJson).totalSteps(), "non-numeric total_steps falls back to 10");
+
+        var customJson = "{\"checkout_path\":\"" + path + "\",\"total_steps\":12}";
+        assertEquals(12, BeingAddedProject.fromJson(customJson).totalSteps(), "valid custom total_steps is preserved");
+    }
 }

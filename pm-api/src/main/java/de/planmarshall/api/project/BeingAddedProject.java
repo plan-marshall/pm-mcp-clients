@@ -42,12 +42,13 @@ public record BeingAddedProject(
     public static final String FIELD_TOTAL_STEPS = "total_steps";
     public static final String FIELD_CONTINUE_LINK = "continue_link";
     public static final String FIELD_ABANDON_LINK = "abandon_link";
+    public static final int DEFAULT_TOTAL_STEPS = 10;
 
     public BeingAddedProject {
         Objects.requireNonNull(checkoutPath, "checkoutPath");
         currentStep = currentStep != null ? currentStep : "Checkout";
         if (totalSteps <= 0) {
-            totalSteps = 10;
+            totalSteps = DEFAULT_TOTAL_STEPS;
         }
         if (stepNumber <= 0) {
             stepNumber = 1;
@@ -114,11 +115,11 @@ public record BeingAddedProject(
         }
         int stepNumber = stepNum != null ? stepNum : 1;
 
-        var total = JsonTree.integer(map, FIELD_TOTAL_STEPS);
+        var total = JsonTree.positiveInteger(map, FIELD_TOTAL_STEPS);
         if (total == null) {
-            total = JsonTree.integer(map, "total");
+            total = JsonTree.positiveInteger(map, "total");
         }
-        int totalSteps = total != null ? total : 10;
+        int totalSteps = total != null ? total : DEFAULT_TOTAL_STEPS;
 
         var continueLink = JsonTree.string(map, FIELD_CONTINUE_LINK);
         var abandonLink = JsonTree.string(map, FIELD_ABANDON_LINK);

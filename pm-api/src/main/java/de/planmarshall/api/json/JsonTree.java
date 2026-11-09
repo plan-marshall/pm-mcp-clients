@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.experimental.UtilityClass;
+import org.jspecify.annotations.Nullable;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -394,6 +395,44 @@ public class JsonTree {
             throw new JsonFormatException("Out-of-range number for " + name + ": " + text);
         }
         return value;
+    }
+
+    /**
+     * Reads a member that must be an exact integral positive number within {@code int} range.
+     * <p>
+     * A missing member, a value that is no number, a number with a fractional part, a number that is
+     * not finite, or a value outside {@code 1..Integer.MAX_VALUE} returns {@code null}.
+     *
+     * @param object an object, may be {@code null}
+     * @param name   the member name
+     * @return the value as a positive {@code Integer}, or {@code null} if missing or not usable
+     */
+    public static @Nullable Integer positiveInteger(Map<String, Object> object, String name) {
+        if (object == null) {
+            return null;
+        }
+        var raw = object.get(name);
+        if (raw == null) {
+            return null;
+        }
+        var text = switch (raw) {
+            case JsonNumber(String value) -> value;
+            case Number value -> value.toString();
+            case String value -> value;
+            default -> null;
+        };
+        if (text == null) {
+            return null;
+        }
+        try {
+            var value = new BigDecimal(text).longValueExact();
+            if (value >= 1 && value <= Integer.MAX_VALUE) {
+                return (int) value;
+            }
+        } catch (NumberFormatException | ArithmeticException _) {
+            return null;
+        }
+        return null;
     }
 
     /**
