@@ -138,6 +138,10 @@ describe('Button', () => {
     expect(ruleOf(style, '.btn--danger')).toContain('var(--color-on-brand)');
     expect(ruleOf(style, '.btn--secondary')).toContain('var(--color-bg-surface)');
     expect(ruleOf(style, '.btn--secondary')).toContain('var(--color-text-primary)');
+    // The ghost variant paints no background of its own (`transparent`), so the contrast pair
+    // below assumes the default surface background behind it. The rule must still name its
+    // foreground token, or the table would check a colour the variant does not use.
+    expect(ruleOf(style, '.btn--ghost')).toContain('var(--color-text-secondary)');
     expect(ruleOf(style, '.btn:disabled')).toContain('var(--color-bg-subtle)');
 
     const tokensCss = fs.readFileSync(path.resolve(__dirname, '../../styles/tokens.css'), 'utf-8');

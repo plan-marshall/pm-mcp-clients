@@ -30,11 +30,12 @@
   let restoreFocusTo: HTMLElement | null = null;
 
   /**
-   * Moves focus to the report title, so an opened report is entered at its head.
+   * Moves focus to the report's current heading, so an opened report is entered at its head and
+   * the loading and error states keep focus on the visible heading instead of the body.
    */
-  function focusReportTitle(): void {
-    const title = rootEl?.querySelector<HTMLElement>('.report-title');
-    title?.focus();
+  function focusReportHeading(): void {
+    const heading = rootEl?.querySelector<HTMLElement>('.report-title');
+    heading?.focus();
   }
 
   /**
@@ -48,19 +49,30 @@
   onMount(() => {
     restoreFocusTo =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    focusReportTitle();
+    focusReportHeading();
     if (!report && planId) {
       void fetchReport();
     }
   });
 
   onDestroy(() => {
-    restoreFocusTo?.focus();
+    // Restore only when the report still owns focus, or focus fell to the body: a Back click
+    // already moved it to the invoking control, and focusing again here would move it twice —
+    // or steal it from wherever the operator went next.
+    const active = document.activeElement;
+    const insideReport = active instanceof HTMLElement && (rootEl?.contains(active) ?? false);
+    if (insideReport || active === null || active === document.body) {
+      restoreFocusTo?.focus();
+    }
   });
 
   async function fetchReport() {
     isLoading = true;
     errorMessage = '';
+    // The loading heading replaces the previous state's heading; take focus to it, so the fetch
+    // does not leave focus on the body while it runs.
+    await tick();
+    focusReportHeading();
     try {
       fetchedData = await apiClient.getPlanCompletion(planId);
     } catch (err: unknown) {
@@ -68,11 +80,11 @@
     } finally {
       isLoading = false;
     }
-    // A fetched report replaces the loading placeholder; take focus to the title now that it is
-    // the visible heading, so focus does not fall to the body when the placeholder is removed.
+    // A fetched report (or the error state) replaces the loading placeholder; take focus to the
+    // visible heading now, so focus does not fall to the body when the placeholder is removed.
     await tick();
-    if (data) {
-      focusReportTitle();
+    if (data || errorMessage) {
+      focusReportHeading();
     }
   }
 

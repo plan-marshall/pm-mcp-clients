@@ -308,6 +308,29 @@ describe('CompletionReportView component', () => {
     await waitFor(() => expect(document.activeElement).toBe(title));
   });
 
+  it('moves focus to the loading heading while the report loads (D3)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockImplementation(() => new Promise(() => {}));
+    render(CompletionReportView, { planId: 'fix-relay' });
+
+    await waitFor(() => {
+      const heading = screen.getByRole('heading', { level: 1, name: /Loading completion report/i });
+      expect(document.activeElement).toBe(heading);
+    });
+  });
+
+  it('moves focus to the error heading when the fetch fails (D3)', async () => {
+    vi.spyOn(apiClient, 'getPlanCompletion').mockRejectedValue(new Error('Fetch failed'));
+    render(CompletionReportView, { planId: 'fix-relay' });
+
+    await waitFor(() => {
+      const heading = screen.getByRole('heading', {
+        level: 1,
+        name: /Failed to load completion report/i,
+      });
+      expect(document.activeElement).toBe(heading);
+    });
+  });
+
   it('returns focus to the invoking control when the report closes (D3)', async () => {
     const invoking = document.createElement('button');
     invoking.textContent = 'Show details';
@@ -315,15 +338,73 @@ describe('CompletionReportView component', () => {
     invoking.focus();
     const onClose = vi.fn();
 
-    render(CompletionReportView, { planId: 'fix-relay', report: mockReport, onClose });
+    try {
+      render(CompletionReportView, { planId: 'fix-relay', report: mockReport, onClose });
 
-    const title = screen.getByRole('heading', { level: 1, name: 'fix-relay' });
-    await waitFor(() => expect(document.activeElement).toBe(title));
+      const title = screen.getByRole('heading', { level: 1, name: 'fix-relay' });
+      await waitFor(() => expect(document.activeElement).toBe(title));
 
-    await fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+      await fireEvent.click(screen.getByRole('button', { name: 'Back' }));
 
-    expect(onClose).toHaveBeenCalledOnce();
-    expect(document.activeElement).toBe(invoking);
-    invoking.remove();
+      expect(onClose).toHaveBeenCalledOnce();
+      expect(document.activeElement).toBe(invoking);
+    } finally {
+      invoking.remove();
+    }
+  });
+
+  it('returns focus to the invoker when the report is destroyed without a Back click (D3)', async () => {
+    const invoking = document.createElement('button');
+    invoking.textContent = 'Show details';
+    document.body.appendChild(invoking);
+    invoking.focus();
+
+    try {
+      const { unmount } = render(CompletionReportView, {
+        planId: 'fix-relay',
+        report: mockReport,
+      });
+
+      const title = screen.getByRole('heading', { level: 1, name: 'fix-relay' });
+      await waitFor(() => expect(document.activeElement).toBe(title));
+
+      unmount();
+
+      expect(document.activeElement).toBe(invoking);
+    } finally {
+      invoking.remove();
+    }
+  });
+
+  it('does not steal focus back when the report is destroyed after a Back click (D3)', async () => {
+    const invoking = document.createElement('button');
+    invoking.textContent = 'Show details';
+    const elsewhere = document.createElement('button');
+    elsewhere.textContent = 'Elsewhere';
+    document.body.append(invoking, elsewhere);
+    invoking.focus();
+    const onClose = vi.fn();
+
+    try {
+      const { unmount } = render(CompletionReportView, {
+        planId: 'fix-relay',
+        report: mockReport,
+        onClose,
+      });
+
+      const title = screen.getByRole('heading', { level: 1, name: 'fix-relay' });
+      await waitFor(() => expect(document.activeElement).toBe(title));
+
+      await fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+      expect(document.activeElement).toBe(invoking);
+
+      elsewhere.focus();
+      unmount();
+
+      expect(document.activeElement).toBe(elsewhere);
+    } finally {
+      invoking.remove();
+      elsewhere.remove();
+    }
   });
 });
