@@ -421,6 +421,64 @@ class CleanupCommandTest {
     }
 
     @Test
+    @DisplayName("cleanup --remind names the server's date")
+    void cleanupRemindNamesTheServersDate() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = sampleJob();
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else if (request.target().endsWith("/remind")) {
+                response.json(200, "{\"status\":\"postponed\",\"remind_at\":\"16 Oct\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        execute("cleanup", "--remind");
+
+        assertTrue(out.toString().contains("The same items come back 16 Oct."), out.toString());
+    }
+
+    @Test
+    @DisplayName("cleanup --remind without a date names the next check")
+    void cleanupRemindWithoutADate() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = sampleJob();
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else if (request.target().endsWith("/remind")) {
+                response.json(200, "{\"status\":\"postponed\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        execute("cleanup", "--remind");
+
+        assertTrue(out.toString().contains("The same items come back at the next check."), out.toString());
+    }
+
+    @Test
+    @DisplayName("a project-filtered delete says it removes the whole job")
+    void cleanupDeleteWithAProjectNamesTheWholeJob() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = sampleJob();
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        execute("cleanup", "--delete", "--project", "pm-mcp-clients", "--no-input");
+
+        assertTrue(out.toString().contains("The delete removes the whole job"), out.toString());
+    }
+
+    @Test
     @DisplayName("cleanup --kept reports when nothing is kept")
     void cleanupKeptEmpty() throws Exception {
         PmOperatorTest.writeLiveRecord(fixture);
