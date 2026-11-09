@@ -120,10 +120,18 @@ class CleanupDialogueIT {
             assertTrue(session.awaitText("1 unchecked item is kept for good.", DialogueHarness.TIMEOUT),
                                 session.rawOutput());
 
-            DialogueHarness.type(session, "q\nexit\n");
+            DialogueHarness.type(session, "y\n");
+            assertTrue(session.awaitText("Deleted", DialogueHarness.TIMEOUT), session.rawOutput());
+            var delete = harness.acts().stream()
+                                .filter(act -> "POST".equals(act.method())
+                                                    && act.path().startsWith("/api/v1/system/cleanup/")
+                                                    && act.path().endsWith("/delete"))
+                                .toList();
+            assertEquals(1, delete.size(), "expected one delete act, got " + delete);
+
+            DialogueHarness.type(session, "exit\n");
             assertTrue(session.awaitExit(DialogueHarness.TIMEOUT), session.rawOutput());
             assertEquals(0, session.exitCode(), session.rawOutput());
-            assertNoCleanupAct(harness);
         }
     }
 

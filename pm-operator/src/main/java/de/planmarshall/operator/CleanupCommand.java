@@ -11,7 +11,10 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -28,6 +31,7 @@ import de.planmarshall.api.runtime.RuntimeUnavailableException;
 import de.planmarshall.api.system.CleanupItemEntry;
 import de.planmarshall.api.system.CleanupJob;
 import de.planmarshall.api.system.CleanupKeptItem;
+import de.planmarshall.api.system.CleanupKind;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
 
 import picocli.CommandLine.Command;
@@ -269,49 +273,95 @@ public final class CleanupCommand implements Callable<Integer> {
     }
 
     private int executeRemind(PrintWriter out, PrintWriter err) throws IOException {
-        var runtime = context.runtime(true);
-        var jobRes = runtime.send(HttpRequest.get("/api/v1/system/cleanup"));
-        var parsed = JsonTree.asObject(JsonTree.parse(jobRes.bodyText()));
-        if (parsed == null || Boolean.FALSE.equals(parsed.get("open"))) {
-            var nextCheck = parsed != null && parsed.get("next_check_at") != null
-                                ? OutputSafety.stripControlSequences(String.valueOf(parsed.get("next_check_at")))
-                                : "tomorrow 03:00";
-            out.printf("Nothing is due. The next check is %s.%n", nextCheck);
-            out.flush();
+        return executeRemind(out, err, null);
+    }
+
+    /**
+     * Asks again after the reminder's days, on the job the operator chose or on the one the runtime
+     * reports.
+     *
+     * @param out       the verb's writer
+     * @param err       the verb's error writer
+     * @param displayed the job the operator saw, or {@code null} to read the open one
+     * @return the exit code
+     * @throws IOException on transport failure
+     */
+    private int executeRemind(PrintWriter out, PrintWriter err, @Nullable CleanupJob displayed) throws IOException {
+        var job = displayed != null ? displayed : openJob(out);
+        if (job == null) {
             return 0;
         }
-
-        var job = CleanupJob.fromJson(jobRes.bodyText());
-        var res = runtime.send(HttpRequest.post("/api/v1/system/cleanup/" + job.jobId() + "/remind"));
+        var res = context.runtime(true).send(HttpRequest.post("/api/v1/system/cleanup/" + job.jobId() + "/remind"));
         if (res.status() == 200) {
-            out.println("✓ Nothing was deleted. The same items come back 16 Oct.");
-            out.flush();
+            printRemindDone(out, res.bodyText());
             return 0;
         }
         throw new OperatorRefusedException("cleanup --remind", res);
     }
 
+    /**
+     * Names the date the reminder brings the items back, read from the act's own answer: the
+     * response's {@code remind_at}, else its {@code remind_after_days} counted from today, and a
+     * line without a date where it names neither.
+     *
+     * @param out  the verb's writer
+     * @param body the act's answer
+     */
+    private void printRemindDone(PrintWriter out, String body) {
+        var locale = context.clientEnvironment().locale();
+        var when = remindWhen(body, locale);
+        out.println(MessageCatalogue.format(locale,
+                            when != null ? "operator.cleanup.remind.done" : "operator.cleanup.remind.done_undated",
+                            when != null ? Map.of("when", when) : Map.of()));
+        out.flush();
+    }
+
+    private @Nullable String remindWhen(String body, String locale) {
+        try {
+            var parsed = JsonTree.asObject(JsonTree.parse(body));
+            if (parsed == null) {
+                return null;
+            }
+            var at = JsonTree.string(parsed, "remind_at");
+            if (at != null && !at.isBlank()) {
+                return OutputSafety.stripControlSequences(at);
+            }
+            var days = JsonTree.integer(parsed, "remind_after_days");
+            if (days == null) {
+                return null;
+            }
+            return LocalDate.now(context.clock()).plusDays(days)
+                                .format(DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag(locale)));
+        } catch (IOException | IllegalArgumentException _) {
+            return null;
+        }
+    }
+
     private int executeIgnore(PrintWriter out, PrintWriter err) throws IOException {
+        return executeIgnore(out, err, null);
+    }
+
+    /**
+     * Keeps everything the job lists for good, on the job the operator chose or on the one the
+     * runtime reports.
+     *
+     * @param out       the verb's writer
+     * @param err       the verb's error writer
+     * @param displayed the job the operator saw, or {@code null} to read the open one
+     * @return the exit code
+     * @throws IOException on transport failure
+     */
+    private int executeIgnore(PrintWriter out, PrintWriter err, @Nullable CleanupJob displayed) throws IOException {
         if (exclude != null && !exclude.isEmpty()) {
             err.println("--exclude is for --delete only");
             err.flush();
             return 1;
         }
-
-        var runtime = context.runtime(true);
-        var jobRes = runtime.send(HttpRequest.get("/api/v1/system/cleanup"));
-        var parsed = JsonTree.asObject(JsonTree.parse(jobRes.bodyText()));
-        if (parsed == null || Boolean.FALSE.equals(parsed.get("open"))) {
-            var nextCheck = parsed != null && parsed.get("next_check_at") != null
-                                ? OutputSafety.stripControlSequences(String.valueOf(parsed.get("next_check_at")))
-                                : "tomorrow 03:00";
-            out.printf("Nothing is due. The next check is %s.%n", nextCheck);
-            out.flush();
+        var job = displayed != null ? displayed : openJob(out);
+        if (job == null) {
             return 0;
         }
-
-        var job = CleanupJob.fromJson(jobRes.bodyText());
-        var res = runtime.send(HttpRequest.post("/api/v1/system/cleanup/" + job.jobId() + "/ignore"));
+        var res = context.runtime(true).send(HttpRequest.post("/api/v1/system/cleanup/" + job.jobId() + "/ignore"));
         if (res.status() == 200) {
             int totalItems = job.projectItems().stream().mapToInt(p -> p.items().size()).sum();
             out.printf("✓ Nothing was deleted. %d items are kept for good; cleanup --kept lists them, cleanup --release gives them back.%n", totalItems);
@@ -319,6 +369,25 @@ public final class CleanupCommand implements Callable<Integer> {
             return 0;
         }
         throw new OperatorRefusedException("cleanup --ignore", res);
+    }
+
+    /**
+     * @param out the verb's writer
+     * @return the open cleanup job, or {@code null} when nothing is due (the line is printed)
+     * @throws IOException on transport failure
+     */
+    private @Nullable CleanupJob openJob(PrintWriter out) throws IOException {
+        var jobRes = context.runtime(true).send(HttpRequest.get("/api/v1/system/cleanup"));
+        var parsed = JsonTree.asObject(JsonTree.parse(jobRes.bodyText()));
+        if (parsed == null || Boolean.FALSE.equals(parsed.get("open"))) {
+            var nextCheck = parsed != null && parsed.get("next_check_at") != null
+                                ? OutputSafety.stripControlSequences(String.valueOf(parsed.get("next_check_at")))
+                                : "tomorrow 03:00";
+            out.printf("Nothing is due. The next check is %s.%n", nextCheck);
+            out.flush();
+            return null;
+        }
+        return CleanupJob.fromJson(jobRes.bodyText());
     }
 
     private int executeDelete(PrintWriter out, PrintWriter err) throws IOException {
@@ -347,6 +416,7 @@ public final class CleanupCommand implements Callable<Integer> {
         if (!yes) {
             if (noInput) {
                 out.println(previewText(preview, uncheckedIds.size()));
+                printWholeJobNote(out);
                 out.println("Needs a choice: --yes");
                 out.flush();
                 return 3;
@@ -358,9 +428,17 @@ public final class CleanupCommand implements Callable<Integer> {
                                     ? sendDelete(out, job, uncheckedIds, preview) : 0;
             }
             out.println(previewText(preview, uncheckedIds.size()));
+            printWholeJobNote(out);
             out.flush();
         }
         return sendDelete(out, job, uncheckedIds, preview);
+    }
+
+    private void printWholeJobNote(PrintWriter out) {
+        if (project != null && !".".equals(project)) {
+            out.println("  " + MessageCatalogue.format(context.clientEnvironment().locale(),
+                                "operator.cleanup.choose.whole_job", Map.of()));
+        }
     }
 
     private int showCleanup(PrintWriter out) throws IOException {
@@ -417,24 +495,73 @@ public final class CleanupCommand implements Callable<Integer> {
         var items = printJob(out, job, leftOut);
         while (true) {
             var chosen = decisionPrompt(out).ask();
-            var code = switch (chosen.key()) {
-                case "d" -> deleteFromDialogue(out, job, leftOut);
-                case "r" -> executeRemind(out, err);
-                case "i" -> executeIgnore(out, err);
-                case "x" -> {
+            var code = switch (Decision.of(chosen.key())) {
+                case DELETE -> deleteFromDialogue(out, job, leftOut);
+                case REMIND -> executeRemind(out, err, job);
+                case IGNORE -> executeIgnore(out, err, job);
+                case LEAVE_OUT -> {
                     leaveOut(out, items, leftOut);
                     yield ASK_AGAIN;
                 }
-                case "o" -> {
+                case OPEN -> {
                     openItem(out, err, items);
                     yield ASK_AGAIN;
                 }
-                default -> ASK_AGAIN;
+                case null -> ASK_AGAIN;
             };
             if (code != ASK_AGAIN) {
                 return code;
             }
             items = printJob(out, job, leftOut);
+        }
+    }
+
+    /**
+     * One decision of the bar: its key and the catalogue suffix of its label. The bar and its
+     * dispatch read this one definition, so a decision can never be offered without a handler or
+     * handled without being offered.
+     */
+    enum Decision {
+        DELETE("d", "delete"),
+        REMIND("r", "remind"),
+        IGNORE("i", "ignore"),
+        LEAVE_OUT("x", "leave_out"),
+        OPEN("o", "open");
+
+        private final String key;
+        private final String labelKey;
+
+        Decision(String key, String labelKey) {
+            this.key = key;
+            this.labelKey = labelKey;
+        }
+
+        /**
+         * @return the key the operator types
+         */
+        String key() {
+            return key;
+        }
+
+        /**
+         * @param locale the interface locale
+         * @return the rendered label
+         */
+        String label(String locale) {
+            return MessageCatalogue.format(locale, "operator.cleanup.choose." + labelKey, Map.of());
+        }
+
+        /**
+         * @param key the key the operator typed
+         * @return the decision, or {@code null} where the key names none
+         */
+        static @Nullable Decision of(String key) {
+            for (var decision : values()) {
+                if (decision.key.equalsIgnoreCase(key)) {
+                    return decision;
+                }
+            }
+            return null;
         }
     }
 
@@ -501,9 +628,10 @@ public final class CleanupCommand implements Callable<Integer> {
                             "operator.cleanup.choose.kept_for_good", Map.of())
                             : "";
 
-        if ("reports".equalsIgnoreCase(item.kind())) {
+        var kind = CleanupKind.fromValue(item.kind());
+        if (kind == CleanupKind.READ_REPORTS) {
             out.printf("   %2d)   %-18s %s%s%n", index, title, note, mark);
-        } else if ("logs".equalsIgnoreCase(item.kind())) {
+        } else if (kind == CleanupKind.LOGS) {
             out.printf("   %2d)   %-18s %-32s %6s %8s%s%n", index, title, note, size, logs, mark);
         } else if (isUnenrolled) {
             out.printf("  %3d) %s %-18s %-36s %s%s%n", index, glyph, title, note, size, mark);
@@ -542,12 +670,9 @@ public final class CleanupCommand implements Callable<Integer> {
      * @return the five decisions of the bar, in the order they are drawn
      */
     static List<ChoicePrompt.Choice> decisionChoices(String locale) {
-        return List.of(
-                            ChoicePrompt.Choice.of("d", MessageCatalogue.format(locale, "operator.cleanup.choose.delete", Map.of())),
-                            ChoicePrompt.Choice.of("r", MessageCatalogue.format(locale, "operator.cleanup.choose.remind", Map.of())),
-                            ChoicePrompt.Choice.of("i", MessageCatalogue.format(locale, "operator.cleanup.choose.ignore", Map.of())),
-                            ChoicePrompt.Choice.of("x", MessageCatalogue.format(locale, "operator.cleanup.choose.leave_out", Map.of())),
-                            ChoicePrompt.Choice.of("o", MessageCatalogue.format(locale, "operator.cleanup.choose.open", Map.of())));
+        return Arrays.stream(Decision.values())
+                            .map(decision -> ChoicePrompt.Choice.of(decision.key(), decision.label(locale)))
+                            .toList();
     }
 
     private int deleteFromDialogue(PrintWriter out, CleanupJob job, Set<String> leftOut) throws IOException {
@@ -572,7 +697,7 @@ public final class CleanupCommand implements Callable<Integer> {
     private boolean askDeleteConsent(PrintWriter out, DeletePreview preview, int unchecked) {
         var locale = context.clientEnvironment().locale();
         var consent = prompts.create(CONFIRM_STATE, cleanupLabel(locale), out);
-        consent.title(consentTitle(preview, unchecked, locale));
+        consent.title(consentTitle(preview, unchecked, locale, project != null && !".".equals(project)));
         return consent.askConsent();
     }
 
@@ -582,9 +707,12 @@ public final class CleanupCommand implements Callable<Integer> {
      * @param locale    the interface locale
      * @return the consent prompt's title: the preview and its own question
      */
-    static String consentTitle(DeletePreview preview, int unchecked, String locale) {
-        return previewText(preview, unchecked) + "\n"
-                            + MessageCatalogue.format(locale, "operator.cleanup.choose.delete_confirm", Map.of());
+    static String consentTitle(DeletePreview preview, int unchecked, String locale, boolean wholeJob) {
+        var text = previewText(preview, unchecked);
+        if (wholeJob) {
+            text = text + "\n  " + MessageCatalogue.format(locale, "operator.cleanup.choose.whole_job", Map.of());
+        }
+        return text + "\n" + MessageCatalogue.format(locale, "operator.cleanup.choose.delete_confirm", Map.of());
     }
 
     private int sendDelete(PrintWriter out, CleanupJob job, List<String> uncheckedIds, DeletePreview preview) throws IOException {
@@ -627,13 +755,16 @@ public final class CleanupCommand implements Callable<Integer> {
             if (!uncheckedIds.contains(item.id())) {
                 continue;
             }
-            switch (item.kind().toLowerCase(Locale.ROOT)) {
-                case "plan" -> plans--;
-                case "epic" -> epics--;
-                case "project" -> projects--;
-                case "reports" -> reports -= item.readReportsCount() > 0 ? item.readReportsCount() : 1;
-                default -> {
+            switch (CleanupKind.fromValue(item.kind())) {
+                case PLAN -> plans--;
+                case EPIC -> epics--;
+                case UNENROLLED_PROJECT -> projects--;
+                case READ_REPORTS -> reports -= item.readReportsCount() > 0 ? item.readReportsCount() : 1;
+                case LOGS -> {
                     // a logs entry removes its logs, counted below
+                }
+                case null -> {
+                    // an unknown kind subtracts none
                 }
             }
             logs -= item.logsCount();

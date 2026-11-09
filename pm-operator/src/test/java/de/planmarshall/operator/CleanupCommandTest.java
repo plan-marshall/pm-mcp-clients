@@ -27,6 +27,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.system.CleanupItemEntry;
@@ -257,7 +258,8 @@ class CleanupCommandTest {
         int code = execute("cleanup", "--remind");
         assertAll(
                             () -> assertEquals(0, code),
-                            () -> assertTrue(out.toString().contains("✓ Nothing was deleted. The same items come back 16 Oct."))
+                            () -> assertTrue(out.toString().contains("✓ Nothing was deleted. The same items come back")),
+                            () -> assertFalse(out.toString().contains("16 Oct"))
         );
     }
 
@@ -530,11 +532,11 @@ class CleanupCommandTest {
         var items = List.of(
                             new CleanupItemEntry("fix-relay", "plan", "fix-relay", "merged", "ended 12 Sep", 1L, 2, 0, null),
                             new CleanupItemEntry("relay-docs", "logs", "relay-docs", null, null, 2L, 3, 0, "kept until 24 Oct"),
-                            new CleanupItemEntry("3 read reports", "reports", "3 read reports", null, null, 0L, 0, 0, "read before 13 Sep")
+                            new CleanupItemEntry("3 read reports", "read_reports", "3 read reports", null, null, 0L, 0, 3, "read before 13 Sep")
         );
         var project = new CleanupProjectItem("pm-mcp-clients", 1, 0, 3, 0, 3L, items);
         var unenrolled = new CleanupProjectItem("unenrolled", 0, 0, 0, 1, 1024L, List.of(
-                            new CleanupItemEntry("legacy-portal", "project", "legacy-portal", null, null, 1024L, 0, 0, null)));
+                            new CleanupItemEntry("legacy-portal", "unenrolled_project", "legacy-portal", null, null, 1024L, 0, 0, null)));
         var summary = new CleanupSummary(1, 0, 3, 3, 1, 1027L, 0, "today 03:00", "tomorrow 03:00");
         var job = new CleanupJob("cln-0007", CleanupJobState.OPEN, "today 03:00", summary,
                             List.of(project, unenrolled), Map.of());
@@ -567,7 +569,9 @@ class CleanupCommandTest {
                             () -> assertTrue(text.contains("Delete 11 plans, 2 epics, 29 logs, 5 read reports, and 1 unenrolled project?"), text),
                             () -> assertTrue(text.contains("This frees 1.7 GB. It cannot be undone."), text),
                             () -> assertTrue(text.contains("1 unchecked item is kept for good."), text),
-                            () -> assertTrue(CleanupCommand.consentTitle(preview, 1, "en").endsWith("Delete?"), text)
+                            () -> assertTrue(CleanupCommand.consentTitle(preview, 1, "en", false).endsWith("Delete?"), text),
+                            () -> assertTrue(CleanupCommand.consentTitle(preview, 1, "en", true)
+                                                .contains("The delete removes the whole job"), text)
         );
     }
 
@@ -637,6 +641,32 @@ class CleanupCommandTest {
                             () -> assertTrue(output.contains("This frees"), output),
                             () -> assertTrue(output.contains("✓ Deleted"), output)
         );
+    }
+
+    @Test
+    @DisplayName("n at the confirmation sends no delete")
+    void dialogNoSendsNoDelete() throws Exception {
+        var job = sampleJob();
+        var deletes = new AtomicInteger();
+        var answers = new ArrayDeque<>(List.of("d\n", "n\n", "q\n"));
+        var command = new CleanupCommand(
+                            new OperatorContext(fixture.environment(), tempDir, true),
+                            (state, leave, writer) -> new ChoicePrompt(
+                                                new BufferedReader(new StringReader(answers.peek() == null ? "q\n" : answers.poll())),
+                                                new PrintWriter(out), "en", state).leaveLabel(leave),
+                            (question, state, writer) -> "");
+        PmOperatorTest.writeLiveRecord(fixture);
+        fixture.start((request, response) -> {
+            if (request.target().endsWith("/delete")) {
+                deletes.incrementAndGet();
+            }
+            response.json(200, JsonTree.write(job.toMap()));
+        });
+
+        assertThrows(StartPrompt.StartLeftException.class,
+                            () -> command.decide(new PrintWriter(out), new PrintWriter(err), job));
+
+        assertEquals(0, deletes.get());
     }
 
     @Test
