@@ -137,12 +137,12 @@ The design and specification as merged (D4 at plan-marshall-documentation `e141a
 Run in a Claude Code session started in `/Users/oliver/git/pm-mcp-clients/.plan/local/worktrees/125-design-d5-chat-context-and-interaction`:
 
 ```text
-Implement the staged design plan PLAN-125 (design D5: chat context, acts and events) of the epic ui-improvements. Read the
-whole spec first: /Users/oliver/git/pm-mcp-clients/.plan/local/worktrees/_orchestrator/.plan/orchestrator/ui-improvements/plans/PLAN-125-design-d5-chat-context-and-interaction.md
-Then read every source under "Sources" in full, the decisions first. ...
-```
+Implement the staged design plan PLAN-125 (design D5: chat context, acts and events) of the epic ui-improvements. Read the whole spec first: /Users/oliver/git/pm-mcp-clients/.plan/local/worktrees/_orchestrator/.plan/orchestrator/ui-improvements/plans/PLAN-125-design-d5-chat-context-and-interaction.md
 
-(The full prompt is given to the operator with the emit.)
+Before anything else: check with gh that plan-marshall/pm-mcp-core#334 and plan-marshall/pm-mcp-clients#387 are merged (the D4 review, which sets the chat design AGREED). If either is still open, stop and tell me. Then run `git fetch origin && git merge --ff-only origin/main` here, and check that ../plan-marshall-documentation and ../pm-mcp-core are both on the branch docs/125-design-d5-chat-context-and-interaction at origin/main; if not, stop and tell me.
+
+Then read every source under "Sources" in full, the operator's decisions first (epic.md "2026-11-09 — D4 REVIEW DECIDED", landings/PLAN-115.md, design-review-009/010): they bind you. Work the six questions in order. For each, establish the current state with file:line across the three repositories and the code, then put the options with your recommendation to me ONE QUESTION AT A TIME and wait for my answer; keep the findings in .plan/temp/d5-findings.md. Only after all six are decided, write the requirement, roadmap and runtime specification (plan-marshall-documentation), the engine specification (pm-mcp-core) and the client design (this repository, both clients), all Status: DRAFT, with a throw-away clickable prototype of the chat-and-view switching on the realistic mock (ports 21250/21251) before you ask me to agree. Inline chat only; no external-harness MCP exposure of the chat. Review with ref-documentation plus ref-asciidoc validate and verify-links here, doc-review and trace.py in the two sibling repositories. One pull request per repository that changes, no auto-merge; stop when every pull request is green and its review comments are answered, and report with the decisions and the daemon surface listed. Do not edit anything under .plan/orchestrator/ except your own inbox message (orchestrator inbox write), and do not merge.
+```
 
 ## Write-Boundary
 
