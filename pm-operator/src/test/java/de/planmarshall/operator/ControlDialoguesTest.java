@@ -735,7 +735,7 @@ class ControlDialoguesTest {
         assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith("/actions/next")
                                                 && request.bodyText().contains("\"raise_scope\":true")),
                             server.requests().toString());
-        assertTrue(out.toString().contains("next-plan started (? of 3 at once)"), out.toString());
+        assertTrue(out.toString().contains("next-plan started (? of 4 at once)"), out.toString());
     }
 
     @Test
@@ -747,7 +747,7 @@ class ControlDialoguesTest {
                             EpicResource.fromJson(EPIC), null));
         var text = out.toString();
         assertTrue(text.contains("e runs 3 of 3 at once"), text);
-        assertTrue(text.contains("next-plan started (4 of 3 at once)"), text);
+        assertTrue(text.contains("next-plan started (4 of 4 at once)"), text);
         assertTrue(server.requests().stream().anyMatch(request -> request.target().endsWith(NEXT_PATH)
                                                 && request.bodyText().contains("\"raise_scope\":true")),
                             server.requests().toString());

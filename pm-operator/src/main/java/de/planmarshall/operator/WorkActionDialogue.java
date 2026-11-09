@@ -320,7 +320,7 @@ final class WorkActionDialogue {
                 var answer = prompt.askRaw(promptText, STATE_ID, need, id);
                 if (answer.equalsIgnoreCase(raiseKey)) {
                     client.perform(kind, id, "next", Map.of("raise_scope", true));
-                    return started(epic);
+                    return started(epic, epic.scope() + 1);
                 }
                 if (answer.equalsIgnoreCase(leaveKey)) {
                     return 0;
@@ -329,17 +329,17 @@ final class WorkActionDialogue {
             }
         }
         client.perform(kind, id, "next", Map.of("raise_scope", false));
-        return started(epic);
+        return started(epic, epic != null ? epic.scope() : 0);
     }
 
-    private int started(@Nullable EpicResource epic) {
+    private int started(@Nullable EpicResource epic, int scope) {
         var plan = epic != null ? nextLaunchable(epic) : null;
         if (plan != null && epic != null) {
             var running = epic.running();
             prompt.line("operator.actions.result.next_started",
                                 Map.<String, Object>of(PLAN, plan,
                                                     RUNNING, running != null ? running + 1 : EpicViewFormatting.UNKNOWN_COUNT,
-                                                    SCOPE, epic.scope()));
+                                                    SCOPE, scope));
         } else {
             prompt.line("control.epic.next_none",
                                 Map.of("reasons", epic != null ? String.join(", ", waitReasons(epic)) : ""));
