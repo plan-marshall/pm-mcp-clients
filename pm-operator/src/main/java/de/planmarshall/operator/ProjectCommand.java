@@ -258,9 +258,9 @@ public final class ProjectCommand implements Callable<Integer> {
                 }
             }
 
-            var source = entryId != null
-                                ? ProjectOnboardingSource.forEntry(context.runtime(true), context.gate(), entryId)
-                                : new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId);
+            var source = projectId != null
+                                ? new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId)
+                                : ProjectOnboardingSource.forEntry(context.runtime(true), context.gate(), entryId);
 
             var startPrompt = new StartPrompt(context, out, locale, noInput);
             var dialogue = new StateDialogue(source, out, locale, stateId -> {
