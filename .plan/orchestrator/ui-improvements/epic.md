@@ -629,6 +629,19 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Watches
 
+- D5 = PLAN-125 (design D5: chat context, acts and events; the operator calls it "D5"). EMITTED and STARTED by the operator
+  2026-11-09 as a direct Claude Code design session in `.plan/local/worktrees/125-design-d5-chat-context-and-interaction`
+  (sibling worktrees `plan-marshall-documentation`, `pm-mcp-core` on the same branch; `plan-marshall-mcp` a symlink; ports
+  21250/21251). It asks the operator six questions one at a time (context per subject, inline vs link controls, act
+  parity, an MCP for the chat role, narrative events into the chat, CLI parity), then writes DRAFT docs in three repos,
+  prototypes, opens PRs and stops green; the orchestrator makes the AGREED commits; the operator merges. The D4 code
+  packages wait for D5's outcome. Lane landings and emits were paused by the operator for the chat on 2026-11-09.
+- PLAN-119 landed (PR #377, `147309ae`, analysed 2026-11-09); see `landings/PLAN-119.md`. One parser
+  (`JsonTree.positiveInteger`) and one fallback constant; the overview and machine step follow the injected aspect list;
+  Sonar 0. MERGE RULE NOT MET: the CodeRabbit body's nitpick is unanswered, and thread 2 was resolved contested — with a
+  reduced aspect list an excluded aspect's state renders "Done" (`StateDialogue.java:665-675`), the lane's "the runtime
+  never emits it" has no source (S1, needs a decision). Tests break the CLAUDE.md rules (7 variants as sequential asserts,
+  no Generators). PLAN-121 is unblocked (emits paused).
 - PLAN-23 landed (PR #381, `fb27d4aa`, analysed 2026-11-09); see `landings/PLAN-23.md`. All six keys of the cleanup
   bar wired (operator's scope choice); a delete only after `y`/`j`; Sonar 0 new issues. Merge rule met on the letter: 22
   threads all resolved, but 15 resolved WITHOUT a reply (14 fixed in code, 1 partly: an already-decided job is not handled).
