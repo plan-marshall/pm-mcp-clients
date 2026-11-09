@@ -22,6 +22,9 @@ import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.file.Path;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayDeque;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -70,6 +73,12 @@ class CleanupCommandTest {
 
     private int execute(String... args) {
         var context = new OperatorContext(fixture.environment(), tempDir, true);
+        return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
+    }
+
+    private int execute(Clock clock, String... args) {
+        var context = new OperatorContext(fixture.environment(), tempDir, true,
+                            ClientEnvironment.capture(fixture.environment()), null, null, clock);
         return PmOperator.execute(context, new PrintWriter(out), new PrintWriter(err), args);
     }
 
@@ -429,13 +438,34 @@ class CleanupCommandTest {
             if ("/api/v1/system/cleanup".equals(request.target()) && "GET".equals(request.method())) {
                 response.json(200, JsonTree.write(job.toMap()));
             } else if (request.target().endsWith("/remind")) {
-                response.json(200, "{\"status\":\"postponed\",\"remind_at\":\"16 Oct\"}");
+                response.json(200, "{\"status\":\"postponed\",\"remind_at\":\"2026-10-16T03:00:00Z\"}");
             } else {
                 response.send(404, null, "");
             }
         });
 
         execute("cleanup", "--remind");
+
+        assertTrue(out.toString().contains("The same items come back 16 Oct."), out.toString());
+    }
+
+    @Test
+    @DisplayName("the reminder's date is counted from the clock")
+    void cleanupRemindCountsFromTheClock() throws Exception {
+        PmOperatorTest.writeLiveRecord(fixture);
+        var job = sampleJob();
+        fixture.start((request, response) -> {
+            if ("/api/v1/system/cleanup".equals(request.target()) && "GET".equals(request.method())) {
+                response.json(200, JsonTree.write(job.toMap()));
+            } else if (request.target().endsWith("/remind")) {
+                response.json(200, "{\"status\":\"postponed\",\"remind_after_days\":3}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+        var clock = Clock.fixed(Instant.parse("2026-10-13T12:00:00Z"), ZoneOffset.UTC);
+
+        execute(clock, "cleanup", "--remind");
 
         assertTrue(out.toString().contains("The same items come back 16 Oct."), out.toString());
     }

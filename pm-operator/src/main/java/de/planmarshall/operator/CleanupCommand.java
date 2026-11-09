@@ -11,8 +11,11 @@ package de.planmarshall.operator;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
@@ -296,6 +299,7 @@ public final class CleanupCommand implements Callable<Integer> {
         var res = context.runtime(true).send(HttpRequest.post(CLEANUP_API + "/" + job.jobId() + "/remind"));
         if (res.status() == 200) {
             printRemindDone(out, res.bodyText());
+            printWholeJobActionNote(out);
             return 0;
         }
         throw new OperatorRefusedException("cleanup --remind", res);
@@ -326,7 +330,7 @@ public final class CleanupCommand implements Callable<Integer> {
             }
             var at = JsonTree.string(parsed, "remind_at");
             if (at != null && !at.isBlank()) {
-                return OutputSafety.stripControlSequences(at);
+                return formatWhen(at, locale);
             }
             var days = JsonTree.integer(parsed, "remind_after_days");
             if (days == null) {
@@ -336,6 +340,24 @@ public final class CleanupCommand implements Callable<Integer> {
                                 .format(DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag(locale)));
         } catch (IOException | IllegalArgumentException _) {
             return null;
+        }
+    }
+
+    /**
+     * Renders a date the runtime names: an ISO instant becomes the client's day, and any other form
+     * is shown as the runtime sent it.
+     *
+     * @param at     the runtime's date
+     * @param locale the interface locale
+     * @return the rendered date
+     */
+    static String formatWhen(String at, String locale) {
+        var text = OutputSafety.stripControlSequences(at);
+        try {
+            var day = Instant.parse(text).atZone(ZoneId.systemDefault()).toLocalDate();
+            return day.format(DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag(locale)));
+        } catch (DateTimeParseException _) {
+            return text;
         }
     }
 
@@ -367,6 +389,7 @@ public final class CleanupCommand implements Callable<Integer> {
         if (res.status() == 200) {
             int totalItems = job.projectItems().stream().mapToInt(p -> p.items().size()).sum();
             out.printf("✓ Nothing was deleted. %d items are kept for good; cleanup --kept lists them, cleanup --release gives them back.%n", totalItems);
+            printWholeJobActionNote(out);
             out.flush();
             return 0;
         }
@@ -440,6 +463,13 @@ public final class CleanupCommand implements Callable<Integer> {
         if (project != null && !".".equals(project)) {
             out.println("  " + MessageCatalogue.format(context.clientEnvironment().locale(),
                                 "operator.cleanup.choose.whole_job", Map.of()));
+        }
+    }
+
+    private void printWholeJobActionNote(PrintWriter out) {
+        if (project != null && !".".equals(project)) {
+            out.println("  " + MessageCatalogue.format(context.clientEnvironment().locale(),
+                                "operator.cleanup.choose.whole_job_action", Map.of()));
         }
     }
 

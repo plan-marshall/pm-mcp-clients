@@ -101,6 +101,7 @@ public final class ChoicePrompt {
     private final String stateId;
     private final List<Choice> choices = new ArrayList<>();
     private @Nullable StartPrompt startPrompt;
+    private @Nullable LineReader reader;
 
     private @Nullable String title;
     private @Nullable String explanation;
@@ -125,6 +126,7 @@ public final class ChoicePrompt {
         this.out = Objects.requireNonNull(out, "out");
         this.locale = Objects.requireNonNull(locale, "locale");
         this.stateId = Objects.requireNonNull(stateId, "stateId");
+        this.reader = reader;
     }
 
     /**
@@ -555,12 +557,11 @@ public final class ChoicePrompt {
      *         dialogue width, and the dialogue width where no terminal is known (a stream test)
      */
     private int barWidth() {
-        if (startPrompt != null) {
-            var terminal = startPrompt.reader().getTerminal();
-            var columns = terminal != null ? terminal.getColumns() : 0;
-            if (columns > 0) {
-                return Math.min(MAX_ROW, columns);
-            }
+        var terminal = reader != null ? reader.getTerminal()
+                            : startPrompt != null ? startPrompt.reader().getTerminal() : null;
+        var columns = terminal != null ? terminal.getColumns() : 0;
+        if (columns > 0) {
+            return Math.min(MAX_ROW, columns);
         }
         return MAX_ROW;
     }
