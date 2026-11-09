@@ -22,7 +22,6 @@ import java.time.Duration;
 import java.util.Map;
 
 import de.planmarshall.api.json.JsonTree;
-import de.planmarshall.api.resource.EnrolResult;
 import de.planmarshall.api.testsupport.FakeRuntimeServer;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
