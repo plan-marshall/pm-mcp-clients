@@ -14,7 +14,7 @@ Status: `AGREED`. The texts of link:work-actions.adoc#chat[Chatting with the Pla
 [#texts]
 == Texts
 
-Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Planning Role]; the chat's action is `control.plan.chat`, `control.epic.chat` (also on an ended plan or epic), `control.review.chat`, `start.decomposition.chat`, `start.sources.chat`, or `decision.answer.chat` where it is opened. A chat inside a decision adds the keys `decision.chat.*` (link:decisions-texts.adoc#texts[Decisions, Texts]), a chat while starting `start.chat.*` (link:starting-work-texts.adoc#texts[Starting Work, Texts]).
+Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Planning Role]; the chat's action is `control.plan.chat`, `control.epic.chat` (also on an ended plan or epic), `control.review.chat`, `start.decomposition.chat`, `start.sources.chat`, or `decision.answer.chat` where it is opened. The runtime's message keys of D5 render through these: a narrative line `chat.line.<name>` as `control.chat.line.<name>`, an entry `chat.knows.<item>` of the context summary as `control.chat.knows.item` with that `item`, and `queued_revision.applies` (`chat.applies.after_task {task_id}`, `chat.applies.on_start`) as `control.chat.revision_queued` (`applies` `after_task` or `on_start`) and `control.chat.at_boundary` / `control.chat.at_start`. One name per meaning: `{subject}` is the chat's subject (the plan, the epic, the entry, the decision, the ended work), `{plan}` a plan a message is about (the chat's plan, the plan a decision belongs to, an epic's row), so a revision in a decision's chat names its plan, never the decision; `{task_id}` a task's id. An argument that is itself a key — a pause's `{point}`, a decision's or a hold's `{reason}`, an `{outcome}`, a source's flag `{reason}`, a waiver's `{gate}`, a re-planning `{trigger}`, an item's `{disposition}` — is rendered through its own catalogue: `{point}` through the pause points of link:work-actions-texts.adoc[Actions on Plans and Epics, Texts], a decision's `{reason}` through link:decisions-texts.adoc#texts[Decisions, Texts], `{outcome}` through `overview.ended.outcome` (link:plan-overview.adoc#texts[Plan Overview, Texts]), `{disposition}` through link:work-actions-review-texts.adoc[Reviews and Holds, Texts], a hold's `{reason}` and a source's flag `{reason}` through their own keys of the same areas; a waiver's `{gate}` and a re-planning `{trigger}` are identifiers and pass through as they are, in code style, never translated. A chat inside a decision adds the keys `decision.chat.*` (link:decisions-texts.adoc#texts[Decisions, Texts]), a chat while starting `start.chat.*` (link:starting-work-texts.adoc#texts[Starting Work, Texts]).
 
 [cols="3,3,3",options="header"]
 |===
@@ -73,8 +73,8 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |{plan} ist gemergt: der Chat antwortet und schlägt keine Änderung vor
 
 |`control.chat.applied`
-|{subject} changed{version, select, none {} other {; the plan's version becomes {version}}}
-|{subject} geändert{version, select, none {} other {; die Version des Plans wird {version}}}
+|{version, select, none {{subject} changed} other {{plan} changed; the plan's version becomes {version}}}
+|{version, select, none {{subject} geändert} other {{plan} geändert; die Version des Plans wird {version}}}
 
 |`control.chat.rejected`
 |rejected: nothing changed
@@ -105,8 +105,8 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |Starte damit einen Plan
 
 |`control.chat.follow_up.names`
-|follows {plan}, {outcome}: {reason}
-|folgt auf {plan}, {outcome}: {reason}
+|follows {subject}, {outcome}: {reason}
+|folgt auf {subject}, {outcome}: {reason}
 
 |`control.chat.follow_up.opened`
 |A new plan is being started in {project} with this description; go on with its sources.
@@ -279,4 +279,165 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |`control.chat.entry_closed`
 |{outcome, select, started {The request was started; the chat has ended and goes with it.} other {The request was abandoned; the chat has ended with it.}}
 |{outcome, select, started {Die Anfrage wurde gestartet; der Chat ist beendet und geht mit ihr.} other {Die Anfrage wurde verworfen; der Chat endet mit ihr.}}
+
+|`control.chat.knows`
+|{role} knows: {items} · as of {time}
+|{role} kennt: {items} · Stand {time}
+
+|`control.chat.knows.item`
+|{item, select, description {the description} tasks {{count} tasks} phase {phase {phase}} version {version {version}} sources {{count} sources} rows {{count} plans} items {{count} items} decision {decision {id}} other {its archived record, {outcome}}}
+|{item, select, description {die Beschreibung} tasks {{count} Tasks} phase {Phase {phase}} version {Version {version}} sources {{count} Quellen} rows {{count} Pläne} items {{count} Einträge} decision {Entscheidung {id}} other {seinen archivierten Verlauf, {outcome}}}
+
+
+|`control.chat.changed_since`
+|not applied: {plan} changed since (version {version})
+|nicht übernommen: {plan} hat sich seitdem geändert (Version {version})
+
+|`control.chat.lapsed`
+|{plan} left the time for a revision; the proposal no longer applies.
+|{plan} ist aus der Zeit für eine Revision heraus; der Vorschlag gilt nicht mehr.
+
+|`control.chat.lines.folded`
+|{count} changes to {subject} · Show them
+|{count} Änderungen an {subject} · Zeig sie
+
+|`control.chat.card.open`
+|Open it
+|Öffne es
+
+|`control.chat.card.act`
+|{act} — in the acts of {subject}
+|{act} — bei den Aktionen von {subject}
+
+|`control.chat.revision_queued`
+|{applies, select, on_start {Revision from the chat queued · applies when {plan} starts again} other {Revision from the chat queued · applies after {task_id}}}
+|{applies, select, on_start {Revision aus dem Chat vorgemerkt · gilt, wenn {plan} wieder startet} other {Revision aus dem Chat vorgemerkt · gilt nach {task_id}}}
+
+|`control.chat.changed_in_chat`
+|changed in the chat
+|im Chat geändert
+
+|`control.chat.from_chat`
+|from the chat
+|aus dem Chat
+
+|`control.chat.line.phase_changed`
+|phase {phase}
+|Phase {phase}
+
+|`control.chat.line.task_ended`
+|{task_id} {outcome, select, done {done} failed {failed} other {infeasible}}
+|{task_id} {outcome, select, done {erledigt} failed {fehlgeschlagen} other {nicht machbar}}
+
+|`control.chat.line.decision_opened`
+|{id} opened{blocks, select, yes {: blocks the plan} other {}}
+|{id} gestellt{blocks, select, yes {: blockiert den Plan} other {}}
+
+|`control.chat.line.decision_answered`
+|{id} answered in {channel, select, web {the web app ({device})} other {the terminal}}
+|{id} beantwortet in {channel, select, web {der Web-App ({device})} other {dem Terminal}}
+
+|`control.chat.line.decision_closed`
+|{id} closed: {reason}
+|{id} geschlossen: {reason}
+
+|`control.chat.line.hold_opened`
+|hold: {reason}
+|Halt: {reason}
+
+|`control.chat.line.hold_cleared`
+|hold cleared: {reason}
+|Halt aufgehoben: {reason}
+
+|`control.chat.line.plan_pausing`
+|{subject} pauses {point}
+|{subject} pausiert {point}
+
+|`control.chat.line.plan_paused`
+|{subject} paused in {channel, select, web {the web app ({device})} other {the terminal}}
+|{subject} pausiert in {channel, select, web {der Web-App ({device})} other {dem Terminal}}
+
+|`control.chat.line.plan_started`
+|{subject} started again in {channel, select, web {the web app ({device})} other {the terminal}}
+|{subject} wieder gestartet in {channel, select, web {der Web-App ({device})} other {dem Terminal}}
+
+|`control.chat.line.version_changed`
+|version {version}: {cause, select, chat {revision from this chat applied} replan {re-planned} other {revised}}
+|Version {version}: {cause, select, chat {Revision aus diesem Chat übernommen} replan {neu geplant} other {überarbeitet}}
+
+|`control.chat.line.pr_opened`
+|#{number} opened
+|#{number} geöffnet
+
+|`control.chat.line.pr_merged`
+|#{number} merged
+|#{number} gemergt
+
+|`control.chat.line.pr_closed`
+|#{number} closed
+|#{number} geschlossen
+
+|`control.chat.line.row_started`
+|{plan} started
+|{plan} gestartet
+
+|`control.chat.line.row_landed`
+|{plan} landed
+|{plan} gelandet
+
+|`control.chat.line.row_failed`
+|{plan} ended: {outcome}
+|{plan} beendet: {outcome}
+
+|`control.chat.line.auto_changed`
+|automatic start {state, select, on {on} other {off}}
+|automatischer Start {state, select, on {an} other {aus}}
+
+|`control.chat.line.source_added`
+|source added: {source}
+|Quelle hinzugefügt: {source}
+
+|`control.chat.line.source_removed`
+|source removed: {source}
+|Quelle entfernt: {source}
+
+|`control.chat.line.source_flagged`
+|source flagged: {source} ({reason})
+|Quelle markiert: {source} ({reason})
+
+|`control.chat.line.waiver_granted`
+|waiver granted for {gate}
+|Waiver erteilt für {gate}
+
+|`control.chat.line.waiver_revoked`
+|waiver revoked for {gate}
+|Waiver zurückgenommen für {gate}
+
+|`control.chat.line.replan_triggered`
+|re-planning started: {trigger}
+|Neuplanung begonnen: {trigger}
+
+|`control.chat.line.register_added`
+|{kind, select, finding {finding} other {watch}} added: {item}
+|{kind, select, finding {Befund} other {Beobachtung}} hinzugefügt: {item}
+
+|`control.chat.line.row_staged`
+|{plan} staged
+|{plan} vorgemerkt
+
+|`control.chat.line.row_cancelled`
+|{plan} cancelled before its start
+|{plan} vor seinem Start abgesagt
+
+|`control.chat.line.item_disposed`
+|{item}: {disposition}
+|{item}: {disposition}
+
+|`control.chat.revision_origin`
+|{origin, select, decision {from the chat of {id}} other {from an earlier chat}}
+|{origin, select, decision {aus dem Chat von {id}} other {aus einem früheren Chat}}
+
+|`control.chat.already_queued`
+|not applied: a revision of {plan} is already queued; accept this one once it has applied, or reject it
+|nicht übernommen: eine Revision von {plan} ist schon vorgemerkt; nimm diese an, sobald sie übernommen ist, oder lehne sie ab
 |===

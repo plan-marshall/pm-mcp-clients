@@ -9,6 +9,7 @@
  */
 package de.planmarshall.api.control;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -16,7 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import de.cuioss.test.generator.Generators;
@@ -271,6 +274,85 @@ class ControlResourcesTest {
 
         var review = new ReviewResource("r", "e", "findings", List.of(), 0, 0, "open", null, null);
         assertNull(review.item("missing"));
+    }
+
+    @Nested
+    @DisplayName("The running count")
+    class RunningCount {
+
+        private String epic(String runningField) {
+            return "{\"epic_id\":\"relay-hardening\",\"project_id\":\"pm-mcp-clients\""
+                    + runningField + "}";
+        }
+
+        @Test
+        @DisplayName("is unknown when the resource omits it")
+        void absentIsUnknown() throws Exception {
+            assertNull(EpicResource.fromJson(epic("")).running());
+        }
+
+        @Test
+        @DisplayName("is unknown when the resource reports null")
+        void nullIsUnknown() throws Exception {
+            assertNull(EpicResource.fromJson(epic(",\"running\":null")).running());
+        }
+
+        @Test
+        @DisplayName("is unknown when the value is negative")
+        void negativeIsUnknown() throws Exception {
+            assertNull(EpicResource.fromJson(epic(",\"running\":-1")).running());
+        }
+
+        @Test
+        @DisplayName("is unknown when the value is fractional")
+        void fractionalIsUnknown() throws Exception {
+            assertNull(EpicResource.fromJson(epic(",\"running\":2.5")).running());
+        }
+
+        @Test
+        @DisplayName("is unknown when the value only rounds to a whole number")
+        void roundedIsUnknown() throws Exception {
+            assertNull(EpicResource.fromJson(epic(",\"running\":2.0000000000000001")).running());
+        }
+
+        @Test
+        @DisplayName("is left out of the map when it is unknown")
+        void absentIsLeftOut() throws Exception {
+            assertFalse(EpicResource.fromJson(epic("")).toJson().contains("\"running\":"));
+        }
+
+        @Test
+        @DisplayName("is read when the value is valid")
+        void validIsRead() throws Exception {
+            assertEquals(2, EpicResource.fromJson(epic(",\"running\":2")).running().intValue());
+        }
+    }
+
+    @Nested
+    @DisplayName("The count reader")
+    class CountReader {
+
+        private static final String KEY = "running";
+
+        @Test
+        @DisplayName("reads a number and a numeric string")
+        void readsNumbers() {
+            assertAll(
+                    () -> assertEquals(Integer.valueOf(3), ControlJson.optCount(Map.of(KEY, 3), KEY)),
+                    () -> assertEquals(Integer.valueOf(3), ControlJson.optCount(Map.of(KEY, "3"), KEY))
+            );
+        }
+
+        @Test
+        @DisplayName("is unknown for a non-number, an unparseable string, an out-of-range number and no map")
+        void unknownValues() {
+            assertAll(
+                    () -> assertNull(ControlJson.optCount(Map.of(KEY, true), KEY)),
+                    () -> assertNull(ControlJson.optCount(Map.of(KEY, "x"), KEY)),
+                    () -> assertNull(ControlJson.optCount(Map.of(KEY, Long.MAX_VALUE), KEY)),
+                    () -> assertNull(ControlJson.optCount(null, KEY))
+            );
+        }
     }
 
     @Test

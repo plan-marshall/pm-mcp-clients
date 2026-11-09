@@ -187,6 +187,7 @@ pm ›
 
 * With no plan launchable, `epic next` says why per row, by one of the reasons `dependency`, `lock`, `scope`, `overlap`, `stale`, and `held` (link:../shared/work-actions.adoc#epic-actions[An Epic's Actions]; `relay-auth-v2 waits for relay-reconnect-backoff`, `relay-docs waits for a lock: the surface pm-relay`); with only the scope full, it asks to raise the scope by one (`epic.raise-scope`), which `--raise-scope` answers yes and `--no-raise` no; `--no-input` without either stops.
 * With none launchable for an overlap, the reason names the running plan (`relay-docs waits: overlap with relay-auth-v2`); raising the scope does not start it.
+* Where the epic's resource omits the count of running plans, or reports it `null`, the count is unknown: the head shows `? of 3 at once` (`? von 3 gleichzeitig`), a row that waits for the scope says `waits for a free place: ? of 3 taken`, and `epic next` asks as well, saying that the count is unknown (`control.epic.scope_unknown`) rather than naming a full scope (`control.epic.scope_full`); `raise_scope` is sent only on the operator's answer, and the started line names the raised scope (`? of 4 at once`), never `{running}+1` (link:../shared/work-actions.adoc#epic-actions[An Epic's Actions], link:../shared/epic-view.adoc#layout[Epic View]).
 * `epic cancel` asks first (`epic.confirm-cancel`, link:../shared/work-actions.adoc#cancel-epic[Ending an Epic]): its plans cancelled too or left to run on (`--with-plans`, `--without-plans`), and the reason; confirmed, the epic is archived as cancelled (`epic.cancel`).
 * `epic archive` while the epic lands is refused with the reason (`relay-hardening is landing: archive waits until the ledger has landed`); only open findings hold the archive, and kept findings and watches are listed as carried.
 * On an epic whose completion review has not run yet (a manual one; an automatic epic has run it once it was through), `epic archive` runs the review first (`epic.review-completion`, link:../shared/work-actions.adoc#archive-check[Archiving]), prints `the completion review runs first` (`control.archive.review_first`), and prints the check below it once the review is done; with every check passing it asks _Archive the epic_ (`control.archive.action`, `n` is `control.archive.not_yet`) and prints `operator.actions.result.archived`. `q` and `Ctrl+C` leave while it runs, the review going on (xref:03-dialogues.adoc#resume[Interruption and Resume]); `epic archive` again shows the check once it is done. A review that stages further plans leaves the epic not through, and the check names them.
@@ -232,7 +233,7 @@ relay-hardening · epic · running · automatic · 3 of 3 at once · running 6 d
   WS-2 Authentication                1 running · 2 staged
     running    relay-auth-v2               refine · waiting for you · 12 min
     staged     relay-token-rotation        waits for relay-auth-v2 · since 2 d
-    staged     relay-token-store           waits for the scope (3 of 3 at once) · since 1 h
+    staged     relay-token-store           waits for a free place: 3 of 3 taken · since 1 h
   WS-3 Documentation                 1 running · 1 staged
     running    relay-docs-site             outline · running · 20 min
     staged     relay-docs                  waits: overlap with relay-auth-v2 (2 files) · since 3 h
@@ -256,7 +257,7 @@ relay-hardening · epic · running · automatic · 3 of 3 at once · running 6 d
 pm ›
 ----
 
-* *The head*: the title, the state (`running`, `waiting for you`, `held`, `landing`, `ended`), how many plans run of how many may, since when it runs, and the count of what needs the operator; below it the epic's project with the command that opens it (`operator.plan.tree.context`, xref:16-plan-view.adoc#plan-view-texts[The Plan View, Texts]); what waits stands first below that, each with the command that opens it.
+* *The head*: the title, the state (`running`, `waiting for you`, `held`, `landing`, `ended`), how many plans run of how many may (where the resource omits the count, `? of N at once`), since when it runs, and the count of what needs the operator; below it the epic's project with the command that opens it (`operator.plan.tree.context`, xref:16-plan-view.adoc#plan-view-texts[The Plan View, Texts]); what waits stands first below that, each with the command that opens it.
 * *The workstreams*: each plan with its status and what it waits for, as link:../shared/epic-view.adoc#layout[Epic View] lists them. A running plan's status is followed by its phase and its state (`refine · waiting for you`); a shipped one by its pull request. `plan <plan_id>` opens a plan's view.
 * *Sources, landings, findings, watches, events*: the sources as stored; each landing with its pull request and the epic's analysis; the open items with their counts and the review that opens them; the events, newest first, the ten newest in the tree and all of them in the full-screen view.
 * *Tokens*: the sum of the epic's plans and of its own tasks (decompose, landing, review), with the split, as the runtime sums it (link:../shared/epic-view.adoc#layout[Epic View]); a floor with `≥` and the count of tasks not measured where there are any; never money, and no budget of its own. `epic <epic_id> --tokens` prints the figure per plan and the epic's own after the tree, each plan with the command that opens it; in the full-screen view the line opens like a node.
@@ -444,6 +445,11 @@ Stopping a reply while it is written:
 * *A running plan* takes an accepted revision at its next task boundary, and the line after it says so once it is applied; a pausing plan takes it at that boundary too and then holds at its point; a paused plan takes it when the operator starts it again (`applies when fix-relay starts again`). A question changes nothing.
 * *When a revision is proposed*: only in Phase 5 (`execute`) or in finalize before the merge; earlier, and after the merge, the role answers and proposes none, and the chat says so once (`fix-relay proposes no change yet: a revision comes in execute or in finalize, until its merge`).
 * *Chat is refused* with its reason while no configuration of the routed role qualifies (`no configuration of replan qualifies yet`), and `--no-input` refuses it, since every turn needs the operator.
+
+[#chat-context]
+=== What the Chat Knows and Shows
+
+What the role knows (the line under the head), the starters, older turns (`older`), the status lines of what has acts of its own (`o) open it`), an act the role names printed as its command and never run, and what happened to the subject while the chat stays (the `–` notice lines) are xref:28-chat.adoc[The Chat, What It Knows and Shows] (D5, the operator, 2026-11-09); they hold for every chat of this part, of the decisions and of starting work.
 
 [#chat-ended]
 === A Chat About Ended Work

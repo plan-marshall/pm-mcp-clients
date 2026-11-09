@@ -26,6 +26,7 @@ import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.start.EntryKind;
 import de.planmarshall.operator.actions.WorkActionsClient;
 import de.planmarshall.operator.dialogue.ChoicePrompt;
+import de.planmarshall.operator.epicview.EpicViewFormatting;
 
 /**
  * One action of a plan or an epic, run as its dialogue ({@code doc/design/terminal-client/19-actions.adoc}).
@@ -41,6 +42,10 @@ final class WorkActionDialogue {
     private static final String STATE_ID = "control.action";
     private static final String PLAN = "plan";
     private static final String EPIC = "epic";
+    private static final String RUNNING = "running";
+    private static final String SCOPE = "scope";
+    private static final String STAGED = "staged";
+    private static final String COUNT = "count";
     private static final String WITH_PLANS = "with_plans";
     private static final Set<String> HOLD_ACTS = Set.of("retry", "recycle", "grant", "add_credential",
                         "raise_budget", "accept", "abort", "end_plan", "cancel_epic", "show_pr",
@@ -290,39 +295,66 @@ final class WorkActionDialogue {
     }
 
     private int next(@Nullable EpicResource epic) throws IOException {
-        if (epic != null && epic.running() >= epic.scope() && nextLaunchable(epic) != null) {
-            var answer = prompt.askRaw(MessageCatalogue.format(prompt.locale(), "control.epic.scope_full",
-                                Map.of("epic", id, "running", epic.running(), "scope", epic.scope(),
-                                                    "plan", nextLaunchable(epic)))
-                                + "   " + MessageCatalogue.format(prompt.locale(),
-                                "operator.actions.key.raise_and_start", Map.of())
-                                + ") " + MessageCatalogue.format(prompt.locale(),
-                                "control.epic.next_raise", Map.of("count", epic.scope() + 1))
-                                + "   " + MessageCatalogue.format(prompt.locale(),
-                                "operator.actions.key.leave_scope", Map.of())
-                                + ") " + MessageCatalogue.format(prompt.locale(), "control.epic.next_leave",
-                                Map.of()) + StartPrompt.SUFFIX,
-                                STATE_ID, MessageCatalogue.format(prompt.locale(), "control.epic.next_raise",
-                                                    Map.of("count", epic.scope() + 1)), id);
-            if (answer.equalsIgnoreCase(MessageCatalogue.format(prompt.locale(),
-                                "operator.actions.key.leave_scope", Map.of()))) {
-                return 0;
+        if (epic == null) {
+            prompt.line("control.epic.next_waiting", Map.of());
+            return 0;
+        }
+        var running = epic.running();
+        var launchable = nextLaunchable(epic);
+        if (running == null || running >= epic.scope()) {
+            var candidate = launchable != null ? launchable : nextScopeBlocked(epic);
+            if (candidate != null) {
+                if (!askRaise(epic, running, candidate)) {
+                    return 0;
+                }
+                client.perform(kind, id, "next", Map.of("raise_scope", true));
+                return started(epic, candidate, ((long) epic.scope()) + 1);
             }
-            client.perform(kind, id, "next", Map.of("raise_scope", true));
-            return started(epic);
         }
         client.perform(kind, id, "next", Map.of("raise_scope", false));
-        return started(epic);
+        return started(epic, launchable, epic.scope());
     }
 
-    private int started(@Nullable EpicResource epic) {
-        var plan = epic != null ? nextLaunchable(epic) : null;
-        if (plan != null && epic != null) {
+    private boolean askRaise(EpicResource epic, @Nullable Integer running, String plan) {
+        var question = running != null
+                            ? MessageCatalogue.format(prompt.locale(), "control.epic.scope_full",
+                            Map.<String, Object>of(EPIC, id, RUNNING, running, SCOPE, epic.scope(), PLAN, plan))
+                            : MessageCatalogue.format(prompt.locale(), "control.epic.scope_unknown",
+                            Map.<String, Object>of(EPIC, id, SCOPE, epic.scope(), PLAN, plan));
+        var raiseKey = MessageCatalogue.format(prompt.locale(),
+                            "operator.actions.key.raise_and_start", Map.of());
+        var leaveKey = MessageCatalogue.format(prompt.locale(),
+                            "operator.actions.key.leave_scope", Map.of());
+        var need = MessageCatalogue.format(prompt.locale(), "control.epic.next_raise",
+                            Map.of(COUNT, ((long) epic.scope()) + 1));
+        var promptText = question
+                            + "   " + raiseKey
+                            + ") " + need
+                            + "   " + leaveKey
+                            + ") " + MessageCatalogue.format(prompt.locale(), "control.epic.next_leave", Map.of())
+                            + StartPrompt.SUFFIX;
+        while (true) {
+            var answer = prompt.askRaw(promptText, STATE_ID, need, id);
+            if (answer.equalsIgnoreCase(raiseKey)) {
+                return true;
+            }
+            if (answer.equalsIgnoreCase(leaveKey)) {
+                return false;
+            }
+            prompt.line("control.epic.next_invalid", Map.of("raise", raiseKey, "leave", leaveKey));
+        }
+    }
+
+    private int started(EpicResource epic, @Nullable String plan, long scope) {
+        if (plan != null) {
+            var running = epic.running();
             prompt.line("operator.actions.result.next_started",
-                                Map.of("plan", plan, "running", epic.running() + 1, "scope", epic.scope()));
+                                Map.<String, Object>of(PLAN, plan,
+                                                    RUNNING, running != null ? ((long) running) + 1 : EpicViewFormatting.UNKNOWN_COUNT,
+                                                    SCOPE, scope));
         } else {
             prompt.line("control.epic.next_none",
-                                Map.of("reasons", epic != null ? String.join(", ", waitReasons(epic)) : ""));
+                                Map.of("reasons", String.join(", ", waitReasons(epic))));
         }
         return 0;
     }
@@ -331,7 +363,7 @@ final class WorkActionDialogue {
         var reasons = new ArrayList<String>();
         for (var workstream : epic.workstreams()) {
             for (var row : workstream.rows()) {
-                if ("staged".equals(normalize(row.status())) && row.waitReason() != null
+                if (STAGED.equals(normalize(row.status())) && row.waitReason() != null
                                     && !"none".equals(row.waitReason())) {
                     reasons.add(row.planId() + " " + row.waitReason());
                 }
@@ -355,7 +387,7 @@ final class WorkActionDialogue {
     private int commonFiles() throws IOException {
         var answer = prompt.askRaw(MessageCatalogue.format(prompt.locale(), "operator.actions.common_files.ask",
                             Map.of("epic", id)) + StartPrompt.SUFFIX, STATE_ID,
-                            MessageCatalogue.format(prompt.locale(), "control.epic.overlap", Map.of("count", 0)),
+                            MessageCatalogue.format(prompt.locale(), "control.epic.overlap", Map.of(COUNT, 0)),
                             id);
         int count;
         try {
@@ -364,9 +396,9 @@ final class WorkActionDialogue {
             prompt.line("operator.actions.common_files.invalid", Map.of());
             return 1;
         }
-        client.perform(kind, id, "common_files", Map.of("count", count));
+        client.perform(kind, id, "common_files", Map.of(COUNT, count));
         prompt.line("control.epic.overlap_done",
-                            Map.of("epic", id, "count", count, "started", "none"));
+                            Map.of("epic", id, COUNT, count, "started", "none"));
         return 0;
     }
 
@@ -431,8 +463,19 @@ final class WorkActionDialogue {
     private static @Nullable String nextLaunchable(EpicResource epic) {
         for (var workstream : epic.workstreams()) {
             for (var row : workstream.rows()) {
-                if ("staged".equals(normalize(row.status()))
+                if (STAGED.equals(normalize(row.status()))
                                     && (row.waitReason() == null || "none".equals(row.waitReason()))) {
+                    return row.planId();
+                }
+            }
+        }
+        return null;
+    }
+
+    private static @Nullable String nextScopeBlocked(EpicResource epic) {
+        for (var workstream : epic.workstreams()) {
+            for (var row : workstream.rows()) {
+                if (STAGED.equals(normalize(row.status())) && SCOPE.equals(row.waitReason())) {
                     return row.planId();
                 }
             }

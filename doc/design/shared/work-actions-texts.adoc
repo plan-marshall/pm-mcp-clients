@@ -194,6 +194,10 @@ Keys of the area `control`, shared by both clients (link:texts-and-languages.ado
 |How many plans run is not known; {epic} may run {scope} at once, and the next plan, {plan}, waits for a free place.
 |Wie viele Pläne laufen, ist nicht bekannt; {epic} darf {scope} gleichzeitig ausführen, und der nächste Plan, {plan}, wartet auf einen freien Platz.
 
+|`control.epic.next_invalid`
+|Type {raise} to raise the scope or {leave} to leave it.
+|Tippe {raise}, um den Umfang zu erhöhen, oder {leave}, um es zu lassen.
+
 |`control.epic.next_waiting`
 |The epic is still being read; the next plan cannot start yet.
 |Das Epic wird noch gelesen; der nächste Plan kann noch nicht starten.
