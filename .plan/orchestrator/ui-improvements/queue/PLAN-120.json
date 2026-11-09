@@ -2,10 +2,10 @@
   "id": "PLAN-120",
   "slug": "cli-unknown-running-count",
   "workstream": "WS-04",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
+  "plan_marshall_plan_id": "rb-120-cli-unknown-running-count",
   "pr": "382",
-  "landing": "",
+  "landing": "landings/PLAN-120.md",
   "seq": 120
 }

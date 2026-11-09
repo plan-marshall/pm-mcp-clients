@@ -610,12 +610,15 @@ plan spec names the plan, proposal and finding documents it comes from.
   Recurrence 2026-11-08: `rb-34-cli-display-layer-001.md` (PLAN-34, opencode), `total_tokens` and `plugin_version` missing.
   Recurrence 2026-11-08: `rb-21-cli-answer-dialogue-001.md` (PLAN-21, antigravity), `total_tokens`, `plugin_version` and
   `executor_version` unknown.
+  Recurrence 2026-11-09: `rb-120-cli-unknown-running-count-001.md` (PLAN-120, opencode), `total_tokens` and `plugin_version` missing.
 - Lane landing reports state false review counts (2026-11-08, PLAN-34 and PLAN-21 in a row): PLAN-34 reported "All threads
   resolved" with 2 unresolved and unanswered; PLAN-21 reported "zero unresolved review threads, self-review clear" with all 20
   CodeRabbit threads unresolved and unanswered (none addressed). Both merged. The counts must be read from `ci pr comments`
   at the merge question, never written from memory; until the runbook-lane change (review-gate) ships, the orchestrator keeps
   re-reading threads and bodies at every landing, and new specs state the merge rule hard (PLAN-124). Owner: plan-marshall
-  (runbook lane).
+  (runbook lane). Recurrence 2026-11-09, PLAN-120 (opencode): reported "10 findings … all 10 threads resolved"; re-read: 12
+  threads, 2 unresolved and unanswered from the final head's review (`landings/PLAN-120.md`). The runbook lane has no
+  `review-gate` verb yet (`runbook_lane` offers resolve, executor-skew, build-routing, build-classify, sonar-gate, sonar-facts).
 - `ci pr edit` does not take a prepared body (found by PLAN-118, 2026-11-08): the `--plan-id`/`--slot` path answers "At least
   one of --title or a prepared body must be provided", and with `--title` only the title changes. A lane therefore cannot
   correct its PR body after the fact (PLAN-118's body still says the Sonar read is "to be read"; the read is in
@@ -624,10 +627,19 @@ plan spec names the plan, proposal and finding documents it comes from.
   `plan-marshall-documentation` `doc/specification/runtime-model/01-processes-and-transport.adoc:346` lists title, state,
   automatic mode, `parallelization_scope`, `needs_operator` and the project, no `running`; `plan-marshall-mcp` (`ad5f608`) has
   no production `running` field. So "N of M at once" is always unknown on the epic: the web shows `?` (PLAN-106/117), the
-  terminal shows 0 (see Watches, PLAN-117). Owner: `plan-marshall-documentation` / `pm-mcpd` — add the count, or the clients
+  terminal showed 0 (see Watches, PLAN-117) and shows `?` since PLAN-120 (#382, 2026-11-09). Owner: `plan-marshall-documentation` / `pm-mcpd` — add the count, or the clients
   drop the figure.
 
 ## Watches
+
+- PLAN-120 landed (PR #382, `c0db368d`, analysed 2026-11-09); see `landings/PLAN-120.md`. The terminal reads an unknown
+  running count as unknown (`?`) and its _Next plan_ asks before raising; Sonar 0, gate OK. MERGE RULE NOT MET and a FALSE
+  REVIEW COUNT: 12 threads, 2 unresolved and unanswered on the final head (a: `ControlCatalogueTest:61` hard-coded
+  `requiredKeys`, valid, minor; b: `epic next` without asking — refuted for the dialogue, valid for the `epic next` verb).
+  LAYER 3 (pre-existing, reported to the operator 2026-11-09): the `epic next` verb (`EpicCommand.java:396-428`) never
+  reads the epic and never asks, posts `raise_scope` from its flag and ignores `--no-raise`, while `19-actions.adoc:190`
+  (written by PLAN-120) says it asks. Minor gaps: `EpicCommand:191` wait text untested; `control.epic.next_invalid` not
+  pinned in `de`; D1 evidence order `mutation-after`. Fix plan only on the operator's word.
 
 - D5 = PLAN-125 (design D5: chat context, acts and events; the operator calls it "D5"). EMITTED and STARTED by the operator
   2026-11-09 as a direct Claude Code design session in `.plan/local/worktrees/125-design-d5-chat-context-and-interaction`
