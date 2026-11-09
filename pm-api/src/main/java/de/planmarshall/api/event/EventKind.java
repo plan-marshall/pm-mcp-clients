@@ -85,6 +85,12 @@ public enum EventKind {
     /** A project's setup needs the operator. */
     SETUP(NeedsOperatorKind.SETUP.value(), List.of("setup"), List.of()),
 
+    /** A machine credential needs operator attention. */
+    CREDENTIAL(NeedsOperatorKind.CREDENTIAL.value(), List.of("credential"), List.of("credential.needed")),
+
+    /** Machine cleanup is due. */
+    CLEANUP_DUE(NeedsOperatorKind.CLEANUP_DUE.value(), List.of("cleanup_due"), List.of("cleanup.due")),
+
     /** A report was written: one quiet line, never the bell. */
     REPORT("report", List.of("report", "report.sent"), List.of(ReportSentEvent.EVENT_NAME)),
 

@@ -576,8 +576,10 @@ public final class TuiKeyRegistry {
         overviewNavigation.add(new Binding("E", TuiKeyAction.ENDED));
         overviewNavigation.add(new Binding("S", TuiKeyAction.SYSTEM));
         overviewNavigation.add(new Binding("R", TuiKeyAction.REPORTS));
+        overviewNavigation.add(new Binding("!", TuiKeyAction.WAITS));
         registry.put(TuiLevel.Kind.OVERVIEW, level(overviewNavigation,
                             footer(MOVE_LABEL, TuiKeyAction.MOVE_UP), footer(ENTER_LABEL, TuiKeyAction.OPEN),
+                            footer("!", TuiKeyAction.WAITS),
                             footer("E", TuiKeyAction.ENDED), footer("R", TuiKeyAction.REPORTS),
                             footer("/", TuiKeyAction.FILTER), footer("?", TuiKeyAction.HELP),
                             footer("q", TuiKeyAction.LEAVE)));

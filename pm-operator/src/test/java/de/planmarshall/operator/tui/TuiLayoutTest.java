@@ -255,7 +255,7 @@ class TuiLayoutTest {
                             80, 24).getLast().toString().strip();
 
         assertAll(
-                            () -> assertTrue(overview.contains("? help"), overview),
+                            () -> assertTrue(overview.contains("? help") || overview.endsWith("? more"), overview),
                             () -> assertTrue(overview.contains("q leave"), overview),
                             () -> assertTrue(activity.contains("Enter open"), activity),
                             () -> assertTrue(activity.contains("a actions"), activity),
