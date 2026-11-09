@@ -154,7 +154,7 @@ class ReportsCommandTest {
                             () -> assertTrue(requests.get(0).receivedNanos() <= requests.get(1).receivedNanos(),
                                                 "the list read precedes the ids write"),
                             () -> assertTrue(requests.get(1).bodyText().contains(
-                                                "\"report_ids\":[\"rep-0142\",\"rep-0139\",\"rep-0131\"]"),
+                                                                    "\"report_ids\":[\"rep-0142\",\"rep-0139\",\"rep-0131\"]"),
                                                 requests.get(1).bodyText()),
                             () -> assertFalse(requests.get(1).bodyText().contains("\"all\""),
                                                 requests.get(1).bodyText()),
