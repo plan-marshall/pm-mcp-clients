@@ -60,6 +60,9 @@ public final class CleanupCommand implements Callable<Integer> {
     /** The word an item's end carries in front of the runtime's date. */
     private static final String ENDED_PREFIX = "ended ";
 
+    /** The cleanup resource of the runtime's API. */
+    private static final String CLEANUP_API = "/api/v1/system/cleanup";
+
     private final OperatorContext context;
     private final PromptFactory prompts;
     private final LineAsker asker;
@@ -166,7 +169,7 @@ public final class CleanupCommand implements Callable<Integer> {
                 return executeRelease(out, err);
             }
             if (remind) {
-                return executeRemind(out, err);
+                return executeRemind(out);
             }
             if (ignore) {
                 return executeIgnore(out, err);
@@ -272,8 +275,8 @@ public final class CleanupCommand implements Callable<Integer> {
         throw new OperatorRefusedException("cleanup --release", res);
     }
 
-    private int executeRemind(PrintWriter out, PrintWriter err) throws IOException {
-        return executeRemind(out, err, null);
+    private int executeRemind(PrintWriter out) throws IOException {
+        return executeRemind(out, null);
     }
 
     /**
@@ -281,17 +284,16 @@ public final class CleanupCommand implements Callable<Integer> {
      * reports.
      *
      * @param out       the verb's writer
-     * @param err       the verb's error writer
      * @param displayed the job the operator saw, or {@code null} to read the open one
      * @return the exit code
      * @throws IOException on transport failure
      */
-    private int executeRemind(PrintWriter out, PrintWriter err, @Nullable CleanupJob displayed) throws IOException {
+    private int executeRemind(PrintWriter out, @Nullable CleanupJob displayed) throws IOException {
         var job = displayed != null ? displayed : openJob(out);
         if (job == null) {
             return 0;
         }
-        var res = context.runtime(true).send(HttpRequest.post("/api/v1/system/cleanup/" + job.jobId() + "/remind"));
+        var res = context.runtime(true).send(HttpRequest.post(CLEANUP_API + "/" + job.jobId() + "/remind"));
         if (res.status() == 200) {
             printRemindDone(out, res.bodyText());
             return 0;
@@ -361,7 +363,7 @@ public final class CleanupCommand implements Callable<Integer> {
         if (job == null) {
             return 0;
         }
-        var res = context.runtime(true).send(HttpRequest.post("/api/v1/system/cleanup/" + job.jobId() + "/ignore"));
+        var res = context.runtime(true).send(HttpRequest.post(CLEANUP_API + "/" + job.jobId() + "/ignore"));
         if (res.status() == 200) {
             int totalItems = job.projectItems().stream().mapToInt(p -> p.items().size()).sum();
             out.printf("✓ Nothing was deleted. %d items are kept for good; cleanup --kept lists them, cleanup --release gives them back.%n", totalItems);
@@ -377,7 +379,7 @@ public final class CleanupCommand implements Callable<Integer> {
      * @throws IOException on transport failure
      */
     private @Nullable CleanupJob openJob(PrintWriter out) throws IOException {
-        var jobRes = context.runtime(true).send(HttpRequest.get("/api/v1/system/cleanup"));
+        var jobRes = context.runtime(true).send(HttpRequest.get(CLEANUP_API));
         var parsed = JsonTree.asObject(JsonTree.parse(jobRes.bodyText()));
         if (parsed == null || Boolean.FALSE.equals(parsed.get("open"))) {
             var nextCheck = parsed != null && parsed.get("next_check_at") != null
@@ -392,7 +394,7 @@ public final class CleanupCommand implements Callable<Integer> {
 
     private int executeDelete(PrintWriter out, PrintWriter err) throws IOException {
         var runtime = context.runtime(true);
-        var jobRes = runtime.send(HttpRequest.get("/api/v1/system/cleanup"));
+        var jobRes = runtime.send(HttpRequest.get(CLEANUP_API));
         var parsed = JsonTree.asObject(JsonTree.parse(jobRes.bodyText()));
         if (parsed == null || Boolean.FALSE.equals(parsed.get("open"))) {
             var nextCheck = parsed != null && parsed.get("next_check_at") != null
@@ -444,8 +446,8 @@ public final class CleanupCommand implements Callable<Integer> {
     private int showCleanup(PrintWriter out) throws IOException {
         var runtime = context.runtime(false);
         var path = project != null && !project.isBlank() && !".".equals(project)
-                            ? "/api/v1/system/cleanup?project=" + OperatorUrlUtil.encodePathSegment(project)
-                            : "/api/v1/system/cleanup";
+                            ? CLEANUP_API + "?project=" + OperatorUrlUtil.encodePathSegment(project)
+                            : CLEANUP_API;
         var res = runtime.send(HttpRequest.get(path));
         if (res.status() != 200) {
             throw new OperatorRefusedException("cleanup", res);
@@ -497,7 +499,7 @@ public final class CleanupCommand implements Callable<Integer> {
             var chosen = decisionPrompt(out).ask();
             var code = switch (Decision.of(chosen.key())) {
                 case DELETE -> deleteFromDialogue(out, job, leftOut);
-                case REMIND -> executeRemind(out, err, job);
+                case REMIND -> executeRemind(out, job);
                 case IGNORE -> executeIgnore(out, err, job);
                 case LEAVE_OUT -> {
                     leaveOut(out, items, leftOut);
@@ -718,7 +720,7 @@ public final class CleanupCommand implements Callable<Integer> {
     private int sendDelete(PrintWriter out, CleanupJob job, List<String> uncheckedIds, DeletePreview preview) throws IOException {
         var deleteBody = JsonTree.write(Map.of("unchecked_ids", uncheckedIds));
         var res = context.runtime(true).send(
-                            HttpRequest.post("/api/v1/system/cleanup/" + job.jobId() + "/delete").withBody(deleteBody));
+                            HttpRequest.post(CLEANUP_API + "/" + job.jobId() + "/delete").withBody(deleteBody));
         if (res.status() == 409) {
             out.println("The runtime is stopping; nothing new starts.");
             out.flush();
