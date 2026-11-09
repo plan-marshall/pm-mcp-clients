@@ -1248,7 +1248,7 @@ public final class AnswerCommand implements Callable<Integer> {
             printLeftDialogue(out, envelope.id(), locale);
             return new ConfirmOutcome(false, null, 0);
         }
-        if (choice.matches("\\d+") && parts.size() > 1) {
+        if (choice.matches("\\d{1,9}") && parts.size() > 1) {
             int reopened = Integer.parseInt(choice);
             if (reopened >= 1 && reopened <= parts.size()) {
                 return new ConfirmOutcome(false, reopened - 1, 0);
@@ -1543,12 +1543,15 @@ public final class AnswerCommand implements Callable<Integer> {
         return getMessage(locale, "decision.project.fallback");
     }
 
-    private static String planNoun(@Nullable DecisionEnvelope envelope, String locale) {
+    private String planNoun(@Nullable DecisionEnvelope envelope, String locale) {
         if (envelope != null) {
             var planId = envelope.plan();
             if (planId != null && !planId.isBlank()) {
                 return planId;
             }
+        }
+        if (plan != null && !plan.isBlank()) {
+            return plan;
         }
         return getMessage(locale, "decision.waiver.plan_fallback");
     }

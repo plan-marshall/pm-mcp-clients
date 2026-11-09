@@ -6899,7 +6899,11 @@ public final class MockRuntimeEngine implements AutoCloseable {
         act.put(KEY_METHOD, method);
         act.put("path", request.path());
         act.put(KEY_STATE, currentStateId.get());
-        act.put("body", request.bodyText());
+        if (request.path().startsWith("/api/v1/decisions/")) {
+            // Only a decision act carries a body a case asserts; other bodies (credentials, device
+            // secrets) never enter the act log.
+            act.put("body", request.bodyText());
+        }
         operatorActs.add(act);
     }
 

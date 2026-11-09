@@ -130,13 +130,15 @@ class DecisionRecordsTest {
 
         var revision = Generators.integers(1, 100).next();
         var title = Generators.nonBlankStrings().next();
+        var project = Generators.nonBlankStrings().next();
+        var plan = Generators.nonBlankStrings().next();
         var subject = "plan " + Generators.nonBlankStrings().next();
         var now = Instant.ofEpochMilli(Generators.integers(0, 1_000_000).next());
         var envelope = new DecisionEnvelope(
                 "Q-007", revision, title, "Conflict", subject,
                 DecisionScope.PLAN, "execute", "implement", "plan", Reversibility.REVERSIBLE,
                 "The change conflicts with main", Map.of("file", "RelayServer.java", "conflict_line", 42),
-                List.of(part1), now, false, null, null, null, "pm-mcp-clients", "fix-relay"
+                List.of(part1), now, false, null, null, null, project, plan
         );
 
         var json = envelope.toJson();
@@ -145,20 +147,20 @@ class DecisionRecordsTest {
         assertTrue(json.contains("Rebase onto main"));
 
         var parsed = DecisionEnvelope.fromJson(json);
-        assertEnvelope(parsed, revision, title, subject, now);
+        assertEnvelope(parsed, revision, title, subject, now, project, plan);
         assertPart(parsed.parts().get(0));
     }
 
     private static void assertEnvelope(DecisionEnvelope parsed, int revision, String title,
-                                       String subject, Instant now) {
+                                       String subject, Instant now, String project, String plan) {
         assertAll(
                 () -> assertEquals("Q-007", parsed.id()),
                 () -> assertEquals(revision, parsed.revision()),
                 () -> assertEquals(title, parsed.title()),
                 () -> assertEquals(subject, parsed.subject()),
                 () -> assertEquals(DecisionScope.PLAN, parsed.scope()),
-                () -> assertEquals("pm-mcp-clients", parsed.project()),
-                () -> assertEquals("fix-relay", parsed.plan()),
+                () -> assertEquals(project, parsed.project()),
+                () -> assertEquals(plan, parsed.plan()),
                 () -> assertEquals("execute", parsed.askingPhase()),
                 () -> assertEquals("implement", parsed.askingRole()),
                 () -> assertEquals("plan", parsed.blocks()),

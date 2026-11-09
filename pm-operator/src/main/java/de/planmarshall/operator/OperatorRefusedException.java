@@ -27,9 +27,13 @@ public class OperatorRefusedException extends IOException {
      * @param response the response
      */
     public OperatorRefusedException(String verb, HttpResponse response) {
-        super(verb + " refused by the runtime (HTTP " + response.status() + ")"
-                            + (response.body().length == 0 ? ""
-                            : ": " + TerminalSanitizer.sanitizeLine(response.bodyText().strip())));
+        super(refusalMessage(verb, response));
+    }
+
+    private static String refusalMessage(String verb, HttpResponse response) {
+        var text = "refused by the runtime (HTTP " + response.status() + ")";
+        var body = TerminalSanitizer.sanitizeLine(response.bodyText().strip());
+        return verb + " " + text + (body.isEmpty() ? "" : ": " + body);
     }
 
     /**
