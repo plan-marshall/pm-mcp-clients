@@ -14,7 +14,7 @@ Status: `DRAFT`. The texts of link:work-actions.adoc#chat[Chatting with the Plan
 [#texts]
 == Texts
 
-Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Planning Role]; the chat's action is `control.plan.chat`, `control.epic.chat` (also on an ended plan or epic), `control.review.chat`, `start.decomposition.chat`, `start.sources.chat`, or `decision.answer.chat` where it is opened. The runtime's message keys of D5 render through these: a narrative line `chat.line.<name>` as `control.chat.line.<name>`, an entry `chat.knows.<item>` of the context summary as `control.chat.knows.item` with that `item`, and `queued_revision.applies` (`chat.applies.after_task {task_id}`, `chat.applies.on_start`) as `control.chat.revision_queued` (`applies` `after_task` or `on_start`) and `control.chat.at_boundary` / `control.chat.at_start`. An argument that is itself a key — a pause's `{point}`, a decision's or a hold's `{reason}`, an `{outcome}`, a source's flag `{reason}` — is rendered through its own catalogue entry (the pause points of link:work-actions-texts.adoc[Actions, Texts], the reasons and outcomes of their areas), never shown raw. A chat inside a decision adds the keys `decision.chat.*` (link:decisions-texts.adoc#texts[Decisions, Texts]), a chat while starting `start.chat.*` (link:starting-work-texts.adoc#texts[Starting Work, Texts]).
+Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Planning Role]; the chat's action is `control.plan.chat`, `control.epic.chat` (also on an ended plan or epic), `control.review.chat`, `start.decomposition.chat`, `start.sources.chat`, or `decision.answer.chat` where it is opened. The runtime's message keys of D5 render through these: a narrative line `chat.line.<name>` as `control.chat.line.<name>`, an entry `chat.knows.<item>` of the context summary as `control.chat.knows.item` with that `item`, and `queued_revision.applies` (`chat.applies.after_task {task_id}`, `chat.applies.on_start`) as `control.chat.revision_queued` (`applies` `after_task` or `on_start`) and `control.chat.at_boundary` / `control.chat.at_start`. One name per meaning: `{subject}` is the chat's subject (the plan, the epic, the entry, the decision, the ended work), `{plan}` another plan (an epic's row), `{task_id}` a task's id. An argument that is itself a key — a pause's `{point}`, a decision's or a hold's `{reason}`, an `{outcome}`, a source's flag `{reason}`, a waiver's `{gate}`, a re-planning `{trigger}`, an item's `{disposition}` — is rendered through its own catalogue entry (the pause points of link:work-actions-texts.adoc[Actions, Texts], the reasons and outcomes of their areas), never shown raw. A chat inside a decision adds the keys `decision.chat.*` (link:decisions-texts.adoc#texts[Decisions, Texts]), a chat while starting `start.chat.*` (link:starting-work-texts.adoc#texts[Starting Work, Texts]).
 
 [cols="3,3,3",options="header"]
 |===
@@ -61,16 +61,16 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |gilt nach dem laufenden Task
 
 |`control.chat.at_start`
-|applies when {plan} starts again
-|gilt, wenn {plan} wieder startet
+|applies when {subject} starts again
+|gilt, wenn {subject} wieder startet
 
 |`control.chat.no_revision_yet`
-|{plan} proposes no change yet: a revision comes in execute or in finalize, until its merge
-|{plan} schlägt noch keine Änderung vor: eine Überarbeitung kommt in execute oder in finalize, bis zu seinem Merge
+|{subject} proposes no change yet: a revision comes in execute or in finalize, until its merge
+|{subject} schlägt noch keine Änderung vor: eine Überarbeitung kommt in execute oder in finalize, bis zu seinem Merge
 
 |`control.chat.no_revision_merged`
-|{plan} is merged: the chat answers and proposes no change
-|{plan} ist gemergt: der Chat antwortet und schlägt keine Änderung vor
+|{subject} is merged: the chat answers and proposes no change
+|{subject} ist gemergt: der Chat antwortet und schlägt keine Änderung vor
 
 |`control.chat.applied`
 |{subject} changed{version, select, none {} other {; the plan's version becomes {version}}}
@@ -105,8 +105,8 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |Starte damit einen Plan
 
 |`control.chat.follow_up.names`
-|follows {plan}, {outcome}: {reason}
-|folgt auf {plan}, {outcome}: {reason}
+|follows {subject}, {outcome}: {reason}
+|folgt auf {subject}, {outcome}: {reason}
 
 |`control.chat.follow_up.opened`
 |A new plan is being started in {project} with this description; go on with its sources.
@@ -326,8 +326,8 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |Phase {phase}
 
 |`control.chat.line.task_ended`
-|{task} {outcome, select, done {done} failed {failed} other {infeasible}}
-|{task} {outcome, select, done {erledigt} failed {fehlgeschlagen} other {nicht machbar}}
+|{task_id} {outcome, select, done {done} failed {failed} other {infeasible}}
+|{task_id} {outcome, select, done {erledigt} failed {fehlgeschlagen} other {nicht machbar}}
 
 |`control.chat.line.decision_opened`
 |{id} opened{blocks, select, yes {: blocks the plan} other {}}
@@ -404,4 +404,32 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |`control.chat.line.source_flagged`
 |source flagged: {source} ({reason})
 |Quelle markiert: {source} ({reason})
+
+|`control.chat.line.waiver_granted`
+|waiver granted for {gate}
+|Waiver erteilt für {gate}
+
+|`control.chat.line.waiver_revoked`
+|waiver revoked for {gate}
+|Waiver zurückgenommen für {gate}
+
+|`control.chat.line.replan_triggered`
+|re-planning started: {trigger}
+|Neuplanung begonnen: {trigger}
+
+|`control.chat.line.register_added`
+|{kind, select, finding {finding} other {watch}} added: {item}
+|{kind, select, finding {Befund} other {Beobachtung}} hinzugefügt: {item}
+
+|`control.chat.line.row_staged`
+|{plan} staged
+|{plan} vorgemerkt
+
+|`control.chat.line.row_cancelled`
+|{plan} cancelled before its start
+|{plan} vor seinem Start abgesagt
+
+|`control.chat.line.item_disposed`
+|{item}: {disposition}
+|{item}: {disposition}
 |===

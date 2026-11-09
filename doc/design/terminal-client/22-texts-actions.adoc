@@ -12,7 +12,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-contro
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role: `chat`]_
 
-Status: `AGREED`.
+Status: `DRAFT`.
 
 The texts the terminal adds to the shared ones in xref:19-actions.adoc[Actions on Plans and Epics], of the area `operator`.
 
@@ -220,6 +220,30 @@ The texts of the actions, the dialogues, the settings, the review, and the holds
 |`operator.actions.review.untrusted`
 |untrusted
 |nicht vertrauenswürdig
+
+|`operator.actions.chat.older_command`
+|older
+|älter
+
+|`operator.actions.chat.no_older`
+|This is the beginning of the chat.
+|Hier beginnt der Chat.
+
+|`operator.actions.chat.changes_command`
+|changes
+|änderungen
+
+|`operator.actions.chat.lines_folded`
+|{count} changes to {subject} · changes shows them
+|{count} Änderungen an {subject} · änderungen zeigt sie
+
+|`operator.actions.chat.nothing_to_open`
+|No status line to open.
+|Keine Statuszeile zum Öffnen.
+
+|`operator.actions.chat.open_hint`
+|o) open it
+|o) öffne es
 |===
 
 Where a text's `{running}` parameter is unknown, the terminal renders `?` rather than a count:
@@ -374,4 +398,8 @@ The mnemonics of the action menu, of the acts of a hold, and of the review, one 
 |`operator.actions.key.finish`
 |f
 |f
+
+|`operator.actions.key.open`
+|o
+|o
 |===
