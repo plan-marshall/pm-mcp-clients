@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.Generators;
@@ -627,7 +628,7 @@ class ProjectCommandTest {
 
         int code = execute("project", "add", "/git/cui-parent", "--pilot");
 
-        assertTrue(code != 0, out.toString());
+        assertNotEquals(0, code, out.toString());
     }
 
     @Test
