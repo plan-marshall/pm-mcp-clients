@@ -436,4 +436,8 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |`control.chat.revision_origin`
 |{origin, select, decision {from the chat of {id}} other {from an earlier chat}}
 |{origin, select, decision {aus dem Chat von {id}} other {aus einem früheren Chat}}
+
+|`control.chat.already_queued`
+|not applied: a revision of {plan} is already queued; accept this one once it has applied, or reject it
+|nicht übernommen: eine Revision von {plan} ist schon vorgemerkt; nimm diese an, sobald sie übernommen ist, oder lehne sie ab
 |===
