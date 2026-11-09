@@ -63,10 +63,10 @@ _New (D5)._ The state of something a turn or a notice names that has acts of its
 
 * *For*: a decision, a hold, the plan's queued revision, an act the role names (`refs` of the kind `act`). Tasks, files and plans stay reference chips.
 * *Content*: the target's `KindMark` (an act: the act's icon) and id, its state in the words of its view (`Q-007 · open · blocks the plan`, `Revision from the chat queued · applies after TASK-4`, `Pause fix-relay — in the acts of fix-relay`), kept current by the events the view follows; one line, wrapping on a phone.
-* *Act*: one, _Open it_ (`control.chat.card.open`), a secondary `Button` that opens the target where link:chat.adoc#status-cards[Chat and Voice, Status Cards] says. It never offers the target's own acts.
+* *Act*: one, _Open it_ (`control.chat.card.open`), a `Link` with the target's real `href` in the look of a secondary button (copy and new tab work), which opens the target where link:chat.adoc#status-cards[Chat and Voice, Status Cards] says. It never offers the target's own acts.
 * *Gone*: a target that ended (a decision answered, a hold cleared, the revision applied) keeps the card with its last state, muted, and _Open it_ still opens it.
 
-Source and surface: `pm-web-app/src/lib/components/ChatStatusCard.svelte` (new), tests in `ChatStatusCard.test.ts`; the props are `target` (kind, id, subject) and `onopen`; it reads its state through the stores the views use, and a target no view has loaded (a decision or a hold of another subject) once from its resource, kept current by the events the chat follows, else shown as of that read.
+Source and surface: `pm-web-app/src/lib/components/ChatStatusCard.svelte` (new), tests in `ChatStatusCard.test.ts`; the props are `target` (kind, id, subject) and `href`, the address the chat computes for it; it reads its state through the stores the views use, and a target no view has loaded (a decision or a hold of another subject) once from its resource, kept current by the events the chat follows, else shown as of that read.
 
 [#chat-markdown]
 == ChatMarkdown
