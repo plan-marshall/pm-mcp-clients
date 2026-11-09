@@ -555,7 +555,7 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Open Defects
 
-- 2026-11-06 — OPEN OUTSIDE THIS REPOSITORY (owner `plan-marshall/plan-marshall-mcp`, no plan there): (1) the real `pm-mcpd` accepting `{with_plans, reason}` on an epic cancel and sending `drain_remaining_items` was not checkable by PLAN-100; (2) a runtime that serves an id or route per drain item (`doc/design/shared/system.adoc` `<<one-step>>` says an item is a name, not a step, until it does); (3) `pm-mcpd` accepting the cleanup record `cleanup_durations` (PLAN-60 D4); (4) 2026-11-07 (PLAN-104 landing): the state and act surface `/api/v1/entries/{id}` of a pre-enrolment run, without which Enter on a being-added badge in the console only reports the run as unreadable (`04-console.adoc` "Addressing a Being-Added Project"). The operator may open ledger items there. (5) 2026-11-07 (PLAN-108 landing, in this repository): the Playwright suite (`pm-web-e2e`) is not run in CI (`skipPlaywrightTests=true` by default), so every e2e Done-when is session-local evidence; `reports.spec.js` "marks all shown reports read" fails at base (PLAN-105 defect 13, folded into PLAN-107). (6) 2026-11-07 (PLAN-97 landing): the real `pm-mcpd` answers the withdraw `DELETE /api/v1/operator/runtime/stop` with 405 and whether it serves the operator stop route that `runtime stop` POST moved to (from `/api/v1/runtime/stop`) is unverified; the web app still posts the legacy path (owner `plan-marshall/plan-marshall-mcp`). (7) 2026-11-09 (PLAN-115 landing): the D4 daemon surface, not filed — the chat routes with `202` and `client_turn_id`, `POST …/chat/turns/{turn_id}/stop`, `GET …/chat?before=`, the `chat.*` events, `POST /api/v1/transcriptions`, `Permissions-Policy: microphone=(self)` (owner `plan-marshall/plan-marshall-mcp`; the D4 contract and mock package does not depend on it). Extended 2026-11-09 by D5 (`inbox/plan-125-001.md`; operator: ledger only, not filed): the chat resource's `context`; runtime-written notice turns with `lines[]` announced as `chat.turn.completed` (kind `notice`); refs kinds `act` and `hold`; `chat.proposal` states `accepted`/`applied`/`lapsed`; the plan resource's `queued_revision`; `origin` in the audit of chat-led changes; the MCP resources and chat skill served to a chat worker's job connection. The daemon has no chat today and its ten MCP tools are stubs (per the report, not re-read).
+- 2026-11-06 — OPEN OUTSIDE THIS REPOSITORY (owner `plan-marshall/plan-marshall-mcp`, no plan there): (1) the real `pm-mcpd` accepting `{with_plans, reason}` on an epic cancel and sending `drain_remaining_items` was not checkable by PLAN-100; (2) a runtime that serves an id or route per drain item (`doc/design/shared/system.adoc` `<<one-step>>` says an item is a name, not a step, until it does); (3) `pm-mcpd` accepting the cleanup record `cleanup_durations` (PLAN-60 D4); (4) 2026-11-07 (PLAN-104 landing): the state and act surface `/api/v1/entries/{id}` of a pre-enrolment run, without which Enter on a being-added badge in the console only reports the run as unreadable (`04-console.adoc` "Addressing a Being-Added Project"). The operator may open ledger items there. (5) 2026-11-07 (PLAN-108 landing, in this repository): the Playwright suite (`pm-web-e2e`) is not run in CI (`skipPlaywrightTests=true` by default), so every e2e Done-when is session-local evidence; `reports.spec.js` "marks all shown reports read" fails at base (PLAN-105 defect 13, folded into PLAN-107). (6) 2026-11-07 (PLAN-97 landing): the real `pm-mcpd` answers the withdraw `DELETE /api/v1/operator/runtime/stop` with 405 and whether it serves the operator stop route that `runtime stop` POST moved to (from `/api/v1/runtime/stop`) is unverified; the web app still posts the legacy path (owner `plan-marshall/plan-marshall-mcp`). (7) 2026-11-09 (PLAN-115 landing): the D4 daemon surface, not filed — the chat routes with `202` and `client_turn_id`, `POST …/chat/turns/{turn_id}/stop`, `GET …/chat?before=`, the `chat.*` events, `POST /api/v1/transcriptions`, `Permissions-Policy: microphone=(self)` (owner `plan-marshall/plan-marshall-mcp`; the D4 contract and mock package does not depend on it). Extended 2026-11-09 by D5 (`inbox/plan-125-001.md`; operator: ledger only, not filed): the chat resource's `context`; runtime-written notice turns with `lines[]` announced as `chat.turn.completed` (kind `notice`); refs kinds `act` and `hold`; `chat.proposal` states `accepted`/`applied`/`lapsed`; the plan resource's `queued_revision`; `origin` in the audit of chat-led changes; the MCP resources and chat skill served to a chat worker's job connection. The daemon has no chat today and its ten MCP tools are stubs (per the report, not re-read). Final D5 additions (`plan-125-002.md`): `queued_revision` on the overview's plan row and on `activity.changed`; `context` on every `chat.turn.started` of the role; a chat worker's Landlock write set without the project root.
 - 2026-11-06 — DECIDED by the operator (option A): the unfiltered "Mark all shown read" of the reports page marks the reports the list shows by their ids, never everything, as `doc/design/shared/reports.adoc` 182/184 and the label say; PLAN-102 D1c (`{ all: true }`, merged in PR #340) is amended by PLAN-105 deliverable 1 (`landings/PLAN-102.md` defect 1). PLAN-105 is emittable.
 - 2026-11-06 — LOW defect 17 of PLAN-102 (`landings/PLAN-102.md`): `RowMenu.svelte` 216-232 `:focus` and `:focus-visible` rules are identical, a mouse open draws the focus ring; folded into PLAN-105 deliverable 2 (decide and test).
 - 2026-11-05 — Two LOW defects of PLAN-101 (`landings/PLAN-101.md` 5, 6) have no staged plan touching their files: `check-build-output.mjs` `deriveDevMarkers`/`devPageRoute` guards only the first dev page below the prefix and the plugin's `DEV_PAGE_IMPORT` regex (`devRouteExclusion.ts`) hard-codes `src/routes/dev/`; the block-comment strip of `strictPortIsBound` (`guard-ports.js` 94-96) has no test case. Re-check at the next plan that touches the build check or the port guard.
@@ -641,59 +641,28 @@ plan spec names the plan, proposal and finding documents it comes from.
   (written by PLAN-120) says it asks. Minor gaps: `EpicCommand:191` wait text untested; `control.epic.next_invalid` not
   pinned in `de`; D1 evidence order `mutation-after`. Fix plan only on the operator's word.
 
-- D5 = PLAN-125 (design D5: chat context, acts and events; the operator calls it "D5"). EMITTED and STARTED by the operator
-  2026-11-09 as a direct Claude Code design session in `.plan/local/worktrees/125-design-d5-chat-context-and-interaction`
-  (sibling worktrees `plan-marshall-documentation`, `pm-mcp-core` on the same branch; `plan-marshall-mcp` a symlink; ports
-  21250/21251). It asks the operator six questions one at a time (context per subject, inline vs link controls, act
-  parity, an MCP for the chat role, narrative events into the chat, CLI parity), then writes DRAFT docs in three repos,
-  prototypes, opens PRs and stops green; the orchestrator makes the AGREED commits; the operator merges. The D4 code
-  packages wait for D5's outcome. The lane pause of 2026-11-09 was lifted the same day (PLAN-121, PLAN-36 started).
-  REPORT 2026-11-09 (`inbox/plan-125-001.md`, rev 1, drained on the operator's word as `observed`; the session is NOT
-  done): six decisions taken (context B′ warm read-only worker per open chat — changes the AGREED D4 sentence "an idle
-  chat holds no worker", `web-app/chat.adoc:71`; controls C; acts R1, the chat only names an act; MCP A, new `pm://`
-  resources; events C, one narrative; terminal A full parity, new `terminal-client/28-chat.adoc`). PRs corroborated
-  open, heads matching the report: plan-marshall-documentation #170 `6cc868a7` (branch head, no CI there), pm-mcp-core
-  #338 `7cc504f0` (clean; 9 CodeRabbit inline comments unanswered per the report), pm-mcp-clients #389 `a7cd395b`
-  (clean; no CodeRabbit review yet, rate limit, re-trigger once). TO CHECK AT THE AGREED REVIEW:
-  `terminal-client/README.adoc` gained an index line and kept `Status: AGREED`; four open questions in
-  `open-questions.adoc` § Chat (`chat-bounds`, `chat-narrative-catalogue`, `chat-lapsed-repropose`,
-  `chat-lapse-other-subjects`); roadmap places D5 in Milestone 9. CODE PACKAGES TO STAGE after AGREED (D4's packages
-  re-scoped): engine `chat-context`/`chat-narrative` (pm-mcp-core, M9); contract+mock (D4 plus `context`, `lines[]`,
-  refs `act`/`hold`, `lapsed`, `queued_revision`, `origin`); web chat (D4 plus `ChatStatusCard`, notices, knows line,
-  `turn=`); terminal chat (`28-chat.adoc`). DEFECTS IN CURRENT CODE against the AGREED D4 design, to route into those
-  packages — corroborated on `main` d5439199: the terminal posts the turn as `message`
-  (`WorkActionsClient.java:323`, web and mock read `text`), the start chat ends on an empty line
-  (`ChatDialogue.java:74-77`), `DecisionAnswerRequest.fromMap` defaults a missing channel to `cli` (`:111-112`), and
-  `AnswerCommand.java:786` builds the `h) chat` label (the missing handler not re-read); unverified leads: `plan|epic
-  chat --message` posting to `…/chat` and printing raw JSON (`ActionSupport.java:352-361`), the review chat opening the
-  whole epic's chat (`ReviewDialogue.java:175,201`), no chat following a stream, `DecisionView` disabling answers while
-  a chat is open, the review chat ignoring the item and never ending on the server (`EpicView.svelte:472,506`), no
-  `chat=open` (`stores/runtime.ts`), web events outside the catalogue, the mock dropping an open proposal on every plan
-  turn (`MockRuntimeEngine.java:5060-5100`). The report's final state (after the bot rounds) has to come as a NEW
-  message: the drained 001 can no longer be amended.
-  CONTENT ANALYSIS 2026-11-09 (operator request; read-only sub-agent at clients `a7cd395b`, docs `6cc868a`, core
-  `7cc504f0`; since then core `fc3ec9e4` and docs `e18fff1` answered CodeRabbit, clients unchanged). VERDICT: needs fixes
-  before the AGREED review; 0 blockers, ~14 majors; all six decisions are written down in all three repos. Re-read by
-  the orchestrator and holding: (1) the stale proposal — core `state-catalogue.adoc:138,208` (fc3ec9e4) keeps it
-  visible and rejectable, the web `chat.adoc:107` folds its card into the `changed_since` line, and `28-chat.adoc:79`
-  says nothing of rejecting; (2) the fold rule differs — terminal "more than three at once" (`28-chat.adoc:77`), web
-  "several lines at once" (`chat.adoc:123`), components "folded beyond one" (`components-chat.adoc:39`); (3) a
-  queued revision is shown on the plan's overview row (decision 2) but `queued_revision` exists only on the plan
-  resource (docs `01-processes-and-transport.adoc:177`), not on the overview; (4) core `02-task-protocol.adoc:51` binds
-  a chat reply to its generation while `:55` sends a task with more than 200 changed paths to a fresh worker — a
-  contradiction for a chat (it should be re-primed); (5) ref kind `hold` is used by the engine and the status cards but
-  decided by no decision and missing from the client contract list (`chat.adoc` D5 bullet: `act` only); (6) UC-CTL-1
-  is `DRAFT` while UC-CTL-2 and UC-CTL-3 (`06-controlling-work.adoc:139,257`) stay `AGREED` although they gained chat
-  variations; (7) no client work package for D5 (contract+mock, web chat, terminal chat) in `doc/plans/`. Further
-  majors from the leaf, not re-read: no mechanism by which the warm role learns that its proposal lapsed, was refused
-  or rejected (`since_last_turn` excludes the chat's own events); open edge cases of a queued revision when a new
-  version arrives before its boundary and of `lapsed` vs `conflict`; where "changed in the chat" is kept per
-  operator/device; all ten changed client design files go AGREED → DRAFT, including the broad `navigation.adoc` and
-  `components.adoc`. CodeRabbit on core #338: 7 valid, 2 partly valid (3: read-only rests on the tool list,
-  confinement absent on some hosts; 7: counts now refreshed per turn, so the knows line lags them); all nine answered
-  by fc3ec9e4, which also introduces a confinement claim ("grants no write in the project") that does not hold
-  where confinement is unavailable, and a new `register-item.schema.json` not listed in the stores' layout. The
-  client docs were not updated with the core fixes.
+- D5 = PLAN-125 SHIPPED 2026-11-09 at `Status: DRAFT` (clients #389 `0e79de7b`, core #338 `72b602e2`, docs #170 `a94ea60`;
+  `landings/PLAN-125.md`; reports `plan-125-001.md`, `plan-125-002.md`). Six operator decisions (B′ warm read-only chat
+  worker, changing D4's "an idle chat holds no worker"; status cards with _Open it_; R1 no operator act from a chat; job
+  MCP + read-only resources + chat skill; one narrative, three readers; terminal parity, `28-chat.adoc`); operator also
+  kept ref kind `hold` and confirmed the writer-narrowed / fresh-role-warm rules. Merge rule met (core 9 threads, clients 4,
+  0 open, bodies answered; Sonar core 0). The orchestrator's 28 pre-merge items: 26 fixed, 2 partly. OWED, AGREED REVIEW
+  by the operator of 10 client files (terminal README stays AGREED), UC-CTL-1/2/3, UC-PLN-2, UC-STA-1/2/6, PM-WF-24, the
+  runtime model and the engine sections; fix in that pass: (L3-1, major) "changed in the chat" lifetime — `chat.adoc:165`
+  "until the operator opens it" vs `work-actions.adoc:405` "until committed, the same on every device"; (L3-2, major) the
+  empty chat's `knows` line has no source before the first turn (`28-chat:24`, `chat.adoc:179` vs core
+  `state-catalogue:97,176`; `work-actions.adoc:372` still says `chat.open` gives the role the facts); 12 minors in the
+  landing record (item 19 sample `--after-task`, queued-revision card source, `conflict` in an open question, origin
+  wording, "five pieces", argument names, split terminal catalogue, superseded wording, terminal turn address, …). Open
+  questions `chat-bounds`, `chat-narrative-catalogue`, `chat-lapsed-repropose`, `chat-lapse-other-subjects`; the AGREED
+  event catalogue change `activity.changed` carrying `queued_revision`. THEN the orchestrator makes the AGREED commits in
+  three repos and stages the client packages (D4 re-scoped by D5: contract+mock, web chat, terminal chat) with the
+  defects of `plan-125-001.md` (terminal posts `message` not `text` `WorkActionsClient.java:323`, start chat ends on an
+  empty line `ChatDialogue.java:74-77`, decision answer channel defaults to `cli` `DecisionAnswerRequest.java:111-112`,
+  plus the unverified web/mock leads listed there). CLEANUP OWED (refused by the permission classifier 2026-11-09, for
+  the operator): worktrees `.plan/local/worktrees/125-design-d5-chat-context-and-interaction`, `plan-marshall-documentation`,
+  `pm-mcp-core` (all clean, at the merged PR heads), the `plan-marshall-mcp` symlink, local and remote branches
+  `docs/125-design-d5-chat-context-and-interaction` in three repos.
 - PLAN-119 landed (PR #377, `147309ae`, analysed 2026-11-09); see `landings/PLAN-119.md`. One parser
   (`JsonTree.positiveInteger`) and one fallback constant; the overview and machine step follow the injected aspect list;
   Sonar 0. MERGE RULE NOT MET: the CodeRabbit body's nitpick is unanswered, and thread 2 was resolved contested — with a
