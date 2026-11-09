@@ -126,6 +126,27 @@ ui-improvements`; read, never write):
 
 Checked at `aa3a9be3`. `chat.adoc` is absent. Besides the listed files the deliverable also names the terminal onboarding-roles transcript and consent listing under `doc/design/terminal-client/` and `shared/starting-work.adoc`; `pm-web-app/package.json` has no `marked` yet (the lexer is approved by the operator, not yet a dependency; the npm registry could not be read). Files outside this repository are HYPOTHESIS until read.
 
+## Re-grounding 2026-11-08 (emit)
+
+Checked at `9a52b89f` (main after D1 #365/#375, D2 #380, D3 #379 and the seams PR #383; all their documents `AGREED`):
+
+- `doc/design/web-app/chat.adoc` absent. PLAN-104 shipped (#357), so `onboarding.adoc` is free.
+- `onboarding.adoc` is 478 lines after #383: step ① moved to `web-app/onboarding-step-1.adoc`; the role `transcribe` goes into
+  the roles step of `onboarding.adoc` (steps ② and ③) and must keep the file under 500 lines (split verbatim into a part if not).
+- The chat is a side column: `web-app/navigation.adoc#side-columns` (`:269`; 480 / 400 px, it can take the only column at
+  1024 px, *Hide the chat* returns to the object). D4 owns the chat texts there only through `work-actions*.adoc`; it does not
+  edit `navigation.adoc` (D2's, AGREED) except a link to `chat.adoc`.
+- `WaitingMark` after #383: one per screen, its only prop is `label`, 20 px, its own polite `role="status"` line
+  (`web-app/components-brand.adoc#waiting-mark`, `brand-mark.adoc#waiting-mark`). The chat adds no second live region for it.
+- PM-WF-24 at `plan-marshall-documentation/doc/requirements/02-workflow.adoc:377`, "send it nowhere else" at `:384`.
+- Running lane plans PLAN-120 and PLAN-124 read `shared/work-actions.adoc` and `shared/decisions.adoc` but do not edit them;
+  no running plan edits a D4 document (writes disjoint).
+- The main checkout of `plan-marshall-documentation` is on another branch with local changes: D4 works in its own worktree of
+  each sibling repository (branch from `origin/main`), never in the main checkouts. The symlinks
+  `.plan/local/worktrees/{plan-marshall-documentation,pm-mcp-core,plan-marshall-mcp}` exist again so the relative cross-repo
+  links of this repository resolve from the D4 worktree (read-only use).
+- Prototype ports (`20000 + 10 × 115`): `21150` (app), `21151` (mock).
+
 ## Operator Decision 2026-11-08 (the waiting mark)
 
 The `WaitingMark` that D3 (PLAN-114) defines is the clipboard whose TODO lines are ticked one after another, independent of

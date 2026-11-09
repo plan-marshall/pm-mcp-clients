@@ -540,9 +540,22 @@ plan spec names the plan, proposal and finding documents it comes from.
   checks keep the `Spinner`; `onboarding.adoc:45` and `cb:58` reworded, sketches unchanged). Folded: S1 and S9 into PLAN-115;
   S12 (`kind-plan` vs the clipboard) into the D3 brand assets package, still to be staged. S10 is declared and temporary.
 
+- 2026-11-09 — D4 REVIEW DECIDED (operator, one by one; PLAN-115 landed at DRAFT). (1) S1: in the terminal an empty first
+  line, `q` or `Ctrl+D` leaves the chat like Hide (the chat and an open proposal stay, `h` returns); an explicit `new` with
+  confirmation starts a fresh chat. (2) S2: a decision's answers are disabled only while the role writes or a proposal waits;
+  answering closes the decision and its chat. (3) S5: `WizardPage` hosts the chat side column like an object column (start,
+  decomposition, project setup). (4) Ended work KEEPS its chat (the orchestrator's first question misframed it as a D4
+  invention; it is the AGREED pre-D4 design; re-asked). (5) The terminal also chooses the speech method and asks its consent
+  (first answer 'list only' withdrawn by the operator; re-asked). (6) _Accept_ in the proposal card is PRIMARY, a written
+  exception to one primary per screen. (7) Empty chat: role + scope now; the 'replan knows …' line follows once the chat
+  contract carries a context summary. (8) Terminal reply streams line by line with a stop key. (9) Values confirmed (120 s /
+  8 MB, 60 s, 50 turns, 64 KiB, `whisper.cpp`). Daemon request: ledger only (Open Defects 7). Applied by three direct PRs
+  (`skip-bot-review`), merged on the operator's word: plan-marshall-documentation#169 `f475e34d`, pm-mcp-core#334 `96aaea5b`,
+  pm-mcp-clients#387 `85edf2a5`; the D4 client documents are AGREED. Terminal stop key `s`; `new`/`neu` reserved first line.
+
 ## Open Defects
 
-- 2026-11-06 — OPEN OUTSIDE THIS REPOSITORY (owner `plan-marshall/plan-marshall-mcp`, no plan there): (1) the real `pm-mcpd` accepting `{with_plans, reason}` on an epic cancel and sending `drain_remaining_items` was not checkable by PLAN-100; (2) a runtime that serves an id or route per drain item (`doc/design/shared/system.adoc` `<<one-step>>` says an item is a name, not a step, until it does); (3) `pm-mcpd` accepting the cleanup record `cleanup_durations` (PLAN-60 D4); (4) 2026-11-07 (PLAN-104 landing): the state and act surface `/api/v1/entries/{id}` of a pre-enrolment run, without which Enter on a being-added badge in the console only reports the run as unreadable (`04-console.adoc` "Addressing a Being-Added Project"). The operator may open ledger items there. (5) 2026-11-07 (PLAN-108 landing, in this repository): the Playwright suite (`pm-web-e2e`) is not run in CI (`skipPlaywrightTests=true` by default), so every e2e Done-when is session-local evidence; `reports.spec.js` "marks all shown reports read" fails at base (PLAN-105 defect 13, folded into PLAN-107). (6) 2026-11-07 (PLAN-97 landing): the real `pm-mcpd` answers the withdraw `DELETE /api/v1/operator/runtime/stop` with 405 and whether it serves the operator stop route that `runtime stop` POST moved to (from `/api/v1/runtime/stop`) is unverified; the web app still posts the legacy path (owner `plan-marshall/plan-marshall-mcp`).
+- 2026-11-06 — OPEN OUTSIDE THIS REPOSITORY (owner `plan-marshall/plan-marshall-mcp`, no plan there): (1) the real `pm-mcpd` accepting `{with_plans, reason}` on an epic cancel and sending `drain_remaining_items` was not checkable by PLAN-100; (2) a runtime that serves an id or route per drain item (`doc/design/shared/system.adoc` `<<one-step>>` says an item is a name, not a step, until it does); (3) `pm-mcpd` accepting the cleanup record `cleanup_durations` (PLAN-60 D4); (4) 2026-11-07 (PLAN-104 landing): the state and act surface `/api/v1/entries/{id}` of a pre-enrolment run, without which Enter on a being-added badge in the console only reports the run as unreadable (`04-console.adoc` "Addressing a Being-Added Project"). The operator may open ledger items there. (5) 2026-11-07 (PLAN-108 landing, in this repository): the Playwright suite (`pm-web-e2e`) is not run in CI (`skipPlaywrightTests=true` by default), so every e2e Done-when is session-local evidence; `reports.spec.js` "marks all shown reports read" fails at base (PLAN-105 defect 13, folded into PLAN-107). (6) 2026-11-07 (PLAN-97 landing): the real `pm-mcpd` answers the withdraw `DELETE /api/v1/operator/runtime/stop` with 405 and whether it serves the operator stop route that `runtime stop` POST moved to (from `/api/v1/runtime/stop`) is unverified; the web app still posts the legacy path (owner `plan-marshall/plan-marshall-mcp`). (7) 2026-11-09 (PLAN-115 landing): the D4 daemon surface, not filed — the chat routes with `202` and `client_turn_id`, `POST …/chat/turns/{turn_id}/stop`, `GET …/chat?before=`, the `chat.*` events, `POST /api/v1/transcriptions`, `Permissions-Policy: microphone=(self)` (owner `plan-marshall/plan-marshall-mcp`; the D4 contract and mock package does not depend on it).
 - 2026-11-06 — DECIDED by the operator (option A): the unfiltered "Mark all shown read" of the reports page marks the reports the list shows by their ids, never everything, as `doc/design/shared/reports.adoc` 182/184 and the label say; PLAN-102 D1c (`{ all: true }`, merged in PR #340) is amended by PLAN-105 deliverable 1 (`landings/PLAN-102.md` defect 1). PLAN-105 is emittable.
 - 2026-11-06 — LOW defect 17 of PLAN-102 (`landings/PLAN-102.md`): `RowMenu.svelte` 216-232 `:focus` and `:focus-visible` rules are identical, a mouse open draws the focus ring; folded into PLAN-105 deliverable 2 (decide and test).
 - 2026-11-05 — Two LOW defects of PLAN-101 (`landings/PLAN-101.md` 5, 6) have no staged plan touching their files: `check-build-output.mjs` `deriveDevMarkers`/`devPageRoute` guards only the first dev page below the prefix and the plugin's `DEV_PAGE_IMPORT` regex (`devRouteExclusion.ts`) hard-codes `src/routes/dev/`; the block-comment strip of `strictPortIsBound` (`guard-ports.js` 94-96) has no test case. Re-check at the next plan that touches the build check or the port guard.
@@ -616,6 +629,36 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Watches
 
+- D5 = PLAN-125 (design D5: chat context, acts and events; the operator calls it "D5"). EMITTED and STARTED by the operator
+  2026-11-09 as a direct Claude Code design session in `.plan/local/worktrees/125-design-d5-chat-context-and-interaction`
+  (sibling worktrees `plan-marshall-documentation`, `pm-mcp-core` on the same branch; `plan-marshall-mcp` a symlink; ports
+  21250/21251). It asks the operator six questions one at a time (context per subject, inline vs link controls, act
+  parity, an MCP for the chat role, narrative events into the chat, CLI parity), then writes DRAFT docs in three repos,
+  prototypes, opens PRs and stops green; the orchestrator makes the AGREED commits; the operator merges. The D4 code
+  packages wait for D5's outcome. Lane landings and emits were paused by the operator for the chat on 2026-11-09.
+- PLAN-119 landed (PR #377, `147309ae`, analysed 2026-11-09); see `landings/PLAN-119.md`. One parser
+  (`JsonTree.positiveInteger`) and one fallback constant; the overview and machine step follow the injected aspect list;
+  Sonar 0. MERGE RULE NOT MET: the CodeRabbit body's nitpick is unanswered, and thread 2 was resolved contested — with a
+  reduced aspect list an excluded aspect's state renders "Done" (`StateDialogue.java:665-675`), the lane's "the runtime
+  never emits it" has no source (S1, needs a decision). Tests break the CLAUDE.md rules (7 variants as sequential asserts,
+  no Generators). PLAN-121 is unblocked (emits paused).
+- PLAN-23 landed (PR #381, `fb27d4aa`, analysed 2026-11-09); see `landings/PLAN-23.md`. All six keys of the cleanup
+  bar wired (operator's scope choice); a delete only after `y`/`j`; Sonar 0 new issues. Merge rule met on the letter: 22
+  threads all resolved, but 15 resolved WITHOUT a reply (14 fixed in code, 1 partly: an already-decided job is not handled).
+  The lane edited the AGREED `terminal-client/26-cleanup.adoc` without a recorded approval (two fixes, partly drift: the
+  confirmation lost "back"/`?`, 7 new keys missing from its text table). Tests use literals, not Generators (CLAUDE.md);
+  `r`/`i`/`o` thinly tested; `… N more` not printed; legacy glyph kinds; `--exclude` unvalidated; UTC reminder day; a dead
+  unconfirmed non-interactive delete path behind the gate. The report's "IT 5/5" and one case name are false. Residue route:
+  operator's choice.
+- D4 (PLAN-115) landed (plan-marshall-documentation#167 `e141a2b6`, pm-mcp-core#331 `21fc7e79`, pm-mcp-clients#386
+  `354098bf`, merged on the operator's word 2026-11-09; analysed 2026-11-09); see `landings/PLAN-115.md`. Merge rule met
+  (CodeRabbit bodies answered, all threads replied, 6 left unresolved by the session's permission classifier). THE
+  DOCUMENTS MERGED AT `DRAFT`, and 12 client documents that were AGREED are DRAFT again; the AGREED commits (three
+  repositories) are owed on the operator's review. Major seams: S1 the AGREED terminal documents still end a chat on an
+  empty line, `q`, `Ctrl+D` (`19-actions`, `14-transcripts-decisions`, `18-starting`), against "the chat stays"; S2 a
+  decision's answers stay disabled while its chat is open, which may now be forever; S5 no `WizardPage` side column in D2.
+  The session's "280 px rail" seam is refuted (the table already uses 232/64). Daemon request not filed (Open Defects 7).
+  D4 code packages wait for AGREED. Symlinks removed.
 - D2 (PLAN-113) landed (PR #380, `95df75bb`, analysed 2026-11-08); see `landings/PLAN-113.md`. Merge rule met; the 13
   changed documents are AGREED (operator decisions, AGREED commit `467fa02f` by the orchestrator). Seams S1–S11 and C1–C2: the
   OPERATOR DECIDED 2026-11-08 to have them fixed directly (documents only, one PR labelled `skip-bot-review`, by the
