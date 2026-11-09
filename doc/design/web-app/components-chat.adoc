@@ -12,14 +12,14 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-contro
 
 _Relies on: link:components.adoc#rules[Components, Rules Every Component Keeps], link:chat.adoc[Chat and Voice] (what the chat shows and does), link:components-fields.adoc#compose[Fields and Forms, Compose], link:components-brand.adoc#waiting-mark[Brand Pieces, WaitingMark], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-chat-text[The Chat's Text]_
 
-Status: `DRAFT`. A part of link:components.adoc[Components]: the six pieces the chat and the voice input are built from — `Chat`, `ChatTurn`, `ProposalCard`, `ChatStatusCard`, `ChatMarkdown` and `VoiceInput`. What they show and when is link:chat.adoc[Chat and Voice]; this part is their component specification. Each is _new_, lives in `pm-web-app/src/lib/components/` with a test beside it and a fixture on `/dev/components` in both themes, and is built by the D4 web chat package (`VoiceInput` by the D4 voice package, `ChatStatusCard` and the D5 additions by the D5 web chat package).
+Status: `AGREED`. A part of link:components.adoc[Components]: the six pieces the chat and the voice input are built from — `Chat`, `ChatTurn`, `ProposalCard`, `ChatStatusCard`, `ChatMarkdown` and `VoiceInput`. What they show and when is link:chat.adoc[Chat and Voice]; this part is their component specification. Each is _new_, lives in `pm-web-app/src/lib/components/` with a test beside it and a fixture on `/dev/components` in both themes, and is built by the D4 web chat package (`VoiceInput` by the D4 voice package, `ChatStatusCard` and the D5 additions by the D5 web chat package).
 
 [#chat]
 == Chat
 
-image::../../resources/diagrams/web-component-chat.svg[The chat column with its head, an operator turn, a role turn with a list and a reference chip, a proposal card with its diff, the pinned proposal and the composer; beside it the microphone while it records and a turn before its first word,720,align=center]
+image::../../resources/diagrams/web-component-chat.svg[The chat column with its head and what the role knows, an operator turn, a role turn with a list and a reference chip, a proposal card with its diff, the pinned proposal and the composer; beside it the microphone while it records, a turn before its first word and a status card,720,align=center]
 
-The one picture shows all five pieces: `Chat` (the column), `ChatTurn` (the turns), `ChatMarkdown` (the role's text), `ProposalCard` (the card) and `VoiceInput` (the microphone in the composer and while it records).
+The one picture shows all six pieces: `Chat` (the column, with what the role knows under its head), `ChatTurn` (the turns), `ChatMarkdown` (the role's text), `ProposalCard` (the card), `ChatStatusCard` (the status of a decision the role names) and `VoiceInput` (the microphone in the composer and while it records).
 
 _New._ The whole side column of one chat: its head, the transcript, the pinned proposal and the composer (link:chat.adoc#placement[Chat and Voice, Placement]). It reads the chat through the client (`GET …/chat`, a page at a time) and follows the `chat.*` events of its subject's stream; it holds no rule of the dialogue of its own.
 
@@ -61,7 +61,7 @@ Source and surface: `pm-web-app/src/lib/components/ProposalCard.svelte` (new), t
 
 _New (D5)._ The state of something a turn or a notice names that has acts of its own, with the way to it (link:chat.adoc#status-cards[Chat and Voice, Status Cards]).
 
-* *For*: a decision, a hold, the plan's queued revision, an act the role names (`refs` of the kind `act`). Tasks, files and plans stay reference chips.
+* *For*: a decision and a hold (`refs` of the kinds `decision` and `hold`), an act the role names (`refs` of the kind `act`), and the plan's queued revision (from the plan's `queued_revision`, not a reference). Tasks, files and plans stay reference chips.
 * *Content*: the target's `KindMark` (an act: the act's icon) and id, its state in the words of its view (`Q-007 · open · blocks the plan`, `Revision from the chat queued · applies after TASK-4`, `Pause fix-relay — in the acts of fix-relay`), kept current by the events the view follows; one line, wrapping on a phone.
 * *Act*: one, _Open it_ (`control.chat.card.open`), a `Link` with the target's real `href` in the look of a secondary button (copy and new tab work), which opens the target where link:chat.adoc#status-cards[Chat and Voice, Status Cards] says. It never offers the target's own acts.
 * *Gone*: a target that ended (a decision answered, a hold cleared, the revision applied) keeps the card with its last state, muted, and _Open it_ still opens it.
