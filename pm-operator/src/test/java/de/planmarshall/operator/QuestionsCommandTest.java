@@ -885,7 +885,7 @@ class QuestionsCommandTest {
     @Test
     @DisplayName("interactive decision cancel and rejection flows")
     void answerInteractiveDecisionCancellationFlows() throws Exception {
-        var answerPosts = new java.util.ArrayList<String>();
+        var answerPosts = new ArrayList<String>();
         fixture.start((request, response) -> {
             var target = request.target();
             if ("POST".equals(request.method()) && "/api/v1/decisions/Q-001/answer".equals(target)) {
