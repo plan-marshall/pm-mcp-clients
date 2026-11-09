@@ -308,7 +308,7 @@ final class WorkActionDialogue {
                     return 0;
                 }
                 client.perform(kind, id, "next", Map.of("raise_scope", true));
-                return started(epic, candidate, epic.scope() + 1);
+                return started(epic, candidate, ((long) epic.scope()) + 1);
             }
         }
         client.perform(kind, id, "next", Map.of("raise_scope", false));
@@ -326,7 +326,7 @@ final class WorkActionDialogue {
         var leaveKey = MessageCatalogue.format(prompt.locale(),
                             "operator.actions.key.leave_scope", Map.of());
         var need = MessageCatalogue.format(prompt.locale(), "control.epic.next_raise",
-                            Map.of(COUNT, epic.scope() + 1));
+                            Map.of(COUNT, ((long) epic.scope()) + 1));
         var promptText = question
                             + "   " + raiseKey
                             + ") " + need
@@ -345,12 +345,12 @@ final class WorkActionDialogue {
         }
     }
 
-    private int started(EpicResource epic, @Nullable String plan, int scope) {
+    private int started(EpicResource epic, @Nullable String plan, long scope) {
         if (plan != null) {
             var running = epic.running();
             prompt.line("operator.actions.result.next_started",
                                 Map.<String, Object>of(PLAN, plan,
-                                                    RUNNING, running != null ? running + 1 : EpicViewFormatting.UNKNOWN_COUNT,
+                                                    RUNNING, running != null ? ((long) running) + 1 : EpicViewFormatting.UNKNOWN_COUNT,
                                                     SCOPE, scope));
         } else {
             prompt.line("control.epic.next_none",
