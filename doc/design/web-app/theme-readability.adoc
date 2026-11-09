@@ -64,6 +64,21 @@ Every value above is the proposal of VD-P-02 except the two tuned dark brand val
 * `--color-on-brand`, which the proposal does not name, is the ink on a brand-coloured fill: white in light, the app background in dark.
 * `--color-overlay`, which the proposal does not name, is the scrim behind a dialog: a faint dark veil in light, a deeper one in dark.
 
+=== Mascot Palette Tokens
+
+The five colours of the brand icon, `--color-mascot-*`, are the same in both themes, so no theme block overrides them. What each draws and why is link:brand-mark.adoc#palette[Brand Mark and Mascot, The Mascot Palette]; the contrast is measured against `--color-bg-rail`, `--color-bg-surface`, `--color-bg-app`, `--color-bg-subtle` and a light and a dark browser tab strip (link:brand-mark.adoc#theme[Brand Mark and Mascot, Theme and Contrast]). No state, act, row, tag or text takes them.
+
+[cols="2,1,2,2",options="header"]
+|===
+|Token |Both themes |On the light grounds |On the dark grounds
+
+|`--color-mascot-fur` |`#E17512` |`2.4`–`3.1:1` (inside the outline) |`5.0:1` or more
+|`--color-mascot-gold` |`#F2B630` |`1.4`–`1.8:1` (inside the outline) |`8.5:1` or more
+|`--color-mascot-hat` |`#A0602E` |`3.8:1` or more |`3.1:1` or more
+|`--color-mascot-cream` |`#F6DDB0` |inner detail only |inner detail only
+|`--color-mascot-outline` |`#2A1A10` |`12.8:1` or more |about `1.1:1`; the fills carry the silhouette
+|===
+
 === Type Scale
 
 The scale of VD-P-03 is declared as size, line height and weight. The sizes are the px of the proposal as rem equivalents at the 16 px root, so a larger browser font size scales the interface.
@@ -154,10 +169,11 @@ Contrast ratio between two luminances \(L_1\) (lighter) and \(L_2\) (darker) is 
 [#audit-allowlist]
 == The Audit Allowlist
 
-Two reasoned, functional exceptions carry colour literals; the first sits inside the scanned surface, the second outside it:
+Three reasoned, functional exceptions carry colour literals; the first sits inside the scanned surface, the second outside it, the third in `tokens.css` itself:
 
 * **`PairingQr.svelte`:** SVG QR code modules use `#ffffff` (quiet zone and light modules) and `#000000` (dark modules). QR code optical scanners require strict binary black-on-white module contrast regardless of operating system or browser theme.
 * **The two browser-tab copies** (`pm-web-app/static/brand-mark.svg`, `pm-web-app/static/brand-mark-attention.svg`): a standalone SVG has no page context for `currentColor`, so they bake their colours and the attention dot. Today they carry the light-theme brand colour of the earlier mark; the D3 brand assets package redraws them on the chosen brand icon in the mascot palette, and link:brand-mark.adoc#favicon[Brand Mark and Mascot, The Browser Tab] names those values.
+* **The mascot palette** (`--color-mascot-*`, <<token-contract>>): the brand icon's literal colours, the same in both themes (link:brand-mark.adoc#palette[Brand Mark and Mascot, The Mascot Palette]). They join `tokens.css` with the D3 brand assets package; `tokens.test.ts` allows their literals there only, and the kind-tint check reads the fur and the gold from them (link:brand-mark.adoc#implementation[Brand Mark and Mascot, Implementation]).
 
 All other components and views must reference defined tokens in `tokens.css`. Static scans in `tokens.test.ts` enforce zero unexpected color literals across `pm-web-app/src/lib/`; the `static/` copies are outside that scan and are documented in link:brand-mark.adoc[Brand Mark].
 

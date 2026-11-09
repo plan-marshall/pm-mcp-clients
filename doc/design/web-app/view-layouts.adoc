@@ -73,7 +73,7 @@ A part of the system view, reached from its cleanup line and from a cleanup repo
 ----
 header
 ──────────────────────────────────────────────────────────────────────────
-context   System › Cleanup
+context   Cleanup
 ──────────────────────────────────────────────────────────────────────────
 body      Summary   12 plans · 2 epics · 40 logs · 1.8 GB        [Check all]
           4 kept for good · last sweep today 03:00

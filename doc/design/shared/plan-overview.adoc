@@ -52,7 +52,7 @@ Status: `AGREED`. Shared by both clients: link:../terminal-client/15-overview.ad
 
 At the project's level, below its plans and epics, a group `alongside` lists its running and failed short landings (`removing 2 moved documents from git · running`, `landing remediation.ci-failure · failed`), each with its state, a failed one with the hold `landing failed` and its acts (link:work-actions.adoc#holds[What Holds a Plan]), and a running onboarding or setup run of the project, leading to it (link:project-onboarding.adoc[Project Onboarding]).
 
-Order: as the runtime serves it, projects that need the operator first, then by the start of their oldest active work (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#overview-resource[The Overview Resource and Its Events]). Activity moves no row, so a row never moves under the pointer; a project moves only when it starts or stops needing the operator, or its running work starts or ends. A project whose running work ends (its last active plan and epic ended, and no decision of its setup waits) leaves the list; while it is selected, the client says so and moves the selection to its neighbour.
+Order: as the runtime serves it, projects that need the operator first, then by the start of their oldest active work (link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#overview-resource[The Overview Resource and Its Events]). Activity moves no row, so a row never moves under the pointer; a project moves only when it starts or stops needing the operator, or its running work starts or ends. A project whose running work ends (its last active plan and epic ended, and no decision of its setup waits) leaves the list; while it is selected, it stays as one pinned row at the top of the list, labelled `ended`, and the selection stays on it (link:../web-app/navigation.adoc#missing[Web App, Navigation, A Selection the List Does Not Hold]).
 
 [#item-rows]
 == A Plan, an Epic
@@ -168,7 +168,7 @@ The overview remembers the project, the view (by plan, by epic), and the selecte
 
 A remembered plan that has ended falls back to its project; a project that no longer has running work falls back to the list of projects.
 
-In the web app the address wins over the remembered place: an address that names a project, a mode or an object opens what it names, and only the bare lens (`/overview`) is filled from the remembered place, by replacing the address rather than pushing it. The project, the mode (running or ended, by plan or by epic) and the follow mode are part of the address (link:../web-app/navigation.adoc#url[Web App, Navigation, Addresses and History]).
+In the web app the address wins over the remembered place: an address that names a project, a mode or an object opens what it names, and an explicit click on a lens opens that lens (What waits at `/`); only a bare start of the app and the bare lens (`/overview`) are filled from the remembered place, by replacing the address rather than pushing it. The project, the mode (running or ended, by plan or by epic) and the follow mode are part of the address (link:../web-app/navigation.adoc#url[Web App, Navigation, Addresses and History]).
 
 [#texts]
 == Texts

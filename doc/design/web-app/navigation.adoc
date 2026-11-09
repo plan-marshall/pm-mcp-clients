@@ -57,7 +57,7 @@ The rail entries of the groups *Work* and *Records* are *lenses*: What waits, Ru
 A page is a *chain of levels*, and the chain always follows the structure:
 
 ----
-lens list › project › epic › plan › the plan's phase tree › task
+lens list › project › epic › plan › task
                      (a plan without an epic: project › plan)
 ----
 
@@ -108,7 +108,7 @@ lens list › project › epic › plan › the plan's phase tree › task
 |The inset of the template (link:README.adoc#grid[Web App, The Layout Grid]).
 |===
 
-*The rule*, for a content width `W` (the container less its inset) and a chain deeper than the window: the window takes the largest number of columns `n`, at most four, for which `(n − 1) × 220 + 480 + 136 ≤ W`. Where that leaves one column but two fit with the strip of marks only (`220 + 480 + 44 ≤ W`), it shows two with the strip of marks. With no level hidden there is no strip, and its width goes to the columns. Each column scrolls on its own; the page does not scroll sideways.
+*The rule*, for a content width `W` (the container less its inset) and a chain deeper than the window: the window takes the largest number of columns `n`, from two to four, for which `(n − 1) × 220 + 480 + 136 ≤ W`. Where no such `n` exists but two fit with the strip of marks only (`220 + 480 + 44 ≤ W`), it shows two with the strip of marks. Where not even that fits (`W` below `744 px`), it shows one column, the object column at the full width, and no strip: Up and the breadcrumb lead to the levels before it (<<gap-strip>>). With no level hidden there is no strip, and its width goes to the columns. Each column scrolls on its own; the page does not scroll sideways.
 
 [#width-table]
 === The Width Table
@@ -197,7 +197,7 @@ A shorter chain gives its strip's width to its columns: a plan of a project at `
 |`tab={id}` (`/settings?tab=access`); an address without it opens the first tab
 
 |An object opened in place
-|`open={kind}:{id}` on the caller's address (`/system/cleanup?open=plan:fix-relay`, `/plans/fix-relay?open=decision:Q-007`, `/plans/fix-relay?open=completion-report`)
+|`open={kind}:{id}` on the caller's address (`/system/cleanup?open=plan:fix-relay`, `/plans/fix-relay?open=decision:Q-007`, `/plans/fix-relay?open=completion-report:fix-relay`); the completion report takes the kind `completion-report` and the id of its plan
 
 |A node of the plan's phase tree
 |`node={path}`, the node ids from the plan down, joined by `/` (`/plans/fix-relay?node=execute/land`): a phase or a sub-workflow selected in the plan's list column; the tree opens with the path to it expanded and the node selected. A task is a level of its own and takes the path (`/plans/{id}/tasks/{task}`); the follow mode writes no node
@@ -210,9 +210,9 @@ A shorter chain gives its strip's width to its columns: a plan of a project at `
 * *Replace* for a change to a sibling in the same column, for a `j`/`k` move, for a node selected in the phase tree, for a tab, a mode or a scope switched inside the lens, for opening or hiding a side column, and for every selection the app makes on its own (a fallback to the parent, the follow mode moving to the next task, filling a bare lens).
 * *An object in place* is opened by a push and closed by the history's back, so _Back to the job_ is a history back. An address loaded with `open=` has nothing to go back to: its close replaces the address with the caller's.
 * *The follow mode*: following the running task is a mode in the address (`follow=on`), not a task id, until the operator selects a task; selecting one ends it.
-* *The address wins over the remembered place* (link:../shared/plan-overview.adoc#persistence[Plan Overview, Where the Operator Left It]): a full address opens what it names. Only a bare lens (`/overview`) is filled from the remembered place, by `replaceState`.
+* *The address wins over the remembered place* (link:../shared/plan-overview.adoc#persistence[Plan Overview, Where the Operator Left It]): a full address opens what it names, and an explicit click on a lens opens that lens, so the rail's What waits always opens the list at `/`. Only two loads are filled from the remembered place, by `replaceState`: a bare start of the app (the app opened at `/` from outside it, not by a click inside it), which opens where the operator left it and, without a remembered place, stays on What waits; and the bare lens `/overview`.
 * *A pairing code in the fragment* is redeemed before the first write and is never written into the history (link:entry.adoc#after-pairing[Entry, Where the App Opens]).
-* *Objects and workflows never share a path*: an object is `/{kind}s/{id}`, and a workflow that is not an object has a path of its own outside them (`/project-onboarding/{entry}`, `/decomposition`), so no id — a project called `onboard`, an epic called `decompose` — can collide with it.
+* *Objects and workflows never collide*: an object is `/{kind}s/{id}`, and the segment after `/{kind}s/` is always an id. A workflow has a path of its own (`/project-onboarding/{entry}`, `/decomposition`, `/start`) or a fixed segment below its object's id (`/projects/{id}/start`, `/epics/{id}/decomposition`), never a name beside the ids, so no id — a project called `onboard`, an epic called `decompose` — can collide with it.
 * *An old address* of a moved view (`/decisions?decision=`, `/reports?plan=`, `/settings/machine`, `/settings/browser`, `/projects?project=`, `/projects/onboard`, `/epics/decompose`) is replaced by its address in this scheme when it is opened; pre-1.0, there is no other compatibility.
 
 [#kinds]

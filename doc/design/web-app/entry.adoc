@@ -47,7 +47,7 @@ The URL the terminal client opens or shows carries the code in its fragment (`ht
 
 * The code is accepted with or without the dash and in any case; the button is enabled once eight characters are typed.
 * *The brand block.* Above the heading the page carries the brand icon at `28` px beside the wordmark `plan-marshall`, as the rail head does; where the hero figure is hidden, the icon stands at `64` px above the wordmark (link:brand-mark.adoc#uses[Brand Mark and Mascot, Where the Icon Is Used]).
-* *The hero figure.* Beside the card stands the mascot, full figure, `280`–`360` px tall, in the pose `welcome` (the source figure until that pose is accepted). The page is the first screen a buyer sees, and the figure is its one large drawing; it is loaded eagerly, enters with one fade and rise of at most `300 ms` (none with reduced motion), and is decorative: the heading and the sentence say everything. It is hidden on a phone and where the page's free height is below the figure's (link:brand-mark-mascot.adoc#surfaces[The Mascot, Surfaces]).
+* *The hero figure.* Beside the card stands the mascot, full figure, `280`–`360` px tall, in the pose `welcome` (the source figure until that pose is accepted). The page is the first screen a buyer sees, and the figure is its one large drawing; it is loaded eagerly, enters with one fade and rise of at most `300 ms` (none with reduced motion), and is decorative: the heading and the sentence say everything. It is hidden on a phone and where the page's free height is below the figure's (link:brand-mark-mascot.adoc#surfaces[The Mascot, Surfaces]). While the page shows the reason of a revoked or expired device above the form (<<revoked>>), the figure takes the pose `access-ended` instead (the source figure until that pose is accepted), quieter: `160`–`200` px beside the text.
 * *Waits on this page* use the neutral `Spinner` (`Pairing this browser …`), never the waiting mark, because the page shows a figure (link:brand-mark.adoc#waiting-uses[Brand Mark and Mascot, The Waiting Mark]).
 * *The QR code.* Once eight code characters are in the field, the page also shows the same pairing URL as a QR code, drawn locally. Its caption names what the code carries and, on the local address, points at the machine's network address, because a phone cannot reach a loopback page.
 * *A code that does not work* (mistyped, used, expired, replaced by a newer one, or the runtime restarted) gets one answer, since the runtime does not say which: the line under the input `This code does not work. Get a new one in a terminal of the machine.` with the two commands. After too many failed tries the open code stops working even when typed right; the same answer covers it.
@@ -100,7 +100,7 @@ The reason names what the runtime reported:
 |`Its pairing is no longer accepted.`
 |===
 
-* *The figure*: beside the text stands the mascot, full figure, `160`–`200` px, in the pose `access-ended` (the source figure until that pose is accepted), quieter than the pairing page's hero (link:brand-mark-mascot.adoc#surfaces[The Mascot, Surfaces]).
+* *The figure*: the one the pairing page names for a page with a reason (<<pairing>>), quieter than its hero.
 * Nothing typed in an open form survives the revocation: the page that was open is replaced, not covered.
 * Revoking the device the operator acts from asks first (link:../shared/paired-devices.adoc[Paired Devices]) and then lands here with `You revoked this browser`.
 

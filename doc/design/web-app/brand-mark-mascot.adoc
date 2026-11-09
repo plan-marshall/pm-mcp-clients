@@ -20,10 +20,10 @@ The mascot is *decoration on calm surfaces*: screens with little text, one messa
 |===
 |Surface |How |Pose (<<poses>>) |Size
 
-|*Pairing page* (`PairingView`, link:entry.adoc#pairing[Entry, The Pairing Page])
-|The hero: the full figure beside the pairing card on a wide screen, the first thing a new operator sees. Hidden on a phone and where the page's free height is below the figure's.
-|welcome
-|full figure, `280`–`360` px tall
+|*Pairing page* (`PairingView`, link:entry.adoc#pairing[Entry, The Pairing Page]), and the same page with the reason of a revoked device (`RevokedView`, link:entry.adoc#revoked[Entry, A Revoked Device])
+|The hero: the full figure beside the pairing card on a wide screen, the first thing a new operator sees. Hidden on a phone and where the page's free height is below the figure's. With the reason of a revoked device, quieter: beside the text, never above it.
+|welcome; access ended with the reason
+|full figure, `280`–`360` px tall; `160`–`200` px with the reason
 
 |*Onboarding welcome* (link:onboarding.adoc#start[Onboarding, Start])
 |The full figure beside the list of the seven steps.
@@ -40,9 +40,9 @@ The mascot is *decoration on calm surfaces*: screens with little text, one messa
 |all clear, or start here
 |bust, `120`–`160` px
 
-|*Terminal states*: `RevokedView`, `ListenerOffView`, the runtime not reachable (link:entry.adoc#revoked[Entry]), an unknown address
+|*Terminal states*: `ListenerOffView`, the runtime not reachable (link:entry.adoc#after-pairing[Entry])
 |The full figure, quieter: smaller, beside the text, never above it.
-|access ended, or searching
+|searching
 |full figure, `160`–`200` px
 
 |*Rail foot* (<<rail-foot>>)
@@ -113,12 +113,12 @@ The mascot comes as a *small, closed set of six poses*. Each belongs to one calm
 |`searching`
 |Looking out under the hat brim, a hand above the eyes
 |Searching, not found, no connection
-|The runtime not reachable, the network listener turned off, an unknown address
+|The runtime not reachable, the network listener turned off
 
 |`access-ended`
 |The star badge held out, calm
 |Not allowed, access ended
-|A revoked device
+|The pairing page with the reason of a revoked device
 |===
 
 [#pose-rules]
@@ -176,7 +176,7 @@ The artwork is supplied by the operator or by an image tool the operator names (
 ==== `searching`
 
 * *Shows*: the bear looking out into the distance under the hat brim, one paw raised flat above the eyes, the clipboard held low; attentive and calm.
-* *Surfaces*: the runtime not reachable, the network listener turned off, an unknown address (`160`–`200` px), beside the text.
+* *Surfaces*: the runtime not reachable, the network listener turned off (`160`–`200` px), beside the text.
 * *Must not*: look lost, worried or comic; carry a magnifier, a map or a broken plug.
 * *Until accepted*: the source full figure.
 

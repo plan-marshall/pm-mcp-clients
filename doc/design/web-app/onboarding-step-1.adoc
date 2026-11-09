@@ -1,0 +1,38 @@
+= Design: Web App, Onboarding Step ①
+:toc: left
+:toclevels: 2
+:nofooter:
+
+link:../README.adoc[Design] » link:README.adoc[Web App] » Onboarding, Step ①
+
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-2[UC-ONB-2], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-3[UC-ONB-3], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-4[UC-ONB-4], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-5[UC-ONB-5], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-6[UC-ONB-6], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-7[UC-ONB-7], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-8[UC-ONB-8], link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-9[UC-ONB-9]_
+
+_Relies on: link:../../../../pm-mcp-core/doc/specification/state-catalogue/14-machine-onboarding.adoc[State Catalogue, Machine Onboarding], link:../../../../pm-mcp-core/doc/specification/state-catalogue/19-onboarding-aspects-models-providers.adoc[Onboarding Aspects, Part 2], link:../../../../pm-mcp-core/doc/specification/store-schemas/12-machine-stores.adoc#consent[Store Schemas, Consent Before Acting], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/01-cli-and-installer.adoc#two-channels[CLI, Coordination & Security, Operator Choices in the Web App and the Terminal], link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App]_
+
+Status: `AGREED`. A part of link:onboarding.adoc[Onboarding]; its introduction applies here.
+
+[#language]
+== ① Language (`language.choose`)
+
+[source,text]
+----
+  Choose your languages
+
+  plan-marshall and pm-operator   ( ) English  (•) Deutsch
+                                  from your system (de_DE)
+
+  What models write and read      (•) same as above
+                                  ( ) English
+                                  ( ) Deutsch
+
+  Words like Pull Request, Commit, Merge and Request stay as they are.
+                                                                [ Why? ]
+
+                                                 [ Use Deutsch for both ]
+----
+
+* The screen stays in the language it was shown in until the choice is recorded (`language.record`); every text after it is in the chosen interface language (the sketch is in English to be read here).
+* *Why?* shows `onboard.language.choose.why` in place: models do not work equally well in every language, and _same as above_ follows a later change.
+* With two different languages the button reads `Use Deutsch here, English for models`.
+
+Terminal: link:../terminal-client/06-transcripts-steps-1-3.adoc#t-language[Terminal Client, transcript].
