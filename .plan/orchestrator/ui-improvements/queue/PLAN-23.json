@@ -2,10 +2,10 @@
   "id": "PLAN-23",
   "slug": "cli-cleanup-dialogue",
   "workstream": "WS-04",
-  "status": "running",
+  "status": "shipped",
   "lane": "runbook",
   "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "pr": "381",
+  "landing": "landings/PLAN-23.md",
   "seq": 23
 }

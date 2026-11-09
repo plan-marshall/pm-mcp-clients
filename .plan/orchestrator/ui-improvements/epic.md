@@ -628,6 +628,14 @@ plan spec names the plan, proposal and finding documents it comes from.
 
 ## Watches
 
+- PLAN-23 landed (PR #381, `fb27d4aa`, analysed 2026-11-09); see `landings/PLAN-23.md`. All six keys of the cleanup
+  bar wired (operator's scope choice); a delete only after `y`/`j`; Sonar 0 new issues. Merge rule met on the letter: 22
+  threads all resolved, but 15 resolved WITHOUT a reply (14 fixed in code, 1 partly: an already-decided job is not handled).
+  The lane edited the AGREED `terminal-client/26-cleanup.adoc` without a recorded approval (two fixes, partly drift: the
+  confirmation lost "back"/`?`, 7 new keys missing from its text table). Tests use literals, not Generators (CLAUDE.md);
+  `r`/`i`/`o` thinly tested; `… N more` not printed; legacy glyph kinds; `--exclude` unvalidated; UTC reminder day; a dead
+  unconfirmed non-interactive delete path behind the gate. The report's "IT 5/5" and one case name are false. Residue route:
+  operator's choice.
 - D4 (PLAN-115) landed (plan-marshall-documentation#167 `e141a2b6`, pm-mcp-core#331 `21fc7e79`, pm-mcp-clients#386
   `354098bf`, merged on the operator's word 2026-11-09; analysed 2026-11-09); see `landings/PLAN-115.md`. Merge rule met
   (CodeRabbit bodies answered, all threads replied, 6 left unresolved by the session's permission classifier). THE
