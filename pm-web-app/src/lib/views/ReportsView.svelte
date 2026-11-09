@@ -895,8 +895,8 @@
               size="small"
               onclick={markAllShownRead}
               title={$t('report.action.mark_all_read.title')}
-              disabled={isMarkingAll}
-              loading={isMarkingAll}
+              aria-disabled={isMarkingAll ? 'true' : undefined}
+              aria-busy={isMarkingAll ? 'true' : undefined}
             >
               {$t('report.action.mark_all_read')}
             </Button>

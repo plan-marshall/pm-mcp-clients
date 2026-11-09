@@ -1809,6 +1809,37 @@ describe('ReportsView component', () => {
     await tick();
   });
 
+  it('keeps the mark-all button focusable with aria-disabled while the request runs (F1)', async () => {
+    let resolveRequest: (() => void) | undefined;
+    vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(
+      () =>
+        new Promise<{ marked_count: number }>((resolve) => {
+          resolveRequest = () => resolve({ marked_count: 3 });
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    markAllBtn.focus();
+    await fireEvent.click(markAllBtn);
+
+    // In flight the button is announced as unavailable, but it stays a native enabled button,
+    // so it keeps its place in the tab order and its focus rather than dropping out of both.
+    expect(markAllBtn).toHaveAttribute('aria-disabled', 'true');
+    expect(markAllBtn).toHaveAttribute('aria-busy', 'true');
+    expect(markAllBtn).not.toBeDisabled();
+    expect(markAllBtn).toHaveFocus();
+
+    if (!resolveRequest) throw new Error('markAllReportsRead was never called');
+    resolveRequest();
+    await waitFor(() => {
+      const settled = screen.getByRole('button', { name: /Mark all shown read/i });
+      expect(settled).not.toHaveAttribute('aria-disabled', 'true');
+    });
+  });
+
   it('retains the open report beside the detail during a filtered mark-all and drops it when detail closes (D3e)', async () => {
     vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
     let served: ReportsPage = mockPage;
