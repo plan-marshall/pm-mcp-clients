@@ -24,6 +24,7 @@ import java.io.StringWriter;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayDeque;
 import java.util.LinkedHashSet;
@@ -447,6 +448,19 @@ class CleanupCommandTest {
         execute("cleanup", "--remind");
 
         assertTrue(out.toString().contains("The same items come back 16 Oct."), out.toString());
+    }
+
+    @Test
+    @DisplayName("an ISO reminder date is rendered in the client's zone")
+    void reminderDateIsRenderedInTheClientsZone() {
+        assertAll(
+                            () -> assertEquals("16 Oct",
+                                                CleanupCommand.formatWhen("2026-10-16T03:00:00Z", "en", ZoneOffset.UTC)),
+                            () -> assertEquals("15 Oct",
+                                                CleanupCommand.formatWhen("2026-10-16T03:00:00Z", "en",
+                                                                    ZoneId.of("America/New_York"))),
+                            () -> assertEquals("16 Oct", CleanupCommand.formatWhen("16 Oct", "en", ZoneOffset.UTC))
+        );
     }
 
     @Test

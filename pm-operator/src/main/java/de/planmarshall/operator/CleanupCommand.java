@@ -330,7 +330,7 @@ public final class CleanupCommand implements Callable<Integer> {
             }
             var at = JsonTree.string(parsed, "remind_at");
             if (at != null && !at.isBlank()) {
-                return formatWhen(at, locale);
+                return formatWhen(at, locale, context.clock().getZone());
             }
             var days = JsonTree.integer(parsed, "remind_after_days");
             if (days == null) {
@@ -344,17 +344,18 @@ public final class CleanupCommand implements Callable<Integer> {
     }
 
     /**
-     * Renders a date the runtime names: an ISO instant becomes the client's day, and any other form
-     * is shown as the runtime sent it.
+     * Renders a date the runtime names: an ISO instant becomes the day of the client's clock zone,
+     * and any other form is shown as the runtime sent it.
      *
      * @param at     the runtime's date
      * @param locale the interface locale
+     * @param zone   the zone the client counts days in
      * @return the rendered date
      */
-    static String formatWhen(String at, String locale) {
+    static String formatWhen(String at, String locale, ZoneId zone) {
         var text = OutputSafety.stripControlSequences(at);
         try {
-            var day = Instant.parse(text).atZone(ZoneId.systemDefault()).toLocalDate();
+            var day = Instant.parse(text).atZone(zone).toLocalDate();
             return day.format(DateTimeFormatter.ofPattern("d MMM", Locale.forLanguageTag(locale)));
         } catch (DateTimeParseException _) {
             return text;
