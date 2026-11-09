@@ -10,6 +10,7 @@
 package de.planmarshall.operator;
 
 import java.io.BufferedReader;
+import java.io.IOError;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
@@ -18,6 +19,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
+import org.jline.reader.EndOfFileException;
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.UserInterruptException;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.http.HttpRequest;
@@ -422,15 +427,34 @@ public final class ProjectCommand implements Callable<Integer> {
                     err.flush();
                     return EXIT_NEEDS_INPUT;
                 }
-                // The reason the release request records when the operator gave none: a value of the
-                // request the runtime stores, not a text the terminal shows.
-                reason = "Released by operator";
             }
 
             if (!yes && noInput) {
                 err.println(text(locale, "operator.project.release.confirm_required"));
                 err.flush();
                 return EXIT_NEEDS_INPUT;
+            }
+
+            if (!yes) {
+                try (var lease = context.openTerminal()) {
+                    var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
+                    if (reason == null || reason.isBlank()) {
+                        var prompt = text(locale, "operator.actions.end.reason") + "  \u203a ";
+                        var line = readLineSafe(reader, prompt);
+                        if (line != null && !line.isBlank()) {
+                            reason = line.trim();
+                        } else {
+                            reason = "Released by operator";
+                        }
+                    }
+                    if (!confirm(reader, locale, "operator.projects.release.confirm")) {
+                        return 0;
+                    }
+                } catch (StartPrompt.InterruptException _) {
+                    return StartPrompt.EXIT_INTERRUPTED;
+                }
+            } else if (reason == null || reason.isBlank()) {
+                reason = "Released by operator";
             }
 
             var req = new ProjectReleaseRequest(projectId, true, force, reason);
@@ -492,10 +516,20 @@ public final class ProjectCommand implements Callable<Integer> {
             var sanitizedId = OutputSafety.stripControlSequences(projectId);
             var locale = context.clientEnvironment().locale();
 
-            if (!yes && noInput) {
-                err.println(text(locale, "enrolment.unenrol.confirm_required"));
-                err.flush();
-                return EXIT_NEEDS_INPUT;
+            if (!yes) {
+                if (noInput) {
+                    err.println(text(locale, "enrolment.unenrol.confirm_required"));
+                    err.flush();
+                    return EXIT_NEEDS_INPUT;
+                }
+                try (var lease = context.openTerminal()) {
+                    var reader = LineReaderBuilder.builder().terminal(lease.terminal()).build();
+                    if (!confirm(reader, locale, "operator.projects.unenrol.confirm")) {
+                        return 0;
+                    }
+                } catch (StartPrompt.InterruptException _) {
+                    return StartPrompt.EXIT_INTERRUPTED;
+                }
             }
 
             var request = new UnenrolRequest(projectId);
@@ -542,5 +576,28 @@ public final class ProjectCommand implements Callable<Integer> {
         } catch (IOException _) {
             return "";
         }
+    }
+
+    private static @Nullable String readLineSafe(LineReader reader, String prompt) {
+        try {
+            return reader.readLine(prompt);
+        } catch (UserInterruptException _) {
+            throw new StartPrompt.InterruptException();
+        } catch (EndOfFileException | IOError _) {
+            return null;
+        }
+    }
+
+    private static boolean confirm(LineReader reader, String locale, String confirmKey) {
+        var confirmText = text(locale, confirmKey);
+        var keepItText = text(locale, "operator.projects.keep_it");
+        var yesText = text(locale, "operator.project.detail.yes");
+        var yKey = "de".equals(locale) ? "j" : "y";
+        var prompt = confirmText + "? " + yKey + ") " + yesText + "   n) " + keepItText + "   ?   \u203a ";
+        var line = readLineSafe(reader, prompt);
+        if (line == null) {
+            return false;
+        }
+        return Answers.isYes(line);
     }
 }
