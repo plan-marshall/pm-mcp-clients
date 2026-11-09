@@ -22,6 +22,7 @@ import java.util.Set;
 import org.jline.reader.EndOfFileException;
 import org.jline.reader.LineReader;
 import org.jline.reader.UserInterruptException;
+import org.jline.terminal.Terminal;
 import org.jspecify.annotations.Nullable;
 
 import de.planmarshall.api.message.MessageCatalogue;
@@ -557,8 +558,10 @@ public final class ChoicePrompt {
      *         dialogue width, and the dialogue width where no terminal is known (a stream test)
      */
     private int barWidth() {
-        var terminal = reader != null ? reader.getTerminal()
-                            : startPrompt != null ? startPrompt.reader().getTerminal() : null;
+        Terminal terminal = reader != null ? reader.getTerminal() : null;
+        if (terminal == null && startPrompt != null) {
+            terminal = startPrompt.reader().getTerminal();
+        }
         var columns = terminal != null ? terminal.getColumns() : 0;
         if (columns > 0) {
             return Math.min(MAX_ROW, columns);
