@@ -531,6 +531,134 @@ class ProjectCommandTest {
     }
 
     @Test
+    @DisplayName("project add continues a run that has only an entry in its continue link")
+    void projectAddContinuesTheEntryOfAnUnenrolledRun() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, """
+                                    {"status":"started","checkout_path":"/git/cui-parent",
+                                     "continue_link":"/api/v1/entries/ent-cui/continue"}
+                                    """);
+            } else if ("/api/v1/entries/ent-cui".equals(request.target())) {
+                response.json(200, """
+                                    {"state":"project.completed","step":10,"total_steps":10,
+                                     "summary":"cui-parent is ready","links":{}}
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("project", "add", "/git/cui-parent", "--pilot");
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(out.toString().contains("The project is ready"), out.toString()),
+                            () -> assertTrue(server.requests().stream()
+                                                .anyMatch(r -> "/api/v1/entries/ent-cui".equals(r.target())),
+                                                "the run is read at its entry"));
+    }
+
+    @Test
+    @DisplayName("project add names the project after the checkout directory when the runtime names neither")
+    void projectAddFallsBackToTheCheckoutDirectoryName() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, "{\"status\":\"started\"}");
+            } else if ("/api/v1/projects/cui-parent/setup".equals(request.target())) {
+                response.json(200, """
+                                    {"project_id":"cui-parent","state":"project.completed","step":10,
+                                     "total_steps":10,"summary":"cui-parent is ready","links":{}}
+                                    """);
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("project", "add", "/git/cui-parent", "--pilot");
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(server.requests().stream()
+                                                .anyMatch(r -> "/api/v1/projects/cui-parent/setup".equals(r.target())),
+                                                "the run is read at the directory name"));
+    }
+
+    @Test
+    @DisplayName("project add reports a checkout without a directory name as unreadable")
+    void projectAddWithARootPathReportsUnreadable() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, "{\"status\":\"started\"}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = execute("project", "add", "/", "--pilot");
+
+        assertAll(
+                            () -> assertEquals(1, code, out.toString()),
+                            () -> assertTrue(err.toString().contains("could not be read"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("project add reports a run whose setup cannot be read")
+    void projectAddReportsAnUnreadableSetup() throws Exception {
+        fixture.start((request, response) -> {
+            if ("/api/v1/project-onboardings".equals(request.target()) && "POST".equals(request.method())) {
+                response.json(201, "{\"status\":\"started\",\"project_id\":\"cui-parent\"}");
+            } else {
+                response.send(500, null, "");
+            }
+        });
+
+        int code = execute("project", "add", "/git/cui-parent", "--pilot");
+
+        assertAll(
+                            () -> assertEquals(1, code, out.toString()),
+                            () -> assertTrue(err.toString().contains("cui-parent could not be read"), err.toString()));
+    }
+
+    @Test
+    @DisplayName("project add does not treat a server error of the start as a refusal of the operator")
+    void projectAddServerErrorOnStartFails() throws Exception {
+        fixture.start((request, response) -> response.send(503, null, ""));
+
+        int code = execute("project", "add", "/git/cui-parent", "--pilot");
+
+        assertTrue(code != 0, out.toString());
+    }
+
+    @Test
+    @DisplayName("project unenrol treats a closed input as a declined confirmation and sends nothing")
+    void projectUnenrolWithClosedInputSendsNothing() throws Exception {
+        var server = fixture.start((request, response) -> response.json(200, "{\"status\":\"unenrolled\"}"));
+
+        int code = executeWithInput("", "project", "unenrol", "my-app");
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(server.requests().stream()
+                                                .noneMatch(r -> r.target().endsWith("/unenrol")),
+                                                "nothing is sent"));
+    }
+
+    @Test
+    @DisplayName("project release treats a closed input as a declined confirmation and sends nothing")
+    void projectReleaseWithClosedInputSendsNothing() throws Exception {
+        var server = fixture.start((request, response) -> response.json(200, "{\"status\":\"released\"}"));
+
+        int code = executeWithInput("", "project", "release", "my-app");
+
+        assertAll(
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(server.requests().stream()
+                                                .noneMatch(r -> r.target().endsWith("/release")),
+                                                "nothing is sent"));
+    }
+
+    @Test
     @DisplayName("project favourite toggles favourite status")
     void projectFavourite() throws Exception {
         fixture.start((request, response) -> {
