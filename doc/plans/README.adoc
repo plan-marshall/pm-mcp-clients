@@ -411,4 +411,10 @@ The status of a package is `open`, `blocked`, `done` or `dropped`; a `dropped` r
 |nothing
 |client work
 
+|link:api-hidden-characters.adoc[`api-hidden-characters`]
+|The encoder of `pm-api` removes the hidden characters of the level-1 Unicode stage from every text the local API serves, for the real and the mock runtime
+|`open`
+|nothing
+|Milestone 2
+
 |===
