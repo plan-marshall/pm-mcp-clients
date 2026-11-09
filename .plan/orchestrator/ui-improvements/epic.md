@@ -641,6 +641,23 @@ plan spec names the plan, proposal and finding documents it comes from.
   (written by PLAN-120) says it asks. Minor gaps: `EpicCommand:191` wait text untested; `control.epic.next_invalid` not
   pinned in `de`; D1 evidence order `mutation-after`. Fix plan only on the operator's word.
 
+- D5 FINAL ROUND (2026-11-09, `plan-125-003.md`, observed, NOT merged): branch `docs/125-d5-agreed` in three repos —
+  core #340 `552a6d9e`, docs #171 `f018414b`, clients #392 `5ab0077e`; all CLEAN, CI green, Sonar core 0 / gate OK.
+  Re-read from `ci pr comments`: core CodeRabbit 1 body (5 actionable, 4 threads, 0 open, body answered 16:39Z); clients
+  1 body after one re-trigger (4 actionable, 4 threads, 0 open, body answered 17:10Z) — merge rule MET. Operator
+  decisions 1-8 (empty-chat knows = `chat.open` renders `context` without a worker; dedicated `plan.revision_queued`;
+  four chat open questions settled and removed; keep all reserved terminal lines; agree all). Leaf at the heads: 16/16
+  points fixed (L3-11 partly), status lines AGREED as claimed (11 client files, 7 use cases), no dangling open-question
+  reference. NEW (N1, major, re-read by the orchestrator): `plan-view.adoc` #chat-revision promises the way to "the chat
+  that proposed it" (`/decisions/Q-007?chat=open&turn=…`, "from the chat of Q-007") but `queued_revision` is
+  `{chat_id, turn_id, applies}` (core `store-schemas/17-re-planning.adoc:17`) and `plan.revision_queued` carries only
+  that — no subject, no open/ended flag, no chat-by-id route. Minors N2 (decision-wait boundary defined only in
+  state-catalogue:134, not in phase-workflows/08 Next Task Boundary), N3 (`chat.carried` row not narrowed vs epic-decision
+  revisions), N4 (`control.chat.applied` `{subject}` in a decision chat), N5 (`{gate}`/`{trigger}`/`{disposition}`
+  catalogues unnamed), N6 (queued line leaves `lapsed` out), N7 (queued revision as "target of the chat's own subject"
+  in a decision chat), N8 (docs `runtime-model/05-mock-runtime.adoc:82` mock chat lacks `plan.revision_queued` and
+  `context` at `chat.open` — the mock package is built from it). Advice to the operator: fix N1 (+ minors) in the
+  session, then merge core #340 → docs #171 → clients #392 on the operator's word, cleanup, final `plan-125-004.md`.
 - D5 = PLAN-125 SHIPPED 2026-11-09 at `Status: DRAFT` (clients #389 `0e79de7b`, core #338 `72b602e2`, docs #170 `a94ea60`;
   `landings/PLAN-125.md`; reports `plan-125-001.md`, `plan-125-002.md`). Six operator decisions (B′ warm read-only chat
   worker, changing D4's "an idle chat holds no worker"; status cards with _Open it_; R1 no operator act from a chat; job
