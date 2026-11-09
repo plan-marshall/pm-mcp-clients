@@ -12,6 +12,7 @@ package de.planmarshall.operator;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import de.cuioss.test.generator.junit.EnableGeneratorController;
@@ -181,6 +182,39 @@ class NeedsOneCountTest {
         assertNotNull(cleanupNotice);
         assertTrue(cleanupNotice.contains("Cleanup is due"),
                             "cleanup_due notice expected: " + cleanupNotice);
+
+        // Blank scope with detail, and credential link fallback
+        var detailNotice = ConsoleNotice.fromEventMap("en", "needs_operator.changed",
+                            Map.of("kind", "credential", "count", 1, "scope", "   ", "detail", "vault-key"));
+        assertNotNull(detailNotice);
+        assertTrue(detailNotice.contains("vault-key"), "expected detail vault-key: " + detailNotice);
+
+        var linkNotice = ConsoleNotice.fromEventMap("en", "needs_operator.changed",
+                            Map.of("kind", "credential", "count", 1, "link", "/api/v1/credentials/my-secret"));
+        assertNotNull(linkNotice);
+        assertTrue(linkNotice.contains("my-secret"), "expected link my-secret: " + linkNotice);
+    }
+
+    @Test
+    @DisplayName("ConsoleBadge.command covers all badge kinds and resolution branches")
+    void consoleBadgeCommandExhaustive() {
+        var machineSetup = new ConsoleBadge(ConsoleBadge.Kind.MACHINE_SETUP, "setup", null, 1, null);
+        assertEquals("onboarding", machineSetup.command());
+
+        var projectSetupWithId = new ConsoleBadge(ConsoleBadge.Kind.PROJECT_SETUP, "setup", null, 1, "proj-alpha");
+        assertEquals("project setup proj-alpha", projectSetupWithId.command());
+
+        var projectSetupNoId = new ConsoleBadge(ConsoleBadge.Kind.PROJECT_SETUP, "setup", null, 1, null);
+        assertEquals("project setup", projectSetupNoId.command());
+
+        var waitingDecision = new ConsoleBadge(ConsoleBadge.Kind.WAITING, "questions", "decision", 1, null);
+        assertEquals("questions", waitingDecision.command());
+
+        var waitingUnknown = new ConsoleBadge(ConsoleBadge.Kind.WAITING, "custom", "unknown_item", 1, null);
+        assertNull(waitingUnknown.command());
+
+        var waitingNullItemKind = new ConsoleBadge(ConsoleBadge.Kind.WAITING, "waiting", null, 1, null);
+        assertNull(waitingNullItemKind.command());
     }
 
     private static int intVal(Object v) {

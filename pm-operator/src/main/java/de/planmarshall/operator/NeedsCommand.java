@@ -20,6 +20,7 @@ import java.util.concurrent.Callable;
 
 import de.planmarshall.api.MachineApiPaths;
 import de.planmarshall.api.http.HttpRequest;
+import de.planmarshall.api.http.HttpResponse;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
 import de.planmarshall.api.overview.NeedsOperatorItem;
@@ -56,7 +57,12 @@ public final class NeedsCommand implements Callable<Integer> {
     public Integer call() throws IOException {
         var out = spec.commandLine().getOut();
         var client = context.runtime(true);
-        var response = client.send(HttpRequest.get(MachineApiPaths.NEEDS_OPERATOR));
+        var locale = context.clientEnvironment().locale();
+        return executeNeeds(client::send, out, locale);
+    }
+
+    Integer executeNeeds(RuntimeSender sender, PrintWriter out, String locale) throws IOException {
+        var response = sender.send(HttpRequest.get(MachineApiPaths.NEEDS_OPERATOR));
         if (response.status() != 200) {
             throw new OperatorRefusedException("needs", response);
         }
@@ -68,7 +74,6 @@ public final class NeedsCommand implements Callable<Integer> {
         }
 
         var page = NeedsOperatorPage.fromJson(response.bodyText());
-        var locale = context.clientEnvironment().locale();
 
         if (page.items().isEmpty()) {
             var emptyKey = MessageCatalogue.hasKey(locale, "operator.needs.empty")
@@ -79,7 +84,7 @@ public final class NeedsCommand implements Callable<Integer> {
             return 0;
         }
 
-        var decisionIds = fetchDecisionIds(client);
+        var decisionIds = fetchDecisionIds(sender);
         if (MessageCatalogue.hasKey(locale, "operator.needs.title")) {
             out.println(MessageCatalogue.format(locale, "operator.needs.title", Map.of("total", page.total())));
         } else {
@@ -108,11 +113,20 @@ public final class NeedsCommand implements Callable<Integer> {
                             cmd);
     }
 
-    private static Map<String, String> fetchDecisionIds(RuntimeClient client) {
+    @FunctionalInterface
+    interface RuntimeSender {
+        HttpResponse send(HttpRequest request) throws IOException;
+    }
+
+    static Map<String, String> fetchDecisionIds(RuntimeClient client) {
+        return fetchDecisionIds(client::send);
+    }
+
+    static Map<String, String> fetchDecisionIds(RuntimeSender sender) {
         try {
-            var resp = client.send(HttpRequest.get("/api/v1/decisions"));
+            var resp = sender.send(HttpRequest.get("/api/v1/decisions"));
             if (resp.status() != 200) {
-                resp = client.send(HttpRequest.get("/api/v1/questions"));
+                resp = sender.send(HttpRequest.get("/api/v1/questions"));
             }
             if (resp.status() == 200 && JsonTree.parse(resp.body()) instanceof List<?> list) {
                 return parseDecisions(list);
@@ -123,7 +137,7 @@ public final class NeedsCommand implements Callable<Integer> {
         return Map.of();
     }
 
-    private static Map<String, String> parseDecisions(List<?> list) {
+    static Map<String, String> parseDecisions(List<?> list) {
         var map = new HashMap<String, String>();
         for (var el : list) {
             if (el instanceof Map<?, ?> m) {

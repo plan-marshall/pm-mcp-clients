@@ -11,6 +11,7 @@ package de.planmarshall.operator.overview;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Clock;
@@ -142,5 +143,22 @@ class ProjectsOverviewLevelTest {
         assertEquals(item1, level.needsItemOf("needs:0"));
         assertEquals(item2, level.needsItemOf("needs:1"));
         assertEquals("needs:0", ProjectsOverviewLevel.firstSelectableId(rows));
+    }
+
+    @Test
+    @DisplayName("empty projects list with active needs items returns needs rows and handles invalid IDs")
+    void emptyProjectsWithNeeds() {
+        var item = new NeedsOperatorItem(NeedsOperatorKind.DECISION, "/api/v1/decisions/Q-001",
+                            new WorkLocation("proj-a", "Project Alpha"), null,
+                            new WorkLocation("plan-1", "Plan One"), baseInstant.minusSeconds(60), "plan");
+        var page = new NeedsOperatorPage(1, 1, false, false, 1, List.of(item));
+        var level = new ProjectsOverviewLevel(List.of(), page);
+        var rows = level.rows("en", clock);
+        assertEquals(2, rows.size());
+        assertEquals(ProjectsOverviewLevel.GROUP_NEEDS_YOU_ID, rows.get(0).id());
+        assertEquals("needs:0", rows.get(1).id());
+        assertNull(level.needsItemOf("needs:invalid"));
+        assertNull(level.needsItemOf("needs:999"));
+        assertNull(level.needsItemOf("not-a-needs-id"));
     }
 }

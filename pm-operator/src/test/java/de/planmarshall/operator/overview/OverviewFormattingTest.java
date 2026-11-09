@@ -11,16 +11,21 @@ package de.planmarshall.operator.overview;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Map;
 
 import de.planmarshall.api.overview.ActiveEpicSummary;
 import de.planmarshall.api.overview.ActivePlanSummary;
+import de.planmarshall.api.overview.NeedsOperatorItem;
+import de.planmarshall.api.overview.NeedsOperatorKind;
 import de.planmarshall.api.overview.ProjectSummary;
+import de.planmarshall.api.overview.WorkLocation;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -282,5 +287,52 @@ class OverviewFormattingTest {
         var attentionPlan = new ActivePlanSummary("p2", "Attention", "refine", "waiting", null, null, null, 0, 0, null, null, null, null, null, "decision", 1, null);
         var epicWithAttention = new ActiveEpicSummary("e2", "Attention", null, 1, 1, 0, 0, "decision", 1, List.of(attentionPlan));
         assertTrue(OverviewFormatting.needsOperator(epicWithAttention));
+    }
+
+    @Test
+    @DisplayName("formatNeedsItem methods cover subjects, kinds, blocks, since, and commands")
+    void needsItemFormattingExhaustive() {
+        assertNull(OverviewFormatting.needsKeyForKind(null));
+        assertEquals("", OverviewFormatting.formatNeedsItemKind(null, "en"));
+        assertEquals("decision", OverviewFormatting.formatNeedsItemKind(NeedsOperatorKind.DECISION, "fr"));
+
+        var itemMachine = new NeedsOperatorItem(NeedsOperatorKind.SETUP, null, null, null, null, null, null);
+        assertEquals("machine", OverviewFormatting.formatNeedsItemSubject(itemMachine));
+
+        var itemEpic = new NeedsOperatorItem(NeedsOperatorKind.DECISION, null, null, new WorkLocation("epic-1", "Epic One"), null, null, null);
+        assertEquals("epic-1", OverviewFormatting.formatNeedsItemSubject(itemEpic));
+
+        var itemProj = new NeedsOperatorItem(NeedsOperatorKind.SETUP, null, new WorkLocation("proj-1", "Project One"), null, null, null, null);
+        assertEquals("proj-1", OverviewFormatting.formatNeedsItemSubject(itemProj));
+
+        assertEquals("", OverviewFormatting.formatNeedsItemSince(null, "en", clock));
+        var recent = baseInstant.minusSeconds(120);
+        assertEquals("waits since today 11:58", OverviewFormatting.formatNeedsItemSince(recent, "en", clock));
+
+        assertEquals("blocks no work", OverviewFormatting.formatNeedsItemBlocks(null, "fr"));
+        assertEquals("blocks: other-plan", OverviewFormatting.formatNeedsItemBlocks("other-plan", "fr"));
+
+        var itemPlan = new NeedsOperatorItem(NeedsOperatorKind.DECISION, "/api/v1/decisions/Q-001",
+                            new WorkLocation("proj-1", "Proj"), null, new WorkLocation("plan-1", "Plan"), recent, "plan");
+        assertEquals("answer Q-001", OverviewFormatting.formatNeedsItemCommand(itemPlan, Map.of()));
+        assertEquals("answer Q-999", OverviewFormatting.formatNeedsItemCommand(itemPlan, Map.of("plan-1", "Q-999")));
+
+        var itemProjDec = new NeedsOperatorItem(NeedsOperatorKind.DECISION, null,
+                            new WorkLocation("proj-1", "Proj"), null, null, recent, null);
+        assertEquals("answer Q-888", OverviewFormatting.formatNeedsItemCommand(itemProjDec, Map.of("proj-1", "Q-888")));
+
+        var itemLandingEpic = new NeedsOperatorItem(NeedsOperatorKind.LANDING_FAILED, null,
+                            null, new WorkLocation("epic-1", "Epic"), null, recent, null);
+        assertEquals("epic epic-1", OverviewFormatting.formatNeedsItemCommand(itemLandingEpic, Map.of()));
+
+        var itemLandingNoLoc = new NeedsOperatorItem(NeedsOperatorKind.LANDING_FAILED, null, null, null, null, recent, null);
+        assertEquals("plans", OverviewFormatting.formatNeedsItemCommand(itemLandingNoLoc, Map.of()));
+
+        var itemHeldEpic = new NeedsOperatorItem(NeedsOperatorKind.HELD, null,
+                            null, new WorkLocation("epic-1", "Epic"), null, recent, null);
+        assertEquals("epic epic-1", OverviewFormatting.formatNeedsItemCommand(itemHeldEpic, Map.of()));
+
+        var itemHeldNoLoc = new NeedsOperatorItem(NeedsOperatorKind.HELD, null, null, null, null, recent, null);
+        assertEquals("plans", OverviewFormatting.formatNeedsItemCommand(itemHeldNoLoc, Map.of()));
     }
 }
