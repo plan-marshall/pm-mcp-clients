@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { t, currentLocale } from '../i18n';
   import Button from '../components/Button.svelte';
   import Icon from '../components/Icon.svelte';
@@ -24,10 +24,38 @@
   let errorMessage = $state('');
   let showRawComponents = $state(false);
 
-  onMount(async () => {
+  /** The rendered subtree, so the title can be found and focused. */
+  let rootEl = $state<HTMLElement | null>(null);
+  /** The control that opened the report; focus returns to it when the report closes. */
+  let restoreFocusTo: HTMLElement | null = null;
+
+  /**
+   * Moves focus to the report title, so an opened report is entered at its head.
+   */
+  function focusReportTitle(): void {
+    const title = rootEl?.querySelector<HTMLElement>('.report-title');
+    title?.focus();
+  }
+
+  /**
+   * Returns focus to the invoking control before the report closes.
+   */
+  function closeReport(): void {
+    restoreFocusTo?.focus();
+    onClose?.();
+  }
+
+  onMount(() => {
+    restoreFocusTo =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    focusReportTitle();
     if (!report && planId) {
-      await fetchReport();
+      void fetchReport();
     }
+  });
+
+  onDestroy(() => {
+    restoreFocusTo?.focus();
   });
 
   async function fetchReport() {
@@ -39,6 +67,12 @@
       errorMessage = (err as Error)?.message || $t('report.completion.load_failed');
     } finally {
       isLoading = false;
+    }
+    // A fetched report replaces the loading placeholder; take focus to the title now that it is
+    // the visible heading, so focus does not fall to the body when the placeholder is removed.
+    await tick();
+    if (data) {
+      focusReportTitle();
     }
   }
 
@@ -94,10 +128,10 @@
   }
 </script>
 
-<div class="completion-report">
+<div class="completion-report" bind:this={rootEl}>
   <div class="completion-report__nav">
     {#if onClose}
-      <Button variant="ghost" size="small" icon="act.back" onclick={onClose}>
+      <Button variant="ghost" size="small" icon="act.back" onclick={closeReport}>
         {$t('web.common.back')}
       </Button>
     {/if}
@@ -105,14 +139,18 @@
 
   {#if isLoading}
     <div class="completion-report__loading">
-      <svelte:element this={`h${titleLevel}`} class="report-title report-title--loading">
+      <svelte:element
+        this={`h${titleLevel}`}
+        class="report-title report-title--loading"
+        tabindex="-1"
+      >
         {$t('report.completion.loading')}
       </svelte:element>
-      <Spinner size="2.5rem" label={$t('report.completion.loading')} />
+      <span aria-hidden="true"><Spinner size="2.5rem" label="" /></span>
     </div>
   {:else if errorMessage}
     <div class="completion-report__error" role="alert">
-      <svelte:element this={`h${titleLevel}`} class="report-title report-title--error">
+      <svelte:element this={`h${titleLevel}`} class="report-title report-title--error" tabindex="-1">
         {$t('report.completion.load_failed')}
       </svelte:element>
       <p>{errorMessage}</p>
@@ -137,7 +175,9 @@
     <!-- Header bar -->
     <header class="report-header">
       <div class="report-header__headline">
-        <svelte:element this={`h${titleLevel}`} class="report-title">{data.plan_id}</svelte:element>
+        <svelte:element this={`h${titleLevel}`} class="report-title" tabindex="-1"
+          >{data.plan_id}</svelte:element
+        >
         <StatusLabel tone={outcomeTone(data.outcome)} label={$t('overview.ended.outcome', { outcome: data.outcome })} />
         {#if data.pull_request_number}
           <a

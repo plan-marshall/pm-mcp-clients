@@ -45,9 +45,8 @@ How a plan went, on one page: the detail of the report of its end (link:reports.
 ----
 
 * *The head*: the path `project › epic › plan` as in the plan view, each part one step away (link:plan-view.adoc#way-out[Plan View, Its Project and Its Epic]; in the web app the breadcrumb of the top bar); the title; the outcome (link:work-actions.adoc#outcomes[How a Plan Ends]); the plan's own pull request by its number with a link; when it ended.
-
++
 In the web app the completion report is an object column (link:../web-app/navigation.adoc#column-types[Web App, Navigation, Two Column Types]). While a list column stands beside it in the window (the reports list, or the ended plan it was opened from), that column's heading is the screen's single `h1`, the completion report's title an `h2`, and its sections `h3`; when the window shows the report alone, its title is the `h1` and its sections `h2`. The heading outline is hierarchical at every width.
-
 * *Outcome and reason*: the outcome in words, with what it means for this plan (merged into which branch; handed back as a pull request, a branch, or changes in the working tree, with what is missing; returned with its planning result); the reason where the operator or the plan gave one, else `—`.
 * *Ran*: from its start to its end, and how long it was paused by the operator, where it was.
 * *Deliverables*: how many of all are done, each with its state (done `✓`, not done `○`, dropped by a re-planning `–`); a plan that ended before its outline has none and says so (`no deliverables yet: it ended in refine`).
