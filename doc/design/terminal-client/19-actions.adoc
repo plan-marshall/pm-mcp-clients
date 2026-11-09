@@ -12,7 +12,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-contro
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/runtime-lifecycle/02-plan-pause-and-stalled-plans.adoc#plan-pause[Pausing and Starting a Plan], link:../../../../pm-mcp-core/doc/specification/state-catalogue/04-plan-finalize-terminal.adoc#plan-end[Cancelling and Abandoning Archive], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-actions[An Epic's Actions], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-review[The Review], link:../../../../pm-mcp-core/doc/specification/state-catalogue/01-conventions-generic-conditions.adoc#holds[Holds and Their Acts], link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role: `chat`], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work]_
 
-Status: `AGREED`.
+Status: `DRAFT`.
 
 What the actions are, per state, is link:../shared/work-actions.adoc[Actions on Plans and Epics], for both clients (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[Use Cases, Controlling Work]). This part is how the console offers them. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
@@ -445,6 +445,11 @@ Stopping a reply while it is written:
 * *A running plan* takes an accepted revision at its next task boundary, and the line after it says so once it is applied; a pausing plan takes it at that boundary too and then holds at its point; a paused plan takes it when the operator starts it again (`applies when fix-relay starts again`). A question changes nothing.
 * *When a revision is proposed*: only in Phase 5 (`execute`) or in finalize before the merge; earlier, and after the merge, the role answers and proposes none, and the chat says so once (`fix-relay proposes no change yet: a revision comes in execute or in finalize, until its merge`).
 * *Chat is refused* with its reason while no configuration of the routed role qualifies (`no configuration of replan qualifies yet`), and `--no-input` refuses it, since every turn needs the operator.
+
+[#chat-context]
+=== What the Chat Knows and Shows
+
+What the role knows (the line under the head), the starters, older turns (`older`), the status lines of what has acts of its own (`o) open it`), an act the role names printed as its command and never run, and what happened to the subject while the chat stays (the `–` notice lines) are xref:28-chat.adoc[The Chat, What It Knows and Shows] (D5, the operator, 2026-11-09); they hold for every chat of this part, of the decisions and of starting work.
 
 [#chat-ended]
 === A Chat About Ended Work

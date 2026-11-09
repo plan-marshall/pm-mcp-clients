@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/harness-profiles/01-profile-schema.adoc#token-usage[Tokens, Not Money], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#reports[Reports to the Operator] (the completion report), link:../../../../pm-mcp-core/doc/specification/store-schemas/03-findings-and-review-records.adoc#phase-sub-workflows[Phases as Sub-Workflows], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-resource[The Plan's Process as a Structure], link:../../../../pm-mcp-core/doc/specification/store-schemas/02-workflow-state-store.adoc#plan-history[The Plan's History], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#process-events[Events of the Process], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work]_
 
-Status: `AGREED`. Shared by both clients: link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], link:../web-app/README.adoc[Web App].
+Status: `DRAFT`. Shared by both clients: link:../terminal-client/16-plan-view.adoc[Terminal Client, The Plan View], link:../web-app/README.adoc[Web App].
 
 A plan's process is not a fixed list of phases: it is the plan's composed workflow, whose phases are sub-workflows, which call sub-workflows of their own. The plan view shows that process level by level, each node with its state, from the plan down to the leaves. Everything it shows comes from the runtime's process of the plan; the client derives no state.
 
@@ -189,6 +189,11 @@ From a plan, its project is always one step away, and its epic, where it has one
 == Live
 
 The view follows the plan's events: a node entered becomes _running_, one left _done_ or _failed_, and a new version of the composition reads the process again; the selection stays on its node by id. A plan that ends shows its last state, and the view says so.
+
+[#chat-revision]
+=== A Revision from the Chat
+
+While a revision the operator accepted in the plan's chat waits for its task boundary (the plan's `queued_revision`; link:work-actions.adoc#chat[Chatting with the Planning Role]), the plan's head says so, `Revision from the chat queued · applies after TASK-4` (`control.chat.revision_queued`; a paused plan `applies when fix-relay starts again`), with the way to the chat at the turn that proposed it (web: `chat=open&turn=…`; terminal: `h) chat`), and the plan's row in the overview carries the same words as its detail; once it is applied the new version reads the process again (<<live>>) and its version line says `version 8 · from the chat` (`control.chat.from_chat`), and once it is refused the line goes and the chat says why. Nothing else of the view changes before the boundary.
 
 [#ended]
 === An Ended Plan
