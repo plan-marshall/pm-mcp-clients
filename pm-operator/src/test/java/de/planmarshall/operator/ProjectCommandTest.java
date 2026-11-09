@@ -606,6 +606,53 @@ class ProjectCommandTest {
     }
 
     @Test
+    @DisplayName("project release without --yes prompts confirmation; declining sends nothing")
+    void projectReleaseWithoutYesConfirmationAskedDecliningSendsNothing() throws Exception {
+        var server = fixture.start((request, response) -> response.json(200, "{}"));
+
+        int code = executeWithInput("n\n", "project", "release", "old-app", "--reason", "my-reason");
+        assertAll(
+                () -> assertEquals(0, code),
+                () -> assertTrue(server.requests().isEmpty(), "no request may be sent when declined"),
+                () -> assertTrue(out.toString().contains("Release the project?"), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("project release interactive without --reason asks reason and records it")
+    void projectReleaseInteractiveWithoutReasonAsksReason() throws Exception {
+        var server = fixture.start((request, response) -> {
+            if ("/api/v1/projects/old-app/release".equals(request.target())) {
+                response.json(200, "{\"project_id\":\"old-app\",\"plans_ended_count\":1,\"epics_ended_count\":0,\"entries_deleted_count\":0}");
+            } else {
+                response.send(404, null, "");
+            }
+        });
+
+        int code = executeWithInput("my custom reason\ny\n", "project", "release", "old-app");
+        assertAll(
+                () -> assertEquals(0, code),
+                () -> assertEquals(1, server.requests().size()),
+                () -> assertTrue(server.requests().get(0).bodyText().contains("my custom reason"),
+                        server.requests().get(0).bodyText()),
+                () -> assertTrue(out.toString().contains("✓ old-app released"), out.toString())
+        );
+    }
+
+    @Test
+    @DisplayName("project release --no-input without --yes stops with exit 3 and sends nothing")
+    void projectReleaseNoInputWithoutYesExitsNeedsInput() throws Exception {
+        var server = fixture.start((request, response) -> response.json(200, "{}"));
+
+        int code = execute("project", "release", "old-app", "--reason", "my-reason", "--no-input");
+        assertAll(
+                () -> assertEquals(3, code),
+                () -> assertTrue(err.toString().contains("Release confirmation required (--yes)"), err.toString()),
+                () -> assertTrue(server.requests().isEmpty(), "no request may be sent")
+        );
+    }
+
+    @Test
     @DisplayName("project unenrol un-enrols project")
     void projectUnenrol() throws Exception {
         fixture.start((request, response) -> {
@@ -620,6 +667,19 @@ class ProjectCommandTest {
         assertAll(
                             () -> assertEquals(0, code),
                             () -> assertTrue(out.toString().contains("✓ old-app unenrolled"))
+        );
+    }
+
+    @Test
+    @DisplayName("project unenrol without --yes prompts confirmation; declining sends nothing")
+    void projectUnenrolWithoutYesConfirmationAskedDecliningSendsNothing() throws Exception {
+        var server = fixture.start((request, response) -> response.json(200, "{}"));
+
+        int code = executeWithInput("n\n", "project", "unenrol", "old-app");
+        assertAll(
+                () -> assertEquals(0, code),
+                () -> assertTrue(server.requests().isEmpty(), "no request may be sent when declined"),
+                () -> assertTrue(out.toString().contains("Unenrol the project?"), out.toString())
         );
     }
 
