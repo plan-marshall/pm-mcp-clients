@@ -1419,7 +1419,7 @@ public final class AnswerCommand implements Callable<Integer> {
             return new ReadBack(false, null);
         }
         if (answer.isEmpty() || "y".equalsIgnoreCase(answer) || "j".equalsIgnoreCase(answer)) {
-            return new ReadBack(false, new PartAnswer(reading, true));
+            return new ReadBack(false, new PartAnswer(Objects.requireNonNull(reading), true));
         }
         if ("e".equalsIgnoreCase(answer) || ("b".equalsIgnoreCase(answer) && LOCALE_DE.equals(locale))) {
             return new ReadBack(true, null);
