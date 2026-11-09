@@ -84,13 +84,13 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |not applied: {reason}
 |nicht übernommen: {reason}
 
-|`control.chat.end`
-|End the chat
-|Beende den Chat
+|`control.chat.new`
+|New chat
+|Neuer Chat
 
 |`control.chat.ended`
-|The chat is kept with {subject}.
-|Der Chat bleibt bei {subject} gespeichert.
+|The earlier chat is kept with {subject}.
+|Der frühere Chat bleibt bei {subject} gespeichert.
 
 |`control.chat.read_only`
 |read only: the archive stays as it is
@@ -252,17 +252,17 @@ Keys of the area `control`, of link:work-actions.adoc#chat[Chatting with the Pla
 |Nothing matches.
 |Nichts passt.
 
-|`control.chat.end_confirm.title`
-|End the chat?
-|Den Chat beenden?
+|`control.chat.new_confirm.title`
+|Start a new chat?
+|Einen neuen Chat beginnen?
 
-|`control.chat.end_confirm.body`
-|The open proposal ({kind}) is dropped; the transcript is kept with {subject}.
-|Der offene Vorschlag ({kind}) wird verworfen; der Verlauf bleibt bei {subject}.
+|`control.chat.new_confirm.body`
+|The open proposal ({kind}) is dropped; the earlier chat is kept with {subject}.
+|Der offene Vorschlag ({kind}) wird verworfen; der frühere Chat bleibt bei {subject}.
 
 |`control.chat.ended_elsewhere`
-|Ended in {channel} ({device}); the chat is kept with {subject}.
-|Beendet in {channel} ({device}); der Chat bleibt bei {subject} gespeichert.
+|Ended in {channel} ({device}); the earlier chat is kept with {subject}.
+|Beendet in {channel} ({device}); der frühere Chat bleibt bei {subject} gespeichert.
 
 |`control.chat.subject_ended`
 |{subject} has ended; the chat has ended with it.

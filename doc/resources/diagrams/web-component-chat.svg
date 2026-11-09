@@ -1,7 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 470" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
   <!-- Theme handling: theme-neutral. The picture paints its own surface, as every component picture of components.adoc does, so it reads the same on a light and a dark page. -->
   <title id="t">Chat pieces</title>
-  <desc id="d">Left, the chat column: its head with the plan, the role and its model, the scope, the running state, Hide the chat and End the chat; an operator turn on a subtle surface at the right; a role turn at full width with a list, inline code and a reference chip, its steps folded; a proposal card with its title, when it applies, a removed and an added line, and Reject and Accept; the pinned open proposal; and the composer with its text area, the microphone, the send act, the dictation hint and the counter. Right, the microphone while it records: a level meter, the time so far, Stop and insert and Cancel; and a role turn while it is written, the waiting mark with its working line and two steps.</desc>
+  <desc id="d">Left, the chat column: its head with the plan, the role and its model, the scope, the running state, Hide the chat and New chat; an operator turn on a subtle surface at the right; a role turn at full width with a list, inline code and a reference chip, its steps folded; a proposal card with its title, when it applies, a removed and an added line, and Reject and Accept; the pinned open proposal; and the composer with its text area, the microphone, the send act, the dictation hint and the counter. Right, the microphone while it records: a level meter, the time so far, Stop and insert and Cancel; and a role turn while it is written, the waiting mark with its working line and two steps.</desc>
   <rect width="720" height="470" fill="#F7F7F5"/>
   <!-- chat column -->
   <rect x="16" y="16" width="420" height="438" rx="8" fill="#FFFFFF" stroke="#CFCFC8"/>
@@ -10,8 +10,8 @@
   <text x="32" y="58" font-size="11" fill="#5F6672">replan answers…</text>
   <rect x="268" y="46" width="78" height="20" rx="6" fill="#FFFFFF"/>
   <text x="276" y="60" font-size="11" fill="#3E4450">Hide the chat</text>
-  <rect x="352" y="46" width="72" height="20" rx="6" fill="#FFFFFF" stroke="#CFCFC8"/>
-  <text x="358" y="60" font-size="11" fill="#16181D">End the chat</text>
+  <rect x="356" y="46" width="64" height="20" rx="6" fill="#FFFFFF" stroke="#CFCFC8"/>
+  <text x="366" y="60" font-size="11" fill="#16181D">New chat</text>
   <line x1="16" y1="74" x2="436" y2="74" stroke="#E4E4DE"/>
   <!-- operator turn -->
   <text x="390" y="94" font-size="11" fill="#5F6672">You</text>

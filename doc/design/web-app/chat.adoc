@@ -41,7 +41,7 @@ The chat is a side column beside the object it belongs to, never a panel above o
 
 ----
   ◆ fix-relay  with replan · claude sonnet 5.5          the whole plan
-  replan answers…                       [Hide the chat]  [End the chat]
+  replan answers…                           [Hide the chat]  [New chat]
   ─────────────────────────────────────────────────────────────────────
                                  Today
                                          ┌────────────────────────────┐
@@ -66,8 +66,9 @@ The chat is a side column beside the object it belongs to, never a panel above o
   Dictate with your system: Fn Fn                         34 of 8000
 ----
 
-* *The head*: the subject's `KindMark` and title, _with_ the role and the model the role runs on in muted text (`web.chat.with`), and the scope (`control.chat.scope`). Under it the running state while the role answers (`control.chat.answers`). At the right _Hide the chat_ (`control.chat.hide`, ghost; `Escape`) and _End the chat_ (`control.chat.end`, secondary, because ending drops an open proposal).
+* *The head*: the subject's `KindMark` and title, _with_ the role and the model the role runs on in muted text (`web.chat.with`), and the scope (`control.chat.scope`). Under it the running state while the role answers (`control.chat.answers`). At the right _Hide the chat_ (`control.chat.hide`, ghost; `Escape`) and _New chat_ (`control.chat.new`, secondary, because it drops an open proposal).
 * *On a phone* the chat takes the whole screen, the bottom bar included; with the on-screen keyboard open the transcript keeps at least a third of the height, and the pinned proposal folds into the composer's head.
+* *The chat stays*: a subject has one chat, and it stays with its transcript and its context until _New chat_ (or the subject's end). Hiding it, reloading, closing the tab, or opening it again later, on another device or in the terminal client, returns to the same chat where it was; the role answers every message knowing the whole transcript. Nothing ends a chat by itself: an idle chat holds no worker, since the role runs only while it answers.
 * *Hiding keeps it running*: the reply goes on, and the act that opened the chat carries a `CountBadge` of the replies that arrived while it was hidden. The scroll position and the draft are kept per chat.
 * *A decision* keeps its own column beside the chat; its answers stay disabled while the chat is open (link:../shared/decisions.adoc#chat[Decisions, A Chat Before Answering]).
 
@@ -102,7 +103,7 @@ A notice is a centred muted line in the transcript, never a turn:
 * `The earlier proposal was replaced.` (`control.chat.replaced`) when a new proposal replaces an open one;
 * after a proposal, with its time, the agreed `fix-relay changed; the plan's version becomes 8` or `rejected: nothing changed` (`control.chat.applied`, `control.chat.rejected`), or `not applied: <reason>` (`control.chat.check_failed`);
 * for a decision answered in another channel, the agreed `Q-007 was answered in the web app (iPad); the chat has ended.` (link:../shared/decisions-texts.adoc#texts[Decisions, Texts]);
-* when the chat was ended on another device, `Ended in the web app (iPad); the chat is kept with fix-relay.` (`control.chat.ended_elsewhere`), and when its subject ended, `fix-relay has ended; the chat has ended with it.` (`control.chat.subject_ended`).
+* when the chat was ended on another device, `Ended in the web app (iPad); the earlier chat is kept with fix-relay.` (`control.chat.ended_elsewhere`), with the new chat under it where that device started one, and when its subject ended, `fix-relay has ended; the chat has ended with it.` (`control.chat.subject_ended`).
 
 [#markdown]
 === The Role's Text
@@ -139,7 +140,7 @@ The composer is `Compose` (link:components-fields.adoc#compose[Compose]) with wh
 * *Length*: a counter shows from 7000 characters, `7240 of 8000` (`control.chat.counter`); beyond 8000 _Send_ is disabled with its reason (`control.chat.too_long`).
 * *References*: typing `#` offers the subject's tasks, files and decisions in a list under the field (`control.chat.refs.label`; `control.chat.refs.none` where nothing matches); choosing one inserts its id, sent as plain text and rendered as a chip in the transcript.
 * *An empty chat* shows one line, `Ask replan about the whole plan.` (`control.chat.empty`), and two or three starters for its scope as chips (`control.chat.starter.<scope>`; the whole register takes `.register`); a starter fills the field and sends nothing.
-* *Ending*: _End the chat_ closes the column; the act that opened it shows `The chat is kept with fix-relay.` (`control.chat.ended`) once, as a notice beside it.
+* *New chat* ends this chat (`chat.end`) and opens a new one on the same subject (`chat.open`): the column stays, the transcript is empty with its starters, and the role answers without the earlier conversation. The earlier transcript is not deleted: it stays with the subject among its events, and the new chat begins with the notice `The earlier chat is kept with fix-relay.` (`control.chat.ended`). While a proposal is open it asks first, since the proposal is dropped (`control.chat.new_confirm.title` and `.body`). There is no _Clear_: the transcript is the audit's and is never removed.
 * *Ended work* keeps the composer; its acts are the transcript, its questions, and the follow-up proposal.
 * *The microphone* is <<voice>>.
 
