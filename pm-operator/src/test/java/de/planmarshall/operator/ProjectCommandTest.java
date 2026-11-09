@@ -23,13 +23,11 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import org.jline.terminal.impl.DumbTerminal;
 
 import de.planmarshall.api.json.JsonTree;
-import de.planmarshall.api.resource.EnrolResult;
 import de.planmarshall.api.testsupport.RuntimeFixture;
 
 import org.junit.jupiter.api.AfterEach;
@@ -391,12 +389,12 @@ class ProjectCommandTest {
         int code = executeWithInput("\n", "project", "add", "/git/cui-parent");
         var output = out.toString();
         assertAll(
-                () -> assertEquals(0, code, err.toString()),
-                () -> assertTrue(output.contains("Id"), output),
-                () -> assertTrue(output.contains("cui-parent"), output),
-                () -> assertTrue(output.contains("cui-parent is ready"), output),
-                () -> assertTrue(server.requests().stream().noneMatch(r -> "/api/v1/enrol".equals(r.target())),
-                        "no POST /api/v1/enrol is sent outside the onboarding's own enrol step")
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains("Id"), output),
+                            () -> assertTrue(output.contains("cui-parent"), output),
+                            () -> assertTrue(output.contains("cui-parent is ready"), output),
+                            () -> assertTrue(server.requests().stream().noneMatch(r -> "/api/v1/enrol".equals(r.target())),
+                                                "no POST /api/v1/enrol is sent outside the onboarding's own enrol step")
         );
     }
 
@@ -423,8 +421,8 @@ class ProjectCommandTest {
 
         int code = execute("project", "add", "/git/cui-parent", "--no-input");
         assertAll(
-                () -> assertEquals(ProjectCommand.EXIT_NEEDS_INPUT, code, out.toString()),
-                () -> assertTrue(err.toString().contains("--pilot"), err.toString())
+                            () -> assertEquals(ProjectCommand.EXIT_NEEDS_INPUT, code, out.toString()),
+                            () -> assertTrue(err.toString().contains("--pilot"), err.toString())
         );
     }
 
@@ -459,10 +457,10 @@ class ProjectCommandTest {
         int code = execute("project", "add", "/git/cui-parent", "--pilot");
         var output = out.toString();
         assertAll(
-                () -> assertEquals(0, code, err.toString()),
-                () -> assertTrue(output.contains("cui-parent is ready"), output),
-                () -> assertTrue(server.requests().stream().noneMatch(r -> "/api/v1/enrol".equals(r.target())),
-                        "no POST /api/v1/enrol is sent outside the onboarding's own enrol step")
+                            () -> assertEquals(0, code, err.toString()),
+                            () -> assertTrue(output.contains("cui-parent is ready"), output),
+                            () -> assertTrue(server.requests().stream().noneMatch(r -> "/api/v1/enrol".equals(r.target())),
+                                                "no POST /api/v1/enrol is sent outside the onboarding's own enrol step")
         );
     }
 
@@ -489,7 +487,7 @@ class ProjectCommandTest {
         int code = execute("project", "add", "/git/cui-parent", "--pilot");
         assertEquals(0, code, err.toString());
         assertTrue(server.requests().stream().noneMatch(r -> "/api/v1/enrol".equals(r.target())),
-                "no POST /api/v1/enrol is sent");
+                            "no POST /api/v1/enrol is sent");
     }
 
     @Test
@@ -612,9 +610,9 @@ class ProjectCommandTest {
 
         int code = executeWithInput("n\n", "project", "release", "old-app", "--reason", "my-reason");
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(server.requests().isEmpty(), "no request may be sent when declined"),
-                () -> assertTrue(out.toString().contains("Release the project?"), out.toString())
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(server.requests().isEmpty(), "no request may be sent when declined"),
+                            () -> assertTrue(out.toString().contains("Release the project?"), out.toString())
         );
     }
 
@@ -631,11 +629,11 @@ class ProjectCommandTest {
 
         int code = executeWithInput("my custom reason\ny\n", "project", "release", "old-app");
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertEquals(1, server.requests().size()),
-                () -> assertTrue(server.requests().get(0).bodyText().contains("my custom reason"),
-                        server.requests().get(0).bodyText()),
-                () -> assertTrue(out.toString().contains("✓ old-app released"), out.toString())
+                            () -> assertEquals(0, code),
+                            () -> assertEquals(1, server.requests().size()),
+                            () -> assertTrue(server.requests().get(0).bodyText().contains("my custom reason"),
+                                                server.requests().get(0).bodyText()),
+                            () -> assertTrue(out.toString().contains("✓ old-app released"), out.toString())
         );
     }
 
@@ -646,9 +644,9 @@ class ProjectCommandTest {
 
         int code = execute("project", "release", "old-app", "--reason", "my-reason", "--no-input");
         assertAll(
-                () -> assertEquals(3, code),
-                () -> assertTrue(err.toString().contains("Release confirmation required (--yes)"), err.toString()),
-                () -> assertTrue(server.requests().isEmpty(), "no request may be sent")
+                            () -> assertEquals(3, code),
+                            () -> assertTrue(err.toString().contains("Release confirmation required (--yes)"), err.toString()),
+                            () -> assertTrue(server.requests().isEmpty(), "no request may be sent")
         );
     }
 
@@ -677,9 +675,9 @@ class ProjectCommandTest {
 
         int code = executeWithInput("n\n", "project", "unenrol", "old-app");
         assertAll(
-                () -> assertEquals(0, code),
-                () -> assertTrue(server.requests().isEmpty(), "no request may be sent when declined"),
-                () -> assertTrue(out.toString().contains("Unenrol the project?"), out.toString())
+                            () -> assertEquals(0, code),
+                            () -> assertTrue(server.requests().isEmpty(), "no request may be sent when declined"),
+                            () -> assertTrue(out.toString().contains("Unenrol the project?"), out.toString())
         );
     }
 

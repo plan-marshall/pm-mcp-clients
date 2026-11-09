@@ -14,6 +14,7 @@ import java.io.IOError;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringReader;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -253,14 +254,14 @@ public final class ProjectCommand implements Callable<Integer> {
                 try {
                     var name = Path.of(path).getFileName();
                     projectId = name != null ? name.toString() : path;
-                } catch (Exception _) {
+                } catch (IllegalArgumentException | InvalidPathException _) {
                     projectId = path;
                 }
             }
 
             var source = entryId != null
-                    ? ProjectOnboardingSource.forEntry(context.runtime(true), context.gate(), entryId)
-                    : new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId);
+                                ? ProjectOnboardingSource.forEntry(context.runtime(true), context.gate(), entryId)
+                                : new ProjectOnboardingSource(context.runtime(true), context.gate(), projectId);
 
             var startPrompt = new StartPrompt(context, out, locale, noInput);
             var dialogue = new StateDialogue(source, out, locale, stateId -> {
