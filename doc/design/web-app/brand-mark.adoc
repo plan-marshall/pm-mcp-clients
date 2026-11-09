@@ -1,185 +1,301 @@
-= Design: Web App, Brand Mark
+= Design: Web App, Brand Mark and Mascot
 :toc: left
 :toclevels: 2
 :nofooter:
 
-link:../README.adoc[Design] » link:README.adoc[Web App] » Brand Mark
+link:../README.adoc[Design] » link:README.adoc[Web App] » Brand Mark and Mascot
 
-_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1] (enter and connect), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-1[UC-PLN-1] (follow a plan down to its parts)_
+_Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-1[UC-ENT-1] (enter and connect), link:../../../../plan-marshall-documentation/doc/use-cases/02-entry.adoc#UC-ENT-2[UC-ENT-2] (a revoked device, the network listener turned off), link:../../../../plan-marshall-documentation/doc/use-cases/01-onboarding.adoc#UC-ONB-1[UC-ONB-1] (set up the machine), link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.adoc#UC-PLN-7[UC-PLN-7] (see what needs the operator)_
 
-_Relies on: link:README.adoc#frame[Web App, The Frame] (where the mark sits), link:workflow-visual-language.adoc[Workflow Visual Language] (the visual grammar and the SVG contract the mark also follows), link:interaction-affordances.adoc[Interaction Affordances] (the brand's advisory)_
+_Relies on: link:README.adoc#frame[Web App, The Frame] (where the icon sits), link:workflow-visual-language.adoc[Workflow Visual Language] (the SVG contract the monochrome icon follows, and the colour exception), link:components-tags.adoc#kind-tints[Tags and Kinds, The Three Kind Tints] (the kind tints stay clear of the mascot's colours), link:../../../../plan-marshall-documentation/doc/specification/cli-and-security/03-web-server.adoc#web-app[CLI, Coordination & Security Specification, Web App] (the content security policy every image obeys)_
 
-Status: `AGREED`. This document is the authority for the project's own mark: how it is drawn, what its parts mean, how it is delivered, and how it is used beside the brand text.
-
-image::../../resources/diagrams/plan-marshall-brand-mark.svg[The plan-marshall brand mark,240,align=center]
+Status: `AGREED`. This document is the authority for the brand of the web app: the brand icon (how it is drawn, its colours, where it is used), the waiting mark, and the provenance of both. Its part link:brand-mark-mascot.adoc[The Mascot] is the authority for the mascot as illustration: the surfaces it appears on, the asset rules, the rail-foot bear, and the closed set of six poses with their briefs.
 
 [#purpose]
-== What the Mark Is
+== What the Brand Is
 
-The mark is the web app's own sign: three ascending plan sheets, a baton across them, and a node at the leading edge. It sits in the header beside the visible word `plan-marshall`, and it is the same drawing in the browser tab.
+plan-marshall has a mascot: the marshal bear, a bear in a brown cowboy hat with a gold sheriff star, a vest, and a clipboard headed `PLAN` with a ticked checklist. The web app carries it in three forms, each with one job:
 
-It replaces the character `✦`, which read as a generic sparkle rather than as this project. The mark is original artwork, drawn for this project; it is not a licensed icon, a stock glyph, or a copy of another product's logo.
-
-[#construction]
-== Construction
-
-[cols="1,2",options="header"]
+[cols="1,2,2",options="header"]
 |===
-|Rule |Drawing
+|Form |What it is |Job
 
-|Grid
-|`24 × 24` coordinate space, drawing inside `2..22` on both axes. No part relies on the rendered size.
+|*The brand icon* (<<icon>>)
+|A small vector drawing derived from the mascot, beside the wordmark `plan-marshall`
+|Says "this is plan-marshall": in the rail head, on the pairing page, in the browser tab. It never changes with state.
 
-|Colour
-|One colour, `currentColor`, in both the fills and the stroke of the in-app drawing. No gradient, no baked-in hex, no shadow; the standalone tab copies are the one exception (<<theme>>).
+|*The mascot figure* (link:brand-mark-mascot.adoc[The Mascot])
+|The raster illustration of the bear, whole or as a bust, in one of six poses
+|Decoration on calm surfaces only: pairing, onboarding welcome and done, empty states, terminal states, the rail foot.
 
-|Sheets
-|Three filled plan sheets rising left to right, each with a slanted top edge and a vertical outer edge. Their heights step up: the first ends above the baseline, the second higher, the third highest.
-
-|Baton
-|One round-capped diagonal rod from the lower left to the upper right, resting across the first two sheets and pointing at the third.
-
-|Node
-|One small filled dot at the leading edge of the third sheet, where the baton points.
-
-|Silhouette
-|One readable outline at `20`, `24` and `64` px. The shapes are told apart by the silhouette, not by colour; there is no text, no letter, and no four-point sparkle in the drawing.
+|*The waiting mark* (<<waiting-mark>>)
+|The mascot's clipboard as a line icon whose lines are ticked one after another
+|Shows that the operator waits on the system during a long wait, always beside a text that says what runs.
 |===
 
-[#brand-colour]
-== The Brand Colour
+The icon *replaces* the earlier abstract mark (three ascending plan sheets, a baton and a node), so the app has one brand sign. `--color-brand` (violet, `#5B4BDB`, lifted in dark) stays the accent of the interface — the one primary act, the focus ring and the selected item (link:components.adoc#rules[Components, Rules Every Component Keeps]) — and no longer colours the brand sign. The mascot's warm palette and the violet accent are near-complementary, so the two work together as long as the mascot stays a drawing and violet stays the interface's.
 
-The mark is drawn in the brand colour, the token `--color-brand` of `pm-web-app/src/styles/tokens.css`:
+[#palette]
+== The Mascot Palette
 
-[cols="1,1,2",options="header"]
+The mascot palette is five tokens, `--color-mascot-*`. The colour rendering of the brand icon and the browser-tab copies draw the fur, the gold and the outline; the hat and the cream are the bear's colours for any vector drawing of the bear itself. They are the same in both themes: the brand is one drawing, not a themed glyph. They are design tokens of this document; the package that delivers the icon adds them to `pm-web-app/src/styles/tokens.css`, where the token lint covers them.
+
+[cols="2,1,3",options="header"]
 |===
-|Theme |Value |Reading
+|Token |Value |Drawn as
 
-|Light
-|`#5B4BDB`
-|The delivered colour: a saturated blue-violet, dark enough for text and glyphs on the light surfaces.
+|`--color-mascot-fur`
+|`#E17512`
+|The centre disc of the star badge.
 
-|Dark
-|`#8B7EF9`
-|The same hue lifted for the dark surfaces, so the mark keeps its contrast there.
+|`--color-mascot-gold`
+|`#F2B630`
+|The star of the badge.
 
-|On the brand plate
-|`--color-on-brand`
-|The mark inside the rail head's brand-coloured square is drawn in the on-brand colour, not in the brand colour itself.
+|`--color-mascot-hat`
+|`#A0602E`
+|The bear's hat in a vector drawing of the mascot; the brand icon does not draw it. Lighter than the source's dark brown, so a hat drawn in it keeps `3:1` against the dark grounds as well (<<theme>>).
+
+|`--color-mascot-cream`
+|`#F6DDB0`
+|The bear's muzzle and inner ears in a vector drawing of the mascot; the brand icon does not draw it.
+
+|`--color-mascot-outline`
+|`#2A1A10`
+|The outline.
 |===
 
-In the app the mark inherits `currentColor`, so a surface that needs the brand colour sets it on the
-mark's container (`--color-brand` in the rail head and on the pairing page). A standalone SVG has no
-page context for `currentColor`, so the two tab copies bake their colours; <<theme>> names them.
+The fur and the gold were sampled from the source figure, and they are the values the kind tints are measured against (link:components-tags.adoc#kind-tints[Tags and Kinds, The Three Kind Tints]); once the tokens exist, that check reads them. The raster illustration keeps its own pixels: the palette governs the vector drawings only.
+
+[#icon]
+== The Brand Icon: the Marshal Star Badge
+
+image::../../resources/diagrams/brand-icon.svg[The brand icon, the marshal star badge, in colour and in monochrome at its sizes, and beside the wordmark in the rail head, light and dark,720,align=center]
+
+*Choice:* the marshal star badge, the operator's decision of 2026-11-08 from a throw-away review sheet that showed it beside a bear-head candidate in the real rail head on the mock runtime. The sheet is not part of the product; its findings are this document.
+
+[#icon-rules]
+=== Drawing Rules
+
+* *Grid*: a `24 × 24` view box; the drawing stays inside `1..23` on both axes. No part relies on the rendered size.
+* *Hand-drawn, not traced*: a few simple shapes taken from the mascot, never an auto-vectorised or resampled copy of the source image.
+* *Colour rendering*: the mascot palette (<<palette>>), solid fills with a dark outline. It is the brand's own drawing and a documented exception to the monochrome icon contract (link:workflow-visual-language.adoc#exceptions[Workflow Visual Language, Exceptions]). It stands in the rail head *without* the violet plate of the earlier mark, on the pairing page, and in the browser tab.
+* *Monochrome rendering*: one colour, `currentColor` in every fill, no literal colour, the inner details cut out of the silhouette. It follows the SVG contract of link:workflow-visual-language.adoc#grammar[Workflow Visual Language, Visual Grammar] apart from its solid silhouette, and serves every one-colour use: a muted glyph, forced colours (`@media (forced-colors: active)`, where it takes the system's text colour), and print.
+* *No text in the drawing*: the badge carries no `MARSHALL`.
+* *One sign*: the icon is always the same drawing, at every size and in the browser tab; the one addition there is the attention dot (<<favicon>>). The icon never marks a state, a kind or a count.
+* *The wordmark stays*: the visible word `plan-marshall` stands beside the icon wherever the brand is shown as a block.
+
+[#badge]
+=== The Drawing
+
+The sheriff star the bear wears on its hat, alone, as a badge. It is a simple silhouette that stays legible at `16` px and works in one colour.
+
+[cols="1,3",options="header"]
+|===
+|Part |Drawing
+
+|Star
+|A five-point star with broad arms, point up, in `--color-mascot-gold`, outlined.
+
+|Tips
+|A ball on each of the five tips, as on a marshal's badge.
+
+|Centre
+|A round disc in `--color-mascot-fur` in the middle of the star, outlined: the badge's plate, without its word.
+
+|Favicon
+|The same drawing at `16` px.
+
+|Monochrome
+|The star and its balls as one silhouette, with a ring cut out around a solid centre.
+|===
+
+[#distance]
+=== Distance from the Kind Marks
+
+The brand icon sits near the kind marks (in the rail, in a list beside a mascot empty state), so it must not be read as a kind:
+
+* No kind icon is a clipboard, a star or a head (link:components-tags.adoc#kind-mark[Tags and Kinds, KindMark]); the clipboard belongs to the waiting mark alone.
+* The badge is told apart from `kind-plan`, `kind-report` and `kind-task` by its silhouette at `16` and `24` px. The final kind marks are those of link:components-tags.adoc#kind-mark[Tags and Kinds].
+* *The favourite star*: the UI set's `act.favourite` is an outline five-point star in the set's line art, and `act.favourite-on` the same outline with a small dot at its centre. The badge stays apart from them by its ball tips, its centre disc on a solid star and its colour; in monochrome at `16` px the difference is the ball tips and the centre disc against an outline star.
+* The kind tints keep their measured distance from the mascot's fur and gold (link:components-tags.adoc#kind-tints[Tags and Kinds, The Three Kind Tints]).
+
+[#icon-files]
+=== Files
+
+The design's drawings of the icon are the reference the brand assets package builds from (<<implementation>>):
+
+[cols="1,3",options="header"]
+|===
+|File |What it holds
+
+|`doc/resources/brand/star-badge-colour.svg`
+|The colour rendering, in the mascot palette.
+
+|`doc/resources/brand/star-badge-mono.svg`
+|The monochrome rendering, `currentColor`.
+
+|`doc/resources/brand/favicon.svg`, `favicon-attention.svg`
+|The browser-tab copies, without and with the attention dot.
+
+|`doc/resources/brand/waiting-mark.svg`
+|The waiting mark's static drawing, every line ticked (<<waiting-mark>>).
+|===
+
+[#colour]
+== Colour
+
+* *The colour rendering* is the brand: the mascot palette, the same in both themes, never recoloured by a filter or a theme. It is the one place where an icon of the app carries literal colour (link:workflow-visual-language.adoc#exceptions[Workflow Visual Language, Exceptions]).
+* *The monochrome rendering* inherits `currentColor`: the surface sets the colour its use needs (`--color-text-muted` for a muted glyph, the system text colour in forced colours).
+* *No plate*: the icon stands on the rail's own ground. `--color-brand` and `--color-on-brand` no longer frame it.
 
 [#uses]
-== Where the Mark Is Used
+== Where the Icon Is Used
 
 [cols="1,2,2",options="header"]
 |===
 |Use |Drawing |Where
 
 |Rail head
-|`24` px in a `28` px brand-coloured square, in the on-brand colour; the wordmark `plan-marshall` at `--text-md`, weight `600`
-|`BrandMark` with `plate`, beside the visible wordmark (`web-app-shell`).
+|`28` px, colour, no plate; the wordmark `plan-marshall` at `--text-md`, weight `600`
+|`BrandMark` beside the visible wordmark (link:README.adoc#shell[Web App, The App Shell]). The collapsed rail (`64` px) shows the same `28` px icon alone, with the wordmark as its accessible name.
+
+|Header before onboarding
+|`28` px, colour, beside the wordmark
+|The header the onboarding shows until the machine is set up (link:onboarding.adoc#frame[Onboarding, Frame]).
 
 |Pairing page
-|`64` px, in the brand colour; the wordmark, the pairing code at `--text-3xl` in monospace, and the QR code
-|The first screen a buyer sees (`PairingView`).
-
-|Empty states
-|`24` px in `--color-text-muted`
-|The empty states of the views, once those views arrive with their own plan; the mark is the surface's illustration, never its only text.
+|`28` px, colour, beside the wordmark while the hero figure shows; `64` px above the wordmark where the figure is hidden (a phone, or too little height)
+|`PairingView` (link:entry.adoc#pairing[Entry, The Pairing Page]). The figure is the one large drawing of the page, so the icon stays small beside it.
 
 |Browser tab
-|`24` px, in the baked light-theme brand colour; with a small attention dot while the attention count is above zero
-|The favicon of `app.html`, applied by `src/lib/favicon.ts`.
+|`16` px, colour, the same drawing; with the attention dot while the attention count is above zero
+|The favicon of `app.html`, applied by `src/lib/favicon.ts` (<<favicon>>).
+
+|One-colour uses
+|Monochrome, at `16`, `20`, `24`, `28` or `64` px
+|Forced colours and print; any new monochrome use is recorded here first.
 |===
 
-[#meaning]
-== Meaning of the Parts
-
-[cols="1,3",options="header"]
-|===
-|Part |Reading
-
-|The three ascending sheets
-|The plan's stages, in order: a plan is read as a sequence that moves upward and forward, never as a single document.
-
-|The baton
-|The marshal's direction: the plan is led, not merely filed. The rod crosses the sheets and points at the leading one.
-
-|The node
-|The runtime at the leading edge: the point that is running now, the one the plan view jumps to.
-
-|The whole
-|Upright, forward-moving, and plan-led; the same character the mascot carries, abstracted into geometry rather than copied from its illustration.
-|===
-
-[#provenance]
-== Provenance
-
-* *Original.* The geometry was drawn from this brief. It is not traced, auto-vectorised, resampled, embedded, or otherwise derived from `planmarshall.png`, and the PNG is never shipped with the app.
-* *No third-party mark.* No vendor logo, icon-font glyph, stock icon, or remote asset is copied or referenced. The baton is a plan document's rod, not a brand's device; the mark deliberately avoids the four-point sparkle that reads as another assistant's logo.
-* *Licence.* The drawing is the project's own, under the repository's licence, like the generated workflow icons (link:workflow-visual-language.adoc#provenance[Workflow Visual Language, Provenance]).
-* *Recorded source.* The delivered vector is `pm-web-app/src/lib/icons/brand/plan-marshall-mark.svg`; the component carries the same paths inline. The two browser-tab copies are `pm-web-app/static/brand-mark.svg` and `pm-web-app/static/brand-mark-attention.svg`.
-
-[#implementation]
-== Implementation
-
-`pm-web-app/src/lib/components/BrandMark.svelte` draws the delivered geometry as an inline SVG:
-
-* `size`: `20`, `24` or `64` — the drawn width and height, and the `data-size` the tests read.
-* `plate`: draws the `24` px mark inside the rail head's `28` px square, in `--color-brand` with the
-  mark in `--color-on-brand`. A rail head therefore reads `<BrandMark size={24} plate />`.
-* `currentColor` in every fill and stroke, so the mark follows the surrounding text colour; the rail
-  head, the pairing page and the empty states each supply the colour their use needs.
-* `aria-hidden="true"` by default; a `label` turns it into `role="img"` with that accessible name.
-* `data-testid="brand-mark"`, and `data-testid="brand-mark-plate"` on the square.
-
-The header keeps its `app-header__logo` wrapper (spacing, `color: var(--color-primary)`), the brand
-text beside the mark, and the `<BrandMark size={24} />` it already carried. The linked and the inert
-brand both carry the mark; only the wrapper differs. The rail head arrives with the app shell and
-takes the `plate` form.
+* *Not used*: the empty states (they take the mascot figure or a UI icon, link:brand-mark-mascot.adoc#surfaces[The Mascot, Surfaces]), the top bar, object pages, list rows, dialogs and toasts.
+* *The icon is the sign, not a figure*: it does not count as the one mascot figure a screen may show (link:brand-mark-mascot.adoc#poses[The Mascot, Poses]).
 
 [#favicon]
 == The Browser Tab
 
-`src/app.html` links `brand-mark.svg`; `pm-web-app/src/lib/favicon.ts` keeps that link in step with
-the attention count:
+`src/app.html` links `brand-mark.svg`; `pm-web-app/src/lib/favicon.ts` keeps that link in step with the attention count, as today:
 
-* `faviconHref(count)` answers `brand-mark-attention.svg` while the count is above zero and
-  `brand-mark.svg` otherwise.
-* `applyFavicon(count)` writes the answer onto the document's icon link; a document without one keeps
-  the icon its markup gave it.
-* The layout calls it with the count the header badge and the tab title already carry, so the three
-  never disagree. The attention inbox feeds the same count once it exists.
+* `faviconHref(count)` answers `brand-mark-attention.svg` while the count is above zero and `brand-mark.svg` otherwise; `applyFavicon(count)` writes it onto the document's icon link.
+* The two files keep their names and are redrawn as the badge (<<icon-files>>), so `favicon.ts` does not change.
+* A standalone SVG has no page context for a token, so the two copies bake the mascot palette (<<palette>>).
+* The attention dot is drawn in the upper right corner, `#B86E00` (the light-theme `--color-attention`) inside a white ring of `1.4` units. The dot is close in hue to the fur and the gold (`1.3:1` against the fur), so the white ring is what sets it apart from the drawing, on a light and a dark tab strip alike.
+
+[#waiting-mark]
+== The Waiting Mark
+
+image::../../resources/diagrams/brand-waiting-mark.svg[The clipboard waiting mark in its cycle of ticks, still with reduced motion, and beside its text in the chat's working line,720,align=center]
+
+The waiting mark is the mascot's clipboard: it shows that the operator waits on the system. It is a sign of its own, apart from the icon (the operator's decision of 2026-11-08).
+
+[#waiting-drawing]
+=== Drawing
+
+* A clipboard on the `24 × 24` grid: a board with rounded corners, a clip at its top edge, and a short to-do list of three lines. In front of each line stands a small dot while it is open and a tick once it is done.
+* The line weight and the palette of the UI icon set: a `1.5` unit stroke, round caps and joins, `currentColor` (`--color-text-secondary` beside a text). It carries no mascot colour: it is a sign in a line of text, not the brand.
+* Size: `20` px, beside its text, on every surface (the chat's working line, the one main wait of an onboarding state).
+* `doc/resources/brand/waiting-mark.svg` is the drawing with every line ticked; the component draws the same paths inline, so each tick can be animated on its own.
+
+[#waiting-motion]
+=== Motion
+
+* *The cycle*: the three lines are ticked one after another, top to bottom, ✓ by ✓ — each tick is drawn in `0.3 s`, `0.6 s` after the one before — then the full list holds, the ticks fade, and the list starts again. One cycle takes `3.6 s`.
+* *Reduced motion*: the mark stands still, with the list unticked, never stopped mid-cycle. Unticked rather than ticked, because a fully ticked list reads as "done" while the system is still at work.
+* The animation is CSS in the component's own stylesheet; it sets no `style` attribute, which the content security policy would block.
+
+[#waiting-uses]
+=== Where It Appears
+
+* *Only where the operator waits on the system*:
+** the chat's working line (`replan liest den Plan…`), which the chat design places;
+** long waits on screens without a figure: an onboarding state the server works in (`[S]`) or a model at work (`[M]`, link:onboarding.adoc#model-at-work[Onboarding, Model at Work]), and the model tests of the machine settings.
+* *Short waits keep the neutral `Spinner`*: a button or a single check that answers in under about 1–2 s, and each line of a check list; the `Spinner`'s label comes from the catalogue, never the literal `Loading…`.
+* *Never on a screen that shows a mascot figure*: the pairing page, the onboarding welcome and done, the terminal states, and the app's first load keep the `Spinner` for their own waits.
+* *Web only*: the terminal client keeps its own spinner glyph; the waiting mark is a drawing of the web app.
+
+[#waiting-rules]
+=== Rules
+
+* Always with a text that says what runs; the mark alone means nothing.
+* One per screen. A second wait on the same screen uses the `Spinner`.
+* It never marks an object's state: a running plan keeps its `StatusLabel` (link:components-tags.adoc#status-label[Tags and Kinds, StatusLabel]).
+* No mascot as the chat partner: the roles keep their neutral role glyphs.
+* It is decorative (`aria-hidden="true"`); the text beside it sits in a polite live region (`role="status"`), so a screen reader hears the text, not the mark.
 
 [#theme]
 == Theme and Contrast
 
-`currentColor` inherits `--color-brand` on the rail head and on the pairing page, so the mark keeps
-the brand colour in both themes and the theme switch needs no separate asset. The mark is a solid
-silhouette of a saturated colour, so its contrast against the surface is well above the `3:1` a
-graphical object needs; the check is visual in both themes, and the mark is never the only carrier of
-a meaning.
+The colour icon is the same drawing in both themes. Its silhouette is carried by the outline on light grounds and by the fills on dark grounds; each was measured against the grounds the icon stands on (`--color-bg-rail`, `--color-bg-surface`, `--color-bg-app`, `--color-bg-subtle`, and a light and a dark browser tab strip):
 
-The two tab copies bake their colours, because a standalone SVG has no page context: the mark in the
-light-theme brand colour `#5B4BDB`, the attention dot `#B86E00` (the light-theme `--color-attention`)
-inside a white ring, so the dot stays legible against the mark's third sheet. That makes the tab
-legible on a light and a dark tab strip; the in-app mark keeps `currentColor`.
+[cols="2,2,2",options="header"]
+|===
+|Colour |On the light grounds |On the dark grounds
+
+|`--color-mascot-outline`
+|`12.8:1` or more — carries the silhouette
+|about `1.1:1` — sinks; the fills carry
+
+|`--color-mascot-fur`
+|`2.4`–`3.1:1` (inside the outline)
+|`5.0:1` or more
+
+|`--color-mascot-gold`
+|`1.4`–`1.8:1` (inside the outline)
+|`8.5:1` or more
+
+|`--color-mascot-hat`
+|`3.8:1` or more
+|`3.1:1` or more
+
+|`--color-mascot-cream`
+|inner detail only
+|inner detail only
+|===
+
+So the badge's outer shape keeps `3:1` as a graphical object in both themes: on light by its outline, on dark by its gold. The hat colour is measured for any vector drawing of the hat; the icon does not draw it. The monochrome rendering inherits the text colour of its surface and keeps that colour's contrast. The two browser-tab copies bake the same palette, so they read on a light and a dark tab strip alike.
+
+[#provenance]
+== Provenance
+
+* *The mascot* is the operator's own work, and the operator holds the right to use it in the product and to modify it — new poses, the icon (the operator's decision of 2026-11-06). The source is `plan-marshall/doc/resources/planmarshall.png` in the repository `plan-marshall` (`1122 × 1402` px, RGBA with a transparent background). It was made with an AI image tool from the operator's own prompt and direction, then selected and edited by the operator (the operator's statement of 2026-11-08).
+* *The source stays where it is.* Only derived files are copied into `pm-web-app` (link:brand-mark-mascot.adoc#assets[The Mascot, Asset Rules]); the `1.4 MB` source PNG is never shipped.
+* *The icon* is new vector artwork drawn by hand for this project from the mascot, by the D3 design session (2026-11-08): a few shapes taken from the figure, not traced, auto-vectorised or resampled. It is the project's own, under the repository's licence.
+* *The waiting mark* is original line art in the style of the UI icon set, drawn for this project; it shares the provenance row of link:workflow-visual-language.adoc#provenance[Workflow Visual Language, Provenance Table].
+* *The poses* each get a row in link:brand-mark-mascot.adoc#pose-provenance[The Mascot, Provenance of the Poses] — who or which tool made it, and the operator's acceptance — before the pose ships.
+* *No third-party mark*: no vendor logo, icon-font glyph, stock icon, or remote asset is copied or referenced.
+
+[#implementation]
+== Implementation
+
+The D3 brand assets package delivers this design after it is agreed; the component specifications are in link:components-brand.adoc[Components, Brand Pieces].
+
+* `BrandMark` is redrawn as the badge, in colour from the `--color-mascot-*` tokens and in monochrome, without the plate (link:components-brand.adoc#brand-mark[Brand Pieces, BrandMark]).
+* `static/brand-mark.svg` and `static/brand-mark-attention.svg` are redrawn as the badge (<<favicon>>).
+* `WaitingMark` draws the waiting mark with its text, the cycle of <<waiting-motion>> and its still state under reduced motion (link:components-brand.adoc#waiting-mark[Brand Pieces, WaitingMark]).
+* The `--color-mascot-*` tokens join `tokens.css`; `tokens.test.ts` allows their literals there only, and the kind-tint check reads the fur and the gold from them.
+* The mascot figure and its uses are link:brand-mark-mascot.adoc#implementation[The Mascot, Implementation].
 
 [#accessibility]
 == Accessibility
 
-* The mark is decorative beside the visible word `plan-marshall`: `aria-hidden="true"`, no focus stop, no name of its own.
-* The brand's accessible name is the visible text, with the header button's `aria-label` (`web.frame.home`) where the brand is a link.
-* The mark adds no animation, no colour-only state, and no meaning that the text does not also carry.
+* The icon is decorative beside the visible word `plan-marshall`: `aria-hidden="true"`, no focus stop, no name of its own. The brand's accessible name is the visible word, and the rail head's button keeps its `aria-label` (`web.frame.home`).
+* Where the icon stands alone (the collapsed rail), the button's accessible name carries the brand.
+* The icon never carries a state, so it never needs a text alternative for one. The browser tab's attention dot repeats the count the tab title already carries.
+* The waiting mark is decorative; its text carries the meaning (<<waiting-rules>>).
 
 [#usage]
 == Usage Rules
 
-* Use the delivered geometry; do not redraw, recolour, rotate, or add a shadow to it.
-* Keep the delivered sizes: `20` on a compact surface, `24` in the header and in the rail head's `28` px square, `64` on the pairing page. Any other size is a new use and is recorded here first.
-* Keep the visible brand text beside the mark. The mark never stands alone as the only identifier of the project.
-* Record a new size or a new surface in this document before shipping it.
+* Use the delivered drawings; do not redraw, recolour, rotate, add a shadow, or put the colour icon on a plate.
+* Keep the delivered sizes of <<uses>>. Any other size or a new surface is recorded in this document before it ships.
+* Keep the visible wordmark beside the icon. The icon never stands alone as the only identifier of the project, except in the collapsed rail and the browser tab, where an accessible name or the tab title carries the word.
+* The icon and the rail-foot bear never change with state. State is said by the state's own words, colours and icons.

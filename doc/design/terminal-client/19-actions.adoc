@@ -12,7 +12,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/06-contro
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/runtime-lifecycle/02-plan-pause-and-stalled-plans.adoc#plan-pause[Pausing and Starting a Plan], link:../../../../pm-mcp-core/doc/specification/state-catalogue/04-plan-finalize-terminal.adoc#plan-end[Cancelling and Abandoning Archive], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-actions[An Epic's Actions], link:../../../../pm-mcp-core/doc/specification/model-work/08-epic-coordination.adoc#epic-review[The Review], link:../../../../pm-mcp-core/doc/specification/state-catalogue/01-conventions-generic-conditions.adoc#holds[Holds and Their Acts], link:../../../../pm-mcp-core/doc/specification/state-catalogue.adoc#chat[Chatting with the Planning Role: `chat`], link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#ended-work[Ended Work]_
 
-Status: `DRAFT`.
+Status: `AGREED`.
 
 What the actions are, per state, is link:../shared/work-actions.adoc[Actions on Plans and Epics], for both clients (link:../../../../plan-marshall-documentation/doc/use-cases/06-controlling-work.adoc[Use Cases, Controlling Work]). This part is how the console offers them. The conventions of the transcripts are those of xref:05-transcripts-entry.adoc#transcripts[Transcripts].
 
@@ -330,7 +330,7 @@ F-0004  Reconnect loses the last event                            open
               but the cursor is written after the event is delivered.
   Rules       a fix must hold for every transport; covered by a test that
               drops the connection between delivery and cursor write
-  Origin      landing of relay-reconnect (#211) · 5 days ago
+  Origin      landing of relay-reconnect (#211) · 5 d ago
   Proposal    promote to a plan: it needs a change across two modules
 k) keep   d) drop   p) promote ←   e) edit   h) chat   r) accept the remaining 4   f) finish
 ›  e
@@ -368,7 +368,7 @@ k) keep   d) drop   p) promote   e) edit   h) chat   r) accept the remaining 3  
     ✓  F-0005 moved to the watches
 F-0006  Relay ignores the proxy settings                          open · untrusted
   Statement   “The relay ignores HTTPS_PROXY; see the CI log …”
-  Origin      review comment on #216 · 2 days ago
+  Origin      review comment on #216 · 2 d ago
 k) keep   d) drop ←   p) promote   e) edit   h) chat   r) accept the remaining 2   f) finish
 ›  d
   Reason   › the relay never uses a proxy: it connects to the local runtime only

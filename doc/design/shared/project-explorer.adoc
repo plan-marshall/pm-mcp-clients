@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/04-projec
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/specification/runtime-model/01-processes-and-transport.adoc#project-explorer[The Projects of the Machine], link:../../../../pm-mcp-core/doc/specification/credentials-and-enrolment/02-enrolment-and-project-lifecycle.adoc#project-release[Releasing Ends Work as the Operator Ends It], link:../../../../pm-mcp-core/doc/specification/store-schemas/12-machine-stores.adoc#explorer-store[The Operator's Projects (`explorer.json`)], link:../../../../pm-mcp-core/doc/specification/credentials-and-enrolment/02-enrolment-and-project-lifecycle.adoc#enrolment-lifecycle-release[Enrolment, Lifecycle Gate & Release], link:../../../../pm-mcp-core/doc/specification/timeouts/01-job-budgets-and-waits.adoc#release-landing-wait[Release Landing Wait], link:../../../../pm-mcp-core/doc/specification/filesystem-layout/03-project-store.adoc#archives[Archives]_
 
-Status: `DRAFT`. Shared by both clients: link:../terminal-client/17-projects.adoc[Terminal Client, Projects]; the web app: designed by its package `web-projects`.
+Status: `AGREED`. Shared by both clients: link:../terminal-client/17-projects.adoc[Terminal Client, Projects]; the web app: designed by its package `web-projects`.
 
 The explorer is where the operator finds a project among all the machine's projects, and goes from it to its work. It is the counterpart of _Running Work_ (link:plan-overview.adoc[Plan Overview]): Running Work shows only what runs, the explorer every enrolled project.
 
@@ -78,7 +78,7 @@ A project's onboarding that has not reached its enrolment has no project id yet 
 
 A project's running work shows its own pull requests by their numbers, each a link to the provider, where the client shows its plans (link:plan-overview.adoc#item-rows[A Plan, an Epic]).
 
-*A row in the web app* is a `RowLink`: a click anywhere on it opens the project, and its acts are its `RowMenu` at its right end, the acts of <<actions>> from the project table of `byState` (link:../web-app/components.adoc#row-link[Web App, RowLink], link:../web-app/components.adoc#row-menu[RowMenu]). The favourite `★` is a `Toggle` above the link and never opens it. The slots of the row are those of every row (link:../web-app/components-tags.adoc#tag-places[Web App, Tags and Kinds, One Fixed Place]).
+*A row in the web app* is a `RowLink`: a click anywhere on it opens the project page (<<project-page>>), and its acts are its `RowMenu` at its right end, the acts of <<actions>> from the project table of `byState` (link:../web-app/components.adoc#row-link[Web App, RowLink], link:../web-app/components.adoc#row-menu[RowMenu]). The favourite `★` is a `Toggle` above the link and never opens it. The slots of the row are those of every row (link:../web-app/components-tags.adoc#tag-places[Web App, Tags and Kinds, One Fixed Place]).
 
 *One step to a plan, in the web app*: the row of a ready project carries _Add a plan_ (`project.action.add_plan`) as a visible act before its `RowMenu`, the one visible act a row may carry, so a plan is started without selecting the project first; a project that is not ready shows it disabled with the reason (`project.action.disabled_not_ready`). _Add an epic_ stays among the acts of the menu. The terminal client keeps its command.
 
@@ -97,6 +97,17 @@ Selecting a project offers, in this order:
 . *Favourite*: mark or unmark it.
 
 A released project offers _Enrol again_ first, which runs its onboarding again from its identity with its current values and reopens its plan lifecycle, then _Ended work_. A project that is not ready offers _Continue the setup_ first and the two _Add_ actions disabled, with the reason. The two _Add_ actions lead into the start of an epic and of a plan (link:starting-work.adoc[Starting Work]); while an entry of the project is open, _Continue starting_ comes first (link:starting-work.adoc#leaving[Leaving and Coming Back]).
+
+[#project-page]
+=== The Project Page in the Web App
+
+In the web app a project has one page: the object column of the lens _Projects_ at `/projects/{id}` (link:../web-app/navigation.adoc#lenses[Web App, Navigation, Lenses and the Rail]), with the list of projects as the column to its left. Every project link outside a lens's own chain opens it — a row of the explorer, a match of find, a report's path — and the rail moves to _Projects_.
+
+* *The head*: the project's `KindMark`, its display name and id, its readiness, its marker, and the actions above as its `ActionBar` — _Add a plan_ the primary while it is ready, _Continue the setup_ while it is not, _Enrol again_ while it is released; _Favourite_ a `Toggle` in the head.
+* *Its work* (the first tab): its running plans and epics as rows, and its ended work below them, newest first (link:plan-overview.adoc#ended[Plan Overview, Ended Work]). A row opens the plan or the epic at its own address in _Running work_, and the rail moves with it.
+* *Its setup* (`?tab=setup`): a later run of its onboarding at the aspect the operator chooses (link:project-onboarding.adoc#later-run[A Later Run]), and at its end the release and the unenrolment (<<release>>).
+
+The terminal keeps the actions of a project as a choice (link:../terminal-client/17-projects.adoc[Terminal Client, Projects]).
 
 [#release]
 == Release and Unenrol

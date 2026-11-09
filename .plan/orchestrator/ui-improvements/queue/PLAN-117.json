@@ -2,10 +2,10 @@
   "id": "PLAN-117",
   "slug": "web-acts-fourth-residue",
   "workstream": "WS-03",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-117-web-acts-fourth-residue",
+  "pr": "370",
+  "landing": "landings/PLAN-117.md",
   "seq": 117
 }

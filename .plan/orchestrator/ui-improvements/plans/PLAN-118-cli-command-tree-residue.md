@@ -105,6 +105,7 @@ process it cannot prove is the recorded one, and every item has an answer where 
 - OBSERVED: `RuntimeRecord.processAlive` returns true when `startInstant == null` or the process has no start info
   (`.orElse(true)`), and `DrainCommand.call()` signals the filtered handle — read by the orchestrator at `origin/main`
   `d8efe35f` on 2026-11-07
+  - verdict: corroborated | checked_at: 6c105a86f9163de6723d5d9fde61ef21f8d8bed9 | by: ui-improvements/analyze | rescoped: n/a | evidence: RuntimeRecord.java:66 processAlive .orElse(true) and DrainCommand.java:99 destroy() of the filtered handle, read at 2fc2c214^ (=6c105a86) by the PLAN-118 landing leaf; fixed by identifies() in 2fc2c214
 - OBSERVED: PR 358 has 24 threads, 0 unresolved, and one review `5810938147` whose body holds items beyond the threads
   (count 12 per a read-only agent: `DrainCommand:84-85`, `DESIGN_VERBS`, the completer, the bound test); the Sonar gate passed
   with 0 new issues — read through GraphQL and REST on 2026-11-07

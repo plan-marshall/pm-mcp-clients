@@ -75,6 +75,29 @@ class PlanViewLevelTest {
         return new PlanViewLevel(ProcessTree.fromJson(TREE));
     }
 
+    private static final String TREE_WITH_CHANGE = TREE.replace(
+                        "\"current_position_path\"",
+                        "\"change\": {\"files\": 12, \"insertions\": 340, \"deletions\": 27, \"unplanned\": 2},\n"
+                                            + "  \"current_position_path\"");
+
+    @Test
+    @DisplayName("the plan view shows the size of change when the plan carries one and no line without")
+    void changeSizeLine() throws Exception {
+        var withChange = new PlanViewLevel(ProcessTree.fromJson(TREE_WITH_CHANGE));
+        var line = withChange.rows("en").stream()
+                            .filter(row -> PlanViewLevel.CHANGE_ROW_ID.equals(row.id()))
+                            .map(TuiRow::line)
+                            .findFirst()
+                            .orElse("");
+        assertAll(
+                            () -> assertTrue(line.contains("change so far"), line),
+                            () -> assertTrue(line.contains("12 files"), line),
+                            () -> assertTrue(line.contains("+340"), line),
+                            () -> assertTrue(line.contains("\u221227"), line),
+                            () -> assertTrue(line.contains("2 unplanned"), line),
+                            () -> assertFalse(ids(view()).contains(PlanViewLevel.CHANGE_ROW_ID)));
+    }
+
     private static List<String> ids(PlanViewLevel view) {
         return view.rows("en").stream().map(TuiRow::id).toList();
     }

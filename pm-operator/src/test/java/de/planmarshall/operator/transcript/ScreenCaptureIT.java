@@ -160,9 +160,9 @@ class ScreenCaptureIT {
                     // that opened this state from being read together with the exit key.
                     LockSupport.parkNanos(EXIT_PAUSE.toNanos());
                 }
-                if (capture.keys().isEmpty()) {
+                if (capture.keys().isEmpty() || session.exitCode() != null) {
                     Files.writeString(output.resolve(capture.name() + ".stdout.txt"),
-                                        raw, StandardCharsets.UTF_8);
+                                        session.rawOutput(), StandardCharsets.UTF_8);
                 } else {
                     DialogueHarness.type(session, capture.keys());
                     assertTrue(session.awaitExit(READY_TIMEOUT),
@@ -272,6 +272,9 @@ class ScreenCaptureIT {
      *         alternate screen
      */
     private static boolean settled(PtySession session, String raw, long start, boolean console) {
+        if (session.exitCode() != null) {
+            return true;
+        }
         if (raw.contains(StartPrompt.SUFFIX) || (console
                             && (raw.contains(CONSOLE_PROMPT) || raw.contains(BADGED_CONSOLE_PROMPT)))) {
             return System.nanoTime() - start >= MIN_WAIT.toNanos();

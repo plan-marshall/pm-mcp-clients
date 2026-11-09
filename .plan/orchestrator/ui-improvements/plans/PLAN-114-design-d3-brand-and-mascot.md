@@ -117,6 +117,51 @@ ui-improvements`; read, never write):
 
 Checked at `aa3a9be3`. The gate "after the running PLAN-104" is satisfied (#357 landed); D2 (PLAN-113) is still unlanded for `README.adoc` and `components.adoc` (PLAN-112 landed). No mascot or pose assets and no `WaitingMark` exist yet. The claims name no HEAD later than 60b4bfa5; the production users of `EmptyState` are `ReportsView` only.
 
+## Operator Decision 2026-11-08 (the waiting mark)
+
+Amends `design-review-005.md` §3 and §6 and deliverables 1, 2 and 4; the message's other rules stand. The waiting mark no
+longer follows the icon choice. Both elements of candidate B are kept, in two roles:
+
+- **The marshal star badge** is the brand mark/badge: candidate B on the review sheet is the star badge alone, without the
+  clipboard. The operator still chooses between A (bear head) and B (star badge); `brand-mark.adoc` records the choice.
+- **The clipboard is the waiting mark** (`WaitingMark`), whatever icon is chosen: a clipboard with a short TODO list whose
+  lines are ticked one after another (✓ by ✓, then the list starts again), drawn in the same line weight and palette as the
+  icon set. Static with reduced motion (the list shown fully ticked or unticked, never mid-animation). The star glint is
+  dropped as a waiting animation.
+- Unchanged from §6: always with a text, one per screen, only where the operator waits on the system (the chat's working
+  line, long checks on screens without a figure), never an object's state, short waits (under about 1–2 s) keep the neutral
+  `Spinner`, and no waiting mark on a screen that shows a figure.
+- The review sheet (deliverable 2) shows the animated clipboard waiting mark once, beside both icon candidates, and in the
+  chat's working line and an onboarding check step, light and dark, with and without reduced motion.
+- `components.adoc` (deliverable 4) defines `WaitingMark` as the clipboard with its tick animation, and `brand-mark.adoc`
+  (deliverable 1) carries its drawing and motion rules. Expected Surface unchanged.
+
+## Operator Decisions 2026-11-08 (review of PR #379)
+
+The session stopped at the open pull request #379 (head `a2121ed1`, green, not merged), as the spec says. The operator
+reviewed it and decided:
+
+1. **Icon: B, the marshal star badge.** Fill in the "Choice" line of `brand-mark.adoc`. Delete candidate A's section and
+   drawings and the throw-away review folder.
+2. **Hat brown `#A0602E`** (3:1 or better on every background): accepted.
+3. **Pairing page:** a 28 px icon while the mascot figure shows, and 64 px only where the figure is hidden. Accepted.
+4. **Waiting mark:** one colour, in the interface-icon style. With reduced motion it is still and unticked. Accepted.
+5. **New component `MascotFigure`** (draws every mascot figure and falls back to the original image), and `EmptyState`
+   with a `mascot` option instead of `brand`. Accepted. It goes into `components.adoc` with the edits that wait for D2.
+6. **Provenance:** the source image was made with an AI image tool, from the operator's own prompt and direction, then
+   selected and edited by the operator. The operator owns it and may modify it, as already recorded. **Pose artwork:**
+   later, by a D3 brand-assets package. Until a pose is accepted, its surface shows the original image (the spec's
+   fallback). No artwork blocks the merge of #379.
+
+Still owed in #379 before `AGREED`:
+
+- the `README.adoc` and `components.adoc` edits, after D2's pull request (#380) merges;
+- resolving the last answered thread `PRRT_kwDOVBOtss61CmSl`;
+- setting every D3 document to `Status: AGREED` as the last commit;
+- answering any new review on those commits.
+
+#379 merges after #380, on the operator's word.
+
 ## Hand-Off Command
 
 Lane: none — a direct Claude Code session (operator instruction 2026-11-06). Start it in its own worktree and branch of

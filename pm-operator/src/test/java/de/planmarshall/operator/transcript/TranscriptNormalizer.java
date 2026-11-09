@@ -38,9 +38,12 @@ public final class TranscriptNormalizer {
                         "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})?");
     private static final Pattern CLOCK_TIME = Pattern.compile("(?<!\\d)\\d{2}:\\d{2}(?!\\d)");
     private static final Pattern PROCESS_ID = Pattern.compile("\\bpid\\s+\\d+");
-    private static final Pattern HOURS_MINUTES = Pattern.compile("\\b\\d+ h(?: \\d+ min)?\\b");
-    private static final Pattern MINUTES = Pattern.compile("\\b\\d+ min\\b");
-    private static final Pattern AGO = Pattern.compile("\\b(?:just now|\\d+ (?:s|min|h|d|day|days|week|weeks|month|months) ago)\\b");
+    private static final Pattern DURATION = Pattern.compile(
+                        "\\b\\d+ (?:s|min|h|d|T|day|days|week|weeks)(?: \\d+ (?:h|min))?\\b");
+    private static final Pattern AGO = Pattern.compile(
+                        "\\b(?:just now|gerade eben|last month|letzten Monat|last year|letztes Jahr"
+                                            + "|\\d+ (?:s|min|h|d|T|day|days|week|weeks|month|months|year|years) ago"
+                                            + "|vor \\d+ (?:min|h|T|Tag|Tagen|Monat|Monaten|Jahr|Jahren))\\b");
     private static final Pattern ABSOLUTE_LAST_USED = absoluteLastUsed();
     private static final Pattern TRAILING_SPACE = Pattern.compile("(?m)[ \t]+$");
 
@@ -82,8 +85,7 @@ public final class TranscriptNormalizer {
         text = ISO_INSTANT.matcher(text).replaceAll("<timestamp>");
         text = PROCESS_ID.matcher(text).replaceAll("pid <pid>");
         text = AGO.matcher(text).replaceAll("<ago>");
-        text = HOURS_MINUTES.matcher(text).replaceAll("<duration>");
-        text = MINUTES.matcher(text).replaceAll("<duration>");
+        text = DURATION.matcher(text).replaceAll("<duration>");
         text = CLOCK_TIME.matcher(text).replaceAll("<time>");
         text = ABSOLUTE_LAST_USED.matcher(text).replaceAll("<ago>");
         text = TRAILING_SPACE.matcher(text).replaceAll("");

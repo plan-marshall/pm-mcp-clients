@@ -420,7 +420,7 @@ class PlanViewCommandTest {
                             () -> assertTrue(output.contains("staged plans:")),
                             () -> assertTrue(output.contains("○ staged    relay-auth-v2")),
                             () -> assertTrue(output.contains("completion review: not ready")),
-                            () -> assertTrue(output.contains("remediation.ci-failure · done"))
+                            () -> assertTrue(output.contains("CI failure · done"))
         );
     }
 

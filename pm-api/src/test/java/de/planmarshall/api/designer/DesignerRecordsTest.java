@@ -158,7 +158,7 @@ class DesignerRecordsTest {
                 new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false),
                 List.of(new ProcessNode("init", "Init", "phase", "planned", 1, 1, 0L, null,
                         List.of(), List.of(), null, null, Map.of())),
-                List.of("init"), null, null, 0L);
+                List.of("init"), null, null, 0L, null);
         var result = new WorkflowValidationResult(
                 true,
                 List.of(

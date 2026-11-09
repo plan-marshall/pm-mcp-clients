@@ -44,9 +44,9 @@ How a plan went, on one page: the detail of the report of its end (link:reports.
   [Its plan view]   [Chat]
 ----
 
-* *The head*: the path `project › epic › plan` as in the plan view, each part one step away (link:plan-view.adoc#way-out[Plan View, Its Project and Its Epic]); the title; the outcome (link:work-actions.adoc#outcomes[How a Plan Ends]); the plan's own pull request by its number with a link; when it ended.
+* *The head*: the path `project › epic › plan` as in the plan view, each part one step away (link:plan-view.adoc#way-out[Plan View, Its Project and Its Epic]; in the web app the breadcrumb of the top bar); the title; the outcome (link:work-actions.adoc#outcomes[How a Plan Ends]); the plan's own pull request by its number with a link; when it ended.
 
-In the web application's detail view, the page `h1` heading sits on the title (`plan_id`) when the detail view replaces the list (narrow viewport below 1100 px), and its sections become `h2`. When the detail view sits beside the list (1100 px and wider), the reports list heading (`Reports`) is the screen's single `h1`, the completion report title is an `h2`, and its section headings become `h3`. The heading outline is hierarchical at every viewport width.
+In the web app the completion report is an object column (link:../web-app/navigation.adoc#column-types[Web App, Navigation, Two Column Types]). While a list column stands beside it in the window (the reports list, or the ended plan it was opened from), that column's heading is the screen's single `h1`, the completion report's title an `h2`, and its sections `h3`; when the window shows the report alone, its title is the `h1` and its sections `h2`. The heading outline is hierarchical at every width.
 
 * *Outcome and reason*: the outcome in words, with what it means for this plan (merged into which branch; handed back as a pull request, a branch, or changes in the working tree, with what is missing; returned with its planning result); the reason where the operator or the plan gave one, else `—`.
 * *Ran*: from its start to its end, and how long it was paused by the operator, where it was.
@@ -101,7 +101,7 @@ What the plan used, in tokens and never in money (link:../../../../pm-mcp-core/d
 == Where It Is Reached
 
 * From the report of the plan's end: _Show the details_, which reads the report (link:reports.adoc#read[Reports, Reading a Report]).
-* From the plan as it ended: the head of the ended plan view offers _Completion report_ (link:plan-view.adoc#ended[An Ended Plan]); from the completion report, _Its plan view_ goes back.
+* From the plan as it ended: the head of the ended plan view offers _Completion report_ (link:plan-view.adoc#ended[An Ended Plan]); from the completion report, _Its plan view_ goes back. In the web app the report opens in place, as a column beside the ended plan (`/plans/{id}?open=completion-report:{id}`, the id of the plan), and closing it returns to the plan with the history's back; opened from the Reports lens it is the detail of the report of the plan's end, beside the list at that report's address (`/reports/{id}`), its breadcrumb stays in the lens, and _Its plan view_ opens the plan at its own address in Running work (link:../web-app/navigation.adoc#lenses[Web App, Navigation, Lenses and the Rail]).
 * From a row of Ended Work: a plan's row opens its plan view as before (link:plan-overview.adoc#ended[Ended Work]); its completion report is one step from there.
 * Only a plan that has ended has one. An epic's counterpart is its completion review, in its view (link:epic-view.adoc#reactions[Epic View, What the Epic Does by Itself]).
 

@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 
 import de.cuioss.test.generator.Generators;
 import de.cuioss.test.generator.junit.EnableGeneratorController;
+import de.planmarshall.api.overview.ChangeSize;
 
 @DisplayName("ProcessTreeTest")
 @EnableGeneratorController
@@ -118,7 +119,8 @@ class ProcessTreeTest {
                 List.of("execute", "execute.envelope", taskId),
                 214,
                 "https://github.com/plan-marshall/pm-mcp-clients/pull/214",
-                7800L
+                7800L,
+                null
         );
 
         // Act
@@ -157,6 +159,22 @@ class ProcessTreeTest {
         assertEquals("refine", parsedPruned.nodeId());
         assertEquals("not_in_plan", parsedPruned.state());
         assertEquals("lane_choice", parsedPruned.pruneReason());
+    }
+
+    @Test
+    @DisplayName("should serialize and deserialize a non-null size of change")
+    void shouldRoundTripChangeSize() throws Exception {
+        var project = new ProcessProjectRef("project", "project", null);
+        var change = new ChangeSize(12, 340, 27, 2);
+        var tree = new ProcessTree("plan", "Plan", project, null, "execute", "running", null,
+                            false, 1, new ProcessTokens(0L, 0L, 0L, false, 0, 0, true, false),
+                            List.of(), List.of(), null, null, 0L, change);
+
+        var json = tree.toJson();
+        var parsed = ProcessTree.fromJson(json);
+
+        assertTrue(json.contains("\"change\""));
+        assertEquals(change, parsed.change());
     }
 
     @Test

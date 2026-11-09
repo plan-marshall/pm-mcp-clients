@@ -2,10 +2,10 @@
   "id": "PLAN-21",
   "slug": "cli-answer-dialogue",
   "workstream": "WS-04",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-21-cli-answer-dialogue",
+  "pr": "372",
+  "landing": "landings/PLAN-21.md",
   "seq": 21
 }

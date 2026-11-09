@@ -9,7 +9,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/03-plans.
 
 _Relies on: link:../../../../pm-mcp-core/doc/specification/workflow-dsl/01-grammar.adoc#unit-frontmatter[Workflow DSL, Unit Frontmatter] (the required `icon` key), link:../../../../pm-mcp-core/doc/specification/workflow-dsl/09-plan-instance.adoc#plan-axes[Workflow DSL, Plan Behaviour Axes], link:process-designer.adoc[Process Designer], link:harness-icons.adoc[Harness Icons] (the unrelated harness artwork and its legal research)_
 
-Status: `DRAFT`. This document is the single visual authority for the icons that stand for workflow units, sub-workflows, phases, plan axes, and recipes in the web app. It is a visual contract, not a schema: the wire field is owned by `pm-workflow`, the id set and the delivered assets by `pm-web-app`.
+Status: `AGREED`. This document is the single visual authority for the icons that stand for workflow units, sub-workflows, phases, plan axes, and recipes in the web app. It is a visual contract, not a schema: the wire field is owned by `pm-workflow`, the id set and the delivered assets by `pm-web-app`.
 
 [#purpose]
 == What This Is
@@ -90,6 +90,16 @@ Every delivered file satisfies all of the following. The registry test enforces 
 * *Optimised* with SVGO before it is committed: paths collapsed and decimals reduced, without changing the silhouette.
 * *Consumed as a mask*: the web app paints the SVG through `mask-image`, so only its alpha silhouette is used. The drawing must not depend on stroke colour inside the file.
 
+[#exceptions]
+=== Exceptions: the Brand Icon and the Waiting Mark
+
+Two drawings of the web app stand outside the delivered set and are governed by link:brand-mark.adoc[Brand Mark and Mascot], not by the registry above:
+
+* *The brand icon in colour* is the one icon of the app with literal colours: the mascot palette (`--color-mascot-*`), solid fills with a dark outline, the same in both themes, drawn at `16`, `28` and `64` px. It is the brand's own drawing, so it is exempt from the monochrome rule, the stroke rule, the fill rule and the sizes of <<accessibility>>. Its *monochrome* rendering keeps this contract's `currentColor` rule and its grid, as a solid silhouette with its details cut out (link:brand-mark.adoc#icon-rules[Brand Mark and Mascot, Drawing Rules]).
+* *The waiting mark* is drawn on this grid at the UI set's `1.5` stroke in `currentColor`, but inline in its component rather than as a mask, so that each tick can be animated (link:brand-mark.adoc#waiting-mark[Brand Mark and Mascot, The Waiting Mark]).
+
+No workflow, phase, axis or UI icon may take either exception, and no icon of the delivered set may be a clipboard or a star badge with balls on its tips, so that none is mistaken for the brand or the waiting mark; the favourite act keeps its outline star.
+
 [#naming]
 == Naming and Stability
 
@@ -130,6 +140,8 @@ The Git icon is our own trunk-commit-branch metaphor, not the Git logo. Harness 
 |===
 
 A future blend appends a row here before its SVG is committed. An icon without a completed row stays out of the delivered set.
+
+The brand icon and the mascot are not part of this set; their provenance is recorded in link:brand-mark.adoc#provenance[Brand Mark and Mascot, Provenance]. The waiting mark is original line art in the style of the UI set and shares the row above.
 
 The UI icon set of `pm-web-app/src/lib/icons/ui/` is part of the same delivery and the same row above: it is
 original line art drawn for this project, with no source file, no third-party glyph, and no attribution

@@ -11,7 +11,7 @@ Status and dependencies:: in the link:README.adoc#packages[index], the only plac
 
 == Tasks
 
-. Design the work list beside the plan view and the epic view in link:../design/web-app/README.adoc#shell[The App Shell], from the split breakpoint (link:../design/web-app/view-density-and-filtering.adoc#breakpoint[The split breakpoint]); the operator accepts the design before the build.
+. The work list beside the plan view and the epic view: the column to the left of the plan or the epic, which lists its siblings with it selected (link:../design/web-app/navigation.adoc#levels[Navigation, Levels as Columns]), in the column window (link:../design/web-app/navigation.adoc#window[Navigation, The Column Window]). Folded into the navigation engine, which builds it; this package does not build it a second time.
   Proof: the end-to-end tests move between two plans through the list.
 . _Add a plan_ on a project's row.
   Anchor: link:../design/shared/project-explorer.adoc#project-row[Project Explorer, A Project].

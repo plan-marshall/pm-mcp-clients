@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 184" font-family="Inter, -apple-system, 'Segoe UI', sans-serif" role="img" aria-labelledby="t d">
+  <!-- Theme handling: theme-neutral. The picture paints its own light and dark surfaces, as every component picture of the web design does. -->
+  <title id="t">MascotFigure</title>
+  <desc id="d">The two crops of the mascot figure as placeholder frames: the full figure, with the line where the bust is cut at the chest, and the bust; on the right the bust on a dark surface, standing on its soft halo.</desc>
+  <rect width="360" height="184" fill="#F7F7F5"/>
+  <rect x="8" y="8" width="226" height="168" rx="8" fill="#FFFFFF" stroke="#E3E3DE"/>
+  <rect x="30" y="20" width="72" height="124" rx="10" fill="#EDEBE6" stroke="#B9B6AE" stroke-dasharray="4 3"/>
+  <line x1="24" y1="72" x2="108" y2="72" stroke="#5F6672" stroke-dasharray="2 2"/>
+  <text x="66" y="50" font-size="10" fill="#5F6672" text-anchor="middle">the bust</text>
+  <text x="66" y="108" font-size="11" fill="#5F6672" text-anchor="middle">full figure</text>
+  <text x="66" y="160" font-size="10" fill="#5F6672" text-anchor="middle">crop full</text>
+  <rect x="128" y="44" width="88" height="66" rx="10" fill="#EDEBE6" stroke="#B9B6AE" stroke-dasharray="4 3"/>
+  <text x="172" y="81" font-size="11" fill="#5F6672" text-anchor="middle">bust</text>
+  <text x="172" y="160" font-size="10" fill="#5F6672" text-anchor="middle">crop bust</text>
+  <rect x="242" y="8" width="110" height="168" rx="8" fill="#161B22" stroke="#2A313C"/>
+  <defs>
+    <radialGradient id="halo">
+      <stop offset="0" stop-color="#2A313C"/>
+      <stop offset="0.7" stop-color="#2A313C" stop-opacity="0.6"/>
+      <stop offset="1" stop-color="#2A313C" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <circle cx="297" cy="77" r="54" fill="url(#halo)"/>
+  <rect x="253" y="44" width="88" height="66" rx="10" fill="none" stroke="#8B95A7" stroke-dasharray="4 3"/>
+  <text x="297" y="81" font-size="11" fill="#E6EAF2" text-anchor="middle">bust</text>
+  <text x="297" y="160" font-size="10" fill="#8B95A7" text-anchor="middle">dark: on its halo</text>
+</svg>

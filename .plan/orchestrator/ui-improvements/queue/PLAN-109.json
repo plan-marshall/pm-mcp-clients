@@ -2,10 +2,10 @@
   "id": "PLAN-109",
   "slug": "web-rail-settings-label-and-icon",
   "workstream": "WS-03",
-  "status": "staged",
+  "status": "shipped",
   "lane": "runbook",
-  "plan_marshall_plan_id": "",
-  "pr": "",
-  "landing": "",
+  "plan_marshall_plan_id": "rb-109-web-rail-settings-label-and-icon",
+  "pr": "367",
+  "landing": "landings/PLAN-109.md",
   "seq": 109
 }

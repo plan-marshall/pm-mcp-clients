@@ -86,6 +86,7 @@ that the fixes cannot be reverted green and the design says when the count is un
 - HYPOTHESIS: `SystemView.svelte:281,289` and the stop-now success path are pinned by no test (`git grep lifecycleEpoch` in
   tests names none), `epic-view.adoc` and `work-actions.adoc` never say when the count is unknown, "Epik" stands in
   `epic_view.de.properties:32,33,35` — by a read-only agent's reading of `3bdd02a2`, not run; confirm/refute at the files named
+  - verdict: corroborated | checked_at: 2fc2c214097e0359ac0e9b9eba48771bee7eaa96 | by: ui-improvements/analyze | rescoped: n/a | evidence: at bf24091c^ (=2fc2c214): layout.test.ts:246-290 asserted only the banner (no isStopped pin); epic-view.adoc had no unknown-count rule; epic_view.de.properties:32,33,35 read Epik
 - Source: `landings/PLAN-106.md`.
 - Verify-first clause: before each deliverable, re-read the named files at the current HEAD (PLAN-109, 110, 111 land first)
   and confirm or refute every HYPOTHESIS; a refuted cause re-scopes the deliverable and is reported.

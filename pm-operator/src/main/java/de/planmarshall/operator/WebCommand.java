@@ -13,7 +13,6 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalTime;
 import java.time.ZoneId;
@@ -31,6 +30,7 @@ import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.UserInterruptException;
 import org.jspecify.annotations.Nullable;
 
+import de.planmarshall.api.display.Display;
 import de.planmarshall.api.http.HttpRequest;
 import de.planmarshall.api.json.JsonTree;
 import de.planmarshall.api.message.MessageCatalogue;
@@ -592,7 +592,7 @@ public final class WebCommand implements Callable<Integer> {
                     fromStr = TerminalSanitizer.sanitizeLine(pairedFrom.toString());
                 }
                 var pairedDate = formatPairedDate(dev.get("created_at"));
-                var lastUsed = formatLastUsed(dev.get("last_used_at"), clock);
+                var lastUsed = formatLastUsed(locale, dev.get("last_used_at"), clock);
 
                 out.println(MessageCatalogue.format(locale, "operator.devices.row",
                                     Map.of(INDEX, idx, LABEL, labelVal, "date", pairedDate,
@@ -618,35 +618,14 @@ public final class WebCommand implements Callable<Integer> {
             }
         }
 
-        static String formatLastUsed(@Nullable Object raw, Clock clock) {
+        static String formatLastUsed(String locale, @Nullable Object raw, Clock clock) {
             if (raw == null) {
-                return "just now";
+                return MessageCatalogue.format(locale, "common.time.just_now", Map.of());
             }
-            var s = raw.toString();
             try {
-                var instant = Instant.parse(s);
-                var now = Instant.now(clock);
-                var diff = Duration.between(instant, now);
-                var days = diff.toDays();
-                var hours = diff.toHours();
-                if (days == 0 && hours < 24) {
-                    var timeStr = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH)
-                                        .withZone(ZoneId.of("UTC"))
-                                        .format(instant);
-                    return "today " + timeStr;
-                }
-                if (days < 7) {
-                    return days + " d ago";
-                }
-                var weeks = days / 7;
-                if (weeks < 8) {
-                    return weeks + (weeks == 1 ? " week ago" : " weeks ago");
-                }
-                return DateTimeFormatter.ofPattern("d MMM HH:mm", Locale.ENGLISH)
-                                    .withZone(ZoneId.of("UTC"))
-                                    .format(instant);
+                return Display.time(locale, Instant.parse(raw.toString()), clock);
             } catch (DateTimeParseException _) {
-                return s;
+                return raw.toString();
             }
         }
 

@@ -11,7 +11,7 @@ _Use cases: link:../../../../plan-marshall-documentation/doc/use-cases/01-onboar
 
 _Relies on: link:../../../../plan-marshall-documentation/doc/specification/module-structure.adoc#i18n[Module Structure, Languages and Internationalisation]_
 
-Status: `DRAFT`.
+Status: `AGREED`.
 
 How the texts of the web app and the command-line binaries are written, kept, and translated. The architecture (one catalogue in `pm-api`, served to the web app, packs checked at build time) is specified in the section linked above; this document is about the texts themselves.
 
