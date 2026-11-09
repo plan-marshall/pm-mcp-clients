@@ -1840,6 +1840,34 @@ describe('ReportsView component', () => {
     });
   });
 
+  it('shows a visible in-flight cue on the mark-all button while the request runs (F3)', async () => {
+    let resolveRequest: (() => void) | undefined;
+    vi.spyOn(apiClient, 'markAllReportsRead').mockImplementation(
+      () =>
+        new Promise<{ marked_count: number }>((resolve) => {
+          resolveRequest = () => resolve({ marked_count: 3 });
+        }),
+    );
+
+    render(ReportsView);
+    await screen.findByText('Ended: merged (#214)');
+
+    const markAllBtn = screen.getByRole('button', { name: /Mark all shown read/i });
+    expect(screen.queryByTestId('mark-all-busy')).toBeNull();
+
+    await fireEvent.click(markAllBtn);
+
+    const cue = screen.getByTestId('mark-all-busy');
+    expect(cue).toBeVisible();
+    expect(markAllBtn).toContainElement(cue);
+
+    if (!resolveRequest) throw new Error('markAllReportsRead was never called');
+    resolveRequest();
+    await waitFor(() => {
+      expect(screen.queryByTestId('mark-all-busy')).toBeNull();
+    });
+  });
+
   it('retains the open report beside the detail during a filtered mark-all and drops it when detail closes (D3e)', async () => {
     vi.spyOn(apiClient, 'getPlanCompletion').mockResolvedValue(fixRelayCompletion());
     let served: ReportsPage = mockPage;

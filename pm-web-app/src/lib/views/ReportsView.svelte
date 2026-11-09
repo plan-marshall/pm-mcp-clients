@@ -898,6 +898,9 @@
               aria-disabled={isMarkingAll ? 'true' : undefined}
               aria-busy={isMarkingAll ? 'true' : undefined}
             >
+              {#if isMarkingAll}
+                <span class="mark-all-cue" data-testid="mark-all-busy" aria-hidden="true"></span>
+              {/if}
               {$t('report.action.mark_all_read')}
             </Button>
           {/if}
@@ -1209,6 +1212,32 @@
     align-items: center;
     gap: var(--space-3);
     flex-wrap: wrap;
+  }
+
+  /* The mark-all act keeps its place in the tab order (aria-disabled, never native disabled); the
+     spinner is the visible cue that the request is still running. */
+  .mark-all-cue {
+    display: inline-block;
+    inline-size: 0.85em;
+    block-size: 0.85em;
+    margin-inline-end: var(--space-2);
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    vertical-align: -0.1em;
+    animation: mark-all-spin 0.75s linear infinite;
+  }
+
+  @keyframes mark-all-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mark-all-cue {
+      animation: none;
+    }
   }
 
   .loaded-only-hint {
