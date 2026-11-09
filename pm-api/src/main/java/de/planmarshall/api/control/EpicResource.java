@@ -37,7 +37,7 @@ import de.planmarshall.api.json.JsonTree;
  * @param autoStart        whether the epic starts its plans by itself
  * @param overlapMaxFiles  how many files a plan may share with a running one and still start
  * @param scope            how many plans may run at once
- * @param running          how many plans run now
+ * @param running          how many plans run now, or {@code null} when the runtime does not say
  * @param terminalReason   the epic's end where it has ended, or {@code null}
  * @param workstreams      the workstreams with their plan rows
  * @param sources          the epic's sources, as stored
@@ -56,7 +56,7 @@ public record EpicResource(
         boolean autoStart,
         int overlapMaxFiles,
         int scope,
-        int running,
+        @Nullable Integer running,
         @Nullable String terminalReason,
         List<EpicWorkstream> workstreams,
         List<String> sources,
@@ -119,7 +119,9 @@ public record EpicResource(
         map.put("auto_start", autoStart);
         map.put("overlap_max_files", overlapMaxFiles);
         map.put("scope", scope);
-        map.put("running", running);
+        if (running != null) {
+            map.put("running", running);
+        }
         if (terminalReason != null) {
             map.put("terminal_reason", terminalReason);
         }
@@ -161,7 +163,7 @@ public record EpicResource(
                 ControlJson.bool(map, "auto_start"),
                 integer(map, "overlap_max_files"),
                 integer(map, "scope"),
-                integer(map, "running"),
+                ControlJson.optCount(map, "running"),
                 JsonTree.string(map, "terminal_reason"),
                 readWorkstreams(map),
                 ControlJson.readStrings(map, "sources"),
