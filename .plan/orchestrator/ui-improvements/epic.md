@@ -641,6 +641,16 @@ plan spec names the plan, proposal and finding documents it comes from.
   (written by PLAN-120) says it asks. Minor gaps: `EpicCommand:191` wait text untested; `control.epic.next_invalid` not
   pinned in `de`; D1 evidence order `mutation-after`. Fix plan only on the operator's word.
 
+- D5 AGREED and MERGED 2026-11-09 (`plan-125-004.md`; addendum in `landings/PLAN-125.md`): core #340 `fa1c11ef`, docs
+  #171 `49f785d8`, clients #392 `0cc6a66d`, in that order; merge rule met (core 6 threads / 2 bodies, clients 4 / 1, all
+  answered), Sonar core 0; N2-N8 fixed, N1 partly; cleanup done (verified). RESIDUE on `main` (leaf; F1/F2 re-read):
+  F1 major — docs `runtime-model/01:357` overview row has `queued_revision` with `applies` only, clients need
+  `subject`/`chat_open`; F2 major — `control.chat.already_queued` ("accept this one once it has applied") points to an
+  accept the version rule refuses (core `state-catalogue:138`); minors F3-F9 (already-queued missing from the overtaken
+  lists, `plan_paus*`/`plan_started` `{subject}`, PW08:143 triple, `chat-narrative.adoc:19`, conflict list SC:213/PW08:141,
+  F9 ended work's follow-up start carried vs `chat.apply` — needs a decision). OWED: the F1-F9 doc fix (route open),
+  then staging of the client packages contract+mock, web chat, terminal chat (with the `plan-125-001.md` defects). The
+  D5 FINAL ROUND entry below is history.
 - D5 FINAL ROUND (2026-11-09, `plan-125-003.md`, observed, NOT merged): branch `docs/125-d5-agreed` in three repos —
   core #340 `552a6d9e`, docs #171 `f018414b`, clients #392 `5ab0077e`; all CLEAN, CI green, Sonar core 0 / gate OK.
   Re-read from `ci pr comments`: core CodeRabbit 1 body (5 actionable, 4 threads, 0 open, body answered 16:39Z); clients

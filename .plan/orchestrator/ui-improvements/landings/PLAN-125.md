@@ -97,3 +97,58 @@ All six decisions are stated in the merged text; no spec premise is contradicted
 - Open questions `chat-bounds`, `chat-narrative-catalogue`, `chat-lapsed-repropose`, `chat-lapse-other-subjects`; the `activity.changed` event choice.
 - After AGREED: stage the client packages (D4 re-scoped by D5: contract+mock, web chat, terminal chat) with the defects listed in `plan-125-001.md`; the engine packages `chat-context`/`chat-narrative` are pm-mcp-core's.
 - Cleanup owed: three local worktrees, the `plan-marshall-mcp` symlink, local and remote `docs/125-design-d5-chat-context-and-interaction` branches.
+
+---
+
+# Addendum: the AGREED round (2026-11-09, `plan-125-003.md` observed, `plan-125-004.md` final)
+
+pr: pm-mcp-core #340 merged as `fa1c11ef` (head `48152b61`); plan-marshall-documentation #171 squashed as `49f785d8`
+(head `60a993a7`); pm-mcp-clients #392 merged as `0cc6a66d` (head `777a6091`) — in that order, on the operator's word.
+
+## Fidelity
+
+| Item | Verdict | Evidence |
+|------|---------|----------|
+| Landing findings L3-1 … L3-14, the `activity.changed` choice, the four open questions | met | leaf at the PR heads: 16/16 fixed; operator decisions 1-8 in `plan-125-003.md` |
+| Orchestrator's pre-merge points N1-N8 | met, N1 partly | leaf on `main`: N2-N8 fixed; N1 fixed in core, plan resource, event and clients, not in the docs overview row (F1) |
+| Status AGREED | met | 11 client files and UC-CTL-1/2/3, UC-PLN-2, UC-STA-1/2/6 `AGREED` on `main`; no D5 document `DRAFT` |
+| Cleanup | met | no `docs/125*` branch on any remote, no 125 worktree (checked) |
+
+## Routing and Merge Behavior
+
+- **Review (re-read from `ci pr comments` at merge):** core #340 — CodeRabbit 2 bodies (`ba2b8fb9` 5 actionable,
+  incremental `113bcd2d` 4 actionable), 6 threads, 0 unresolved, all replied, both bodies answered. Clients #392 — 1 body
+  (4 actionable), 4 threads, 0 unresolved, all replied, body answered. Docs #171 — no bot. **Merge rule met.**
+- **Sonar:** core #340 gate OK, 0 issues; clients docs only (skipped).
+
+## Layer 3 — residue on `main` (leaf, read-only; F1 and F2 re-read by the orchestrator)
+
+| Finding | File:line | Issue | Severity |
+|---------|-----------|-------|----------|
+| F1 | docs `runtime-model/01-processes-and-transport.adoc:357` | the project overview row carries `queued_revision` "with its `applies`" only; `:178` (plan resource), clients `chat.adoc:249` and `plan-view.adoc:196` need `subject` and `chat_open` on the row | major |
+| F2 | core `state-catalogue.adoc:138`; clients `work-actions-chat-texts.adoc:440-442` | `control.chat.already_queued` tells the operator to accept the second revision "once it has applied" — but applying bumps the instance version, so that accept is refused `conflict` (older version); only a refused/lapsed first revision leaves it acceptable | major |
+| F3 | clients `web-app/chat.adoc:107` | already-queued card shown "as for an older version" (Accept disabled for good) although its accept returns when the queue clears | minor |
+| F4 | clients `work-actions.adoc:420`, `terminal-client/28-chat.adoc:79`, `chat.adoc:249,251`, docs `05-mock-runtime.adoc:82` | the overtaken-proposal lists, the pm-api list and the mock list omit the already-queued refusal | minor |
+| F5 | clients `work-actions-chat-texts.adoc:352-362` | `plan_pausing`/`plan_paused`/`plan_started` still `{subject}`; in a decision's chat that reads the decision | minor |
+| F6 | core `phase-workflows/08-dynamic-re-planning.adoc:143` | `queued_revision` triple without `subject`/`chat_open`; no chat-end send of `plan.revision_queued` | minor |
+| F7 | core `doc/plans/chat-narrative.adoc:19` | stale `{chat_id, turn_id, applies}` | minor |
+| F8 | core `state-catalogue.adoc:213`, `phase-workflows/08:141` | accept/reject `conflict` list omits already-queued | minor |
+| F9 | clients `chat.adoc:71`, `work-actions.adoc:395` vs core `state-catalogue.adoc:214,221,229` | ended work's "Start a plan with it" still called carried (`control.chat.carried`), the core applies it by `chat.apply` and no longer lists it as carried; whether it ends the chat is unstated | minor (needs a decision) |
+| F10-F14 | docs `01:237` conflict description; terminal/WA only one boundary path illustrated; mock list without `chat_open` flip; `row_failed` `{outcome}` catalogue; two non-D5 `DRAFT` files | info |
+
+**Verdict:** AGREED holds; F1 and F2 are small text fixes, both needed before the contract+mock package is built.
+
+## Reconciliation Actions
+
+- [x] row stays `shipped`, `pr` 389, `landing` this file (core #340, docs #171, clients #392 named above)
+- [x] epic.md D5 Watch: AGREED merged, residue F1-F9, packages to stage; `plan-125-003.md`/`-004.md` archived
+- [x] resume anchor updated; `queue-view.md` regenerated
+
+## Follow-Ups
+
+- F1-F9 doc follow-up in three repositories (operator's choice of route).
+- Daemon surface (plan-marshall-mcp), listed not filed: chat routes' `context`, notice turns with `lines[]`, refs `act`
+  and `hold`, proposal states, `queued_revision` with subject and `chat_open`, `plan.revision_queued`, the chat worker's
+  write set, chat resources and skill on the job connection.
+- Stage the client packages (D4 re-scoped by D5): contract + mock, web chat, terminal chat; with the `plan-125-001.md`
+  code defects. Engine packages `chat-context`, `chat-narrative` are pm-mcp-core's (`doc/plans/` there).
